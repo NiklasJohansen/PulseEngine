@@ -53,13 +53,20 @@ class ExampleGame : GameContext
 
     override fun render(engine: EngineInterface)
     {
+        // Set color of background
+        engine.gfx.setBackgroundColor(0.8f, 0.8f, 0.8f)
+
+        // Set draw color and draw line
+        engine.gfx.setColor(1f, 0f, 0f)
+        engine.gfx.drawLine(200f, 200f,  engine.input.xMouse, engine.input.yMouse, 2f)
+
         // Get loaded image asset
         engine.asset.get<Image>("image_asset")?.let { image ->
 
             // Set render color
-            engine.gfx.setColor(1f, 1f, 1f, 1f)
+            engine.gfx.setColor(1f, 1f, 1f)
 
-            // Draw image
+            // Draw load image
             engine.gfx.drawImage(image, engine.input.xMouse, engine.input.yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
         }
     }

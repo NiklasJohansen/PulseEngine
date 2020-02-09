@@ -1,15 +1,15 @@
 package engine.modules
 
 import org.lwjgl.opengl.GL
-
-import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL11.*
 
 interface GraphicsInterface
 {
     fun drawQuad(x: Float, y: Float, width: Float, height: Float)
+    fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float, lineWidth: Float = 1f)
     fun drawImage(image: Image, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
-    fun setColor(red: Float, green: Float, blue: Float, alpha: Float)
+    fun setColor(red: Float, green: Float, blue: Float, alpha: Float = 1f)
+    fun setBackgroundColor(red: Float, green: Float, blue: Float)
 }
 
 class Graphics(viewPortWidth: Int, viewPortHeight: Int) : GraphicsInterface
@@ -30,8 +30,22 @@ class Graphics(viewPortWidth: Int, viewPortHeight: Int) : GraphicsInterface
         glClearColor(0.8f, 0.8f, 0.8f, 0.0f)
 
         glEnable(GL_TEXTURE_2D)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR.toFloat())
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR.toFloat())
+    }
+
+    override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float, lineWidth: Float)
+    {
+        glBindTexture(GL_TEXTURE_2D, 0)
+        glLineWidth(lineWidth)
+        glColor4f(red, green, blue, alpha)
+        glBegin(GL_LINES)
+        glVertex2f(x0, y0)
+        glVertex2f(x1, y1)
+        glEnd()
     }
 
     override fun drawQuad(x: Float, y: Float, width: Float, height: Float)
