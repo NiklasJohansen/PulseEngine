@@ -1,10 +1,14 @@
 package engine.modules
 
-import java.lang.IllegalArgumentException
+import de.matthiasmann.twl.utils.PNGDecoder
+import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
+import org.lwjgl.opengl.GL11.*
+import java.nio.ByteBuffer
+
 
 interface AssetManagerInterface
 {
-    fun <T : Asset> get(assetName: String): T?
+    fun <T: Asset> get(assetName: String): T?
     fun <T: Asset> load(filename: String, assetName: String, type: Class<T>): T
 }
 
@@ -31,9 +35,6 @@ class AssetManager : AssetManagerInterface
         return asset as T
     }
 
-    private fun loadImage(filename: String, assetName: String): Image
-            = Image(assetName, 0)
-
     private fun loadSound(filename: String, assetName: String): Sound
             = Sound(assetName, "...")
 
@@ -43,15 +44,32 @@ class AssetManager : AssetManagerInterface
     private fun loadBinary(filename: String, assetName: String): Binary
             = Binary(assetName, javaClass.getResource(filename).readBytes())
 
+    private fun loadImage(filename: String, assetName: String): Image
+    {
+        val decoder = PNGDecoder(javaClass.getResourceAsStream(filename))
+        val buffer: ByteBuffer = ByteBuffer.allocateDirect(4 * decoder.width * decoder.height)
+        decoder.decode(buffer, decoder.width * 4, PNGDecoder.Format.RGBA)
+        buffer.flip()
+
+        val id = glGenTextures()
+        glBindTexture(GL_TEXTURE_2D, id)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, decoder.width, decoder.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer)
+        glGenerateMipmap(GL_TEXTURE_2D)
+
+        return Image(assetName, id, decoder.width, decoder.height)
+    }
+
     fun cleanUp()
     {
         println("Cleaning up assets")
+        assets.values.filterIsInstance<Image>().forEach { glDeleteTextures(it.textureId) }
     }
 }
 
 sealed class Asset(open val name: String)
 
-data class Image(override val name: String, val textureId: Int) : Asset(name)
+data class Image(override val name: String, val textureId: Int, val width: Int, val height: Int) : Asset(name)
 
 data class Sound(override val name: String, val someSoundData: String) : Asset(name)
 

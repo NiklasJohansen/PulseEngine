@@ -17,35 +17,31 @@ interface EngineInterface
     val currentFps: Int
 }
 
-class Engine : EngineInterface
-{
+class Engine : EngineInterface {
     // Exposed engine modules
-    override val window  = Window()
-    override val gfx     = Graphics(window.width, window.height)
-    override val input   = Input(window.windowHandle)
-    override val asset   = AssetManager()
-    override val audio   = Audio()
+    override val window = Window()
+    override val gfx = Graphics(window.width, window.height)
+    override val input = Input(window.windowHandle)
+    override val asset = AssetManager()
+    override val audio = Audio()
     override val network = Network()
 
     // Exposed properties
-    override var targetFps  = 60
+    override var targetFps = 60
     override var currentFps = 0
 
     // Internal engine properties
-    private var fpsTimer     = 0L
+    private var fpsTimer = 0L
     private var frameCounter = 0
 
-    init
-    {
+    init {
         window.setOnResizeEvent { w, h -> gfx.updateViewportSize(w, h) }
     }
 
-    fun run(gameContext: GameContext)
-    {
+    fun run(gameContext: GameContext) {
         gameContext.init(this)
 
-        while (window.isOpen())
-        {
+        while (window.isOpen()) {
             val frameTime = measureNanoTime {
                 input.pollEvents()
                 gameContext.update(this)
@@ -61,11 +57,9 @@ class Engine : EngineInterface
         cleanUp()
     }
 
-    private fun updateFps(frameTimeNanoSec: Long)
-    {
+    private fun updateFps(frameTimeNanoSec: Long) {
         frameCounter++
-        if (System.currentTimeMillis() - fpsTimer >= 1000)
-        {
+        if (System.currentTimeMillis() - fpsTimer >= 1000) {
             currentFps = frameCounter
             frameCounter = 0
             fpsTimer = System.currentTimeMillis()
@@ -73,12 +67,11 @@ class Engine : EngineInterface
 
         // TODO: Implement fixed time step
         val nanosToSleep = ((1000000000.0 / targetFps) - frameTimeNanoSec).toLong()
-        if(nanosToSleep > 0)
+        if (nanosToSleep > 0)
             Thread.sleep(nanosToSleep / 1000000, (nanosToSleep % 1000000).toInt())
     }
 
-    private fun cleanUp()
-    {
+    private fun cleanUp() {
         audio.cleanUp()
         input.cleanUp()
         asset.cleanUp()
