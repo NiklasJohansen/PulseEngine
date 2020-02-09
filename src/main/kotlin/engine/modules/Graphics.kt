@@ -89,6 +89,8 @@ class Graphics(viewPortWidth: Int, viewPortHeight: Int) : GraphicsInterface
         this.alpha = alpha
     }
 
+    override fun setBackgroundColor(red: Float, green: Float, blue: Float) = glClearColor(red, green, blue, 1f)
+
     fun updateViewportSize(width: Int, height: Int)
     {
         glViewport(0,0, width, height)
