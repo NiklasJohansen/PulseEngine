@@ -5,6 +5,7 @@ import engine.EngineInterface
 import engine.GameContext
 import engine.data.Key
 import engine.data.Mouse
+import engine.modules.BlendFunction
 import engine.modules.Image
 import engine.modules.Text
 import kotlin.math.PI
@@ -23,7 +24,7 @@ class ExampleGame : GameContext
     override fun init(engine: EngineInterface)
     {
         // Set game loop target FPS
-        engine.targetFps = 10000
+        engine.targetFps = 120
 
         // Load assets from disc
         engine.asset.load("/textAsset.txt", "text_asset", Text::class.java)
@@ -54,11 +55,23 @@ class ExampleGame : GameContext
     override fun render(engine: EngineInterface)
     {
         // Set color of background
-        engine.gfx.setBackgroundColor(0.8f, 0.8f, 0.8f)
+        engine.gfx.setBackgroundColor(0.7f, 0.7f, 0.7f)
 
-        // Set draw color and draw line
-        engine.gfx.setColor(1f, 0f, 0f)
-        engine.gfx.drawLine(200f, 200f,  engine.input.xMouse, engine.input.yMouse, 2f)
+        // Set blending function
+        engine.gfx.setBlendFunction(BlendFunction.NORMAl)
+
+        // Set draw color
+        engine.gfx.setColor(1f, 1f, 1f)
+
+        // Get window size
+        val width  = engine.window.width.toFloat()
+        val height = engine.window.height.toFloat()
+
+        // Draw lines
+        engine.gfx.drawLine(0f, 0f,  engine.input.xMouse, engine.input.yMouse, 2f)
+        engine.gfx.drawLine(width, 0f,  engine.input.xMouse, engine.input.yMouse, 2f)
+        engine.gfx.drawLine(width, height,  engine.input.xMouse, engine.input.yMouse, 2f)
+        engine.gfx.drawLine(0f, height,  engine.input.xMouse, engine.input.yMouse, 2f)
 
         // Get loaded image asset
         engine.asset.get<Image>("image_asset")?.let { image ->
