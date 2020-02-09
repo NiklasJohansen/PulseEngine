@@ -58,7 +58,7 @@ class ExampleGame : GameContext
         engine.gfx.setBackgroundColor(0.7f, 0.7f, 0.7f)
 
         // Set blending function
-        engine.gfx.setBlendFunction(BlendFunction.NORMAl)
+        engine.gfx.setBlendFunction(BlendFunction.NORMAL)
 
         // Set draw color
         engine.gfx.setColor(1f, 1f, 1f)
@@ -72,6 +72,12 @@ class ExampleGame : GameContext
         engine.gfx.drawLine(width, 0f,  engine.input.xMouse, engine.input.yMouse, 2f)
         engine.gfx.drawLine(width, height,  engine.input.xMouse, engine.input.yMouse, 2f)
         engine.gfx.drawLine(0f, height,  engine.input.xMouse, engine.input.yMouse, 2f)
+
+        // Draw multiple lines
+        engine.gfx.drawLines(floatArrayOf(
+            200f, 0f, 200f, height,            // x0, y0, x1, y1 of first line
+            width-200f, 0f, width-200, height  // x0, y0, x1, y1 of second line
+        ))
 
         // Get loaded image asset
         engine.asset.get<Image>("image_asset")?.let { image ->

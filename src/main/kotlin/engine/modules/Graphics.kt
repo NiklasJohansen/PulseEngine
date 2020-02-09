@@ -6,6 +6,7 @@ import org.lwjgl.opengl.GL11.*
 interface GraphicsInterface
 {
     fun drawQuad(x: Float, y: Float, width: Float, height: Float)
+    fun drawLines(points: FloatArray, lineWidth: Float = 1f)
     fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float, lineWidth: Float = 1f)
     fun drawImage(image: Image, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
     fun setColor(red: Float, green: Float, blue: Float, alpha: Float = 1f)
@@ -44,6 +45,20 @@ class Graphics(viewPortWidth: Int, viewPortHeight: Int) : GraphicsInterface
         glBegin(GL_LINES)
             glVertex2f(x0, y0)
             glVertex2f(x1, y1)
+        glEnd()
+    }
+
+    override fun drawLines(points: FloatArray, lineWidth: Float)
+    {
+        glBindTexture(GL_TEXTURE_2D, 0)
+        glLineWidth(lineWidth)
+        glColor4f(red, green, blue, alpha)
+        glBegin(GL_LINES)
+        for(i in points.indices step 4)
+        {
+            glVertex2f(points[i],   points[i+1])
+            glVertex2f(points[i+2], points[i+3])
+        }
         glEnd()
     }
 
@@ -106,7 +121,7 @@ class Graphics(viewPortWidth: Int, viewPortHeight: Int) : GraphicsInterface
 
 enum class BlendFunction(val src: Int, val dest: Int)
 {
-    NORMAl(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
+    NORMAL(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
     ADDITIVE(GL_SRC_ALPHA, GL_ONE),
     SCREEN(GL_ONE, GL_ONE_MINUS_SRC_COLOR)
 }
