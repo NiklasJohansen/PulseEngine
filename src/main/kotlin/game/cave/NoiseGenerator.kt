@@ -1,7 +1,6 @@
 package game.cave
 
 import kotlin.math.abs
-import kotlin.math.floor
 
 object NoiseGenerator {
 
@@ -47,17 +46,14 @@ object NoiseGenerator {
         return lerp(top, bottom, smoothstep(fract(y2)))
     }
 
-    // Linear interpolation
-    fun lerp(a: Float, b: Float, t: Float): Float = a + t * (b - a)
-
     // Generate pseudo random number from two integers and get result between -1 and 1
-    fun getFloatHash(x: Int, y: Int): Float = getHash2D(x, y) / 2147483647.0f
+    private fun getFloatHash(x: Int, y: Int): Float = getHash2D(x, y) / 2147483647.0f
 
     // Generate pseudo random number from two integers
-    fun getHash2D(x: Int, y: Int): Int = getHash1D(getHash1D(x) + y)
+    private fun getHash2D(x: Int, y: Int): Int = getHash1D(getHash1D(x) + y)
 
     // Generate pseudo random number from single integer
-    fun getHash1D(a: Int): Int
+    private fun getHash1D(a: Int): Int
     {
         var a = a
         a = a.inv() + (a shl 15)
@@ -69,9 +65,15 @@ object NoiseGenerator {
         return a
     }
 
+    // Cheap floor approximation
+    private fun floor(x: Float): Float = if (x >= 0.0f) x.toInt().toFloat() else (x.toInt() - 1).toFloat()
+
+    // Linear interpolation
+    private fun lerp(a: Float, b: Float, t: Float): Float = a + t * (b - a)
+
     // Get decimal part from floating number
-    fun fract(v: Float): Float = v - floor(v)
+    private fun fract(v: Float): Float = v - floor(v)
 
     // Make linear line smooth - smooth start and stop
-    fun smoothstep(t: Float): Float = (3 - 2 * t) * t * t
+    private fun smoothstep(t: Float): Float = (3 - 2 * t) * t * t
 }

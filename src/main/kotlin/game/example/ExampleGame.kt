@@ -33,11 +33,11 @@ class ExampleGame : GameContext
 
     override fun update(engine: EngineInterface)
     {
-        // Keyboard key check
+        // Mouse buttons
         if(engine.input.isPressed(Mouse.LEFT))
             println("Left mouse pressed")
 
-        // Mouse button
+        // Keyboard keys
         if(engine.input.isPressed(Key.SPACE))
             println("Space pressed")
 
@@ -67,11 +67,11 @@ class ExampleGame : GameContext
         val width  = engine.window.width.toFloat()
         val height = engine.window.height.toFloat()
 
-        // Draw lines
-        engine.gfx.drawLine(0f, 0f,  engine.input.xMouse, engine.input.yMouse, 2f)
-        engine.gfx.drawLine(width, 0f,  engine.input.xMouse, engine.input.yMouse, 2f)
-        engine.gfx.drawLine(width, height,  engine.input.xMouse, engine.input.yMouse, 2f)
-        engine.gfx.drawLine(0f, height,  engine.input.xMouse, engine.input.yMouse, 2f)
+        // Draw single lines
+        engine.gfx.drawLine(0f, 0f,  engine.input.xMouse, engine.input.yMouse)
+        engine.gfx.drawLine(width, 0f,  engine.input.xMouse, engine.input.yMouse)
+        engine.gfx.drawLine(width, height,  engine.input.xMouse, engine.input.yMouse)
+        engine.gfx.drawLine(0f, height,  engine.input.xMouse, engine.input.yMouse)
 
         // Draw multiple lines
         engine.gfx.drawLines(floatArrayOf(
@@ -82,16 +82,16 @@ class ExampleGame : GameContext
         // Get loaded image asset
         engine.asset.get<Image>("image_asset")?.let { image ->
 
-            // Set render color
-            engine.gfx.setColor(1f, 1f, 1f)
+            // Set draw color
+            engine.gfx.setColor(1f, 1f, 1f, 0.9f)
 
-            // Draw load image
+            // Draw loaded image
             engine.gfx.drawImage(image, engine.input.xMouse, engine.input.yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
         }
     }
 
     override fun cleanUp(engine: EngineInterface)
     {
-        println("Clean up stuff")
+        println("Cleaning up example...")
     }
 }

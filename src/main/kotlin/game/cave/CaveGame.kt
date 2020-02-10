@@ -28,7 +28,7 @@ class CaveGame : GameContext
 
     override fun init(engine: EngineInterface)
     {
-        engine.targetFps = 1000
+        engine.targetFps = 120
     }
 
     override fun update(engine: EngineInterface)
@@ -64,7 +64,7 @@ class CaveGame : GameContext
         if(engine.input.gamepads.firstOrNull()?.isPressed(Button.B) == true)
             blockWidth -= 1
 
-        engine.window.title = "FPS: ${engine.currentFps}  X: $xCam Y:$yCam"
+        engine.window.title = "FPS: ${engine.currentFps}  X: $xCam  Y:$yCam  U: ${"%.2f".format(engine.updateTimeMS)}ms  R: ${"%.2f".format(engine.renderTimeMs)}ms"
     }
 
     override fun render(engine: EngineInterface)
@@ -84,7 +84,7 @@ class CaveGame : GameContext
                 val xBlock = x * blockWidth + xCam % blockWidth
                 val yBlock = y * blockHeight + yCam % blockHeight
 
-                engine.gfx.setColor(c.red, c.green, c.blue, 0.1f)
+                engine.gfx.setColor(c.red, c.green, c.blue)
                 engine.gfx.drawQuad(xBlock, yBlock, blockWidth.toFloat(), blockHeight.toFloat())
             }
         }
@@ -121,7 +121,10 @@ class CaveGame : GameContext
         )
     }
 
-    override fun cleanUp(engine: EngineInterface) {}
+    override fun cleanUp(engine: EngineInterface)
+    {
+        println("Cleaning up CaveGame...")
+    }
 }
 
 data class Color(val red: Float, val green: Float, val blue: Float)
