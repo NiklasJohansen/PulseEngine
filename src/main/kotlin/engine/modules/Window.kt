@@ -5,6 +5,7 @@ import org.lwjgl.glfw.GLFWErrorCallback
 import org.lwjgl.glfw.GLFWWindowSizeCallback
 import org.lwjgl.system.MemoryUtil.NULL
 
+// Exposed to game code
 interface WindowInterface
 {
     val width: Int
@@ -12,8 +13,21 @@ interface WindowInterface
     var title: String
 }
 
-class Window : WindowInterface
+// Exposed to game engine
+interface WindowEngineInterface : WindowInterface
 {
+    fun init()
+    fun cleanUp()
+    fun setOnResizeEvent(callback: (width: Int, height: Int) -> Unit)
+    fun swapBuffers()
+    fun isOpen(): Boolean
+    val windowHandle: Long
+}
+
+class Window : WindowEngineInterface
+{
+    // Exposed properties
+    override var windowHandle : Long = -1
     override var width: Int = 1500
     override var height: Int = 1000
     override var title: String = ""
@@ -22,11 +36,13 @@ class Window : WindowInterface
             field = value
         }
 
-    val windowHandle : Long
-    var resizeCallBack: (width: Int, height: Int) -> Unit = {_,_ -> }
+    // Internal properties
+    private var resizeCallBack: (width: Int, height: Int) -> Unit = {_,_ -> }
 
-    init
+    override fun init()
     {
+        println("Initializing Window...")
+
         if (!glfwInit())
             throw IllegalStateException("Unable to initialize GLFW")
 
@@ -35,7 +51,7 @@ class Window : WindowInterface
         glfwDefaultWindowHints()
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE)
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE)
-        
+
         windowHandle = glfwCreateWindow(width, height, "", NULL, NULL)
         if (windowHandle == NULL)
             throw RuntimeException("Failed to create the GLFW windowHandle")
@@ -56,21 +72,23 @@ class Window : WindowInterface
                 resizeCallBack(width, height)
             }
         })
-        
+
         glfwMakeContextCurrent(windowHandle)
         glfwSwapInterval(0)
         glfwShowWindow(windowHandle)
     }
 
-    fun setOnResizeEvent(callback: (width: Int, height: Int) -> Unit) { resizeCallBack = callback }
+    override fun setOnResizeEvent(callback: (width: Int, height: Int) -> Unit) { resizeCallBack = callback }
 
-    fun swapBuffers() = glfwSwapBuffers(windowHandle)
+    override fun swapBuffers() = glfwSwapBuffers(windowHandle)
 
-    fun isOpen(): Boolean = !glfwWindowShouldClose(windowHandle)
+    override fun isOpen(): Boolean = !glfwWindowShouldClose(windowHandle)
 
-    fun cleanUp()
+    override fun cleanUp()
     {
-        println("Cleaning up window")
+        println("Cleaning up window...")
+        glfwSetErrorCallback(null)
         glfwDestroyWindow(windowHandle)
+        glfwTerminate()
     }
 }

@@ -5,16 +5,28 @@ import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
 import org.lwjgl.opengl.GL11.*
 import java.nio.ByteBuffer
 
-
+// Exposed to game code
 interface AssetManagerInterface
 {
     fun <T: Asset> get(assetName: String): T?
     fun <T: Asset> load(filename: String, assetName: String, type: Class<T>): T
 }
 
-class AssetManager : AssetManagerInterface
+// Exposed to game engine
+interface AssetManagerEngineInterface : AssetManagerInterface
+{
+    fun init()
+    fun cleanUp()
+}
+
+class AssetManager : AssetManagerEngineInterface
 {
     private val assets = mutableMapOf<String, Asset>()
+
+    override fun init()
+    {
+        println("Initializing asset manager...")
+    }
 
     override fun <T : Asset> get(assetName: String): T?
     {
@@ -60,9 +72,9 @@ class AssetManager : AssetManagerInterface
         return Image(assetName, id, decoder.width, decoder.height)
     }
 
-    fun cleanUp()
+    override fun cleanUp()
     {
-        println("Cleaning up assets")
+        println("Cleaning up assets...")
         assets.values.filterIsInstance<Image>().forEach { glDeleteTextures(it.textureId) }
     }
 }

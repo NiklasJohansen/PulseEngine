@@ -8,6 +8,7 @@ import org.lwjgl.glfw.GLFW.*
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 
+// Exposed to game code
 interface InputInterface {
     val xMouse: Float
     val yMouse: Float
@@ -20,24 +21,36 @@ interface InputInterface {
     fun isPressed(btn: Mouse): Boolean
 }
 
-class Input(private val windowHandle: Long) : InputInterface
+// Exposed to game engine
+interface InputEngineInterface : InputInterface
 {
+    fun init(windowHandle: Long)
+    fun cleanUp()
+    fun pollEvents()
+}
+
+class Input : InputEngineInterface
+{
+    // Exposed properties
     override var xMouse = 0.0f
     override var yMouse = 0.0f
     override var scroll = 0
     override var gamepads = mutableListOf<Gamepad>()
-
     override val xdMouse: Float
         get() = xMouse - xMouseLast
-
     override val ydMouse: Float
         get() = yMouse - yMouseLast
 
+    // Internal properties
     private var xMouseLast = 0.0f
     private var yMouseLast = 0.0f
+    private var windowHandle: Long = -1
 
-    init
+    override fun init(windowHandle: Long)
     {
+        println("Initializing input...")
+        this.windowHandle = windowHandle
+
         glfwSetKeyCallback(windowHandle) { window: Long, key: Int, scancode: Int, action: Int, mods: Int ->
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
                 glfwSetWindowShouldClose(window, true)
@@ -75,7 +88,7 @@ class Input(private val windowHandle: Long) : InputInterface
 
     override fun isPressed(key: Key): Boolean = glfwGetKey(windowHandle, key.code) == 1
 
-    fun pollEvents()
+    override fun pollEvents()
     {
         xMouseLast = xMouse
         yMouseLast = yMouse
@@ -84,27 +97,27 @@ class Input(private val windowHandle: Long) : InputInterface
         gamepads.forEach { it.updateState() }
     }
 
-    fun cleanUp()
+    override fun cleanUp()
     {
-        println("Cleaning up input")
-        glfwFreeCallbacks(windowHandle);
+        println("Cleaning up input...")
+        glfwFreeCallbacks(windowHandle)
     }
 }
-
 
 data class Gamepad(var id: Int)
 {
     private var axes: FloatBuffer = FloatBuffer.allocate(6)
     private var buttons: ByteBuffer = ByteBuffer.allocate(15)
 
+    init { updateState() }
+
+    fun isPressed(button: Button): Boolean = buttons[button.code] > 0
+    fun getAxis(axis: Axis): Float = axes[axis.code]
     fun updateState()
     {
         glfwGetJoystickAxes(id)?.let { this.axes = it }
         glfwGetJoystickButtons(id)?.let { this.buttons = it }
     }
-
-    fun isPressed(button: Button): Boolean = buttons[button.code] > 0
-    fun getAxis(axis: Axis): Float = axes[axis.code]
 }
 
 

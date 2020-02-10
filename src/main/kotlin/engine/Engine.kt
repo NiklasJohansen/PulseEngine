@@ -1,9 +1,9 @@
 package engine
 
 import engine.modules.*
-import org.lwjgl.glfw.GLFW.*
 import kotlin.system.measureNanoTime
 
+// Exposed to the game code
 interface EngineInterface
 {
     val window: WindowInterface
@@ -15,39 +15,63 @@ interface EngineInterface
 
     var targetFps: Int
     val currentFps: Int
+    val renderTimeMs: Float
+    val updateTimeMS: Float
 }
 
-class Engine : EngineInterface {
-    // Exposed engine modules
-    override val window = Window()
-    override val gfx = Graphics(window.width, window.height)
-    override val input = Input(window.windowHandle)
-    override val asset = AssetManager()
-    override val audio = Audio()
-    override val network = Network()
+class Engine(
+    override val window: WindowEngineInterface       = Window(),
+    override val gfx: GraphicsEngineInterface        = SimpleGraphics(),
+    override val input: InputEngineInterface         = Input(),
+    override val asset: AssetManagerEngineInterface  = AssetManager(),
+    override val audio: AudioEngineInterface         = Audio(),
+    override val network: NetworkEngineInterface     = Network()
+) : EngineInterface {
 
     // Exposed properties
     override var targetFps = 60
     override var currentFps = 0
+    override var renderTimeMs = 0f
+    override var updateTimeMS = 0f
 
     // Internal engine properties
     private var fpsTimer = 0L
     private var frameCounter = 0
 
-    init {
+    init
+    {
+        // Initialize all engine components
+        window.init()
+        gfx.init(window.width, window.height)
+        input.init(window.windowHandle)
+        asset.init()
+        audio.init()
+        network.init()
+
+        // Set up event handlers
         window.setOnResizeEvent { w, h -> gfx.updateViewportSize(w, h) }
     }
 
-    fun run(gameContext: GameContext) {
+    fun run(gameContext: GameContext)
+    {
         gameContext.init(this)
 
-        while (window.isOpen()) {
+        while (window.isOpen())
+        {
             val frameTime = measureNanoTime {
-                input.pollEvents()
-                gameContext.update(this)
-                gfx.clearBuffer()
-                gameContext.render(this)
-                window.swapBuffers()
+                // Update step
+                updateTimeMS = measureNanoTime{
+                    input.pollEvents()
+                    gameContext.update(this)
+                } / 1000000f
+
+                // Render step
+                renderTimeMs = measureNanoTime {
+                    gfx.clearBuffer()
+                    gameContext.render(this)
+                    gfx.render()
+                    window.swapBuffers()
+                } / 1000000f
             }
 
             updateFps(frameTime)
@@ -57,7 +81,8 @@ class Engine : EngineInterface {
         cleanUp()
     }
 
-    private fun updateFps(frameTimeNanoSec: Long) {
+    private fun updateFps(frameTimeNanoSec: Long)
+    {
         frameCounter++
         if (System.currentTimeMillis() - fpsTimer >= 1000) {
             currentFps = frameCounter
@@ -71,12 +96,13 @@ class Engine : EngineInterface {
             Thread.sleep(nanosToSleep / 1000000, (nanosToSleep % 1000000).toInt())
     }
 
-    private fun cleanUp() {
+    private fun cleanUp()
+    {
+        network.cleanUp()
         audio.cleanUp()
-        input.cleanUp()
         asset.cleanUp()
+        input.cleanUp()
+        gfx.cleanUp()
         window.cleanUp()
-        glfwSetErrorCallback(null)
-        glfwTerminate()
     }
 }
