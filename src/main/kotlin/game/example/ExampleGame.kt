@@ -5,10 +5,11 @@ import engine.EngineInterface
 import engine.GameContext
 import engine.data.Key
 import engine.data.Mouse
-import engine.modules.BlendFunction
+import engine.modules.rendering.BlendFunction
 import engine.modules.Image
 import engine.modules.Text
 import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.sin
 
 fun main()
@@ -24,7 +25,7 @@ class ExampleGame : GameContext
     override fun init(engine: EngineInterface)
     {
         // Set game loop target FPS
-        engine.targetFps = 120
+        engine.targetFps = 10000
 
         // Load assets from disc
         engine.asset.load("/textAsset.txt", "text_asset", Text::class.java)
@@ -60,24 +61,31 @@ class ExampleGame : GameContext
         // Set blending function
         engine.gfx.setBlendFunction(BlendFunction.NORMAL)
 
-        // Set draw color
-        engine.gfx.setColor(1f, 1f, 1f)
-
         // Get window size
         val width  = engine.window.width.toFloat()
         val height = engine.window.height.toFloat()
 
-        // Draw single lines
-        engine.gfx.drawLine(0f, 0f,  engine.input.xMouse, engine.input.yMouse)
-        engine.gfx.drawLine(width, 0f,  engine.input.xMouse, engine.input.yMouse)
-        engine.gfx.drawLine(width, height,  engine.input.xMouse, engine.input.yMouse)
-        engine.gfx.drawLine(0f, height,  engine.input.xMouse, engine.input.yMouse)
-
         // Draw multiple lines
-        engine.gfx.drawLines(floatArrayOf(
-            200f, 0f, 200f, height,            // x0, y0, x1, y1 of first line
-            width-200f, 0f, width-200, height  // x0, y0, x1, y1 of second line
-        ))
+        engine.gfx.drawLines { draw ->
+            for(i in 0 until width.toInt())
+            {
+                val c =  i / width
+                draw.color(1-c,  c, 0f)
+                draw.linePoint(i.toFloat(), 0f)
+                draw.color(0f,  1-c, c)
+                draw.linePoint(i.toFloat(), height)
+            }
+            draw.color(1f,1f,1f)
+            draw.line(size, height-size,  engine.input.xMouse, engine.input.yMouse)
+            draw.line(width-size, height-size,  engine.input.xMouse, engine.input.yMouse)
+            draw.line(width-size, size,  engine.input.xMouse, engine.input.yMouse)
+        }
+
+        // Set draw color
+        engine.gfx.setColor(1f, 1f, 1f)
+
+        // Draw single line
+        engine.gfx.drawLine(size, size,  engine.input.xMouse, engine.input.yMouse)
 
         // Get loaded image asset
         engine.asset.get<Image>("image_asset")?.let { image ->
@@ -85,8 +93,17 @@ class ExampleGame : GameContext
             // Set draw color
             engine.gfx.setColor(1f, 1f, 1f, 0.9f)
 
-            // Draw loaded image
+            // Draw single loaded image
             engine.gfx.drawImage(image, engine.input.xMouse, engine.input.yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
+
+            // Draw loaded image multiple times
+            engine.gfx.drawImages(image) { draw ->
+                draw.color(1f, 1f, 1f)
+                draw.image(0.5f, 0.5f, size, size)
+                draw.image(width-size, 0.5f, size, size)
+                draw.image(width-size, height-size, size, size)
+                draw.image(0.5f, height-size, size, size)
+            }
         }
     }
 

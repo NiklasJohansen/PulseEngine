@@ -1,6 +1,9 @@
 package engine
 
 import engine.modules.*
+import engine.modules.rendering.GraphicsEngineInterface
+import engine.modules.rendering.GraphicsInterface
+import engine.modules.rendering.SimpleGraphics
 import kotlin.system.measureNanoTime
 
 // Exposed to the game code
@@ -69,7 +72,7 @@ class Engine(
                 renderTimeMs = measureNanoTime {
                     gfx.clearBuffer()
                     gameContext.render(this)
-                    gfx.render()
+                    gfx.postRender()
                     window.swapBuffers()
                 } / 1000000f
             }

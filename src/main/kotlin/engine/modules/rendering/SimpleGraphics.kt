@@ -1,31 +1,8 @@
-package engine.modules
+package engine.modules.rendering
 
+import engine.modules.Image
 import org.lwjgl.opengl.GL
-import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL11.*
-
-// Exposed to game code
-interface GraphicsInterface
-{
-    fun drawLines(points: FloatArray)
-    fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
-    fun drawQuad(x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, depth: Float = 0f)
-    fun drawImage(image: Image, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, depth: Float = 0f)
-    fun setLineWidth(width: Float)
-    fun setColor(red: Float, green: Float, blue: Float, alpha: Float = 1f)
-    fun setBackgroundColor(red: Float, green: Float, blue: Float)
-    fun setBlendFunction(func: BlendFunction)
-}
-
-// Exposed to game engine
-interface GraphicsEngineInterface : GraphicsInterface
-{
-    fun init(viewPortWidth: Int, viewPortHeight: Int)
-    fun cleanUp()
-    fun updateViewportSize(width: Int, height: Int)
-    fun clearBuffer()
-    fun render()
-}
 
 class SimpleGraphics : GraphicsEngineInterface
 {
@@ -58,14 +35,11 @@ class SimpleGraphics : GraphicsEngineInterface
         glEnd()
     }
 
-    override fun drawLines(points: FloatArray)
+    override fun drawLines(block: (draw: LineDrawCall) -> Unit)
     {
         glBindTexture(GL_TEXTURE_2D, 0)
         glBegin(GL_LINES)
-        for (i in points.indices step 4) {
-            glVertex2f(points[i], points[i + 1])
-            glVertex2f(points[i + 2], points[i + 3])
-        }
+        block(LineDrawCall)
         glEnd()
     }
 
@@ -83,6 +57,14 @@ class SimpleGraphics : GraphicsEngineInterface
             glVertex2f(width, 0f)
         glEnd()
         glPopMatrix()
+    }
+
+    override inline fun drawQuads(block: (draw: QuadDrawCall) -> Unit)
+    {
+        glBindTexture(GL_TEXTURE_2D, 0)
+        glBegin(GL_QUADS)
+        block.invoke(QuadDrawCall)
+        glEnd()
     }
 
     override fun drawImage(image: Image, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, depth: Float)
@@ -105,6 +87,14 @@ class SimpleGraphics : GraphicsEngineInterface
         glPopMatrix()
     }
 
+    override inline fun drawImages(image: Image, block: (draw: ImageDrawCall) -> Unit)
+    {
+        glBindTexture(GL_TEXTURE_2D, image.textureId)
+        glBegin(GL_QUADS)
+        block.invoke(ImageDrawCall)
+        glEnd()
+    }
+
     override fun setColor(red: Float, green: Float, blue: Float, alpha: Float) = glColor4f(red, green, blue, alpha)
 
     override fun setLineWidth(width: Float) = glLineWidth(width)
@@ -115,7 +105,7 @@ class SimpleGraphics : GraphicsEngineInterface
 
     override fun clearBuffer() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
-    override fun render()
+    override fun postRender()
     {
         // Not needed as all draw calls are made while rendering
     }
@@ -134,6 +124,8 @@ class SimpleGraphics : GraphicsEngineInterface
         println("Cleaning up graphics...")
     }
 }
+
+
 
 enum class BlendFunction(val src: Int, val dest: Int)
 {
