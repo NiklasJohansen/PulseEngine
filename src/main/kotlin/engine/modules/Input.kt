@@ -57,7 +57,7 @@ class Input : InputEngineInterface
         glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
                 glfwSetWindowShouldClose(window, true)
-            clicked[key] = 1
+            clicked[key] = action.toByte()
         }
 
         glfwSetCursorPosCallback(windowHandle) { window, xPos, yPos ->

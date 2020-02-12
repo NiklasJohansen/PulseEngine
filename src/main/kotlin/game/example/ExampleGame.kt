@@ -39,8 +39,8 @@ class ExampleGame : GameContext
             println("Left mouse pressed")
 
         // Keyboard keys
-        if(engine.input.isPressed(Key.SPACE))
-            println("Space pressed")
+        if(engine.input.wasClicked(Key.SPACE))
+            println("Space clicked")
 
         // Get loaded asset
         val textAsset = engine.asset.get<Text>("text_asset")
