@@ -32,7 +32,7 @@ class Engine(
 ) : EngineInterface {
 
     // Exposed properties
-    override var targetFps = 60
+    override var targetFps = 120
     override var currentFps = 0
     override var renderTimeMs = 0f
     override var updateTimeMS = 0f
@@ -107,5 +107,17 @@ class Engine(
         input.cleanUp()
         gfx.cleanUp()
         window.cleanUp()
+    }
+
+    companion object
+    {
+        // For simple games with single draw loop
+        inline fun draw(crossinline game: EngineInterface.() -> Unit) = Engine().run(object: GameContext
+        {
+            override fun init(engine: EngineInterface) {}
+            override fun update(engine: EngineInterface) {}
+            override fun cleanUp(engine: EngineInterface) {}
+            override fun render(engine: EngineInterface) = game.invoke(engine)
+        })
     }
 }
