@@ -9,6 +9,7 @@ import kotlin.system.measureNanoTime
 // Exposed to the game code
 interface EngineInterface
 {
+    val config: ConfigurationInterface
     val window: WindowInterface
     val gfx: GraphicsInterface
     val audio: AudioInterface
@@ -16,23 +17,22 @@ interface EngineInterface
     val input: InputInterface
     val network: NetworkInterface
 
-    var targetFps: Int
     val currentFps: Int
     val renderTimeMs: Float
     val updateTimeMS: Float
 }
 
 class Engine(
-    override val window: WindowEngineInterface       = Window(),
-    override val gfx: GraphicsEngineInterface        = ImmediateModeGraphics(),
-    override val input: InputEngineInterface         = Input(),
-    override val asset: AssetManagerEngineInterface  = AssetManager(),
-    override val audio: AudioEngineInterface         = Audio(),
-    override val network: NetworkEngineInterface     = Network()
+    override val config: ConfigurationEngineInterface = Configuration(),
+    override val window: WindowEngineInterface        = Window(),
+    override val gfx: GraphicsEngineInterface         = ImmediateModeGraphics(),
+    override val input: InputEngineInterface          = Input(),
+    override val asset: AssetManagerEngineInterface   = AssetManager(),
+    override val audio: AudioEngineInterface          = Audio(),
+    override val network: NetworkEngineInterface      = Network()
 ) : EngineInterface {
 
     // Exposed properties
-    override var targetFps = 120
     override var currentFps = 0
     override var renderTimeMs = 0f
     override var updateTimeMS = 0f
@@ -44,8 +44,9 @@ class Engine(
     init
     {
         // Initialize all engine components
-        window.init()
-        gfx.init(window.width, window.height)
+        config.init()
+        window.init(config.windowWidth, config.windowHeight)
+        gfx.init(config.windowWidth, config.windowHeight)
         input.init(window.windowHandle)
         asset.init()
         audio.init()
@@ -94,7 +95,7 @@ class Engine(
         }
 
         // TODO: Implement fixed time step
-        val nanosToSleep = ((1000000000.0 / targetFps) - frameTimeNanoSec).toLong()
+        val nanosToSleep = ((1000000000.0 / config.targetFps) - frameTimeNanoSec).toLong()
         if (nanosToSleep > 0)
             Thread.sleep(nanosToSleep / 1000000, (nanosToSleep % 1000000).toInt())
     }

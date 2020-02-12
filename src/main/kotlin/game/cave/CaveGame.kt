@@ -28,7 +28,7 @@ class CaveGame : GameContext
 
     override fun init(engine: EngineInterface)
     {
-        engine.targetFps = 120
+        engine.config.targetFps = 120
     }
 
     override fun update(engine: EngineInterface)

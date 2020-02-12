@@ -9,7 +9,6 @@ import engine.modules.rendering.BlendFunction
 import engine.modules.Image
 import engine.modules.Text
 import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.sin
 
 fun main()
@@ -24,12 +23,21 @@ class ExampleGame : GameContext
 
     override fun init(engine: EngineInterface)
     {
-        // Set game loop target FPS
-        engine.targetFps = 10000
-
         // Load assets from disc
         engine.asset.load("/textAsset.txt", "text_asset", Text::class.java)
         engine.asset.load("/imageAsset.png", "image_asset", Image::class.java)
+
+        // Load configuration from disc
+        engine.config.load("/example.config")
+
+        // Get config properties
+        val number = engine.config.getInt("numberProp")
+        val text = engine.config.getString("textProp")
+        val bool = engine.config.getBool("boolProp")
+        println("From loaded config: $number, $text, $bool")
+
+        // Set game loop target FPS
+        engine.config.targetFps = 10000
     }
 
     override fun update(engine: EngineInterface)
@@ -90,8 +98,8 @@ class ExampleGame : GameContext
         // Get loaded image asset
         engine.asset.get<Image>("image_asset")?.let { image ->
 
-            // Set draw color
-            engine.gfx.setColor(1f, 1f, 1f, 0.9f)
+            // Set color to tint image
+            engine.gfx.setColor(0.7f, 0.7f, 1f, 0.9f)
 
             // Draw single loaded image
             engine.gfx.drawImage(image, engine.input.xMouse, engine.input.yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)

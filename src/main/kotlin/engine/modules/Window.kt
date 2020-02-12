@@ -16,7 +16,7 @@ interface WindowInterface
 // Exposed to game engine
 interface WindowEngineInterface : WindowInterface
 {
-    fun init()
+    fun init(width: Int, height: Int)
     fun cleanUp()
     fun setOnResizeEvent(callback: (width: Int, height: Int) -> Unit)
     fun swapBuffers()
@@ -28,8 +28,8 @@ class Window : WindowEngineInterface
 {
     // Exposed properties
     override var windowHandle : Long = -1
-    override var width: Int = 1500
-    override var height: Int = 1000
+    override var width: Int = 800
+    override var height: Int = 600
     override var title: String = ""
         set(value) {
             glfwSetWindowTitle(windowHandle, value)
@@ -39,8 +39,11 @@ class Window : WindowEngineInterface
     // Internal properties
     private var resizeCallBack: (width: Int, height: Int) -> Unit = {_,_ -> }
 
-    override fun init()
+    override fun init(width: Int, height: Int)
     {
+        this.width = width
+        this.height = height
+
         println("Initializing Window...")
 
         if (!glfwInit())
