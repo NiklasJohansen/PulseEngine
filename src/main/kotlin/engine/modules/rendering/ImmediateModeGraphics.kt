@@ -4,7 +4,7 @@ import engine.modules.Image
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
 
-class SimpleGraphics : GraphicsEngineInterface
+class ImmediateModeGraphics : GraphicsEngineInterface
 {
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {

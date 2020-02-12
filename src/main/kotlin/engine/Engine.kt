@@ -3,7 +3,7 @@ package engine
 import engine.modules.*
 import engine.modules.rendering.GraphicsEngineInterface
 import engine.modules.rendering.GraphicsInterface
-import engine.modules.rendering.SimpleGraphics
+import engine.modules.rendering.ImmediateModeGraphics
 import kotlin.system.measureNanoTime
 
 // Exposed to the game code
@@ -24,7 +24,7 @@ interface EngineInterface
 
 class Engine(
     override val window: WindowEngineInterface       = Window(),
-    override val gfx: GraphicsEngineInterface        = SimpleGraphics(),
+    override val gfx: GraphicsEngineInterface        = ImmediateModeGraphics(),
     override val input: InputEngineInterface         = Input(),
     override val asset: AssetManagerEngineInterface  = AssetManager(),
     override val audio: AudioEngineInterface         = Audio(),
