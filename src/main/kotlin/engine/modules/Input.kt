@@ -19,6 +19,8 @@ interface InputInterface {
 
     fun isPressed(key: Key): Boolean
     fun isPressed(btn: Mouse): Boolean
+    fun wasClicked(key: Key): Boolean
+    fun wasClicked(btn: Mouse): Boolean
 }
 
 // Exposed to game engine
@@ -45,26 +47,32 @@ class Input : InputEngineInterface
     private var xMouseLast = 0.0f
     private var yMouseLast = 0.0f
     private var windowHandle: Long = -1
+    private val clicked = ByteArray(Key.LAST.code)
 
     override fun init(windowHandle: Long)
     {
         println("Initializing input...")
         this.windowHandle = windowHandle
 
-        glfwSetKeyCallback(windowHandle) { window: Long, key: Int, scancode: Int, action: Int, mods: Int ->
+        glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
                 glfwSetWindowShouldClose(window, true)
+            clicked[key] = 1
         }
 
-        glfwSetCursorPosCallback(windowHandle) { window: Long, xPos: Double, yPos: Double ->
+        glfwSetCursorPosCallback(windowHandle) { window, xPos, yPos ->
             xMouseLast = xMouse
             yMouseLast = yMouse
             xMouse = xPos.toFloat()
             yMouse = yPos.toFloat()
         }
 
-        glfwSetScrollCallback(windowHandle) { window: Long, xoffset: Double, yoffset: Double ->
+        glfwSetScrollCallback(windowHandle) { window, xoffset, yoffset ->
             scroll = yoffset.toInt()
+        }
+
+        glfwSetMouseButtonCallback(windowHandle) { window, button, action, mods ->
+            clicked[button] = action.toByte()
         }
 
         glfwSetJoystickCallback { jid: Int, event: Int ->
@@ -88,11 +96,16 @@ class Input : InputEngineInterface
 
     override fun isPressed(key: Key): Boolean = glfwGetKey(windowHandle, key.code) == 1
 
+    override fun wasClicked(key: Key): Boolean = clicked[key.code] > 0
+
+    override fun wasClicked(btn: Mouse): Boolean = clicked[btn.code] > 0
+
     override fun pollEvents()
     {
         xMouseLast = xMouse
         yMouseLast = yMouse
         scroll = 0
+        clicked.fill(0)
         glfwPollEvents()
         gamepads.forEach { it.updateState() }
     }
