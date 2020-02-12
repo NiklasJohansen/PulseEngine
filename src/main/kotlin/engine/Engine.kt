@@ -13,29 +13,22 @@ interface EngineInterface
     val window: WindowInterface
     val gfx: GraphicsInterface
     val audio: AudioInterface
-    val asset: AssetManagerInterface
     val input: InputInterface
     val network: NetworkInterface
-
-    val currentFps: Int
-    val renderTimeMs: Float
-    val updateTimeMS: Float
+    val asset: AssetManagerInterface
+    val data: DataInterface
 }
 
 class Engine(
     override val config: ConfigurationEngineInterface = Configuration(),
     override val window: WindowEngineInterface        = Window(),
     override val gfx: GraphicsEngineInterface         = ImmediateModeGraphics(),
-    override val input: InputEngineInterface          = Input(),
-    override val asset: AssetManagerEngineInterface   = AssetManager(),
     override val audio: AudioEngineInterface          = Audio(),
-    override val network: NetworkEngineInterface      = Network()
+    override val input: InputEngineInterface          = Input(),
+    override val network: NetworkEngineInterface      = Network(),
+    override val asset: AssetManagerEngineInterface   = AssetManager(),
+    override val data: DataEngineInterface            = Data()
 ) : EngineInterface {
-
-    // Exposed properties
-    override var currentFps = 0
-    override var renderTimeMs = 0f
-    override var updateTimeMS = 0f
 
     // Internal engine properties
     private var fpsTimer = 0L
@@ -64,13 +57,13 @@ class Engine(
         {
             val frameTime = measureNanoTime {
                 // Update step
-                updateTimeMS = measureNanoTime{
+                data.updateTimeMS = measureNanoTime{
                     input.pollEvents()
                     gameContext.update(this)
                 } / 1000000f
 
                 // Render step
-                renderTimeMs = measureNanoTime {
+                data.renderTimeMs = measureNanoTime {
                     gfx.clearBuffer()
                     gameContext.render(this)
                     gfx.postRender()
@@ -89,7 +82,7 @@ class Engine(
     {
         frameCounter++
         if (System.currentTimeMillis() - fpsTimer >= 1000) {
-            currentFps = frameCounter
+            data.currentFps = frameCounter
             frameCounter = 0
             fpsTimer = System.currentTimeMillis()
         }

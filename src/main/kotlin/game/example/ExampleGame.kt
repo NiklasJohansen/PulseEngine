@@ -54,7 +54,7 @@ class ExampleGame : GameContext
         val textAsset = engine.asset.get<Text>("text_asset")
 
         // Set window title
-        engine.window.title = "Fps: ${engine.currentFps} - ${textAsset?.text}"
+        engine.window.title = "Fps: ${engine.data.currentFps} - ${textAsset?.text}"
 
         // Update game parameters
         angle = (angle + 1) % 360
