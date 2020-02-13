@@ -21,6 +21,8 @@ interface InputInterface {
     fun isPressed(btn: Mouse): Boolean
     fun wasClicked(key: Key): Boolean
     fun wasClicked(btn: Mouse): Boolean
+    fun wasReleased(key: Key): Boolean
+    fun wasReleased(btn: Mouse): Boolean
 }
 
 // Exposed to game engine
@@ -57,7 +59,8 @@ class Input : InputEngineInterface
         glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
                 glfwSetWindowShouldClose(window, true)
-            clicked[key] = action.toByte()
+
+            clicked[key] = if(action == GLFW_PRESS) 1 else -1
         }
 
         glfwSetCursorPosCallback(windowHandle) { window, xPos, yPos ->
@@ -72,7 +75,7 @@ class Input : InputEngineInterface
         }
 
         glfwSetMouseButtonCallback(windowHandle) { window, button, action, mods ->
-            clicked[button] = action.toByte()
+            clicked[button] = if(action == GLFW_PRESS) 1 else -1
         }
 
         glfwSetJoystickCallback { jid: Int, event: Int ->
@@ -99,6 +102,10 @@ class Input : InputEngineInterface
     override fun wasClicked(key: Key): Boolean = clicked[key.code] > 0
 
     override fun wasClicked(btn: Mouse): Boolean = clicked[btn.code] > 0
+
+    override fun wasReleased(key: Key): Boolean = clicked[key.code] < 0
+
+    override fun wasReleased(btn: Mouse): Boolean = clicked[btn.code] < 0
 
     override fun pollEvents()
     {

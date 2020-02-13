@@ -42,13 +42,17 @@ class ExampleGame : GameContext
 
     override fun update(engine: EngineInterface)
     {
-        // Mouse buttons
-        if(engine.input.isPressed(Mouse.LEFT))
-            println("Left mouse pressed")
+        // Mouse clicked
+        if(engine.input.wasClicked(Mouse.LEFT))
+            println("Left mouse clicked once")
 
-        // Keyboard keys
-        if(engine.input.wasClicked(Key.SPACE))
-            println("Space clicked")
+        // Keyboard pressed
+        if(engine.input.isPressed(Key.SPACE))
+            println("Space is pressed")
+
+        // Mouse released
+        if(engine.input.wasReleased(Mouse.RIGHT))
+            println("Right mouse released")
 
         // Get loaded asset
         val textAsset = engine.asset.get<Text>("text_asset")
