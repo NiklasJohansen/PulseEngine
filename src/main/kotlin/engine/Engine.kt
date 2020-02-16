@@ -1,6 +1,9 @@
 package engine
 
 import engine.modules.*
+import engine.modules.entity.EntityManager
+import engine.modules.entity.EntityManagerEngineBase
+import engine.modules.entity.EntityManagerBase
 import engine.modules.rendering.GraphicsEngineInterface
 import engine.modules.rendering.GraphicsInterface
 import engine.modules.rendering.ImmediateModeGraphics
@@ -17,6 +20,7 @@ interface EngineInterface
     val network: NetworkInterface
     val asset: AssetManagerInterface
     val data: DataInterface
+    val entity: EntityManagerBase
 }
 
 class Engine(
@@ -27,7 +31,8 @@ class Engine(
     override val input: InputEngineInterface          = Input(),
     override val network: NetworkEngineInterface      = Network(),
     override val asset: AssetManagerEngineInterface   = AssetManager(),
-    override val data: DataEngineInterface            = Data()
+    override val data: DataEngineInterface            = Data(),
+    override val entity: EntityManagerEngineBase      = EntityManager()
 ) : EngineInterface {
 
     // Internal engine properties
@@ -41,9 +46,9 @@ class Engine(
         window.init(config.windowWidth, config.windowHeight)
         gfx.init(config.windowWidth, config.windowHeight)
         input.init(window.windowHandle)
-        asset.init()
         audio.init()
         network.init()
+        asset.init()
 
         // Set up event handlers
         window.setOnResizeEvent { w, h -> gfx.updateViewportSize(w, h) }
@@ -56,6 +61,8 @@ class Engine(
         while (window.isOpen())
         {
             val frameTime = measureNanoTime {
+                gfx.clearBuffer()
+
                 // Update step
                 data.updateTimeMS = measureNanoTime{
                     input.pollEvents()
@@ -64,7 +71,7 @@ class Engine(
 
                 // Render step
                 data.renderTimeMs = measureNanoTime {
-                    gfx.clearBuffer()
+                    entity.update(this)
                     gameContext.render(this)
                     gfx.postRender()
                     window.swapBuffers()
