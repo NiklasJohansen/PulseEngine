@@ -7,6 +7,7 @@ import java.util.*
 interface ConfigurationInterface
 {
     var targetFps: Int
+    var tickRate: Int
 
     fun load(fileName: String)
     fun getString(name: String): String
@@ -25,6 +26,7 @@ interface ConfigurationEngineInterface : ConfigurationInterface
 class Configuration : ConfigurationEngineInterface
 {
     // Exposed properties
+    override var tickRate: Int = 60
     override var targetFps: Int = 120
     override var windowWidth: Int = 800
     override var windowHeight: Int = 600
@@ -35,6 +37,7 @@ class Configuration : ConfigurationEngineInterface
     override fun init()
     {
         load("/default.config")
+        tickRate = getInt("tickRate")
         targetFps = getInt("targetFps")
         windowWidth = getInt("windowWidth")
         windowHeight = getInt("windowHeight")

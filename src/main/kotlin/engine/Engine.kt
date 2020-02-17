@@ -58,34 +58,63 @@ class Engine(
     {
         gameContext.init(this)
 
+        var lastTime = System.currentTimeMillis()
+        var timeAccumulator = 0.0
+
         while (window.isOpen())
         {
-            val frameTime = measureNanoTime {
-                gfx.clearBuffer()
+            val dt = 1000.0 / config.tickRate.toDouble()
+            val time = System.currentTimeMillis()
+            var frameTime = time - lastTime
+            if(frameTime > 250)
+                frameTime = 250
+            lastTime = time
 
-                // Update step
-                data.updateTimeMS = measureNanoTime{
-                    input.pollEvents()
-                    gameContext.update(this)
-                } / 1000000f
+            timeAccumulator += frameTime
 
-                // Render step
-                data.renderTimeMs = measureNanoTime {
-                    entity.update(this)
-                    gameContext.render(this)
-                    gfx.postRender()
-                    window.swapBuffers()
-                } / 1000000f
+            while(timeAccumulator >= dt)
+            {
+                update(gameContext, dt)
+                timeAccumulator -= dt
             }
 
-            updateFps(frameTime)
+            val interpolation = timeAccumulator / dt
+
+            render(gameContext, interpolation)
+            updateFps()
         }
 
         gameContext.cleanUp(this)
         cleanUp()
     }
 
-    private fun updateFps(frameTimeNanoSec: Long)
+    private fun update(gameContext: GameContext, deltaTime: Double)
+    {
+        data.deltaTime = deltaTime.toFloat()
+        val updateTime = measureNanoTime{
+            input.pollEvents()
+            entity.update(this)
+            gameContext.update(this)
+        }
+
+        data.updateTimeMS = updateTime / 1000000f
+    }
+
+    private fun render(gameContext: GameContext, frameInterpolation: Double)
+    {
+        data.interpolation = frameInterpolation.toFloat()
+        val renderTime = measureNanoTime {
+            gfx.clearBuffer()
+            entity.render(this)
+            gameContext.render(this)
+            gfx.postRender()
+            window.swapBuffers()
+        }
+
+        data.renderTimeMs = renderTime / 1000000f
+    }
+
+    private fun updateFps()
     {
         frameCounter++
         if (System.currentTimeMillis() - fpsTimer >= 1000) {
@@ -93,11 +122,6 @@ class Engine(
             frameCounter = 0
             fpsTimer = System.currentTimeMillis()
         }
-
-        // TODO: Implement fixed time step
-        val nanosToSleep = ((1000000000.0 / config.targetFps) - frameTimeNanoSec).toLong()
-        if (nanosToSleep > 0)
-            Thread.sleep(nanosToSleep / 1000000, (nanosToSleep % 1000000).toInt())
     }
 
     private fun cleanUp()
