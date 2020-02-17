@@ -50,12 +50,8 @@ class TransformComponent : Component()
 {
     var x: Float = 0f
     var y: Float = 0f
-}
-
-class VelocityComponent : Component()
-{
-    var x: Float = 0f
-    var y: Float = 0f
+    var xLast: Float = 0f
+    var yLast: Float = 0f
 }
 
 class HealthComponent : Component()
@@ -75,28 +71,32 @@ class ColorComponent : Component()
 
 // ------------------------------------------------- Systems -------------------------------------------------
 
-class ParticleMovementSystem : LogicSystem(TransformComponent::class.java, VelocityComponent::class.java)
+class ParticleMovementSystem : LogicSystem(TransformComponent::class.java)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
         for(entity in entities)
         {
             val transform = entity.getComponent<TransformComponent>()
-            val velocity = entity.getComponent<VelocityComponent>()
 
-            transform.x += velocity.x
-            transform.y += velocity.y
-            velocity.y += GRAVITY
+            val xDelta = transform.x - transform.xLast
+            val yDelta = transform.y - transform.yLast
+
+            transform.xLast = transform.x
+            transform.yLast = transform.y
+            transform.x += xDelta * FRICTION
+            transform.y += yDelta * FRICTION + GRAVITY
         }
     }
 
     companion object
     {
         private const val GRAVITY = 0.0f
+        private const val FRICTION = 0.995f
     }
 }
 
-class ParticleInteractionSystem : LogicSystem(TransformComponent::class.java, VelocityComponent::class.java)
+class ParticleInteractionSystem : LogicSystem(TransformComponent::class.java)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
@@ -104,18 +104,17 @@ class ParticleInteractionSystem : LogicSystem(TransformComponent::class.java, Ve
         {
             for(i in 0 until 100)
             {
-                engine.entity.createWith(TransformComponent::class.java, HealthComponent::class.java, VelocityComponent::class.java, ColorComponent::class.java)
+                engine.entity.createWith(TransformComponent::class.java, HealthComponent::class.java, ColorComponent::class.java)
                     ?.let { entity ->
                         val transform = entity.getComponent<TransformComponent>()
-                        val velocity = entity.getComponent<VelocityComponent>()
 
                         val angle = Random.nextFloat() * 2 * PI
                         val vel = Random.nextFloat()
 
-                        transform.x = engine.input.xMouse
-                        transform.y = engine.input.yMouse
-                        velocity.x = sin(angle).toFloat() * 5f * vel
-                        velocity.y = cos(angle).toFloat() * 5f * vel
+                        transform.xLast = engine.input.xMouse
+                        transform.yLast = engine.input.yMouse
+                        transform.x = transform.xLast + sin(angle).toFloat() * 5f * vel
+                        transform.y = transform.yLast + cos(angle).toFloat() * 5f * vel
                 }
             }
         }
@@ -125,7 +124,6 @@ class ParticleInteractionSystem : LogicSystem(TransformComponent::class.java, Ve
             for(entity in entities)
             {
                 val transform = entity.getComponent<TransformComponent>()
-                val velocity = entity.getComponent<VelocityComponent>()
 
                 val xDelta = transform.x - engine.input.xMouse
                 val yDelta = transform.y - engine.input.yMouse
@@ -133,23 +131,19 @@ class ParticleInteractionSystem : LogicSystem(TransformComponent::class.java, Ve
                 val xDir = xDelta / length
                 val yDir = yDelta / length
 
-                if(length < 2000)
-                {
-                    val invLength = 1.0f - (length / 2000f)
-                    velocity.x -= xDir * invLength * 0.1f
-                    velocity.y -= yDir * invLength * 0.1f
-                }
+                val dx = transform.x - transform.xLast
+                val dy = transform.y - transform.yLast
 
-                velocity.x *= 0.98f
-                velocity.y *= 0.98f
+                val invLength = 1.0f - (length / 2000f)
+
+                transform.xLast = transform.x - dx + (xDir * invLength * 0.1f)
+                transform.yLast = transform.y - dy + (yDir * invLength * 0.1f)
             }
         }
     }
 }
 
-
-
-class ParticleRenderSystem : RenderSystem(TransformComponent::class.java, VelocityComponent::class.java, HealthComponent::class.java, ColorComponent::class.java)
+class ParticleRenderSystem : RenderSystem(TransformComponent::class.java, HealthComponent::class.java, ColorComponent::class.java)
 {
     override fun render(engine: EngineInterface, entities: EntityCollection)
     {
@@ -159,14 +153,13 @@ class ParticleRenderSystem : RenderSystem(TransformComponent::class.java, Veloci
             for (entity in entities)
             {
                 val transform = entity.getComponent<TransformComponent>()
-                val velocity = entity.getComponent<VelocityComponent>()
                 val health = entity.getComponent<HealthComponent>()
                 val color = entity.getComponent<ColorComponent>()
 
                 val fade = if(health.amount < 0.2f) health.amount / 0.2f else 1.0f
 
                 draw.color(color.color.red, color.color.green, color.color.blue, 0.5f * fade)
-                draw.line(transform.x, transform.y, transform.x + velocity.x, transform.y + velocity.y)
+                draw.line(transform.x, transform.y, transform.xLast, transform.yLast)
             }
         }
     }
