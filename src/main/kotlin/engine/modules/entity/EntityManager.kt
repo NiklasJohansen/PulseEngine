@@ -42,6 +42,8 @@ class EntityManager(
             it.updateComponentSignature(componentRegister)
             println("Registered ${it::class.java.simpleName} to handle entities with components [${it.componentTypes.joinToString { it.simpleName }}]")
         }
+
+        systems.sortBy { it.componentSignature }
     }
 
     override fun createWith(vararg componentTypes: Class<out Component>): Entity?
@@ -68,12 +70,12 @@ class EntityManager(
 
     override fun update(engine: EngineInterface)
     {
-        //TODO: sort systems by signature to be able to cache indexesToUpdate
-
+        var lastSignature = -1L
+        var entityCount = 0
         for(system in systems)
         {
-            val systemSignature = system.componentSignature
-            if(systemSignature == 0L)
+            val signature = system.componentSignature
+            if(signature == 0L)
             {
                 // An empty entity list is passed to systems that dont require any components
                 system.update(engine, EMPTY_COLLECTION)
@@ -81,22 +83,27 @@ class EntityManager(
             }
 
             // Gathers all entities containing components required by the system
-            var index = 0
-            val last = entitiesHead
-            for(i in 0 .. last)
+            if(signature != lastSignature)
             {
-                val entity = entities[i]
-                if(entity != null && (systemSignature and entity.signature) == systemSignature)
-                    indexesToUpdate[index++] = i
+                lastSignature = signature
+                entityCount = 0
+                val last = entitiesHead
+                for(i in 0 .. last)
+                {
+                    val entity = entities[i]
+                    if(entity != null && (signature and entity.signature) == signature)
+                        indexesToUpdate[entityCount++] = i
+                }
             }
 
             // Updates the system with the gathered entities
-            system.update(engine, EntityCollection(indexesToUpdate, entities, index))
+            system.update(engine, EntityCollection(indexesToUpdate, entities, entityCount))
         }
 
         // Remove all entities with the alive == false
         val last = entitiesHead
-        for(i in last downTo 0) {
+        for(i in last downTo 0)
+        {
             val entity = entities[i]
             if(entity != null && !entity.alive)
             {
@@ -117,11 +124,11 @@ class EntityManager(
 }
 
 class EntityCollection(
-    private val indexesToUpdate: IntArray,
+    private val entityIndexes: IntArray,
     private val entities: Array<Entity?>,
     private val count: Int
 ): Iterator<Entity> {
     private var index = 0
     override fun hasNext(): Boolean = index < count
-    override fun next(): Entity = entities[indexesToUpdate[index++]]!!
+    override fun next(): Entity = entities[entityIndexes[index++]]!!
 }
