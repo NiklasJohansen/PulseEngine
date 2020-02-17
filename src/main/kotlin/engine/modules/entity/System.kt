@@ -2,7 +2,7 @@ package engine.modules.entity
 
 import engine.EngineInterface
 
-abstract class ComponentSystem(
+sealed class ComponentSystem(
     vararg val componentTypes: Class<out Component>
 ) {
 
@@ -20,5 +20,20 @@ abstract class ComponentSystem(
         }
     }
 
+    abstract fun tick(engine: EngineInterface, entities: EntityCollection)
+}
+
+abstract class LogicSystem(
+    vararg componentTypes: Class<out Component>
+) : ComponentSystem(*componentTypes) {
+    override fun tick(engine: EngineInterface, entities: EntityCollection) = update(engine, entities)
     abstract fun update(engine: EngineInterface, entities: EntityCollection)
+}
+
+
+abstract class RenderSystem(
+    vararg componentTypes: Class<out Component>
+) : ComponentSystem(*componentTypes) {
+    override fun tick(engine: EngineInterface, entities: EntityCollection) = render(engine, entities)
+    abstract fun render(engine: EngineInterface, entities: EntityCollection)
 }

@@ -17,12 +17,14 @@ abstract class EntityManagerBase
 abstract class EntityManagerEngineBase : EntityManagerBase()
 {
     abstract fun update(engine: EngineInterface)
+    abstract fun render(engine: EngineInterface)
 }
 
 class EntityManager(
     private val maxEntities: Int = 500_000
 ) : EntityManagerEngineBase() {
-    private val systems = ArrayList<ComponentSystem>()
+    private val logicSystems = ArrayList<ComponentSystem>()
+    private val renderSystems = ArrayList<ComponentSystem>()
     private val entities = arrayOfNulls<Entity>(maxEntities)
     private val freeIndexes = IntArray(maxEntities)
     private val indexesToUpdate = IntArray(maxEntities)
@@ -32,18 +34,26 @@ class EntityManager(
     private var freeIndexesHead = -1
     override var count: Int = 0
 
-    override fun registerSystems(vararg system: ComponentSystem)
+    override fun registerSystems(vararg systems: ComponentSystem)
     {
-        systems.addAll(system)
         systems.flatMap { it.componentTypes.toList() }.distinct().forEachIndexed { i, comp ->
             componentRegister[comp] = i
         }
-        systems.forEach {
-            it.updateComponentSignature(componentRegister)
-            println("Registered ${it::class.java.simpleName} to handle entities with components [${it.componentTypes.joinToString { it.simpleName }}]")
-        }
 
-        systems.sortBy { it.componentSignature }
+        logicSystems.addAll(systems.filterIsInstance<LogicSystem>())
+        renderSystems.addAll(systems.filterIsInstance<RenderSystem>())
+
+        logicSystems.forEach { initSystem(it) }
+        renderSystems.forEach { initSystem(it) }
+
+        logicSystems.sortBy { it.componentSignature }
+        renderSystems.sortBy { it.componentSignature }
+    }
+
+    private fun initSystem(system: ComponentSystem)
+    {
+        system.updateComponentSignature(componentRegister)
+        println("Registered ${system::class.java.simpleName} to handle entities with components [${system.componentTypes.joinToString { it.simpleName }}]")
     }
 
     override fun createWith(vararg componentTypes: Class<out Component>): Entity?
@@ -70,6 +80,17 @@ class EntityManager(
 
     override fun update(engine: EngineInterface)
     {
+        tickSystems(engine, logicSystems)
+        removeDeadEntities()
+    }
+
+    override fun render(engine: EngineInterface)
+    {
+        tickSystems(engine, renderSystems)
+    }
+
+    private fun tickSystems(engine: EngineInterface, systems: ArrayList<ComponentSystem>)
+    {
         var lastSignature = -1L
         var entityCount = 0
         for(system in systems)
@@ -78,7 +99,7 @@ class EntityManager(
             if(signature == 0L)
             {
                 // An empty entity list is passed to systems that dont require any components
-                system.update(engine, EMPTY_COLLECTION)
+                system.tick(engine, EMPTY_COLLECTION)
                 continue
             }
 
@@ -97,10 +118,12 @@ class EntityManager(
             }
 
             // Updates the system with the gathered entities
-            system.update(engine, EntityCollection(indexesToUpdate, entities, entityCount))
+            system.tick(engine, EntityCollection(indexesToUpdate, entities, entityCount))
         }
+    }
 
-        // Remove all entities with the alive == false
+    private fun removeDeadEntities()
+    {
         val last = entitiesHead
         for(i in last downTo 0)
         {

@@ -26,8 +26,8 @@ class EntityGame : GameContext
         engine.entity.registerSystems(
             ParticleInteractionSystem(),
             ParticleMovementSystem(),
-            HealthSystem(),
-            RenderSystem()
+            ParticleRenderSystem(),
+            HealthSystem()
         )
     }
 
@@ -75,7 +75,7 @@ class ColorComponent : Component()
 
 // ------------------------------------------------- Systems -------------------------------------------------
 
-class ParticleMovementSystem : ComponentSystem(TransformComponent::class.java, VelocityComponent::class.java)
+class ParticleMovementSystem : LogicSystem(TransformComponent::class.java, VelocityComponent::class.java)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
@@ -96,7 +96,7 @@ class ParticleMovementSystem : ComponentSystem(TransformComponent::class.java, V
     }
 }
 
-class ParticleInteractionSystem : ComponentSystem(TransformComponent::class.java, VelocityComponent::class.java)
+class ParticleInteractionSystem : LogicSystem(TransformComponent::class.java, VelocityComponent::class.java)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
@@ -149,9 +149,9 @@ class ParticleInteractionSystem : ComponentSystem(TransformComponent::class.java
 
 
 
-class RenderSystem : ComponentSystem(TransformComponent::class.java, VelocityComponent::class.java, HealthComponent::class.java, ColorComponent::class.java)
+class ParticleRenderSystem : RenderSystem(TransformComponent::class.java, VelocityComponent::class.java, HealthComponent::class.java, ColorComponent::class.java)
 {
-    override fun update(engine: EngineInterface, entities: EntityCollection)
+    override fun render(engine: EngineInterface, entities: EntityCollection)
     {
         engine.gfx.setBlendFunction(BlendFunction.ADDITIVE)
         engine.gfx.setLineWidth(1f)
@@ -172,7 +172,7 @@ class RenderSystem : ComponentSystem(TransformComponent::class.java, VelocityCom
     }
 }
 
-class HealthSystem : ComponentSystem(HealthComponent::class.java)
+class HealthSystem : LogicSystem(HealthComponent::class.java)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
