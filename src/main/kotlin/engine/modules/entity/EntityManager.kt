@@ -21,7 +21,7 @@ abstract class EntityManagerEngineBase : EntityManagerBase()
 }
 
 class EntityManager(
-    private val maxEntities: Int = 500_000
+    private val maxEntities: Int = 200_000
 ) : EntityManagerEngineBase() {
     private val logicSystems = ArrayList<ComponentSystem>()
     private val renderSystems = ArrayList<ComponentSystem>()

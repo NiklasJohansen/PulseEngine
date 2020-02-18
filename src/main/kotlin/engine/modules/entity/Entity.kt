@@ -1,7 +1,5 @@
 package engine.modules.entity
 
-// TODO: Create subclasses to optimize for single/double component cases
-
 open class Entity(
     val id: EntityId,
     var alive: Boolean,

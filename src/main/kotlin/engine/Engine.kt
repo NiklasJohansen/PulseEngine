@@ -58,16 +58,16 @@ class Engine(
     {
         gameContext.init(this)
 
-        var lastTime = System.currentTimeMillis()
+        var lastTime = System.currentTimeMillis() / 1000.0
         var timeAccumulator = 0.0
 
         while (window.isOpen())
         {
-            val dt = 1000.0 / config.tickRate.toDouble()
-            val time = System.currentTimeMillis()
+            val dt = 1.0 / config.tickRate.toDouble()
+            val time = System.currentTimeMillis() / 1000.0
             var frameTime = time - lastTime
-            if(frameTime > 250)
-                frameTime = 250
+            if(frameTime > 0.25)
+                frameTime = 0.25
             lastTime = time
 
             timeAccumulator += frameTime
