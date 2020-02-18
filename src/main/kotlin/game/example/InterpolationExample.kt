@@ -25,7 +25,7 @@ class InterpolationExample : GameContext
 {
     override fun init(engine: EngineInterface)
     {
-        // Game logic updates 20 times per second
+        // Game logic updates 15 times per second
         engine.config.tickRate = 15
         engine.config.targetFps = 120
         engine.entity.registerSystems(
