@@ -1,7 +1,6 @@
 package engine.modules.entity
 
 import engine.EngineInterface
-import java.util.*
 import kotlin.collections.ArrayList
 
 typealias EntityId = Int
@@ -30,7 +29,6 @@ class EntityManager(
     private val entities = arrayOfNulls<Entity>(maxEntities)
     private val freeIndexes = IntArray(maxEntities)
     private val indexesToUpdate = IntArray(maxEntities)
-    private val componentRegister = EnumMap<ComponentID, Int>(ComponentID::class.java)
 
     private var entitiesHead = -1
     private var freeIndexesHead = -1
@@ -38,8 +36,6 @@ class EntityManager(
 
     override fun registerSystems(vararg systems: ComponentSystem)
     {
-        systems.flatMap { it.componentTypes.toList() }.distinct().forEachIndexed { i, comp -> componentRegister[comp.id] = i }
-
         logicSystems.addAll(systems.filterIsInstance<LogicSystem>())
         renderSystems.addAll(systems.filterIsInstance<RenderSystem>())
 
@@ -52,7 +48,7 @@ class EntityManager(
 
     private fun initSystem(system: ComponentSystem)
     {
-        system.updateComponentSignature(componentRegister)
+        system.updateComponentSignature()
         println("Registered ${system::class.java.simpleName} to handle entities with components [${system.componentTypes.joinToString { it.type.simpleName }}]")
     }
 
@@ -62,14 +58,14 @@ class EntityManager(
             return null
 
         var signature = 0L
-        val componentMap = EnumMap<ComponentID, Component>(ComponentID::class.java)
-        for(compId in componentTypes) {
-            signature = signature or (1L shl (componentRegister[compId.id] ?: 0))
-            componentMap[compId.id] = compId.getInstance()
+        val components = arrayOfNulls<Component>(ComponentType.count)
+        for(type in componentTypes) {
+            signature = signature or (1L shl type.index)
+            components[type.index] = type.getInstance()
         }
 
         val index = if(freeIndexesHead >= 0) freeIndexes[freeIndexesHead--] else ++entitiesHead
-        val entity = Entity(index, true, signature, componentMap)
+        val entity = Entity(index, true, signature, components)
 
         count++
         entities[index] = entity

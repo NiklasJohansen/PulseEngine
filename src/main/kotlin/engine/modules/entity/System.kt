@@ -1,7 +1,6 @@
 package engine.modules.entity
 
 import engine.EngineInterface
-import java.util.*
 
 sealed class ComponentSystem(
     vararg val componentTypes: ComponentType<out Component>
@@ -11,13 +10,11 @@ sealed class ComponentSystem(
         private set
 
     // Creates a bit mask containing which component types this system will process
-    fun updateComponentSignature(componentRegister: EnumMap<ComponentID, Int>)
+    fun updateComponentSignature()
     {
         componentSignature = 0L
         componentTypes.forEach {
-            componentRegister[it.id]?.let { index ->
-                componentSignature = componentSignature or (1 shl index).toLong()
-            }
+            componentSignature = componentSignature or (1 shl it.index).toLong()
         }
     }
 
