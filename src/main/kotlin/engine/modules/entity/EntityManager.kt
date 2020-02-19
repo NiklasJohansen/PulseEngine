@@ -1,16 +1,18 @@
 package engine.modules.entity
 
 import engine.EngineInterface
+import java.util.*
+import kotlin.collections.ArrayList
 
 typealias EntityId = Int
 
 // Exposed to game and engine
 abstract class EntityManagerBase
 {
-    abstract fun registerSystems(vararg system: ComponentSystem)
-    abstract fun createWith(vararg componentTypes: Class<out Component>): Entity?
+    abstract fun registerSystems(vararg systems: ComponentSystem)
     abstract fun get(id: EntityId): Entity?
     abstract val count: Int
+    abstract fun createWith(vararg componentTypes: ComponentType<*>): Entity?
 }
 
 // Exposed to game engine
@@ -28,7 +30,7 @@ class EntityManager(
     private val entities = arrayOfNulls<Entity>(maxEntities)
     private val freeIndexes = IntArray(maxEntities)
     private val indexesToUpdate = IntArray(maxEntities)
-    private val componentRegister = HashMap<Class<out Component>, Int>()
+    private val componentRegister = EnumMap<ComponentID, Int>(ComponentID::class.java)
 
     private var entitiesHead = -1
     private var freeIndexesHead = -1
@@ -36,9 +38,7 @@ class EntityManager(
 
     override fun registerSystems(vararg systems: ComponentSystem)
     {
-        systems.flatMap { it.componentTypes.toList() }.distinct().forEachIndexed { i, comp ->
-            componentRegister[comp] = i
-        }
+        systems.flatMap { it.componentTypes.toList() }.distinct().forEachIndexed { i, comp -> componentRegister[comp.id] = i }
 
         logicSystems.addAll(systems.filterIsInstance<LogicSystem>())
         renderSystems.addAll(systems.filterIsInstance<RenderSystem>())
@@ -53,19 +53,19 @@ class EntityManager(
     private fun initSystem(system: ComponentSystem)
     {
         system.updateComponentSignature(componentRegister)
-        println("Registered ${system::class.java.simpleName} to handle entities with components [${system.componentTypes.joinToString { it.simpleName }}]")
+        println("Registered ${system::class.java.simpleName} to handle entities with components [${system.componentTypes.joinToString { it.type.simpleName }}]")
     }
 
-    override fun createWith(vararg componentTypes: Class<out Component>): Entity?
+    override fun createWith(vararg componentTypes: ComponentType<out Component>): Entity?
     {
         if(count >= maxEntities)
             return null
 
         var signature = 0L
-        val componentMap = HashMap<Class<out Component>, Component>()
-        for(type in componentTypes) {
-            signature = signature or (1L shl (componentRegister[type] ?: 0))
-            componentMap[type] = type.getDeclaredConstructor().newInstance()
+        val componentMap = EnumMap<ComponentID, Component>(ComponentID::class.java)
+        for(compId in componentTypes) {
+            signature = signature or (1L shl (componentRegister[compId.id] ?: 0))
+            componentMap[compId.id] = compId.getInstance()
         }
 
         val index = if(freeIndexesHead >= 0) freeIndexes[freeIndexesHead--] else ++entitiesHead

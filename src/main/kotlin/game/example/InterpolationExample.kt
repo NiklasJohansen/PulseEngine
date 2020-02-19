@@ -62,11 +62,15 @@ class ParticleStateComponent : Component()
     // Last state
     var xLast: Float = 0f
     var yLast: Float = 0f
+
+    companion object { val type = ComponentType(ParticleStateComponent::class.java) }
 }
 
 class ParticleHealthComponent : Component()
 {
     var amount: Float = 1f
+
+    companion object { val type = ComponentType(ParticleHealthComponent::class.java) }
 }
 
 class ParticleColorComponent : Component()
@@ -76,12 +80,13 @@ class ParticleColorComponent : Component()
     companion object
     {
         private val staticColor: Color = Color(1f, 0.4f, 0.1f)
+        val type = ComponentType(ParticleColorComponent::class.java)
     }
 }
 
 // ------------------------------------------------- Systems -------------------------------------------------
 
-class InterpolatedParticleRenderSystem : RenderSystem(ParticleStateComponent::class.java, ParticleHealthComponent::class.java, ParticleColorComponent::class.java)
+class InterpolatedParticleRenderSystem : RenderSystem(ParticleStateComponent.type, ParticleHealthComponent.type, ParticleColorComponent.type)
 {
     override fun render(engine: EngineInterface, entities: EntityCollection)
     {
@@ -94,7 +99,7 @@ class InterpolatedParticleRenderSystem : RenderSystem(ParticleStateComponent::cl
         engine.gfx.drawLines { draw ->
             for (entity in entities)
             {
-                val transform = entity.getComponent<ParticleStateComponent>()
+                val transform = entity.getComponent(ParticleStateComponent.type)
                 var x = transform.x
                 var y = transform.y
                 val xLast = transform.xLast
@@ -108,8 +113,8 @@ class InterpolatedParticleRenderSystem : RenderSystem(ParticleStateComponent::cl
                     y = y * interpolation + yLast * (1.0f - interpolation)
                 }
 
-                val health = entity.getComponent<ParticleHealthComponent>()
-                val color = entity.getComponent<ParticleColorComponent>()
+                val health = entity.getComponent(ParticleHealthComponent.type)
+                val color = entity.getComponent(ParticleColorComponent.type)
                 val fade = if(health.amount < 0.2f) health.amount / 0.2f else 1.0f
 
                 draw.color(color.color.red, color.color.green, color.color.blue, 0.5f * fade)
@@ -119,14 +124,14 @@ class InterpolatedParticleRenderSystem : RenderSystem(ParticleStateComponent::cl
     }
 }
 
-class ParticlePhysicsSystem : LogicSystem(ParticleStateComponent::class.java)
+class ParticlePhysicsSystem : LogicSystem(ParticleStateComponent.type)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
         val dt = engine.data.deltaTime
         for(entity in entities)
         {
-            val transform = entity.getComponent<ParticleStateComponent>()
+            val transform = entity.getComponent(ParticleStateComponent.type)
 
             transform.xLast = transform.x
             transform.yLast = transform.y
@@ -147,14 +152,14 @@ class ParticlePhysicsSystem : LogicSystem(ParticleStateComponent::class.java)
     }
 }
 
-class ParticleHealthSystem : LogicSystem(ParticleHealthComponent::class.java)
+class ParticleHealthSystem : LogicSystem(ParticleHealthComponent.type)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
         val dt = engine.data.deltaTime
         for (entity in entities)
         {
-            val health = entity.getComponent<ParticleHealthComponent>()
+            val health = entity.getComponent(ParticleHealthComponent.type)
             health.amount -= 0.05f * dt
             if(health.amount <= 0)
                 entity.alive = false
@@ -162,7 +167,7 @@ class ParticleHealthSystem : LogicSystem(ParticleHealthComponent::class.java)
     }
 }
 
-class UserInputSystem : LogicSystem(ParticleStateComponent::class.java)
+class UserInputSystem : LogicSystem(ParticleStateComponent.type)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
@@ -172,9 +177,9 @@ class UserInputSystem : LogicSystem(ParticleStateComponent::class.java)
         {
             for(i in 0 until (10000*dt).toInt())
             {
-                engine.entity.createWith(ParticleStateComponent::class.java, ParticleHealthComponent::class.java, ParticleColorComponent::class.java)
+                engine.entity.createWith(ParticleStateComponent.type, ParticleHealthComponent.type, ParticleColorComponent.type)
                     ?.let { entity ->
-                        val transform = entity.getComponent<ParticleStateComponent>()
+                        val transform = entity.getComponent(ParticleStateComponent.type)
 
                         val angle = Random.nextFloat() * 2 * PI
                         val vel = Random.nextFloat()
@@ -193,7 +198,7 @@ class UserInputSystem : LogicSystem(ParticleStateComponent::class.java)
         {
             for(entity in entities)
             {
-                val transform = entity.getComponent<ParticleStateComponent>()
+                val transform = entity.getComponent(ParticleStateComponent.type)
 
                 val xDelta = transform.x - engine.input.xMouse
                 val yDelta = transform.y - engine.input.yMouse
