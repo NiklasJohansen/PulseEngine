@@ -1,5 +1,6 @@
 package engine.modules
 
+import engine.data.ScreenMode
 import java.lang.Exception
 import java.util.*
 
@@ -20,6 +21,7 @@ interface ConfigurationEngineInterface : ConfigurationInterface
 {
     val windowWidth: Int
     val windowHeight: Int
+    val screenMode: ScreenMode
     fun init()
 }
 
@@ -27,9 +29,10 @@ class Configuration : ConfigurationEngineInterface
 {
     // Exposed properties
     override var tickRate: Int = 60
-    override var targetFps: Int = 120
+    override var targetFps: Int = 60
     override var windowWidth: Int = 800
     override var windowHeight: Int = 600
+    override var screenMode = ScreenMode.WINDOWED
 
     // Internal properties
     private val properties: Properties = Properties()
@@ -41,14 +44,14 @@ class Configuration : ConfigurationEngineInterface
         targetFps = getInt("targetFps")
         windowWidth = getInt("windowWidth")
         windowHeight = getInt("windowHeight")
+        screenMode = ScreenMode.valueOf(getString("screenMode").toUpperCase())
     }
 
-    override fun load(fileName: String) {
+    override fun load(fileName: String) =
         try {
             println("Loading configuration from file: $fileName ...")
             properties.load(javaClass.getResourceAsStream(fileName))
         } catch (e: Exception) { System.err.println("Failed to load configuration: $fileName, reason: ${e.message}") }
-    }
 
     override fun getString(name: String): String =
         try { properties[name] as String }

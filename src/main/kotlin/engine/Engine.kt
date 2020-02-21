@@ -43,15 +43,19 @@ class Engine(
     {
         // Initialize all engine components
         config.init()
-        window.init(config.windowWidth, config.windowHeight)
-        gfx.init(config.windowWidth, config.windowHeight)
+        window.init(config.windowWidth, config.windowHeight, config.screenMode)
+        gfx.init(window.width, window.height)
         input.init(window.windowHandle)
         audio.init()
         network.init()
         asset.init()
 
         // Set up event handlers
-        window.setOnResizeEvent { w, h -> gfx.updateViewportSize(w, h) }
+        window.setOnResizeEvent { w, h, windowRecreated ->
+            gfx.updateViewportSize(w, h, windowRecreated)
+            if(windowRecreated)
+                input.init(window.windowHandle)
+        }
     }
 
     fun run(gameContext: GameContext)

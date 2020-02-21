@@ -9,14 +9,13 @@ class ImmediateModeGraphics : GraphicsEngineInterface
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
         println("Initializing graphics...")
-        GL.createCapabilities()
-        glViewport(0, 0, viewPortWidth, viewPortHeight)
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glOrtho(0.0, viewPortWidth.toDouble(), viewPortHeight.toDouble(), 0.0, 1.0, -1.0)
-        glMatrixMode(GL_MODELVIEW)
-        glClearColor(0.8f, 0.8f, 0.8f, 0.0f)
+        updateViewportSize(viewPortWidth, viewPortHeight, true)
+        setBackgroundColor(0.8f, 0.8f, 0.8f)
+    }
 
+    private fun initOpenGL()
+    {
+        GL.createCapabilities()
         glDepthFunc(GL_LEQUAL)
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_TEXTURE_2D)
@@ -110,8 +109,11 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         // Not needed as all draw calls are made while rendering
     }
 
-    override fun updateViewportSize(width: Int, height: Int)
+    override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     {
+        if(windowRecreated)
+            initOpenGL()
+
         glViewport(0, 0, width, height)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
@@ -124,8 +126,6 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         println("Cleaning up graphics...")
     }
 }
-
-
 
 enum class BlendFunction(val src: Int, val dest: Int)
 {

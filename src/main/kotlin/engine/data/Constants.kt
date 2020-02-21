@@ -178,3 +178,7 @@ enum class Axis(val code: Int)
     RIGHT_TRIGGER(5),
 }
 
+enum class ScreenMode
+{
+    WINDOWED, FULLSCREEN
+}

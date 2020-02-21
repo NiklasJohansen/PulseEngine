@@ -23,7 +23,7 @@ interface GraphicsEngineInterface : GraphicsInterface
 {
     fun init(viewPortWidth: Int, viewPortHeight: Int)
     fun cleanUp()
-    fun updateViewportSize(width: Int, height: Int)
+    fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     fun clearBuffer()
     fun postRender()
 }

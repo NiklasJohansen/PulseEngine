@@ -5,6 +5,7 @@ import engine.EngineInterface
 import engine.GameContext
 import engine.data.Key
 import engine.data.Mouse
+import engine.data.ScreenMode.*
 import engine.modules.rendering.BlendFunction
 import engine.modules.Image
 import engine.modules.Text
@@ -18,8 +19,8 @@ fun main()
 
 class ExampleGame : GameContext
 {
-    var size: Float = 200f
-    var angle: Float = 200f
+    private var size: Float = 200f
+    private var angle: Float = 200f
 
     override fun init(engine: EngineInterface)
     {
@@ -53,6 +54,10 @@ class ExampleGame : GameContext
         // Mouse released
         if(engine.input.wasReleased(Mouse.RIGHT))
             println("Right mouse released")
+
+        // Key F to change screen mode
+        if(engine.input.wasClicked(Key.F))
+            engine.window.updateScreenMode(if(engine.window.screenMode == WINDOWED) FULLSCREEN else WINDOWED)
 
         // Get loaded asset
         val textAsset = engine.asset.get<Text>("text_asset")
