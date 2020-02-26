@@ -1,15 +1,19 @@
 package engine.modules
 
-import de.matthiasmann.twl.utils.PNGDecoder
-import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
+import engine.data.Font
+import engine.data.Image
 import org.lwjgl.opengl.GL11.*
-import java.nio.ByteBuffer
 
 // Exposed to game code
 interface AssetManagerInterface
 {
     fun <T: Asset> get(assetName: String): T?
-    fun <T: Asset> load(filename: String, assetName: String, type: Class<T>): T
+
+    fun loadImage(filename: String, assetName: String)
+    fun loadFont(filename: String, assetName: String, fontSizes: FloatArray)
+    fun loadSound(filename: String, assetName: String)
+    fun loadText(filename: String, assetName: String)
+    fun loadBinary(filename: String, assetName: String)
 }
 
 // Exposed to game engine
@@ -33,55 +37,43 @@ class AssetManager : AssetManagerEngineInterface
         return assets[assetName]?.let { it as T }
     }
 
-    override fun <T : Asset> load(filename: String, assetName: String, type: Class<T>): T
+    override fun loadImage(filename: String, assetName: String)
     {
-        val asset = when
-        {
-            type.isAssignableFrom(Image::class.java)  -> loadImage(filename, assetName)
-            type.isAssignableFrom(Sound::class.java)  -> loadSound(filename, assetName)
-            type.isAssignableFrom(Text::class.java)   -> loadText(filename, assetName)
-            type.isAssignableFrom(Binary::class.java) -> loadBinary(filename, assetName)
-            else -> throw IllegalArgumentException("Asset type (${type.name}) not supported")
-        }
-        assets[assetName] = asset
-        return asset as T
+        assets[assetName] = Image.create(filename, assetName)
     }
 
-    private fun loadSound(filename: String, assetName: String): Sound
-            = Sound(assetName, "...")
-
-    private fun loadText(filename: String, assetName: String): Text
-            = Text(assetName, javaClass.getResource(filename).readText())
-
-    private fun loadBinary(filename: String, assetName: String): Binary
-            = Binary(assetName, javaClass.getResource(filename).readBytes())
-
-    private fun loadImage(filename: String, assetName: String): Image
+    override fun loadFont(filename: String, assetName: String, fontSizes: FloatArray)
     {
-        val decoder = PNGDecoder(javaClass.getResourceAsStream(filename))
-        val buffer: ByteBuffer = ByteBuffer.allocateDirect(4 * decoder.width * decoder.height)
-        decoder.decode(buffer, decoder.width * 4, PNGDecoder.Format.RGBA)
-        buffer.flip()
+        assets[assetName] = Font.create(filename, assetName, fontSizes)
+    }
 
-        val id = glGenTextures()
-        glBindTexture(GL_TEXTURE_2D, id)
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, decoder.width, decoder.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer)
-        glGenerateMipmap(GL_TEXTURE_2D)
+    override fun loadSound(filename: String, assetName: String)
+    {
+        assets[assetName] = Sound(assetName, "...")
+    }
 
-        return Image(assetName, id, decoder.width, decoder.height)
+    override fun loadText(filename: String, assetName: String)
+    {
+        assets[assetName] = Text(assetName, javaClass.getResource(filename).readText())
+    }
+    override fun loadBinary(filename: String, assetName: String)
+    {
+        assets[assetName] = Binary(assetName, javaClass.getResource(filename).readBytes())
     }
 
     override fun cleanUp()
     {
         println("Cleaning up assets...")
         assets.values.filterIsInstance<Image>().forEach { glDeleteTextures(it.textureId) }
+        assets.values.filterIsInstance<Font>().forEach {
+            glDeleteTextures(it.characterImage.textureId)
+            it.characterData.free()
+        }
     }
 }
 
-sealed class Asset(open val name: String)
 
-data class Image(override val name: String, val textureId: Int, val width: Int, val height: Int) : Asset(name)
+abstract class Asset(open val name: String)
 
 data class Sound(override val name: String, val someSoundData: String) : Asset(name)
 
