@@ -3,11 +3,12 @@ package game.example
 import engine.Engine
 import engine.EngineInterface
 import engine.GameContext
+import engine.data.Font
+import engine.data.Image
 import engine.data.Key
 import engine.data.Mouse
 import engine.data.ScreenMode.*
 import engine.modules.rendering.BlendFunction
-import engine.modules.Image
 import engine.modules.Text
 import kotlin.math.PI
 import kotlin.math.sin
@@ -25,8 +26,9 @@ class ExampleGame : GameContext
     override fun init(engine: EngineInterface)
     {
         // Load assets from disc
-        engine.asset.load("/textAsset.txt", "text_asset", Text::class.java)
-        engine.asset.load("/imageAsset.png", "image_asset", Image::class.java)
+        engine.asset.loadText("/textAsset.txt", "text_asset")
+        engine.asset.loadImage("/imageAsset.png", "image_asset")
+        engine.asset.loadFont("/FiraSans-Regular.ttf", "font_asset", floatArrayOf(24f, 72f))
 
         // Load configuration from disc
         engine.config.load("/example.config")
@@ -100,6 +102,12 @@ class ExampleGame : GameContext
 
         // Set draw color
         engine.gfx.setColor(1f, 1f, 1f)
+
+        // Draw text
+        engine.asset.get<Font>("font_asset")?.let { font ->
+            engine.gfx.drawText(font, width / 2f - 70, 20f,"FPS: ${engine.data.currentFps}", fontSize = 24f)
+            engine.gfx.drawText(font, width / 2f, height / 2,"ROTATING TEXT", rotation = angle, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 24f)
+        }
 
         // Draw single line
         engine.gfx.drawLine(size, size,  engine.input.xMouse, engine.input.yMouse)

@@ -1,11 +1,14 @@
 package engine.modules.rendering
 
-import engine.modules.Image
+import engine.data.Font
+import engine.data.Image
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
 
 class ImmediateModeGraphics : GraphicsEngineInterface
 {
+    private val textRenderer = TextRenderer()
+
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
         println("Initializing graphics...")
@@ -92,6 +95,11 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         glBegin(GL_QUADS)
         block.invoke(ImageDrawCall)
         glEnd()
+    }
+
+    override fun drawText(font: Font, x: Float, y: Float, text: String, fontSize: Float, rotation: Float, xOrigin: Float, yOrigin: Float)
+    {
+        textRenderer.draw(font, x, y, text, fontSize, rotation, xOrigin, yOrigin)
     }
 
     override fun setColor(red: Float, green: Float, blue: Float, alpha: Float) = glColor4f(red, green, blue, alpha)
