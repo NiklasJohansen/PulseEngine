@@ -8,12 +8,15 @@ import org.lwjgl.opengl.GL11.*
 class ImmediateModeGraphics : GraphicsEngineInterface
 {
     private val textRenderer = TextRenderer()
+    private var blendFunc = BlendFunction.NORMAL
+    private var bgRed = 0.1f
+    private var bgGreen = 0.1f
+    private var bgBlue = 0.1f
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
         println("Initializing graphics...")
         updateViewportSize(viewPortWidth, viewPortHeight, true)
-        setBackgroundColor(0.8f, 0.8f, 0.8f)
     }
 
     private fun initOpenGL()
@@ -26,6 +29,8 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR.toFloat())
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR.toFloat())
+        setBackgroundColor(bgRed, bgGreen, bgBlue)
+        setBlendFunction(blendFunc)
     }
 
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
@@ -106,9 +111,19 @@ class ImmediateModeGraphics : GraphicsEngineInterface
 
     override fun setLineWidth(width: Float) = glLineWidth(width)
 
-    override fun setBackgroundColor(red: Float, green: Float, blue: Float) = glClearColor(red, green, blue, 1f)
+    override fun setBackgroundColor(red: Float, green: Float, blue: Float)
+    {
+        glClearColor(red, green, blue, 1f)
+        bgRed = red
+        bgGreen = green
+        bgBlue = blue
+    }
 
-    override fun setBlendFunction(func: BlendFunction) = glBlendFunc(func.src, func.dest)
+    override fun setBlendFunction(func: BlendFunction)
+    {
+        glBlendFunc(func.src, func.dest)
+        blendFunc = func
+    }
 
     override fun clearBuffer() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
