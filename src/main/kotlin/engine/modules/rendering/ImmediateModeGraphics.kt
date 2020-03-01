@@ -97,9 +97,9 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         glEnd()
     }
 
-    override fun drawText(font: Font, x: Float, y: Float, text: String, fontSize: Float, rotation: Float, xOrigin: Float, yOrigin: Float)
+    override fun drawText(text: String, x: Float, y: Float, font: Font, fontSize: Float, rotation: Float, xOrigin: Float, yOrigin: Float)
     {
-        textRenderer.draw(font, x, y, text, fontSize, rotation, xOrigin, yOrigin)
+        textRenderer.draw(text, x, y, font, fontSize, rotation, xOrigin, yOrigin)
     }
 
     override fun setColor(red: Float, green: Float, blue: Float, alpha: Float) = glColor4f(red, green, blue, alpha)

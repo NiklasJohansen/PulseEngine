@@ -20,7 +20,7 @@ class TextRenderer
     private val advanceWidth = IntArray(1)
     private val leftSideBearing = IntArray(1)
 
-    fun draw(font: Font, x: Float, y: Float, text: String, fontSize: Float, rotation: Float, xOrigin: Float, yOrigin: Float)
+    fun draw(text: String,  x: Float, y: Float, font: Font, fontSize: Float, rotation: Float, xOrigin: Float, yOrigin: Float)
     {
         val fontIndex = if(fontSize != -1f) font.fontSizes.indexOf(fontSize) else 0
         if(fontIndex == -1)

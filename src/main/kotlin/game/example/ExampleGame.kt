@@ -105,8 +105,8 @@ class ExampleGame : GameContext
 
         // Draw text
         engine.asset.get<Font>("font_asset")?.let { font ->
-            engine.gfx.drawText(font, width / 2f - 70, 20f,"FPS: ${engine.data.currentFps}", fontSize = 24f)
-            engine.gfx.drawText(font, width / 2f, height / 2,"ROTATING TEXT", rotation = angle, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 24f)
+            engine.gfx.drawText("FPS: ${engine.data.currentFps}", width / 2f - 70, 20f, font, fontSize = 24f)
+            engine.gfx.drawText("ROTATING TEXT", width / 2f, height / 2, font,  rotation = angle, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
         }
 
         // Draw single line
