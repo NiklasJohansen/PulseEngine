@@ -7,6 +7,7 @@ import engine.modules.entity.EntityManagerBase
 import engine.modules.rendering.GraphicsEngineInterface
 import engine.modules.rendering.GraphicsInterface
 import engine.modules.rendering.ImmediateModeGraphics
+import org.lwjgl.glfw.GLFW.glfwGetTime
 import kotlin.system.measureNanoTime
 
 // Exposed to the game code
@@ -36,8 +37,9 @@ class Engine(
 ) : EngineInterface {
 
     // Internal engine properties
-    private var fpsTimer = 0L
+    private var fpsTimer = 0.0
     private var frameCounter = 0
+    private val frameRateLimiter = FpsLimiter()
 
     init
     {
@@ -62,13 +64,13 @@ class Engine(
     {
         gameContext.init(this)
 
-        var lastTime = System.currentTimeMillis() / 1000.0
+        var lastTime = glfwGetTime()
         var timeAccumulator = 0.0
 
         while (window.isOpen())
         {
             val dt = 1.0 / config.tickRate.toDouble()
-            val time = System.currentTimeMillis() / 1000.0
+            val time = glfwGetTime()
             var frameTime = time - lastTime
             if(frameTime > 0.25)
                 frameTime = 0.25
@@ -85,6 +87,8 @@ class Engine(
             val interpolation = timeAccumulator / dt
 
             render(gameContext, interpolation)
+
+            frameRateLimiter.sync(config.targetFps)
             updateFps()
         }
 
@@ -121,10 +125,10 @@ class Engine(
     private fun updateFps()
     {
         frameCounter++
-        if (System.currentTimeMillis() - fpsTimer >= 1000) {
+        if (glfwGetTime() - fpsTimer >= 1.0) {
             data.currentFps = frameCounter
             frameCounter = 0
-            fpsTimer = System.currentTimeMillis()
+            fpsTimer = glfwGetTime()
         }
     }
 
