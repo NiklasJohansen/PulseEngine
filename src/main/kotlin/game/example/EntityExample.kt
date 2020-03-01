@@ -31,7 +31,7 @@ class EntityGame : GameContext
         )
     }
 
-    override fun update(engine: EngineInterface)
+    override fun fixedUpdate(engine: EngineInterface)
     {
         engine.window.title = "FPS: ${engine.data.currentFps} objects: ${engine.entity.count}"
     }

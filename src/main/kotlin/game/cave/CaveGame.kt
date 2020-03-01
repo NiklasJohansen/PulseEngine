@@ -31,7 +31,7 @@ class CaveGame : GameContext
         engine.config.targetFps = 120
     }
 
-    override fun update(engine: EngineInterface)
+    override fun fixedUpdate(engine: EngineInterface)
     {
         if(engine.input.isPressed(Mouse.LEFT))
         {

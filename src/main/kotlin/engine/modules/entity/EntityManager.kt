@@ -17,7 +17,7 @@ abstract class EntityManagerBase
 // Exposed to game engine
 abstract class EntityManagerEngineBase : EntityManagerBase()
 {
-    abstract fun update(engine: EngineInterface)
+    abstract fun fixedUpdate(engine: EngineInterface)
     abstract fun render(engine: EngineInterface)
 }
 
@@ -74,7 +74,7 @@ class EntityManager(
 
     override fun get(id: EntityId): Entity? = if(id > -1 && id <= entitiesHead) entities[id] else null
 
-    override fun update(engine: EngineInterface)
+    override fun fixedUpdate(engine: EngineInterface)
     {
         tickSystems(engine, logicSystems)
         removeDeadEntities()

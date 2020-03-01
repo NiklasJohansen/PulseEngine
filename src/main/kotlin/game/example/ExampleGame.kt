@@ -40,9 +40,13 @@ class ExampleGame : GameContext
         println("From loaded config: $number, $text, $bool")
 
         // Set game loop target FPS
-        engine.config.targetFps = 10000
+        engine.config.targetFps = 1000
+
+        // Set the tick rate of the fixed update
+        engine.config.fixedTickRate = 50
     }
 
+    // Runs every frame
     override fun update(engine: EngineInterface)
     {
         // Mouse clicked
@@ -66,9 +70,16 @@ class ExampleGame : GameContext
 
         // Set window title
         engine.window.title = "Fps: ${engine.data.currentFps} - ${textAsset?.text}"
+    }
+
+    // Runs at a fixed rate
+    override fun fixedUpdate(engine: EngineInterface)
+    {
+        // Fixed delta time equals: 1.0 / fixedTickRate
+        val dt = engine.data.fixedDeltaTime
 
         // Update game parameters
-        angle = (angle + 1) % 360
+        angle = (angle + 100 * dt) % 360
         size = sin(angle / 360f * PI).toFloat() * 200f
     }
 

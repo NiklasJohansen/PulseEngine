@@ -8,7 +8,6 @@ import engine.modules.rendering.GraphicsEngineInterface
 import engine.modules.rendering.GraphicsInterface
 import engine.modules.rendering.ImmediateModeGraphics
 import org.lwjgl.glfw.GLFW.glfwGetTime
-import kotlin.system.measureNanoTime
 
 // Exposed to the game code
 interface EngineInterface
@@ -41,6 +40,10 @@ class Engine(
     private var frameCounter = 0
     private val frameRateLimiter = FpsLimiter()
 
+    private var fixedUpdateAccumulator = 0.0
+    private var fixedUpdateLastTime = glfwGetTime()
+    private var lastFrameTime = glfwGetTime()
+
     init
     {
         // Initialize all engine components
@@ -64,68 +67,66 @@ class Engine(
     {
         gameContext.init(this)
 
-        var lastTime = glfwGetTime()
-        var timeAccumulator = 0.0
-
         while (window.isOpen())
         {
-            val dt = 1.0 / config.tickRate.toDouble()
-            val time = glfwGetTime()
-            var frameTime = time - lastTime
-            if(frameTime > 0.25)
-                frameTime = 0.25
-            lastTime = time
-
-            timeAccumulator += frameTime
-
-            while(timeAccumulator >= dt)
-            {
-                update(gameContext, dt)
-                timeAccumulator -= dt
-            }
-
-            val interpolation = timeAccumulator / dt
-
-            render(gameContext, interpolation)
-
-            frameRateLimiter.sync(config.targetFps)
+            update(gameContext)
+            fixedUpdate(gameContext)
+            render(gameContext)
             updateFps()
+            frameRateLimiter.sync(config.targetFps)
         }
 
         gameContext.cleanUp(this)
         cleanUp()
     }
 
-    private fun update(gameContext: GameContext, deltaTime: Double)
+    private fun update(gameContext: GameContext)
     {
-        data.deltaTime = deltaTime.toFloat()
-        val updateTime = measureNanoTime{
-            input.pollEvents()
-            entity.update(this)
-            gameContext.update(this)
-        }
-
-        data.updateTimeMS = updateTime / 1000000f
+        data.fixedDeltaTime = (glfwGetTime() - lastFrameTime).toFloat()
+        input.pollEvents()
+        gameContext.update(this)
+        lastFrameTime = glfwGetTime()
     }
 
-    private fun render(gameContext: GameContext, frameInterpolation: Double)
+    private fun fixedUpdate(gameContext: GameContext)
     {
-        data.interpolation = frameInterpolation.toFloat()
-        val renderTime = measureNanoTime {
-            gfx.clearBuffer()
-            entity.render(this)
-            gameContext.render(this)
-            gfx.postRender()
-            window.swapBuffers()
-        }
+        val dt = 1.0 / config.fixedTickRate.toDouble()
+        data.fixedDeltaTime = dt.toFloat()
 
-        data.renderTimeMs = renderTime / 1000000f
+        val time = glfwGetTime()
+        var frameTime = time - fixedUpdateLastTime
+        if(frameTime > 0.25)
+            frameTime = 0.25
+        fixedUpdateLastTime = time
+        fixedUpdateAccumulator += frameTime
+
+        while(fixedUpdateAccumulator >= dt)
+        {
+            val startTime = glfwGetTime()
+            entity.fixedUpdate(this)
+            gameContext.fixedUpdate(this)
+            fixedUpdateAccumulator -= dt
+            data.updateTimeMS = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        }
+    }
+
+    private fun render(gameContext: GameContext)
+    {
+        data.interpolation = fixedUpdateAccumulator.toFloat() / data.fixedDeltaTime
+        val startTime = glfwGetTime()
+        gfx.clearBuffer()
+        entity.render(this)
+        gameContext.render(this)
+        gfx.postRender()
+        window.swapBuffers()
+        data.renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
     private fun updateFps()
     {
         frameCounter++
-        if (glfwGetTime() - fpsTimer >= 1.0) {
+        if (glfwGetTime() - fpsTimer >= 1.0)
+        {
             data.currentFps = frameCounter
             frameCounter = 0
             fpsTimer = glfwGetTime()
@@ -148,7 +149,7 @@ class Engine(
         inline fun draw(crossinline game: EngineInterface.() -> Unit) = Engine().run(object: GameContext
         {
             override fun init(engine: EngineInterface) {}
-            override fun update(engine: EngineInterface) {}
+            override fun fixedUpdate(engine: EngineInterface) {}
             override fun cleanUp(engine: EngineInterface) {}
             override fun render(engine: EngineInterface) = game.invoke(engine)
         })

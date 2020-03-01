@@ -5,6 +5,7 @@ import engine.EngineInterface
 import engine.GameContext
 import engine.data.Key
 import engine.data.Mouse
+import engine.data.ScreenMode
 import engine.modules.entity.*
 import engine.modules.rendering.BlendFunction
 import game.cave.Color
@@ -26,7 +27,7 @@ class InterpolationExample : GameContext
     override fun init(engine: EngineInterface)
     {
         // Game logic updates 15 times per second
-        engine.config.tickRate = 15
+        engine.config.fixedTickRate = 15
         engine.config.targetFps = 120
         engine.entity.registerSystems(
             UserInputSystem(),
@@ -39,7 +40,11 @@ class InterpolationExample : GameContext
     override fun update(engine: EngineInterface)
     {
         engine.window.title = "FPS: ${engine.data.currentFps}  Particles: ${engine.entity.count}"
+        if(engine.input.wasClicked(Key.F))
+            engine.window.updateScreenMode(if(engine.window.screenMode == ScreenMode.WINDOWED) ScreenMode.FULLSCREEN else ScreenMode.WINDOWED)
     }
+
+    override fun fixedUpdate(engine: EngineInterface) { }
 
     override fun render(engine: EngineInterface)
     {
@@ -90,7 +95,7 @@ class InterpolatedParticleRenderSystem : RenderSystem(ParticleStateComponent.typ
 {
     override fun render(engine: EngineInterface, entities: EntityCollection)
     {
-        val dt = engine.data.deltaTime
+        val dt = engine.data.fixedDeltaTime
         val interpolation = engine.data.interpolation
         val useInterpolation = !engine.input.isPressed(Key.SPACE)
 
@@ -128,7 +133,7 @@ class ParticlePhysicsSystem : LogicSystem(ParticleStateComponent.type)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
-        val dt = engine.data.deltaTime
+        val dt = engine.data.fixedDeltaTime
         for(entity in entities)
         {
             val transform = entity.getComponent(ParticleStateComponent.type)
@@ -156,7 +161,7 @@ class ParticleHealthSystem : LogicSystem(ParticleHealthComponent.type)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
-        val dt = engine.data.deltaTime
+        val dt = engine.data.fixedDeltaTime
         for (entity in entities)
         {
             val health = entity.getComponent(ParticleHealthComponent.type)
@@ -171,7 +176,7 @@ class UserInputSystem : LogicSystem(ParticleStateComponent.type)
 {
     override fun update(engine: EngineInterface, entities: EntityCollection)
     {
-        val dt = engine.data.deltaTime
+        val dt = engine.data.fixedDeltaTime
 
         if(engine.input.isPressed(Mouse.LEFT))
         {
