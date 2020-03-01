@@ -59,8 +59,8 @@ class Input : InputEngineInterface
         glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
                 glfwSetWindowShouldClose(window, true)
-
-            clicked[key] = if(action == GLFW_PRESS) 1 else -1
+            if(key >= 0)
+                clicked[key] = if(action == GLFW_PRESS) 1 else -1
         }
 
         glfwSetCursorPosCallback(windowHandle) { window, xPos, yPos ->
