@@ -69,7 +69,7 @@ class ExampleGame : GameContext
         val textAsset = engine.asset.get<Text>("text_asset")
 
         // Set window title
-        engine.window.title = "Fps: ${engine.data.currentFps} - ${textAsset?.text}"
+        engine.window.title = "Fps: ${engine.data.currentFps} - ${textAsset.text}"
     }
 
     // Runs at a fixed rate
@@ -115,31 +115,29 @@ class ExampleGame : GameContext
         engine.gfx.setColor(1f, 1f, 1f)
 
         // Draw text
-        engine.asset.get<Font>("font_asset")?.let { font ->
-            engine.gfx.drawText("FPS: ${engine.data.currentFps}", width / 2f - 70, 20f, font, fontSize = 24f)
-            engine.gfx.drawText("ROTATING TEXT", width / 2f, height / 2, font,  rotation = angle, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
-        }
+        val font = engine.asset.get<Font>("font_asset")
+        engine.gfx.drawText("FPS: ${engine.data.currentFps}", width / 2f - 70, 20f, font, fontSize = 24f)
+        engine.gfx.drawText("ROTATING TEXT", width / 2f, height / 2, font,  rotation = angle, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
 
         // Draw single line
         engine.gfx.drawLine(size, size,  engine.input.xMouse, engine.input.yMouse)
 
         // Get loaded image asset
-        engine.asset.get<Image>("image_asset")?.let { image ->
+        val image = engine.asset.get<Image>("image_asset")
 
-            // Set color to tint image
-            engine.gfx.setColor(0.7f, 0.7f, 1f, 0.9f)
+        // Set color to tint image
+        engine.gfx.setColor(0.7f, 0.7f, 1f, 0.9f)
 
-            // Draw single loaded image
-            engine.gfx.drawImage(image, engine.input.xMouse, engine.input.yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
+        // Draw single loaded image
+        engine.gfx.drawImage(image, engine.input.xMouse, engine.input.yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
 
-            // Draw loaded image multiple times
-            engine.gfx.drawImages(image) { draw ->
-                draw.color(1f, 1f, 1f)
-                draw.image(0.5f, 0.5f, size, size)
-                draw.image(width-size, 0.5f, size, size)
-                draw.image(width-size, height-size, size, size)
-                draw.image(0.5f, height-size, size, size)
-            }
+        // Draw loaded image multiple times
+        engine.gfx.drawImages(image) { draw ->
+            draw.color(1f, 1f, 1f)
+            draw.image(0.5f, 0.5f, size, size)
+            draw.image(width-size, 0.5f, size, size)
+            draw.image(width-size, height-size, size, size)
+            draw.image(0.5f, height-size, size, size)
         }
     }
 

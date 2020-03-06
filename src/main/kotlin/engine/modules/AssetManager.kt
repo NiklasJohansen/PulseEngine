@@ -3,11 +3,12 @@ package engine.modules
 import engine.data.Font
 import engine.data.Image
 import org.lwjgl.opengl.GL11.*
+import java.lang.IllegalArgumentException
 
 // Exposed to game code
 interface AssetManagerInterface
 {
-    fun <T: Asset> get(assetName: String): T?
+    fun <T: Asset> get(assetName: String): T
 
     fun loadImage(filename: String, assetName: String)
     fun loadFont(filename: String, assetName: String, fontSizes: FloatArray)
@@ -32,9 +33,10 @@ class AssetManager : AssetManagerEngineInterface
         println("Initializing asset manager...")
     }
 
-    override fun <T : Asset> get(assetName: String): T?
+    override fun <T : Asset> get(assetName: String): T
     {
-        return assets[assetName]?.let { it as T }
+        val asset = assets[assetName] ?: throw IllegalArgumentException("No asset loaded with name: $assetName")
+        return asset as T
     }
 
     override fun loadImage(filename: String, assetName: String)
@@ -74,8 +76,6 @@ class AssetManager : AssetManagerEngineInterface
 
 
 abstract class Asset(open val name: String)
-
-data class Sound(override val name: String, val someSoundData: String) : Asset(name)
 
 data class Text(override val name: String, val text: String) : Asset(name)
 
