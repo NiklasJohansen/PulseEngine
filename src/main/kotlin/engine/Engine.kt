@@ -162,7 +162,7 @@ class Engine(
         inline fun draw(crossinline game: EngineInterface.() -> Unit) = Engine().run(object: GameContext
         {
             override fun init(engine: EngineInterface) {}
-            override fun fixedUpdate(engine: EngineInterface) {}
+            override fun update(engine: EngineInterface) {}
             override fun cleanUp(engine: EngineInterface) {}
             override fun render(engine: EngineInterface) = game.invoke(engine)
         })

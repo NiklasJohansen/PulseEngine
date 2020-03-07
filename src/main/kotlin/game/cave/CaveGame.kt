@@ -63,7 +63,10 @@ class CaveGame : GameContext
 
         if(engine.input.gamepads.firstOrNull()?.isPressed(Button.B) == true)
             blockWidth -= 1
+    }
 
+    override fun update(engine: EngineInterface)
+    {
         engine.window.title = "FPS: ${engine.data.currentFps}  X: $xCam  Y:$yCam  U: ${"%.2f".format(engine.data.updateTimeMS)}ms  R: ${"%.2f".format(engine.data.renderTimeMs)}ms"
     }
 
