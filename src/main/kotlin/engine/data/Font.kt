@@ -73,5 +73,11 @@ data class Font(
                 return Font(assetName, characterImage, charData, ttf, info, fontSizes)
             }
         }
+
+        fun delete(font: Font)
+        {
+            glDeleteTextures(font.characterImage.textureId)
+            font.characterData.free()
+        }
     }
 }

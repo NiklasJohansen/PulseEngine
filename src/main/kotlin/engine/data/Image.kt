@@ -25,5 +25,7 @@ data class Image(override val name: String, val textureId: Int, val width: Int, 
 
             return Image(assetName, id, decoder.width, decoder.height)
         }
+
+        fun delete(image: Image) = GL11.glDeleteTextures(image.textureId)
     }
 }

@@ -62,15 +62,11 @@ class AssetManager : AssetManagerEngineInterface
     override fun cleanUp()
     {
         println("Cleaning up assets...")
-        assets.values.filterIsInstance<Image>().forEach { glDeleteTextures(it.textureId) }
+        assets.values.filterIsInstance<Image>().forEach { Image.delete(it) }
         assets.values.filterIsInstance<Sound>().forEach { Sound.delete(it) }
-        assets.values.filterIsInstance<Font>().forEach {
-            glDeleteTextures(it.characterImage.textureId)
-            it.characterData.free()
-        }
+        assets.values.filterIsInstance<Font>().forEach  { Font.delete(it) }
     }
 }
-
 
 abstract class Asset(open val name: String)
 
