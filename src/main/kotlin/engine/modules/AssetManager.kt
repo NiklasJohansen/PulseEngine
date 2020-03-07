@@ -1,10 +1,6 @@
 package engine.modules
 
-import engine.data.Font
-import engine.data.Image
-import engine.data.Sound
-import org.lwjgl.opengl.GL11.*
-import java.lang.IllegalArgumentException
+import engine.data.*
 
 // Exposed to game code
 interface AssetManagerInterface
@@ -54,10 +50,10 @@ class AssetManager : AssetManagerEngineInterface
         = Sound.create(filename, assetName).also { assets[assetName] = it  }
 
     override fun loadText(filename: String, assetName: String): Text
-        = Text(assetName, javaClass.getResource(filename).readText()).also { assets[assetName] = it }
+        = Text.create(filename, assetName).also { assets[assetName] = it }
 
     override fun loadBinary(filename: String, assetName: String): Binary
-        = Binary(assetName, javaClass.getResource(filename).readBytes()).also { assets[assetName] = it }
+        = Binary.create(filename, assetName).also { assets[assetName] = it }
 
     override fun cleanUp()
     {
@@ -69,9 +65,5 @@ class AssetManager : AssetManagerEngineInterface
 }
 
 abstract class Asset(open val name: String)
-
-data class Text(override val name: String, val text: String) : Asset(name)
-
-data class Binary(override val name: String, val bytes: ByteArray) : Asset(name)
 
 

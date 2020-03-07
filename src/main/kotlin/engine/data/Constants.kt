@@ -54,7 +54,7 @@ enum class Key(val code: Int)
     WORLD_1(161),
     WORLD_2(162),
     
-    // unction keys
+    // Function keys
     ESCAPE(256),
     ENTER(257),
     TAB(258),
@@ -180,5 +180,6 @@ enum class Axis(val code: Int)
 
 enum class ScreenMode
 {
-    WINDOWED, FULLSCREEN
+    WINDOWED,
+    FULLSCREEN
 }

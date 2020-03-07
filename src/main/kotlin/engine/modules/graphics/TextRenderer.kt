@@ -1,4 +1,4 @@
-package engine.modules.rendering
+package engine.modules.graphics
 
 import engine.data.Font
 import org.lwjgl.opengl.GL11

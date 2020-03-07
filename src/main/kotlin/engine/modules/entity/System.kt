@@ -2,10 +2,8 @@ package engine.modules.entity
 
 import engine.EngineInterface
 
-sealed class ComponentSystem(
-    vararg val componentTypes: ComponentType<out Component>
-) {
-
+sealed class ComponentSystem(vararg val componentTypes: ComponentType<out Component>)
+{
     var componentSignature = 0L
         private set
 
@@ -21,17 +19,14 @@ sealed class ComponentSystem(
     abstract fun tick(engine: EngineInterface, entities: EntityCollection)
 }
 
-abstract class LogicSystem(
-    vararg componentTypes: ComponentType<out Component>
-) : ComponentSystem(*componentTypes) {
+abstract class LogicSystem(vararg types: ComponentType<out Component>) : ComponentSystem(*types)
+{
     override fun tick(engine: EngineInterface, entities: EntityCollection) = update(engine, entities)
     abstract fun update(engine: EngineInterface, entities: EntityCollection)
 }
 
-
-abstract class RenderSystem(
-    vararg componentTypes: ComponentType<out Component>
-) : ComponentSystem(*componentTypes) {
+abstract class RenderSystem(vararg types: ComponentType<out Component>) : ComponentSystem(*types)
+{
     override fun tick(engine: EngineInterface, entities: EntityCollection) = render(engine, entities)
     abstract fun render(engine: EngineInterface, entities: EntityCollection)
 }

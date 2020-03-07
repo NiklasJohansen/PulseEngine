@@ -56,8 +56,10 @@ class Audio : AudioEngineInterface
 
     override fun init()
     {
-        val defaultDevice = alcOpenDevice(null as ByteBuffer?)
-        setupDevice(defaultDevice)
+        println("Initializing audio...")
+
+        // Use default output device
+        setupDevice(alcOpenDevice(null as ByteBuffer?))
     }
 
     private fun setupDevice(device: Long)
@@ -75,10 +77,6 @@ class Audio : AudioEngineInterface
 
         val numHrtf = ALC10.alcGetInteger(device, SOFTHRTF.ALC_NUM_HRTF_SPECIFIERS_SOFT)
         check(numHrtf != 0) { "No HRTFs found" }
-
-        println("Available HRTFs: " + 0.until(numHrtf)
-            .map { SOFTHRTF.alcGetStringiSOFT(device, SOFTHRTF.ALC_HRTF_SPECIFIER_SOFT, it) }
-            .joinToString())
 
         val attributes = BufferUtils.createIntBuffer(10).put(SOFTHRTF.ALC_HRTF_SOFT).put(ALC10.ALC_TRUE)
         attributes.put(0)
@@ -99,7 +97,7 @@ class Audio : AudioEngineInterface
     override fun createSource(sound: Sound, volume: Float, looping: Boolean): Int
     {
         val sourceId = alGenSources()
-        alSourcei(sourceId, AL_SOURCE_RELATIVE, AL_TRUE) // Vurdere AL_SOURCE_ABSOLUTE
+        alSourcei(sourceId, AL_SOURCE_RELATIVE, AL_TRUE) // Research AL_SOURCE_ABSOLUTE
         alSourcei(sourceId, AL_BUFFER, sound.pointer)
         setVolume(sourceId, volume)
         setLooping(sourceId, looping)
@@ -147,13 +145,13 @@ class Audio : AudioEngineInterface
     override fun setOutputDevice(deviceName: String)
     {
         println("Setting output device: $deviceName")
-        val device = ALC10.alcOpenDevice(deviceName)
+        val device = alcOpenDevice(deviceName)
         if (device == NULL)
             println("Failed to set output device: $deviceName")
         else
         {
-            ALC10.alcDestroyContext(context)
-            ALC10.alcCloseDevice(this.device)
+            alcDestroyContext(context)
+            alcCloseDevice(this.device)
             setupDevice(device)
             outputChangedCallback.invoke()
         }
@@ -178,7 +176,7 @@ class Audio : AudioEngineInterface
     {
         sources.forEach { alDeleteSources(it) }
         alcSetThreadContext(NULL)
-        ALC10.alcDestroyContext(context)
-        ALC10.alcCloseDevice(device)
+        alcDestroyContext(context)
+        alcCloseDevice(device)
     }
 }

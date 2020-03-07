@@ -2,14 +2,14 @@ package game.example
 
 import engine.Engine
 import engine.EngineInterface
-import engine.GameContext
+import engine.abstraction.GameContext
 import engine.data.Font
 import engine.data.Image
 import engine.data.Key
 import engine.data.Mouse
 import engine.data.ScreenMode.*
-import engine.modules.rendering.BlendFunction
-import engine.modules.Text
+import engine.modules.graphics.BlendFunction
+import engine.data.Text
 import kotlin.math.PI
 import kotlin.math.sin
 

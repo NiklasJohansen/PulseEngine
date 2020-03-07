@@ -1,13 +1,14 @@
 package engine
 
+import engine.abstraction.GameContext
 import engine.data.Sound
 import engine.modules.*
 import engine.modules.entity.EntityManager
 import engine.modules.entity.EntityManagerEngineBase
 import engine.modules.entity.EntityManagerBase
-import engine.modules.rendering.GraphicsEngineInterface
-import engine.modules.rendering.GraphicsInterface
-import engine.modules.rendering.ImmediateModeGraphics
+import engine.modules.graphics.GraphicsEngineInterface
+import engine.modules.graphics.GraphicsInterface
+import engine.modules.graphics.ImmediateModeGraphics
 import org.lwjgl.glfw.GLFW.glfwGetTime
 
 // Exposed to the game code
@@ -63,9 +64,9 @@ class Engine(
                 input.init(window.windowHandle)
         }
 
+        // Reuploads sound buffers to new OpenAL context
         audio.setOnOutputDeviceChanged {
-            asset.getAll(Sound::class.java)
-                .forEach { Sound.reloadBuffer(it) }
+            asset.getAll(Sound::class.java).forEach { Sound.reloadBuffer(it) }
         }
     }
 

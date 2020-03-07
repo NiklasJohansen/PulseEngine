@@ -2,7 +2,7 @@ package game.cave
 
 import engine.Engine
 import engine.EngineInterface
-import engine.GameContext
+import engine.abstraction.GameContext
 import engine.data.*
 import kotlin.math.abs
 import kotlin.math.max

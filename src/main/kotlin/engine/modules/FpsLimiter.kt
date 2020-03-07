@@ -1,4 +1,4 @@
-package engine
+package engine.modules
 
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import java.lang.Long.max

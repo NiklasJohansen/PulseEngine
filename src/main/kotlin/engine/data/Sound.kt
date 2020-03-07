@@ -27,7 +27,8 @@ class Sound(override val name: String) : Asset(name)
                 }
             }
 
-        fun delete(sound: Sound) = AL10.alDeleteBuffers(sound.pointer)
+        fun delete(sound: Sound)
+            = AL10.alDeleteBuffers(sound.pointer)
 
         fun reloadBuffer(sound: Sound)
             = STBVorbisInfo.malloc().use { info ->

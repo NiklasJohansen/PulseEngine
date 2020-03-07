@@ -2,10 +2,10 @@ package game.example
 
 import engine.Engine
 import engine.EngineInterface
-import engine.GameContext
+import engine.abstraction.GameContext
 import engine.data.Mouse
 import engine.modules.entity.*
-import engine.modules.rendering.BlendFunction
+import engine.modules.graphics.BlendFunction
 import game.cave.Color
 import kotlin.math.PI
 import kotlin.math.cos
