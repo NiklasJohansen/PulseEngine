@@ -15,10 +15,10 @@ import kotlin.math.sin
 
 fun main()
 {
-    Engine().run(ExampleGame())
+    Engine().run(FeatureExample())
 }
 
-class ExampleGame : GameContext
+class FeatureExample : GameContext
 {
     private var size: Float = 200f
     private var angle: Float = 200f
