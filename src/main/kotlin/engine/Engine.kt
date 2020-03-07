@@ -38,9 +38,9 @@ class Engine(
 
     // Internal engine properties
     private var fpsTimer = 0.0
+    private val fpsFilter = FloatArray(20)
     private var frameCounter = 0
     private val frameRateLimiter = FpsLimiter()
-
     private var fixedUpdateAccumulator = 0.0
     private var fixedUpdateLastTime = glfwGetTime()
     private var lastFrameTime = glfwGetTime()
@@ -88,10 +88,14 @@ class Engine(
 
     private fun update(gameContext: GameContext)
     {
-        data.fixedDeltaTime = (glfwGetTime() - lastFrameTime).toFloat()
+        val time = glfwGetTime()
+        data.fixedDeltaTime = (time - lastFrameTime).toFloat()
+
         input.pollEvents()
         gameContext.update(this)
+
         lastFrameTime = glfwGetTime()
+        data.updateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
     }
 
     private fun fixedUpdate(gameContext: GameContext)
@@ -106,15 +110,19 @@ class Engine(
         fixedUpdateLastTime = time
         fixedUpdateAccumulator += frameTime
 
+        var updated = false
         while(fixedUpdateAccumulator >= dt)
         {
-            val startTime = glfwGetTime()
             audio.cleanSources()
             entity.fixedUpdate(this)
             gameContext.fixedUpdate(this)
+
             fixedUpdateAccumulator -= dt
-            data.updateTimeMS = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+            updated = true
         }
+
+        if(updated)
+            data.fixedUpdateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
     }
 
     private fun render(gameContext: GameContext)
@@ -131,13 +139,11 @@ class Engine(
 
     private fun updateFps()
     {
-        frameCounter++
-        if (glfwGetTime() - fpsTimer >= 1.0)
-        {
-            data.currentFps = frameCounter
-            frameCounter = 0
-            fpsTimer = glfwGetTime()
-        }
+        val time = glfwGetTime()
+        fpsFilter[frameCounter] = 1.0f / (time - fpsTimer).toFloat()
+        frameCounter = (frameCounter + 1) % fpsFilter.size
+        data.currentFps = fpsFilter.average().toInt()
+        fpsTimer = time
     }
 
     private fun cleanUp()
