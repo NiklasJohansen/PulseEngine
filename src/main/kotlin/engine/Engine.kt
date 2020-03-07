@@ -1,5 +1,6 @@
 package engine
 
+import engine.data.Sound
 import engine.modules.*
 import engine.modules.entity.EntityManager
 import engine.modules.entity.EntityManagerEngineBase
@@ -61,6 +62,11 @@ class Engine(
             if(windowRecreated)
                 input.init(window.windowHandle)
         }
+
+        audio.setOnOutputDeviceChanged {
+            asset.getAll(Sound::class.java)
+                .forEach { Sound.reloadBuffer(it) }
+        }
     }
 
     fun run(gameContext: GameContext)
@@ -103,6 +109,7 @@ class Engine(
         while(fixedUpdateAccumulator >= dt)
         {
             val startTime = glfwGetTime()
+            audio.cleanSources()
             entity.fixedUpdate(this)
             gameContext.fixedUpdate(this)
             fixedUpdateAccumulator -= dt
@@ -112,8 +119,8 @@ class Engine(
 
     private fun render(gameContext: GameContext)
     {
-        data.interpolation = fixedUpdateAccumulator.toFloat() / data.fixedDeltaTime
         val startTime = glfwGetTime()
+        data.interpolation = fixedUpdateAccumulator.toFloat() / data.fixedDeltaTime
         gfx.clearBuffer()
         entity.render(this)
         gameContext.render(this)

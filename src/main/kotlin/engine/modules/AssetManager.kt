@@ -2,6 +2,7 @@ package engine.modules
 
 import engine.data.Font
 import engine.data.Image
+import engine.data.Sound
 import org.lwjgl.opengl.GL11.*
 import java.lang.IllegalArgumentException
 
@@ -9,12 +10,13 @@ import java.lang.IllegalArgumentException
 interface AssetManagerInterface
 {
     fun <T: Asset> get(assetName: String): T
+    fun <T: Asset> getAll(type: Class<T>): List<T>
 
-    fun loadImage(filename: String, assetName: String)
-    fun loadFont(filename: String, assetName: String, fontSizes: FloatArray)
-    fun loadSound(filename: String, assetName: String)
-    fun loadText(filename: String, assetName: String)
-    fun loadBinary(filename: String, assetName: String)
+    fun loadImage(filename: String, assetName: String): Image
+    fun loadFont(filename: String, assetName: String, fontSizes: FloatArray): Font
+    fun loadSound(filename: String, assetName: String): Sound
+    fun loadText(filename: String, assetName: String): Text
+    fun loadBinary(filename: String, assetName: String): Binary
 }
 
 // Exposed to game engine
@@ -39,34 +41,29 @@ class AssetManager : AssetManagerEngineInterface
         return asset as T
     }
 
-    override fun loadImage(filename: String, assetName: String)
-    {
-        assets[assetName] = Image.create(filename, assetName)
-    }
+    override fun <T : Asset> getAll(type: Class<T>): List<T>
+        = assets.values.filterIsInstance(type)
 
-    override fun loadFont(filename: String, assetName: String, fontSizes: FloatArray)
-    {
-        assets[assetName] = Font.create(filename, assetName, fontSizes)
-    }
+    override fun loadImage(filename: String, assetName: String): Image
+        = Image.create(filename, assetName).also { assets[assetName] = it  }
 
-    override fun loadSound(filename: String, assetName: String)
-    {
-        assets[assetName] = Sound(assetName, "...")
-    }
+    override fun loadFont(filename: String, assetName: String, fontSizes: FloatArray): Font
+        = Font.create(filename, assetName, fontSizes).also { assets[assetName] = it }
 
-    override fun loadText(filename: String, assetName: String)
-    {
-        assets[assetName] = Text(assetName, javaClass.getResource(filename).readText())
-    }
-    override fun loadBinary(filename: String, assetName: String)
-    {
-        assets[assetName] = Binary(assetName, javaClass.getResource(filename).readBytes())
-    }
+    override fun loadSound(filename: String, assetName: String): Sound
+        = Sound.create(filename, assetName).also { assets[assetName] = it  }
+
+    override fun loadText(filename: String, assetName: String): Text
+        = Text(assetName, javaClass.getResource(filename).readText()).also { assets[assetName] = it }
+
+    override fun loadBinary(filename: String, assetName: String): Binary
+        = Binary(assetName, javaClass.getResource(filename).readBytes()).also { assets[assetName] = it }
 
     override fun cleanUp()
     {
         println("Cleaning up assets...")
         assets.values.filterIsInstance<Image>().forEach { glDeleteTextures(it.textureId) }
+        assets.values.filterIsInstance<Sound>().forEach { Sound.delete(it) }
         assets.values.filterIsInstance<Font>().forEach {
             glDeleteTextures(it.characterImage.textureId)
             it.characterData.free()
