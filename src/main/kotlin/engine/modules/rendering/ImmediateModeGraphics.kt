@@ -13,10 +13,15 @@ class ImmediateModeGraphics : GraphicsEngineInterface
     private var bgGreen = 0.1f
     private var bgBlue = 0.1f
 
+    private lateinit var defaultFont: Font
+
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
         println("Initializing graphics...")
+
         updateViewportSize(viewPortWidth, viewPortHeight, true)
+
+        defaultFont = Font.create("/FiraSans-Regular.ttf", "default_font", floatArrayOf(24f))
     }
 
     private fun initOpenGL()
@@ -102,9 +107,9 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         glEnd()
     }
 
-    override fun drawText(text: String, x: Float, y: Float, font: Font, fontSize: Float, rotation: Float, xOrigin: Float, yOrigin: Float)
+    override fun drawText(text: String, x: Float, y: Float, font: Font?, fontSize: Float, rotation: Float, xOrigin: Float, yOrigin: Float)
     {
-        textRenderer.draw(text, x, y, font, fontSize, rotation, xOrigin, yOrigin)
+        textRenderer.draw(text, x, y, font ?: defaultFont, fontSize, rotation, xOrigin, yOrigin)
     }
 
     override fun setColor(red: Float, green: Float, blue: Float, alpha: Float) = glColor4f(red, green, blue, alpha)

@@ -99,6 +99,7 @@ class AudioExample : GameContext
         val yCenter = engine.window.height / 2f
         engine.gfx.setColor(1f,1f, 1f)
         engine.gfx.drawQuad(xCenter + cos(angle) * xCenter, yCenter, 10f, 10f)
+        engine.gfx.drawText("Sources:  ${engine.audio.getSources().size}", 20f, 30f)
     }
 
     override fun cleanUp(engine: EngineInterface) { }

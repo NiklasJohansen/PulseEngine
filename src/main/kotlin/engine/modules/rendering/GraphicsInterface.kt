@@ -13,7 +13,7 @@ interface GraphicsInterface
     fun drawQuads(block: (draw: QuadDrawCall) -> Unit)
     fun drawImage(image: Image, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, depth: Float = 0f)
     fun drawImages(image: Image, block: (draw: ImageDrawCall) -> Unit)
-    fun drawText(text: String, x: Float, y: Float, font: Font, fontSize: Float = -1f, rotation: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+    fun drawText(text: String, x: Float, y: Float, font: Font? = null, fontSize: Float = -1f, rotation: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
     fun setLineWidth(width: Float)
     fun setColor(red: Float, green: Float, blue: Float, alpha: Float = 1f)
     fun setBackgroundColor(red: Float, green: Float, blue: Float)
