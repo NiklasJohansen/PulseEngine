@@ -132,7 +132,7 @@ enum class Mouse(val code: Int)
 {
     LEFT(0),
     RIGHT(1),
-    MIDDLE(29),
+    MIDDLE(2),
     BUTTON_4(3),
     BUTTON_5(4),
     BUTTON_6(5),
@@ -182,4 +182,16 @@ enum class ScreenMode
 {
     WINDOWED,
     FULLSCREEN
+}
+
+enum class RenderMode
+{
+    IMMEDIATE,
+    RETAINED
+}
+
+enum class ShaderType
+{
+    VERTEX,
+    FRAGMENT
 }
