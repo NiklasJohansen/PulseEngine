@@ -1,6 +1,8 @@
 package engine.modules
 
 import engine.data.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 // Exposed to game code
 interface AssetManagerInterface
@@ -8,7 +10,7 @@ interface AssetManagerInterface
     fun <T: Asset> get(assetName: String): T
     fun <T: Asset> getAll(type: Class<T>): List<T>
 
-    fun loadImage(filename: String, assetName: String): Image
+    fun loadTexture(filename: String, assetName: String): Texture
     fun loadFont(filename: String, assetName: String, fontSizes: FloatArray): Font
     fun loadSound(filename: String, assetName: String): Sound
     fun loadText(filename: String, assetName: String): Text
@@ -18,18 +20,16 @@ interface AssetManagerInterface
 // Exposed to game engine
 interface AssetManagerEngineInterface : AssetManagerInterface
 {
-    fun init()
+    fun loadInitialAssets()
+    fun setOnAssetLoaded(callback: (Asset) -> Unit)
     fun cleanUp()
 }
 
 class AssetManager : AssetManagerEngineInterface
 {
     private val assets = mutableMapOf<String, Asset>()
-
-    override fun init()
-    {
-        println("Initializing asset manager...")
-    }
+    private var initialAssetsLoaded = false
+    private var onAssetLoadedCallback: (Asset) -> Unit = {}
 
     override fun <T : Asset> get(assetName: String): T
     {
@@ -40,30 +40,62 @@ class AssetManager : AssetManagerEngineInterface
     override fun <T : Asset> getAll(type: Class<T>): List<T>
         = assets.values.filterIsInstance(type)
 
-    override fun loadImage(filename: String, assetName: String): Image
-        = Image.create(filename, assetName).also { assets[assetName] = it  }
+    override fun loadTexture(filename: String, assetName: String): Texture
+        = Texture(filename, assetName).also { add(it)  }
 
     override fun loadFont(filename: String, assetName: String, fontSizes: FloatArray): Font
-        = Font.create(filename, assetName, fontSizes).also { assets[assetName] = it }
+        = Font(filename, assetName, fontSizes).also { add(it) }
 
     override fun loadSound(filename: String, assetName: String): Sound
-        = Sound.create(filename, assetName).also { assets[assetName] = it  }
+        = Sound(filename, assetName).also { add(it)  }
 
     override fun loadText(filename: String, assetName: String): Text
-        = Text.create(filename, assetName).also { assets[assetName] = it }
+        = Text(filename, assetName).also { add(it) }
 
     override fun loadBinary(filename: String, assetName: String): Binary
-        = Binary.create(filename, assetName).also { assets[assetName] = it }
+        = Binary(filename, assetName).also { add(it) }
+
+    override fun loadInitialAssets()
+    {
+        println("Loading assets...")
+        runBlocking {
+            assets.values.forEach {
+                launch {
+                    it.load()
+                    println("Loaded asset: ${it.name}")
+                }
+            }
+        }
+        assets.values.forEach(onAssetLoadedCallback)
+        initialAssetsLoaded = true
+    }
+
+    private fun <T: Asset> add(asset: T)
+    {
+        assets[asset.name] = asset
+        if (initialAssetsLoaded) {
+            asset.load()
+            onAssetLoadedCallback.invoke(asset)
+        }
+    }
+
+    override fun setOnAssetLoaded(callback: (Asset) -> Unit)
+    {
+        this.onAssetLoadedCallback = callback
+    }
 
     override fun cleanUp()
     {
         println("Cleaning up assets...")
-        assets.values.filterIsInstance<Image>().forEach { Image.delete(it) }
-        assets.values.filterIsInstance<Sound>().forEach { Sound.delete(it) }
-        assets.values.filterIsInstance<Font>().forEach  { Font.delete(it) }
+        assets.values.forEach { it.delete() }
     }
 }
 
-abstract class Asset(open val name: String)
+
+abstract class Asset(open val name: String, protected val fileName: String)
+{
+    abstract fun load()
+    abstract fun delete()
+}
 
 

@@ -2,31 +2,15 @@ package engine.data
 
 import engine.modules.Asset
 
-data class Binary(override val name: String, val bytes: ByteArray) : Asset(name)
+class Binary(fileName: String, override val name: String) : Asset(name, fileName)
 {
-    companion object
+    lateinit var bytes: ByteArray
+        private set
+
+    override fun load()
     {
-        fun create(fileName: String, assetName: String): Binary
-            = Binary(assetName, Binary::class.java.getResource(fileName).readBytes())
+        this.bytes = Binary::class.java.getResource(fileName).readBytes()
     }
 
-    override fun equals(other: Any?): Boolean
-    {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Binary
-
-        if (name != other.name) return false
-        if (!bytes.contentEquals(other.bytes)) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int
-    {
-        var result = name.hashCode()
-        result = 31 * result + bytes.contentHashCode()
-        return result
-    }
+    override fun delete() { }
 }

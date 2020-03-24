@@ -1,7 +1,9 @@
 package engine
 
 import engine.abstraction.GameContext
+import engine.data.Font
 import engine.data.Sound
+import engine.data.Texture
 import engine.modules.*
 import engine.modules.entity.EntityManager
 import engine.modules.entity.EntityManagerEngineBase
@@ -10,6 +12,7 @@ import engine.modules.graphics.GraphicsEngineInterface
 import engine.modules.graphics.GraphicsInterface
 import engine.modules.graphics.ImmediateModeGraphics
 import org.lwjgl.glfw.GLFW.glfwGetTime
+import java.lang.IllegalArgumentException
 
 // Exposed to the game code
 interface EngineInterface
@@ -35,44 +38,53 @@ class Engine(
     override val asset: AssetManagerEngineInterface   = AssetManager(),
     override val data: DataEngineInterface            = Data(),
     override val entity: EntityManagerEngineBase      = EntityManager()
-) : EngineInterface {
+) : EngineInterface() {
 
     // Internal engine properties
     private var fpsTimer = 0.0
     private val fpsFilter = FloatArray(20)
     private var frameCounter = 0
-    private val frameRateLimiter = FpsLimiter()
     private var fixedUpdateAccumulator = 0.0
     private var fixedUpdateLastTime = glfwGetTime()
     private var lastFrameTime = glfwGetTime()
+    private val frameRateLimiter = FpsLimiter()
 
     init
     {
-        // Initialize all engine components
+        // Initialize engine components
         config.init()
         window.init(config.windowWidth, config.windowHeight, config.screenMode)
         gfx.init(window.width, window.height)
         input.init(window.windowHandle)
         audio.init()
         network.init()
-        asset.init()
 
-        // Set up event handlers
+        // Set up window resize event handler
         window.setOnResizeEvent { w, h, windowRecreated ->
             gfx.updateViewportSize(w, h, windowRecreated)
             if(windowRecreated)
                 input.init(window.windowHandle)
         }
 
-        // Reuploads sound buffers to new OpenAL context
+        // Reload sound buffers to new OpenAL context
         audio.setOnOutputDeviceChanged {
-            asset.getAll(Sound::class.java).forEach { Sound.reloadBuffer(it) }
+            asset.getAll(Sound::class.java).forEach { it.reloadBuffer() }
+        }
+
+        // Notify gfx implementation about loaded assets
+        asset.setOnAssetLoaded {
+            when (it)
+            {
+                is Texture -> gfx.initTexture(it)
+                is Font -> gfx.initTexture(it.charTexture)
+            }
         }
     }
 
     fun run(gameContext: GameContext)
     {
         gameContext.init(this)
+        asset.loadInitialAssets()
 
         while (window.isOpen())
         {
@@ -90,7 +102,7 @@ class Engine(
     private fun update(gameContext: GameContext)
     {
         val time = glfwGetTime()
-        data.fixedDeltaTime = (time - lastFrameTime).toFloat()
+        data.deltaTime = (time - lastFrameTime).toFloat()
 
         input.pollEvents()
         gameContext.update(this)

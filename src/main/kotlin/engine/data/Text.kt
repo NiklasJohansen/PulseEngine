@@ -2,11 +2,16 @@ package engine.data
 
 import engine.modules.Asset
 
-data class Text(override val name: String, val text: String) : Asset(name)
+class Text(fileName: String, override val name: String) : Asset(name, fileName)
 {
-    companion object
+    lateinit var text: String
+        private set
+
+    override fun load()
     {
-        fun create(fileName: String, assetName: String): Text
-            = Text(assetName, Text::class.java.getResource(fileName).readText())
+        this.text = Text::class.java.getResource(fileName).readText()
     }
+
+    override fun delete() { }
+
 }
