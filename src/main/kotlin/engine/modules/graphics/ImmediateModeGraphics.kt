@@ -1,19 +1,36 @@
 package engine.modules.graphics
 
 import engine.data.Font
-import engine.data.Image
+import engine.data.Texture
+import engine.data.RenderMode
+import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
 
 class ImmediateModeGraphics : GraphicsEngineInterface
 {
     private val textRenderer = TextRenderer()
+    private val lineRenderer = ImmediateLineRenderer()
+
     private var blendFunc = BlendFunction.NORMAL
     private var bgRed = 0.1f
     private var bgGreen = 0.1f
     private var bgBlue = 0.1f
 
+    private var red = 0.1f
+    private var green = 0.1f
+    private var blue = 0.1f
+    private var alpha = 0.1f
+
+    private var lineVertices = FloatArray(12)
+    private var lineVertexCount = 0
+
+    private var quadVertices = FloatArray(24)
+    private var quadVertexCount = 0
+
     private lateinit var defaultFont: Font
+
+    override fun getRenderMode() = RenderMode.IMMEDIATE
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
@@ -21,14 +38,25 @@ class ImmediateModeGraphics : GraphicsEngineInterface
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
 
-        defaultFont = Font.create("/FiraSans-Regular.ttf", "default_font", floatArrayOf(24f))
+        // Load default font
+        defaultFont = Font("/FiraSans-Regular.ttf", "default_font", floatArrayOf(24f))
+        defaultFont.load()
+        initTexture(defaultFont.charTexture)
+    }
+
+    override fun initTexture(texture: Texture)
+    {
+        val id = glGenTextures()
+        glBindTexture(GL_TEXTURE_2D, id)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+        glTexImage2D(GL_TEXTURE_2D, 0, texture.format, texture.width, texture.height, 0, texture.format, GL_UNSIGNED_BYTE, texture.textureData)
+        glGenerateMipmap(GL_TEXTURE_2D)
+        texture.finalize(id)
     }
 
     private fun initOpenGL()
     {
         GL.createCapabilities()
-        glDepthFunc(GL_LEQUAL)
-        glEnable(GL_DEPTH_TEST)
         glEnable(GL_TEXTURE_2D)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -38,28 +66,11 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         setBlendFunction(blendFunc)
     }
 
-    override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
-    {
-        glBindTexture(GL_TEXTURE_2D, 0)
-        glBegin(GL_LINES)
-            glVertex2f(x0, y0)
-            glVertex2f(x1, y1)
-        glEnd()
-    }
-
-    override fun drawLines(block: (draw: LineDrawCall) -> Unit)
-    {
-        glBindTexture(GL_TEXTURE_2D, 0)
-        glBegin(GL_LINES)
-        block(LineDrawCall)
-        glEnd()
-    }
-
-    override fun drawQuad(x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, depth: Float)
+    override fun drawQuad(x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
     {
         glPushMatrix()
         glBindTexture(GL_TEXTURE_2D, 0)
-        glTranslatef(x, y, depth)
+        glTranslatef(x, y, 0f)
         glRotatef(rot, 0f, 0f, 1f)
         glTranslatef(-width * xOrigin, -height * yOrigin, 0f)
         glBegin(GL_QUADS)
@@ -71,19 +82,39 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         glPopMatrix()
     }
 
-    override inline fun drawQuads(block: (draw: QuadDrawCall) -> Unit)
+    override fun drawQuadVertex(x: Float, y: Float)
     {
-        glBindTexture(GL_TEXTURE_2D, 0)
-        glBegin(GL_QUADS)
-        block.invoke(QuadDrawCall)
-        glEnd()
+        quadVertices[quadVertexCount++] = red
+        quadVertices[quadVertexCount++] = green
+        quadVertices[quadVertexCount++] = blue
+        quadVertices[quadVertexCount++] = alpha
+        quadVertices[quadVertexCount++] = x
+        quadVertices[quadVertexCount++] = y
+
+        if (quadVertexCount == 24)
+        {
+            val v = quadVertices
+            glBindTexture(GL_TEXTURE_2D, 0)
+            glBegin(GL_QUADS)
+                glColor4f(v[0], v[1], v[2], v[3])
+                glVertex2f(v[4], v[5])
+                glColor4f(v[6], v[7], v[8], v[9])
+                glVertex2f(v[10], v[11])
+                glColor4f(v[12], v[13], v[14], v[15])
+                glVertex2f(v[16], v[17])
+                glColor4f(v[18], v[19], v[20], v[21])
+                glVertex2f(v[22], v[23])
+            glEnd()
+
+           quadVertexCount = 0
+        }
     }
 
-    override fun drawImage(image: Image, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, depth: Float)
+    override fun drawImage(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
     {
         glPushMatrix()
-        glBindTexture(GL_TEXTURE_2D, image.textureId)
-        glTranslatef(x, y, depth)
+        glBindTexture(GL_TEXTURE_2D, texture.textureId)
+        glTranslatef(x, y, 0f)
         glRotatef(rot, 0f, 0f, 1f)
         glTranslatef(-width * xOrigin, -height * yOrigin, 0f)
         glBegin(GL_QUADS)
@@ -99,42 +130,100 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         glPopMatrix()
     }
 
-    override inline fun drawImages(image: Image, block: (draw: ImageDrawCall) -> Unit)
+    override fun drawImage(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
-        glBindTexture(GL_TEXTURE_2D, image.textureId)
+        glPushMatrix()
+        glBindTexture(GL_TEXTURE_2D, texture.textureId)
+        glTranslatef(x, y, 0f)
+        glRotatef(rot, 0f, 0f, 1f)
+        glTranslatef(-width * xOrigin, -height * yOrigin, 0f)
         glBegin(GL_QUADS)
-        block.invoke(ImageDrawCall)
+            glTexCoord2f(uMin, vMin)
+            glVertex2f(0f, 0f)
+            glTexCoord2f(uMin, vMax)
+            glVertex2f(0f, height)
+            glTexCoord2f(uMax, vMax)
+            glVertex2f(width, height)
+            glTexCoord2f(uMax, vMin)
+            glVertex2f(width, 0f)
         glEnd()
+        glPopMatrix()
     }
 
-    override fun drawText(text: String, x: Float, y: Float, font: Font?, fontSize: Float, rotation: Float, xOrigin: Float, yOrigin: Float)
+    override fun drawText(text: String, x: Float, y: Float, font: Font?, fontSize: Float, xOrigin: Float, yOrigin: Float)
     {
-        textRenderer.draw(text, x, y, font ?: defaultFont, fontSize, rotation, xOrigin, yOrigin)
+        textRenderer.draw(this, text, x, y, font ?: defaultFont, fontSize, xOrigin, yOrigin)
     }
 
-    override fun setColor(red: Float, green: Float, blue: Float, alpha: Float) = glColor4f(red, green, blue, alpha)
-
-    override fun setLineWidth(width: Float) = glLineWidth(width)
+    override fun setColor(red: Float, green: Float, blue: Float, alpha: Float)
+    {
+        glColor4f(red, green, blue, alpha)
+        this.red = red
+        this.green = green
+        this.blue = blue
+        this.alpha = alpha
+    }
 
     override fun setBackgroundColor(red: Float, green: Float, blue: Float)
     {
         glClearColor(red, green, blue, 1f)
-        bgRed = red
-        bgGreen = green
-        bgBlue = blue
+        this.bgRed = red
+        this.bgGreen = green
+        this.bgBlue = blue
     }
 
     override fun setBlendFunction(func: BlendFunction)
     {
         glBlendFunc(func.src, func.dest)
-        blendFunc = func
+        this.blendFunc = func
     }
+
+    override fun setLineWidth(width: Float) = glLineWidth(width)
 
     override fun clearBuffer() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
     override fun postRender()
     {
-        // Not needed as all draw calls are made while rendering
+        // Not needed as all draw calls are immediate
+    }
+
+    override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
+    {
+        glBindTexture(GL_TEXTURE_2D, 0)
+        glBegin(GL_LINES)
+            glVertex2f(x0, y0)
+            glVertex2f(x1, y1)
+        glEnd()
+    }
+
+    override fun drawLinePoint(x: Float, y: Float)
+    {
+        lineVertices[lineVertexCount++] = red
+        lineVertices[lineVertexCount++] = green
+        lineVertices[lineVertexCount++] = blue
+        lineVertices[lineVertexCount++] = alpha
+        lineVertices[lineVertexCount++] = x
+        lineVertices[lineVertexCount++] = y
+
+        if(lineVertexCount == 12)
+        {
+            glBindTexture(GL_TEXTURE_2D, 0)
+            glBegin(GL_LINES)
+                glColor4f(lineVertices[0], lineVertices[1], lineVertices[2], lineVertices[3])
+                glVertex2f(lineVertices[4], lineVertices[5])
+                glColor4f(lineVertices[6], lineVertices[7], lineVertices[8], lineVertices[9])
+                glVertex2f(lineVertices[10], lineVertices[11])
+            glEnd()
+            lineVertexCount = 0
+        }
+    }
+
+    override fun drawSameColorLines(block: (draw: LineRenderer) -> Unit)
+    {
+        glBindTexture(GL_TEXTURE_2D, 0)
+        glBegin(GL_LINES)
+        block(lineRenderer)
+        glEnd()
     }
 
     override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
@@ -153,6 +242,16 @@ class ImmediateModeGraphics : GraphicsEngineInterface
     {
         println("Cleaning up graphics...")
     }
+
+    inner class ImmediateLineRenderer : LineRenderer
+    {
+        override fun linePoint(x0: Float, y0: Float) = glVertex2f(x0, y0)
+        override fun line(x0: Float, y0: Float, x1: Float, y1: Float)
+        {
+            glVertex2f(x0, y0)
+            glVertex2f(x1, y1)
+        }
+    }
 }
 
 enum class BlendFunction(val src: Int, val dest: Int)
@@ -161,3 +260,5 @@ enum class BlendFunction(val src: Int, val dest: Int)
     ADDITIVE(GL_SRC_ALPHA, GL_ONE),
     SCREEN(GL_ONE, GL_ONE_MINUS_SRC_COLOR)
 }
+
+

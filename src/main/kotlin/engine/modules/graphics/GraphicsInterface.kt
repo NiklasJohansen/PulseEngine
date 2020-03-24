@@ -1,74 +1,51 @@
 package engine.modules.graphics
 
 import engine.data.Font
-import engine.data.Image
-import org.lwjgl.opengl.GL11
+import engine.data.Texture
+import engine.data.RenderMode
 
 // Exposed to game code
 interface GraphicsInterface
 {
     fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
-    fun drawLines(block: (draw: LineDrawCall) -> Unit)
-    fun drawQuad(x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, depth: Float = 0f)
-    fun drawQuads(block: (draw: QuadDrawCall) -> Unit)
-    fun drawImage(image: Image, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, depth: Float = 0f)
-    fun drawImages(image: Image, block: (draw: ImageDrawCall) -> Unit)
-    fun drawText(text: String, x: Float, y: Float, font: Font? = null, fontSize: Float = -1f, rotation: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
-    fun setLineWidth(width: Float)
+
+    fun drawLinePoint(x: Float, y: Float)
+
+    fun drawSameColorLines(block: (draw: LineRenderer) -> Unit)
+
+    fun drawQuad(x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+
+    fun drawQuadVertex(x: Float, y: Float)
+
+    fun drawImage(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+
+    fun drawImage(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
+
+    fun drawText(text: String, x: Float, y: Float, font: Font? = null, fontSize: Float = -1f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+
     fun setColor(red: Float, green: Float, blue: Float, alpha: Float = 1f)
+
     fun setBackgroundColor(red: Float, green: Float, blue: Float)
+
     fun setBlendFunction(func: BlendFunction)
+
+    fun setLineWidth(width: Float)
 }
 
 // Exposed to game engine
 interface GraphicsEngineInterface : GraphicsInterface
 {
+    fun getRenderMode(): RenderMode
     fun init(viewPortWidth: Int, viewPortHeight: Int)
+    fun initTexture(texture: Texture)
     fun cleanUp()
     fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     fun clearBuffer()
     fun postRender()
 }
 
-// Defines functions allowed to call when drawing multiple quads
-object QuadDrawCall {
-    inline fun color(red: Float, green: Float, blue: Float, alpha: Float = 1f) = GL11.glColor4f(red, green, blue, alpha)
-    inline fun quad(x: Float, y: Float, width: Float, height: Float)
-    {
-        GL11.glVertex2f(x, y)
-        GL11.glVertex2f(x, y + height)
-        GL11.glVertex2f(x + width, y + height)
-        GL11.glVertex2f(x + width, y)
-    }
-    inline fun vertex(x: Float, y: Float)
-    {
-        GL11.glVertex2f(x, y)
-    }
-}
-
-// Defines functions allowed to call when drawing multiple lines
-object LineDrawCall {
-    inline fun color(red: Float, green: Float, blue: Float, alpha: Float = 1f) = GL11.glColor4f(red, green, blue, alpha)
-    inline fun linePoint(x0: Float, y0: Float) = GL11.glVertex2f(x0, y0)
-    inline fun line(x0: Float, y0: Float, x1: Float, y1: Float)
-    {
-        GL11.glVertex2f(x0, y0)
-        GL11.glVertex2f(x1, y1)
-    }
-}
-
-// Defines functions allowed to call when drawing multiple images
-object ImageDrawCall {
-    inline fun color(red: Float, green: Float, blue: Float, alpha: Float = 1f) = GL11.glColor4f(red, green, blue, alpha)
-    inline fun image(x: Float, y: Float, width: Float, height: Float)
-    {
-        GL11.glTexCoord2f(0f, 0f)
-        GL11.glVertex2f(x, y)
-        GL11.glTexCoord2f(0f, 1f)
-        GL11.glVertex2f(x, y + height)
-        GL11.glTexCoord2f(1f, 1f)
-        GL11.glVertex2f(x + width, y + height)
-        GL11.glTexCoord2f(1f, 0f)
-        GL11.glVertex2f(x + width, y)
-    }
+interface LineRenderer
+{
+    fun linePoint(x0: Float, y0: Float)
+    fun line(x0: Float, y0: Float, x1: Float, y1: Float)
 }
