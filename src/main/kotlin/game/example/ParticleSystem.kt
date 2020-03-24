@@ -2,11 +2,11 @@ package game.example
 
 import engine.Engine
 import engine.EngineInterface
-import engine.GameContext
+import engine.abstraction.GameContext
 import engine.data.Key
 import engine.data.Mouse
 import engine.data.ScreenMode.*
-import engine.modules.rendering.BlendFunction
+import engine.modules.graphics.BlendFunction
 import java.text.DecimalFormat
 import kotlin.math.PI
 import kotlin.math.cos
@@ -24,6 +24,7 @@ class ParticleSystem : GameContext
     private var particles = FloatArray(DATA_FIELDS * MAX_PARTICLES)
     private var particleCount = 0
     private var useInterpolation = true
+    private var renderMonoColor = true
 
     companion object
     {
@@ -35,62 +36,62 @@ class ParticleSystem : GameContext
         const val Y_VEL = 5
         const val LIFE = 6
         const val DATA_FIELDS = 7
-        const val MAX_PARTICLES = 1000000
+        const val MAX_PARTICLES = 4000000
     }
 
     override fun init(engine: EngineInterface)
     {
-        engine.config.targetFps = 120
+        engine.config.targetFps = 10000
         engine.config.fixedTickRate = 15
-        engine.window.title = "SpeedParticles"
+        engine.window.title = "Particle system"
         engine.gfx.setBlendFunction(BlendFunction.ADDITIVE)
         engine.gfx.setBackgroundColor(0.1f, 0.1f, 0.1f)
     }
 
     override fun update(engine: EngineInterface)
     {
-        createParticles(engine)
+        if(engine.input.isPressed(Mouse.LEFT))
+            spawnParticles(1000000f * engine.data.deltaTime, engine.input.xMouse, engine.input.yMouse)
 
         if(engine.input.wasClicked(Key.F))
             engine.window.updateScreenMode(if(engine.window.screenMode == WINDOWED) FULLSCREEN else WINDOWED)
 
         if(engine.input.wasClicked(Key.SPACE))
             useInterpolation = !useInterpolation
+
+        if(engine.input.wasClicked(Key.C))
+            renderMonoColor = !renderMonoColor
+
+        if(engine.input.wasClicked(Key.R))
+            particleCount = 0
+    }
+
+    private fun spawnParticles(amount: Float, x: Float, y: Float)
+    {
+        for(i in 0 until amount.toInt())
+        {
+            if(particleCount < MAX_PARTICLES -10)
+            {
+                val index = particleCount * DATA_FIELDS
+                val angle = Random.nextFloat() * PI * 2
+                val speed = Random.nextFloat() * 200f
+                val life = 0.2f + 0.8f * Random.nextFloat()
+
+                particles[index + X] = x
+                particles[index + Y] = y
+                particles[index + X_LAST] = x
+                particles[index + Y_LAST] = y
+                particles[index + X_VEL] = sin(angle).toFloat() * speed
+                particles[index + Y_VEL] = cos(angle).toFloat() * speed
+                particles[index + LIFE] = life
+                particleCount++
+            }
+        }
     }
 
     override fun fixedUpdate(engine: EngineInterface)
     {
         updateParticles(engine)
-    }
-
-    private fun createParticles(engine: EngineInterface)
-    {
-        val dt = engine.data.deltaTime
-        if(engine.input.isPressed(Mouse.LEFT))
-        {
-            val particlesPerSec = 100000 * dt
-            for(i in 0 until particlesPerSec.toInt())
-            {
-                if(particleCount < MAX_PARTICLES -10)
-                {
-                    val index = particleCount * DATA_FIELDS
-                    val angle = Random.nextFloat() * PI * 2
-                    val speed = Random.nextFloat() * 200f
-                    val life = 0.2f + 0.8f * Random.nextFloat()
-                    val x = engine.input.xMouse
-                    val y = engine.input.yMouse
-
-                    particles[index + X] = x
-                    particles[index + Y] = y
-                    particles[index + X_LAST] = x
-                    particles[index + Y_LAST] = y
-                    particles[index + X_VEL] = sin(angle).toFloat() * speed
-                    particles[index + Y_VEL] = cos(angle).toFloat() * speed
-                    particles[index + LIFE] = life
-                    particleCount++
-                }
-            }
-        }
     }
 
     private fun updateParticles(engine: EngineInterface)
@@ -105,11 +106,11 @@ class ParticleSystem : GameContext
 
         for(i in 0 until particleCount)
         {
-            val dstIndex = i * DATA_FIELDS
             var srcIndex = i * DATA_FIELDS
+            val dstIndex = srcIndex
             var life = particles[srcIndex + LIFE] - damage
 
-            if (life < 0)
+            if (life <= 0)
             {
                 if (particleCount > 1)
                 {
@@ -120,7 +121,7 @@ class ParticleSystem : GameContext
             }
 
             var xVel = particles[srcIndex + X_VEL] * friction
-            var yVel = particles[srcIndex + Y_VEL] * friction + gravity
+            var yVel = particles[srcIndex + Y_VEL] * friction
             val xPos = particles[srcIndex + X]
             val yPos = particles[srcIndex + Y]
 
@@ -151,43 +152,88 @@ class ParticleSystem : GameContext
 
     override fun render(engine: EngineInterface)
     {
-        val dt = engine.data.fixedDeltaTime * 0.2f
-        val interpolation =  engine.data.interpolation
+        if(renderMonoColor)
+            renderMonoColoredParticles(engine)
+        else
+            renderIndividualColoredParticles(engine)
 
-        engine.gfx.drawLines {  draw ->
-            for(i in 0 until particleCount)
+        engine.gfx.setColor(1f, 1f, 1f)
+        engine.gfx.drawText("FPS: ${engine.data.currentFps}",  20f, 40f)
+        engine.gfx.drawText("UPDATE: ${"%.1f".format(engine.data.updateTimeMS)} ms/f", 20f, 70f)
+        engine.gfx.drawText("FIX_UPDATE: ${"%.1f".format(engine.data.fixedUpdateTimeMS)} ms/f", 20f, 100f)
+        engine.gfx.drawText("RENDER: ${"%.1f".format(engine.data.renderTimeMs)} ms/f", 20f, 130f)
+        engine.gfx.drawText("PARTICLES: ${DecimalFormat("#,###.##").format(particleCount)}", 20f, 160f)
+
+        engine.window.title = "FPS: ${engine.data.currentFps}" + "  PARTICLES: ${DecimalFormat("#,###.##").format(particleCount)}" + " RENDER: ${"%.1f".format(engine.data.renderTimeMs)} ms/f" + " FIX_UPDATE: ${"%.1f".format(engine.data.fixedUpdateTimeMS)} ms/f" + " UPDATE: ${"%.1f".format(engine.data.updateTimeMS)} ms/f"
+    }
+
+    private fun renderMonoColoredParticles(engine: EngineInterface)
+    {
+        val dt = engine.data.fixedDeltaTime * 0.1f
+        val interpolation = engine.data.interpolation
+        val invInterpolation = 1.0f - engine.data.interpolation
+
+        engine.gfx.setColor(1f, 0.4f, 0.1f)
+        engine.gfx.drawSameColorLines { draw ->
+            for (i in 0 until particleCount)
             {
                 val index = i * DATA_FIELDS
                 var x = particles[index + X]
                 var y = particles[index + Y]
 
-                if(useInterpolation)
+                if (useInterpolation)
                 {
                     val xLast = particles[index + X_LAST]
                     val yLast = particles[index + Y_LAST]
 
-                    if(x == xLast && y == yLast)
-                        continue
-
-                    x = x * interpolation + xLast * (1.0f - interpolation)
-                    y = y * interpolation + yLast * (1.0f - interpolation)
+                    if (x != xLast || y != yLast)
+                    {
+                        x = x * interpolation + xLast * invInterpolation
+                        y = y * interpolation + yLast * invInterpolation
+                    }
                 }
 
-                draw.color(1f, 0.4f, 0.1f, particles[index + LIFE])
                 draw.line(x, y,
                     x + particles[index + X_VEL] * dt,
                     y + particles[index + Y_VEL] * dt
                 )
             }
         }
-
-        engine.gfx.setColor(1f, 1f, 1f)
-        engine.gfx.drawText("FPS: ${engine.data.currentFps}",  20f, 40f)
-        engine.gfx.drawText("UPDATE: ${"%.1f".format(engine.data.updateTimeMS)} ms", 20f, 70f)
-        engine.gfx.drawText("FIX_UPDATE: ${"%.1f".format(engine.data.fixedUpdateTimeMS)} ms", 20f, 100f)
-        engine.gfx.drawText("RENDER: ${"%.1f".format(engine.data.renderTimeMs)} ms", 20f, 130f)
-        engine.gfx.drawText("PARTICLES: ${DecimalFormat("#,###.##").format(particleCount)}", 20f, 160f)
     }
+
+    private fun renderIndividualColoredParticles(engine: EngineInterface)
+    {
+        val dt = engine.data.fixedDeltaTime * 0.1f
+        val interpolation = engine.data.interpolation
+        val invInterpolation = 1.0f - engine.data.interpolation
+
+        for (i in 0 until particleCount)
+        {
+            val index = i * DATA_FIELDS
+            var x = particles[index + X]
+            var y = particles[index + Y]
+
+            if (useInterpolation)
+            {
+                val xLast = particles[index + X_LAST]
+                val yLast = particles[index + Y_LAST]
+
+                if (x != xLast || y != yLast)
+                {
+                    x = x * interpolation + xLast * invInterpolation
+                    y = y * interpolation + yLast * invInterpolation
+                }
+            }
+
+            val fraction = i.toFloat() / particleCount
+            engine.gfx.setColor(1.0f - fraction, fraction, 0.1f, particles[index + LIFE])
+            engine.gfx.drawLine(x, y,
+                x + particles[index + X_VEL] * dt,
+                y + particles[index + Y_VEL] * dt
+            )
+        }
+    }
+
 
     override fun cleanUp(engine: EngineInterface)
     {

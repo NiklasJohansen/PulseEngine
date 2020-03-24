@@ -16,8 +16,8 @@ class CaveGame : GameContext
 {
     private var xCam = -16530f
     private var yCam = -25970f
-    private var blockWidth = 40
-    private var blockHeight = 40
+    private var blockWidth = 40f
+    private var blockHeight = 40f
     private var nOctaves = 4
     private var blockTypes = arrayOf(
         Block(0.08f,  Color(0.588f, 0.78f, 1.0f),   false), // Sky
@@ -31,64 +31,66 @@ class CaveGame : GameContext
         engine.config.targetFps = 120
     }
 
-    override fun fixedUpdate(engine: EngineInterface)
+    override fun update(engine: EngineInterface)
     {
+        engine.window.title = "FPS: ${engine.data.currentFps}  X: $xCam  Y:$yCam  U: ${"%.2f".format(engine.data.updateTimeMS)}ms  R: ${"%.2f".format(engine.data.renderTimeMs)}ms"
+
+        val dt = engine.data.deltaTime
+
+        if(engine.input.scroll != 0)
+        {
+            blockWidth = max(1f, blockWidth + engine.input.scroll)
+            blockHeight = max(1f, blockHeight + engine.input.scroll)
+            println(blockWidth)
+        }
+
         if(engine.input.isPressed(Mouse.LEFT))
         {
             xCam += engine.input.xdMouse
             yCam += engine.input.ydMouse
         }
 
-        if(engine.input.scroll != 0)
-        {
-            blockWidth = max(1, blockWidth + engine.input.scroll)
-            blockHeight = max(1, blockHeight + engine.input.scroll)
-            println(blockWidth)
-        }
+        if(engine.input.isPressed(Key.W)) yCam += 10 * dt
+        if(engine.input.isPressed(Key.A)) xCam += 10 * dt
+        if(engine.input.isPressed(Key.S)) yCam -= 10 * dt
+        if(engine.input.isPressed(Key.D)) xCam -= 10 * dt
+
+        if(engine.input.gamepads.firstOrNull()?.isPressed(Button.A) == true)
+            blockWidth += 1 * dt
+
+        if(engine.input.gamepads.firstOrNull()?.isPressed(Button.B) == true)
+            blockWidth -= 1 * dt
 
         engine.input.gamepads.forEach { gamepad ->
             val xLeft = gamepad.getAxis(Axis.LEFT_X)
             val yLeft = gamepad.getAxis(Axis.LEFT_Y)
-            xCam -= if (abs(xLeft) > 0.15f) (xLeft-0.15f) * 10 else 0.0f
-            yCam -= if (abs(yLeft) > 0.15f) (yLeft-0.15f) * 10 else 0.0f
+            xCam -= if (abs(xLeft) > 0.15f) (xLeft-0.15f) * 10 * dt else 0.0f
+            yCam -= if (abs(yLeft) > 0.15f) (yLeft-0.15f) * 10 * dt else 0.0f
         }
-
-        if(engine.input.isPressed(Key.W)) yCam += 10
-        if(engine.input.isPressed(Key.A)) xCam += 10
-        if(engine.input.isPressed(Key.S)) yCam -= 10
-        if(engine.input.isPressed(Key.D)) xCam -= 10
-
-        if(engine.input.gamepads.firstOrNull()?.isPressed(Button.A) == true)
-            blockWidth += 1
-
-        if(engine.input.gamepads.firstOrNull()?.isPressed(Button.B) == true)
-            blockWidth -= 1
-    }
-
-    override fun update(engine: EngineInterface)
-    {
-        engine.window.title = "FPS: ${engine.data.currentFps}  X: $xCam  Y:$yCam  U: ${"%.2f".format(engine.data.updateTimeMS)}ms  R: ${"%.2f".format(engine.data.renderTimeMs)}ms"
     }
 
     override fun render(engine: EngineInterface)
     {
-        val xCellCount = engine.window.width / blockWidth
-        val yCellCount = engine.window.height / blockHeight
+        val width = blockWidth.toInt()
+        val height = blockHeight.toInt()
+
+        val xCellCount = (engine.window.width / width)
+        val yCellCount = (engine.window.height / height)
 
         for (y in -1 until yCellCount + 2)
         {
             for (x in -1 until xCellCount + 2)
             {
                 val c = getColor(
-                    x - (xCam.toInt() / blockWidth).toFloat(),
-                    y - (yCam.toInt() / blockHeight).toFloat()
+                    x - (xCam.toInt() / width).toFloat(),
+                    y - (yCam.toInt() / height).toFloat()
                 )
 
-                val xBlock = x * blockWidth + xCam % blockWidth
-                val yBlock = y * blockHeight + yCam % blockHeight
+                val xBlock = x * width + xCam % width
+                val yBlock = y * height + yCam % height
 
                 engine.gfx.setColor(c.red, c.green, c.blue)
-                engine.gfx.drawQuad(xBlock, yBlock, blockWidth.toFloat(), blockHeight.toFloat())
+                engine.gfx.drawQuad(xBlock, yBlock, width.toFloat(), height.toFloat())
             }
         }
     }

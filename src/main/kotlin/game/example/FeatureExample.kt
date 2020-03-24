@@ -4,12 +4,12 @@ import engine.Engine
 import engine.EngineInterface
 import engine.abstraction.GameContext
 import engine.data.Font
-import engine.data.Image
+import engine.data.Texture
 import engine.data.Key
 import engine.data.Mouse
 import engine.data.ScreenMode.*
-import engine.modules.graphics.BlendFunction
 import engine.data.Text
+import engine.modules.graphics.*
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -27,7 +27,9 @@ class FeatureExample : GameContext
     {
         // Load assets from disc
         engine.asset.loadText("/textAsset.txt", "text_asset")
-        engine.asset.loadImage("/imageAsset.png", "image_asset")
+        engine.asset.loadTexture("/imageAsset.png", "image_asset")
+        engine.asset.loadTexture("/giraffe-head-small.png", "giraffe")
+        engine.asset.loadTexture("/giraffe-head-small-alpha.png", "giraffe-alpha")
         engine.asset.loadFont("/FiraSans-Regular.ttf", "font_asset", floatArrayOf(24f, 72f))
 
         // Load configuration from disc
@@ -40,7 +42,7 @@ class FeatureExample : GameContext
         println("From loaded config: $number, $text, $bool")
 
         // Set game loop target FPS
-        engine.config.targetFps = 1000
+        engine.config.targetFps = 120
 
         // Set the tick rate of the fixed update
         engine.config.fixedTickRate = 50
@@ -95,50 +97,47 @@ class FeatureExample : GameContext
         val width  = engine.window.width.toFloat()
         val height = engine.window.height.toFloat()
 
+        // Draw colored lines
+        for(i in 0 until width.toInt())
+        {
+            val c =  i / width
+            engine.gfx.setColor(1-c,  c, 0f)
+            engine.gfx.drawLinePoint(i.toFloat(), 0f)
+            engine.gfx.setColor(0f,  1-c, c)
+            engine.gfx.drawLinePoint(i.toFloat(), height)
+        }
+
+        // Set draw color
+        engine.gfx.setColor(1f, 0f, 0f)
+
+        // Draw single line
+        engine.gfx.drawLine(size, size,  engine.input.xMouse, engine.input.yMouse)
+
         // Draw multiple lines
-        engine.gfx.drawLines { draw ->
-            for(i in 0 until width.toInt())
-            {
-                val c =  i / width
-                draw.color(1-c,  c, 0f)
-                draw.linePoint(i.toFloat(), 0f)
-                draw.color(0f,  1-c, c)
-                draw.linePoint(i.toFloat(), height)
-            }
-            draw.color(1f,1f,1f)
+        engine.gfx.drawSameColorLines { draw ->
             draw.line(size, height-size,  engine.input.xMouse, engine.input.yMouse)
             draw.line(width-size, height-size,  engine.input.xMouse, engine.input.yMouse)
             draw.line(width-size, size,  engine.input.xMouse, engine.input.yMouse)
         }
 
-        // Set draw color
-        engine.gfx.setColor(1f, 1f, 1f)
-
         // Draw text
         val font = engine.asset.get<Font>("font_asset")
         engine.gfx.drawText("FPS: ${engine.data.currentFps}", width / 2f - 70, 20f, font, fontSize = 24f)
-        engine.gfx.drawText("ROTATING TEXT", width / 2f, height / 2, font,  rotation = angle, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
-
-        // Draw single line
-        engine.gfx.drawLine(size, size,  engine.input.xMouse, engine.input.yMouse)
-
-        // Get loaded image asset
-        val image = engine.asset.get<Image>("image_asset")
+        engine.gfx.drawText("BIG TEXT", width / 2f, height / 2, font, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
 
         // Set color to tint image
         engine.gfx.setColor(0.7f, 0.7f, 1f, 0.9f)
 
-        // Draw single loaded image
-        engine.gfx.drawImage(image, engine.input.xMouse, engine.input.yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
+        // Get loaded image asset
+        val image = engine.asset.get<Texture>("image_asset")
 
-        // Draw loaded image multiple times
-        engine.gfx.drawImages(image) { draw ->
-            draw.color(1f, 1f, 1f)
-            draw.image(0.5f, 0.5f, size, size)
-            draw.image(width-size, 0.5f, size, size)
-            draw.image(width-size, height-size, size, size)
-            draw.image(0.5f, height-size, size, size)
-        }
+        // Draw images
+        engine.gfx.setColor(1f, 1f, 1f)
+        engine.gfx.drawImage(image, 0.5f, 0.5f, size, size)
+        engine.gfx.drawImage(image, width-size, 0.5f, size, size)
+        engine.gfx.drawImage(image, width-size, height-size, size, size)
+        engine.gfx.drawImage(image, 0.5f, height-size, size, size)
+        engine.gfx.drawImage(image, engine.input.xMouse, engine.input.yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
     }
 
     override fun cleanUp(engine: EngineInterface)

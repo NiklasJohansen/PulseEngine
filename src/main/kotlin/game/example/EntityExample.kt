@@ -154,20 +154,20 @@ class ParticleRenderSystem : RenderSystem(TransformComponent.type, HealthCompone
     {
         engine.gfx.setBlendFunction(BlendFunction.ADDITIVE)
         engine.gfx.setLineWidth(1f)
-        engine.gfx.drawLines { draw ->
-            for (entity in entities)
-            {
-                val transform = entity.getComponent(TransformComponent.type)
-                val health = entity.getComponent(HealthComponent.type)
-                val color = entity.getComponent(ColorComponent.type)
 
-                val fade = if(health.amount < 0.2f) health.amount / 0.2f else 1.0f
+        for (entity in entities)
+        {
+            val transform = entity.getComponent(TransformComponent.type)
+            val health = entity.getComponent(HealthComponent.type)
+            val color = entity.getComponent(ColorComponent.type)
 
-                draw.color(color.color.red, color.color.green, color.color.blue, 0.5f * fade)
-                draw.line(transform.x, transform.y, transform.xLast, transform.yLast)
-            }
+            val fade = if(health.amount < 0.2f) health.amount / 0.2f else 1.0f
+
+            engine.gfx.setColor(color.color.red, color.color.green, color.color.blue, 0.5f * fade)
+            engine.gfx.drawLine(transform.x, transform.y, transform.xLast, transform.yLast)
         }
     }
+
 }
 
 class HealthSystem : LogicSystem(HealthComponent.type)
