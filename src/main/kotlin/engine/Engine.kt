@@ -38,7 +38,7 @@ class Engine(
     override val asset: AssetManagerEngineInterface   = AssetManager(),
     override val data: DataEngineInterface            = Data(),
     override val entity: EntityManagerEngineBase      = EntityManager()
-) : EngineInterface() {
+) : EngineInterface {
 
     // Internal engine properties
     private var fpsTimer = 0.0
@@ -53,7 +53,7 @@ class Engine(
     {
         // Initialize engine components
         config.init()
-        window.init(config.windowWidth, config.windowHeight, config.screenMode)
+        window.init(config.windowWidth, config.windowHeight, config.screenMode, gfx.getRenderMode())
         gfx.init(window.width, window.height)
         input.init(window.windowHandle)
         audio.init()

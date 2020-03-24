@@ -1,7 +1,10 @@
 package engine.modules
 
-import engine.data.ScreenMode.*
+import engine.data.RenderMode
+import engine.data.RenderMode.*
 import engine.data.ScreenMode
+import engine.data.ScreenMode.FULLSCREEN
+import engine.data.ScreenMode.WINDOWED
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWErrorCallback
 import org.lwjgl.glfw.GLFWWindowSizeCallback
@@ -20,7 +23,7 @@ interface WindowInterface
 // Exposed to game engine
 interface WindowEngineInterface : WindowInterface
 {
-    fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode)
+    fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, renderMode: RenderMode)
     fun cleanUp()
     fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit)
     fun swapBuffers()
@@ -45,19 +48,32 @@ class Window : WindowEngineInterface
     private var resizeCallBack: (width: Int, height: Int, windowRecreated: Boolean) -> Unit = { _, _, _ -> }
     private var windowedWidth: Int = 800
     private var windowedHeight: Int = 600
+    private var renderMode: RenderMode = RETAINED
 
-    override fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode)
+    override fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, renderMode: RenderMode)
     {
         println("Initializing Window...")
+
         if (!glfwInit())
             throw IllegalStateException("Unable to initialize GLFW")
 
         GLFWErrorCallback.createPrint(System.err).set()
         glfwDefaultWindowHints()
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE)
+        glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE)
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE)
 
+        // Use OpenGL version 3.2 in retained mode
+        if (renderMode == RETAINED)
+        {
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2)
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
+            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
+            glfwWindowHint(GLFW_DEPTH_BITS,24)
+        }
+
         this.screenMode = screenMode
+        this.renderMode = renderMode
         this.windowedWidth = initWidth
         this.windowedHeight = initHeight
         this.width = initWidth
@@ -92,9 +108,12 @@ class Window : WindowEngineInterface
         {
             override fun invoke(window: Long, width: Int, height: Int)
             {
-                this@Window.width = width
-                this@Window.height = height
-                resizeCallBack(width, height, false)
+                if(width != 0 && height != 0)
+                {
+                    this@Window.width = width
+                    this@Window.height = height
+                    resizeCallBack(width, height, false)
+                }
             }
         })
 
@@ -109,7 +128,7 @@ class Window : WindowEngineInterface
             return
 
         // Create new window
-        init(windowedWidth, windowedHeight, mode)
+        init(windowedWidth, windowedHeight, mode, renderMode)
 
         // Notify observers
         resizeCallBack(width, height, true)
