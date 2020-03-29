@@ -8,13 +8,13 @@ out vec4 vertexColor;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-uniform uint color;
+uniform int color;
 
-vec4 getColor(uint rgba) {
-    float r = ((rgba >> uint(24)) & uint(255)) / 255f;
-    float g = ((rgba >> uint(16)) & uint(255)) / 255f;
-    float b = ((rgba >> uint(8))  & uint(255)) / 255f;
-    float a = (rgba & uint(255)) / 255f;
+vec4 getColor(int rgba) {
+    float r = ((rgba >> int(24)) & int(255)) / 255f;
+    float g = ((rgba >> int(16)) & int(255)) / 255f;
+    float b = ((rgba >> int(8))  & int(255)) / 255f;
+    float a = (rgba & int(255)) / 255f;
     return vec4(r, g, b, a);
 }
 
