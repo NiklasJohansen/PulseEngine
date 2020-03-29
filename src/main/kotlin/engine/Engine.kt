@@ -10,9 +10,8 @@ import engine.modules.entity.EntityManagerEngineBase
 import engine.modules.entity.EntityManagerBase
 import engine.modules.graphics.GraphicsEngineInterface
 import engine.modules.graphics.GraphicsInterface
-import engine.modules.graphics.ImmediateModeGraphics
+import engine.modules.graphics.RetainedModeGraphics
 import org.lwjgl.glfw.GLFW.glfwGetTime
-import java.lang.IllegalArgumentException
 
 // Exposed to the game code
 interface EngineInterface
@@ -31,7 +30,7 @@ interface EngineInterface
 class Engine(
     override val config: ConfigurationEngineInterface = Configuration(),
     override val window: WindowEngineInterface        = Window(),
-    override val gfx: GraphicsEngineInterface         = ImmediateModeGraphics(),
+    override val gfx: GraphicsEngineInterface         = RetainedModeGraphics(),
     override val audio: AudioEngineInterface          = Audio(),
     override val input: InputEngineInterface          = Input(),
     override val network: NetworkEngineInterface      = Network(),
