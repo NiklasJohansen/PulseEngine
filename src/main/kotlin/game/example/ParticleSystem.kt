@@ -51,7 +51,7 @@ class ParticleSystem : GameContext
     override fun update(engine: EngineInterface)
     {
         if(engine.input.isPressed(Mouse.LEFT))
-            spawnParticles(1000000f * engine.data.deltaTime, engine.input.xMouse, engine.input.yMouse)
+            spawnParticles(1000000f * engine.data.deltaTime, engine.input.xWorldMouse, engine.input.yWorldMouse)
 
         if(engine.input.wasClicked(Key.F))
             engine.window.updateScreenMode(if(engine.window.screenMode == WINDOWED) FULLSCREEN else WINDOWED)
@@ -64,6 +64,15 @@ class ParticleSystem : GameContext
 
         if(engine.input.wasClicked(Key.R))
             particleCount = 0
+
+        if(engine.input.isPressed(Mouse.MIDDLE))
+        {
+            engine.gfx.camera.xPos += engine.input.xdMouse
+            engine.gfx.camera.yPos += engine.input.ydMouse
+        }
+
+        engine.gfx.camera.xScale += engine.input.scroll * 0.1f
+        engine.gfx.camera.yScale += engine.input.scroll * 0.1f
     }
 
     private fun spawnParticles(amount: Float, x: Float, y: Float)
@@ -96,8 +105,8 @@ class ParticleSystem : GameContext
 
     private fun updateParticles(engine: EngineInterface)
     {
-        val mx = engine.input.xMouse
-        val my = engine.input.yMouse
+        val mx = engine.input.xWorldMouse
+        val my = engine.input.yWorldMouse
         val dt = engine.data.fixedDeltaTime
         val friction = (1.0f - 0.2f * dt)
         val gravity = 0f * dt
@@ -134,7 +143,7 @@ class ParticleSystem : GameContext
                 {
                     val xDir = xDelta / length
                     val yDir = yDelta / length
-                    val invLength = 1.0f - (length / 2000f)
+                    val invLength = 1.0f - (length / 10000f)
                     xVel -= xDir * invLength * 450 * dt
                     yVel -= yDir * invLength * 450 * dt
                 }
@@ -157,14 +166,13 @@ class ParticleSystem : GameContext
         else
             renderIndividualColoredParticles(engine)
 
+        engine.gfx.camera.disable()
         engine.gfx.setColor(1f, 1f, 1f)
         engine.gfx.drawText("FPS: ${engine.data.currentFps}",  20f, 40f)
         engine.gfx.drawText("UPDATE: ${"%.1f".format(engine.data.updateTimeMS)} ms/f", 20f, 70f)
         engine.gfx.drawText("FIX_UPDATE: ${"%.1f".format(engine.data.fixedUpdateTimeMS)} ms/f", 20f, 100f)
         engine.gfx.drawText("RENDER: ${"%.1f".format(engine.data.renderTimeMs)} ms/f", 20f, 130f)
         engine.gfx.drawText("PARTICLES: ${DecimalFormat("#,###.##").format(particleCount)}", 20f, 160f)
-
-        engine.window.title = "FPS: ${engine.data.currentFps}" + "  PARTICLES: ${DecimalFormat("#,###.##").format(particleCount)}" + " RENDER: ${"%.1f".format(engine.data.renderTimeMs)} ms/f" + " FIX_UPDATE: ${"%.1f".format(engine.data.fixedUpdateTimeMS)} ms/f" + " UPDATE: ${"%.1f".format(engine.data.updateTimeMS)} ms/f"
     }
 
     private fun renderMonoColoredParticles(engine: EngineInterface)

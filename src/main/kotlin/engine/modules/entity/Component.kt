@@ -15,3 +15,13 @@ class ComponentType<T: Component> (
             private set
     }
 }
+
+/////////////////////////////////////////////// BUILT IN COMPONENTS ///////////////////////////////////////////////
+
+class Transform2D : Component()
+{
+    var x: Float = 0f
+    var y: Float = 0f
+    companion object { val type = ComponentType(Transform2D::class.java) }
+}
+

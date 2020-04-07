@@ -70,7 +70,7 @@ class Engine(
             asset.getAll(Sound::class.java).forEach { it.reloadBuffer() }
         }
 
-        // Notify gfx implementation about loaded assets
+        // Notify gfx implementation about loaded textures
         asset.setOnAssetLoaded {
             when (it)
             {
@@ -103,7 +103,7 @@ class Engine(
         val time = glfwGetTime()
         data.deltaTime = (time - lastFrameTime).toFloat()
 
-        input.pollEvents()
+        updateInput()
         gameContext.update(this)
 
         lastFrameTime = glfwGetTime()
@@ -128,6 +128,7 @@ class Engine(
             audio.cleanSources()
             entity.fixedUpdate(this)
             gameContext.fixedUpdate(this)
+            gfx.camera.updateTransform(dt.toFloat())
 
             fixedUpdateAccumulator -= dt
             updated = true
@@ -144,7 +145,8 @@ class Engine(
         gfx.clearBuffer()
         entity.render(this)
         gameContext.render(this)
-        gfx.postRender()
+        gfx.camera.updateViewMatrix(data.interpolation)
+        gfx.postRender(data.interpolation)
         window.swapBuffers()
         data.renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }
@@ -156,6 +158,14 @@ class Engine(
         frameCounter = (frameCounter + 1) % fpsFilter.size
         data.currentFps = fpsFilter.average().toInt()
         fpsTimer = time
+    }
+
+    private fun updateInput()
+    {
+        input.pollEvents()
+        val pos = gfx.camera.screenPosToWorldPos(input.xMouse, input.yMouse)
+        input.xWorldMouse = pos.x
+        input.yWorldMouse = pos.y
     }
 
     private fun cleanUp()

@@ -9,9 +9,12 @@ import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 
 // Exposed to game code
-interface InputInterface {
+interface InputInterface
+{
     val xMouse: Float
     val yMouse: Float
+    val xWorldMouse: Float
+    val yWorldMouse: Float
     val xdMouse: Float
     val ydMouse: Float
     val scroll: Int
@@ -28,6 +31,9 @@ interface InputInterface {
 // Exposed to game engine
 interface InputEngineInterface : InputInterface
 {
+    override var xWorldMouse: Float
+    override var yWorldMouse: Float
+
     fun init(windowHandle: Long)
     fun cleanUp()
     fun pollEvents()
@@ -38,6 +44,8 @@ class Input : InputEngineInterface
     // Exposed properties
     override var xMouse = 0.0f
     override var yMouse = 0.0f
+    override var xWorldMouse = 0f
+    override var yWorldMouse = 0f
     override var scroll = 0
     override var gamepads = mutableListOf<Gamepad>()
     override val xdMouse: Float

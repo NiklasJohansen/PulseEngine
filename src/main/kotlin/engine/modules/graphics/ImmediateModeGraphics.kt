@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL11.*
 
 class ImmediateModeGraphics : GraphicsEngineInterface
 {
+    override val camera: CameraEngineInterface = Camera()
     private val textRenderer = TextRenderer()
     private val lineRenderer = ImmediateLineRenderer()
 
@@ -23,9 +24,8 @@ class ImmediateModeGraphics : GraphicsEngineInterface
     private var alpha = 0.1f
 
     private var lineVertices = FloatArray(12)
-    private var lineVertexCount = 0
-
     private var quadVertices = FloatArray(24)
+    private var lineVertexCount = 0
     private var quadVertexCount = 0
 
     private lateinit var defaultFont: Font
@@ -70,6 +70,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
     {
         glPushMatrix()
         glBindTexture(GL_TEXTURE_2D, 0)
+        glMultMatrixf(camera.viewMatrixAsArray())
         glTranslatef(x, y, 0f)
         glRotatef(rot, 0f, 0f, 1f)
         glTranslatef(-width * xOrigin, -height * yOrigin, 0f)
@@ -94,6 +95,8 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         if (quadVertexCount == 24)
         {
             val v = quadVertices
+            glPushMatrix()
+            glMultMatrixf(camera.viewMatrixAsArray())
             glBindTexture(GL_TEXTURE_2D, 0)
             glBegin(GL_QUADS)
                 glColor4f(v[0], v[1], v[2], v[3])
@@ -105,6 +108,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
                 glColor4f(v[18], v[19], v[20], v[21])
                 glVertex2f(v[22], v[23])
             glEnd()
+            glPopMatrix()
 
            quadVertexCount = 0
         }
@@ -114,6 +118,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
     {
         glPushMatrix()
         glBindTexture(GL_TEXTURE_2D, texture.textureId)
+        glMultMatrixf(camera.viewMatrixAsArray())
         glTranslatef(x, y, 0f)
         glRotatef(rot, 0f, 0f, 1f)
         glTranslatef(-width * xOrigin, -height * yOrigin, 0f)
@@ -134,6 +139,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
     {
         glPushMatrix()
         glBindTexture(GL_TEXTURE_2D, texture.textureId)
+        glMultMatrixf(camera.viewMatrixAsArray())
         glTranslatef(x, y, 0f)
         glRotatef(rot, 0f, 0f, 1f)
         glTranslatef(-width * xOrigin, -height * yOrigin, 0f)
@@ -182,18 +188,21 @@ class ImmediateModeGraphics : GraphicsEngineInterface
 
     override fun clearBuffer() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
-    override fun postRender()
+    override fun postRender(interpolation: Float)
     {
-        // Not needed as all draw calls are immediate
+        camera.updateViewMatrix(interpolation)
     }
 
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
     {
+        glPushMatrix()
         glBindTexture(GL_TEXTURE_2D, 0)
+        glMultMatrixf(camera.viewMatrixAsArray())
         glBegin(GL_LINES)
             glVertex2f(x0, y0)
             glVertex2f(x1, y1)
         glEnd()
+        glPopMatrix()
     }
 
     override fun drawLinePoint(x: Float, y: Float)
@@ -207,23 +216,29 @@ class ImmediateModeGraphics : GraphicsEngineInterface
 
         if(lineVertexCount == 12)
         {
+            glPushMatrix()
             glBindTexture(GL_TEXTURE_2D, 0)
+            glMultMatrixf(camera.viewMatrixAsArray())
             glBegin(GL_LINES)
                 glColor4f(lineVertices[0], lineVertices[1], lineVertices[2], lineVertices[3])
                 glVertex2f(lineVertices[4], lineVertices[5])
                 glColor4f(lineVertices[6], lineVertices[7], lineVertices[8], lineVertices[9])
                 glVertex2f(lineVertices[10], lineVertices[11])
             glEnd()
+            glPopMatrix()
             lineVertexCount = 0
         }
     }
 
-    override fun drawSameColorLines(block: (draw: LineRenderer) -> Unit)
+    override fun drawSameColorLines(block: (draw: LineRendererInterface) -> Unit)
     {
+        glPushMatrix()
         glBindTexture(GL_TEXTURE_2D, 0)
+        glMultMatrixf(camera.viewMatrixAsArray())
         glBegin(GL_LINES)
         block(lineRenderer)
         glEnd()
+        glPopMatrix()
     }
 
     override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
@@ -243,7 +258,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         println("Cleaning up graphics...")
     }
 
-    inner class ImmediateLineRenderer : LineRenderer
+    inner class ImmediateLineRenderer : LineRendererInterface
     {
         override fun linePoint(x0: Float, y0: Float) = glVertex2f(x0, y0)
         override fun line(x0: Float, y0: Float, x1: Float, y1: Float)

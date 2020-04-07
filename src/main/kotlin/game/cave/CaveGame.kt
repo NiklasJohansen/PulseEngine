@@ -50,10 +50,19 @@ class CaveGame : GameContext
             yCam += engine.input.ydMouse
         }
 
-        if(engine.input.isPressed(Key.W)) yCam += 10 * dt
-        if(engine.input.isPressed(Key.A)) xCam += 10 * dt
-        if(engine.input.isPressed(Key.S)) yCam -= 10 * dt
-        if(engine.input.isPressed(Key.D)) xCam -= 10 * dt
+        if(engine.input.isPressed(Key.W)) engine.gfx.camera.yPos += 100 * dt
+        if(engine.input.isPressed(Key.A)) engine.gfx.camera.xPos += 100 * dt
+        if(engine.input.isPressed(Key.S)) engine.gfx.camera.yPos -= 100 * dt
+        if(engine.input.isPressed(Key.D)) engine.gfx.camera.xPos -= 100 * dt
+
+        engine.gfx.camera.xOrigin = engine.window.width / 2f
+        engine.gfx.camera.yOrigin = engine.window.height / 2f
+
+        if(engine.input.isPressed(Key.K_1)) engine.gfx.camera.zRot -= 1 * dt
+        if(engine.input.isPressed(Key.K_2)) engine.gfx.camera.zRot += 1 * dt
+
+        if(engine.input.isPressed(Key.K_3)) engine.gfx.camera.xScale -= 1f * dt
+        if(engine.input.isPressed(Key.K_4)) engine.gfx.camera.xScale += 1f * dt
 
         if(engine.input.gamepads.firstOrNull()?.isPressed(Button.A) == true)
             blockWidth += 1 * dt

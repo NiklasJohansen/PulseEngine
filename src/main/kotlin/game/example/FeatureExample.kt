@@ -9,6 +9,7 @@ import engine.data.Key
 import engine.data.Mouse
 import engine.data.ScreenMode.*
 import engine.data.Text
+import engine.modules.entity.Transform2D
 import engine.modules.graphics.*
 import kotlin.math.PI
 import kotlin.math.sin
@@ -21,7 +22,11 @@ fun main()
 class FeatureExample : GameContext
 {
     private var size: Float = 200f
+    private var lastSize: Float = 200f
     private var angle: Float = 200f
+    private var lastAngle: Float = 200f
+    private var boxPosition = Transform2D()
+    private var lastBoxPosition = Transform2D()
 
     override fun init(engine: EngineInterface)
     {
@@ -45,7 +50,13 @@ class FeatureExample : GameContext
         engine.config.targetFps = 120
 
         // Set the tick rate of the fixed update
-        engine.config.fixedTickRate = 50
+        engine.config.fixedTickRate = 60
+
+        // Set starting position of movable box
+        boxPosition.x = engine.window.width / 2f
+        boxPosition.y = engine.window.height / 2f
+        lastBoxPosition.x = boxPosition.x
+        lastBoxPosition.y = boxPosition.y
     }
 
     // Runs every frame
@@ -72,6 +83,21 @@ class FeatureExample : GameContext
 
         // Set window title
         engine.window.title = "Fps: ${engine.data.currentFps} - ${textAsset.text}"
+
+        val dt = engine.data.deltaTime
+
+        if(engine.input.isPressed(Key.K_1)) engine.gfx.camera.zRot -= 1 * dt
+        if(engine.input.isPressed(Key.K_2)) engine.gfx.camera.zRot += 1 * dt
+        if(engine.input.isPressed(Mouse.MIDDLE))
+        {
+            engine.gfx.camera.xPos += engine.input.xdMouse
+            engine.gfx.camera.yPos += engine.input.ydMouse
+        }
+
+        engine.gfx.camera.xScale += engine.input.scroll * 0.1f
+        engine.gfx.camera.yScale += engine.input.scroll * 0.1f
+        engine.gfx.camera.xOrigin = engine.window.width * 0.5f
+        engine.gfx.camera.yOrigin = engine.window.height * 0.5f
     }
 
     // Runs at a fixed rate
@@ -81,12 +107,25 @@ class FeatureExample : GameContext
         val dt = engine.data.fixedDeltaTime
 
         // Update game parameters
+        lastAngle = angle
+        lastSize = size
         angle = (angle + 100 * dt) % 360
         size = sin(angle / 360f * PI).toFloat() * 200f
+
+        // Update box position
+        lastBoxPosition.x = boxPosition.x
+        lastBoxPosition.y = boxPosition.y
+        if(engine.input.isPressed(Key.W)) boxPosition.y -= 400 * dt
+        if(engine.input.isPressed(Key.A)) boxPosition.x -= 400 * dt
+        if(engine.input.isPressed(Key.S)) boxPosition.y += 400 * dt
+        if(engine.input.isPressed(Key.D)) boxPosition.x += 400 * dt
     }
 
     override fun render(engine: EngineInterface)
     {
+        // Set camera target
+        engine.gfx.camera.setTarget(boxPosition)
+
         // Set color of background
         engine.gfx.setBackgroundColor(0.7f, 0.7f, 0.7f)
 
@@ -96,6 +135,18 @@ class FeatureExample : GameContext
         // Get window size
         val width  = engine.window.width.toFloat()
         val height = engine.window.height.toFloat()
+
+        // Get mouse position
+        val xMouse = engine.input.xWorldMouse
+        val yMouse = engine.input.yWorldMouse
+
+        // Interpolated position for smooth movement
+        val inter = engine.data.interpolation
+        val interInv = 1.0f - inter
+        val x = boxPosition.x * inter + lastBoxPosition.x * interInv
+        val y = boxPosition.y * inter + lastBoxPosition.y * interInv
+        val size = size * inter + lastSize * interInv
+        val angle = angle * inter + lastAngle * interInv
 
         // Draw colored lines
         for(i in 0 until width.toInt())
@@ -111,19 +162,21 @@ class FeatureExample : GameContext
         engine.gfx.setColor(1f, 0f, 0f)
 
         // Draw single line
-        engine.gfx.drawLine(size, size,  engine.input.xMouse, engine.input.yMouse)
+        engine.gfx.drawLine(size, size,  xMouse, yMouse)
 
         // Draw multiple lines
         engine.gfx.drawSameColorLines { draw ->
-            draw.line(size, height-size,  engine.input.xMouse, engine.input.yMouse)
-            draw.line(width-size, height-size,  engine.input.xMouse, engine.input.yMouse)
-            draw.line(width-size, size,  engine.input.xMouse, engine.input.yMouse)
+            draw.line(size, height-size, xMouse, yMouse)
+            draw.line(width-size, height-size, xMouse, yMouse)
+            draw.line(width-size, size, xMouse, yMouse)
         }
 
         // Draw text
         val font = engine.asset.get<Font>("font_asset")
+        engine.gfx.camera.disable()
         engine.gfx.drawText("FPS: ${engine.data.currentFps}", width / 2f - 70, 20f, font, fontSize = 24f)
         engine.gfx.drawText("BIG TEXT", width / 2f, height / 2, font, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
+        engine.gfx.camera.enable()
 
         // Set color to tint image
         engine.gfx.setColor(0.7f, 0.7f, 1f, 0.9f)
@@ -137,7 +190,10 @@ class FeatureExample : GameContext
         engine.gfx.drawImage(image, width-size, 0.5f, size, size)
         engine.gfx.drawImage(image, width-size, height-size, size, size)
         engine.gfx.drawImage(image, 0.5f, height-size, size, size)
-        engine.gfx.drawImage(image, engine.input.xMouse, engine.input.yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
+        engine.gfx.drawImage(image, xMouse, yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
+
+        engine.gfx.setColor(0f, 1f, 0f)
+        engine.gfx.drawQuad(x-25f, y-25f, 50f, 50f)
     }
 
     override fun cleanUp(engine: EngineInterface)

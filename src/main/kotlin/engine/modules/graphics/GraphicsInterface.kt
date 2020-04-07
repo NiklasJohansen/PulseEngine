@@ -1,5 +1,6 @@
 package engine.modules.graphics
 
+import engine.EngineInterface
 import engine.data.Font
 import engine.data.Texture
 import engine.data.RenderMode
@@ -7,11 +8,13 @@ import engine.data.RenderMode
 // Exposed to game code
 interface GraphicsInterface
 {
+    val camera: CameraInterface
+
     fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
 
     fun drawLinePoint(x: Float, y: Float)
 
-    fun drawSameColorLines(block: (draw: LineRenderer) -> Unit)
+    fun drawSameColorLines(block: (draw: LineRendererInterface) -> Unit)
 
     fun drawQuad(x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
 
@@ -35,16 +38,18 @@ interface GraphicsInterface
 // Exposed to game engine
 interface GraphicsEngineInterface : GraphicsInterface
 {
+    override val camera: CameraEngineInterface
+
     fun getRenderMode(): RenderMode
     fun init(viewPortWidth: Int, viewPortHeight: Int)
     fun initTexture(texture: Texture)
     fun cleanUp()
     fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     fun clearBuffer()
-    fun postRender()
+    fun postRender(interpolation: Float)
 }
 
-interface LineRenderer
+interface LineRendererInterface
 {
     fun linePoint(x0: Float, y0: Float)
     fun line(x0: Float, y0: Float, x1: Float, y1: Float)
