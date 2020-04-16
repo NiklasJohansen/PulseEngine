@@ -17,7 +17,7 @@ class GraphicsState
 
     init
     {
-        setRGBA(0.1f, 0.1f, 0.1f, 1f)
+        setRGBA(1f, 1f, 1f, 1f)
     }
 
     fun increaseDepth()

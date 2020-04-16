@@ -3,12 +3,8 @@ package game.example
 import engine.Engine
 import engine.EngineInterface
 import engine.abstraction.GameContext
-import engine.data.Font
-import engine.data.Texture
-import engine.data.Key
-import engine.data.Mouse
+import engine.data.*
 import engine.data.ScreenMode.*
-import engine.data.Text
 import engine.modules.entity.Transform2D
 import engine.modules.graphics.*
 import kotlin.math.PI
@@ -27,14 +23,15 @@ class FeatureExample : GameContext
     private var lastAngle: Float = 200f
     private var boxPosition = Transform2D()
     private var lastBoxPosition = Transform2D()
+    private var frame = 0f
+    private var lastFrame = 0f
 
     override fun init(engine: EngineInterface)
     {
         // Load assets from disc
         engine.asset.loadText("/textAsset.txt", "text_asset")
         engine.asset.loadTexture("/imageAsset.png", "image_asset")
-        engine.asset.loadTexture("/giraffe-head-small.png", "giraffe")
-        engine.asset.loadTexture("/giraffe-head-small-alpha.png", "giraffe-alpha")
+        engine.asset.loadSpriteSheet("/coin.png", "sprite_sheet_asset", 6, 1)
         engine.asset.loadFont("/FiraSans-Regular.ttf", "font_asset", floatArrayOf(24f, 72f))
 
         // Load configuration from disc
@@ -109,8 +106,10 @@ class FeatureExample : GameContext
         // Update game parameters
         lastAngle = angle
         lastSize = size
+        lastFrame = frame
         angle = (angle + 100 * dt) % 360
         size = sin(angle / 360f * PI).toFloat() * 200f
+        frame += 0.2f
 
         // Update box position
         lastBoxPosition.x = boxPosition.x
@@ -147,6 +146,7 @@ class FeatureExample : GameContext
         val y = boxPosition.y * inter + lastBoxPosition.y * interInv
         val size = size * inter + lastSize * interInv
         val angle = angle * inter + lastAngle * interInv
+        val frame = frame * inter + lastFrame * interInv
 
         // Draw colored lines
         for(i in 0 until width.toInt())
@@ -192,8 +192,13 @@ class FeatureExample : GameContext
         engine.gfx.drawImage(image, 0.5f, height-size, size, size)
         engine.gfx.drawImage(image, xMouse, yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
 
-        engine.gfx.setColor(0f, 1f, 0f)
-        engine.gfx.drawQuad(x-25f, y-25f, 50f, 50f)
+        // Get sprite sheet and frame texture
+        val coinSpriteSheet = engine.asset.get<SpriteSheet>("sprite_sheet_asset")
+        val frameTexture = coinSpriteSheet.getTexture(frame.toInt() % 6)
+
+        // Draw frame texture
+        engine.gfx.setColor(1f, 1f, 1f)
+        engine.gfx.drawImage(frameTexture, x - 25f, y - 25f, 50f, 50f)
     }
 
     override fun cleanUp(engine: EngineInterface)

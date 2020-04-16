@@ -116,6 +116,11 @@ class ImmediateModeGraphics : GraphicsEngineInterface
 
     override fun drawImage(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
     {
+        val uMin = texture.uMin
+        val vMin = texture.vMin
+        val uMax = texture.uMax
+        val vMax = texture.vMax
+
         glPushMatrix()
         glBindTexture(GL_TEXTURE_2D, texture.textureId)
         glMultMatrixf(camera.viewMatrixAsArray())
@@ -123,13 +128,13 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         glRotatef(rot, 0f, 0f, 1f)
         glTranslatef(-width * xOrigin, -height * yOrigin, 0f)
         glBegin(GL_QUADS)
-            glTexCoord2f(0f, 0f)
+            glTexCoord2f(uMin, vMin)
             glVertex2f(0f, 0f)
-            glTexCoord2f(0f, 1f)
+            glTexCoord2f(uMin, vMax)
             glVertex2f(0f, height)
-            glTexCoord2f(1f, 1f)
+            glTexCoord2f(uMax, vMax)
             glVertex2f(width, height)
-            glTexCoord2f(1f, 0f)
+            glTexCoord2f(uMax, vMin)
             glVertex2f(width, 0f)
         glEnd()
         glPopMatrix()

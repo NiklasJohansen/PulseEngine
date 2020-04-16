@@ -7,10 +7,12 @@ import kotlinx.coroutines.runBlocking
 // Exposed to game code
 interface AssetManagerInterface
 {
+    fun <T: Asset> add(asset: T): T
     fun <T: Asset> get(assetName: String): T
     fun <T: Asset> getAll(type: Class<T>): List<T>
 
     fun loadTexture(filename: String, assetName: String): Texture
+    fun loadSpriteSheet(filename: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet
     fun loadFont(filename: String, assetName: String, fontSizes: FloatArray): Font
     fun loadSound(filename: String, assetName: String): Sound
     fun loadText(filename: String, assetName: String): Text
@@ -43,6 +45,9 @@ class AssetManager : AssetManagerEngineInterface
     override fun loadTexture(filename: String, assetName: String): Texture
         = Texture(filename, assetName).also { add(it)  }
 
+    override fun loadSpriteSheet(filename: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet
+        = SpriteSheet(filename, assetName, horizontalCells, verticalCells).also{ add(it) }
+
     override fun loadFont(filename: String, assetName: String, fontSizes: FloatArray): Font
         = Font(filename, assetName, fontSizes).also { add(it) }
 
@@ -70,13 +75,14 @@ class AssetManager : AssetManagerEngineInterface
         initialAssetsLoaded = true
     }
 
-    private fun <T: Asset> add(asset: T)
+    override fun <T: Asset> add(asset: T): T
     {
         assets[asset.name] = asset
         if (initialAssetsLoaded) {
             asset.load()
             onAssetLoadedCallback.invoke(asset)
         }
+        return asset
     }
 
     override fun setOnAssetLoaded(callback: (Asset) -> Unit)

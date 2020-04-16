@@ -13,5 +13,4 @@ class Text(fileName: String, override val name: String) : Asset(name, fileName)
     }
 
     override fun delete() { }
-
 }

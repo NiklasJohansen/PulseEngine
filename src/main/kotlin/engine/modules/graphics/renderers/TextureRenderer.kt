@@ -42,8 +42,10 @@ class TextureRenderer(initialCapacity: Int, val gfxState: GraphicsState) : Batch
 
     fun drawImage(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float)
     {
-        val u = texture.uMax
-        val v = texture.vMax
+        val uMin = texture.uMin
+        val vMin = texture.vMin
+        val uMax = texture.uMax
+        val vMax = texture.vMax
         val texIndex = texture.textureId.toFloat() + if(texture.format == GL11.GL_ALPHA) 0.5f else 0.0f
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
@@ -51,10 +53,10 @@ class TextureRenderer(initialCapacity: Int, val gfxState: GraphicsState) : Batch
         val depth = gfxState.depth
 
         vbo.put(
-            x, y, depth, -xOffset, -yOffset, rot, 0f, 0f, texIndex, rgba,
-            x, y, depth, -xOffset, h-yOffset, rot, 0f,  v, texIndex, rgba,
-            x, y, depth, w-xOffset, h-yOffset, rot,  u,  v, texIndex, rgba,
-            x, y, depth, w-xOffset, -yOffset, rot,  u, 0f, texIndex, rgba
+            x, y, depth, -xOffset, -yOffset,   rot, uMin, vMin, texIndex, rgba,
+            x, y, depth, -xOffset, h-yOffset,  rot, uMin, vMax, texIndex, rgba,
+            x, y, depth, w-xOffset, h-yOffset, rot, uMax, vMax, texIndex, rgba,
+            x, y, depth, w-xOffset, -yOffset,  rot, uMax, vMin, texIndex, rgba
         )
 
         ebo.put(

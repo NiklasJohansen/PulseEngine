@@ -114,14 +114,14 @@ class RetainedModeGraphics : GraphicsEngineInterface
         graphicState.depth = -0.99f
     }
 
-    override fun postRender(interplation: Float)
+    override fun postRender(interpolation: Float)
     {
         camera.enable()
-        camera.updateViewMatrix(interplation)
+        camera.updateViewMatrix(interpolation)
         worldRenderer.render(camera)
 
         camera.disable()
-        camera.updateViewMatrix(interplation)
+        camera.updateViewMatrix(interpolation)
         uiRenderer.render(camera)
 
         camera.enable()
