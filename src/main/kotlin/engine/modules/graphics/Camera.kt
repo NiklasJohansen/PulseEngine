@@ -142,9 +142,9 @@ class Camera : CameraEngineInterface()
         zLastScale = zScale
 
         target?.let { transform ->
-            val screenPos = worldPosToScreenPos(transform.x, transform.y)
-            xPos += (-screenPos.x - (xPos - xOrigin)) * deltaTime * targetSmoothing
-            yPos += (-screenPos.y - (yPos - yOrigin)) * deltaTime * targetSmoothing
+            val targetScreenPos = worldPosToScreenPos(transform.x, transform.y)
+            xPos += (-targetScreenPos.x - (xPos / xScale - xOrigin)) * deltaTime * targetSmoothing
+            yPos += (-targetScreenPos.y - (yPos / yScale - yOrigin)) * deltaTime * targetSmoothing
         }
     }
 
