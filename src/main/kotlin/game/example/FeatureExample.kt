@@ -2,11 +2,12 @@ package game.example
 
 import engine.Engine
 import engine.EngineInterface
-import engine.abstraction.GameContext
+import engine.GameContext
 import engine.data.*
 import engine.data.ScreenMode.*
 import engine.modules.entity.Transform2D
 import engine.modules.graphics.*
+import engine.util.interpolateFrom
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -140,13 +141,11 @@ class FeatureExample : GameContext
         val yMouse = engine.input.yWorldMouse
 
         // Interpolated position for smooth movement
-        val inter = engine.data.interpolation
-        val interInv = 1.0f - inter
-        val x = boxPosition.x * inter + lastBoxPosition.x * interInv
-        val y = boxPosition.y * inter + lastBoxPosition.y * interInv
-        val size = size * inter + lastSize * interInv
-        val angle = angle * inter + lastAngle * interInv
-        val frame = frame * inter + lastFrame * interInv
+        val x = boxPosition.x.interpolateFrom(lastBoxPosition.x)
+        val y = boxPosition.y.interpolateFrom(lastBoxPosition.y)
+        val size = size.interpolateFrom(lastSize)
+        val angle = angle.interpolateFrom( lastAngle)
+        val frame = frame.interpolateFrom(lastFrame)
 
         // Draw colored lines
         for(i in 0 until width.toInt())
