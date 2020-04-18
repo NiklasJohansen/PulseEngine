@@ -1,6 +1,5 @@
 package engine
 
-import engine.abstraction.GameContext
 import engine.data.Font
 import engine.data.Sound
 import engine.data.Texture
@@ -11,6 +10,7 @@ import engine.modules.entity.EntityManagerBase
 import engine.modules.graphics.GraphicsEngineInterface
 import engine.modules.graphics.GraphicsInterface
 import engine.modules.graphics.RetainedModeGraphics
+import engine.util.FpsLimiter
 import org.lwjgl.glfw.GLFW.glfwGetTime
 
 // Exposed to the game code
@@ -35,7 +35,7 @@ class Engine(
     override val input: InputEngineInterface          = Input(),
     override val network: NetworkEngineInterface      = Network(),
     override val asset: AssetManagerEngineInterface   = AssetManager(),
-    override val data: DataEngineInterface            = Data(),
+    override val data: MutableDataContainer           = MutableDataContainer(),
     override val entity: EntityManagerEngineBase      = EntityManager()
 ) : EngineInterface {
 
@@ -113,14 +113,14 @@ class Engine(
     private fun fixedUpdate(gameContext: GameContext)
     {
         val dt = 1.0 / config.fixedTickRate.toDouble()
-        data.fixedDeltaTime = dt.toFloat()
-
         val time = glfwGetTime()
         var frameTime = time - fixedUpdateLastTime
         if(frameTime > 0.25)
             frameTime = 0.25
+
         fixedUpdateLastTime = time
         fixedUpdateAccumulator += frameTime
+        data.fixedDeltaTime = dt.toFloat()
 
         var updated = false
         while(fixedUpdateAccumulator >= dt)

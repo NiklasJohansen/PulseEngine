@@ -2,7 +2,7 @@ package game.example
 
 import engine.Engine
 import engine.EngineInterface
-import engine.abstraction.GameContext
+import engine.GameContext
 import engine.data.Mouse
 import engine.modules.entity.*
 import engine.modules.graphics.BlendFunction

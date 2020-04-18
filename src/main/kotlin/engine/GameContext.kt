@@ -1,6 +1,4 @@
-package engine.abstraction
-
-import engine.EngineInterface
+package engine
 
 interface GameContext
 {
