@@ -55,6 +55,9 @@ class FeatureExample : GameContext
         boxPosition.y = engine.window.height / 2f
         lastBoxPosition.x = boxPosition.x
         lastBoxPosition.y = boxPosition.y
+
+        // Set camera smooth
+        engine.gfx.camera.targetTrackingSmoothing = 1f
     }
 
     // Runs every frame
@@ -110,7 +113,7 @@ class FeatureExample : GameContext
         lastFrame = frame
         angle = (angle + 100 * dt) % 360
         size = sin(angle / 360f * PI).toFloat() * 200f
-        frame += 0.2f
+        frame += 10 * dt
 
         // Update box position
         lastBoxPosition.x = boxPosition.x

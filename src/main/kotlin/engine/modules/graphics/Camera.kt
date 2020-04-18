@@ -1,6 +1,7 @@
 package engine.modules.graphics
 
 import engine.modules.entity.Transform2D
+import engine.util.interpolateFrom
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f
@@ -8,6 +9,8 @@ import org.joml.Vector4f
 
 abstract class CameraInterface
 {
+    open val viewMatrix: Matrix4f = Matrix4f()
+
     // Position
     var xPos: Float = 0f
     var yPos: Float = 0f
@@ -29,9 +32,7 @@ abstract class CameraInterface
     var zOrigin: Float = 0f
 
     // Smoothing
-    var targetSmoothing = 1f
-
-    open val viewMatrix: Matrix4f = Matrix4f()
+    var targetTrackingSmoothing = 1f
 
     abstract fun enable()
     abstract fun disable()
@@ -106,25 +107,23 @@ class Camera : CameraEngineInterface()
 
     override fun updateViewMatrix(interpolation: Float)
     {
-        val invInter = 1.0f - interpolation
-
-        val x = xPos * interpolation + xLastPos * invInter
-        val y = yPos * interpolation + yLastPos * invInter
-        val z = zPos * interpolation + zLastPos * invInter
-        val xr = xRot * interpolation + xLastRot * invInter
-        val yr = yRot * interpolation + yLastRot * invInter
-        val zr = zRot * interpolation + zLastRot * invInter
-        val xs = xScale * interpolation + xLastScale * invInter
-        val ys = yScale * interpolation + yLastScale * invInter
-        val zs = zScale * interpolation + zLastScale * invInter
+        val xPos = xPos.interpolateFrom(xLastPos)
+        val yPos = yPos.interpolateFrom(yLastPos)
+        val zPos = zPos.interpolateFrom(zLastPos)
+        val xRot = xRot.interpolateFrom(xLastRot)
+        val yRot = yRot.interpolateFrom(yLastRot)
+        val zRot = zRot.interpolateFrom(zLastRot)
+        val xScale = xScale.interpolateFrom(xLastScale)
+        val yScale = yScale.interpolateFrom(yLastScale)
+        val zScale = zScale.interpolateFrom(zLastScale)
 
         viewMatrix = if (enabled)
         {
             cameraMatrix
-                .setTranslation(x + xOrigin, y + yOrigin, z + zOrigin)
+                .setTranslation(xPos + xOrigin, yPos + yOrigin, zPos + zOrigin)
                 .translate(-xOrigin, -yOrigin, -zOrigin)
-                .setRotationXYZ(xr, yr, zr)
-                .scale(xs, ys, zs)
+                .setRotationXYZ(xRot, yRot, zRot)
+                .scale(xScale, yScale, zScale)
         }
         else identityMatrix
     }
@@ -143,8 +142,8 @@ class Camera : CameraEngineInterface()
 
         target?.let { transform ->
             val targetScreenPos = worldPosToScreenPos(transform.x, transform.y)
-            xPos += (-targetScreenPos.x - (xPos / xScale - xOrigin)) * deltaTime * targetSmoothing
-            yPos += (-targetScreenPos.y - (yPos / yScale - yOrigin)) * deltaTime * targetSmoothing
+            xPos += (-targetScreenPos.x - (xPos / xScale - xOrigin)) * targetTrackingSmoothing * deltaTime
+            yPos += (-targetScreenPos.y - (yPos / yScale - yOrigin)) * targetTrackingSmoothing * deltaTime
         }
     }
 
