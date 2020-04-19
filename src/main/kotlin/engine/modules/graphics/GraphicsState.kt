@@ -25,6 +25,11 @@ class GraphicsState
         depth += DEPTH_INC
     }
 
+    fun resetDepth()
+    {
+        depth = -0.99f
+    }
+
     fun setRGBA(r: Float, g: Float, b: Float, a: Float)
     {
         val red   = (r * 255).toInt()

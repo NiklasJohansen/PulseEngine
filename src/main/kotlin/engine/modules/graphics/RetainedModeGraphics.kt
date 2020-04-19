@@ -1,13 +1,9 @@
 package engine.modules.graphics
 
-import engine.EngineInterface
 import engine.data.Font
 import engine.data.RenderMode
 import engine.data.Texture
-import engine.modules.graphics.renderers.LineRenderer
-import engine.modules.graphics.renderers.QuadRenderer
-import engine.modules.graphics.renderers.TextureRenderer
-import engine.modules.graphics.renderers.UniColorLineRenderer
+import engine.modules.graphics.renderers.*
 import org.joml.Matrix4f
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
@@ -55,6 +51,9 @@ class RetainedModeGraphics : GraphicsEngineInterface
     private val farPlane = 5f
     private lateinit var defaultFont: Font
 
+    private lateinit var frameBufferObject: FrameBufferObject
+    private val frameBufferRenderer = FrameBufferRenderer()
+
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
         updateViewportSize(viewPortWidth, viewPortHeight, true)
@@ -79,6 +78,11 @@ class RetainedModeGraphics : GraphicsEngineInterface
         if(windowRecreated)
             initOpenGL()
 
+        if(this::frameBufferObject.isInitialized)
+            frameBufferObject.delete()
+
+        frameBufferObject = FrameBufferObject.create(width, height)
+
         glViewport(0, 0, width, height)
         graphicState.projectionMatrix = Matrix4f().ortho(0.0f, width.toFloat(), height.toFloat(), 0.0f, -1f, farPlane)
         graphicState.modelMatrix = Matrix4f()
@@ -88,16 +92,12 @@ class RetainedModeGraphics : GraphicsEngineInterface
     {
         GL.createCapabilities()
         glEnable(GL_BLEND)
-        setBackgroundColor(graphicState.bgRed, graphicState.bgGreen, graphicState.bgBlue)
-        setBlendFunction(graphicState.blendFunc)
-
-        glEnable(GL_DEPTH_TEST)
-        glDepthMask(true)
-        glDepthFunc(GL_LEQUAL)
-        glDepthRange(-1.0, farPlane.toDouble())
-        clearBuffer()
 
         renderers.forEach { it.init() }
+        frameBufferRenderer.init()
+
+        setBackgroundColor(graphicState.bgRed, graphicState.bgGreen, graphicState.bgBlue)
+        setBlendFunction(graphicState.blendFunc)
     }
 
     override fun cleanUp()
@@ -105,26 +105,45 @@ class RetainedModeGraphics : GraphicsEngineInterface
         renderers.forEach { it.cleanup() }
         graphicState.textureArray.cleanup()
         defaultFont.delete()
+        frameBufferObject.delete()
     }
 
-    override fun clearBuffer()
+    override fun preRender()
     {
-        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-        glClearDepth(farPlane.toDouble())
-        graphicState.depth = -0.99f
+        graphicState.resetDepth()
     }
 
     override fun postRender(interpolation: Float)
     {
+        // Bind frame buffer
+        frameBufferObject.bind()
+
+        // Setup OpenGL
+        glEnable(GL_DEPTH_TEST)
+        glDepthMask(true)
+        glDepthFunc(GL_LEQUAL)
+        glDepthRange(-1.0, farPlane.toDouble())
+        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+        glClearDepth(farPlane.toDouble())
+
+        // Render world
         camera.enable()
         camera.updateViewMatrix(interpolation)
         worldRenderer.render(camera)
 
+        // Render UI
         camera.disable()
         camera.updateViewMatrix(interpolation)
         uiRenderer.render(camera)
-
         camera.enable()
+
+        // Release frame buffer
+        frameBufferObject.release()
+
+        // Render frame buffer
+        glDisable(GL_DEPTH_TEST)
+        glClear(GL_COLOR_BUFFER_BIT)
+        frameBufferRenderer.render(-1f,-1f, 2f, 2f, frameBufferObject)
     }
 
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)

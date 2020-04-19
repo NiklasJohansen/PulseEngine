@@ -45,7 +45,7 @@ interface GraphicsEngineInterface : GraphicsInterface
     fun initTexture(texture: Texture)
     fun cleanUp()
     fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
-    fun clearBuffer()
+    fun preRender()
     fun postRender(interpolation: Float)
 }
 

@@ -142,7 +142,7 @@ class Engine(
     {
         val startTime = glfwGetTime()
         data.interpolation = fixedUpdateAccumulator.toFloat() / data.fixedDeltaTime
-        gfx.clearBuffer()
+        gfx.preRender()
         entity.render(this)
         gameContext.render(this)
         gfx.camera.updateViewMatrix(data.interpolation)
