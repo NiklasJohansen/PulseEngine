@@ -1,6 +1,6 @@
 package engine.modules.entity
 
-import engine.EngineInterface
+import engine.GameEngine
 import kotlin.collections.ArrayList
 
 typealias EntityId = Int
@@ -17,8 +17,8 @@ abstract class EntityManagerBase
 // Exposed to game engine
 abstract class EntityManagerEngineBase : EntityManagerBase()
 {
-    abstract fun fixedUpdate(engine: EngineInterface)
-    abstract fun render(engine: EngineInterface)
+    abstract fun fixedUpdate(engine: GameEngine)
+    abstract fun render(engine: GameEngine)
 }
 
 class EntityManager(
@@ -74,18 +74,18 @@ class EntityManager(
 
     override fun get(id: EntityId): Entity? = if(id > -1 && id <= entitiesHead) entities[id] else null
 
-    override fun fixedUpdate(engine: EngineInterface)
+    override fun fixedUpdate(engine: GameEngine)
     {
         tickSystems(engine, logicSystems)
         removeDeadEntities()
     }
 
-    override fun render(engine: EngineInterface)
+    override fun render(engine: GameEngine)
     {
         tickSystems(engine, renderSystems)
     }
 
-    private fun tickSystems(engine: EngineInterface, systems: ArrayList<ComponentSystem>)
+    private fun tickSystems(engine: GameEngine, systems: ArrayList<ComponentSystem>)
     {
         var lastSignature = -1L
         var entityCount = 0

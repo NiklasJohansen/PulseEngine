@@ -1,8 +1,7 @@
 package game.example
 
-import engine.Engine
-import engine.EngineInterface
-import engine.GameContext
+import engine.PulseEngine
+import engine.modules.Game
 import engine.data.*
 import engine.data.ScreenMode.*
 import engine.modules.entity.Transform2D
@@ -11,12 +10,10 @@ import engine.util.interpolateFrom
 import kotlin.math.PI
 import kotlin.math.sin
 
-fun main()
-{
-    Engine().run(FeatureExample())
-}
+fun main() = PulseEngine.run(FeatureExample())
 
-class FeatureExample : GameContext
+
+class FeatureExample : Game()
 {
     private var size: Float = 200f
     private var lastSize: Float = 200f
@@ -27,7 +24,7 @@ class FeatureExample : GameContext
     private var frame = 0f
     private var lastFrame = 0f
 
-    override fun init(engine: EngineInterface)
+    override fun init()
     {
         // Load assets from disc
         engine.asset.loadText("/textAsset.txt", "text_asset")
@@ -61,7 +58,7 @@ class FeatureExample : GameContext
     }
 
     // Runs every frame
-    override fun update(engine: EngineInterface)
+    override fun update()
     {
         // Mouse clicked
         if(engine.input.wasClicked(Mouse.LEFT))
@@ -102,7 +99,7 @@ class FeatureExample : GameContext
     }
 
     // Runs at a fixed rate
-    override fun fixedUpdate(engine: EngineInterface)
+    override fun fixedUpdate()
     {
         // Fixed delta time equals: 1.0 / fixedTickRate
         val dt = engine.data.fixedDeltaTime
@@ -124,7 +121,7 @@ class FeatureExample : GameContext
         if(engine.input.isPressed(Key.D)) boxPosition.x += 400 * dt
     }
 
-    override fun render(engine: EngineInterface)
+    override fun render()
     {
         // Set camera target
         engine.gfx.camera.setTarget(boxPosition)
@@ -203,7 +200,7 @@ class FeatureExample : GameContext
         engine.gfx.drawImage(frameTexture, x - 25f, y - 25f, 50f, 50f)
     }
 
-    override fun cleanUp(engine: EngineInterface)
+    override fun cleanup()
     {
         println("Cleaning up example...")
     }

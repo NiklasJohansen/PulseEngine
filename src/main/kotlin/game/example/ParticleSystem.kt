@@ -1,8 +1,8 @@
 package game.example
 
-import engine.Engine
-import engine.EngineInterface
-import engine.GameContext
+import engine.PulseEngine
+import engine.GameEngine
+import engine.modules.Game
 import engine.data.Key
 import engine.data.Mouse
 import engine.data.ScreenMode.*
@@ -14,12 +14,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-fun main()
-{
-    Engine().run(ParticleSystem())
-}
+fun main() = PulseEngine.run(ParticleSystem())
 
-class ParticleSystem : GameContext
+
+class ParticleSystem : Game()
 {
     private var particles = FloatArray(DATA_FIELDS * MAX_PARTICLES)
     private var particleCount = 0
@@ -39,7 +37,7 @@ class ParticleSystem : GameContext
         const val MAX_PARTICLES = 4000000
     }
 
-    override fun init(engine: EngineInterface)
+    override fun init()
     {
         engine.config.targetFps = 10000
         engine.config.fixedTickRate = 15
@@ -48,7 +46,7 @@ class ParticleSystem : GameContext
         engine.gfx.setBackgroundColor(0.1f, 0.1f, 0.1f)
     }
 
-    override fun update(engine: EngineInterface)
+    override fun update()
     {
         if(engine.input.isPressed(Mouse.LEFT))
             spawnParticles(1000000f * engine.data.deltaTime, engine.input.xWorldMouse, engine.input.yWorldMouse)
@@ -98,12 +96,12 @@ class ParticleSystem : GameContext
         }
     }
 
-    override fun fixedUpdate(engine: EngineInterface)
+    override fun fixedUpdate()
     {
         updateParticles(engine)
     }
 
-    private fun updateParticles(engine: EngineInterface)
+    private fun updateParticles(engine: GameEngine)
     {
         val mx = engine.input.xWorldMouse
         val my = engine.input.yWorldMouse
@@ -159,7 +157,7 @@ class ParticleSystem : GameContext
         }
     }
 
-    override fun render(engine: EngineInterface)
+    override fun render()
     {
         if(renderMonoColor)
             renderMonoColoredParticles(engine)
@@ -175,7 +173,7 @@ class ParticleSystem : GameContext
         engine.gfx.drawText("PARTICLES: ${DecimalFormat("#,###.##").format(particleCount)}", 20f, 160f)
     }
 
-    private fun renderMonoColoredParticles(engine: EngineInterface)
+    private fun renderMonoColoredParticles(engine: GameEngine)
     {
         val dt = engine.data.fixedDeltaTime * 0.1f
         val interpolation = engine.data.interpolation
@@ -209,7 +207,7 @@ class ParticleSystem : GameContext
         }
     }
 
-    private fun renderIndividualColoredParticles(engine: EngineInterface)
+    private fun renderIndividualColoredParticles(engine: GameEngine)
     {
         val dt = engine.data.fixedDeltaTime * 0.1f
         val interpolation = engine.data.interpolation
@@ -242,8 +240,7 @@ class ParticleSystem : GameContext
         }
     }
 
-
-    override fun cleanUp(engine: EngineInterface)
+    override fun cleanup()
     {
         println("Cleanup")
     }

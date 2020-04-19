@@ -14,7 +14,7 @@ import engine.util.FpsLimiter
 import org.lwjgl.glfw.GLFW.glfwGetTime
 
 // Exposed to the game code
-interface EngineInterface
+interface GameEngine
 {
     val config: ConfigurationInterface
     val window: WindowInterface
@@ -27,7 +27,7 @@ interface EngineInterface
     val entity: EntityManagerBase
 }
 
-class Engine(
+class PulseEngine(
     override val config: ConfigurationEngineInterface = Configuration(),
     override val window: WindowEngineInterface        = Window(),
     override val gfx: GraphicsEngineInterface         = RetainedModeGraphics(),
@@ -37,7 +37,7 @@ class Engine(
     override val asset: AssetManagerEngineInterface   = AssetManager(),
     override val data: MutableDataContainer           = MutableDataContainer(),
     override val entity: EntityManagerEngineBase      = EntityManager()
-) : EngineInterface {
+) : GameEngine {
 
     // Internal engine properties
     private var fpsTimer = 0.0
@@ -80,37 +80,38 @@ class Engine(
         }
     }
 
-    fun run(gameContext: GameContext)
+    fun run(game: Game)
     {
-        gameContext.init(this)
+        game.engine = this
+        game.init()
         asset.loadInitialAssets()
 
         while (window.isOpen())
         {
-            update(gameContext)
-            fixedUpdate(gameContext)
-            render(gameContext)
+            update(game)
+            fixedUpdate(game)
+            render(game)
             updateFps()
             frameRateLimiter.sync(config.targetFps)
         }
 
-        gameContext.cleanUp(this)
+        game.cleanup()
         cleanUp()
     }
 
-    private fun update(gameContext: GameContext)
+    private fun update(game: Game)
     {
         val time = glfwGetTime()
         data.deltaTime = (time - lastFrameTime).toFloat()
 
         updateInput()
-        gameContext.update(this)
+        game.update()
 
         lastFrameTime = glfwGetTime()
         data.updateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
     }
 
-    private fun fixedUpdate(gameContext: GameContext)
+    private fun fixedUpdate(game: Game)
     {
         val dt = 1.0 / config.fixedTickRate.toDouble()
         val time = glfwGetTime()
@@ -127,7 +128,7 @@ class Engine(
         {
             audio.cleanSources()
             entity.fixedUpdate(this)
-            gameContext.fixedUpdate(this)
+            game.fixedUpdate()
             gfx.camera.updateTransform(dt.toFloat())
 
             fixedUpdateAccumulator -= dt
@@ -138,13 +139,13 @@ class Engine(
             data.fixedUpdateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
     }
 
-    private fun render(gameContext: GameContext)
+    private fun render(game: Game)
     {
         val startTime = glfwGetTime()
         data.interpolation = fixedUpdateAccumulator.toFloat() / data.fixedDeltaTime
         gfx.preRender()
         entity.render(this)
-        gameContext.render(this)
+        game.render()
         gfx.camera.updateViewMatrix(data.interpolation)
         gfx.postRender(data.interpolation)
         window.swapBuffers()
@@ -181,12 +182,17 @@ class Engine(
     companion object
     {
         // For simple games with single draw loop
-        inline fun draw(crossinline game: EngineInterface.() -> Unit) = Engine().run(object: GameContext
+        inline fun draw(crossinline game: GameEngine.() -> Unit) = PulseEngine().run(object: Game()
         {
-            override fun init(engine: EngineInterface) {}
-            override fun update(engine: EngineInterface) {}
-            override fun cleanUp(engine: EngineInterface) {}
-            override fun render(engine: EngineInterface) = game.invoke(engine)
+            override fun init() {}
+            override fun update() {}
+            override fun cleanup() {}
+            override fun render() = game.invoke(engine)
         })
+
+        fun run(game: Game)
+        {
+            PulseEngine().run(game)
+        }
     }
 }

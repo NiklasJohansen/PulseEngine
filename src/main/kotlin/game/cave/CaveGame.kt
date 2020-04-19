@@ -1,18 +1,14 @@
 package game.cave
 
-import engine.Engine
-import engine.EngineInterface
-import engine.GameContext
+import engine.PulseEngine
+import engine.modules.Game
 import engine.data.*
 import kotlin.math.abs
 import kotlin.math.max
 
-fun main()
-{
-    Engine().run(CaveGame())
-}
+fun main() = PulseEngine.run(CaveGame())
 
-class CaveGame : GameContext
+class CaveGame : Game()
 {
     private var xCam = -16530f
     private var yCam = -25970f
@@ -26,12 +22,12 @@ class CaveGame : GameContext
         Block(0.4f,   Color(0.321f, 0.317f, 0.309f), false) // Stone
     )
 
-    override fun init(engine: EngineInterface)
+    override fun init()
     {
         engine.config.targetFps = 120
     }
 
-    override fun update(engine: EngineInterface)
+    override fun update()
     {
         engine.window.title = "FPS: ${engine.data.currentFps}  X: $xCam  Y:$yCam  U: ${"%.2f".format(engine.data.updateTimeMS)}ms  R: ${"%.2f".format(engine.data.renderTimeMs)}ms"
 
@@ -78,7 +74,7 @@ class CaveGame : GameContext
         }
     }
 
-    override fun render(engine: EngineInterface)
+    override fun render()
     {
         val width = blockWidth.toInt()
         val height = blockHeight.toInt()
@@ -135,7 +131,7 @@ class CaveGame : GameContext
         )
     }
 
-    override fun cleanUp(engine: EngineInterface)
+    override fun cleanup()
     {
         println("Cleaning up CaveGame...")
     }

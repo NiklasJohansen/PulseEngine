@@ -1,6 +1,5 @@
 package engine.modules.graphics
 
-import engine.EngineInterface
 import engine.data.Font
 import engine.data.Texture
 import engine.data.RenderMode

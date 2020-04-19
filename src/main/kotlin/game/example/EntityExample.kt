@@ -1,8 +1,8 @@
 package game.example
 
-import engine.Engine
-import engine.EngineInterface
-import engine.GameContext
+import engine.PulseEngine
+import engine.GameEngine
+import engine.modules.Game
 import engine.data.Mouse
 import engine.modules.entity.*
 import engine.modules.graphics.BlendFunction
@@ -13,14 +13,11 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-fun main()
-{
-    Engine().run(EntityGame())
-}
+fun main() = PulseEngine.run(EntityGame())
 
-class EntityGame : GameContext
+class EntityGame : Game()
 {
-    override fun init(engine: EngineInterface)
+    override fun init()
     {
         engine.config.targetFps = 120
         engine.entity.registerSystems(
@@ -31,17 +28,17 @@ class EntityGame : GameContext
         )
     }
 
-    override fun update(engine: EngineInterface)
+    override fun update()
     {
         engine.window.title = "FPS: ${engine.data.currentFps} objects: ${engine.entity.count}"
     }
 
-    override fun render(engine: EngineInterface)
+    override fun render()
     {
         engine.gfx.setBackgroundColor(0.1f, 0.1f, 0.1f)
     }
 
-    override fun cleanUp(engine: EngineInterface) { }
+    override fun cleanup() { }
 }
 
 // ------------------------------------------------- Components -------------------------------------------------
@@ -78,7 +75,7 @@ class ColorComponent : Component()
 
 class ParticleMovementSystem : LogicSystem(TransformComponent.type)
 {
-    override fun update(engine: EngineInterface, entities: EntityCollection)
+    override fun update(engine: GameEngine, entities: EntityCollection)
     {
         for(entity in entities)
         {
@@ -103,7 +100,7 @@ class ParticleMovementSystem : LogicSystem(TransformComponent.type)
 
 class ParticleInteractionSystem : LogicSystem(TransformComponent.type)
 {
-    override fun update(engine: EngineInterface, entities: EntityCollection)
+    override fun update(engine: GameEngine, entities: EntityCollection)
     {
         if(engine.input.isPressed(Mouse.LEFT))
         {
@@ -150,7 +147,7 @@ class ParticleInteractionSystem : LogicSystem(TransformComponent.type)
 
 class ParticleRenderSystem : RenderSystem(TransformComponent.type, HealthComponent.type, ColorComponent.type)
 {
-    override fun render(engine: EngineInterface, entities: EntityCollection)
+    override fun render(engine: GameEngine, entities: EntityCollection)
     {
         engine.gfx.setBlendFunction(BlendFunction.ADDITIVE)
         engine.gfx.setLineWidth(1f)
@@ -172,7 +169,7 @@ class ParticleRenderSystem : RenderSystem(TransformComponent.type, HealthCompone
 
 class HealthSystem : LogicSystem(HealthComponent.type)
 {
-    override fun update(engine: EngineInterface, entities: EntityCollection)
+    override fun update(engine: GameEngine, entities: EntityCollection)
     {
         for (entity in entities)
         {

@@ -1,6 +1,6 @@
 package engine.modules.entity
 
-import engine.EngineInterface
+import engine.GameEngine
 
 sealed class ComponentSystem(vararg val componentTypes: ComponentType<out Component>)
 {
@@ -16,17 +16,17 @@ sealed class ComponentSystem(vararg val componentTypes: ComponentType<out Compon
         }
     }
 
-    abstract fun tick(engine: EngineInterface, entities: EntityCollection)
+    abstract fun tick(engine: GameEngine, entities: EntityCollection)
 }
 
 abstract class LogicSystem(vararg types: ComponentType<out Component>) : ComponentSystem(*types)
 {
-    override fun tick(engine: EngineInterface, entities: EntityCollection) = update(engine, entities)
-    abstract fun update(engine: EngineInterface, entities: EntityCollection)
+    override fun tick(engine: GameEngine, entities: EntityCollection) = update(engine, entities)
+    abstract fun update(engine: GameEngine, entities: EntityCollection)
 }
 
 abstract class RenderSystem(vararg types: ComponentType<out Component>) : ComponentSystem(*types)
 {
-    override fun tick(engine: EngineInterface, entities: EntityCollection) = render(engine, entities)
-    abstract fun render(engine: EngineInterface, entities: EntityCollection)
+    override fun tick(engine: GameEngine, entities: EntityCollection) = render(engine, entities)
+    abstract fun render(engine: GameEngine, entities: EntityCollection)
 }

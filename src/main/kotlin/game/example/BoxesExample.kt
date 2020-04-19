@@ -1,5 +1,5 @@
 package game.example
-import engine.Engine
+import engine.PulseEngine
 import engine.data.Mouse
 
 fun main()
@@ -11,7 +11,7 @@ fun main()
     val boxes = mutableListOf(Box(500f, 100f,50f, 50f, 1f, 1f))
 
     // Main draw loop
-    Engine.draw {
+    PulseEngine.draw {
 
         // Add new boxes on mouse click
         if(input.wasClicked(Mouse.LEFT))

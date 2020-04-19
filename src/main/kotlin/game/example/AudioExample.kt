@@ -1,8 +1,7 @@
 package game.example
 
-import engine.Engine
-import engine.EngineInterface
-import engine.GameContext
+import engine.PulseEngine
+import engine.modules.Game
 import engine.data.Key
 import engine.data.Mouse
 import engine.data.Sound
@@ -10,17 +9,14 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-fun main()
-{
-    Engine().run(AudioExample())
-}
+fun main() = PulseEngine.run(AudioExample())
 
-class AudioExample : GameContext
+class AudioExample : Game()
 {
     var angle = 0f
     var loopingSource = 0
 
-    override fun init(engine: EngineInterface)
+    override fun init()
     {
         engine.window.title = "Audio example"
         engine.config.targetFps = 120
@@ -47,14 +43,14 @@ class AudioExample : GameContext
         engine.audio.play(loopingSource)
     }
 
-    override fun fixedUpdate(engine: EngineInterface)
+    override fun fixedUpdate()
     {
         angle += 0.5f * engine.data.fixedDeltaTime
         if(angle > PI * 2)
             angle = 0f
     }
 
-    override fun update(engine: EngineInterface)
+    override fun update()
     {
         // Create new sound source
         if(engine.input.wasClicked(Mouse.LEFT))
@@ -93,7 +89,7 @@ class AudioExample : GameContext
         }
     }
 
-    override fun render(engine: EngineInterface)
+    override fun render()
     {
         val xCenter = engine.window.width / 2f
         val yCenter = engine.window.height / 2f
@@ -102,5 +98,5 @@ class AudioExample : GameContext
         engine.gfx.drawText("Sources:  ${engine.audio.getSources().size}", 20f, 30f)
     }
 
-    override fun cleanUp(engine: EngineInterface) { }
+    override fun cleanup() { }
 }
