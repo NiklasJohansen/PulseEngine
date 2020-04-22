@@ -18,6 +18,7 @@ interface InputInterface
     val xdMouse: Float
     val ydMouse: Float
     val scroll: Int
+    val textInput: String
     val gamepads: List<Gamepad>
 
     fun isPressed(key: Key): Boolean
@@ -26,6 +27,7 @@ interface InputInterface
     fun wasClicked(btn: Mouse): Boolean
     fun wasReleased(key: Key): Boolean
     fun wasReleased(btn: Mouse): Boolean
+
 }
 
 // Exposed to game engine
@@ -48,6 +50,7 @@ class Input : InputEngineInterface
     override var yWorldMouse = 0f
     override var scroll = 0
     override var gamepads = mutableListOf<Gamepad>()
+    override var textInput: String = ""
     override val xdMouse: Float
         get() = xMouse - xMouseLast
     override val ydMouse: Float
@@ -69,6 +72,10 @@ class Input : InputEngineInterface
                 glfwSetWindowShouldClose(window, true)
             if(key >= 0)
                 clicked[key] = if(action == GLFW_PRESS) 1 else -1
+        }
+
+        glfwSetCharCallback(windowHandle) { window, character ->
+            textInput += character.toChar()
         }
 
         glfwSetCursorPosCallback(windowHandle) { window, xPos, yPos ->
@@ -120,6 +127,7 @@ class Input : InputEngineInterface
         xMouseLast = xMouse
         yMouseLast = yMouse
         scroll = 0
+        textInput = ""
         clicked.fill(0)
         glfwPollEvents()
         gamepads.forEach { it.updateState() }
