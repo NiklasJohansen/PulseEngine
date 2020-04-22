@@ -73,7 +73,7 @@ class FeatureExample : Game()
             println("Right mouse released")
 
         // Key F to change screen mode
-        if(engine.input.wasClicked(Key.F))
+        if(engine.input.wasClicked(Key.F) && engine.input.isPressed(Key.LEFT_CONTROL))
             engine.window.updateScreenMode(if(engine.window.screenMode == WINDOWED) FULLSCREEN else WINDOWED)
 
         // Get loaded asset

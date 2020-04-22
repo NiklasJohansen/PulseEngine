@@ -1,5 +1,6 @@
 package engine
 
+import engine.apps.ConsoleGUI
 import engine.apps.EngineApp
 import engine.data.Font
 import engine.data.Sound
@@ -38,7 +39,7 @@ class PulseEngine(
     override val asset: AssetManagerEngineInterface   = AssetManager(),
     override val data: MutableDataContainer           = MutableDataContainer(),
     override val entity: EntityManagerEngineBase      = EntityManager(),
-    private val apps: List<EngineApp>                 = emptyList()
+    private val apps: List<EngineApp>                 = listOf(ConsoleGUI())
 ) : GameEngine {
 
     // Internal engine properties
