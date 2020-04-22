@@ -42,6 +42,6 @@ class GraphicsState
 
     companion object
     {
-        private const val DEPTH_INC = 0.0000001f
+        private const val DEPTH_INC = 0.000001f
     }
 }

@@ -3,6 +3,7 @@ package engine.modules.graphics
 import engine.data.Font
 import engine.data.Texture
 import engine.data.RenderMode
+import engine.modules.DataInterface
 import engine.modules.graphics.renderers.TextRenderer
 import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
 import org.lwjgl.opengl.GL
@@ -43,6 +44,10 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         defaultFont = Font("/FiraSans-Regular.ttf", "default_font", floatArrayOf(24f))
         defaultFont.load()
         initTexture(defaultFont.charTexture)
+
+        camera.setOnEnableChanged { enabled ->
+            postRender(DataInterface.INSTANCE.interpolation)
+        }
     }
 
     override fun initTexture(texture: Texture)
