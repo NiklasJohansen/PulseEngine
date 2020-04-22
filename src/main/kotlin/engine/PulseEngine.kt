@@ -1,5 +1,6 @@
 package engine
 
+import engine.apps.EngineApp
 import engine.data.Font
 import engine.data.Sound
 import engine.data.Texture
@@ -36,7 +37,8 @@ class PulseEngine(
     override val network: NetworkEngineInterface      = Network(),
     override val asset: AssetManagerEngineInterface   = AssetManager(),
     override val data: MutableDataContainer           = MutableDataContainer(),
-    override val entity: EntityManagerEngineBase      = EntityManager()
+    override val entity: EntityManagerEngineBase      = EntityManager(),
+    private val apps: List<EngineApp>                 = emptyList()
 ) : GameEngine {
 
     // Internal engine properties
@@ -78,6 +80,9 @@ class PulseEngine(
                 is Font -> gfx.initTexture(it.charTexture)
             }
         }
+
+        // Initialize engine apps
+        apps.forEach { it.init(this) }
     }
 
     fun run(game: Game)
@@ -106,6 +111,7 @@ class PulseEngine(
 
         updateInput()
         game.update()
+        apps.forEach { it.update(this) }
 
         lastFrameTime = glfwGetTime()
         data.updateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
@@ -146,7 +152,7 @@ class PulseEngine(
         gfx.preRender()
         entity.render(this)
         game.render()
-        gfx.camera.updateViewMatrix(data.interpolation)
+        apps.forEach { it.render(this) }
         gfx.postRender(data.interpolation)
         window.swapBuffers()
         data.renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
