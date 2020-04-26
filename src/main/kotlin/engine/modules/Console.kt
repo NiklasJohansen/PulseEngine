@@ -7,6 +7,7 @@ interface ConsoleInterface
     fun registerCommand(template: String, description: String = "", block: (CommandArguments) -> CommandResult)
     fun run(command: String): CommandResult
     fun getHistory(index: Int): String?
+    fun getSuggestions(command: String): List<Command>
 }
 
 interface ConsoleEngineInterface : ConsoleInterface
@@ -21,6 +22,7 @@ class Console : ConsoleEngineInterface
 
     override fun init(engine: GameEngine)
     {
+        // Help command
         registerCommand(
             "help {command:String?}",
             "Lists all available commands if name no specific command is given."
@@ -46,7 +48,7 @@ class Console : ConsoleEngineInterface
         if(commandMap.containsKey(baseCommand))
             println("Overwriting already existing command with name $baseCommand")
 
-        commandMap[baseCommand] = Command(template, description, arguments, block)
+        commandMap[baseCommand] = Command(baseCommand, template, description, arguments, block)
     }
 
     override fun run(command: String): CommandResult
@@ -77,6 +79,11 @@ class Console : ConsoleEngineInterface
 
     override fun getHistory(index: Int): String? =
         if (index >= 0 && index < history.size) history[history.lastIndex - index] else null
+
+    override fun getSuggestions(command: String): List<Command> =
+        commandMap.keys
+            .filter { it.startsWith(command) }
+            .mapNotNull { commandMap[it] }
 
     private fun parseCommandArguments(commandString: String, command: Command): CommandArguments
     {
@@ -211,6 +218,7 @@ class Console : ConsoleEngineInterface
 }
 
 data class Command(
+    val base: String,
     val template: String,
     val description: String,
     val arguments: List<ArgumentTemplate>,

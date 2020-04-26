@@ -3,6 +3,7 @@ package engine.apps
 import engine.GameEngine
 import engine.data.Font
 import engine.data.Key
+import engine.modules.CommandResult
 import engine.modules.MessageType
 import java.lang.Integer.max
 import java.lang.Math.min
@@ -11,8 +12,10 @@ class ConsoleGUI : EngineApp
 {
     private var active: Boolean = false
     private var textBoxContent = StringBuilder()
-    private var cursorPos = 0
-    private var historyCursorPos = -1
+    private var inputCursor = 0
+    private var historyCursor = -1
+    private var suggestionCursor = 0
+    private var suggestionBaseText = ""
     private val commandLog = mutableListOf<ConsoleEntry>()
 
     override fun init(engine: GameEngine)
@@ -30,52 +33,70 @@ class ConsoleGUI : EngineApp
         val newText = engine.input.textInput
         if (newText.isNotEmpty())
         {
-            textBoxContent.insert(cursorPos, newText)
-            cursorPos += newText.length
+            textBoxContent.insert(inputCursor, newText)
+            inputCursor += newText.length
+            suggestionCursor = -1
         }
 
         // Remove text with backspace
-        if(cursorPos > 0 && engine.input.wasClicked(Key.BACKSPACE))
+        if(inputCursor > 0 && engine.input.wasClicked(Key.BACKSPACE))
         {
             if(engine.input.isPressed(Key.LEFT_CONTROL))
             {
                 val words = textBoxContent.split("\\s".toRegex())
                 val text = textBoxContent.toString().replace(words.last(), "").trimEnd()
                 textBoxContent.clear().append(text)
-                cursorPos = textBoxContent.length
+                inputCursor = textBoxContent.length
+                suggestionCursor = -1
             }
             else
             {
-                val remainingText = textBoxContent.removeRange(IntRange(--cursorPos, cursorPos))
+                val remainingText = textBoxContent.removeRange(IntRange(--inputCursor, inputCursor))
                 textBoxContent.clear().append(remainingText)
+                suggestionCursor = -1
             }
         }
 
         // Navigate left in text
         if (engine.input.wasClicked(Key.LEFT))
-            cursorPos = max(0, cursorPos - 1)
+            inputCursor = max(0, inputCursor - 1)
 
         // Navigate right in text
         if (engine.input.wasClicked(Key.RIGHT))
-            cursorPos = min(textBoxContent.length, cursorPos + 1)
+            inputCursor = min(textBoxContent.length, inputCursor + 1)
 
         // Move history cursor up by one
         if (engine.input.wasClicked(Key.UP))
         {
-            engine.console.getHistory(historyCursorPos + 1)?.let {
+            engine.console.getHistory(historyCursor + 1)?.let {
                 textBoxContent.clear().append(it)
-                cursorPos = textBoxContent.length
-                historyCursorPos++
+                inputCursor = textBoxContent.length
+                historyCursor++
             }
         }
 
         // Move history cursor down by one
         if (engine.input.wasClicked(Key.DOWN))
         {
-            engine.console.getHistory(historyCursorPos - 1)?.let {
+            engine.console.getHistory(historyCursor - 1)?.let {
                 textBoxContent.clear().append(it)
-                cursorPos = textBoxContent.length
-                historyCursorPos--
+                inputCursor = textBoxContent.length
+                historyCursor--
+            }
+        }
+
+        // Command suggestions
+        if (engine.input.wasClicked(Key.TAB))
+        {
+            if(suggestionCursor == -1)
+                suggestionBaseText = textBoxContent.toString()
+
+            val suggestions = engine.console.getSuggestions(suggestionBaseText)
+            if(suggestions.isNotEmpty())
+            {
+                suggestionCursor = (suggestionCursor + 1) % suggestions.size
+                textBoxContent.clear().append(suggestions[suggestionCursor].base)
+                inputCursor = textBoxContent.length
             }
         }
 
@@ -93,8 +114,9 @@ class ConsoleGUI : EngineApp
             }
 
             textBoxContent.clear()
-            cursorPos = 0
-            historyCursorPos = -1
+            inputCursor = 0
+            historyCursor = -1
+            suggestionCursor = -1
         }
     }
 
@@ -109,7 +131,7 @@ class ConsoleGUI : EngineApp
         val availableWidth = width - TEXT_PADDING_X - INPUT_BOX_PADDING
         val charsPerLine = getNumberOfChars(availableWidth)
         val cursorCar = if (System.currentTimeMillis() % 1000 > 500) "|" else " "
-        var text = StringBuilder(textBoxContent).insert(cursorPos, cursorCar).toString()
+        var text = StringBuilder(textBoxContent).insert(inputCursor, cursorCar).toString()
         val textWidth = getTextWidth(text.length)
         if (textWidth > availableWidth)
             text = text.substring(text.length - charsPerLine)
