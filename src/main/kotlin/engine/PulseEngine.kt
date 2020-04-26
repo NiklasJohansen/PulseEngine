@@ -27,6 +27,7 @@ interface GameEngine
     val asset: AssetManagerInterface
     val data: DataInterface
     val entity: EntityManagerBase
+    val console: Console
 }
 
 class PulseEngine(
@@ -39,6 +40,7 @@ class PulseEngine(
     override val asset: AssetManagerEngineInterface   = AssetManager(),
     override val data: MutableDataContainer           = MutableDataContainer(),
     override val entity: EntityManagerEngineBase      = EntityManager(),
+    override val console: Console                     = Console(),
     private val apps: List<EngineApp>                 = listOf(ConsoleGUI())
 ) : GameEngine {
 
@@ -60,6 +62,7 @@ class PulseEngine(
         input.init(window.windowHandle)
         audio.init()
         network.init()
+        console.init(this)
 
         // Set up window resize event handler
         window.setOnResizeEvent { w, h, windowRecreated ->
