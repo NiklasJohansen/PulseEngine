@@ -4,6 +4,7 @@ import engine.GameEngine
 import engine.data.Font
 import engine.data.Key
 import engine.modules.MessageType
+import java.lang.Float.max
 import java.lang.Integer.max
 import java.lang.Math.min
 
@@ -171,16 +172,27 @@ class ConsoleGUI : EngineApp
         = nChars * (FONT_SIZE / 2f)
 
     private fun getNumberOfChars(availableWidth: Float): Int
-        = (availableWidth / (FONT_SIZE / 2f)).toInt()
-    
+        = max(1f, availableWidth / (FONT_SIZE / 2f)).toInt()
+
     private fun breakIntoLines(textLine: String, availableWidth: Float): List<String>
     {
+        val charsPerLine = getNumberOfChars(availableWidth)
         return textLine
             .split("\n")
-            .flatMap { line ->
-                val charsPerLine = getNumberOfChars(availableWidth)
-                val nLines = (getTextWidth(line.length) / availableWidth).toInt() + 1
-                0.until(nLines).map { line.substring(it * charsPerLine, min((it + 1) * charsPerLine, line.length)) }
+            .flatMap {
+                val subStrings = mutableListOf<String>()
+                var string = it
+                while (string.length > charsPerLine)
+                {
+                    val line = string
+                        .substring(0, charsPerLine)
+                        .substringBeforeLast(" ")
+                        .trim()
+                    subStrings.add(line)
+                    string = string.removePrefix(line).trim()
+                }
+                subStrings.add(string)
+                subStrings
             }
     }
 
