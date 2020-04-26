@@ -12,6 +12,7 @@ class ConsoleGUI : EngineApp
     private var active: Boolean = false
     private var textBoxContent = StringBuilder()
     private var cursorPos = 0
+    private var historyCursorPos = -1
     private val commandLog = mutableListOf<ConsoleEntry>()
 
     override fun init(engine: GameEngine)
@@ -58,6 +59,26 @@ class ConsoleGUI : EngineApp
         if (engine.input.wasClicked(Key.RIGHT))
             cursorPos = min(textBoxContent.length, cursorPos + 1)
 
+        // Move history cursor up by one
+        if (engine.input.wasClicked(Key.UP))
+        {
+            engine.console.getHistory(historyCursorPos + 1)?.let {
+                textBoxContent.clear().append(it)
+                cursorPos = textBoxContent.length
+                historyCursorPos++
+            }
+        }
+
+        // Move history cursor down by one
+        if (engine.input.wasClicked(Key.DOWN))
+        {
+            engine.console.getHistory(historyCursorPos - 1)?.let {
+                textBoxContent.clear().append(it)
+                cursorPos = textBoxContent.length
+                historyCursorPos--
+            }
+        }
+
         // Run command
         if (engine.input.wasClicked(Key.ENTER))
         {
@@ -73,6 +94,7 @@ class ConsoleGUI : EngineApp
 
             textBoxContent.clear()
             cursorPos = 0
+            historyCursorPos = -1
         }
     }
 

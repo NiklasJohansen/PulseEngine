@@ -6,6 +6,7 @@ interface ConsoleInterface
 {
     fun registerCommand(template: String, description: String = "", block: (CommandArguments) -> CommandResult)
     fun run(command: String): CommandResult
+    fun getHistory(index: Int): String?
 }
 
 interface ConsoleEngineInterface : ConsoleInterface
@@ -16,6 +17,7 @@ interface ConsoleEngineInterface : ConsoleInterface
 class Console : ConsoleEngineInterface
 {
     private val commandMap = mutableMapOf<String, Command>()
+    private val history = mutableListOf<String>()
 
     override fun init(engine: GameEngine)
     {
@@ -28,6 +30,11 @@ class Console : ConsoleEngineInterface
                 CommandResult("${command.template}${if(command.description.isNotEmpty())" - " else ""}${command.description}")
             else
                 CommandResult(commandMap.values.joinToString("") { "${it.template}\n"})
+        }
+
+        // History command
+        registerCommand("history", "Lists all the previously run commands") {
+            CommandResult(history.joinToString("\n"))
         }
     }
 
@@ -47,10 +54,14 @@ class Console : ConsoleEngineInterface
         if(command.isBlank())
             return CommandResult("")
 
-        // Clean command string and find registered command code
+        // Clean command string
         val commandString = command.trim()
-        val baseCommand = commandString.getCleanBaseCommand()
-        val registeredCommand = commandMap[baseCommand]
+
+        // Add command string to history
+        history.add(commandString)
+
+        // Find registered command
+        val registeredCommand = commandMap[commandString.getCleanBaseCommand()]
             ?: return CommandResult("$commandString is not a registered command", MessageType.ERROR)
 
         // Get arguments from command string
@@ -63,6 +74,9 @@ class Console : ConsoleEngineInterface
         // Run command code with parsed arguments
         return registeredCommand.codeBlock.invoke(arguments)
     }
+
+    override fun getHistory(index: Int): String? =
+        if (index >= 0 && index < history.size) history[history.lastIndex - index] else null
 
     private fun parseCommandArguments(commandString: String, command: Command): CommandArguments
     {
