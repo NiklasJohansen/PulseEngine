@@ -71,7 +71,7 @@ class Input : InputEngineInterface
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
                 glfwSetWindowShouldClose(window, true)
             if(key >= 0)
-                clicked[key] = if(action == GLFW_PRESS) 1 else -1
+                clicked[key] = if(action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
         }
 
         glfwSetCharCallback(windowHandle) { window, character ->
