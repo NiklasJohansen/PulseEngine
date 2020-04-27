@@ -3,21 +3,30 @@ package engine.apps
 import engine.GameEngine
 import engine.data.Font
 import engine.data.Key
+import engine.data.Mouse
 import engine.modules.MessageType
-import java.lang.Float.max
-import java.lang.Integer.max
-import java.lang.Math.min
+import kotlin.math.max
+import kotlin.math.min
+
 
 class ConsoleGUI : EngineApp
 {
-    private var active: Boolean = false
-    private var inputText = StringBuilder()
     private val commandLog = mutableListOf<ConsoleEntry>()
 
+    private var active: Boolean = false
+    private var widthFraction = 0.3f
+
+    private var inputText = StringBuilder()
+    private var suggestionBaseText = ""
     private var inputCursor = 0
+
     private var historyCursor = -1
     private var suggestionCursor = -1
-    private var suggestionBaseText = ""
+
+    private var inputTextStart = 0
+    private var inputTextEnd = 0
+    private var textOffset = 0
+
 
     override fun init(engine: GameEngine)
     {
@@ -68,11 +77,26 @@ class ConsoleGUI : EngineApp
 
         // Navigate left in text
         if (engine.input.wasClicked(Key.LEFT))
-            inputCursor = max(0, inputCursor - 1)
+        {
+            inputCursor =
+                if (engine.input.isPressed(Key.LEFT_CONTROL))
+                    max(-1, inputText.substring(0, inputCursor).trim().lastIndexOf(" ")) + 1
+                else
+                    max(0, inputCursor - 1)
+        }
 
         // Navigate right in text
         if (engine.input.wasClicked(Key.RIGHT))
-            inputCursor = min(inputText.length, inputCursor + 1)
+        {
+            inputCursor =
+                if (engine.input.isPressed(Key.LEFT_CONTROL))
+                {
+                    val text = inputText.substring(inputCursor).trimStart()
+                    val index = text.indexOf(" ")
+                    if (index != -1) inputText.length - text.length + index else inputText.length
+                }
+                else min(inputText.length, inputCursor + 1)
+        }
 
         // Move history cursor up by one
         if (engine.input.wasClicked(Key.UP))
@@ -127,6 +151,9 @@ class ConsoleGUI : EngineApp
             historyCursor = -1
             suggestionCursor = -1
         }
+
+        if(engine.input.isPressed(Mouse.LEFT))
+            widthFraction = max(0f, min(1f, widthFraction + engine.input.xdMouse / engine.window.width))
     }
 
     override fun render(engine: GameEngine)
@@ -136,14 +163,15 @@ class ConsoleGUI : EngineApp
 
         val cliFont = engine.asset.get<Font>("cli_font")
         val height = engine.window.height.toFloat()
-        val width = engine.window.width * 0.3f
+        val width = engine.window.width * widthFraction
         val availableWidth = width - TEXT_PADDING_X - INPUT_BOX_PADDING
         val charsPerLine = getNumberOfChars(availableWidth)
         val cursorCar = if (System.currentTimeMillis() % 1000 > 500) "|" else " "
         var text = StringBuilder(inputText).insert(inputCursor, cursorCar).toString()
-        val textWidth = getTextWidth(text.length)
-        if (textWidth > availableWidth)
-            text = text.substring(text.length - charsPerLine)
+
+        while(inputCursor > inputTextStart + charsPerLine - 1) inputTextStart++
+        while(inputCursor < inputTextStart) inputTextStart--
+        text = text.substring(max(inputTextStart, 0), min(inputTextStart + charsPerLine, text.length))
 
         engine.gfx.camera.disable()
         engine.gfx.setColor(0.1f, 0.1f, 0.1f, 0.9f)
