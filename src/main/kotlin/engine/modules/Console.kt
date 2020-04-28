@@ -31,7 +31,7 @@ class Console : ConsoleEngineInterface
             if (command != null)
                 CommandResult("${command.template}${if(command.description.isNotEmpty())" - " else ""}${command.description}")
             else
-                CommandResult(commandMap.values.joinToString("") { "${it.template}\n"})
+                CommandResult("------- Commands -------\n" + commandMap.values.joinToString("") { "${it.template}\n"})
         }
 
         // History command

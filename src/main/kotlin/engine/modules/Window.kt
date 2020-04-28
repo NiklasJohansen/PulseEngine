@@ -14,6 +14,7 @@ import org.lwjgl.system.MemoryUtil.NULL
 interface WindowInterface
 {
     fun updateScreenMode(mode: ScreenMode)
+    fun close()
     val screenMode: ScreenMode
     val width: Int
     val height: Int
@@ -132,6 +133,11 @@ class Window : WindowEngineInterface
 
         // Notify observers
         resizeCallBack(width, height, true)
+    }
+
+    override fun close()
+    {
+        glfwSetWindowShouldClose(windowHandle, true)
     }
 
     override fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit) { resizeCallBack = callback }
