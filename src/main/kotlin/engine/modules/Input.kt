@@ -27,7 +27,8 @@ interface InputInterface
     fun wasClicked(btn: Mouse): Boolean
     fun wasReleased(key: Key): Boolean
     fun wasReleased(btn: Mouse): Boolean
-
+    fun setClipboard(text: String)
+    fun getClipboard(): String
 }
 
 // Exposed to game engine
@@ -121,6 +122,10 @@ class Input : InputEngineInterface
     override fun wasReleased(key: Key): Boolean = clicked[key.code] < 0
 
     override fun wasReleased(btn: Mouse): Boolean = clicked[btn.code] < 0
+
+    override fun getClipboard(): String = glfwGetClipboardString(windowHandle) ?: ""
+
+    override fun setClipboard(text: String) = glfwSetClipboardString(windowHandle, text)
 
     override fun pollEvents()
     {
