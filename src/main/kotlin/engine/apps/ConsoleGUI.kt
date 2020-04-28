@@ -45,20 +45,10 @@ class ConsoleGUI : EngineApp
         val newText = engine.input.textInput
         if (newText.isNotEmpty())
         {
-            if (hasLeftToRightSelection())
+            if (isTextSelected())
             {
-                // Replace left-to-right selection with new text (CHARACTER)
-                inputText.remove(selectCursor, inputCursor - 1)
-                inputCursor -= inputCursor - selectCursor
-                selectCursor = inputCursor
-                suggestionCursor = -1
-            }
-            else if (hasRightToLeftSelection())
-            {
-                // Replace right-to-left selection with new text (CHARACTER)
-                inputText.remove(inputCursor, selectCursor - 1)
-                selectCursor = inputCursor
-                suggestionCursor = -1
+                // Removes selected text (CHARACTER)
+                removeSelectedText()
             }
 
             // Add written text and increase cursor (CHARACTER)
@@ -93,20 +83,10 @@ class ConsoleGUI : EngineApp
             }
             else
             {
-                if (hasLeftToRightSelection())
+                if (isTextSelected())
                 {
-                    // Remove left-to-right selection (BACKSPACE)
-                    inputText.remove(selectCursor, inputCursor - 1)
-                    inputCursor -= inputCursor - selectCursor
-                    selectCursor = inputCursor
-                    suggestionCursor = -1
-                }
-                else if (hasRightToLeftSelection())
-                {
-                    // Remove right-to-left selection (BACKSPACE)
-                    inputText.remove(inputCursor, selectCursor - 1)
-                    selectCursor = inputCursor
-                    suggestionCursor = -1
+                    // Removes selected text (BACKSPACE)
+                    removeSelectedText()
                 }
                 else if (inputCursor > 0)
                 {
@@ -123,20 +103,10 @@ class ConsoleGUI : EngineApp
 
         if (engine.input.wasClicked(Key.DELETE) && inputCursor <= inputText.length)
         {
-            if (hasLeftToRightSelection())
+            if (isTextSelected())
             {
-                // Remove left-to-right selection (DELETE)
-                inputText.remove(selectCursor, inputCursor - 1)
-                inputCursor -= inputCursor - selectCursor
-                selectCursor = inputCursor
-                suggestionCursor = -1
-            }
-            else if (hasRightToLeftSelection())
-            {
-                // Remove right-to-left selection (DELETE)
-                inputText.remove(inputCursor, selectCursor - 1)
-                selectCursor = inputCursor
-                suggestionCursor = -1
+                // Removes selected text (DELETE)
+                removeSelectedText()
             }
             else if(inputCursor < inputText.length)
             {
@@ -154,6 +124,37 @@ class ConsoleGUI : EngineApp
             inputCursor = inputText.length
             selectCursor = 0
             suggestionCursor = -1
+        }
+
+        ///////////////////////////////// Cut, Copy and Paste /////////////////////////////////
+
+        if(engine.input.isPressed(Key.LEFT_CONTROL))
+        {
+            if(isTextSelected())
+            {
+                if(engine.input.wasClicked(Key.X))
+                {
+                    // Cut selected text and send to clipboard (CTRL + X)
+                    engine.input.setClipboard(getSelectedText())
+                    removeSelectedText()
+                }
+                else if(engine.input.wasClicked(Key.C))
+                {
+                    // Send selected text to clipboard (CTRL + C)
+                    engine.input.setClipboard(getSelectedText())
+                }
+            }
+
+            if(engine.input.wasClicked(Key.V))
+            {
+                // Past text from clipboard into text box. Replaces selected text. (CTRL + V)
+                removeSelectedText()
+                val text = engine.input.getClipboard()
+                inputText.insert(inputCursor, text)
+                inputCursor += text.length
+                selectCursor = inputCursor
+                suggestionCursor = -1
+            }
         }
 
         ///////////////////////////////// Navigate left in text /////////////////////////////////
@@ -394,6 +395,32 @@ class ConsoleGUI : EngineApp
             }
     }
 
+    private fun getSelectedText(): String = when
+    {
+        hasLeftToRightSelection() -> inputText.substring(selectCursor, inputCursor)
+        hasRightToLeftSelection() -> inputText.substring(inputCursor, selectCursor)
+        else -> ""
+    }
+
+    private fun removeSelectedText()
+    {
+        if (hasLeftToRightSelection())
+        {
+            // Remove left-to-right selection
+            inputText.remove(selectCursor, inputCursor - 1)
+            inputCursor -= inputCursor - selectCursor
+            selectCursor = inputCursor
+            suggestionCursor = -1
+        }
+        else if (hasRightToLeftSelection())
+        {
+            // Remove right-to-left selection
+            inputText.remove(inputCursor, selectCursor - 1)
+            selectCursor = inputCursor
+            suggestionCursor = -1
+        }
+    }
+
     private fun isTextSelected(): Boolean =
         inputCursor != selectCursor
 
@@ -412,7 +439,7 @@ class ConsoleGUI : EngineApp
     private fun StringBuilder.remove(index: Int) =
         this.set(this.removeRange(IntRange(index, index)))
 
-    override fun cleanup(engine: GameEngine) {}
+    override fun cleanup(engine: GameEngine) { }
 
     companion object
     {
