@@ -41,7 +41,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         updateViewportSize(viewPortWidth, viewPortHeight, true)
 
         // Load default font
-        defaultFont = Font("/FiraSans-Regular.ttf", "default_font", floatArrayOf(24f))
+        defaultFont = Font("/FiraSans-Regular.ttf", "default_font", floatArrayOf(24f, 72f))
         defaultFont.load()
         initTexture(defaultFont.charTexture)
 
