@@ -6,6 +6,7 @@ import org.lwjgl.openal.AL10
 import org.lwjgl.stb.STBVorbis
 import org.lwjgl.stb.STBVorbisInfo
 import org.lwjgl.system.MemoryUtil
+import java.nio.ByteBuffer
 import java.nio.ShortBuffer
 
 class Sound(fileName: String, override val name: String) : Asset(fileName, name)
@@ -33,7 +34,7 @@ class Sound(fileName: String, override val name: String) : Asset(fileName, name)
     private fun readVorbis(resource: String?, info: STBVorbisInfo): ShortBuffer
     {
         val bytes = Font::class.java.getResource(resource).readBytes()
-        val byteBuffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip()
+        val byteBuffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer
 
         val error = IntArray(1)
         val decoder: Long = STBVorbis.stb_vorbis_open_memory(byteBuffer, error, null)

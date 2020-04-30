@@ -27,7 +27,7 @@ class Font(
 
         STBTTPackContext.malloc().use { packContext ->
             val charData = STBTTPackedchar.malloc(fontSizes.size * 3 * TOTAL_CHAR_COUNT)
-            val ttf = BufferUtils.createByteBuffer(fontData.size).put(fontData).flip()
+            val ttf = BufferUtils.createByteBuffer(fontData.size).put(fontData).flip() as ByteBuffer
             val bitmap = BufferUtils.createByteBuffer(BITMAP_W * BITMAP_H)
             val info = STBTTFontinfo.create()
             if (!stbtt_InitFont(info, ttf))
