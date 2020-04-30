@@ -272,7 +272,7 @@ class ConsoleGUI : EngineApp
             if(suggestions.isNotEmpty())
             {
                 suggestionCursor = (suggestionCursor + 1) % suggestions.size
-                inputText.set(suggestions[suggestionCursor].base)
+                inputText.set(suggestions[suggestionCursor].base + " ")
                 inputCursor = inputText.length
                 selectCursor = inputCursor
             }
