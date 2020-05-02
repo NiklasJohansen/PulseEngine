@@ -4,7 +4,8 @@ import engine.GameEngine
 import engine.data.Font
 import engine.data.Key
 import engine.data.Mouse
-import engine.modules.MessageType
+import engine.modules.console.CommandResult
+import engine.modules.console.MessageType
 import kotlin.math.max
 import kotlin.math.min
 
@@ -28,6 +29,10 @@ class ConsoleGUI : EngineApp
     override fun init(engine: GameEngine)
     {
         engine.asset.loadFont("/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
+        engine.console.registerCommand("clear") {
+            commandLog.clear()
+            CommandResult("", printCommand = false)
+        }
     }
 
     override fun update(engine: GameEngine)
@@ -286,12 +291,11 @@ class ConsoleGUI : EngineApp
             val commandString = inputText.toString()
             val result = engine.console.run(commandString)
 
-            commandLog.add(ConsoleEntry("> $commandString", MessageType.INFO))
+            if(result.printCommand)
+                commandLog.add(ConsoleEntry("> $commandString"))
+
             if (result.message.isNotBlank())
-            {
-                commandLog.add(ConsoleEntry(result.message, result.type))
-                commandLog.add(ConsoleEntry("", MessageType.INFO))
-            }
+                commandLog.add(ConsoleEntry(result.message + "\n", result.type))
 
             inputText.clear()
             inputCursor = 0
@@ -452,7 +456,7 @@ class ConsoleGUI : EngineApp
 
 data class ConsoleEntry(
     val message: String,
-    val type: MessageType
+    val type: MessageType = MessageType.INFO
 )
 
 data class MessageColor(
