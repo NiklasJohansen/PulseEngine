@@ -4,6 +4,9 @@ import engine.PulseEngine
 import engine.modules.console.CommandResult
 import engine.modules.Game
 import engine.modules.console.ConsoleTarget
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 fun main() = PulseEngine().run(ConsoleExample())
 
@@ -21,6 +24,15 @@ class ConsoleExample : Game()
         engine.console.registerCommand("exit") {
             engine.window.close()
             CommandResult("Exiting")
+        }
+
+        engine.console.registerCommand("delay {sec:Float} {command:String}") {
+            val seconds = getFloat("sec")
+            GlobalScope.launch {
+                delay((seconds*1000f).toLong())
+                engine.console.run(getString("command"))
+            }
+            CommandResult("Running command after $seconds seconds")
         }
     }
 
@@ -48,4 +60,4 @@ class ConsoleExample : Game()
 }
 
 @ConsoleTarget
-fun topLevelFunc(text: String): String = text
+fun printBig(text: String): String = text.toUpperCase()

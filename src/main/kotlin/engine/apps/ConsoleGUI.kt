@@ -355,7 +355,7 @@ class ConsoleGUI : EngineApp
             .filter { it.visible }
             .forEach { consoleEntry ->
                 val prefix = if (consoleEntry.type == MessageType.COMMAND) "> " else ""
-                val suffix = if (consoleEntry.type != MessageType.COMMAND) "\n" else ""
+                val suffix = if (consoleEntry.type != MessageType.COMMAND && consoleEntry.message.isNotEmpty()) "\n" else ""
                 val message = prefix + consoleEntry.message + suffix
                 val lines = breakIntoLines(message, availableWidth)
                 val color = MessageColor.from(consoleEntry.type)
