@@ -8,7 +8,10 @@ interface ConsoleInterface
 {
     fun registerCommand(template: String, description: String = "", block: CommandArguments.() -> CommandResult)
     fun run(command: String): CommandResult
-    fun getHistory(index: Int): String?
+    fun log(text: String, type: MessageType = MessageType.INFO)
+    fun getHistory(index: Int, type: MessageType): ConsoleEntry?
+    fun getHistory(): List<ConsoleEntry>
+    fun clearHistory()
     fun getSuggestions(command: String): List<Command>
 }
 
@@ -20,12 +23,10 @@ interface ConsoleEngineInterface : ConsoleInterface
 class Console : ConsoleEngineInterface
 {
     private val commandMap = mutableMapOf<String, Command>()
-    private val history = mutableListOf<String>()
+    private val history = mutableListOf<ConsoleEntry>()
 
     override fun init(engine: GameEngine)
     {
-        engine.console.registerCommand("test") { CommandResult("Hello") }
-
         // Register console commands and functions marked with @ConsoleTarget
         GlobalScope.launch {
             CommandRegistry.registerEngineCommands(engine)
@@ -45,7 +46,8 @@ class Console : ConsoleEngineInterface
 
                 CommandResult("${command.template}${if (command.description.isNotEmpty()) " - " else ""}${command.description}")
             }
-            else CommandResult("\n------- Commands -------\n\n" + commandMap.values.sortedBy { it.base }.joinToString("\n\n") { it.template })
+            else CommandResult("\n------- Commands -------\n\n" +
+                commandMap.values.sortedBy { it.base }.joinToString("\n\n") { it.template })
         }
 
         // History command
@@ -53,7 +55,8 @@ class Console : ConsoleEngineInterface
             template = "history",
             description = "Lists all the previously run commands"
         ) {
-            CommandResult("\n------- Command History -------\n" + history.mapIndexed { i, cmd -> "$i $cmd" }.joinToString("\n"))
+            CommandResult("\n------- Command History -------\n" +
+                history.mapIndexed { i, cmd -> "$i $cmd" }.joinToString("\n"))
         }
     }
 
@@ -70,14 +73,24 @@ class Console : ConsoleEngineInterface
 
     override fun run(command: String): CommandResult
     {
+        val result = runCommand(command)
+        history.add(ConsoleEntry(command, result.printCommand, MessageType.COMMAND))
+        history.add(ConsoleEntry(result.message, true, result.type))
+        return result
+    }
+
+    override fun log(text: String, type: MessageType)
+    {
+        history.add(ConsoleEntry(text, true, type))
+    }
+
+    private fun runCommand(command: String): CommandResult
+    {
         if(command.isBlank())
             return CommandResult("")
 
         // Clean command string
         val commandString = command.trim()
-
-        // Add command string to history
-        history.add(commandString)
 
         // Find registered command
         val registeredCommand = commandMap[commandString.getCleanBaseCommand()]
@@ -94,8 +107,20 @@ class Console : ConsoleEngineInterface
         return registeredCommand.codeBlock.invoke(arguments)
     }
 
-    override fun getHistory(index: Int): String? =
-        if (index >= 0 && index < history.size) history[history.lastIndex - index] else null
+    override fun getHistory(index: Int, type: MessageType): ConsoleEntry?
+    {
+        var foundIndex = 0
+        for (i in history.lastIndex downTo  0)
+        {
+            if(history[i].type == type && foundIndex++ == index)
+                return history[i]
+        }
+        return null
+    }
+
+    override fun getHistory() = history
+
+    override fun clearHistory() = history.clear()
 
     override fun getSuggestions(command: String): List<Command> =
         commandMap.keys
@@ -255,6 +280,12 @@ data class CommandResult(
     val printCommand: Boolean = true
 )
 
+data class ConsoleEntry(
+    val message: String,
+    val visible: Boolean = true,
+    val type: MessageType = MessageType.INFO
+)
+
 data class ArgumentParseError(
     val message: String
 )
@@ -278,5 +309,5 @@ data class CommandArguments(
 
 enum class MessageType
 {
-    INFO, ERROR, WARN
+    COMMAND, INFO, ERROR, WARN
 }

@@ -12,8 +12,6 @@ import kotlin.math.min
 
 class ConsoleGUI : EngineApp
 {
-    private val commandLog = mutableListOf<ConsoleEntry>()
-
     private var active: Boolean = false
     private var widthFraction = 0.3f
     private var heightFraction = 1f
@@ -30,7 +28,7 @@ class ConsoleGUI : EngineApp
     {
         engine.asset.loadFont("/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("clear") {
-            commandLog.clear()
+            engine.console.clearHistory()
             CommandResult("", printCommand = false)
         }
     }
@@ -243,8 +241,8 @@ class ConsoleGUI : EngineApp
         if (engine.input.wasClicked(Key.UP))
         {
             // Move history selector one position up and set input text to that command (UP)
-            engine.console.getHistory(historyCursor + 1)?.let {
-                inputText.set(it)
+            engine.console.getHistory(historyCursor + 1, MessageType.COMMAND)?.let {
+                inputText.set(it.message)
                 inputCursor = inputText.length
                 selectCursor = inputCursor
                 historyCursor++
@@ -256,8 +254,8 @@ class ConsoleGUI : EngineApp
         if (engine.input.wasClicked(Key.DOWN))
         {
             // Move history selector one position down and set input text to that command (DOWN)
-            engine.console.getHistory(historyCursor - 1)?.let {
-                inputText.set(it)
+            engine.console.getHistory(historyCursor - 1, MessageType.COMMAND)?.let {
+                inputText.set(it.message)
                 inputCursor = inputText.length
                 selectCursor = inputCursor
                 historyCursor--
@@ -287,15 +285,8 @@ class ConsoleGUI : EngineApp
 
         if (engine.input.wasClicked(Key.ENTER))
         {
-            // Submit input text to console, add result to command log and reset input (ENTER)
-            val commandString = inputText.toString()
-            val result = engine.console.run(commandString)
-
-            if(result.printCommand)
-                commandLog.add(ConsoleEntry("> $commandString"))
-
-            if (result.message.isNotBlank())
-                commandLog.add(ConsoleEntry(result.message + "\n", result.type))
+            // Submit input text to console (ENTER)
+            engine.console.run(inputText.toString())
 
             inputText.clear()
             inputCursor = 0
@@ -304,7 +295,7 @@ class ConsoleGUI : EngineApp
             suggestionCursor = -1
         }
 
-        // Resize width of console window
+        // Resize width of console window (MOUSE LEFT)
         if(engine.input.isPressed(Mouse.LEFT))
         {
             widthFraction = max(0f, min(1f, widthFraction + engine.input.xdMouse / engine.window.width))
@@ -359,14 +350,20 @@ class ConsoleGUI : EngineApp
 
         // Draw console history
         var yPos = height - INPUT_BOX_HEIGHT + FONT_SIZE / 2
-        commandLog.reversed().forEach { commandEntry ->
-            val color = MessageColor.from(commandEntry.type)
-            engine.gfx.setColor(color.red, color.green, color.blue)
+        engine.console.getHistory()
+            .reversed()
+            .filter { it.visible }
+            .forEach { consoleEntry ->
+                val prefix = if (consoleEntry.type == MessageType.COMMAND) "> " else ""
+                val suffix = if (consoleEntry.type != MessageType.COMMAND) "\n" else ""
+                val message = prefix + consoleEntry.message + suffix
+                val lines = breakIntoLines(message, availableWidth)
+                val color = MessageColor.from(consoleEntry.type)
 
-            val lines = breakIntoLines(commandEntry.message, availableWidth)
-            yPos -= lines.size * FONT_SIZE
-            lines.forEachIndexed { i, line -> engine.gfx.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont) }
-        }
+                yPos -= lines.size * FONT_SIZE
+                engine.gfx.setColor(color.red, color.green, color.blue)
+                lines.forEachIndexed { i, line -> engine.gfx.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont) }
+            }
 
         engine.gfx.camera.enable()
     }
@@ -454,11 +451,6 @@ class ConsoleGUI : EngineApp
     }
 }
 
-data class ConsoleEntry(
-    val message: String,
-    val type: MessageType = MessageType.INFO
-)
-
 data class MessageColor(
     val red: Float,
     val green: Float,
@@ -471,6 +463,7 @@ data class MessageColor(
         private val YELLOW = MessageColor(1f, 1f, 0.2f)
         fun from(type: MessageType) = when(type)
         {
+            MessageType.COMMAND -> WHITE
             MessageType.INFO -> WHITE
             MessageType.WARN -> YELLOW
             MessageType.ERROR -> RED

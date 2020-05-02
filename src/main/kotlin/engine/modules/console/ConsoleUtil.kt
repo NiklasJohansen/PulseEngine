@@ -70,7 +70,10 @@ object ConsoleUtil
             {
                 // Functions with parameters missing its name is bound to an instance and not top-level
                 if(func.parameters.any { it.name == null})
+                {
+                    engine.console.log("Cannot register function: ${func.name} in class $className. It is not a top-level function!", MessageType.WARN)
                     continue
+                }
 
                 // Get description form annotation and create template form parameters
                 val description = func.findAnnotation<ConsoleTarget>()?.description ?: ""
