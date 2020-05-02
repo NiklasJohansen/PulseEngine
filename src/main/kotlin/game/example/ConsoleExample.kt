@@ -1,10 +1,11 @@
 package game.example
 
 import engine.PulseEngine
-import engine.modules.CommandResult
+import engine.modules.console.CommandResult
 import engine.modules.Game
+import engine.modules.console.ConsoleTarget
 
-fun main() = PulseEngine.run(ConsoleExample())
+fun main() = PulseEngine().run(ConsoleExample())
 
 class ConsoleExample : Game()
 {
@@ -13,13 +14,11 @@ class ConsoleExample : Game()
         engine.gfx.setBackgroundColor(0.2f, 0.2f, 0.2f)
         engine.window.title = "Console Example"
 
-        engine.console.registerCommand("echo {text:String}")
-        {
-            CommandResult(it.getString("text"))
+        engine.console.registerCommand("echo {text:String}") {
+            CommandResult(getString("text"))
         }
 
-        engine.console.registerCommand("exit")
-        {
+        engine.console.registerCommand("exit") {
             engine.window.close()
             CommandResult("Exiting")
         }
@@ -36,7 +35,7 @@ class ConsoleExample : Game()
         engine.gfx.drawText(
             text = "OPEN CONSOLE WITH F1",
             x = engine.window.width / 2f,
-            y = engine.window.height/2f,
+            y = engine.window.height / 2f,
             xOrigin = 0.5f,
             yOrigin = 0.5f,
             fontSize = 72f)
@@ -47,3 +46,6 @@ class ConsoleExample : Game()
 
     }
 }
+
+@ConsoleTarget
+fun topLevelFunc(text: String): String = text

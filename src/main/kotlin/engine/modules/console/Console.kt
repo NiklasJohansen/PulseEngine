@@ -1,10 +1,12 @@
-package engine.modules
+package engine.modules.console
 
 import engine.GameEngine
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 interface ConsoleInterface
 {
-    fun registerCommand(template: String, description: String = "", block: (CommandArguments) -> CommandResult)
+    fun registerCommand(template: String, description: String = "", block: CommandArguments.() -> CommandResult)
     fun run(command: String): CommandResult
     fun getHistory(index: Int): String?
     fun getSuggestions(command: String): List<Command>
@@ -22,25 +24,40 @@ class Console : ConsoleEngineInterface
 
     override fun init(engine: GameEngine)
     {
+        engine.console.registerCommand("test") { CommandResult("Hello") }
+
+        // Register console commands and functions marked with @ConsoleTarget
+        GlobalScope.launch {
+            CommandRegistry.registerEngineCommands(engine)
+            ConsoleUtil.registerConsoleFunctions(engine)
+        }
+
         // Help command
         registerCommand(
-            "help {command:String?}",
-            "Lists all available commands if name no specific command is given."
+            template = "help {command:String?}",
+            description = "Lists all available commands if no specific command name is given."
         ) {
-            val command = commandMap[it.getOptionalString("command") ?: ""]
-            if (command != null)
-                CommandResult("${command.template}${if(command.description.isNotEmpty())" - " else ""}${command.description}")
-            else
-                CommandResult("------- Commands -------\n" + commandMap.values.joinToString("") { "${it.template}\n"})
+            val commandName = getOptionalString("command")
+            if(commandName != null)
+            {
+                val command = commandMap[commandName.toLowerCase()]
+                    ?: return@registerCommand CommandResult("No command with name: $commandName", MessageType.ERROR)
+
+                CommandResult("${command.template}${if (command.description.isNotEmpty()) " - " else ""}${command.description}")
+            }
+            else CommandResult("\n------- Commands -------\n\n" + commandMap.values.sortedBy { it.base }.joinToString("\n\n") { it.template })
         }
 
         // History command
-        registerCommand("history", "Lists all the previously run commands") {
-            CommandResult(history.joinToString("\n"))
+        registerCommand(
+            template = "history",
+            description = "Lists all the previously run commands"
+        ) {
+            CommandResult("\n------- Command History -------\n" + history.mapIndexed { i, cmd -> "$i $cmd" }.joinToString("\n"))
         }
     }
 
-    override fun registerCommand(template: String, description: String, block: (CommandArguments) -> CommandResult)
+    override fun registerCommand(template: String, description: String, block: CommandArguments.() -> CommandResult)
     {
         val baseCommand = template.getCleanBaseCommand()
         val arguments = getTemplateArguments(template)
@@ -139,14 +156,14 @@ class Console : ConsoleEngineInterface
 
             val value = this.cleanStringLiteral().trim()
 
-            return when(type)
+            return when(type.toLowerCase())
             {
-                "String" -> value
-                "Int" -> value.toInt()
-                "Float" -> value.toFloat()
-                "Double" -> value.toDouble()
-                "Long" -> value.toLong()
-                "Boolean" -> value.toLowerCase() == "true" || value == "1"
+                "string" -> value
+                "int" -> value.toInt()
+                "float" -> value.toFloat()
+                "double" -> value.toDouble()
+                "long" -> value.toLong()
+                "boolean" -> value.toLowerCase() == "true" || value == "1"
                 else -> ArgumentParseError("$type not recognised as a Kotlin type")
             }
         }
@@ -234,7 +251,8 @@ data class ArgumentTemplate(
 
 data class CommandResult(
     val message: String,
-    val type: MessageType = MessageType.INFO
+    val type: MessageType = MessageType.INFO,
+    val printCommand: Boolean = true
 )
 
 data class ArgumentParseError(
