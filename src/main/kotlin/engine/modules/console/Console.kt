@@ -3,11 +3,12 @@ package engine.modules.console
 import engine.GameEngine
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 interface ConsoleInterface
 {
-    fun registerCommand(template: String, description: String = "", block: CommandArguments.() -> CommandResult)
-    fun run(command: String): CommandResult
+    fun registerCommand(template: String, description: String = "", isAlias: Boolean = false, block: CommandArguments.() -> CommandResult)
+    fun run(command: String, showCommand: Boolean = true): CommandResult
     fun log(text: String, type: MessageType = MessageType.INFO)
     fun getHistory(index: Int, type: MessageType): ConsoleEntry?
     fun getHistory(): List<ConsoleEntry>
@@ -22,7 +23,7 @@ interface ConsoleEngineInterface : ConsoleInterface
 
 class Console : ConsoleEngineInterface
 {
-    private val commandMap = mutableMapOf<String, Command>()
+    private val commandMap = ConcurrentHashMap<String, Command>()
     private val history = mutableListOf<ConsoleEntry>()
 
     override fun init(engine: GameEngine)
@@ -46,8 +47,17 @@ class Console : ConsoleEngineInterface
 
                 CommandResult("${command.template}${if (command.description.isNotEmpty()) " - " else ""}${command.description}")
             }
-            else CommandResult("\n------- Commands -------\n\n" +
-                commandMap.values.sortedBy { it.base }.joinToString("\n\n") { it.template })
+            else
+            {
+                val commands = commandMap.values.filter { !it.isAlias }.sortedBy { it.base }
+                val aliases = commandMap.values.filter { it.isAlias }.sortedBy { it.base }
+                val commandsString = "\n------- Commands -------\n\n" + commands.joinToString("\n\n") { it.template }
+                val aliasesString = if (aliases.isNotEmpty())
+                    "\n\n------- Aliases -------\n\n" + aliases.joinToString("\n\n") { it.template }
+                else null
+
+                CommandResult(commandsString + aliasesString)
+            }
         }
 
         // History command
@@ -56,11 +66,14 @@ class Console : ConsoleEngineInterface
             description = "Lists all the previously run commands"
         ) {
             CommandResult("\n------- Command History -------\n" +
-                history.mapIndexed { i, cmd -> "$i $cmd" }.joinToString("\n"))
+                history
+                    .filter { it.type == MessageType.COMMAND }
+                    .mapIndexed { i, entry -> "$i ${entry.message}" }
+                    .joinToString("\n"))
         }
     }
 
-    override fun registerCommand(template: String, description: String, block: CommandArguments.() -> CommandResult)
+    override fun registerCommand(template: String, description: String, isAlias: Boolean, block: CommandArguments.() -> CommandResult)
     {
         val baseCommand = template.getCleanBaseCommand()
         val arguments = getTemplateArguments(template)
@@ -68,14 +81,25 @@ class Console : ConsoleEngineInterface
         if(commandMap.containsKey(baseCommand))
             println("Overwriting already existing command with name $baseCommand")
 
-        commandMap[baseCommand] = Command(baseCommand, template, description, arguments, block)
+        commandMap[baseCommand] = Command(baseCommand, template, description, arguments, block, isAlias)
     }
 
-    override fun run(command: String): CommandResult
+    override fun run(command: String, showCommand: Boolean): CommandResult
     {
+        // Add command to history
+        val commandEntry = ConsoleEntry(command, showCommand, MessageType.COMMAND)
+        history.add(commandEntry)
+
+        // Run command
         val result = runCommand(command)
-        history.add(ConsoleEntry(command, result.printCommand, MessageType.COMMAND))
-        history.add(ConsoleEntry(result.message, true, result.type))
+
+        // Set visibility of command based on result
+        commandEntry.visible = showCommand && result.showCommand
+
+        // Add result to history
+        if(result.message.isNotEmpty())
+            history.add(ConsoleEntry(result.message, true, result.type))
+
         return result
     }
 
@@ -120,7 +144,7 @@ class Console : ConsoleEngineInterface
 
     override fun getHistory() = history
 
-    override fun clearHistory() = history.clear()
+    override fun clearHistory() = history.replaceAll { it.copy(visible = false) }
 
     override fun getSuggestions(command: String): List<Command> =
         commandMap.keys
@@ -264,7 +288,8 @@ data class Command(
     val template: String,
     val description: String,
     val arguments: List<ArgumentTemplate>,
-    val codeBlock: (CommandArguments) -> CommandResult
+    val codeBlock: (CommandArguments) -> CommandResult,
+    val isAlias: Boolean
 )
 
 data class ArgumentTemplate(
@@ -277,12 +302,12 @@ data class ArgumentTemplate(
 data class CommandResult(
     val message: String,
     val type: MessageType = MessageType.INFO,
-    val printCommand: Boolean = true
+    val showCommand: Boolean = true
 )
 
 data class ConsoleEntry(
     val message: String,
-    val visible: Boolean = true,
+    var visible: Boolean = true,
     val type: MessageType = MessageType.INFO
 )
 

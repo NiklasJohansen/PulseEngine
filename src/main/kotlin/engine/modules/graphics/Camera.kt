@@ -1,5 +1,6 @@
 package engine.modules.graphics
 
+import engine.modules.console.ConsoleTarget
 import engine.modules.entity.Transform2D
 import engine.util.interpolateFrom
 import org.joml.Matrix4f
@@ -49,6 +50,7 @@ abstract class CameraEngineInterface : CameraInterface()
     abstract fun setOnEnableChanged(callback: (Boolean) -> Unit)
 }
 
+@ConsoleTarget
 class Camera : CameraEngineInterface()
 {
     override var viewMatrix: Matrix4f = Matrix4f()

@@ -29,7 +29,7 @@ class ConsoleGUI : EngineApp
         engine.asset.loadFont("/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("clear") {
             engine.console.clearHistory()
-            CommandResult("", printCommand = false)
+            CommandResult("", showCommand = false)
         }
     }
 
@@ -275,7 +275,9 @@ class ConsoleGUI : EngineApp
             if(suggestions.isNotEmpty())
             {
                 suggestionCursor = (suggestionCursor + 1) % suggestions.size
-                inputText.set(suggestions[suggestionCursor].base + " ")
+                inputText.set(suggestions[suggestionCursor].base)
+                if(suggestions.size == 1)
+                    inputText.append(" ")
                 inputCursor = inputText.length
                 selectCursor = inputCursor
             }
@@ -354,9 +356,8 @@ class ConsoleGUI : EngineApp
             .reversed()
             .filter { it.visible }
             .forEach { consoleEntry ->
-                val prefix = if (consoleEntry.type == MessageType.COMMAND) "> " else ""
-                val suffix = if (consoleEntry.type != MessageType.COMMAND && consoleEntry.message.isNotEmpty()) "\n" else ""
-                val message = prefix + consoleEntry.message + suffix
+                val prefix = if (consoleEntry.type == MessageType.COMMAND) "\n> " else ""
+                val message = prefix + consoleEntry.message
                 val lines = breakIntoLines(message, availableWidth)
                 val color = MessageColor.from(consoleEntry.type)
 
