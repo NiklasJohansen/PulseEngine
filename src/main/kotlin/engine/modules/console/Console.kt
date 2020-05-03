@@ -66,7 +66,7 @@ class Console : ConsoleEngineInterface
         val arguments = getTemplateArguments(template)
 
         if(commandMap.containsKey(baseCommand))
-            println("Overwriting already existing command with name $baseCommand")
+            log("Overwriting already existing command with name $baseCommand", MessageType.WARN)
 
         commandMap[baseCommand] = Command(baseCommand, template, description, arguments, block, isAlias)
     }
@@ -231,7 +231,7 @@ class Console : ConsoleEngineInterface
     private fun String.splitIgnoreLiterals(regex: Regex): List<String>
     {
         // Find all string literals and create map with temp strings
-        val literalMap= Regex("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'")
+        val literalMap= Regex("[^\\s\"]+|\"([^\"]*)\"")
             .findAll(this)
             .map { it.groupValues }
             .flatten()
@@ -271,7 +271,7 @@ class Console : ConsoleEngineInterface
 
     private fun String.cleanStringLiteral(): String =
         if (this.isStringLiteral())
-            this.substring(1, this.lastIndex)
+            this.substring(1, this.lastIndex).replace("'","\"")
         else
             this
 }
