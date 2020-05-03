@@ -61,7 +61,7 @@ class Input : InputEngineInterface
     private var xMouseLast = 0.0f
     private var yMouseLast = 0.0f
     private var windowHandle: Long = -1
-    private val clicked = ByteArray(Key.LAST.code)
+    private val clicked = ByteArray(Key.LAST.code + 1)
 
     override fun init(windowHandle: Long)
     {
