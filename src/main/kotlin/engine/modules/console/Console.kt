@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap
 interface ConsoleInterface
 {
     fun registerCommand(template: String, description: String = "", isAlias: Boolean = false, block: CommandArguments.() -> CommandResult)
-    fun run(command: String, showCommand: Boolean = true): CommandResult
+    fun run(commandString: String, showCommand: Boolean = true): List<CommandResult>
     fun log(text: String, type: MessageType = MessageType.INFO)
     fun getHistory(index: Int, type: MessageType): ConsoleEntry?
     fun getHistory(): List<ConsoleEntry>
@@ -44,7 +44,6 @@ class Console : ConsoleEngineInterface
             {
                 val command = commandMap[commandName.toLowerCase()]
                     ?: return@registerCommand CommandResult("No command with name: $commandName", MessageType.ERROR)
-
                 CommandResult("${command.template}${if (command.description.isNotEmpty()) " - " else ""}${command.description}")
             }
             else
@@ -54,22 +53,10 @@ class Console : ConsoleEngineInterface
                 val commandsString = "\n------- Commands -------\n\n" + commands.joinToString("\n\n") { it.template }
                 val aliasesString = if (aliases.isNotEmpty())
                     "\n\n------- Aliases -------\n\n" + aliases.joinToString("\n\n") { it.template }
-                else null
+                else ""
 
                 CommandResult(commandsString + aliasesString)
             }
-        }
-
-        // History command
-        registerCommand(
-            template = "history",
-            description = "Lists all the previously run commands"
-        ) {
-            CommandResult("\n------- Command History -------\n" +
-                history
-                    .filter { it.type == MessageType.COMMAND }
-                    .mapIndexed { i, entry -> "$i ${entry.message}" }
-                    .joinToString("\n"))
         }
     }
 
@@ -84,23 +71,29 @@ class Console : ConsoleEngineInterface
         commandMap[baseCommand] = Command(baseCommand, template, description, arguments, block, isAlias)
     }
 
-    override fun run(command: String, showCommand: Boolean): CommandResult
+    override fun run(commandString: String, showCommand: Boolean): List<CommandResult>
     {
-        // Add command to history
-        val commandEntry = ConsoleEntry(command, showCommand, MessageType.COMMAND)
-        history.add(commandEntry)
+        return commandString
+            .splitIgnoreLiterals(";".toRegex())
+            .map { it.trimStart().trimEnd() }
+            .map { command ->
 
-        // Run command
-        val result = runCommand(command)
+                // Add command to history
+                val commandEntry = ConsoleEntry(command, showCommand, MessageType.COMMAND)
+                history.add(commandEntry)
 
-        // Set visibility of command based on result
-        commandEntry.visible = showCommand && result.showCommand
+                // Run command
+                val result = runCommand(command)
 
-        // Add result to history
-        if(result.message.isNotEmpty())
-            history.add(ConsoleEntry(result.message, true, result.type))
+                // Set visibility of command based on result
+                commandEntry.visible = showCommand && result.showCommand
 
-        return result
+                // Add result to history
+                if(result.message.isNotEmpty())
+                    history.add(ConsoleEntry(result.message, true, result.type))
+
+                return@map result
+            }
     }
 
     override fun log(text: String, type: MessageType)

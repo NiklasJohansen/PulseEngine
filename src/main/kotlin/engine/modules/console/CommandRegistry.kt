@@ -27,6 +27,19 @@ object CommandRegistry
         ///////////////////////////////////////////// RUN SCRIPT COMMAND /////////////////////////////////////////////
 
         engine.console.registerCommand(
+            template = "history",
+            description = "Lists all the previously run commands"
+        ) {
+            CommandResult("\n------- Command History -------\n" +
+                engine.console.getHistory()
+                    .filter { it.type == MessageType.COMMAND }
+                    .mapIndexed { i, entry -> "$i ${entry.message}" }
+                    .joinToString("\n"))
+        }
+
+        ///////////////////////////////////////////// RUN SCRIPT COMMAND /////////////////////////////////////////////
+
+        engine.console.registerCommand(
             template = "run {scriptPath:String} {showCmd:Boolean?}",
             description = "Runs all commands in a script file"
         ) {
