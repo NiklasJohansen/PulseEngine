@@ -10,7 +10,7 @@ import engine.util.interpolateFrom
 import kotlin.math.PI
 import kotlin.math.sin
 
-fun main() = PulseEngine.run(FeatureExample())
+fun main() = PulseEngine().run(FeatureExample())
 
 
 class FeatureExample : Game()

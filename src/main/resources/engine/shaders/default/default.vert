@@ -11,11 +11,11 @@ uniform mat4 view;
 uniform mat4 projection;
 
 vec4 getColor(uint rgba) {
-    float r = ((rgba >> uint(24)) & uint(255)) / 255f;
-    float g = ((rgba >> uint(16)) & uint(255)) / 255f;
-    float b = ((rgba >> uint(8))  & uint(255)) / 255f;
-    float a = (rgba & uint(255)) / 255f;
-    return vec4(r, g, b, a);
+    float r = ((rgba >> uint(24)) & uint(255));
+    float g = ((rgba >> uint(16)) & uint(255));
+    float b = ((rgba >> uint(8))  & uint(255));
+    float a = (rgba & uint(255));
+    return vec4(r, g, b, a) / 255.0f;
 }
 
 void main() {
