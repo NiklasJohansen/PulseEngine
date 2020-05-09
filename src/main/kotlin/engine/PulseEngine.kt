@@ -92,10 +92,17 @@ class PulseEngine(
 
     fun run(game: Game)
     {
+        // Set engine reference and initialize game
         game.engine = this
         game.init()
+
+        // Load assets from disk
         asset.loadInitialAssets()
 
+        // Run startup
+        console.run("run startup.ps")
+
+        // Run main game loop
         while (window.isOpen())
         {
             update(game)
@@ -105,6 +112,7 @@ class PulseEngine(
             frameRateLimiter.sync(config.targetFps)
         }
 
+        // Clean up game and engine
         game.cleanup()
         cleanUp()
     }

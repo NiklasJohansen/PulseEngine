@@ -68,17 +68,16 @@ class Input : InputEngineInterface
         this.windowHandle = windowHandle
 
         glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
-//            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
-//                glfwSetWindowShouldClose(window, true)
-
             if(key >= 0)
             {
                 clicked[key] = if(action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
                 if(action == GLFW_PRESS && onKeyPressedCallbacks.isNotEmpty())
                 {
-                    Key.values().find { it.code == key }?.let { keyEnum ->
-                        onKeyPressedCallbacks.forEach { it.invoke(keyEnum) }
-                    }
+                    Key.values()
+                        .find { it.code == key }
+                        ?.let { keyEnum ->
+                            onKeyPressedCallbacks.forEach { it.invoke(keyEnum) }
+                        }
                 }
             }
         }
