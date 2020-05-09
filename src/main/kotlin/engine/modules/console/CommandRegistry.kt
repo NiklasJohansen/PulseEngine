@@ -1,7 +1,10 @@
 package engine.modules.console
 
 import engine.GameEngine
+import engine.data.Key
+import engine.data.Subscription
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.reflect.KMutableProperty
@@ -21,10 +24,35 @@ fun error(text: String) = CommandResult(text, MessageType.ERROR, false)
 object CommandRegistry
 {
     private const val SCRIPT_EXTENSION_TYPE = ".ps"
+    private val keyBindingSubscriptions = mutableMapOf<String, Subscription>()
 
     fun registerEngineCommands(engine: GameEngine)
     {
-        ///////////////////////////////////////////// RUN SCRIPT COMMAND /////////////////////////////////////////////
+        ///////////////////////////////////////////// EXIT COMMAND /////////////////////////////////////////////
+
+        engine.console.registerCommand(
+            template = "exit",
+            description = "Shuts down the application"
+        ) {
+            engine.window.close()
+            CommandResult("Exiting")
+        }
+
+        ///////////////////////////////////////////// ASYNC COMMAND /////////////////////////////////////////////
+
+        engine.console.registerCommand(
+            template = "async {command:String} {delay:Float?}",
+            description = "Runs the command in a background thread"
+        ) {
+            val delay = getOptionalFloat("delay") ?: 0f
+            GlobalScope.launch {
+                delay((delay*1000f).toLong())
+                engine.console.run(getString("command"))
+            }
+            CommandResult("", showCommand = true)
+        }
+
+        ///////////////////////////////////////////// HISTORY COMMAND /////////////////////////////////////////////
 
         engine.console.registerCommand(
             template = "history",
@@ -35,6 +63,16 @@ object CommandRegistry
                     .filter { it.type == MessageType.COMMAND }
                     .mapIndexed { i, entry -> "$i ${entry.message}" }
                     .joinToString("\n"))
+        }
+
+        ///////////////////////////////////////////// CLEAR COMMAND /////////////////////////////////////////////
+
+        engine.console.registerCommand(
+            template = "clear",
+            description = "Clears the console history"
+        ) {
+            engine.console.clearHistory()
+            CommandResult("", showCommand = false)
         }
 
         ///////////////////////////////////////////// RUN SCRIPT COMMAND /////////////////////////////////////////////
@@ -145,6 +183,56 @@ object CommandRegistry
             catch (e: Exception) { return@registerCommand CommandResult("Field $fieldName is private and cannot be set from console", MessageType.ERROR) }
 
             return@registerCommand CommandResult("Field ${field.name} was set to $value")
+        }
+
+        ///////////////////////////////////////////// BIND KEY COMMAND /////////////////////////////////////////////
+
+        engine.console.registerCommand(
+            "bind {key:String} {command:String}"
+        ) {
+            val command = getString("command")
+            val keyString = getString("key")
+            val keys = keyString
+                .split("+")
+                .map { it.trim().toUpperCase() }
+                .map {
+                    try { Key.valueOf(it) }
+                    catch (e :Exception) { return@registerCommand CommandResult("No key with name $it. Did you mean any of these: ${Key.values().filter { k -> k.toString().contains(it) }}", MessageType.ERROR) }
+                }
+
+            val subscription = engine.input.setOnKeyPressed {
+                if (it == keys.last() && keys.dropLast(1).all { engine.input.isPressed(it) })
+                    engine.console.run(command, showCommand = true)
+            }
+
+            // Unsubscribe previous and add new unsub callback
+            keyBindingSubscriptions[keys.toString()]?.unsubscribe()
+            keyBindingSubscriptions[keys.toString()] = subscription
+
+            CommandResult("Command bound to ${keys.joinToString("+")}", showCommand = false)
+        }
+
+        ///////////////////////////////////////////// UNBIND KEY COMMAND /////////////////////////////////////////////
+
+        engine.console.registerCommand(
+            "unbind {key:String}"
+        ) {
+            val keyString = getString("key")
+            val keys = keyString
+                .split("+")
+                .map { it.trim().toUpperCase() }
+                .map {
+                    try { Key.valueOf(it) }
+                    catch (e :Exception) { return@registerCommand CommandResult("No key with name $it. Did you mean any of these: " +
+                        "${Key.values().filter { k -> k.toString().contains(it) }}", MessageType.ERROR) }
+                }
+
+            keyBindingSubscriptions.remove(keys.toString())?.let {
+                it.unsubscribe()
+                return@registerCommand CommandResult("Key ${keys.joinToString("+")} was unbound", showCommand = false)
+            }
+
+            CommandResult("No command bound for key: ${keys.joinToString("+")}", MessageType.ERROR)
         }
     }
 }

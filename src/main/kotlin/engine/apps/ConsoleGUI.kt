@@ -27,8 +27,8 @@ class ConsoleGUI : EngineApp
     override fun init(engine: GameEngine)
     {
         engine.asset.loadFont("/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
-        engine.console.registerCommand("clear") {
-            engine.console.clearHistory()
+        engine.console.registerCommand("showConsole") {
+            active = !active
             CommandResult("", showCommand = false)
         }
     }
@@ -36,9 +36,6 @@ class ConsoleGUI : EngineApp
     override fun update(engine: GameEngine)
     {
         ///////////////////////////////// Open/close terminal /////////////////////////////////
-
-        if (engine.input.wasClicked(Key.F1))
-            active = !active
 
         if(!active)
             return
@@ -347,7 +344,7 @@ class ConsoleGUI : EngineApp
         }
 
         // Draw input text
-        engine.gfx.setColor(1f, 1f, 1f, 0.95f)
+        engine.gfx.setColor(1f, 1f, 1f, 1f)
         engine.gfx.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2 + INPUT_BOX_PADDING / 2, cliFont)
 
         // Draw console history

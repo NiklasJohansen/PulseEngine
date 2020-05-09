@@ -1,8 +1,5 @@
 package engine.modules
-import engine.data.Axis
-import engine.data.Button
-import engine.data.Key
-import engine.data.Mouse
+import engine.data.*
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*
 import java.nio.ByteBuffer
@@ -29,6 +26,7 @@ interface InputInterface
     fun wasReleased(btn: Mouse): Boolean
     fun setClipboard(text: String)
     fun getClipboard(): String
+    fun setOnKeyPressed(callback: (Key) -> Unit): Subscription
 }
 
 // Exposed to game engine
@@ -62,6 +60,7 @@ class Input : InputEngineInterface
     private var yMouseLast = 0.0f
     private var windowHandle: Long = -1
     private val clicked = ByteArray(Key.LAST.code + 1)
+    private val onKeyPressedCallbacks = mutableListOf<(Key) -> Unit>()
 
     override fun init(windowHandle: Long)
     {
@@ -69,10 +68,19 @@ class Input : InputEngineInterface
         this.windowHandle = windowHandle
 
         glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
-            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
-                glfwSetWindowShouldClose(window, true)
+//            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
+//                glfwSetWindowShouldClose(window, true)
+
             if(key >= 0)
+            {
                 clicked[key] = if(action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
+                if(action == GLFW_PRESS && onKeyPressedCallbacks.isNotEmpty())
+                {
+                    Key.values().find { it.code == key }?.let { keyEnum ->
+                        onKeyPressedCallbacks.forEach { it.invoke(keyEnum) }
+                    }
+                }
+            }
         }
 
         glfwSetCharCallback(windowHandle) { window, character ->
@@ -126,6 +134,18 @@ class Input : InputEngineInterface
     override fun getClipboard(): String = glfwGetClipboardString(windowHandle) ?: ""
 
     override fun setClipboard(text: String) = glfwSetClipboardString(windowHandle, text)
+
+    /**
+     *
+     */
+    override fun setOnKeyPressed(callback: (Key) -> Unit): Subscription {
+        onKeyPressedCallbacks.add(callback)
+        return object : Subscription {
+            override fun unsubscribe() {
+                onKeyPressedCallbacks.remove(callback)
+            }
+        }
+    }
 
     override fun pollEvents()
     {

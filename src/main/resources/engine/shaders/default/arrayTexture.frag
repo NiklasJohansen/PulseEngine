@@ -12,7 +12,7 @@ uniform sampler2DArray textureArray;
 void main() {
     vec4 textureColor = texture(textureArray, vec3(textureCoord.x, textureCoord.y, floor(textureIndex)));
 
-    if(textureColor.a < 0.1)
+    if(textureColor.a < 0.2)
         discard;
 
     // A texture index with decimal higher than 0 is used as alpha mask
