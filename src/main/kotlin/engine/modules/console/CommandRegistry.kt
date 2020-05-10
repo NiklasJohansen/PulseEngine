@@ -2,6 +2,7 @@ package engine.modules.console
 
 import engine.GameEngine
 import engine.data.Key
+import engine.data.ScreenMode.*
 import engine.data.Subscription
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -73,6 +74,16 @@ object CommandRegistry
         ) {
             engine.console.clearHistory()
             CommandResult("", showCommand = false)
+        }
+
+        ///////////////////////////////////////////// FULLSCREEN COMMAND /////////////////////////////////////////////
+
+        engine.console.registerCommand(
+            template = "toggleFullscreen",
+            description = "Toggles fullscreen "
+        ) {
+            engine.window.updateScreenMode(if(engine.window.screenMode == WINDOWED) FULLSCREEN else WINDOWED)
+            CommandResult("Screen mode set to: ${engine.window.screenMode}", showCommand = true)
         }
 
         ///////////////////////////////////////////// RUN SCRIPT COMMAND /////////////////////////////////////////////
