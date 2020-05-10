@@ -445,7 +445,7 @@ class ConsoleGUI : EngineApp
         private const val FONT_SIZE = 20f
         private const val TEXT_PADDING_X = 15f
         private const val INPUT_BOX_PADDING = 7f
-        private const val INPUT_BOX_HEIGHT = 40f
+        private const val INPUT_BOX_HEIGHT = FONT_SIZE + 20
     }
 }
 

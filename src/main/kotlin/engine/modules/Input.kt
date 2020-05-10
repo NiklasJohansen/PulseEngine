@@ -75,9 +75,7 @@ class Input : InputEngineInterface
                 {
                     Key.values()
                         .find { it.code == key }
-                        ?.let { keyEnum ->
-                            onKeyPressedCallbacks.forEach { it.invoke(keyEnum) }
-                        }
+                        ?.let { keyEnum -> onKeyPressedCallbacks.forEach { it.invoke(keyEnum) } }
                 }
             }
         }

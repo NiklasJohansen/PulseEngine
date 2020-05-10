@@ -1,6 +1,7 @@
 package engine.modules
 
 import engine.data.ScreenMode
+import engine.modules.console.ConsoleTarget
 import java.lang.Exception
 import java.util.*
 
@@ -25,6 +26,7 @@ interface ConfigurationEngineInterface : ConfigurationInterface
     fun init()
 }
 
+@ConsoleTarget
 class Configuration : ConfigurationEngineInterface
 {
     // Exposed properties
