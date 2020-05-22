@@ -3,6 +3,7 @@ package engine
 import engine.apps.ConsoleGUI
 import engine.apps.EngineApp
 import engine.apps.GraphGUI
+import engine.data.FocusArea
 import engine.data.Font
 import engine.data.Sound
 import engine.data.Texture
@@ -37,7 +38,7 @@ class PulseEngine(
     override val window: WindowEngineInterface        = Window(),
     override val gfx: GraphicsEngineInterface         = RetainedModeGraphics(),
     override val audio: AudioEngineInterface          = Audio(),
-    override val input: InputEngineInterface          = Input(),
+    override var input: InputEngineInterface          = Input(),
     override val network: NetworkEngineInterface      = Network(),
     override val asset: AssetManagerEngineInterface   = AssetManager(),
     override val data: MutableDataContainer           = MutableDataContainer(),
@@ -54,6 +55,9 @@ class PulseEngine(
     private var fixedUpdateLastTime = glfwGetTime()
     private var lastFrameTime = glfwGetTime()
     private val frameRateLimiter = FpsLimiter()
+    private val activeInput = input
+    private val idleInput = IdleInput(activeInput)
+    private val focusArea: FocusArea
 
     init
     {
@@ -66,9 +70,13 @@ class PulseEngine(
         network.init()
         console.init(this)
 
+        // Create focus area for game
+        focusArea = FocusArea(0f, 0f, window.width.toFloat(), window.height.toFloat())
+
         // Set up window resize event handler
         window.setOnResizeEvent { w, h, windowRecreated ->
             gfx.updateViewportSize(w, h, windowRecreated)
+            focusArea.update(0f, 0f, w.toFloat(), h.toFloat())
             if(windowRecreated)
                 input.init(window.windowHandle)
         }
@@ -87,6 +95,11 @@ class PulseEngine(
             }
         }
 
+        // Sets the active input implementation
+        input.setOnFocusChanged { hasFocus ->
+            input = if(hasFocus) activeInput else idleInput
+        }
+
         // Initialize engine apps
         apps.forEach { it.init(this) }
     }
@@ -100,7 +113,7 @@ class PulseEngine(
         // Load assets from disk
         asset.loadInitialAssets()
 
-        // Run startup
+        // Run startup script
         console.run("run startup.ps")
 
         // Run main game loop
@@ -129,6 +142,7 @@ class PulseEngine(
 
         lastFrameTime = glfwGetTime()
         data.updateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
+        input = activeInput
     }
 
     private fun fixedUpdate(game: Game)
@@ -147,12 +161,14 @@ class PulseEngine(
         while(fixedUpdateAccumulator >= dt)
         {
             audio.cleanSources()
+            input.requestFocus(focusArea)
             entity.fixedUpdate(this)
             game.fixedUpdate()
             gfx.camera.updateTransform(dt.toFloat())
 
-            fixedUpdateAccumulator -= dt
             updated = true
+            fixedUpdateAccumulator -= dt
+            input = activeInput
         }
 
         if(updated)
@@ -184,9 +200,14 @@ class PulseEngine(
     private fun updateInput()
     {
         input.pollEvents()
+
+        // Update world mouse position
         val pos = gfx.camera.screenPosToWorldPos(input.xMouse, input.yMouse)
         input.xWorldMouse = pos.x
         input.yWorldMouse = pos.y
+
+        // Give game area input focus
+        input.requestFocus(focusArea)
     }
 
     private fun cleanUp()

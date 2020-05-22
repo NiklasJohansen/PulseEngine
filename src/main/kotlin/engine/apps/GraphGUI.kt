@@ -1,9 +1,13 @@
 package engine.apps
 
 import engine.GameEngine
+import engine.data.FocusArea
 import engine.data.Font
+import engine.data.Mouse
 import engine.modules.console.CommandResult
 import java.util.*
+import kotlin.math.max
+import kotlin.math.min
 
 class GraphGUI : EngineApp
 {
@@ -13,6 +17,8 @@ class GraphGUI : EngineApp
     private var width = 400f
     private var height = 150f
     private var lastTime = 0L
+    private var grabbed = false
+    private val area = FocusArea(0f, 0f, 1f, 1f)
 
     private val fpsGraph = Graph("FRAMES PER SECOND")
     private val renderTimeGraph = Graph("RENDER TIME (MS)")
@@ -32,7 +38,29 @@ class GraphGUI : EngineApp
     {
         if(!open) return
 
-        if(System.currentTimeMillis() - lastTime > 1000 / TICK_RATE)
+        val fullWidth = width * 2 + 20
+        val fullHeight = height * 2 + 20
+
+        area.update(xPos, yPos,xPos + fullWidth, yPos + fullHeight)
+        engine.input.requestFocus(area)
+
+        if(engine.input.isPressed(Mouse.LEFT))
+        {
+            val xMouse = engine.input.xMouse
+            val yMouse = engine.input.yMouse
+            if(xMouse > xPos && xMouse < xPos + fullWidth && yMouse > yPos && yMouse < yPos + fullHeight)
+                grabbed = true
+        }
+        else grabbed = false
+
+        if (grabbed)
+        {
+            xPos = max(0f, min(engine.window.width.toFloat()-fullWidth, xPos + engine.input.xdMouse))
+            yPos = max(0f, min(engine.window.height.toFloat()-fullHeight, yPos + engine.input.ydMouse))
+        }
+        else engine.input.releaseFocus(area)
+
+        if (System.currentTimeMillis() - lastTime > 1000 / TICK_RATE)
         {
             updateGraph(engine)
             lastTime = System.currentTimeMillis()

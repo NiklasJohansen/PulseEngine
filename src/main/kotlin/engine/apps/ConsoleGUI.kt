@@ -1,6 +1,7 @@
 package engine.apps
 
 import engine.GameEngine
+import engine.data.FocusArea
 import engine.data.Font
 import engine.data.Key
 import engine.data.Mouse
@@ -23,14 +24,21 @@ class ConsoleGUI : EngineApp
     private var inputTextOffset = 0
     private var historyCursor = -1
     private var suggestionCursor = -1
+    private var area = FocusArea(0f, 0f, widthFraction, heightFraction)
 
     override fun init(engine: GameEngine)
     {
         engine.asset.loadFont("/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("showConsole") {
             active = !active
+            if(active)
+                engine.input.acquireFocus(area)
+            else
+                engine.input.releaseFocus(area)
             CommandResult("", showCommand = false)
         }
+
+        area.update(0f, 0f, widthFraction * engine.window.width, heightFraction * engine.window.height)
     }
 
     override fun update(engine: GameEngine)
@@ -39,6 +47,8 @@ class ConsoleGUI : EngineApp
 
         if(!active)
             return
+
+        engine.input.requestFocus(area)
 
         ///////////////////////////////// Add new text to text box /////////////////////////////////
 
@@ -299,6 +309,7 @@ class ConsoleGUI : EngineApp
         {
             widthFraction = max(0f, min(1f, widthFraction + engine.input.xdMouse / engine.window.width))
             heightFraction = max(0f, min(1f, heightFraction + engine.input.ydMouse / engine.window.height))
+            area.update(0f, 0f, widthFraction * engine.window.width, heightFraction * engine.window.height)
         }
     }
 
@@ -313,7 +324,7 @@ class ConsoleGUI : EngineApp
         val width = engine.window.width * widthFraction
         val availableWidth = width - TEXT_PADDING_X - INPUT_BOX_PADDING
         val charsPerLine = getNumberOfChars(availableWidth)
-        val cursorCar = if (System.currentTimeMillis() % 1000 > 500) "|" else " "
+        val cursorCar = if (System.currentTimeMillis() % 1000 > 500 && engine.input.hasFocus(area)) "|" else " "
         var text = StringBuilder(inputText).insert(inputCursor, cursorCar).toString()
 
         // Determine what text is visible in input box

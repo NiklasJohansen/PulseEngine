@@ -27,6 +27,10 @@ interface InputInterface
     fun setClipboard(text: String)
     fun getClipboard(): String
     fun setOnKeyPressed(callback: (Key) -> Unit): Subscription
+    fun requestFocus(focusArea: FocusArea)
+    fun acquireFocus(focusArea: FocusArea)
+    fun releaseFocus(focusArea: FocusArea)
+    fun hasFocus(focusArea: FocusArea): Boolean
 }
 
 // Exposed to game engine
@@ -38,6 +42,7 @@ interface InputEngineInterface : InputInterface
     fun init(windowHandle: Long)
     fun cleanUp()
     fun pollEvents()
+    fun setOnFocusChanged(callback: (Boolean) -> Unit)
 }
 
 class Input : InputEngineInterface
@@ -61,6 +66,10 @@ class Input : InputEngineInterface
     private var windowHandle: Long = -1
     private val clicked = ByteArray(Key.LAST.code + 1)
     private val onKeyPressedCallbacks = mutableListOf<(Key) -> Unit>()
+    private var onFocusChangedCallback: (Boolean) -> Unit = {}
+    private var focusStack = mutableListOf<FocusArea>()
+    private var currentFocusArea: FocusArea? = null
+    private var previousFocusArea: FocusArea? = null
 
     override fun init(windowHandle: Long)
     {
@@ -97,6 +106,12 @@ class Input : InputEngineInterface
 
         glfwSetMouseButtonCallback(windowHandle) { window, button, action, mods ->
             clicked[button] = if(action == GLFW_PRESS) 1 else -1
+            if(action == GLFW_PRESS && focusStack.isNotEmpty())
+            {
+                focusStack
+                    .lastOrNull { it.isInside(xMouse, yMouse) }
+                    ?.let { acquireFocus(it) }
+            }
         }
 
         glfwSetJoystickCallback { jid: Int, event: Int ->
@@ -132,16 +147,50 @@ class Input : InputEngineInterface
 
     override fun setClipboard(text: String) = glfwSetClipboardString(windowHandle, text)
 
-    /**
-     *
-     */
-    override fun setOnKeyPressed(callback: (Key) -> Unit): Subscription {
+    override fun setOnKeyPressed(callback: (Key) -> Unit): Subscription
+    {
         onKeyPressedCallbacks.add(callback)
-        return object : Subscription {
-            override fun unsubscribe() {
+        return object : Subscription
+        {
+            override fun unsubscribe()
+            {
                 onKeyPressedCallbacks.remove(callback)
             }
         }
+    }
+
+    override fun acquireFocus(focusArea: FocusArea)
+    {
+        if(focusArea != currentFocusArea)
+        {
+            previousFocusArea = currentFocusArea
+            currentFocusArea = focusArea
+        }
+    }
+
+    override fun requestFocus(focusArea: FocusArea)
+    {
+        if(focusArea !in focusStack)
+            focusStack.add(focusArea)
+
+        onFocusChangedCallback.invoke(hasFocus(focusArea))
+    }
+
+    override fun releaseFocus(focusArea: FocusArea)
+    {
+        if (currentFocusArea == focusArea)
+        {
+            currentFocusArea = previousFocusArea
+            previousFocusArea = focusStack.firstOrNull()
+        }
+    }
+
+    override fun hasFocus(focusArea: FocusArea): Boolean =
+         focusArea == currentFocusArea
+
+    override fun setOnFocusChanged(callback: (Boolean) -> Unit)
+    {
+        this.onFocusChangedCallback = callback
     }
 
     override fun pollEvents()
@@ -153,6 +202,7 @@ class Input : InputEngineInterface
         clicked.fill(0)
         glfwPollEvents()
         gamepads.forEach { it.updateState() }
+        focusStack.clear()
     }
 
     override fun cleanUp()
@@ -178,7 +228,35 @@ data class Gamepad(var id: Int)
     }
 }
 
-
+class IdleInput(private val activeInput: InputEngineInterface) : InputEngineInterface
+{
+    override var xWorldMouse: Float = 0f
+    override var yWorldMouse: Float = 0f
+    override val xMouse = 0f
+    override val yMouse = 0f
+    override val xdMouse = 0f
+    override val ydMouse = 0f
+    override val scroll = 0
+    override val textInput: String = ""
+    override val gamepads = activeInput.gamepads
+    override fun init(windowHandle: Long) {}
+    override fun cleanUp() {}
+    override fun pollEvents() {}
+    override fun isPressed(key: Key) = false
+    override fun isPressed(btn: Mouse) = false
+    override fun wasClicked(key: Key) = false
+    override fun wasClicked(btn: Mouse) = false
+    override fun wasReleased(key: Key) = false
+    override fun wasReleased(btn: Mouse) = false
+    override fun setClipboard(text: String)  {}
+    override fun getClipboard(): String = ""
+    override fun setOnFocusChanged(callback: (Boolean) -> Unit) = activeInput.setOnFocusChanged(callback)
+    override fun setOnKeyPressed(callback: (Key) -> Unit) = activeInput.setOnKeyPressed(callback)
+    override fun requestFocus(focusArea: FocusArea) = activeInput.requestFocus(focusArea)
+    override fun acquireFocus(focusArea: FocusArea) = activeInput.acquireFocus(focusArea)
+    override fun releaseFocus(focusArea: FocusArea) = activeInput.releaseFocus(focusArea)
+    override fun hasFocus(focusArea: FocusArea): Boolean = activeInput.hasFocus(focusArea)
+}
 
 
 
