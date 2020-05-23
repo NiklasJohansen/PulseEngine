@@ -10,6 +10,8 @@ interface DataInterface
     val fixedDeltaTime: Float
     val deltaTime: Float
     val interpolation: Float
+    val totalMemory: Long
+    val usedMemory: Long
 
     companion object
     {
@@ -17,7 +19,12 @@ interface DataInterface
     }
 }
 
-class MutableDataContainer : DataInterface
+interface DataEngineInterface : DataInterface
+{
+    fun update()
+}
+
+class MutableDataContainer : DataEngineInterface
 {
     override var currentFps: Int = 0
     override var renderTimeMs: Float = 0f
@@ -26,9 +33,23 @@ class MutableDataContainer : DataInterface
     override var fixedDeltaTime: Float = 0.017f
     override var deltaTime: Float = 0.017f
     override var interpolation: Float = 0f
+    override var usedMemory: Long = 0L
+    override var totalMemory: Long = 0L
 
     init
     {
         DataInterface.INSTANCE = this
+    }
+
+    override fun update()
+    {
+        usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / MEGA_BYTE
+        totalMemory = runtime.maxMemory() / MEGA_BYTE
+    }
+
+    companion object
+    {
+        private val runtime = Runtime.getRuntime()
+        private val MEGA_BYTE = 1048576L
     }
 }

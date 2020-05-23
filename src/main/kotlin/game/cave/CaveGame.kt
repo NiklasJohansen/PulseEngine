@@ -3,6 +3,7 @@ package game.cave
 import engine.PulseEngine
 import engine.modules.Game
 import engine.data.*
+import org.joml.Math.sin
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -12,6 +13,7 @@ class CaveGame : Game()
 {
     private var xCam = -16530f
     private var yCam = -25970f
+    private var angle = 0f
     private var blockWidth = 40f
     private var blockHeight = 40f
     private var nOctaves = 4
@@ -25,12 +27,11 @@ class CaveGame : Game()
     override fun init()
     {
         engine.config.targetFps = 120
+        engine.window.title = "Cave Game"
     }
 
     override fun update()
     {
-        engine.window.title = "FPS: ${engine.data.currentFps}  X: $xCam  Y:$yCam  U: ${"%.2f".format(engine.data.updateTimeMS)}ms  R: ${"%.2f".format(engine.data.renderTimeMs)}ms"
-
         val dt = engine.data.deltaTime
 
         if(engine.input.scroll != 0)
@@ -72,6 +73,13 @@ class CaveGame : Game()
             xCam -= if (abs(xLeft) > 0.15f) (xLeft-0.15f) * 10 * dt else 0.0f
             yCam -= if (abs(yLeft) > 0.15f) (yLeft-0.15f) * 10 * dt else 0.0f
         }
+    }
+
+    override fun fixedUpdate()
+    {
+        xCam -= 100f * engine.data.fixedDeltaTime
+        yCam -= sin(angle) * 100f * engine.data.fixedDeltaTime
+        angle += 0.5f * engine.data.fixedDeltaTime
     }
 
     override fun render()

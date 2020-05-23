@@ -14,16 +14,19 @@ class GraphGUI : EngineApp
     private var open =  false
     private var xPos = 10f
     private var yPos = 10f
-    private var width = 400f
-    private var height = 150f
+
+    private var graphWidth = 400f
+    private var graphHeight = 150f
+    private var graphPadding = 10f
+
     private var lastTime = 0L
     private var grabbed = false
+    private var adjustingSize = false
     private val area = FocusArea(0f, 0f, 1f, 1f)
 
-    private val fpsGraph = Graph("FRAMES PER SECOND")
-    private val renderTimeGraph = Graph("RENDER TIME (MS)")
-    private val updateTimeGraph = Graph("UPDATE TIME (MS)")
-    private val fixUpdateTimeGraph = Graph("FIXED UPDATE TIME (MS)")
+    private var maxWidth = 820f
+    private var minWidth = 285f
+    private val graphs =  mutableListOf<Graph>()
 
     override fun init(engine: GameEngine)
     {
@@ -32,66 +35,107 @@ class GraphGUI : EngineApp
             open = !open
             CommandResult("", showCommand = false)
         }
+
+        graphs.addAll(listOf(
+            Graph("FRAMES PER SECOND") { engine.data.currentFps.toFloat() },
+            Graph("RENDER TIME (MS)") { engine.data.renderTimeMs },
+            Graph("UPDATE TIME (MS)") { engine.data.updateTimeMS },
+            Graph("FIXED UPDATE TIME (MS)") { engine.data.fixedUpdateTimeMS },
+            Graph("USED MEMORY (MB)") { engine.data.usedMemory.toFloat() },
+            Graph("TOTAL MEMORY (MB)") { engine.data.totalMemory.toFloat() }
+        ))
     }
 
     override fun update(engine: GameEngine)
     {
         if(!open) return
 
-        val fullWidth = width * 2 + 20
-        val fullHeight = height * 2 + 20
-
-        area.update(xPos, yPos,xPos + fullWidth, yPos + fullHeight)
         engine.input.requestFocus(area)
+
+        val insideArea = area.isInside(engine.input.xMouse, engine.input.yMouse)
+
+        if (engine.input.isPressed(Mouse.RIGHT))
+        {
+            if(insideArea)
+                adjustingSize = true
+        }
+        else adjustingSize = false
 
         if(engine.input.isPressed(Mouse.LEFT))
         {
-            val xMouse = engine.input.xMouse
-            val yMouse = engine.input.yMouse
-            if(xMouse > xPos && xMouse < xPos + fullWidth && yMouse > yPos && yMouse < yPos + fullHeight)
+            if(insideArea)
                 grabbed = true
         }
         else grabbed = false
 
         if (grabbed)
         {
-            xPos = max(0f, min(engine.window.width.toFloat()-fullWidth, xPos + engine.input.xdMouse))
-            yPos = max(0f, min(engine.window.height.toFloat()-fullHeight, yPos + engine.input.ydMouse))
+            xPos = max(0f, min(engine.window.width.toFloat()-area.width, xPos + engine.input.xdMouse))
+            yPos = max(0f, min(engine.window.height.toFloat()-area.height, yPos + engine.input.ydMouse))
+        }
+        else if (adjustingSize)
+        {
+            maxWidth = max(minWidth, maxWidth + engine.input.xdMouse * 5)
+
         }
         else engine.input.releaseFocus(area)
 
         if (System.currentTimeMillis() - lastTime > 1000 / TICK_RATE)
         {
-            updateGraph(engine)
+            graphs.forEach { it.update() }
             lastTime = System.currentTimeMillis()
         }
-    }
-
-    private fun updateGraph(engine: GameEngine)
-    {
-        fpsGraph.update(engine.data.currentFps.toFloat())
-        renderTimeGraph.update(engine.data.renderTimeMs)
-        updateTimeGraph.update(engine.data.updateTimeMS)
-        fixUpdateTimeGraph.update(engine.data.fixedUpdateTimeMS)
     }
 
     override fun render(engine: GameEngine)
     {
         if(!open) return
 
-        fpsGraph.render(engine, xPos, yPos, width, height)
-        renderTimeGraph.render(engine, xPos, yPos + (height + 10), width, height)
-        updateTimeGraph.render(engine, xPos + width + 10, yPos, width, height)
-        fixUpdateTimeGraph.render(engine, xPos + width + 10, yPos + (height + 10) * 1, width, height)
+        var x = xPos
+        var y = yPos
+        var w = graphWidth
+        var h = graphHeight
+        var xMax = xPos
+        var yMax = yPos
+
+        if (maxWidth < graphWidth)
+        {
+            val scale = (maxWidth / graphWidth)
+            w *= scale
+            h *= scale
+        }
+
+        for(graph in graphs)
+        {
+            graph.render(engine, x, y, w, h)
+            xMax = max(xMax, x + w + graphPadding)
+            yMax = max(yMax, y + h + graphPadding)
+            x += w + graphPadding
+            if (x + w - graphPadding >= xPos + maxWidth)
+            {
+                x = xPos
+                y += h + graphPadding
+            }
+        }
+
+        area.update(xPos, yPos, xMax - graphPadding, yMax - graphPadding)
+
+        if (adjustingSize)
+        {
+            engine.gfx.setColor(1f, 0f, 0f, 0.9f)
+            engine.gfx.drawLine(xPos, yPos, xPos + maxWidth, yPos)
+            engine.gfx.drawLine(xPos, yPos + area.height, xPos + maxWidth, yPos + area.height)
+            engine.gfx.drawLine(xPos, yPos, xPos, yPos + area.height)
+            engine.gfx.drawLine(xPos + maxWidth, yPos, xPos + maxWidth, yPos + area.height)
+        }
     }
 
-    override fun cleanup(engine: GameEngine)
-    {
+    override fun cleanup(engine: GameEngine) {  }
 
-    }
-
-    class Graph(val name: String) : Iterable<Float>
-    {
+    class Graph(
+        private val name: String,
+        private val source: () -> Float
+    ) : Iterable<Float> {
         private var data: FloatArray = FloatArray(WINDOWS_LENGTH * 10)
         private var taleCursor: Int = 0
         private var headCursor: Int = 0
@@ -104,8 +148,9 @@ class GraphGUI : EngineApp
             else
                 headCursor - taleCursor
 
-        fun update(value: Float)
+        fun update()
         {
+            val value = source.invoke()
             latestValue = value
             data[headCursor] = value
             headCursor = (headCursor + 1) % data.size
@@ -124,9 +169,16 @@ class GraphGUI : EngineApp
             engine.gfx.setColor(1f,1f,1f,0.95f)
             engine.gfx.drawText(name, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 
+            val (min, max) = findMinMax()
+            val valueRange = (max - min)
+            val nTicks = 4
+            val tickLength = 8
+            val maxTickText = if(max < nTicks) "%.1f".format(Locale.US, max) else max.toInt().toString()
+            val tickTextSize = (2 + maxTickText.length) * (TICK_MARK_FONT_SIZE / 2f)
+
             val x = xPos + PADDING
             val y = yPos + TOP_PADDING
-            val w = width - PADDING - RIGHT_PADDING
+            val w = width - PADDING - tickTextSize
             val h = height - PADDING - TOP_PADDING
             val sampleWidth = w / WINDOWS_LENGTH
 
@@ -137,18 +189,13 @@ class GraphGUI : EngineApp
             engine.gfx.drawLine(x, y, x, y + h)
             engine.gfx.drawLine(x, y + h, x + w, y + h)
 
-            val (min, max) = findMinMax()
-            val valueRange = (max - min)
-            val nTicks = 4
-            val tickLength = 8
-
             for (i in 0 .. nTicks)
             {
                 val fraction = (i.toFloat() / nTicks) * 2f - 1f
                 val xTick = x + w - tickLength / 2
                 val yTick = y + (h / 2) + (h / 2) * fraction
                 val tickValue = min + (valueRange / 2f) - (valueRange / 2f) * fraction
-                val tickValueText = if(valueRange < nTicks) "%.1f".format(Locale.US, tickValue) else tickValue.toInt().toString()
+                val tickValueText = if(max < nTicks) "%.1f".format(Locale.US, tickValue) else tickValue.toInt().toString()
 
                 // Guide line
                 if(i % 2 != 0)
@@ -218,7 +265,6 @@ class GraphGUI : EngineApp
 
     companion object {
         const val PADDING = 15f
-        const val RIGHT_PADDING = 40f
         const val TOP_PADDING = 40f
         const val TICK_RATE = 100       // Update every 10 ms
         const val WINDOWS_LENGTH = 200  // 200 samples inside window (200 * 10ms = 2000ms)

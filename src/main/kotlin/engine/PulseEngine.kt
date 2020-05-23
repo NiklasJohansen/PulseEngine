@@ -142,6 +142,7 @@ class PulseEngine(
 
         lastFrameTime = glfwGetTime()
         data.updateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
+        data.update()
         input = activeInput
     }
 
