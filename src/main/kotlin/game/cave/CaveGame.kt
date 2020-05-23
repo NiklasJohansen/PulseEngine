@@ -16,6 +16,7 @@ class CaveGame : Game()
     private var angle = 0f
     private var blockWidth = 40f
     private var blockHeight = 40f
+    private var blockCount = 0f
     private var nOctaves = 4
     private var blockTypes = arrayOf(
         Block(0.08f,  Color(0.588f, 0.78f, 1.0f),   false), // Sky
@@ -28,6 +29,7 @@ class CaveGame : Game()
     {
         engine.config.targetFps = 120
         engine.window.title = "Cave Game"
+        engine.data.addSource("Blocks", "count") { blockCount }
     }
 
     override fun update()
@@ -90,6 +92,8 @@ class CaveGame : Game()
         val xCellCount = (engine.window.width / width)
         val yCellCount = (engine.window.height / height)
 
+        blockCount = 0f
+
         for (y in -1 until yCellCount + 2)
         {
             for (x in -1 until xCellCount + 2)
@@ -99,11 +103,14 @@ class CaveGame : Game()
                     y - (yCam.toInt() / height).toFloat()
                 )
 
+                //val c = Color((x % 10) / 10f, (y % 10) / 10f, ((x+y) % 10) / 10f)
+
                 val xBlock = x * width + xCam % width
                 val yBlock = y * height + yCam % height
 
                 engine.gfx.setColor(c.red, c.green, c.blue)
                 engine.gfx.drawQuad(xBlock, yBlock, width.toFloat(), height.toFloat())
+                blockCount++
             }
         }
     }

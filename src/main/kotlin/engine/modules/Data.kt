@@ -12,6 +12,9 @@ interface DataInterface
     val interpolation: Float
     val totalMemory: Long
     val usedMemory: Long
+    val dataSources: Map<String, DataSource>
+
+    fun addSource(name: String, unit: String, source: () -> Float)
 
     companion object
     {
@@ -35,10 +38,16 @@ class MutableDataContainer : DataEngineInterface
     override var interpolation: Float = 0f
     override var usedMemory: Long = 0L
     override var totalMemory: Long = 0L
+    override var dataSources = mutableMapOf<String, DataSource>()
 
     init
     {
         DataInterface.INSTANCE = this
+    }
+
+    override fun addSource(name: String, unit: String, source: () -> Float)
+    {
+        dataSources[name] = DataSource(name, unit, source)
     }
 
     override fun update()
@@ -50,6 +59,12 @@ class MutableDataContainer : DataEngineInterface
     companion object
     {
         private val runtime = Runtime.getRuntime()
-        private val MEGA_BYTE = 1048576L
+        private const val MEGA_BYTE = 1048576L
     }
 }
+
+data class DataSource(
+    val name: String,
+    val unit: String,
+    val source: () -> Float
+)

@@ -37,18 +37,28 @@ class GraphGUI : EngineApp
         }
 
         graphs.addAll(listOf(
-            Graph("FRAMES PER SECOND") { engine.data.currentFps.toFloat() },
-            Graph("RENDER TIME (MS)") { engine.data.renderTimeMs },
-            Graph("UPDATE TIME (MS)") { engine.data.updateTimeMS },
-            Graph("FIXED UPDATE TIME (MS)") { engine.data.fixedUpdateTimeMS },
-            Graph("USED MEMORY (MB)") { engine.data.usedMemory.toFloat() },
-            Graph("TOTAL MEMORY (MB)") { engine.data.totalMemory.toFloat() }
+            Graph("FRAMES PER SECOND", "") { engine.data.currentFps.toFloat() },
+            Graph("RENDER TIME", "MS") { engine.data.renderTimeMs },
+            Graph("UPDATE TIME", "MS") { engine.data.updateTimeMS },
+            Graph("FIXED UPDATE TIME", "MS") { engine.data.fixedUpdateTimeMS },
+            Graph("USED MEMORY", "MB") { engine.data.usedMemory.toFloat() },
+            Graph("TOTAL MEMORY", "MB") { engine.data.totalMemory.toFloat() }
         ))
     }
 
     override fun update(engine: GameEngine)
     {
         if(!open) return
+
+        for (source in engine.data.dataSources.values)
+        {
+            val graph = graphs.find { it.name == source.name }
+            if (graph == null)
+            {
+                graphs.add(Graph(source.name, source.unit, source.source))
+                break
+            }
+        }
 
         engine.input.requestFocus(area)
 
@@ -133,7 +143,8 @@ class GraphGUI : EngineApp
     override fun cleanup(engine: GameEngine) {  }
 
     class Graph(
-        private val name: String,
+        val name: String,
+        private val unit: String,
         private val source: () -> Float
     ) : Iterable<Float> {
         private var data: FloatArray = FloatArray(WINDOWS_LENGTH * 10)
@@ -162,12 +173,13 @@ class GraphGUI : EngineApp
         fun render(engine: GameEngine, xPos: Float, yPos: Float, width: Float, height: Float)
         {
             val font = engine.asset.get<Font>("graph_font")
+            val headerText = name + if(unit.isNotEmpty()) " ($unit)" else ""
 
             engine.gfx.camera.disable()
             engine.gfx.setColor(0.1f, 0.1f, 0.1f, 0.9f)
             engine.gfx.drawQuad(xPos, yPos, width, height)
             engine.gfx.setColor(1f,1f,1f,0.95f)
-            engine.gfx.drawText(name, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
+            engine.gfx.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 
             val (min, max) = findMinMax()
             val valueRange = (max - min)
