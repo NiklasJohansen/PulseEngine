@@ -181,7 +181,8 @@ class GraphGUI : EngineApp
             engine.gfx.setColor(1f,1f,1f,0.95f)
             engine.gfx.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 
-            val (min, max) = findMinMax()
+            val min = this.min() ?: 0f
+            val max = this.max() ?: 0f
             val valueRange = (max - min)
             val nTicks = 4
             val tickLength = 8
@@ -230,29 +231,26 @@ class GraphGUI : EngineApp
 
             var xPlotLast = 0f
             var yPlotLast = 0f
-            for((i, value) in this.withIndex())
+            var i = 0
+            for (value in this)
             {
                 val fraction = (value - min) / (max - min)
                 val xPlot = x + w - (this.size() - i) * sampleWidth
                 val yPlot = y + (h / 2f) + (1f - fraction * 2f) * (h / 2f)
-                if( i > 0)
+                if (i > 0)
                     engine.gfx.drawLine(xPlot, yPlot, xPlotLast, yPlotLast)
 
                 xPlotLast = xPlot
                 yPlotLast = yPlot
+                i++
             }
 
             val text = if(latestValue < 5) "%.2f".format(Locale.US, latestValue) else latestValue.toInt().toString()
             engine.gfx.drawText(text, x + 5, y + 22f, font = font, fontSize = VALUE_FONT_SIZE, yOrigin = 0.5f)
         }
 
-        private fun findMinMax(): Pair<Float, Float> =
-            Pair(this.min() ?: 0f, this.max() ?: 0f)
-
-        override fun iterator(): Iterator<Float>
-        {
-            return iterator.reset(taleCursor, headCursor)
-        }
+        override fun iterator(): Iterator<Float> =
+            iterator.reset(taleCursor, headCursor)
 
         class GraphDataIterator(
             private val data: FloatArray,
@@ -275,7 +273,8 @@ class GraphGUI : EngineApp
         }
     }
 
-    companion object {
+    companion object
+    {
         const val PADDING = 15f
         const val TOP_PADDING = 40f
         const val TICK_RATE = 100       // Update every 10 ms
