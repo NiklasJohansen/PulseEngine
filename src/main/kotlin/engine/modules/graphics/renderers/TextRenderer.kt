@@ -48,7 +48,7 @@ class TextRenderer
             val charWidth = quad.x1() - xChar
             val charHeight = quad.y1() - yChar
 
-            gfx.drawImage(font.charTexture, xChar, yChar, charWidth, charHeight, uMin = quad.s0(), vMin = quad.t0(), uMax = quad.s1(), vMax = quad.t1())
+            gfx.drawTexture(font.charTexture, xChar, yChar, charWidth, charHeight, uMin = quad.s0(), vMin = quad.t0(), uMax = quad.s1(), vMax = quad.t1())
         }
     }
 

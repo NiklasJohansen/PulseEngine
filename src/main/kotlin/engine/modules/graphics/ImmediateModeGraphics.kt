@@ -72,14 +72,12 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         setBlendFunction(blendFunc)
     }
 
-    override fun drawQuad(x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
+    override fun drawQuad(x: Float, y: Float, width: Float, height: Float)
     {
         glPushMatrix()
         glBindTexture(GL_TEXTURE_2D, 0)
         glMultMatrixf(camera.viewMatrixAsArray())
         glTranslatef(x, y, 0f)
-        glRotatef(rot, 0f, 0f, 1f)
-        glTranslatef(-width * xOrigin, -height * yOrigin, 0f)
         glBegin(GL_QUADS)
             glVertex2f(0f, 0f)
             glVertex2f(0f, height)
@@ -120,7 +118,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         }
     }
 
-    override fun drawImage(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
     {
         val uMin = texture.uMin
         val vMin = texture.vMin
@@ -146,7 +144,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         glPopMatrix()
     }
 
-    override fun drawImage(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
         glPushMatrix()
         glBindTexture(GL_TEXTURE_2D, texture.textureId)

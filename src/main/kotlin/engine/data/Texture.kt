@@ -15,10 +15,10 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
     var height: Int = 0
         private set
 
-    var textureId: Int = -1
+    var textureId: Int = -2
         private set
         get() {
-            if(field == -1)
+            if(field == -2)
                 throw IllegalStateException("Accessing unfinalized texture with asset name: $name")
             return field
         }
@@ -74,5 +74,14 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
     override fun delete()
     {
         glDeleteTextures(textureId)
+    }
+
+    companion object
+    {
+        val BLANK = Texture("", "BLANK")
+            .also {
+                it.load(null, 1, 1, GL_RGBA)
+                it.finalize(-1, 0f, 0f, 1f, 1f)
+            }
     }
 }

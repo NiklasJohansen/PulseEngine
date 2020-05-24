@@ -162,7 +162,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
         currentRenderer.uniColorLineRenderer.setColor(graphicState.rgba)
     }
 
-    override fun drawQuad(x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
+    override fun drawQuad(x: Float, y: Float, width: Float, height: Float)
     {
         currentRenderer.quadRenderer.quad(x, y, width, height)
     }
@@ -172,12 +172,12 @@ class RetainedModeGraphics : GraphicsEngineInterface
         currentRenderer.quadRenderer.vertex(x, y)
     }
 
-    override fun drawImage(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
     {
         currentRenderer.textureRenderer.drawImage(texture, x, y, width, height, rot, xOrigin, yOrigin)
     }
 
-    override fun drawImage(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
         currentRenderer.textureRenderer.drawImage(texture, x, y, width, height, rot, xOrigin, yOrigin, uMin, vMin, uMax, vMax)
     }
