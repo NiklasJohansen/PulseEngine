@@ -174,12 +174,12 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
     {
-        currentRenderer.textureRenderer.drawImage(texture, x, y, width, height, rot, xOrigin, yOrigin)
+        currentRenderer.textureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin)
     }
 
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
-        currentRenderer.textureRenderer.drawImage(texture, x, y, width, height, rot, xOrigin, yOrigin, uMin, vMin, uMax, vMax)
+        currentRenderer.textureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin, uMin, vMin, uMax, vMax)
     }
 
     override fun drawText(text: String, x: Float, y: Float, font: Font?, fontSize: Float, xOrigin: Float, yOrigin: Float)

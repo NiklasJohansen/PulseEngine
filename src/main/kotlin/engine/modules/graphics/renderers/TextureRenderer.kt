@@ -40,7 +40,7 @@ class TextureRenderer(initialCapacity: Int, val gfxState: GraphicsState) : Batch
         program.setUniform("textureArray", 0)
     }
 
-    fun drawImage(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float)
+    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float)
     {
         val uMin = texture.uMin
         val vMin = texture.vMin
@@ -72,7 +72,7 @@ class TextureRenderer(initialCapacity: Int, val gfxState: GraphicsState) : Batch
         gfxState.increaseDepth()
     }
 
-    fun drawImage(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
+    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
         val uMax = texture.uMax * uMax
         val vMax = texture.vMax * vMax

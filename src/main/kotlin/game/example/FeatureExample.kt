@@ -12,7 +12,6 @@ import kotlin.math.sin
 
 fun main() = PulseEngine().run(FeatureExample())
 
-
 class FeatureExample : Game()
 {
     private var size: Float = 200f
@@ -185,11 +184,11 @@ class FeatureExample : Game()
 
         // Draw images
         engine.gfx.setColor(1f, 1f, 1f)
-        engine.gfx.drawImage(image, 0.5f, 0.5f, size, size)
-        engine.gfx.drawImage(image, width-size, 0.5f, size, size)
-        engine.gfx.drawImage(image, width-size, height-size, size, size)
-        engine.gfx.drawImage(image, 0.5f, height-size, size, size)
-        engine.gfx.drawImage(image, xMouse, yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
+        engine.gfx.drawTexture(image, 0.5f, 0.5f, size, size)
+        engine.gfx.drawTexture(image, width-size, 0.5f, size, size)
+        engine.gfx.drawTexture(image, width-size, height-size, size, size)
+        engine.gfx.drawTexture(image, 0.5f, height-size, size, size)
+        engine.gfx.drawTexture(image, xMouse, yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
 
         // Get sprite sheet and frame texture
         val coinSpriteSheet = engine.asset.get<SpriteSheet>("sprite_sheet_asset")
@@ -197,7 +196,7 @@ class FeatureExample : Game()
 
         // Draw frame texture
         engine.gfx.setColor(1f, 1f, 1f)
-        engine.gfx.drawImage(frameTexture, x - 25f, y - 25f, 50f, 50f)
+        engine.gfx.drawTexture(frameTexture, x - 25f, y - 25f, 50f, 50f)
     }
 
     override fun cleanup()
