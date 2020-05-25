@@ -15,7 +15,7 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
     var height: Int = 0
         private set
 
-    var textureId: Int = -2
+    var id: Int = -2
         private set
         get() {
             if(field == -2)
@@ -44,7 +44,7 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
     open fun finalize(textureId: Int, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
     {
         this.textureData = null
-        this.textureId = textureId
+        this.id = textureId
         this.uMin = uMin
         this.vMin = vMin
         this.uMax = uMax
@@ -73,7 +73,7 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
 
     override fun delete()
     {
-        glDeleteTextures(textureId)
+        glDeleteTextures(id)
     }
 
     companion object

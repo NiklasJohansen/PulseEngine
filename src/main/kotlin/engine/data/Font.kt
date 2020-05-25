@@ -68,7 +68,7 @@ class Font(
 
     override fun delete()
     {
-        glDeleteTextures(charTexture.textureId)
+        glDeleteTextures(charTexture.id)
         charData.free()
     }
 

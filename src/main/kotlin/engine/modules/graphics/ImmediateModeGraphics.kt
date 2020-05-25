@@ -126,7 +126,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         val vMax = texture.vMax
 
         glPushMatrix()
-        glBindTexture(GL_TEXTURE_2D, texture.textureId)
+        glBindTexture(GL_TEXTURE_2D, texture.id)
         glMultMatrixf(camera.viewMatrixAsArray())
         glTranslatef(x, y, 0f)
         glRotatef(rot, 0f, 0f, 1f)
@@ -147,7 +147,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
         glPushMatrix()
-        glBindTexture(GL_TEXTURE_2D, texture.textureId)
+        glBindTexture(GL_TEXTURE_2D, texture.id)
         glMultMatrixf(camera.viewMatrixAsArray())
         glTranslatef(x, y, 0f)
         glRotatef(rot, 0f, 0f, 1f)

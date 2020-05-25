@@ -1,5 +1,6 @@
 package engine.modules.graphics
 
+import engine.data.Texture
 import org.lwjgl.opengl.ARBFramebufferObject.*
 import org.lwjgl.opengl.GL11.*
 import java.lang.RuntimeException
@@ -7,7 +8,7 @@ import java.lang.RuntimeException
 class FrameBufferObject(
     private val frameBufferId: Int,
     private val renderBufferId: Int,
-    val textureId: Int
+    val texture: Texture
 ) {
     fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
     fun release() = glBindFramebuffer(GL_FRAMEBUFFER, 0)
@@ -15,7 +16,7 @@ class FrameBufferObject(
     {
         glDeleteFramebuffers(frameBufferId)
         glDeleteRenderbuffers(renderBufferId)
-        glDeleteTextures(textureId)
+        texture.delete()
     }
 
     companion object
@@ -50,7 +51,12 @@ class FrameBufferObject(
             // Unbind frame buffer (binds default buffer)
             glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
-            return FrameBufferObject(frameBufferId, renderBufferId, textureId)
+            // Create texture asset
+            val texture = Texture("",  "")
+            texture.load(null, width, height, GL_RGBA)
+            texture.finalize(textureId)
+
+            return FrameBufferObject(frameBufferId, renderBufferId, texture)
         }
     }
 }
