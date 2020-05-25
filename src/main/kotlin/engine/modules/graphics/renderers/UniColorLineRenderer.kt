@@ -26,9 +26,9 @@ class UniColorLineRenderer(initialCapacity: Int, val gfxState: GraphicsState) : 
             initialized = true
         }
 
-        vbo.bind()
         program.use()
         program.defineVertexAttributeArray("position", 3, GL30.GL_FLOAT, stride, 0)
+        vao.release()
     }
 
     override fun linePoint(x0: Float, y0: Float)
@@ -54,6 +54,8 @@ class UniColorLineRenderer(initialCapacity: Int, val gfxState: GraphicsState) : 
         program.setUniform("color", java.lang.Float.floatToIntBits(rgbaColor))
 
         vbo.draw(GL11.GL_LINES, 3)
+
+        vao.release()
     }
 
     fun setColor(rgba: Float)

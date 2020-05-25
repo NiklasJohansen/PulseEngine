@@ -28,11 +28,10 @@ class QuadRenderer(initialCapacity: Int, val gfxState: GraphicsState) : BatchRen
             program = ShaderProgram.create("/engine/shaders/default/default.vert", "/engine/shaders/default/default.frag").use()
         }
 
-        ebo.bind()
-        vbo.bind()
         program.use()
         program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
         program.defineVertexAttributeArray("color",1, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)
+        vao.release()
     }
 
     fun quad(x: Float, y: Float, width: Float, height: Float)
@@ -100,6 +99,7 @@ class QuadRenderer(initialCapacity: Int, val gfxState: GraphicsState) : BatchRen
         ebo.draw(GL11.GL_TRIANGLES, 1)
 
         vertexCount = 0
+        vao.release()
     }
 
     override fun cleanup()

@@ -24,10 +24,10 @@ class LineRenderer(initialCapacity: Int, val gfxState: GraphicsState) : BatchRen
             initialized = true
         }
 
-        vbo.bind()
         program.use()
         program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
         program.defineVertexAttributeArray("rgbaColor",1, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)
+        vao.release()
     }
 
     fun linePoint(x: Float, y: Float)
@@ -54,6 +54,8 @@ class LineRenderer(initialCapacity: Int, val gfxState: GraphicsState) : BatchRen
         program.setUniform("model", gfxState.modelMatrix)
 
         vbo.draw(GL11.GL_LINES, 4)
+
+        vao.release()
     }
 
     override fun cleanup()
