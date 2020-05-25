@@ -123,11 +123,14 @@ class RetainedModeGraphics : GraphicsEngineInterface
         // Release frame buffer
         frameBufferObject.release()
 
-        // Render frame buffer
+        // Prepare for rendering FBO
         glDisable(GL_DEPTH_TEST)
         glClear(GL_COLOR_BUFFER_BIT)
 
+        // Run fbo texture through post processing pipeline
         val finalTexture = ppPipeline.process(frameBufferObject.texture)
+
+        // Render FBO texture
         frameRenderer.render(finalTexture)
     }
 

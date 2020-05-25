@@ -32,6 +32,7 @@ class QuadBatchRenderer(
             vao = VertexArrayObject.create()
         }
 
+        vbo.bind()
         program.use()
         program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
         program.defineVertexAttributeArray("color",1, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)
@@ -90,7 +91,7 @@ class QuadBatchRenderer(
             return
 
         vao.bind()
-
+        vbo.bind()
         program.use()
         program.setUniform("projection", gfxState.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)

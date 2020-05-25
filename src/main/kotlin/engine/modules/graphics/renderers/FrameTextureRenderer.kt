@@ -16,11 +16,6 @@ class FrameTextureRenderer(private val program: ShaderProgram)
         {
             vaoId = glGenVertexArrays()
             glBindVertexArray(vaoId)
-
-            val verticesBuffer = BufferUtils.createFloatBuffer(vertices.size)
-            verticesBuffer.put(vertices)
-            verticesBuffer.flip()
-
             vboId = glGenBuffers()
             glBindBuffer(GL_ARRAY_BUFFER, vboId)
             glBufferData(GL_ARRAY_BUFFER, verticesBuffer, GL_STATIC_DRAW)
@@ -92,5 +87,11 @@ class FrameTextureRenderer(private val program: ShaderProgram)
              1f, -1f, 1f, 0f,  // v4 (top-right)
             -1f, -1f, 0f, 0f   // v1 (top-left)
         )
+        private val verticesBuffer = BufferUtils
+            .createFloatBuffer(vertices.size)
+            .also {
+                it.put(vertices)
+                it.flip()
+            }
     }
 }

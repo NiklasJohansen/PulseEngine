@@ -12,7 +12,7 @@ interface PostProcessingEffect
     fun cleanUp()
 }
 
-abstract class SingleStageEffect : PostProcessingEffect
+abstract class SinglePassEffect : PostProcessingEffect
 {
     protected lateinit var fbo: FrameBufferObject
     protected lateinit var shaderProgram: ShaderProgram
@@ -55,5 +55,55 @@ abstract class SingleStageEffect : PostProcessingEffect
         shaderProgram.delete()
         renderer.cleanUp()
         fbo.delete()
+    }
+}
+
+abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProcessingEffect
+{
+    protected val fbo = mutableListOf<FrameBufferObject>()
+    protected val render = mutableListOf<FrameTextureRenderer>()
+    protected val program = mutableListOf<ShaderProgram>()
+
+    protected abstract fun acquireShaderPrograms(): List<ShaderProgram>
+    protected abstract fun applyEffect(texture: Texture): Texture
+
+    override fun init()
+    {
+        if(program.isEmpty())
+            program.addAll(acquireShaderPrograms())
+
+        if(render.isEmpty())
+            render.addAll(program.map { FrameTextureRenderer(it) })
+
+        render.forEach { it.init() }
+    }
+
+    override fun process(texture: Texture): Texture
+    {
+        updateFBO(texture)
+        return applyEffect(texture)
+    }
+
+    private fun updateFBO(texture: Texture)
+    {
+        if (fbo.isEmpty())
+            fbo.addAll(createNewFBOList(numberOfRenderPasses, texture.width, texture.height))
+
+        if (fbo.first().texture.width != texture.width || fbo.first().texture.height != texture.height)
+        {
+            fbo.forEach { it.delete() }
+            fbo.clear()
+            fbo.addAll(createNewFBOList(numberOfRenderPasses, texture.width, texture.height))
+        }
+    }
+
+    private fun createNewFBOList(amount: Int, width: Int, height: Int): List<FrameBufferObject> =
+        0.until(amount).map { FrameBufferObject.create(width, height) }
+
+    override fun cleanUp()
+    {
+        program.forEach { it.delete() }
+        render.forEach { it.cleanUp() }
+        fbo.forEach { it.delete() }
     }
 }

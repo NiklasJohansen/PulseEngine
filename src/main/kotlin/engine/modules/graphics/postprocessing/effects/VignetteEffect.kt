@@ -2,9 +2,9 @@ package engine.modules.graphics.postprocessing.effects
 
 import engine.data.Texture
 import engine.modules.graphics.ShaderProgram
-import engine.modules.graphics.postprocessing.SingleStageEffect
+import engine.modules.graphics.postprocessing.SinglePassEffect
 
-class VignetteEffect : SingleStageEffect()
+class VignetteEffect : SinglePassEffect()
 {
     override fun acquireShaderProgram(): ShaderProgram =
          ShaderProgram.create(

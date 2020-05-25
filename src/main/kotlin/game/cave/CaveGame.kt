@@ -3,6 +3,8 @@ package game.cave
 import engine.PulseEngine
 import engine.modules.Game
 import engine.data.*
+import engine.modules.graphics.postprocessing.effects.BlurEffect
+import engine.modules.graphics.postprocessing.effects.VignetteEffect
 import org.joml.Math.sin
 import kotlin.math.abs
 import kotlin.math.max
@@ -25,11 +27,15 @@ class CaveGame : Game()
         Block(0.4f,   Color(0.321f, 0.317f, 0.309f), false) // Stone
     )
 
+    private val blurEffect = BlurEffect()
+
     override fun init()
     {
         engine.config.targetFps = 120
         engine.window.title = "Cave Game"
         engine.data.addSource("Blocks", "count") { blockCount }
+        engine.gfx.addPostProcessingEffect(blurEffect)
+        engine.gfx.addPostProcessingEffect(VignetteEffect())
     }
 
     override fun update()
@@ -75,6 +81,15 @@ class CaveGame : Game()
             xCam -= if (abs(xLeft) > 0.15f) (xLeft-0.15f) * 10 * dt else 0.0f
             yCam -= if (abs(yLeft) > 0.15f) (yLeft-0.15f) * 10 * dt else 0.0f
         }
+
+        if(engine.input.isPressed(Mouse.MIDDLE))
+            blurEffect.radius = (engine.input.yMouse / engine.window.height) * 2f
+
+        if(engine.input.wasClicked(Key.UP))
+            blurEffect.blurPasses++
+
+        if(engine.input.wasClicked(Key.DOWN))
+            blurEffect.blurPasses--
     }
 
     override fun fixedUpdate()
