@@ -3,6 +3,7 @@ package engine.modules.graphics
 import engine.data.Font
 import engine.data.Texture
 import engine.data.RenderMode
+import engine.modules.graphics.postprocessing.PostProcessingEffect
 
 // Exposed to game code
 interface GraphicsInterface
@@ -32,6 +33,8 @@ interface GraphicsInterface
     fun setBlendFunction(func: BlendFunction)
 
     fun setLineWidth(width: Float)
+
+    fun addPostProcessingEffect(effect: PostProcessingEffect)
 }
 
 // Exposed to game engine

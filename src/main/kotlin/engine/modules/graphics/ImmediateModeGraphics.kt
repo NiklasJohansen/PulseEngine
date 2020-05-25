@@ -4,6 +4,7 @@ import engine.data.Font
 import engine.data.Texture
 import engine.data.RenderMode
 import engine.modules.DataInterface
+import engine.modules.graphics.postprocessing.PostProcessingEffect
 import engine.modules.graphics.renderers.TextRenderer
 import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
 import org.lwjgl.opengl.GL
@@ -194,6 +195,8 @@ class ImmediateModeGraphics : GraphicsEngineInterface
     }
 
     override fun setLineWidth(width: Float) = glLineWidth(width)
+
+    override fun addPostProcessingEffect(effect: PostProcessingEffect) { }
 
     override fun preRender() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 

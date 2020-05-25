@@ -27,9 +27,6 @@ class TextureRenderer(initialCapacity: Int, val gfxState: GraphicsState) : Batch
             program = ShaderProgram.create("/engine/shaders/default/arrayTexture.vert", "/engine/shaders/default/arrayTexture.frag").use()
             initialized = true
         }
-
-        ebo.bind()
-        vbo.bind()
         program.use()
         program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
         program.defineVertexAttributeArray("offset", 2, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)
@@ -38,6 +35,7 @@ class TextureRenderer(initialCapacity: Int, val gfxState: GraphicsState) : Batch
         program.defineVertexAttributeArray("texIndex",1, GL11.GL_FLOAT, stride, 8 * java.lang.Float.BYTES)
         program.defineVertexAttributeArray("color",1, GL11.GL_FLOAT, stride, 9 * java.lang.Float.BYTES)
         program.setUniform("textureArray", 0)
+        vao.release()
     }
 
     fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float)
@@ -46,7 +44,7 @@ class TextureRenderer(initialCapacity: Int, val gfxState: GraphicsState) : Batch
         val vMin = texture.vMin
         val uMax = texture.uMax
         val vMax = texture.vMax
-        val texIndex = texture.textureId.toFloat() + if(texture.format == GL11.GL_ALPHA) 0.5f else 0.0f
+        val texIndex = texture.id.toFloat() + if(texture.format == GL11.GL_ALPHA) 0.5f else 0.0f
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
         val rgba = gfxState.rgba
@@ -78,7 +76,7 @@ class TextureRenderer(initialCapacity: Int, val gfxState: GraphicsState) : Batch
         val vMax = texture.vMax * vMax
         val uMin = texture.uMax * uMin
         val vMin = texture.vMax * vMin
-        val index = texture.textureId.toFloat() + if(texture.format == GL11.GL_ALPHA) 0.5f else 0.0f
+        val index = texture.id.toFloat() + if(texture.format == GL11.GL_ALPHA) 0.5f else 0.0f
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
         val rgba = gfxState.rgba
@@ -121,6 +119,7 @@ class TextureRenderer(initialCapacity: Int, val gfxState: GraphicsState) : Batch
         ebo.draw(GL11.GL_TRIANGLES, 1)
 
         vertexCount = 0
+        vao.release()
     }
 
     override fun cleanup()

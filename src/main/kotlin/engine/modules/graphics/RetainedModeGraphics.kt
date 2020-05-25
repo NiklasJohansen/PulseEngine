@@ -3,6 +3,8 @@ package engine.modules.graphics
 import engine.data.Font
 import engine.data.RenderMode
 import engine.data.Texture
+import engine.modules.graphics.postprocessing.PostProcessingEffect
+import engine.modules.graphics.postprocessing.PostProcessingPipeline
 import engine.modules.graphics.renderers.*
 import org.joml.Matrix4f
 import org.lwjgl.opengl.GL
@@ -28,10 +30,12 @@ data class RenderCollection(
 class RetainedModeGraphics : GraphicsEngineInterface
 {
     override fun getRenderMode() = RenderMode.RETAINED
-    override val camera: CameraEngineInterface = Camera()
 
+    override val camera: CameraEngineInterface = Camera()
+    private val ppPipeline = PostProcessingPipeline()
     private val graphicState = GraphicsState()
     private val textRenderer = TextRenderer()
+    private val frameRenderer = FrameTextureRenderer()
     private val worldRenderer = RenderCollection(
         TextureRenderer(100, graphicState),
         QuadRenderer(100, graphicState),
@@ -52,7 +56,6 @@ class RetainedModeGraphics : GraphicsEngineInterface
     private lateinit var defaultFont: Font
 
     private lateinit var frameBufferObject: FrameBufferObject
-    private val frameBufferRenderer = FrameBufferRenderer()
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
@@ -94,7 +97,14 @@ class RetainedModeGraphics : GraphicsEngineInterface
         glEnable(GL_BLEND)
 
         renderers.forEach { it.init() }
-        frameBufferRenderer.init()
+
+        // Load shader for the multiTextureRenderer instance
+        val shaderProgram = ShaderProgram.create("/engine/shaders/effects/texture.vert", "/engine/shaders/effects/texture.frag")
+        frameRenderer.cleanUp()
+        frameRenderer.init(shaderProgram)
+
+        // Initialize post processing effects
+        ppPipeline.init()
 
         setBackgroundColor(graphicState.bgRed, graphicState.bgGreen, graphicState.bgBlue)
         setBlendFunction(graphicState.blendFunc)
@@ -143,7 +153,9 @@ class RetainedModeGraphics : GraphicsEngineInterface
         // Render frame buffer
         glDisable(GL_DEPTH_TEST)
         glClear(GL_COLOR_BUFFER_BIT)
-        frameBufferRenderer.render(-1f,-1f, 2f, 2f, frameBufferObject)
+
+        val finalTexture = ppPipeline.process(frameBufferObject.texture)
+        frameRenderer.render(finalTexture)
     }
 
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
@@ -207,6 +219,9 @@ class RetainedModeGraphics : GraphicsEngineInterface
     }
 
     override fun setLineWidth(width: Float) { }
+
+    override fun addPostProcessingEffect(effect: PostProcessingEffect)  =
+        ppPipeline.addEffect(effect)
 }
 
 interface BatchRenderer
