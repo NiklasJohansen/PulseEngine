@@ -14,6 +14,8 @@ class GraphicsState
     var bgBlue = 0.1f
     var rgba = 0f
     var depth: Float = 0f
+    val farPlane = 5f
+    val nearPlane = -1f
 
     init
     {

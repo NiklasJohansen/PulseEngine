@@ -26,11 +26,10 @@ abstract class SingleStageEffect : PostProcessingEffect
         if(!this::shaderProgram.isInitialized)
             shaderProgram = acquireShaderProgram()
 
-        if(this::renderer.isInitialized)
-            renderer.cleanUp()
+        if(!this::renderer.isInitialized)
+            renderer = FrameTextureRenderer(shaderProgram)
 
-        renderer = FrameTextureRenderer()
-        renderer.init(shaderProgram)
+        renderer.init()
     }
 
     override fun process(texture: Texture): Texture

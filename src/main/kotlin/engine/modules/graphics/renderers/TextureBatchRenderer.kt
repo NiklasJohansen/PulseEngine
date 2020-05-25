@@ -4,29 +4,35 @@ import engine.data.Texture
 import engine.modules.graphics.*
 import org.lwjgl.opengl.GL11
 
-class TextureRenderer(initialCapacity: Int, val gfxState: GraphicsState) : BatchRenderer
-{
+class TextureBatchRenderer(
+    initialCapacity: Int,
+    private val gfxState: GraphicsState
+) : BatchRenderer {
+
     private val stride = 10 * java.lang.Float.BYTES
     private val bytes = initialCapacity * 4L * stride
     private var vertexCount = 0
-
     private lateinit var program: ShaderProgram
     private lateinit var vbo: FloatBufferObject
     private lateinit var ebo: IntBufferObject
     private lateinit var vao: VertexArrayObject
-    private var initialized = false
 
     override fun init()
     {
-        vao = VertexArrayObject.create()
-
-        if(!initialized)
+        if(!this::vao.isInitialized)
         {
+            vao = VertexArrayObject.create()
             ebo = VertexBufferObject.createElementBuffer(bytes / 6)
             vbo = VertexBufferObject.create(bytes)
             program = ShaderProgram.create("/engine/shaders/default/arrayTexture.vert", "/engine/shaders/default/arrayTexture.frag").use()
-            initialized = true
         }
+        else
+        {
+            vao.delete()
+            vao = VertexArrayObject.create()
+        }
+
+        vbo.bind()
         program.use()
         program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
         program.defineVertexAttributeArray("offset", 2, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)

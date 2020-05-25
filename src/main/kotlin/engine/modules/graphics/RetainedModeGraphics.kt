@@ -10,51 +10,21 @@ import org.joml.Matrix4f
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
 
-data class RenderCollection(
-    val textureRenderer: TextureRenderer,
-    val quadRenderer: QuadRenderer,
-    val lineRenderer: LineRenderer,
-    val uniColorLineRenderer: UniColorLineRenderer
-){
-    private val renderers = listOf(
-        uniColorLineRenderer,
-        lineRenderer,
-        textureRenderer,
-        quadRenderer
-    )
-    fun init() = renderers.forEach { it.init() }
-    fun cleanup() = renderers.forEach { it.cleanup() }
-    fun render(camera: CameraEngineInterface) = renderers.forEach { it.render(camera) }
-}
-
 class RetainedModeGraphics : GraphicsEngineInterface
 {
     override fun getRenderMode() = RenderMode.RETAINED
-
     override val camera: CameraEngineInterface = Camera()
+
     private val ppPipeline = PostProcessingPipeline()
     private val graphicState = GraphicsState()
-    private val textRenderer = TextRenderer()
-    private val frameRenderer = FrameTextureRenderer()
-    private val worldRenderer = RenderCollection(
-        TextureRenderer(100, graphicState),
-        QuadRenderer(100, graphicState),
-        LineRenderer(100, graphicState),
-        UniColorLineRenderer(100, graphicState)
-    )
-    private val uiRenderer = RenderCollection(
-        TextureRenderer(100, graphicState),
-        QuadRenderer(100, graphicState),
-        LineRenderer(100, graphicState),
-        UniColorLineRenderer(100, graphicState)
-    )
 
-    private var currentRenderer: RenderCollection = worldRenderer
+    private val worldRenderer = Renderer2D.createDefault(100, graphicState)
+    private val uiRenderer = Renderer2D.createDefault(100, graphicState)
+    private var currentRenderer: Renderer2D = worldRenderer
     private val renderers = listOf(worldRenderer, uiRenderer)
 
-    private val farPlane = 5f
     private lateinit var defaultFont: Font
-
+    private lateinit var frameRenderer: FrameTextureRenderer
     private lateinit var frameBufferObject: FrameBufferObject
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
@@ -87,7 +57,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
         frameBufferObject = FrameBufferObject.create(width, height)
 
         glViewport(0, 0, width, height)
-        graphicState.projectionMatrix = Matrix4f().ortho(0.0f, width.toFloat(), height.toFloat(), 0.0f, -1f, farPlane)
+        graphicState.projectionMatrix = Matrix4f().ortho(0.0f, width.toFloat(), height.toFloat(), 0.0f, graphicState.nearPlane, graphicState.farPlane)
         graphicState.modelMatrix = Matrix4f()
     }
 
@@ -98,10 +68,12 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
         renderers.forEach { it.init() }
 
-        // Load shader for the multiTextureRenderer instance
-        val shaderProgram = ShaderProgram.create("/engine/shaders/effects/texture.vert", "/engine/shaders/effects/texture.frag")
-        frameRenderer.cleanUp()
-        frameRenderer.init(shaderProgram)
+        // Create frameRenderer
+        if(!this::frameRenderer.isInitialized)
+            frameRenderer = FrameTextureRenderer(ShaderProgram.create("/engine/shaders/effects/texture.vert", "/engine/shaders/effects/texture.frag"))
+
+        // Reinitialize frameRenderer
+        frameRenderer.init()
 
         // Initialize post processing effects
         ppPipeline.init()
@@ -112,6 +84,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun cleanUp()
     {
+        println("Cleaning up graphics...")
         renderers.forEach { it.cleanup() }
         graphicState.textureArray.cleanup()
         defaultFont.delete()
@@ -132,9 +105,9 @@ class RetainedModeGraphics : GraphicsEngineInterface
         glEnable(GL_DEPTH_TEST)
         glDepthMask(true)
         glDepthFunc(GL_LEQUAL)
-        glDepthRange(-1.0, farPlane.toDouble())
+        glDepthRange(graphicState.nearPlane.toDouble(), graphicState.farPlane.toDouble())
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-        glClearDepth(farPlane.toDouble())
+        glClearDepth(graphicState.farPlane.toDouble())
 
         // Render world
         camera.enable()
@@ -196,7 +169,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun drawText(text: String, x: Float, y: Float, font: Font?, fontSize: Float, xOrigin: Float, yOrigin: Float)
     {
-        textRenderer.draw(this, text, x, y, font ?: defaultFont, fontSize, xOrigin, yOrigin)
+        currentRenderer.textRenderer.draw(this, text, x, y, font ?: defaultFont, fontSize, xOrigin, yOrigin)
     }
 
     override fun setColor(red: Float, green: Float, blue: Float, alpha: Float)

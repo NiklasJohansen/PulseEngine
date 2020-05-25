@@ -5,33 +5,40 @@ import engine.modules.graphics.ShaderProgram
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL30.*
 
-class FrameTextureRenderer
+class FrameTextureRenderer(private val program: ShaderProgram)
 {
-    private var vaoId = 0
-    private var vboId = 0
-    private lateinit var program: ShaderProgram
+    private var vaoId = -1
+    private var vboId = -1
 
-    fun init(shaderProgram: ShaderProgram)
+    fun init()
     {
-        this.program = shaderProgram
+        if (vaoId == -1)
+        {
+            vaoId = glGenVertexArrays()
+            glBindVertexArray(vaoId)
 
-        val verticesBuffer = BufferUtils.createFloatBuffer(vertices.size)
-        verticesBuffer.put(vertices)
-        verticesBuffer.flip()
+            val verticesBuffer = BufferUtils.createFloatBuffer(vertices.size)
+            verticesBuffer.put(vertices)
+            verticesBuffer.flip()
 
-        vaoId = glGenVertexArrays()
-        glBindVertexArray(vaoId)
-
-        vboId = glGenBuffers()
-        glBindBuffer(GL_ARRAY_BUFFER, vboId)
-        glBufferData(GL_ARRAY_BUFFER, verticesBuffer, GL_STATIC_DRAW)
+            vboId = glGenBuffers()
+            glBindBuffer(GL_ARRAY_BUFFER, vboId)
+            glBufferData(GL_ARRAY_BUFFER, verticesBuffer, GL_STATIC_DRAW)
+        }
+        else
+        {
+            glDeleteVertexArrays(vaoId)
+            vaoId = glGenVertexArrays()
+            glBindVertexArray(vaoId)
+            glBindBuffer(GL_ARRAY_BUFFER, vboId)
+        }
 
         program.use()
         program.defineVertexAttributeArray("position", 2, GL_FLOAT, 4 * FLOAT_BYTES, 0)
         program.defineVertexAttributeArray("texCoord", 2, GL_FLOAT, 4 * FLOAT_BYTES, 2 * FLOAT_BYTES)
 
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
     }
 
     fun render(vararg texture: Texture)

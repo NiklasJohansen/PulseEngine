@@ -3,29 +3,33 @@ package engine.modules.graphics.renderers
 import engine.modules.graphics.*
 import org.lwjgl.opengl.GL11
 
-class QuadRenderer(initialCapacity: Int, val gfxState: GraphicsState) : BatchRenderer
-{
+class QuadBatchRenderer(
+    initialCapacity: Int,
+    private val gfxState: GraphicsState
+) : BatchRenderer {
+
     private val stride = 4 * java.lang.Float.BYTES
     private val bytes = 4L * initialCapacity * stride
     private var vertexCount = 0
     private var singleVertexCount = 0
-
     private lateinit var program: ShaderProgram
     private lateinit var vbo: FloatBufferObject
     private lateinit var ebo: IntBufferObject
     private lateinit var vao: VertexArrayObject
 
-    private var initialized = false
-
     override fun init()
     {
-        vao = VertexArrayObject.create()
-
-        if (!initialized)
+        if (!this::vao.isInitialized)
         {
+            vao = VertexArrayObject.create()
             ebo = VertexBufferObject.createElementBuffer(bytes / 6)
             vbo = VertexBufferObject.create(bytes)
             program = ShaderProgram.create("/engine/shaders/default/default.vert", "/engine/shaders/default/default.frag").use()
+        }
+        else
+        {
+            vao.delete()
+            vao = VertexArrayObject.create()
         }
 
         program.use()

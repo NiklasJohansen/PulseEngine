@@ -3,27 +3,32 @@ package engine.modules.graphics.renderers
 import engine.modules.graphics.*
 import org.lwjgl.opengl.GL11
 
-class LineRenderer(initialCapacity: Int, val gfxState: GraphicsState) : BatchRenderer
-{
+class LineBatchRenderer(
+    initialCapacity: Int,
+    private val gfxState: GraphicsState
+) : BatchRenderer {
+
     private val stride = 4 * java.lang.Float.BYTES
     private val bytes = 2L * initialCapacity * stride
-
     private lateinit var program: ShaderProgram
     private lateinit var vbo: FloatBufferObject
     private lateinit var vao: VertexArrayObject
-    private var initialized = false
 
     override fun init()
     {
-        vao = VertexArrayObject.create()
-
-        if (!initialized)
+        if (!this::vao.isInitialized)
         {
+            vao = VertexArrayObject.create()
             vbo = VertexBufferObject.create(bytes)
             program = ShaderProgram.create("/engine/shaders/default/line.vert", "/engine/shaders/default/line.frag").use()
-            initialized = true
+        }
+        else
+        {
+            vao.delete()
+            vao = VertexArrayObject.create()
         }
 
+        vbo.bind()
         program.use()
         program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
         program.defineVertexAttributeArray("rgbaColor",1, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)

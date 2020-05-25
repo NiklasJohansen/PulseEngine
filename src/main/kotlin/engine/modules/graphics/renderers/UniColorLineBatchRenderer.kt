@@ -4,28 +4,33 @@ import engine.modules.graphics.*
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL30
 
-class UniColorLineRenderer(initialCapacity: Int, val gfxState: GraphicsState) : LineRendererInterface, BatchRenderer
-{
+class UniColorLineBatchRenderer(
+    initialCapacity: Int,
+    private val gfxState: GraphicsState
+) : LineRendererInterface, BatchRenderer {
+
     private val stride = 3 * java.lang.Float.BYTES
     private val bytes = stride * 2L * initialCapacity
-
     private lateinit var program: ShaderProgram
     private lateinit var vbo: FloatBufferObject
     private lateinit var vao: VertexArrayObject
-    private var initialized = false
     private var rgbaColor: Float = 0f
 
     override fun init()
     {
-        vao = VertexArrayObject.create()
-
-        if (!initialized)
+        if (!this::vao.isInitialized)
         {
+            vao = VertexArrayObject.create()
             vbo = VertexBufferObject.create(bytes)
             program = ShaderProgram.create("/engine/shaders/default/lineUniColor.vert", "/engine/shaders/default/line.frag").use()
-            initialized = true
+        }
+        else
+        {
+            vao.delete()
+            vao = VertexArrayObject.create()
         }
 
+        vbo.bind()
         program.use()
         program.defineVertexAttributeArray("position", 3, GL30.GL_FLOAT, stride, 0)
         vao.release()
