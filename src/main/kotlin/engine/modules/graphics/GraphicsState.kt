@@ -14,8 +14,6 @@ class GraphicsState
     var bgBlue = 0.1f
     var rgba = 0f
     var depth: Float = 0f
-    val farPlane = 5f
-    val nearPlane = -1f
 
     init
     {
@@ -45,5 +43,7 @@ class GraphicsState
     companion object
     {
         private const val DEPTH_INC = 0.000001f
+        const val FAR_PLANE = 5f
+        const val NEAR_PLANE = -1f
     }
 }

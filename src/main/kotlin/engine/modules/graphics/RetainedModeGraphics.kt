@@ -5,7 +5,8 @@ import engine.data.RenderMode
 import engine.data.Texture
 import engine.modules.graphics.postprocessing.PostProcessingEffect
 import engine.modules.graphics.postprocessing.PostProcessingPipeline
-import engine.modules.graphics.renderers.*
+import engine.modules.graphics.renderers.FrameTextureRenderer
+import engine.modules.graphics.renderers.Renderer2D
 import org.joml.Matrix4f
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
@@ -24,8 +25,9 @@ class RetainedModeGraphics : GraphicsEngineInterface
     private val renderers = listOf(worldRenderer, uiRenderer)
 
     private lateinit var defaultFont: Font
-    private lateinit var frameRenderer: FrameTextureRenderer
-    private lateinit var frameBufferObject: FrameBufferObject
+    private lateinit var renderer: FrameTextureRenderer
+    private val worldRenderTarget = RenderTarget()
+    private val uidRenderTarget = RenderTarget()
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
@@ -51,13 +53,11 @@ class RetainedModeGraphics : GraphicsEngineInterface
         if(windowRecreated)
             initOpenGL()
 
-        if(this::frameBufferObject.isInitialized)
-            frameBufferObject.delete()
-
-        frameBufferObject = FrameBufferObject.create(width, height)
+        worldRenderTarget.init(width, height)
+        uidRenderTarget.init(width, height)
 
         glViewport(0, 0, width, height)
-        graphicState.projectionMatrix = Matrix4f().ortho(0.0f, width.toFloat(), height.toFloat(), 0.0f, graphicState.nearPlane, graphicState.farPlane)
+        graphicState.projectionMatrix = Matrix4f().ortho(0.0f, width.toFloat(), height.toFloat(), 0.0f, GraphicsState.NEAR_PLANE, GraphicsState.FAR_PLANE)
         graphicState.modelMatrix = Matrix4f()
     }
 
@@ -69,11 +69,11 @@ class RetainedModeGraphics : GraphicsEngineInterface
         renderers.forEach { it.init() }
 
         // Create frameRenderer
-        if(!this::frameRenderer.isInitialized)
-            frameRenderer = FrameTextureRenderer(ShaderProgram.create("/engine/shaders/effects/texture.vert", "/engine/shaders/effects/texture.frag"))
+        if(!this::renderer.isInitialized)
+            renderer = FrameTextureRenderer(ShaderProgram.create("/engine/shaders/effects/texture.vert", "/engine/shaders/effects/texture.frag"))
 
-        // Reinitialize frameRenderer
-        frameRenderer.init()
+        // Initialize frameRenderer
+        renderer.init()
 
         // Initialize post processing effects
         ppPipeline.init()
@@ -88,7 +88,9 @@ class RetainedModeGraphics : GraphicsEngineInterface
         renderers.forEach { it.cleanup() }
         graphicState.textureArray.cleanup()
         defaultFont.delete()
-        frameBufferObject.delete()
+
+        worldRenderTarget.cleanUp()
+        uidRenderTarget.cleanUp()
     }
 
     override fun preRender()
@@ -98,40 +100,30 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun postRender(interpolation: Float)
     {
-        // Bind frame buffer
-        frameBufferObject.bind()
-
-        // Setup OpenGL
-        glEnable(GL_DEPTH_TEST)
-        glDepthMask(true)
-        glDepthFunc(GL_LEQUAL)
-        glDepthRange(graphicState.nearPlane.toDouble(), graphicState.farPlane.toDouble())
-        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-        glClearDepth(graphicState.farPlane.toDouble())
-
         // Render world
+        worldRenderTarget.begin()
         camera.enable()
         camera.updateViewMatrix(interpolation)
         worldRenderer.render(camera)
+        worldRenderTarget.end()
 
         // Render UI
+        uidRenderTarget.begin()
         camera.disable()
         camera.updateViewMatrix(interpolation)
         uiRenderer.render(camera)
         camera.enable()
+        uidRenderTarget.end()
 
-        // Release frame buffer
-        frameBufferObject.release()
-
-        // Prepare for rendering FBO
+        // Prepare OpenGL for rendering FBO textures
         glDisable(GL_DEPTH_TEST)
         glClear(GL_COLOR_BUFFER_BIT)
+        glEnable( GL_BLEND )
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        // Run fbo texture through post processing pipeline
-        val finalTexture = ppPipeline.process(frameBufferObject.texture)
-
-        // Render FBO texture
-        frameRenderer.render(finalTexture)
+        val worldTexture = ppPipeline.process(worldRenderTarget.getTexture())
+        renderer.render(worldTexture)
+        renderer.render(uidRenderTarget.getTexture())
     }
 
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
