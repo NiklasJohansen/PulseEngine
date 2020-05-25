@@ -50,6 +50,11 @@ class ShaderProgram(private val id: Int)
         return value
     }
 
+    fun setUniform(name: String, value1: Float, value2: Float)
+    {
+        glUniform2f(getUniformLocation(name), value1, value2)
+    }
+
     fun defineVertexAttributeArray(name: String, size: Int, type: Int, stride: Int, offset: Int, normalized: Boolean = false)
     {
         val location = getAttributeLocation(name)
