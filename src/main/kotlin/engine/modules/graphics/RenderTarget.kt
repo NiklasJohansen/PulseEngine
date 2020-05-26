@@ -1,10 +1,11 @@
 package engine.modules.graphics
 
 import engine.data.Texture
-import org.lwjgl.opengl.GL11
+import org.lwjgl.opengl.GL11.*
 
-class RenderTarget
-{
+class RenderTarget(
+    private val gfxState: GraphicsState
+) {
     private lateinit var fbo: FrameBufferObject
 
     fun init(width: Int, height: Int)
@@ -18,18 +19,19 @@ class RenderTarget
     fun begin()
     {
         fbo.bind()
-        GL11.glClearColor(0f, 0f, 0f, 0f)
-        fbo.clear()
 
         // Setup OpenGL
-        GL11.glEnable(GL11.GL_DEPTH_TEST)
-        GL11.glDepthMask(true)
-        GL11.glDepthFunc(GL11.GL_LEQUAL)
-        GL11.glDepthRange(GraphicsState.NEAR_PLANE.toDouble(), GraphicsState.FAR_PLANE.toDouble())
-        GL11.glClear(GL11.GL_COLOR_BUFFER_BIT or GL11.GL_DEPTH_BUFFER_BIT)
-        GL11.glClearDepth(GraphicsState.FAR_PLANE.toDouble())
-        GL11.glEnable(GL11.GL_BLEND)
-        GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA)
+        glEnable(GL_DEPTH_TEST)
+        glDepthMask(true)
+        glDepthFunc(GL_LEQUAL)
+        glDepthRange(GraphicsState.NEAR_PLANE.toDouble(), GraphicsState.FAR_PLANE.toDouble())
+
+        glEnable(GL_BLEND)
+        glBlendFunc(gfxState.blendFunc.src, gfxState.blendFunc.dest)
+
+        glClearColor(gfxState.bgRed, gfxState.bgGreen, gfxState.bgBlue, 0f)
+        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+        glClearDepth(GraphicsState.FAR_PLANE.toDouble())
     }
 
     fun end() = fbo.release()

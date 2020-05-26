@@ -7,6 +7,7 @@ import engine.data.Key
 import engine.data.Mouse
 import engine.data.ScreenMode.*
 import engine.modules.graphics.BlendFunction
+import engine.modules.graphics.postprocessing.effects.BloomEffect
 import java.text.DecimalFormat
 import kotlin.math.PI
 import kotlin.math.cos
@@ -16,13 +17,14 @@ import kotlin.random.Random
 
 fun main() = PulseEngine.run(ParticleSystem())
 
-
 class ParticleSystem : Game()
 {
     private var particles = FloatArray(DATA_FIELDS * MAX_PARTICLES)
     private var particleCount = 0
     private var useInterpolation = true
     private var renderMonoColor = true
+
+    private val bloomEffect = BloomEffect(blurPasses = 2, blurRadius = 0.2f, exposure = 1.3f)
 
     companion object
     {
@@ -43,7 +45,8 @@ class ParticleSystem : Game()
         engine.config.fixedTickRate = 15
         engine.window.title = "Particle system"
         engine.gfx.setBlendFunction(BlendFunction.ADDITIVE)
-        engine.gfx.setBackgroundColor(0.1f, 0.1f, 0.1f)
+        engine.gfx.setBackgroundColor(0.05f, 0.05f, 0.05f)
+        engine.gfx.addPostProcessingEffect(bloomEffect)
     }
 
     override fun update()
@@ -159,6 +162,8 @@ class ParticleSystem : Game()
 
     override fun render()
     {
+        engine.gfx.setBlendFunction(BlendFunction.ADDITIVE)
+
         if(renderMonoColor)
             renderMonoColoredParticles(engine)
         else

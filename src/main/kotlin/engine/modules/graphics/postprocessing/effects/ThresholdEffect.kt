@@ -4,19 +4,21 @@ import engine.data.Texture
 import engine.modules.graphics.ShaderProgram
 import engine.modules.graphics.postprocessing.SinglePassEffect
 
-class VignetteEffect : SinglePassEffect()
-{
+class ThresholdEffect(
+    var brightnessThreshold: Float = 0.5f
+) : SinglePassEffect() {
+
     override fun acquireShaderProgram(): ShaderProgram =
-         ShaderProgram.create(
-            vertexShaderFileName = "/engine/shaders/effects/vignette.vert",
-            fragmentShaderFileName = "/engine/shaders/effects/vignette.frag"
+        ShaderProgram.create(
+            vertexShaderFileName = "/engine/shaders/effects/brightnessThreshold.vert",
+            fragmentShaderFileName = "/engine/shaders/effects/brightnessThreshold.frag"
         )
 
     override fun applyEffect(texture: Texture): Texture
     {
         fbo.bind()
         program.use()
-        program.setUniform("resolution", texture.width.toFloat(), texture.height.toFloat())
+        program.setUniform("threshold", brightnessThreshold)
         renderer.render(texture)
         fbo.release()
 

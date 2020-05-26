@@ -3,7 +3,7 @@ package game.cave
 import engine.PulseEngine
 import engine.modules.Game
 import engine.data.*
-import engine.modules.graphics.postprocessing.effects.BlurEffect
+import engine.modules.graphics.postprocessing.effects.BloomEffect
 import engine.modules.graphics.postprocessing.effects.VignetteEffect
 import org.joml.Math.sin
 import kotlin.math.abs
@@ -27,14 +27,15 @@ class CaveGame : Game()
         Block(0.4f,   Color(0.321f, 0.317f, 0.309f), false) // Stone
     )
 
-    private val blurEffect = BlurEffect()
+    private val bloomEffect = BloomEffect(exposure = 2.2f, blurRadius = 0.5f, blurPasses = 2)
 
     override fun init()
     {
         engine.config.targetFps = 120
         engine.window.title = "Cave Game"
         engine.data.addSource("Blocks", "count") { blockCount }
-        engine.gfx.addPostProcessingEffect(blurEffect)
+
+        engine.gfx.addPostProcessingEffect(bloomEffect)
         engine.gfx.addPostProcessingEffect(VignetteEffect())
     }
 
@@ -83,13 +84,16 @@ class CaveGame : Game()
         }
 
         if(engine.input.isPressed(Mouse.MIDDLE))
-            blurEffect.radius = (engine.input.yMouse / engine.window.height) * 2f
+            bloomEffect.exposure -= engine.input.ydMouse / 10f
+
+        if(engine.input.isPressed(Mouse.RIGHT))
+            bloomEffect.blurRadius += engine.input.ydMouse / 10f
 
         if(engine.input.wasClicked(Key.UP))
-            blurEffect.blurPasses++
+            bloomEffect.blurPasses++
 
         if(engine.input.wasClicked(Key.DOWN))
-            blurEffect.blurPasses--
+            bloomEffect.blurPasses--
     }
 
     override fun fixedUpdate()

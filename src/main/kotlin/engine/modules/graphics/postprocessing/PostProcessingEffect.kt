@@ -15,7 +15,7 @@ interface PostProcessingEffect
 abstract class SinglePassEffect : PostProcessingEffect
 {
     protected lateinit var fbo: FrameBufferObject
-    protected lateinit var shaderProgram: ShaderProgram
+    protected lateinit var program: ShaderProgram
     protected lateinit var renderer: FrameTextureRenderer
 
     protected abstract fun acquireShaderProgram(): ShaderProgram
@@ -23,11 +23,11 @@ abstract class SinglePassEffect : PostProcessingEffect
 
     override fun init()
     {
-        if(!this::shaderProgram.isInitialized)
-            shaderProgram = acquireShaderProgram()
+        if(!this::program.isInitialized)
+            program = acquireShaderProgram()
 
         if(!this::renderer.isInitialized)
-            renderer = FrameTextureRenderer(shaderProgram)
+            renderer = FrameTextureRenderer(program)
 
         renderer.init()
     }
@@ -52,7 +52,7 @@ abstract class SinglePassEffect : PostProcessingEffect
 
     override fun cleanUp()
     {
-        shaderProgram.delete()
+        program.delete()
         renderer.cleanUp()
         fbo.delete()
     }
@@ -61,7 +61,7 @@ abstract class SinglePassEffect : PostProcessingEffect
 abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProcessingEffect
 {
     protected val fbo = mutableListOf<FrameBufferObject>()
-    protected val render = mutableListOf<FrameTextureRenderer>()
+    protected val renderer = mutableListOf<FrameTextureRenderer>()
     protected val program = mutableListOf<ShaderProgram>()
 
     protected abstract fun acquireShaderPrograms(): List<ShaderProgram>
@@ -72,10 +72,10 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
         if(program.isEmpty())
             program.addAll(acquireShaderPrograms())
 
-        if(render.isEmpty())
-            render.addAll(program.map { FrameTextureRenderer(it) })
+        if(renderer.isEmpty())
+            renderer.addAll(program.map { FrameTextureRenderer(it) })
 
-        render.forEach { it.init() }
+        renderer.forEach { it.init() }
     }
 
     override fun process(texture: Texture): Texture
@@ -103,7 +103,7 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
     override fun cleanUp()
     {
         program.forEach { it.delete() }
-        render.forEach { it.cleanUp() }
+        renderer.forEach { it.cleanUp() }
         fbo.forEach { it.delete() }
     }
 }

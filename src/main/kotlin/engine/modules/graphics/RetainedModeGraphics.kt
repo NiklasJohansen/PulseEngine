@@ -26,8 +26,8 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     private lateinit var defaultFont: Font
     private lateinit var renderer: FrameTextureRenderer
-    private val worldRenderTarget = RenderTarget()
-    private val uidRenderTarget = RenderTarget()
+    private val worldRenderTarget = RenderTarget(graphicState)
+    private val uidRenderTarget = RenderTarget(graphicState)
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
