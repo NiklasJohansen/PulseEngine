@@ -27,7 +27,8 @@ class CaveGame : Game()
         Block(0.4f,   Color(0.321f, 0.317f, 0.309f), false) // Stone
     )
 
-    private val bloomEffect = BloomEffect(exposure = 2.2f, blurRadius = 0.5f, blurPasses = 2)
+    private val bloomEffect = BloomEffect()
+    private val vignetteEffect = VignetteEffect()
 
     override fun init()
     {
@@ -36,7 +37,7 @@ class CaveGame : Game()
         engine.data.addSource("Blocks", "count") { blockCount }
 
         engine.gfx.addPostProcessingEffect(bloomEffect)
-        engine.gfx.addPostProcessingEffect(VignetteEffect())
+        engine.gfx.addPostProcessingEffect(vignetteEffect)
     }
 
     override fun update()
@@ -87,7 +88,12 @@ class CaveGame : Game()
             bloomEffect.exposure -= engine.input.ydMouse / 10f
 
         if(engine.input.isPressed(Mouse.RIGHT))
-            bloomEffect.blurRadius += engine.input.ydMouse / 10f
+            vignetteEffect.strength -= engine.input.ydMouse / 10f
+
+//        if(engine.input.isPressed(Mouse.RIGHT))
+//            bloomEffect.blurRadius += engine.input.ydMouse / 10f
+
+        println(vignetteEffect.strength)
 
         if(engine.input.wasClicked(Key.UP))
             bloomEffect.blurPasses++

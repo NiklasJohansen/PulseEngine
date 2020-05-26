@@ -10,7 +10,7 @@ class BlurEffect(
     var blurPasses: Int = 2
 ) : MultiPassEffect(2) {
 
-    override fun acquireShaderPrograms(): List<ShaderProgram> =
+    override fun loadShaderPrograms(): List<ShaderProgram> =
         listOf(
             ShaderProgram.create(
                 vertexShaderFileName = "/engine/shaders/effects/blurVertical.vert",

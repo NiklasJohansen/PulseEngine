@@ -8,7 +8,7 @@ class ThresholdEffect(
     var brightnessThreshold: Float = 0.5f
 ) : SinglePassEffect() {
 
-    override fun acquireShaderProgram(): ShaderProgram =
+    override fun loadShaderProgram(): ShaderProgram =
         ShaderProgram.create(
             vertexShaderFileName = "/engine/shaders/effects/brightnessThreshold.vert",
             fragmentShaderFileName = "/engine/shaders/effects/brightnessThreshold.frag"

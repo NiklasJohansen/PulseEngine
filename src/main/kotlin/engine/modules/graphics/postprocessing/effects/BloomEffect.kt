@@ -6,9 +6,9 @@ import engine.modules.graphics.postprocessing.SinglePassEffect
 
 class BloomEffect(
     var threshold: Float = 0.5f,
-    var exposure: Float = 1f,
-    var blurRadius: Float = 0.4f,
-    var blurPasses: Int = 1
+    var exposure: Float = 2.2f,
+    var blurRadius: Float = 0.5f,
+    var blurPasses: Int = 2
 ) : SinglePassEffect() {
 
     private val blurEffect = BlurEffect(blurRadius, blurPasses)
@@ -21,7 +21,7 @@ class BloomEffect(
         thresholdEffect.init()
     }
 
-    override fun acquireShaderProgram(): ShaderProgram =
+    override fun loadShaderProgram(): ShaderProgram =
         ShaderProgram.create(
             vertexShaderFileName = "/engine/shaders/effects/textureAddBlend.vert",
             fragmentShaderFileName = "/engine/shaders/effects/textureAddBlend.frag"

@@ -18,13 +18,13 @@ abstract class SinglePassEffect : PostProcessingEffect
     protected lateinit var program: ShaderProgram
     protected lateinit var renderer: FrameTextureRenderer
 
-    protected abstract fun acquireShaderProgram(): ShaderProgram
+    protected abstract fun loadShaderProgram(): ShaderProgram
     protected abstract fun applyEffect(texture: Texture): Texture
 
     override fun init()
     {
         if(!this::program.isInitialized)
-            program = acquireShaderProgram()
+            program = loadShaderProgram()
 
         if(!this::renderer.isInitialized)
             renderer = FrameTextureRenderer(program)
@@ -64,13 +64,13 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
     protected val renderer = mutableListOf<FrameTextureRenderer>()
     protected val program = mutableListOf<ShaderProgram>()
 
-    protected abstract fun acquireShaderPrograms(): List<ShaderProgram>
+    protected abstract fun loadShaderPrograms(): List<ShaderProgram>
     protected abstract fun applyEffect(texture: Texture): Texture
 
     override fun init()
     {
         if(program.isEmpty())
-            program.addAll(acquireShaderPrograms())
+            program.addAll(loadShaderPrograms())
 
         if(renderer.isEmpty())
             renderer.addAll(program.map { FrameTextureRenderer(it) })
