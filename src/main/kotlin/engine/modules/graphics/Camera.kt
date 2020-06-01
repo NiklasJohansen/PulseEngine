@@ -44,7 +44,7 @@ abstract class CameraInterface
 
 abstract class CameraEngineInterface : CameraInterface()
 {
-    abstract fun updateViewMatrix(interpolation: Float)
+    abstract fun updateViewMatrix()
     abstract fun updateTransform(deltaTime: Float)
     abstract fun viewMatrixAsArray(): FloatArray
     abstract fun setOnEnableChanged(callback: (Boolean) -> Unit)
@@ -107,20 +107,20 @@ class Camera : CameraEngineInterface()
         this.target = target
     }
 
-    override fun updateViewMatrix(interpolation: Float)
+    override fun updateViewMatrix()
     {
-        val xPos = xPos.interpolateFrom(xLastPos)
-        val yPos = yPos.interpolateFrom(yLastPos)
-        val zPos = zPos.interpolateFrom(zLastPos)
-        val xRot = xRot.interpolateFrom(xLastRot)
-        val yRot = yRot.interpolateFrom(yLastRot)
-        val zRot = zRot.interpolateFrom(zLastRot)
-        val xScale = xScale.interpolateFrom(xLastScale)
-        val yScale = yScale.interpolateFrom(yLastScale)
-        val zScale = zScale.interpolateFrom(zLastScale)
-
         viewMatrix = if (enabled)
         {
+            val xPos = xPos.interpolateFrom(xLastPos)
+            val yPos = yPos.interpolateFrom(yLastPos)
+            val zPos = zPos.interpolateFrom(zLastPos)
+            val xRot = xRot.interpolateFrom(xLastRot)
+            val yRot = yRot.interpolateFrom(yLastRot)
+            val zRot = zRot.interpolateFrom(zLastRot)
+            val xScale = xScale.interpolateFrom(xLastScale)
+            val yScale = yScale.interpolateFrom(yLastScale)
+            val zScale = zScale.interpolateFrom(zLastScale)
+
             cameraMatrix
                 .setTranslation(xPos + xOrigin, yPos + yOrigin, zPos + zOrigin)
                 .translate(-xOrigin, -yOrigin, -zOrigin)

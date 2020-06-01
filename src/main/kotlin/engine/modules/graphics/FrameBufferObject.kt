@@ -15,8 +15,8 @@ class FrameBufferObject(
     fun clear() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
     fun delete()
     {
-        glDeleteFramebuffers(frameBufferId)
         glDeleteRenderbuffers(renderBufferId)
+        glDeleteFramebuffers(frameBufferId)
         texture.delete()
     }
 
@@ -26,7 +26,7 @@ class FrameBufferObject(
         {
             // Generate frame buffer
             val frameBufferId = glGenFramebuffers()
-            glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId);
+            glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
 
             // Color attachment
             val textureId = glGenTextures()

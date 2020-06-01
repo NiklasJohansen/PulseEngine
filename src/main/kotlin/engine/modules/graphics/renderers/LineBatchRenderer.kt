@@ -18,18 +18,18 @@ class LineBatchRenderer(
     {
         if (!this::vao.isInitialized)
         {
-            vao = VertexArrayObject.create()
-            vbo = VertexBufferObject.create(bytes)
-            program = ShaderProgram.create("/engine/shaders/default/line.vert", "/engine/shaders/default/line.frag").use()
+            vao = VertexArrayObject.createAndBind()
+            vbo = VertexBufferObject.createAndBind(bytes)
+            program = ShaderProgram.create("/engine/shaders/default/line.vert", "/engine/shaders/default/line.frag").bind()
         }
         else
         {
             vao.delete()
-            vao = VertexArrayObject.create()
+            vao = VertexArrayObject.createAndBind()
         }
 
         vbo.bind()
-        program.use()
+        program.bind()
         program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
         program.defineVertexAttributeArray("rgbaColor",1, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)
         vao.release()
@@ -53,11 +53,12 @@ class LineBatchRenderer(
     {
         vao.bind()
         vbo.bind()
-        program.use()
+        program.bind()
         program.setUniform("projection", gfxState.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
         program.setUniform("model", gfxState.modelMatrix)
 
+        vbo.flush()
         vbo.draw(GL11.GL_LINES, 4)
 
         vao.release()

@@ -93,8 +93,6 @@ class CaveGame : Game()
 //        if(engine.input.isPressed(Mouse.RIGHT))
 //            bloomEffect.blurRadius += engine.input.ydMouse / 10f
 
-        println(vignetteEffect.strength)
-
         if(engine.input.wasClicked(Key.UP))
             bloomEffect.blurPasses++
 

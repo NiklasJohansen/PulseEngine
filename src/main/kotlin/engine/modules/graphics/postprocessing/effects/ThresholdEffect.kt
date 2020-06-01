@@ -17,7 +17,7 @@ class ThresholdEffect(
     override fun applyEffect(texture: Texture): Texture
     {
         fbo.bind()
-        program.use()
+        program.bind()
         program.setUniform("threshold", brightnessThreshold)
         renderer.render(texture)
         fbo.release()

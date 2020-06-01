@@ -28,7 +28,7 @@ class FrameTextureRenderer(private val program: ShaderProgram)
             glBindBuffer(GL_ARRAY_BUFFER, vboId)
         }
 
-        program.use()
+        program.bind()
         program.defineVertexAttributeArray("position", 2, GL_FLOAT, 4 * FLOAT_BYTES, 0)
         program.defineVertexAttributeArray("texCoord", 2, GL_FLOAT, 4 * FLOAT_BYTES, 2 * FLOAT_BYTES)
 
@@ -39,9 +39,8 @@ class FrameTextureRenderer(private val program: ShaderProgram)
     fun render(vararg texture: Texture)
     {
         glBindVertexArray(vaoId)
-        glEnableVertexAttribArray(0)
 
-        program.use()
+        program.bind()
 
         for((i, tex) in texture.withIndex())
         {
@@ -57,9 +56,8 @@ class FrameTextureRenderer(private val program: ShaderProgram)
             glBindTexture(GL_TEXTURE_2D, 0)
         }
 
-        glDisableVertexAttribArray(0)
         glBindVertexArray(0)
-        glActiveTexture(0)
+        glActiveTexture(GL_TEXTURE0)
     }
 
     fun cleanUp()

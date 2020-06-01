@@ -5,6 +5,7 @@ import engine.data.FocusArea
 import engine.data.Font
 import engine.data.Mouse
 import engine.modules.console.CommandResult
+import engine.modules.graphics.renderers.LayerType
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
@@ -30,6 +31,7 @@ class GraphGUI : EngineApp
 
     override fun init(engine: GameEngine)
     {
+        engine.gfx.addLayer("engineApp", LayerType.OVERLAY)
         engine.asset.loadFont("/clacon.ttf", "graph_font", floatArrayOf(TICK_MARK_FONT_SIZE, HEADER_FONT_SIZE, VALUE_FONT_SIZE))
         engine.console.registerCommand("showGraphs") {
             open = !open
@@ -100,6 +102,8 @@ class GraphGUI : EngineApp
     override fun render(engine: GameEngine)
     {
         if(!open) return
+
+        engine.gfx.useLayer("engineApp")
 
         var x = xPos
         var y = yPos

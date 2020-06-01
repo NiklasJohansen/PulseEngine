@@ -3,8 +3,8 @@ package engine.modules.graphics
 import engine.data.Font
 import engine.data.Texture
 import engine.data.RenderMode
-import engine.modules.DataInterface
 import engine.modules.graphics.postprocessing.PostProcessingEffect
+import engine.modules.graphics.renderers.LayerType
 import engine.modules.graphics.renderers.TextRenderer
 import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
 import org.lwjgl.opengl.GL
@@ -47,7 +47,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         initTexture(defaultFont.charTexture)
 
         camera.setOnEnableChanged { enabled ->
-            postRender(DataInterface.INSTANCE.interpolation)
+            postRender()
         }
     }
 
@@ -198,11 +198,15 @@ class ImmediateModeGraphics : GraphicsEngineInterface
 
     override fun addPostProcessingEffect(effect: PostProcessingEffect) { }
 
+    override fun addLayer(name: String, type: LayerType) {}
+
+    override fun useLayer(name: String) {}
+
     override fun preRender() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
-    override fun postRender(interpolation: Float)
+    override fun postRender()
     {
-        camera.updateViewMatrix(interpolation)
+        camera.updateViewMatrix()
     }
 
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)

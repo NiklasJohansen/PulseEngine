@@ -52,8 +52,8 @@ class PulseEngine(
     private val fpsFilter = FloatArray(20)
     private var frameCounter = 0
     private var fixedUpdateAccumulator = 0.0
-    private var fixedUpdateLastTime = glfwGetTime()
-    private var lastFrameTime = glfwGetTime()
+    private var fixedUpdateLastTime = 0.0
+    private var lastFrameTime = 0.0
     private val frameRateLimiter = FpsLimiter()
     private val activeInput = input
     private val idleInput = IdleInput(activeInput)
@@ -184,7 +184,7 @@ class PulseEngine(
         entity.render(this)
         game.render()
         apps.forEach { it.render(this) }
-        gfx.postRender(data.interpolation)
+        gfx.postRender()
         window.swapBuffers()
         data.renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }

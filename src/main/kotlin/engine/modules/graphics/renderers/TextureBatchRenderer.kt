@@ -21,19 +21,19 @@ class TextureBatchRenderer(
     {
         if(!this::vao.isInitialized)
         {
-            vao = VertexArrayObject.create()
-            ebo = VertexBufferObject.createElementBuffer(bytes / 6)
-            vbo = VertexBufferObject.create(bytes)
-            program = ShaderProgram.create("/engine/shaders/default/arrayTexture.vert", "/engine/shaders/default/arrayTexture.frag").use()
+            vao = VertexArrayObject.createAndBind()
+            ebo = VertexBufferObject.createAndBindElementBuffer(bytes / 6)
+            vbo = VertexBufferObject.createAndBind(bytes)
+            program = ShaderProgram.create("/engine/shaders/default/arrayTexture.vert", "/engine/shaders/default/arrayTexture.frag").bind()
         }
         else
         {
             vao.delete()
-            vao = VertexArrayObject.create()
+            vao = VertexArrayObject.createAndBind()
         }
 
         vbo.bind()
-        program.use()
+        program.bind()
         program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
         program.defineVertexAttributeArray("offset", 2, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)
         program.defineVertexAttributeArray("rotation", 1, GL11.GL_FLOAT, stride, 5 * java.lang.Float.BYTES)
@@ -114,7 +114,9 @@ class TextureBatchRenderer(
             return
 
         vao.bind()
-        program.use()
+        vbo.bind()
+        ebo.bind()
+        program.bind()
         program.setUniform("projection", gfxState.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
         program.setUniform("model", gfxState.modelMatrix)
@@ -122,6 +124,7 @@ class TextureBatchRenderer(
         gfxState.textureArray.bind()
 
         vbo.flush()
+        ebo.flush()
         ebo.draw(GL11.GL_TRIANGLES, 1)
 
         vertexCount = 0

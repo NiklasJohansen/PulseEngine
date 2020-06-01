@@ -2,8 +2,7 @@ package engine.data
 
 import de.matthiasmann.twl.utils.PNGDecoder
 import engine.modules.Asset
-import org.lwjgl.opengl.GL11.GL_RGBA
-import org.lwjgl.opengl.GL11.glDeleteTextures
+import org.lwjgl.opengl.GL11.*
 import java.nio.ByteBuffer
 
 
@@ -73,6 +72,7 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
 
     override fun delete()
     {
+        glBindTexture(GL_TEXTURE_2D, 0)
         glDeleteTextures(id)
     }
 

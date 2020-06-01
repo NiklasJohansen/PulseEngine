@@ -4,6 +4,7 @@ import engine.data.Font
 import engine.data.Texture
 import engine.data.RenderMode
 import engine.modules.graphics.postprocessing.PostProcessingEffect
+import engine.modules.graphics.renderers.LayerType
 
 // Exposed to game code
 interface GraphicsInterface
@@ -35,6 +36,10 @@ interface GraphicsInterface
     fun setLineWidth(width: Float)
 
     fun addPostProcessingEffect(effect: PostProcessingEffect)
+
+    fun addLayer(name: String, type: LayerType)
+
+    fun useLayer(name: String)
 }
 
 // Exposed to game engine
@@ -48,7 +53,7 @@ interface GraphicsEngineInterface : GraphicsInterface
     fun cleanUp()
     fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     fun preRender()
-    fun postRender(interpolation: Float)
+    fun postRender()
 }
 
 interface LineRendererInterface

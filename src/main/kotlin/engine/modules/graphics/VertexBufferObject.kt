@@ -19,6 +19,8 @@ sealed class VertexBufferObject(
 
     fun bind() = this.also { glBindBuffer(target, id) }
 
+    fun release() = this.also { glBindBuffer(target, 0) }
+
     fun growSize(factor: Float = 2f)
     {
         changeSize((maxSize * factor).toLong())
@@ -28,10 +30,10 @@ sealed class VertexBufferObject(
     {
         println("Changing buffer object capacity from $maxSize to: $size bytes (${"${size/1_000_000f}".format("%.2f")} MB)")
         maxSize = size
-
         glBindBuffer(target, id)
         glBufferData(target, maxSize, usage)
-        byteBuffer = MemoryUtil.memAlloc(maxSize.toInt())
+        byteBuffer = glMapBuffer(target, GL_WRITE_ONLY, maxSize, byteBuffer)!!
+        glUnmapBuffer(target)
         setTypeBuffer()
     }
 
@@ -40,14 +42,16 @@ sealed class VertexBufferObject(
         if (size == 0)
             return
 
-        byteBuffer.flip()
-        flipTypeBuffer()
-        bind()
+        if (byteBuffer.position() != 0)
+        {
+            byteBuffer.flip()
+            flipTypeBuffer()
+        }
+
         byteBuffer = glMapBuffer(target, GL_WRITE_ONLY, byteBuffer.capacity().toLong(), byteBuffer)!!
         byteBuffer.clear()
         setTypeBuffer()
         glUnmapBuffer(target)
-
         countToDraw = size
         size = 0
     }
@@ -80,13 +84,13 @@ sealed class VertexBufferObject(
 
     companion object
     {
-        inline fun <reified T: VertexBufferObject> create(size: Long, usage: Int = GL_DYNAMIC_DRAW): T
-             = createBuffer(size, usage, GL_ARRAY_BUFFER)
+        inline fun <reified T: VertexBufferObject> createAndBind(size: Long, usage: Int = GL_DYNAMIC_DRAW): T
+             = createAndBindBuffer(size, usage, GL_ARRAY_BUFFER)
 
-         fun createElementBuffer(size: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject
-            = createBuffer(size, usage, GL_ELEMENT_ARRAY_BUFFER)
+         fun createAndBindElementBuffer(size: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject
+            = createAndBindBuffer(size, usage, GL_ELEMENT_ARRAY_BUFFER)
 
-        inline fun <reified T> createBuffer(size: Long, usage: Int, target: Int): T
+        inline fun <reified T> createAndBindBuffer(size: Long, usage: Int, target: Int): T
         {
             val id = glGenBuffers()
 
