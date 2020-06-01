@@ -184,7 +184,7 @@ class PulseEngine(
         entity.render(this)
         game.render()
         apps.forEach { it.render(this) }
-        gfx.postRender(data.interpolation)
+        gfx.postRender()
         window.swapBuffers()
         data.renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }

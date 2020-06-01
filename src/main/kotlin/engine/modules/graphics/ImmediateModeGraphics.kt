@@ -47,7 +47,7 @@ class ImmediateModeGraphics : GraphicsEngineInterface
         initTexture(defaultFont.charTexture)
 
         camera.setOnEnableChanged { enabled ->
-            postRender(DataInterface.INSTANCE.interpolation)
+            postRender()
         }
     }
 
@@ -200,9 +200,9 @@ class ImmediateModeGraphics : GraphicsEngineInterface
 
     override fun preRender() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
-    override fun postRender(interpolation: Float)
+    override fun postRender()
     {
-        camera.updateViewMatrix(interpolation)
+        camera.updateViewMatrix()
     }
 
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)

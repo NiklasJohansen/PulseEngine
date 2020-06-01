@@ -48,7 +48,7 @@ interface GraphicsEngineInterface : GraphicsInterface
     fun cleanUp()
     fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     fun preRender()
-    fun postRender(interpolation: Float)
+    fun postRender()
 }
 
 interface LineRendererInterface

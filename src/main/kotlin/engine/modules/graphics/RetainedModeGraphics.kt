@@ -10,6 +10,7 @@ import engine.modules.graphics.renderers.Renderer2D
 import org.joml.Matrix4f
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
+import org.lwjgl.opengl.GLUtil
 
 class RetainedModeGraphics : GraphicsEngineInterface
 {
@@ -98,19 +99,19 @@ class RetainedModeGraphics : GraphicsEngineInterface
         graphicState.resetDepth()
     }
 
-    override fun postRender(interpolation: Float)
+    override fun postRender()
     {
         // Render world
         worldRenderTarget.begin()
         camera.enable()
-        camera.updateViewMatrix(interpolation)
+        camera.updateViewMatrix()
         worldRenderer.render(camera)
         worldRenderTarget.end()
 
         // Render UI
         uidRenderTarget.begin()
         camera.disable()
-        camera.updateViewMatrix(interpolation)
+        camera.updateViewMatrix()
         uiRenderer.render(camera)
         camera.enable()
         uidRenderTarget.end()

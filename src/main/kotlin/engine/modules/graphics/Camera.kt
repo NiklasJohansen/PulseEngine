@@ -44,7 +44,7 @@ abstract class CameraInterface
 
 abstract class CameraEngineInterface : CameraInterface()
 {
-    abstract fun updateViewMatrix(interpolation: Float)
+    abstract fun updateViewMatrix()
     abstract fun updateTransform(deltaTime: Float)
     abstract fun viewMatrixAsArray(): FloatArray
     abstract fun setOnEnableChanged(callback: (Boolean) -> Unit)
@@ -107,7 +107,7 @@ class Camera : CameraEngineInterface()
         this.target = target
     }
 
-    override fun updateViewMatrix(interpolation: Float)
+    override fun updateViewMatrix()
     {
         val xPos = xPos.interpolateFrom(xLastPos)
         val yPos = yPos.interpolateFrom(yLastPos)
