@@ -20,18 +20,18 @@ class UniColorLineBatchRenderer(
     {
         if (!this::vao.isInitialized)
         {
-            vao = VertexArrayObject.create()
-            vbo = VertexBufferObject.create(bytes)
-            program = ShaderProgram.create("/engine/shaders/default/lineUniColor.vert", "/engine/shaders/default/line.frag").use()
+            vao = VertexArrayObject.createAndBind()
+            vbo = VertexBufferObject.createAndBind(bytes)
+            program = ShaderProgram.create("/engine/shaders/default/lineUniColor.vert", "/engine/shaders/default/line.frag").bind()
         }
         else
         {
             vao.delete()
-            vao = VertexArrayObject.create()
+            vao = VertexArrayObject.createAndBind()
         }
 
         vbo.bind()
-        program.use()
+        program.bind()
         program.defineVertexAttributeArray("position", 3, GL30.GL_FLOAT, stride, 0)
         vao.release()
     }
@@ -52,12 +52,13 @@ class UniColorLineBatchRenderer(
     {
         vao.bind()
         vbo.bind()
-        program.use()
+        program.bind()
         program.setUniform("projection", gfxState.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
         program.setUniform("model", gfxState.modelMatrix)
         program.setUniform("color", java.lang.Float.floatToIntBits(rgbaColor))
 
+        vbo.flush()
         vbo.draw(GL11.GL_LINES, 3)
 
         vao.release()

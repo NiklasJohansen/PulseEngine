@@ -12,9 +12,15 @@ class ShaderProgram(private val id: Int)
     // Used for getting matrix data as array
     private val floatArray16 = FloatArray(16)
 
-    fun use() = this.also { glUseProgram(id) }
+    fun bind() = this.also { glUseProgram(id) }
 
-    fun delete() = glDeleteProgram(id)
+    fun unbind() = this.also { glUseProgram(0) }
+
+    fun delete()
+    {
+        unbind()
+        glDeleteProgram(id)
+    }
 
     fun getAttributeLocation(name: String) = glGetAttribLocation(id, name)
 

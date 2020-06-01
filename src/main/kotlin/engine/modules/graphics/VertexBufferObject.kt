@@ -84,13 +84,13 @@ sealed class VertexBufferObject(
 
     companion object
     {
-        inline fun <reified T: VertexBufferObject> create(size: Long, usage: Int = GL_DYNAMIC_DRAW): T
-             = createBuffer(size, usage, GL_ARRAY_BUFFER)
+        inline fun <reified T: VertexBufferObject> createAndBind(size: Long, usage: Int = GL_DYNAMIC_DRAW): T
+             = createAndBindBuffer(size, usage, GL_ARRAY_BUFFER)
 
-         fun createElementBuffer(size: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject
-            = createBuffer(size, usage, GL_ELEMENT_ARRAY_BUFFER)
+         fun createAndBindElementBuffer(size: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject
+            = createAndBindBuffer(size, usage, GL_ELEMENT_ARRAY_BUFFER)
 
-        inline fun <reified T> createBuffer(size: Long, usage: Int, target: Int): T
+        inline fun <reified T> createAndBindBuffer(size: Long, usage: Int, target: Int): T
         {
             val id = glGenBuffers()
 

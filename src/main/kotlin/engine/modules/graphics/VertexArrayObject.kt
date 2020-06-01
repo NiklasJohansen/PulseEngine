@@ -15,7 +15,7 @@ class VertexArrayObject(val id: Int)
 
     companion object
     {
-        fun create(): VertexArrayObject
+        fun createAndBind(): VertexArrayObject
         {
             val id = glGenVertexArrays()
             glBindVertexArray(id)

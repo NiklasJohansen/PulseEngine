@@ -28,7 +28,7 @@ class FrameBufferObject(
         {
             // Generate frame buffer
             val frameBufferId = glGenFramebuffers()
-            glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId);
+            glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
 
             // Color attachment
             val textureId = glGenTextures()

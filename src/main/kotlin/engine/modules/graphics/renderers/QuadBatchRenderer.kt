@@ -21,19 +21,19 @@ class QuadBatchRenderer(
     {
         if (!this::vao.isInitialized)
         {
-            vao = VertexArrayObject.create()
-            ebo = VertexBufferObject.createElementBuffer(bytes / 6)
-            vbo = VertexBufferObject.create(bytes)
-            program = ShaderProgram.create("/engine/shaders/default/default.vert", "/engine/shaders/default/default.frag").use()
+            vao = VertexArrayObject.createAndBind()
+            ebo = VertexBufferObject.createAndBindElementBuffer(bytes / 6)
+            vbo = VertexBufferObject.createAndBind(bytes)
+            program = ShaderProgram.create("/engine/shaders/default/default.vert", "/engine/shaders/default/default.frag").bind()
         }
         else
         {
             vao.delete()
-            vao = VertexArrayObject.create()
+            vao = VertexArrayObject.createAndBind()
         }
 
         vbo.bind()
-        program.use()
+        program.bind()
         program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
         program.defineVertexAttributeArray("color",1, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)
         vao.release()
@@ -94,7 +94,7 @@ class QuadBatchRenderer(
         ebo.bind()
         vbo.bind()
 
-        program.use()
+        program.bind()
         program.setUniform("projection", gfxState.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
         program.setUniform("model", gfxState.modelMatrix)
