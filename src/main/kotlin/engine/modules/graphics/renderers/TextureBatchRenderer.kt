@@ -114,6 +114,8 @@ class TextureBatchRenderer(
             return
 
         vao.bind()
+        vbo.bind()
+        ebo.bind()
         program.use()
         program.setUniform("projection", gfxState.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)

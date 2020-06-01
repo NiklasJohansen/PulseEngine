@@ -48,7 +48,6 @@ sealed class VertexBufferObject(
             flipTypeBuffer()
         }
 
-        bind()
         byteBuffer = glMapBuffer(target, GL_WRITE_ONLY, byteBuffer.capacity().toLong(), byteBuffer)!!
         byteBuffer.clear()
         setTypeBuffer()

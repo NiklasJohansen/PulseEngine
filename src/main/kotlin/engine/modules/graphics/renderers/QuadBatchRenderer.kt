@@ -91,7 +91,9 @@ class QuadBatchRenderer(
             return
 
         vao.bind()
+        ebo.bind()
         vbo.bind()
+
         program.use()
         program.setUniform("projection", gfxState.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
