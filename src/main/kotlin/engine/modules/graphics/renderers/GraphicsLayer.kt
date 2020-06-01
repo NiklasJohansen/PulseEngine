@@ -45,7 +45,7 @@ data class GraphicsLayer(
 
     companion object
     {
-        fun createDefault(name: String, layerType: LayerType, initCapacity: Int, gfxState: GraphicsState) =
+        fun create(name: String, layerType: LayerType, initCapacity: Int, gfxState: GraphicsState) =
             GraphicsLayer(
                 name,
                 layerType,

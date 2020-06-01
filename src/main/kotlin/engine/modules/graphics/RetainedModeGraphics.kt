@@ -11,21 +11,16 @@ import engine.modules.graphics.renderers.LayerType
 import org.joml.Matrix4f
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
-import org.lwjgl.opengl.GLUtil
 
 class RetainedModeGraphics : GraphicsEngineInterface
 {
     override fun getRenderMode() = RenderMode.RETAINED
     override val camera: CameraEngineInterface = Camera()
 
-    private val ppPipeline = PostProcessingPipeline()
     private val graphicState = GraphicsState()
-
-    private var currentLayer = GraphicsLayer.createDefault("default", LayerType.WORLD, 100, graphicState)
-    private val graphicsLayers = mutableListOf(
-        currentLayer,
-        GraphicsLayer.createDefault("ui", LayerType.UI, 100, graphicState)
-    )
+    private var currentLayer = GraphicsLayer.create("default", LayerType.WORLD, 100, graphicState)
+    private val graphicsLayers = mutableListOf(currentLayer)
+    private val ppPipeline = PostProcessingPipeline()
 
     private lateinit var defaultFont: Font
     private lateinit var renderer: FrameTextureRenderer
@@ -38,10 +33,6 @@ class RetainedModeGraphics : GraphicsEngineInterface
         defaultFont = Font("/FiraSans-Regular.ttf","default_font", floatArrayOf(24f, 72f))
         defaultFont.load()
         initTexture(defaultFont.charTexture)
-
-        camera.setOnEnableChanged { enabled ->
-            currentLayer = if (enabled) graphicsLayers.first { it.layerType == LayerType.WORLD } else graphicsLayers.first { it.layerType == LayerType.UI }
-        }
     }
 
     override fun initTexture(texture: Texture)
@@ -96,6 +87,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
     override fun preRender()
     {
         graphicState.resetDepth()
+        useLayer("default")
     }
 
     override fun postRender()
@@ -166,6 +158,25 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun addPostProcessingEffect(effect: PostProcessingEffect)  =
         ppPipeline.addEffect(effect)
+
+    override fun addLayer(name: String, type: LayerType)
+    {
+        if (graphicsLayers.none { it.name == name })
+        {
+            val layer = GraphicsLayer.create(name, type, 100, graphicState)
+            val currentTex = currentLayer.renderTarget.getTexture()
+            layer.initRenderers()
+            layer.initRenderTargets(currentTex.width, currentTex.height)
+            graphicsLayers.add(layer)
+        }
+    }
+
+    override fun useLayer(name: String)
+    {
+        currentLayer = graphicsLayers.find { it.name == name }
+            ?: throw RuntimeException("No graphics layer exists with name $name")
+    }
+
 }
 
 interface BatchRenderer

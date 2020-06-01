@@ -7,6 +7,7 @@ import engine.data.Key
 import engine.data.Mouse
 import engine.modules.console.CommandResult
 import engine.modules.console.MessageType
+import engine.modules.graphics.renderers.LayerType
 import kotlin.math.max
 import kotlin.math.min
 
@@ -28,6 +29,7 @@ class ConsoleGUI : EngineApp
 
     override fun init(engine: GameEngine)
     {
+        engine.gfx.addLayer("engineApp", LayerType.UI)
         engine.asset.loadFont("/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("showConsole") {
             active = !active
@@ -334,6 +336,7 @@ class ConsoleGUI : EngineApp
 
         // Disable camera for UI
         engine.gfx.camera.disable()
+        engine.gfx.useLayer("engineApp")
 
         // Draw console rectangle
         engine.gfx.setColor(0.1f, 0.1f, 0.1f, 0.9f)
