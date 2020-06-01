@@ -18,6 +18,7 @@ sealed class VertexBufferObject(
     private var countToDraw = 0
 
     fun bind() = this.also { glBindBuffer(target, id) }
+
     fun release() = this.also { glBindBuffer(target, 0) }
 
     fun growSize(factor: Float = 2f)
@@ -29,7 +30,6 @@ sealed class VertexBufferObject(
     {
         println("Changing buffer object capacity from $maxSize to: $size bytes (${"${size/1_000_000f}".format("%.2f")} MB)")
         maxSize = size
-
         glBindBuffer(target, id)
         glBufferData(target, maxSize, usage)
         byteBuffer = glMapBuffer(target, GL_WRITE_ONLY, maxSize, byteBuffer)!!

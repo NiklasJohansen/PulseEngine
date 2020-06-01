@@ -15,10 +15,8 @@ class FrameBufferObject(
     fun clear() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
     fun delete()
     {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
-        glBindRenderbuffer(GL_RENDERBUFFER, 0)
-        glDeleteFramebuffers(frameBufferId)
         glDeleteRenderbuffers(renderBufferId)
+        glDeleteFramebuffers(frameBufferId)
         texture.delete()
     }
 

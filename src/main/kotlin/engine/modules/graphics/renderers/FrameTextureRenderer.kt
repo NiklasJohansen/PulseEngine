@@ -39,7 +39,6 @@ class FrameTextureRenderer(private val program: ShaderProgram)
     fun render(vararg texture: Texture)
     {
         glBindVertexArray(vaoId)
-        glEnableVertexAttribArray(0)
 
         program.bind()
 
@@ -57,7 +56,6 @@ class FrameTextureRenderer(private val program: ShaderProgram)
             glBindTexture(GL_TEXTURE_2D, 0)
         }
 
-        glDisableVertexAttribArray(0)
         glBindVertexArray(0)
         glActiveTexture(GL_TEXTURE0)
     }
