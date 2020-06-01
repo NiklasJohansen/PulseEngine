@@ -181,12 +181,15 @@ class FeatureExample : Game()
             draw.line(width-size, size, xMouse, yMouse)
         }
 
+        // Use text UI layer
+        engine.gfx.useLayer("text")
+
         // Draw text
         val font = engine.asset.get<Font>("font_asset")
-        engine.gfx.useLayer("text")
         engine.gfx.drawText("FPS: ${engine.data.currentFps}", width / 2f - 70, 20f, font, fontSize = 24f)
         engine.gfx.drawText("BIG TEXT", width / 2f, height / 2, font, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
 
+        // Use default layer
         engine.gfx.useLayer("default")
 
         // Set color to tint image
