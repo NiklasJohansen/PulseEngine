@@ -109,18 +109,18 @@ class Camera : CameraEngineInterface()
 
     override fun updateViewMatrix()
     {
-        val xPos = xPos.interpolateFrom(xLastPos)
-        val yPos = yPos.interpolateFrom(yLastPos)
-        val zPos = zPos.interpolateFrom(zLastPos)
-        val xRot = xRot.interpolateFrom(xLastRot)
-        val yRot = yRot.interpolateFrom(yLastRot)
-        val zRot = zRot.interpolateFrom(zLastRot)
-        val xScale = xScale.interpolateFrom(xLastScale)
-        val yScale = yScale.interpolateFrom(yLastScale)
-        val zScale = zScale.interpolateFrom(zLastScale)
-
         viewMatrix = if (enabled)
         {
+            val xPos = xPos.interpolateFrom(xLastPos)
+            val yPos = yPos.interpolateFrom(yLastPos)
+            val zPos = zPos.interpolateFrom(zLastPos)
+            val xRot = xRot.interpolateFrom(xLastRot)
+            val yRot = yRot.interpolateFrom(yLastRot)
+            val zRot = zRot.interpolateFrom(zLastRot)
+            val xScale = xScale.interpolateFrom(xLastScale)
+            val yScale = yScale.interpolateFrom(yLastScale)
+            val zScale = zScale.interpolateFrom(zLastScale)
+
             cameraMatrix
                 .setTranslation(xPos + xOrigin, yPos + yOrigin, zPos + zOrigin)
                 .translate(-xOrigin, -yOrigin, -zOrigin)

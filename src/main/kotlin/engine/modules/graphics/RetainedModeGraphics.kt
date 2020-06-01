@@ -101,13 +101,29 @@ class RetainedModeGraphics : GraphicsEngineInterface
         glEnable( GL_BLEND )
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        graphicsLayers
-            .find { it.layerType == LayerType.WORLD }
-            ?.let { renderer.render(ppPipeline.process(it.renderTarget.getTexture())) }
+        graphicsLayers.forEach {
+            if(it.layerType == LayerType.WORLD)
+                renderer.render(ppPipeline.process(it.renderTarget.getTexture()))
+        }
 
         graphicsLayers
-            .find { it.layerType == LayerType.UI }
-            ?.let { renderer.render(it.renderTarget.getTexture()) }
+            .forEach {
+                if (it.layerType == LayerType.UI)
+                    renderer.render(it.renderTarget.getTexture())
+            }
+
+        graphicsLayers
+            .forEach {
+                if (it.layerType == LayerType.UI)
+                    renderer.render(it.renderTarget.getTexture())
+            }
+
+        graphicsLayers
+            .forEach {
+                if (it.layerType == LayerType.OVERLAY)
+                    renderer.render(it.renderTarget.getTexture())
+            }
+
     }
 
     override fun drawSameColorLines(block: (draw: LineRendererInterface) -> Unit)

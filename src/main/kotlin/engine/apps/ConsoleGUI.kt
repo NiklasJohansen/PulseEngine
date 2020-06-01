@@ -29,7 +29,7 @@ class ConsoleGUI : EngineApp
 
     override fun init(engine: GameEngine)
     {
-        engine.gfx.addLayer("engineApp", LayerType.UI)
+        engine.gfx.addLayer("engineApp", LayerType.OVERLAY)
         engine.asset.loadFont("/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("showConsole") {
             active = !active
@@ -334,8 +334,7 @@ class ConsoleGUI : EngineApp
         while(inputCursor < inputTextOffset) inputTextOffset--
         text = text.substring(max(inputTextOffset, 0), min(inputTextOffset + charsPerLine, text.length))
 
-        // Disable camera for UI
-        engine.gfx.camera.disable()
+        // Render to its own layer
         engine.gfx.useLayer("engineApp")
 
         // Draw console rectangle
@@ -376,8 +375,6 @@ class ConsoleGUI : EngineApp
                 engine.gfx.setColor(color.red, color.green, color.blue)
                 lines.forEachIndexed { i, line -> engine.gfx.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont) }
             }
-
-        engine.gfx.camera.enable()
     }
 
     private fun getTextWidth(nChars: Int): Float

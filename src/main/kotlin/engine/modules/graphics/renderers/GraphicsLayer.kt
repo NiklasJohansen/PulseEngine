@@ -61,5 +61,5 @@ data class GraphicsLayer(
 
 enum class LayerType
 {
-    WORLD, UI
+    WORLD, UI, OVERLAY
 }

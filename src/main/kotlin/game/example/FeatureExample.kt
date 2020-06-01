@@ -8,6 +8,7 @@ import engine.modules.entity.Transform2D
 import engine.modules.graphics.*
 import engine.modules.graphics.postprocessing.effects.BloomEffect
 import engine.modules.graphics.postprocessing.effects.VignetteEffect
+import engine.modules.graphics.renderers.LayerType
 import engine.util.interpolateFrom
 import kotlin.math.PI
 import kotlin.math.sin
@@ -57,6 +58,10 @@ class FeatureExample : Game()
         // Set camera smooth
         engine.gfx.camera.targetTrackingSmoothing = 1f
 
+        // Add separate UI graphics layer for text
+        engine.gfx.addLayer("text", LayerType.UI)
+
+        // Add post processing effects
         engine.gfx.addPostProcessingEffect(BloomEffect())
         engine.gfx.addPostProcessingEffect(VignetteEffect())
     }
@@ -127,6 +132,8 @@ class FeatureExample : Game()
 
     override fun render()
     {
+        engine.gfx.useLayer("default")
+
         // Set camera target
         engine.gfx.camera.setTarget(boxPosition)
 
@@ -176,10 +183,11 @@ class FeatureExample : Game()
 
         // Draw text
         val font = engine.asset.get<Font>("font_asset")
-        engine.gfx.camera.disable()
+        engine.gfx.useLayer("text")
         engine.gfx.drawText("FPS: ${engine.data.currentFps}", width / 2f - 70, 20f, font, fontSize = 24f)
         engine.gfx.drawText("BIG TEXT", width / 2f, height / 2, font, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
-        engine.gfx.camera.enable()
+
+        engine.gfx.useLayer("default")
 
         // Set color to tint image
         engine.gfx.setColor(0.7f, 0.7f, 1f, 0.9f)

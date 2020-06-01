@@ -31,7 +31,7 @@ class GraphGUI : EngineApp
 
     override fun init(engine: GameEngine)
     {
-        engine.gfx.addLayer("engineApp", LayerType.UI)
+        engine.gfx.addLayer("engineApp", LayerType.OVERLAY)
         engine.asset.loadFont("/clacon.ttf", "graph_font", floatArrayOf(TICK_MARK_FONT_SIZE, HEADER_FONT_SIZE, VALUE_FONT_SIZE))
         engine.console.registerCommand("showGraphs") {
             open = !open
