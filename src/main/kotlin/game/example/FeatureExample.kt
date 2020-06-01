@@ -6,6 +6,8 @@ import engine.data.*
 import engine.data.ScreenMode.*
 import engine.modules.entity.Transform2D
 import engine.modules.graphics.*
+import engine.modules.graphics.postprocessing.effects.BloomEffect
+import engine.modules.graphics.postprocessing.effects.VignetteEffect
 import engine.util.interpolateFrom
 import kotlin.math.PI
 import kotlin.math.sin
@@ -54,6 +56,9 @@ class FeatureExample : Game()
 
         // Set camera smooth
         engine.gfx.camera.targetTrackingSmoothing = 1f
+
+        engine.gfx.addPostProcessingEffect(BloomEffect())
+        engine.gfx.addPostProcessingEffect(VignetteEffect())
     }
 
     // Runs every frame
@@ -126,7 +131,7 @@ class FeatureExample : Game()
         engine.gfx.camera.setTarget(boxPosition)
 
         // Set color of background
-        engine.gfx.setBackgroundColor(0.7f, 0.7f, 0.7f)
+        engine.gfx.setBackgroundColor(0.1f, 0.1f, 0.1f)
 
         // Set blending function
         engine.gfx.setBlendFunction(BlendFunction.NORMAL)

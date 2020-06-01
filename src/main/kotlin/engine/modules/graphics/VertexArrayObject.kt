@@ -7,7 +7,11 @@ class VertexArrayObject(val id: Int)
 {
     fun bind() = this.also { glBindVertexArray(id) }
     fun release() = this.also { glBindVertexArray(0) }
-    fun delete() = glDeleteVertexArrays(id)
+    fun delete()
+    {
+        release()
+        glDeleteVertexArrays(id)
+    }
 
     companion object
     {

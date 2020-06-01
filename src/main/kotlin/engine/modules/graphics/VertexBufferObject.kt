@@ -18,6 +18,7 @@ sealed class VertexBufferObject(
     private var countToDraw = 0
 
     fun bind() = this.also { glBindBuffer(target, id) }
+    fun release() = this.also { glBindBuffer(target, 0) }
 
     fun growSize(factor: Float = 2f)
     {
@@ -31,7 +32,8 @@ sealed class VertexBufferObject(
 
         glBindBuffer(target, id)
         glBufferData(target, maxSize, usage)
-        byteBuffer = MemoryUtil.memAlloc(maxSize.toInt())
+        byteBuffer = glMapBuffer(target, GL_WRITE_ONLY, maxSize, byteBuffer)!!
+        glUnmapBuffer(target)
         setTypeBuffer()
     }
 
@@ -40,14 +42,17 @@ sealed class VertexBufferObject(
         if (size == 0)
             return
 
-        byteBuffer.flip()
-        flipTypeBuffer()
+        if (byteBuffer.position() != 0)
+        {
+            byteBuffer.flip()
+            flipTypeBuffer()
+        }
+
         bind()
         byteBuffer = glMapBuffer(target, GL_WRITE_ONLY, byteBuffer.capacity().toLong(), byteBuffer)!!
         byteBuffer.clear()
         setTypeBuffer()
         glUnmapBuffer(target)
-
         countToDraw = size
         size = 0
     }
