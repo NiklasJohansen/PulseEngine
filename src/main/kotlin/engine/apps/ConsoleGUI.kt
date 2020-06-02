@@ -1,10 +1,7 @@
 package engine.apps
 
 import engine.GameEngine
-import engine.data.FocusArea
-import engine.data.Font
-import engine.data.Key
-import engine.data.Mouse
+import engine.data.*
 import engine.modules.console.CommandResult
 import engine.modules.console.MessageType
 import engine.modules.graphics.renderers.LayerType
@@ -339,11 +336,11 @@ class ConsoleGUI : EngineApp
 
         // Draw console rectangle
         engine.gfx.setColor(0.1f, 0.1f, 0.1f, 0.9f)
-        engine.gfx.drawQuad(0f, 0f, width, height)
+        engine.gfx.drawTexture(Texture.BLANK, 0f, 0f, width, height)
 
         // Draw input box rectangle
         engine.gfx.setColor(0f, 0f, 0f, 0.3f)
-        engine.gfx.drawQuad(INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width-INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING)
+        engine.gfx.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width-INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING)
 
         // Draw selection rectangle
         val selectionDistance = selectCursor - inputCursor

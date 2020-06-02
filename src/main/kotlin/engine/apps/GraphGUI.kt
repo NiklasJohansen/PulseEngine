@@ -4,6 +4,7 @@ import engine.GameEngine
 import engine.data.FocusArea
 import engine.data.Font
 import engine.data.Mouse
+import engine.data.Texture
 import engine.modules.console.CommandResult
 import engine.modules.graphics.renderers.LayerType
 import java.util.*
@@ -181,7 +182,7 @@ class GraphGUI : EngineApp
 
             engine.gfx.camera.disable()
             engine.gfx.setColor(0.1f, 0.1f, 0.1f, 0.9f)
-            engine.gfx.drawQuad(xPos, yPos, width, height)
+            engine.gfx.drawTexture(Texture.BLANK, xPos, yPos, width, height)
             engine.gfx.setColor(1f,1f,1f,0.95f)
             engine.gfx.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 

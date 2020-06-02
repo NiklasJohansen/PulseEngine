@@ -55,8 +55,8 @@ class RetainedModeGraphics : GraphicsEngineInterface
     private fun initOpenGL()
     {
         GL.createCapabilities()
-        glEnable(GL_BLEND)
 
+        // Debugging
         // GLUtil.setupDebugMessageCallback();
 
         // Initialize batch renderers
@@ -123,7 +123,6 @@ class RetainedModeGraphics : GraphicsEngineInterface
                 if (it.layerType == LayerType.OVERLAY)
                     renderer.render(it.renderTarget.getTexture())
             }
-
     }
 
     override fun drawSameColorLines(block: (draw: LineRendererInterface) -> Unit)
