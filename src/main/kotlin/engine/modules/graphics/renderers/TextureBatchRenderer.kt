@@ -3,43 +3,44 @@ package engine.modules.graphics.renderers
 import engine.data.Texture
 import engine.modules.graphics.*
 import org.lwjgl.opengl.GL11
+import org.lwjgl.opengl.GL11.*
 
 class TextureBatchRenderer(
-    initialCapacity: Int,
+    private val initialCapacity: Int,
     private val gfxState: GraphicsState
 ) : BatchRenderer {
 
-    private val stride = 10 * java.lang.Float.BYTES
-    private val bytes = initialCapacity * 4L * stride
     private var vertexCount = 0
+
     private lateinit var program: ShaderProgram
+    private lateinit var vao: VertexArrayObject
     private lateinit var vbo: FloatBufferObject
     private lateinit var ebo: IntBufferObject
-    private lateinit var vao: VertexArrayObject
 
     override fun init()
     {
-        if(!this::vao.isInitialized)
+        vao = VertexArrayObject.createAndBind()
+
+        val layout = VertexAttributeLayout()
+            .withAttribute("position",3, GL_FLOAT)
+            .withAttribute("offset", 2, GL_FLOAT)
+            .withAttribute("rotation", 1, GL_FLOAT)
+            .withAttribute("texCoord", 2, GL_FLOAT)
+            .withAttribute("texIndex",1, GL_FLOAT)
+            .withAttribute("color",1, GL_FLOAT)
+
+        if(!this::program.isInitialized)
         {
-            vao = VertexArrayObject.createAndBind()
-            ebo = VertexBufferObject.createAndBindElementBuffer(bytes / 6)
-            vbo = VertexBufferObject.createAndBind(bytes)
+            val capacity = initialCapacity * layout.stride * 4L
+            vbo = VertexBufferObject.createAndBind(capacity)
+            ebo = VertexBufferObject.createAndBindElementBuffer(capacity / 6)
             program = ShaderProgram.create("/engine/shaders/default/arrayTexture.vert", "/engine/shaders/default/arrayTexture.frag").bind()
-        }
-        else
-        {
-            vao.delete()
-            vao = VertexArrayObject.createAndBind()
         }
 
         vbo.bind()
+        ebo.bind()
         program.bind()
-        program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
-        program.defineVertexAttributeArray("offset", 2, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)
-        program.defineVertexAttributeArray("rotation", 1, GL11.GL_FLOAT, stride, 5 * java.lang.Float.BYTES)
-        program.defineVertexAttributeArray("texCoord", 2, GL11.GL_FLOAT, stride, 6 * java.lang.Float.BYTES)
-        program.defineVertexAttributeArray("texIndex",1, GL11.GL_FLOAT, stride, 8 * java.lang.Float.BYTES)
-        program.defineVertexAttributeArray("color",1, GL11.GL_FLOAT, stride, 9 * java.lang.Float.BYTES)
+        program.defineVertexAttributeArray(layout)
         program.setUniform("textureArray", 0)
         vao.release()
     }
@@ -50,7 +51,7 @@ class TextureBatchRenderer(
         val vMin = texture.vMin
         val uMax = texture.uMax
         val vMax = texture.vMax
-        val texIndex = texture.id.toFloat() + if(texture.format == GL11.GL_ALPHA) 0.5f else 0.0f
+        val texIndex = texture.id.toFloat() + if(texture.format == GL_ALPHA) 0.5f else 0.0f
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
         val rgba = gfxState.rgba
@@ -82,7 +83,7 @@ class TextureBatchRenderer(
         val vMax = texture.vMax * vMax
         val uMin = texture.uMax * uMin
         val vMin = texture.vMax * vMin
-        val index = texture.id.toFloat() + if(texture.format == GL11.GL_ALPHA) 0.5f else 0.0f
+        val index = texture.id.toFloat() + if(texture.format == GL_ALPHA) 0.5f else 0.0f
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
         val rgba = gfxState.rgba
@@ -125,7 +126,7 @@ class TextureBatchRenderer(
 
         vbo.flush()
         ebo.flush()
-        ebo.draw(GL11.GL_TRIANGLES, 1)
+        ebo.draw(GL_TRIANGLES, 1)
 
         vertexCount = 0
         vao.release()

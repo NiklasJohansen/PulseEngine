@@ -1,37 +1,36 @@
 package engine.modules.graphics.renderers
 
 import engine.modules.graphics.*
-import org.lwjgl.opengl.GL11
+import org.lwjgl.opengl.GL11.*
 
 class LineBatchRenderer(
-    initialCapacity: Int,
+    private val initialCapacity: Int,
     private val gfxState: GraphicsState
 ) : BatchRenderer {
 
-    private val stride = 4 * java.lang.Float.BYTES
-    private val bytes = 2L * initialCapacity * stride
     private lateinit var program: ShaderProgram
-    private lateinit var vbo: FloatBufferObject
     private lateinit var vao: VertexArrayObject
+    private lateinit var vbo: FloatBufferObject
 
     override fun init()
     {
-        if (!this::vao.isInitialized)
+        vao = VertexArrayObject.createAndBind()
+
+        val layout = VertexAttributeLayout()
+            .withAttribute("position",3, GL_FLOAT)
+            .withAttribute("rgbaColor",1, GL_FLOAT)
+
+        if (!this::program.isInitialized)
         {
-            vao = VertexArrayObject.createAndBind()
-            vbo = VertexBufferObject.createAndBind(bytes)
-            program = ShaderProgram.create("/engine/shaders/default/line.vert", "/engine/shaders/default/line.frag").bind()
-        }
-        else
-        {
-            vao.delete()
-            vao = VertexArrayObject.createAndBind()
+            vbo = VertexBufferObject.createAndBind(initialCapacity * layout.stride * 2L)
+            program = ShaderProgram
+                .create("/engine/shaders/default/line.vert", "/engine/shaders/default/line.frag")
+                .bind()
         }
 
         vbo.bind()
         program.bind()
-        program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
-        program.defineVertexAttributeArray("rgbaColor",1, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)
+        program.defineVertexAttributeArray(layout)
         vao.release()
     }
 
@@ -59,7 +58,7 @@ class LineBatchRenderer(
         program.setUniform("model", gfxState.modelMatrix)
 
         vbo.flush()
-        vbo.draw(GL11.GL_LINES, 4)
+        vbo.draw(GL_LINES, 4)
 
         vao.release()
     }

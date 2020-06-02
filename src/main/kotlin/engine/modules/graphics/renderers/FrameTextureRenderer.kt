@@ -9,24 +9,21 @@ class FrameTextureRenderer(private val program: ShaderProgram)
 {
     private var vaoId = -1
     private var vboId = -1
+    private var initialized = false
 
     fun init()
     {
-        if (vaoId == -1)
+        vaoId = glGenVertexArrays()
+        glBindVertexArray(vaoId)
+
+        if (!initialized)
         {
-            vaoId = glGenVertexArrays()
-            glBindVertexArray(vaoId)
             vboId = glGenBuffers()
             glBindBuffer(GL_ARRAY_BUFFER, vboId)
             glBufferData(GL_ARRAY_BUFFER, verticesBuffer, GL_STATIC_DRAW)
+            initialized = true
         }
-        else
-        {
-            glDeleteVertexArrays(vaoId)
-            vaoId = glGenVertexArrays()
-            glBindVertexArray(vaoId)
-            glBindBuffer(GL_ARRAY_BUFFER, vboId)
-        }
+        else glBindBuffer(GL_ARRAY_BUFFER, vboId)
 
         program.bind()
         program.defineVertexAttributeArray("position", 2, GL_FLOAT, 4 * FLOAT_BYTES, 0)

@@ -68,6 +68,17 @@ class ShaderProgram(private val id: Int)
         glVertexAttribPointer(location, size, type, normalized, stride, offset.toLong())
     }
 
+    fun defineVertexAttributeArray(layout: VertexAttributeLayout)
+    {
+        var offset = 0L
+        layout.attributes.forEach { attribute ->
+            val location = getAttributeLocation(attribute.name)
+            glEnableVertexAttribArray(location)
+            glVertexAttribPointer(location, attribute.count, attribute.type, attribute.normalized, layout.stride, offset)
+            offset += attribute.bytes
+        }
+    }
+
     companion object
     {
         fun create(vertexShaderFileName: String, fragmentShaderFileName: String): ShaderProgram

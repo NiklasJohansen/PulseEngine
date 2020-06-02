@@ -2,40 +2,43 @@ package engine.modules.graphics.renderers
 
 import engine.modules.graphics.*
 import org.lwjgl.opengl.GL11
+import org.lwjgl.opengl.GL11.*
 
 class QuadBatchRenderer(
-    initialCapacity: Int,
+    private val initialCapacity: Int,
     private val gfxState: GraphicsState
 ) : BatchRenderer {
 
-    private val stride = 4 * java.lang.Float.BYTES
-    private val bytes = 4L * initialCapacity * stride
     private var vertexCount = 0
     private var singleVertexCount = 0
+
     private lateinit var program: ShaderProgram
+    private lateinit var vao: VertexArrayObject
     private lateinit var vbo: FloatBufferObject
     private lateinit var ebo: IntBufferObject
-    private lateinit var vao: VertexArrayObject
 
     override fun init()
     {
-        if (!this::vao.isInitialized)
+        vao = VertexArrayObject.createAndBind()
+
+        val layout = VertexAttributeLayout()
+            .withAttribute("position",3, GL_FLOAT)
+            .withAttribute("color",1, GL_FLOAT)
+
+        if (!this::program.isInitialized)
         {
-            vao = VertexArrayObject.createAndBind()
-            ebo = VertexBufferObject.createAndBindElementBuffer(bytes / 6)
-            vbo = VertexBufferObject.createAndBind(bytes)
-            program = ShaderProgram.create("/engine/shaders/default/default.vert", "/engine/shaders/default/default.frag").bind()
-        }
-        else
-        {
-            vao.delete()
-            vao = VertexArrayObject.createAndBind()
+            val capacity = initialCapacity * layout.stride * 4L
+            vbo = VertexBufferObject.createAndBind(capacity)
+            ebo = VertexBufferObject.createAndBindElementBuffer(capacity / 6)
+            program = ShaderProgram
+                .create("/engine/shaders/default/default.vert", "/engine/shaders/default/default.frag")
+                .bind()
         }
 
         vbo.bind()
+        ebo.bind()
         program.bind()
-        program.defineVertexAttributeArray("position", 3, GL11.GL_FLOAT, stride, 0)
-        program.defineVertexAttributeArray("color",1, GL11.GL_FLOAT, stride, 3 * java.lang.Float.BYTES)
+        program.defineVertexAttributeArray(layout)
         vao.release()
     }
 
@@ -99,11 +102,11 @@ class QuadBatchRenderer(
         program.setUniform("view", camera.viewMatrix)
         program.setUniform("model", gfxState.modelMatrix)
 
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
+        glBindTexture(GL_TEXTURE_2D, 0)
 
         vbo.flush()
         ebo.flush()
-        ebo.draw(GL11.GL_TRIANGLES, 1)
+        ebo.draw(GL_TRIANGLES, 1)
 
         vertexCount = 0
         vao.release()
