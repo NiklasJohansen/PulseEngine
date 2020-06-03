@@ -5,7 +5,7 @@ import engine.modules.Game
 import engine.data.*
 import engine.data.ScreenMode.*
 import engine.modules.entity.Transform2D
-import engine.modules.graphics.*
+import engine.modules.graphics.BlendFunction
 import engine.modules.graphics.postprocessing.effects.BloomEffect
 import engine.modules.graphics.postprocessing.effects.VignetteEffect
 import engine.modules.graphics.renderers.LayerType
