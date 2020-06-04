@@ -4,7 +4,7 @@ import engine.GameEngine
 import engine.data.*
 import engine.modules.console.CommandResult
 import engine.modules.console.MessageType
-import engine.modules.graphics.renderers.LayerType
+import engine.modules.graphics.SurfaceType
 import kotlin.math.max
 import kotlin.math.min
 
@@ -26,7 +26,7 @@ class ConsoleGUI : EngineApp
 
     override fun init(engine: GameEngine)
     {
-        engine.gfx.addLayer("engineApp", LayerType.OVERLAY)
+        engine.gfx.createSurface2D("engineApp", SurfaceType.OVERLAY)
         engine.asset.loadFont("/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("showConsole") {
             active = !active
@@ -332,15 +332,15 @@ class ConsoleGUI : EngineApp
         text = text.substring(max(inputTextOffset, 0), min(inputTextOffset + charsPerLine, text.length))
 
         // Render to its own layer
-        engine.gfx.useLayer("engineApp")
+        val surface = engine.gfx.getSurface2D("engineApp")
 
         // Draw console rectangle
-        engine.gfx.setColor(0.1f, 0.1f, 0.1f, 0.9f)
-        engine.gfx.drawTexture(Texture.BLANK, 0f, 0f, width, height)
+        surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)
+        surface.drawTexture(Texture.BLANK, 0f, 0f, width, height)
 
         // Draw input box rectangle
-        engine.gfx.setColor(0f, 0f, 0f, 0.3f)
-        engine.gfx.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width-INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING)
+        surface.setDrawColor(0f, 0f, 0f, 0.3f)
+        surface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width-INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING)
 
         // Draw selection rectangle
         val selectionDistance = selectCursor - inputCursor
@@ -349,13 +349,13 @@ class ConsoleGUI : EngineApp
         {
             val selectionStart = getTextWidth(inBoxCursor + if(selectionDistance > 0) 1 else 0)
             val selectionWidth = getTextWidth(selectionDistance.coerceIn(-inBoxCursor, charsPerLine - inBoxCursor - 1))
-            engine.gfx.setColor(0.2f, 0.4f, 1f, 0.9f)
-            engine.gfx.drawQuad(TEXT_PADDING_X + selectionStart, height - INPUT_BOX_HEIGHT + INPUT_BOX_PADDING, selectionWidth, FONT_SIZE)
+            surface.setDrawColor(0.2f, 0.4f, 1f, 0.9f)
+            surface.drawQuad(TEXT_PADDING_X + selectionStart, height - INPUT_BOX_HEIGHT + INPUT_BOX_PADDING, selectionWidth, FONT_SIZE)
         }
 
         // Draw input text
-        engine.gfx.setColor(1f, 1f, 1f, 1f)
-        engine.gfx.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2 + INPUT_BOX_PADDING / 2, cliFont)
+        surface.setDrawColor(1f, 1f, 1f, 1f)
+        surface.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2 + INPUT_BOX_PADDING / 2, cliFont)
 
         // Draw console history
         var yPos = height - INPUT_BOX_HEIGHT + FONT_SIZE / 2
@@ -369,8 +369,8 @@ class ConsoleGUI : EngineApp
                 val color = MessageColor.from(consoleEntry.type)
 
                 yPos -= lines.size * FONT_SIZE
-                engine.gfx.setColor(color.red, color.green, color.blue)
-                lines.forEachIndexed { i, line -> engine.gfx.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont) }
+                surface.setDrawColor(color.red, color.green, color.blue)
+                lines.forEachIndexed { i, line -> surface.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont) }
             }
     }
 

@@ -2,11 +2,11 @@ package game.example
 
 import engine.PulseEngine
 import engine.GameEngine
+import engine.data.Color
 import engine.modules.Game
 import engine.data.Mouse
 import engine.modules.entity.*
 import engine.modules.graphics.BlendFunction
-import game.cave.Color
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -19,6 +19,8 @@ class EntityGame : Game()
 {
     override fun init()
     {
+        engine.gfx.mainSurface.setBlendFunction(BlendFunction.ADDITIVE)
+        engine.gfx.mainSurface.setBackgroundColor(0.1f, 0.1f, 0.1f)
         engine.config.targetFps = 120
         engine.entity.registerSystems(
             ParticleInteractionSystem(),
@@ -33,10 +35,7 @@ class EntityGame : Game()
         engine.window.title = "FPS: ${engine.data.currentFps} objects: ${engine.entity.count}"
     }
 
-    override fun render()
-    {
-        engine.gfx.setBackgroundColor(0.1f, 0.1f, 0.1f)
-    }
+    override fun render() { }
 
     override fun cleanup() { }
 }
@@ -149,8 +148,7 @@ class ParticleRenderSystem : RenderSystem(TransformComponent.type, HealthCompone
 {
     override fun render(engine: GameEngine, entities: EntityCollection)
     {
-        engine.gfx.setBlendFunction(BlendFunction.ADDITIVE)
-        engine.gfx.setLineWidth(1f)
+        val surface = engine.gfx.mainSurface
 
         for (entity in entities)
         {
@@ -160,8 +158,8 @@ class ParticleRenderSystem : RenderSystem(TransformComponent.type, HealthCompone
 
             val fade = if(health.amount < 0.2f) health.amount / 0.2f else 1.0f
 
-            engine.gfx.setColor(color.color.red, color.color.green, color.color.blue, 0.5f * fade)
-            engine.gfx.drawLine(transform.x, transform.y, transform.xLast, transform.yLast)
+            surface.setDrawColor(color.color.red, color.color.green, color.color.blue, 0.5f * fade)
+            surface.drawLine(transform.x, transform.y, transform.xLast, transform.yLast)
         }
     }
 

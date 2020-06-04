@@ -1,7 +1,7 @@
 package engine.modules.graphics.renderers
 
 import engine.data.Font
-import engine.modules.graphics.GraphicsEngineInterface
+import engine.modules.graphics.Surface2D
 import org.lwjgl.stb.STBTTAlignedQuad
 import org.lwjgl.stb.STBTTFontinfo
 import org.lwjgl.stb.STBTruetype.*
@@ -15,7 +15,7 @@ class TextRenderer
     private val advanceWidth = IntArray(1)
     private val leftSideBearing = IntArray(1)
 
-    fun draw(gfx: GraphicsEngineInterface, text: String, x: Float, y: Float, font: Font, fontSize: Float, xOrigin: Float, yOrigin: Float)
+    fun draw(surface: Surface2D, text: String, x: Float, y: Float, font: Font, fontSize: Float, xOrigin: Float, yOrigin: Float)
     {
         val fontIndex = if(fontSize != -1f) font.fontSizes.indexOf(fontSize) else 0
         if(fontIndex == -1)
@@ -48,7 +48,7 @@ class TextRenderer
             val charWidth = quad.x1() - xChar
             val charHeight = quad.y1() - yChar
 
-            gfx.drawTexture(font.charTexture, xChar, yChar, charWidth, charHeight, uMin = quad.s0(), vMin = quad.t0(), uMax = quad.s1(), vMax = quad.t1())
+            surface.drawTexture(font.charTexture, xChar, yChar, charWidth, charHeight, uMin = quad.s0(), vMin = quad.t0(), uMax = quad.s1(), vMax = quad.t1())
         }
     }
 

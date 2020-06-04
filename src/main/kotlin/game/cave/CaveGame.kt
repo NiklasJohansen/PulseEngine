@@ -3,6 +3,7 @@ package game.cave
 import engine.PulseEngine
 import engine.modules.Game
 import engine.data.*
+import engine.modules.graphics.Camera
 import engine.modules.graphics.postprocessing.effects.BloomEffect
 import engine.modules.graphics.postprocessing.effects.VignetteEffect
 import org.joml.Math.sin
@@ -109,6 +110,8 @@ class CaveGame : Game()
 
     override fun render()
     {
+        val surface = engine.gfx.mainSurface
+
         val width = blockWidth.toInt()
         val height = blockHeight.toInt()
 
@@ -131,8 +134,8 @@ class CaveGame : Game()
                 val xBlock = x * width + xCam % width
                 val yBlock = y * height + yCam % height
 
-                engine.gfx.setColor(c.red, c.green, c.blue)
-                engine.gfx.drawQuad(xBlock, yBlock, width.toFloat(), height.toFloat())
+                surface.setDrawColor(c.red, c.green, c.blue)
+                surface.drawQuad(xBlock, yBlock, width.toFloat(), height.toFloat())
                 blockCount++
             }
         }
@@ -174,7 +177,5 @@ class CaveGame : Game()
         println("Cleaning up CaveGame...")
     }
 }
-
-data class Color(val red: Float, val green: Float, val blue: Float)
 
 data class Block(val density: Float, val color: Color, val blend: Boolean)

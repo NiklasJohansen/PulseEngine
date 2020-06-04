@@ -8,7 +8,7 @@ import engine.modules.entity.Transform2D
 import engine.modules.graphics.BlendFunction
 import engine.modules.graphics.postprocessing.effects.BloomEffect
 import engine.modules.graphics.postprocessing.effects.VignetteEffect
-import engine.modules.graphics.renderers.LayerType
+import engine.modules.graphics.SurfaceType
 import engine.util.interpolateFrom
 import kotlin.math.PI
 import kotlin.math.sin
@@ -59,7 +59,7 @@ class FeatureExample : Game()
         engine.gfx.mainCamera.targetTrackingSmoothing = 1f
 
         // Add separate UI graphics layer for text
-        engine.gfx.addLayer("text", LayerType.UI)
+        engine.gfx.createSurface2D("text", SurfaceType.UI)
 
         // Add post processing effects
         engine.gfx.addPostProcessingEffect(BloomEffect())
@@ -132,16 +132,16 @@ class FeatureExample : Game()
 
     override fun render()
     {
-        engine.gfx.useLayer("default")
+        val surface = engine.gfx.mainSurface
 
         // Set camera target
         engine.gfx.mainCamera.setTarget(boxPosition)
 
         // Set color of background
-        engine.gfx.setBackgroundColor(0.1f, 0.1f, 0.1f)
+        surface.setBackgroundColor(0.1f, 0.1f, 0.1f)
 
         // Set blending function
-        engine.gfx.setBlendFunction(BlendFunction.NORMAL)
+        surface.setBlendFunction(BlendFunction.NORMAL)
 
         // Get window size
         val width  = engine.window.width.toFloat()
@@ -162,57 +162,55 @@ class FeatureExample : Game()
         for(i in 0 until width.toInt())
         {
             val c =  i / width
-            engine.gfx.setColor(1-c,  c, 0f)
-            engine.gfx.drawLinePoint(i.toFloat(), 0f)
-            engine.gfx.setColor(0f,  1-c, c)
-            engine.gfx.drawLinePoint(i.toFloat(), height)
+            surface.setDrawColor(1-c,  c, 0f)
+            surface.drawLinePoint(i.toFloat(), 0f)
+            surface.setDrawColor(0f,  1-c, c)
+            surface.drawLinePoint(i.toFloat(), height)
         }
 
         // Set draw color
-        engine.gfx.setColor(1f, 0f, 0f)
+        surface.setDrawColor(1f, 0f, 0f)
 
         // Draw single line
-        engine.gfx.drawLine(size, size,  xMouse, yMouse)
+        surface.drawLine(size, size,  xMouse, yMouse)
 
         // Draw multiple lines
-        engine.gfx.drawSameColorLines { draw ->
+        surface.drawSameColorLines { draw ->
             draw.line(size, height-size, xMouse, yMouse)
             draw.line(width-size, height-size, xMouse, yMouse)
             draw.line(width-size, size, xMouse, yMouse)
         }
 
         // Use text UI layer
-        engine.gfx.useLayer("text")
+        val textSurface = engine.gfx.getSurface2D("text")
 
         // Draw text
         val font = engine.asset.get<Font>("font_asset")
-        engine.gfx.drawText("FPS: ${engine.data.currentFps}", width / 2f - 70, 20f, font, fontSize = 24f)
-        engine.gfx.drawText("BIG TEXT", width / 2f, height / 2, font, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
-
-        // Use default layer
-        engine.gfx.useLayer("default")
+        textSurface.setDrawColor(1f, 0f, 0f)
+        textSurface.drawText("FPS: ${engine.data.currentFps}", width / 2f - 70, 20f, font, fontSize = 24f)
+        textSurface.drawText("BIG TEXT", width / 2f, height / 2, font, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
 
         // Set color to tint image
-        engine.gfx.setColor(0.7f, 0.7f, 1f, 0.9f)
+        surface.setDrawColor(0.7f, 0.7f, 1f, 0.9f)
 
         // Get loaded image asset
         val image = engine.asset.get<Texture>("image_asset")
 
         // Draw images
-        engine.gfx.setColor(1f, 1f, 1f)
-        engine.gfx.drawTexture(image, 0.5f, 0.5f, size, size)
-        engine.gfx.drawTexture(image, width-size, 0.5f, size, size)
-        engine.gfx.drawTexture(image, width-size, height-size, size, size)
-        engine.gfx.drawTexture(image, 0.5f, height-size, size, size)
-        engine.gfx.drawTexture(image, xMouse, yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
+        surface.setDrawColor(1f, 1f, 1f)
+        surface.drawTexture(image, 0.5f, 0.5f, size, size)
+        surface.drawTexture(image, width-size, 0.5f, size, size)
+        surface.drawTexture(image, width-size, height-size, size, size)
+        surface.drawTexture(image, 0.5f, height-size, size, size)
+        surface.drawTexture(image, xMouse, yMouse, size, size, xOrigin = 0.5f, yOrigin = 0.5f, rot = angle)
 
         // Get sprite sheet and frame texture
         val coinSpriteSheet = engine.asset.get<SpriteSheet>("sprite_sheet_asset")
         val frameTexture = coinSpriteSheet.getTexture(frame.toInt() % 6)
 
         // Draw frame texture
-        engine.gfx.setColor(1f, 1f, 1f)
-        engine.gfx.drawTexture(frameTexture, x - 25f, y - 25f, 50f, 50f)
+        surface.setDrawColor(1f, 1f, 1f)
+        surface.drawTexture(frameTexture, x - 25f, y - 25f, 50f, 50f)
     }
 
     override fun cleanup()

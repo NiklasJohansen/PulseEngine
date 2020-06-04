@@ -6,7 +6,8 @@ import engine.data.Font
 import engine.data.Mouse
 import engine.data.Texture
 import engine.modules.console.CommandResult
-import engine.modules.graphics.renderers.LayerType
+import engine.modules.graphics.SurfaceType
+import engine.modules.graphics.Surface2D
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
@@ -32,7 +33,7 @@ class GraphGUI : EngineApp
 
     override fun init(engine: GameEngine)
     {
-        engine.gfx.addLayer("engineApp", LayerType.OVERLAY)
+        engine.gfx.createSurface2D("engineApp", SurfaceType.OVERLAY)
         engine.asset.loadFont("/clacon.ttf", "graph_font", floatArrayOf(TICK_MARK_FONT_SIZE, HEADER_FONT_SIZE, VALUE_FONT_SIZE))
         engine.console.registerCommand("showGraphs") {
             open = !open
@@ -104,8 +105,6 @@ class GraphGUI : EngineApp
     {
         if(!open) return
 
-        engine.gfx.useLayer("engineApp")
-
         var x = xPos
         var y = yPos
         var w = graphWidth
@@ -120,9 +119,12 @@ class GraphGUI : EngineApp
             h *= scale
         }
 
+        val surface = engine.gfx.getSurface2D("engineApp")
+        val font = engine.asset.get<Font>("graph_font")
+        
         for(graph in graphs)
         {
-            graph.render(engine, x, y, w, h)
+            graph.render(surface, font, x, y, w, h)
             xMax = max(xMax, x + w + graphPadding)
             yMax = max(yMax, y + h + graphPadding)
             x += w + graphPadding
@@ -137,11 +139,11 @@ class GraphGUI : EngineApp
 
         if (adjustingSize)
         {
-            engine.gfx.setColor(1f, 0f, 0f, 0.9f)
-            engine.gfx.drawLine(xPos, yPos, xPos + maxWidth, yPos)
-            engine.gfx.drawLine(xPos, yPos + area.height, xPos + maxWidth, yPos + area.height)
-            engine.gfx.drawLine(xPos, yPos, xPos, yPos + area.height)
-            engine.gfx.drawLine(xPos + maxWidth, yPos, xPos + maxWidth, yPos + area.height)
+            surface.setDrawColor(1f, 0f, 0f, 0.9f)
+            surface.drawLine(xPos, yPos, xPos + maxWidth, yPos)
+            surface.drawLine(xPos, yPos + area.height, xPos + maxWidth, yPos + area.height)
+            surface.drawLine(xPos, yPos, xPos, yPos + area.height)
+            surface.drawLine(xPos + maxWidth, yPos, xPos + maxWidth, yPos + area.height)
         }
     }
 
@@ -175,16 +177,14 @@ class GraphGUI : EngineApp
                 taleCursor = (taleCursor + 1) % data.size
         }
 
-        fun render(engine: GameEngine, xPos: Float, yPos: Float, width: Float, height: Float)
+        fun render(surface: Surface2D, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
         {
-            val font = engine.asset.get<Font>("graph_font")
             val headerText = name + if(unit.isNotEmpty()) " ($unit)" else ""
 
-            engine.gfx.camera.disable()
-            engine.gfx.setColor(0.1f, 0.1f, 0.1f, 0.9f)
-            engine.gfx.drawTexture(Texture.BLANK, xPos, yPos, width, height)
-            engine.gfx.setColor(1f,1f,1f,0.95f)
-            engine.gfx.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
+            surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)
+            surface.drawTexture(Texture.BLANK, xPos, yPos, width, height)
+            surface.setDrawColor(1f,1f,1f,0.95f)
+            surface.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 
             val min = this.min() ?: 0f
             val max = this.max() ?: 0f
@@ -200,12 +200,12 @@ class GraphGUI : EngineApp
             val h = height - PADDING - TOP_PADDING
             val sampleWidth = w / WINDOWS_LENGTH
 
-            engine.gfx.setColor(0.5f, 0.5f, 0.5f, 1f)
-            engine.gfx.drawLine(x, y + h / 2f, x + w, y + h / 2f)
-            engine.gfx.drawLine(x + w, y, x + w, y + h)
-            engine.gfx.drawLine(x, y, x + w, y)
-            engine.gfx.drawLine(x, y, x, y + h)
-            engine.gfx.drawLine(x, y + h, x + w, y + h)
+            surface.setDrawColor(0.5f, 0.5f, 0.5f, 1f)
+            surface.drawLine(x, y + h / 2f, x + w, y + h / 2f)
+            surface.drawLine(x + w, y, x + w, y + h)
+            surface.drawLine(x, y, x + w, y)
+            surface.drawLine(x, y, x, y + h)
+            surface.drawLine(x, y + h, x + w, y + h)
 
             for (i in 0 .. nTicks)
             {
@@ -218,21 +218,21 @@ class GraphGUI : EngineApp
                 // Guide line
                 if(i % 2 != 0)
                 {
-                    engine.gfx.setColor(1f, 1f, 1f, 0.01f)
-                    engine.gfx.setColor(0.3f, 0.3f, 0.3f, 1f)
-                    engine.gfx.drawLine(x, yTick, xTick, yTick)
+                    surface.setDrawColor(1f, 1f, 1f, 0.01f)
+                    surface.setDrawColor(0.3f, 0.3f, 0.3f, 1f)
+                    surface.drawLine(x, yTick, xTick, yTick)
                 }
 
                 // Tick mark
-                engine.gfx.setColor(1f, 1f, 1f, 1f)
-                engine.gfx.drawLine(xTick, yTick, xTick + tickLength, yTick)
+                surface.setDrawColor(1f, 1f, 1f, 1f)
+                surface.drawLine(xTick, yTick, xTick + tickLength, yTick)
 
                 // Value text
-                engine.gfx.setColor(1f, 1f, 1f, 0.95f)
-                engine.gfx.drawText(tickValueText, xTick + tickLength*1.5f, yTick, yOrigin = 0.5f, font = font, fontSize = TICK_MARK_FONT_SIZE)
+                surface.setDrawColor(1f, 1f, 1f, 0.95f)
+                surface.drawText(tickValueText, xTick + tickLength*1.5f, yTick, yOrigin = 0.5f, font = font, fontSize = TICK_MARK_FONT_SIZE)
             }
 
-            engine.gfx.setColor(1f,1f,1f,0.95f)
+            surface.setDrawColor(1f,1f,1f,0.95f)
 
             var xPlotLast = 0f
             var yPlotLast = 0f
@@ -243,7 +243,7 @@ class GraphGUI : EngineApp
                 val xPlot = x + w - (this.size() - i) * sampleWidth
                 val yPlot = y + (h / 2f) + (1f - fraction * 2f) * (h / 2f)
                 if (i > 0)
-                    engine.gfx.drawLine(xPlot, yPlot, xPlotLast, yPlotLast)
+                    surface.drawLine(xPlot, yPlot, xPlotLast, yPlotLast)
 
                 xPlotLast = xPlot
                 yPlotLast = yPlot
@@ -251,7 +251,7 @@ class GraphGUI : EngineApp
             }
 
             val text = if(latestValue < 5) "%.2f".format(Locale.US, latestValue) else latestValue.toInt().toString()
-            engine.gfx.drawText(text, x + 5, y + 22f, font = font, fontSize = VALUE_FONT_SIZE, yOrigin = 0.5f)
+            surface.drawText(text, x + 5, y + 22f, font = font, fontSize = VALUE_FONT_SIZE, yOrigin = 0.5f)
         }
 
         override fun iterator(): Iterator<Float> =

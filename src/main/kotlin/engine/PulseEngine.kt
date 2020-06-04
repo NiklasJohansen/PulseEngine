@@ -165,7 +165,7 @@ class PulseEngine(
             input.requestFocus(focusArea)
             entity.fixedUpdate(this)
             game.fixedUpdate()
-            gfx.camera.updateTransform(dt.toFloat())
+            gfx.mainCamera.updateTransform(dt.toFloat())
 
             updated = true
             fixedUpdateAccumulator -= dt
@@ -203,7 +203,7 @@ class PulseEngine(
         input.pollEvents()
 
         // Update world mouse position
-        val pos = gfx.camera.screenPosToWorldPos(input.xMouse, input.yMouse)
+        val pos = gfx.mainCamera.screenPosToWorldPos(input.xMouse, input.yMouse)
         input.xWorldMouse = pos.x
         input.yWorldMouse = pos.y
 
