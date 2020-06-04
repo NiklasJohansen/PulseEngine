@@ -25,7 +25,7 @@ interface GraphicsEngineInterface : GraphicsInterface
     fun initTexture(texture: Texture)
     fun cleanUp()
     fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
-    fun preRender()
+    fun updateCamera(deltaTime: Float)
     fun postRender()
 }
 

@@ -53,7 +53,6 @@ abstract class CameraEngineInterface : CameraInterface()
 {
     abstract fun updateViewMatrix()
     abstract fun updateTransform(deltaTime: Float)
-    abstract fun viewMatrixAsArray(): FloatArray
 }
 
 @ConsoleTarget
@@ -62,8 +61,6 @@ class Camera(
 ) : CameraEngineInterface() {
     override var viewMatrix = Matrix4f()
     override var projectionMatrix = Matrix4f()
-
-    private var target: Transform2D? = null
 
     private var xLastPos: Float = 0f
     private var yLastPos: Float = 0f
@@ -75,17 +72,16 @@ class Camera(
     private var yLastScale: Float = 1f
     private var zLastScale: Float = 1f
 
-    private val floatArray = FloatArray(16)
-    private val invCameraMatrix = Matrix4f()
-    private var cameraMatrix = Matrix4f()
+    private val invViewMatrix = Matrix4f()
     private val positionVector = Vector4f()
     private val worldPositionVector = Vector3f()
     private val screenPositionVector = Vector2f()
+    private var target: Transform2D? = null
 
     override fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     {
-        cameraMatrix.invert(invCameraMatrix)
-        val pos = positionVector.set(x, y, 0f, 1f).mul(invCameraMatrix)
+        viewMatrix.invert(invViewMatrix)
+        val pos = positionVector.set(x, y, 0f, 1f).mul(invViewMatrix)
         return worldPositionVector.set(pos.x, pos.y, pos.z)
     }
 
@@ -121,7 +117,7 @@ class Camera(
         val yScale = yScale.interpolateFrom(yLastScale)
         val zScale = zScale.interpolateFrom(zLastScale)
 
-        viewMatrix = cameraMatrix
+        viewMatrix
             .setTranslation(xPos + xOrigin, yPos + yOrigin, zPos + zOrigin)
             .translate(-xOrigin, -yOrigin, -zOrigin)
             .setRotationXYZ(xRot, yRot, zRot)
@@ -145,12 +141,6 @@ class Camera(
             xPos += (-targetScreenPos.x - (xPos / xScale - xOrigin)) * targetTrackingSmoothing * deltaTime
             yPos += (-targetScreenPos.y - (yPos / yScale - yOrigin)) * targetTrackingSmoothing * deltaTime
         }
-    }
-
-    override fun viewMatrixAsArray(): FloatArray
-    {
-        viewMatrix.get(floatArray)
-        return floatArray
     }
 
     companion object

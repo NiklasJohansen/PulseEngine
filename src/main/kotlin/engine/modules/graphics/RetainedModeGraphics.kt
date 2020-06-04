@@ -6,6 +6,7 @@ import engine.data.Texture
 import engine.modules.graphics.postprocessing.PostProcessingEffect
 import engine.modules.graphics.postprocessing.PostProcessingPipeline
 import engine.modules.graphics.renderers.FrameTextureRenderer
+import engine.util.forEachFiltered
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
 
@@ -23,7 +24,9 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
+        graphicState.defaultFont = Font("/FiraSans-Regular.ttf","default_font", floatArrayOf(24f, 72f))
         graphicState.textureArray = TextureArray(1024, 1024, 100)
+
         mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = Surface2DImpl.create("default", SurfaceType.MAIN_CAM, 100, graphicState, mainCamera)
         surfaces.add(mainSurface)
@@ -31,46 +34,8 @@ class RetainedModeGraphics : GraphicsEngineInterface
         updateViewportSize(viewPortWidth, viewPortHeight, true)
 
         // Load default font
-        val defaultFont = Font("/FiraSans-Regular.ttf","default_font", floatArrayOf(24f, 72f))
-        defaultFont.load()
-        initTexture(defaultFont.charTexture)
-        graphicState.defaultFont = defaultFont
-    }
-
-    override fun initTexture(texture: Texture)
-    {
-        graphicState.textureArray.upload(texture)
-    }
-
-    override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
-    {
-        if(windowRecreated)
-            initOpenGL()
-
-        surfaces.forEach {
-            it.initRenderTargets(width, height)
-            it.camera.updateProjection(width, height)
-        }
-
-        glViewport(0, 0, width, height)
-    }
-
-    private fun initOpenGL()
-    {
-        GL.createCapabilities()
-
-        // Initialize batch renderers
-        surfaces.forEach { it.initRenderers() }
-
-        // Create frameRenderer
-        if(!this::renderer.isInitialized)
-            renderer = FrameTextureRenderer(ShaderProgram.create("/engine/shaders/effects/texture.vert", "/engine/shaders/effects/texture.frag"))
-
-        // Initialize frameRenderer
-        renderer.init()
-
-        // Initialize post processing effects
-        ppPipeline.init()
+        graphicState.defaultFont.load()
+        initTexture(graphicState.defaultFont.charTexture)
     }
 
     override fun cleanUp()
@@ -80,9 +45,52 @@ class RetainedModeGraphics : GraphicsEngineInterface
         surfaces.forEach { it.cleanup() }
     }
 
-    override fun preRender()
+    override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     {
-        getSurface2D("default")
+        if(windowRecreated)
+       {
+           GL.createCapabilities()
+
+           // Initialize batch renderers
+           surfaces.forEach { it.initRenderers() }
+
+           // Create frameRenderer
+           if(!this::renderer.isInitialized)
+               renderer = FrameTextureRenderer(ShaderProgram.create("/engine/shaders/effects/texture.vert", "/engine/shaders/effects/texture.frag"))
+
+           // Initialize frameRenderer
+           renderer.init()
+
+           // Initialize post processing effects
+           ppPipeline.init()
+       }
+
+        // Update projection of main camera
+        mainCamera.updateProjection(width, height)
+
+        // Update surfaces
+        surfaces.forEach {
+            it.initRenderTargets(width, height)
+            if (it.camera != mainCamera)
+                it.camera.updateProjection(width, height)
+        }
+
+        // Set viewport size
+        glViewport(0, 0, width, height)
+    }
+
+    override fun initTexture(texture: Texture)
+    {
+        graphicState.textureArray.upload(texture)
+    }
+
+    override fun updateCamera(deltaTime: Float)
+    {
+        mainCamera.updateTransform(deltaTime)
+        surfaces.forEach {
+            if (it.camera != mainCamera)
+                it.camera.updateTransform(deltaTime)
+        }
     }
 
     override fun postRender()
@@ -95,22 +103,9 @@ class RetainedModeGraphics : GraphicsEngineInterface
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        surfaces.forEach {
-            if(it.surfaceType == SurfaceType.MAIN_CAM)
-                renderer.render(ppPipeline.process(it.getTexture()))
-        }
-
-        surfaces
-            .forEach {
-                if (it.surfaceType == SurfaceType.UI)
-                    renderer.render(it.getTexture())
-            }
-
-        surfaces
-            .forEach {
-                if (it.surfaceType == SurfaceType.OVERLAY)
-                    renderer.render(it.getTexture())
-            }
+        surfaces.forEachFiltered({ it.surfaceType == SurfaceType.MAIN_CAM }) { renderer.render(ppPipeline.process(it.getTexture())) }
+        surfaces.forEachFiltered({ it.surfaceType == SurfaceType.UI })       { renderer.render(it.getTexture()) }
+        surfaces.forEachFiltered({ it.surfaceType == SurfaceType.OVERLAY })  { renderer.render(it.getTexture()) }
     }
 
     override fun addPostProcessingEffect(effect: PostProcessingEffect)  =
@@ -126,8 +121,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
         val camera = when(type)
         {
             SurfaceType.MAIN_CAM -> mainCamera
-            SurfaceType.UI -> Camera.createOrthographic(currentTex.width, currentTex.height)
-            SurfaceType.OVERLAY -> Camera.createOrthographic(currentTex.width, currentTex.height)
+            SurfaceType.UI, SurfaceType.OVERLAY -> Camera.createOrthographic(currentTex.width, currentTex.height)
         }
 
         val surface = Surface2DImpl.create(name, type, 100, graphicState, camera)

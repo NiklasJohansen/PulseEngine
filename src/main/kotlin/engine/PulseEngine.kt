@@ -165,7 +165,7 @@ class PulseEngine(
             input.requestFocus(focusArea)
             entity.fixedUpdate(this)
             game.fixedUpdate()
-            gfx.mainCamera.updateTransform(dt.toFloat())
+            gfx.updateCamera(dt.toFloat())
 
             updated = true
             fixedUpdateAccumulator -= dt
@@ -180,7 +180,6 @@ class PulseEngine(
     {
         val startTime = glfwGetTime()
         data.interpolation = fixedUpdateAccumulator.toFloat() / data.fixedDeltaTime
-        gfx.preRender()
         entity.render(this)
         game.render()
         apps.forEach { it.render(this) }
