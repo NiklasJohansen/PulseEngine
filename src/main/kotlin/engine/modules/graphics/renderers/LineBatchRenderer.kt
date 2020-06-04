@@ -5,7 +5,7 @@ import org.lwjgl.opengl.GL11.*
 
 class LineBatchRenderer(
     private val initialCapacity: Int,
-    private val gfxState: GraphicsState
+    private val gfxState: RenderState
 ) : BatchRenderer {
 
     private lateinit var program: ShaderProgram

@@ -21,6 +21,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
     private var currentLayer = GraphicsLayer.create("default", LayerType.WORLD, 100, graphicState)
     private val graphicsLayers = mutableListOf(currentLayer)
     private val ppPipeline = PostProcessingPipeline()
+    private val graphicState = GraphicsState()
 
     override lateinit var mainCamera: CameraEngineInterface
     override lateinit var mainSurface: EngineSurface2D

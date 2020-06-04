@@ -1,12 +1,11 @@
 package engine.modules.graphics.renderers
 
 import engine.modules.graphics.*
-import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL11.*
 
 class UniColorLineBatchRenderer(
     private val initialCapacity: Int,
-    private val gfxState: GraphicsState
+    private val gfxState: RenderState
 ) : LineRendererInterface, BatchRenderer {
 
     private var rgbaColor: Float = 0f
