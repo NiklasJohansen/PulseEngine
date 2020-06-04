@@ -1,12 +1,11 @@
 package engine.modules.graphics.renderers
 
 import engine.modules.graphics.*
-import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL11.*
 
 class UniColorLineBatchRenderer(
     private val initialCapacity: Int,
-    private val gfxState: GraphicsState
+    private val gfxState: RenderState
 ) : LineRendererInterface, BatchRenderer {
 
     private var rgbaColor: Float = 0f
@@ -51,9 +50,9 @@ class UniColorLineBatchRenderer(
         vao.bind()
         vbo.bind()
         program.bind()
-        program.setUniform("projection", gfxState.projectionMatrix)
+        program.setUniform("projection", camera.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
-        program.setUniform("model", gfxState.modelMatrix)
+        program.setUniform("model", camera.modelMatrix)
         program.setUniform("color", java.lang.Float.floatToIntBits(rgbaColor))
 
         vbo.flush()

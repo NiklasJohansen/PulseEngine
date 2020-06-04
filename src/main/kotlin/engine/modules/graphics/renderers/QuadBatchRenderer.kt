@@ -1,12 +1,11 @@
 package engine.modules.graphics.renderers
 
 import engine.modules.graphics.*
-import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL11.*
 
 class QuadBatchRenderer(
     private val initialCapacity: Int,
-    private val gfxState: GraphicsState
+    private val gfxState: RenderState
 ) : BatchRenderer {
 
     private var vertexCount = 0
@@ -98,9 +97,9 @@ class QuadBatchRenderer(
         vbo.bind()
 
         program.bind()
-        program.setUniform("projection", gfxState.projectionMatrix)
+        program.setUniform("projection", camera.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
-        program.setUniform("model", gfxState.modelMatrix)
+        program.setUniform("model", camera.modelMatrix)
 
         glBindTexture(GL_TEXTURE_2D, 0)
 

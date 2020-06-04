@@ -2,12 +2,12 @@ package engine.modules.graphics.renderers
 
 import engine.data.Texture
 import engine.modules.graphics.*
-import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL11.*
 
 class TextureBatchRenderer(
     private val initialCapacity: Int,
-    private val gfxState: GraphicsState
+    private val renderState: RenderState,
+    private val graphicsState: GraphicsState
 ) : BatchRenderer {
 
     private var vertexCount = 0
@@ -54,8 +54,8 @@ class TextureBatchRenderer(
         val texIndex = texture.id.toFloat() + if(texture.format == GL_ALPHA) 0.5f else 0.0f
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
-        val rgba = gfxState.rgba
-        val depth = gfxState.depth
+        val rgba = renderState.rgba
+        val depth = renderState.depth
 
         vbo.put(
             x, y, depth, -xOffset, -yOffset,   rot, uMin, vMin, texIndex, rgba,
@@ -74,7 +74,7 @@ class TextureBatchRenderer(
         )
 
         vertexCount += 4
-        gfxState.increaseDepth()
+        renderState.increaseDepth()
     }
 
     fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
@@ -86,8 +86,8 @@ class TextureBatchRenderer(
         val index = texture.id.toFloat() + if(texture.format == GL_ALPHA) 0.5f else 0.0f
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
-        val rgba = gfxState.rgba
-        val depth = gfxState.depth
+        val rgba = renderState.rgba
+        val depth = renderState.depth
 
         vbo.put(
             x, y, depth, -xOffset, -yOffset,  rot, uMin, vMin, index, rgba,
@@ -106,7 +106,7 @@ class TextureBatchRenderer(
         )
 
         vertexCount += 4
-        gfxState.increaseDepth()
+        renderState.increaseDepth()
     }
 
     override fun render(camera: CameraEngineInterface)
@@ -118,11 +118,11 @@ class TextureBatchRenderer(
         vbo.bind()
         ebo.bind()
         program.bind()
-        program.setUniform("projection", gfxState.projectionMatrix)
+        program.setUniform("projection", camera.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
-        program.setUniform("model", gfxState.modelMatrix)
+        program.setUniform("model", camera.modelMatrix)
 
-        gfxState.textureArray.bind()
+        graphicsState.textureArray.bind()
 
         vbo.flush()
         ebo.flush()

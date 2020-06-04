@@ -26,8 +26,8 @@ fun main()
             box.vel *= if (box.y >= window.height) { box.y = window.height.toFloat(); -0.95f } else 1f
 
             // Set color and draw box
-            gfx.setColor(box.shade, box.shade, box.shade)
-            gfx.drawQuad(box.x, box.y, box.w, -box.h)
+            gfx.mainSurface.setDrawColor(box.shade, box.shade, box.shade)
+            gfx.mainSurface.drawQuad(box.x, box.y, box.w, -box.h)
         }
     }
 }

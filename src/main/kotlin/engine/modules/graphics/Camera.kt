@@ -2,6 +2,8 @@ package engine.modules.graphics
 
 import engine.modules.console.ConsoleTarget
 import engine.modules.entity.Transform2D
+import engine.modules.graphics.Camera.*
+import engine.modules.graphics.Camera.ProjectionType.*
 import engine.util.interpolateFrom
 import org.joml.Matrix4f
 import org.joml.Vector2f
@@ -10,7 +12,9 @@ import org.joml.Vector4f
 
 abstract class CameraInterface
 {
+    open val modelMatrix: Matrix4f = Matrix4f()
     open val viewMatrix: Matrix4f = Matrix4f()
+    open val projectionMatrix: Matrix4f = Matrix4f()
 
     // Position
     var xPos: Float = 0f
@@ -35,29 +39,28 @@ abstract class CameraInterface
     // Smoothing
     var targetTrackingSmoothing = 1f
 
-    abstract fun enable()
-    abstract fun disable()
+    // Depth range
+    var farPlane = 5f
+    var nearPlane = -1f
+
     abstract fun setTarget(target: Transform2D?)
     abstract fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     abstract fun worldPosToScreenPos(x: Float, y: Float, z: Float = 0f): Vector2f
+    abstract fun updateProjection(width: Int, height: Int, type: ProjectionType? = null)
 }
 
 abstract class CameraEngineInterface : CameraInterface()
 {
     abstract fun updateViewMatrix()
     abstract fun updateTransform(deltaTime: Float)
-    abstract fun viewMatrixAsArray(): FloatArray
-    abstract fun setOnEnableChanged(callback: (Boolean) -> Unit)
 }
 
 @ConsoleTarget
-class Camera : CameraEngineInterface()
-{
-    override var viewMatrix: Matrix4f = Matrix4f()
-
-    private var onEnabledCallback: (Boolean) -> Unit = {}
-    private var target: Transform2D? = null
-    private var enabled = true
+class Camera(
+    private var projectionType: ProjectionType
+) : CameraEngineInterface() {
+    override var viewMatrix = Matrix4f()
+    override var projectionMatrix = Matrix4f()
 
     private var xLastPos: Float = 0f
     private var yLastPos: Float = 0f
@@ -69,30 +72,16 @@ class Camera : CameraEngineInterface()
     private var yLastScale: Float = 1f
     private var zLastScale: Float = 1f
 
-    private val floatArray = FloatArray(16)
-    private val invCameraMatrix = Matrix4f()
-    private var cameraMatrix = Matrix4f()
-    private var identityMatrix = Matrix4f()
+    private val invViewMatrix = Matrix4f()
     private val positionVector = Vector4f()
     private val worldPositionVector = Vector3f()
     private val screenPositionVector = Vector2f()
-
-    override fun enable()
-    {
-        enabled = true
-        onEnabledCallback.invoke(enabled)
-    }
-
-    override fun disable()
-    {
-        enabled = false
-        onEnabledCallback.invoke(enabled)
-    }
+    private var target: Transform2D? = null
 
     override fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     {
-        cameraMatrix.invert(invCameraMatrix)
-        val pos = positionVector.set(x, y, 0f, 1f).mul(invCameraMatrix)
+        viewMatrix.invert(invViewMatrix)
+        val pos = positionVector.set(x, y, 0f, 1f).mul(invViewMatrix)
         return worldPositionVector.set(pos.x, pos.y, pos.z)
     }
 
@@ -107,27 +96,32 @@ class Camera : CameraEngineInterface()
         this.target = target
     }
 
+    override fun updateProjection(width: Int, height: Int, type: ProjectionType?)
+    {
+        projectionType = type ?: projectionType
+        projectionMatrix = when(projectionType)
+        {
+            ORTHOGRAPHIC -> Matrix4f().ortho(0.0f, width.toFloat(), height.toFloat(), 0.0f, nearPlane, farPlane)
+        }
+    }
+
     override fun updateViewMatrix()
     {
-        viewMatrix = if (enabled)
-        {
-            val xPos = xPos.interpolateFrom(xLastPos)
-            val yPos = yPos.interpolateFrom(yLastPos)
-            val zPos = zPos.interpolateFrom(zLastPos)
-            val xRot = xRot.interpolateFrom(xLastRot)
-            val yRot = yRot.interpolateFrom(yLastRot)
-            val zRot = zRot.interpolateFrom(zLastRot)
-            val xScale = xScale.interpolateFrom(xLastScale)
-            val yScale = yScale.interpolateFrom(yLastScale)
-            val zScale = zScale.interpolateFrom(zLastScale)
+        val xPos = xPos.interpolateFrom(xLastPos)
+        val yPos = yPos.interpolateFrom(yLastPos)
+        val zPos = zPos.interpolateFrom(zLastPos)
+        val xRot = xRot.interpolateFrom(xLastRot)
+        val yRot = yRot.interpolateFrom(yLastRot)
+        val zRot = zRot.interpolateFrom(zLastRot)
+        val xScale = xScale.interpolateFrom(xLastScale)
+        val yScale = yScale.interpolateFrom(yLastScale)
+        val zScale = zScale.interpolateFrom(zLastScale)
 
-            cameraMatrix
-                .setTranslation(xPos + xOrigin, yPos + yOrigin, zPos + zOrigin)
-                .translate(-xOrigin, -yOrigin, -zOrigin)
-                .setRotationXYZ(xRot, yRot, zRot)
-                .scale(xScale, yScale, zScale)
-        }
-        else identityMatrix
+        viewMatrix
+            .setTranslation(xPos + xOrigin, yPos + yOrigin, zPos + zOrigin)
+            .translate(-xOrigin, -yOrigin, -zOrigin)
+            .setRotationXYZ(xRot, yRot, zRot)
+            .scale(xScale, yScale, zScale)
     }
 
     override fun updateTransform(deltaTime: Float)
@@ -149,14 +143,15 @@ class Camera : CameraEngineInterface()
         }
     }
 
-    override fun setOnEnableChanged(callback: (Boolean) -> Unit)
+    companion object
     {
-        onEnabledCallback = callback
+        fun createOrthographic(width: Int, height: Int): Camera =
+            Camera(ORTHOGRAPHIC)
+                .also { it.updateProjection(width, height) }
     }
 
-    override fun viewMatrixAsArray(): FloatArray
+    enum class ProjectionType
     {
-        viewMatrix.get(floatArray)
-        return floatArray
+        ORTHOGRAPHIC
     }
 }

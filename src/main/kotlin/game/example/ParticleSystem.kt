@@ -7,6 +7,8 @@ import engine.data.Key
 import engine.data.Mouse
 import engine.data.ScreenMode.*
 import engine.modules.graphics.BlendFunction
+import engine.modules.graphics.SurfaceType
+import engine.modules.graphics.Surface2D
 import engine.modules.graphics.postprocessing.effects.BloomEffect
 import java.text.DecimalFormat
 import kotlin.math.PI
@@ -44,8 +46,10 @@ class ParticleSystem : Game()
         engine.config.targetFps = 10000
         engine.config.fixedTickRate = 15
         engine.window.title = "Particle system"
-        engine.gfx.setBlendFunction(BlendFunction.ADDITIVE)
-        engine.gfx.setBackgroundColor(0.05f, 0.05f, 0.05f)
+
+        engine.gfx.mainSurface.setBackgroundColor(0.05f, 0.05f, 0.05f)
+        engine.gfx.mainSurface.setBlendFunction(BlendFunction.ADDITIVE)
+        engine.gfx.createSurface2D("textSurface", SurfaceType.UI)
         engine.gfx.addPostProcessingEffect(bloomEffect)
     }
 
@@ -68,12 +72,12 @@ class ParticleSystem : Game()
 
         if(engine.input.isPressed(Mouse.MIDDLE))
         {
-            engine.gfx.camera.xPos += engine.input.xdMouse
-            engine.gfx.camera.yPos += engine.input.ydMouse
+            engine.gfx.mainCamera.xPos += engine.input.xdMouse
+            engine.gfx.mainCamera.yPos += engine.input.ydMouse
         }
 
-        engine.gfx.camera.xScale += engine.input.scroll * 0.1f
-        engine.gfx.camera.yScale += engine.input.scroll * 0.1f
+        engine.gfx.mainCamera.xScale += engine.input.scroll * 0.1f
+        engine.gfx.mainCamera.yScale += engine.input.scroll * 0.1f
     }
 
     private fun spawnParticles(amount: Float, x: Float, y: Float)
@@ -162,30 +166,28 @@ class ParticleSystem : Game()
 
     override fun render()
     {
-        engine.gfx.setBlendFunction(BlendFunction.ADDITIVE)
-
         if(renderMonoColor)
-            renderMonoColoredParticles(engine)
+            renderMonoColoredParticles(engine.gfx.mainSurface)
         else
-            renderIndividualColoredParticles(engine)
+            renderIndividualColoredParticles(engine.gfx.mainSurface)
 
-        engine.gfx.camera.disable()
-        engine.gfx.setColor(1f, 1f, 1f)
-        engine.gfx.drawText("FPS: ${engine.data.currentFps}",  20f, 40f)
-        engine.gfx.drawText("UPDATE: ${"%.1f".format(engine.data.updateTimeMS)} ms/f", 20f, 70f)
-        engine.gfx.drawText("FIX_UPDATE: ${"%.1f".format(engine.data.fixedUpdateTimeMS)} ms/f", 20f, 100f)
-        engine.gfx.drawText("RENDER: ${"%.1f".format(engine.data.renderTimeMs)} ms/f", 20f, 130f)
-        engine.gfx.drawText("PARTICLES: ${DecimalFormat("#,###.##").format(particleCount)}", 20f, 160f)
+        val textSurface = engine.gfx.getSurface2D("textSurface")
+        textSurface.setDrawColor(1f, 1f, 1f)
+        textSurface.drawText("FPS: ${engine.data.currentFps}",  20f, 40f)
+        textSurface.drawText("UPDATE: ${"%.1f".format(engine.data.updateTimeMS)} ms/f", 20f, 70f)
+        textSurface.drawText("FIX_UPDATE: ${"%.1f".format(engine.data.fixedUpdateTimeMS)} ms/f", 20f, 100f)
+        textSurface.drawText("RENDER: ${"%.1f".format(engine.data.renderTimeMs)} ms/f", 20f, 130f)
+        textSurface.drawText("PARTICLES: ${DecimalFormat("#,###.##").format(particleCount)}", 20f, 160f)
     }
 
-    private fun renderMonoColoredParticles(engine: GameEngine)
+    private fun renderMonoColoredParticles(surface: Surface2D)
     {
         val dt = engine.data.fixedDeltaTime * 0.1f
         val interpolation = engine.data.interpolation
         val invInterpolation = 1.0f - engine.data.interpolation
 
-        engine.gfx.setColor(1f, 0.4f, 0.1f)
-        engine.gfx.drawSameColorLines { draw ->
+        surface.setDrawColor(1f, 0.4f, 0.1f)
+        surface.drawSameColorLines { draw ->
             for (i in 0 until particleCount)
             {
                 val index = i * DATA_FIELDS
@@ -212,7 +214,7 @@ class ParticleSystem : Game()
         }
     }
 
-    private fun renderIndividualColoredParticles(engine: GameEngine)
+    private fun renderIndividualColoredParticles(surface: Surface2D)
     {
         val dt = engine.data.fixedDeltaTime * 0.1f
         val interpolation = engine.data.interpolation
@@ -237,8 +239,8 @@ class ParticleSystem : Game()
             }
 
             val fraction = i.toFloat() / particleCount
-            engine.gfx.setColor(1.0f - fraction, fraction, 0.1f, particles[index + LIFE])
-            engine.gfx.drawLine(x, y,
+            surface.setDrawColor(1.0f - fraction, fraction, 0.1f, particles[index + LIFE])
+            surface.drawLine(x, y,
                 x + particles[index + X_VEL] * dt,
                 y + particles[index + Y_VEL] * dt
             )

@@ -3,6 +3,7 @@ package game.cave
 import engine.PulseEngine
 import engine.modules.Game
 import engine.data.*
+import engine.modules.graphics.Camera
 import engine.modules.graphics.postprocessing.effects.BloomEffect
 import engine.modules.graphics.postprocessing.effects.VignetteEffect
 import org.joml.Math.sin
@@ -57,19 +58,19 @@ class CaveGame : Game()
             yCam += engine.input.ydMouse
         }
 
-        if(engine.input.isPressed(Key.W)) engine.gfx.camera.yPos += 100 * dt
-        if(engine.input.isPressed(Key.A)) engine.gfx.camera.xPos += 100 * dt
-        if(engine.input.isPressed(Key.S)) engine.gfx.camera.yPos -= 100 * dt
-        if(engine.input.isPressed(Key.D)) engine.gfx.camera.xPos -= 100 * dt
+        if(engine.input.isPressed(Key.W)) engine.gfx.mainCamera.yPos += 100 * dt
+        if(engine.input.isPressed(Key.A)) engine.gfx.mainCamera.xPos += 100 * dt
+        if(engine.input.isPressed(Key.S)) engine.gfx.mainCamera.yPos -= 100 * dt
+        if(engine.input.isPressed(Key.D)) engine.gfx.mainCamera.xPos -= 100 * dt
 
-        engine.gfx.camera.xOrigin = engine.window.width / 2f
-        engine.gfx.camera.yOrigin = engine.window.height / 2f
+        engine.gfx.mainCamera.xOrigin = engine.window.width / 2f
+        engine.gfx.mainCamera.yOrigin = engine.window.height / 2f
 
-        if(engine.input.isPressed(Key.K_1)) engine.gfx.camera.zRot -= 1 * dt
-        if(engine.input.isPressed(Key.K_2)) engine.gfx.camera.zRot += 1 * dt
+        if(engine.input.isPressed(Key.K_1)) engine.gfx.mainCamera.zRot -= 1 * dt
+        if(engine.input.isPressed(Key.K_2)) engine.gfx.mainCamera.zRot += 1 * dt
 
-        if(engine.input.isPressed(Key.K_3)) engine.gfx.camera.xScale -= 1f * dt
-        if(engine.input.isPressed(Key.K_4)) engine.gfx.camera.xScale += 1f * dt
+        if(engine.input.isPressed(Key.K_3)) engine.gfx.mainCamera.xScale -= 1f * dt
+        if(engine.input.isPressed(Key.K_4)) engine.gfx.mainCamera.xScale += 1f * dt
 
         if(engine.input.gamepads.firstOrNull()?.isPressed(Button.A) == true)
             blockWidth += 1 * dt
@@ -109,6 +110,8 @@ class CaveGame : Game()
 
     override fun render()
     {
+        val surface = engine.gfx.mainSurface
+
         val width = blockWidth.toInt()
         val height = blockHeight.toInt()
 
@@ -131,8 +134,8 @@ class CaveGame : Game()
                 val xBlock = x * width + xCam % width
                 val yBlock = y * height + yCam % height
 
-                engine.gfx.setColor(c.red, c.green, c.blue)
-                engine.gfx.drawQuad(xBlock, yBlock, width.toFloat(), height.toFloat())
+                surface.setDrawColor(c.red, c.green, c.blue)
+                surface.drawQuad(xBlock, yBlock, width.toFloat(), height.toFloat())
                 blockCount++
             }
         }
@@ -174,7 +177,5 @@ class CaveGame : Game()
         println("Cleaning up CaveGame...")
     }
 }
-
-data class Color(val red: Float, val green: Float, val blue: Float)
 
 data class Block(val density: Float, val color: Color, val blend: Boolean)

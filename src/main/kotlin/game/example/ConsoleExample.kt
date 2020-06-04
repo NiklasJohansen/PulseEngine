@@ -11,7 +11,7 @@ class ConsoleExample : Game()
 {
     override fun init()
     {
-        engine.gfx.setBackgroundColor(0.2f, 0.2f, 0.2f)
+        engine.gfx.mainSurface.setBackgroundColor(0.2f, 0.2f, 0.2f)
         engine.window.title = "Console Example"
 
         engine.console.registerCommand("echo {text:String}") {
@@ -26,8 +26,8 @@ class ConsoleExample : Game()
 
     override fun render()
     {
-        engine.gfx.setColor(1f,1f,1f)
-        engine.gfx.drawText(
+        engine.gfx.mainSurface.setDrawColor(1f,1f,1f)
+        engine.gfx.mainSurface.drawText(
             text = "OPEN CONSOLE WITH F1",
             x = engine.window.width / 2f,
             y = engine.window.height / 2f,
