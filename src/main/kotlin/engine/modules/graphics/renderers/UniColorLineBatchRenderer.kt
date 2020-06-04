@@ -51,9 +51,9 @@ class UniColorLineBatchRenderer(
         vao.bind()
         vbo.bind()
         program.bind()
-        program.setUniform("projection", gfxState.projectionMatrix)
+        program.setUniform("projection", camera.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
-        program.setUniform("model", gfxState.modelMatrix)
+        program.setUniform("model", camera.modelMatrix)
         program.setUniform("color", java.lang.Float.floatToIntBits(rgbaColor))
 
         vbo.flush()

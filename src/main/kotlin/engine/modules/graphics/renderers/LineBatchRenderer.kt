@@ -53,9 +53,9 @@ class LineBatchRenderer(
         vao.bind()
         vbo.bind()
         program.bind()
-        program.setUniform("projection", gfxState.projectionMatrix)
+        program.setUniform("projection", camera.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
-        program.setUniform("model", gfxState.modelMatrix)
+        program.setUniform("model", camera.modelMatrix)
 
         vbo.flush()
         vbo.draw(GL_LINES, 4)

@@ -98,9 +98,9 @@ class QuadBatchRenderer(
         vbo.bind()
 
         program.bind()
-        program.setUniform("projection", gfxState.projectionMatrix)
+        program.setUniform("projection", camera.projectionMatrix)
         program.setUniform("view", camera.viewMatrix)
-        program.setUniform("model", gfxState.modelMatrix)
+        program.setUniform("model", camera.modelMatrix)
 
         glBindTexture(GL_TEXTURE_2D, 0)
 

@@ -56,7 +56,7 @@ class FeatureExample : Game()
         lastBoxPosition.y = boxPosition.y
 
         // Set camera smooth
-        engine.gfx.camera.targetTrackingSmoothing = 1f
+        engine.gfx.mainCamera.targetTrackingSmoothing = 1f
 
         // Add separate UI graphics layer for text
         engine.gfx.addLayer("text", LayerType.UI)
@@ -93,18 +93,18 @@ class FeatureExample : Game()
 
         val dt = engine.data.deltaTime
 
-        if(engine.input.isPressed(Key.K_1)) engine.gfx.camera.zRot -= 1 * dt
-        if(engine.input.isPressed(Key.K_2)) engine.gfx.camera.zRot += 1 * dt
+        if(engine.input.isPressed(Key.K_1)) engine.gfx.mainCamera.zRot -= 1 * dt
+        if(engine.input.isPressed(Key.K_2)) engine.gfx.mainCamera.zRot += 1 * dt
         if(engine.input.isPressed(Mouse.MIDDLE))
         {
-            engine.gfx.camera.xPos += engine.input.xdMouse
-            engine.gfx.camera.yPos += engine.input.ydMouse
+            engine.gfx.mainCamera.xPos += engine.input.xdMouse
+            engine.gfx.mainCamera.yPos += engine.input.ydMouse
         }
 
-        engine.gfx.camera.xScale += engine.input.scroll * 0.1f
-        engine.gfx.camera.yScale += engine.input.scroll * 0.1f
-        engine.gfx.camera.xOrigin = engine.window.width * 0.5f
-        engine.gfx.camera.yOrigin = engine.window.height * 0.5f
+        engine.gfx.mainCamera.xScale += engine.input.scroll * 0.1f
+        engine.gfx.mainCamera.yScale += engine.input.scroll * 0.1f
+        engine.gfx.mainCamera.xOrigin = engine.window.width * 0.5f
+        engine.gfx.mainCamera.yOrigin = engine.window.height * 0.5f
     }
 
     // Runs at a fixed rate
@@ -135,7 +135,7 @@ class FeatureExample : Game()
         engine.gfx.useLayer("default")
 
         // Set camera target
-        engine.gfx.camera.setTarget(boxPosition)
+        engine.gfx.mainCamera.setTarget(boxPosition)
 
         // Set color of background
         engine.gfx.setBackgroundColor(0.1f, 0.1f, 0.1f)

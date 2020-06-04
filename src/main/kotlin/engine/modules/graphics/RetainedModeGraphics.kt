@@ -22,7 +22,8 @@ class RetainedModeGraphics : GraphicsEngineInterface
     private val graphicsLayers = mutableListOf(currentLayer)
     private val ppPipeline = PostProcessingPipeline()
 
-    private lateinit var defaultFont: Font
+    override lateinit var mainCamera: CameraEngineInterface
+    override lateinit var mainSurface: EngineSurface2D
     private lateinit var renderer: FrameTextureRenderer
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
@@ -92,8 +93,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun postRender()
     {
-        graphicsLayers.forEach { it.render(camera) }
-        camera.enable()
+        surfaces.forEach { it.render() }
 
         // Prepare OpenGL for rendering FBO textures
         glDisable(GL_DEPTH_TEST)

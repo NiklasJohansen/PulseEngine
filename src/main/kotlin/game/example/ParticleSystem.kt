@@ -68,12 +68,12 @@ class ParticleSystem : Game()
 
         if(engine.input.isPressed(Mouse.MIDDLE))
         {
-            engine.gfx.camera.xPos += engine.input.xdMouse
-            engine.gfx.camera.yPos += engine.input.ydMouse
+            engine.gfx.mainCamera.xPos += engine.input.xdMouse
+            engine.gfx.mainCamera.yPos += engine.input.ydMouse
         }
 
-        engine.gfx.camera.xScale += engine.input.scroll * 0.1f
-        engine.gfx.camera.yScale += engine.input.scroll * 0.1f
+        engine.gfx.mainCamera.xScale += engine.input.scroll * 0.1f
+        engine.gfx.mainCamera.yScale += engine.input.scroll * 0.1f
     }
 
     private fun spawnParticles(amount: Float, x: Float, y: Float)
