@@ -15,7 +15,6 @@ class RetainedModeGraphics : GraphicsEngineInterface
     override fun getRenderMode() = RenderMode.RETAINED
 
     private val surfaces = mutableListOf<EngineSurface2D>()
-    private val ppPipeline = PostProcessingPipeline()
     private val graphicState = GraphicsState()
 
     override lateinit var mainCamera: CameraEngineInterface
@@ -28,9 +27,11 @@ class RetainedModeGraphics : GraphicsEngineInterface
     {
         graphicState.defaultFont = Font("/FiraSans-Regular.ttf","default_font", floatArrayOf(24f, 72f))
         graphicState.textureArray = TextureArray(1024, 1024, 100)
+        graphicState.postProcessingPipeline = PostProcessingPipeline()
 
         mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = Surface2DImpl.create("main", zOrder++, 100, graphicState, mainCamera)
+        mainSurface.setBackgroundColor(0.1f, 0.1f, 0.1f, 1f)
         surfaces.add(mainSurface)
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
@@ -64,7 +65,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
            renderer.init()
 
            // Initialize post processing effects
-           ppPipeline.init()
+           graphicState.postProcessingPipeline.init()
        }
 
         // Update projection of main camera
@@ -110,7 +111,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
     }
 
     override fun addPostProcessingEffect(effect: PostProcessingEffect)  =
-        ppPipeline.addEffect(effect)
+        graphicState.postProcessingPipeline.addEffect(effect)
 
     override fun createSurface2D(name: String, zOrder: Int?, camera: CameraInterface?): Surface2D
     {

@@ -46,7 +46,7 @@ class ParticleSystem : Game()
         engine.config.fixedTickRate = 15
         engine.window.title = "Particle system"
 
-        engine.gfx.mainSurface.setBackgroundColor(0.05f, 0.05f, 0.05f)
+        engine.gfx.mainSurface.setBackgroundColor(0.05f, 0.05f, 0.05f, 1f)
         engine.gfx.mainSurface.setBlendFunction(BlendFunction.ADDITIVE)
         engine.gfx.createSurface2D("textSurface")
         engine.gfx.addPostProcessingEffect(bloomEffect)

@@ -49,7 +49,7 @@ class Surface2DImpl(
     private val textureRenderer: TextureBatchRenderer
 ): EngineSurface2D {
 
-    private val backgroundColor = Color(0.1f, 0.1f, 0.1f)
+    private val backgroundColor = Color(0.1f, 0.1f, 0.1f, 0f)
     private var blendFunction = BlendFunction.NORMAL
     private val renderers = listOf(
         uniColorLineRenderer,
@@ -84,7 +84,7 @@ class Surface2DImpl(
         glEnable(GL_BLEND)
         glBlendFunc(blendFunction.src, blendFunction.dest)
 
-        glClearColor(backgroundColor.red, backgroundColor.green, backgroundColor.blue, 0f)
+        glClearColor(backgroundColor.red, backgroundColor.green, backgroundColor.blue, backgroundColor.alpha)
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         glClearDepth(camera.farPlane.toDouble())
     }
