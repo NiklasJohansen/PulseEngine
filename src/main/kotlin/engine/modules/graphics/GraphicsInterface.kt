@@ -10,7 +10,7 @@ interface GraphicsInterface
     val mainCamera: CameraInterface
     val mainSurface: Surface2D
 
-    fun createSurface2D(name: String, type: SurfaceType): Surface2D
+    fun createSurface2D(name: String, zOrder: Int? = null, camera: CameraInterface? = null): Surface2D
     fun getSurface2D(name: String): Surface2D
     fun addPostProcessingEffect(effect: PostProcessingEffect)
 }

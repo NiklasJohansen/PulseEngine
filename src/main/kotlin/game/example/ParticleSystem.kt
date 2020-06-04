@@ -7,7 +7,6 @@ import engine.data.Key
 import engine.data.Mouse
 import engine.data.ScreenMode.*
 import engine.modules.graphics.BlendFunction
-import engine.modules.graphics.SurfaceType
 import engine.modules.graphics.Surface2D
 import engine.modules.graphics.postprocessing.effects.BloomEffect
 import java.text.DecimalFormat
@@ -49,7 +48,7 @@ class ParticleSystem : Game()
 
         engine.gfx.mainSurface.setBackgroundColor(0.05f, 0.05f, 0.05f)
         engine.gfx.mainSurface.setBlendFunction(BlendFunction.ADDITIVE)
-        engine.gfx.createSurface2D("textSurface", SurfaceType.UI)
+        engine.gfx.createSurface2D("textSurface")
         engine.gfx.addPostProcessingEffect(bloomEffect)
     }
 

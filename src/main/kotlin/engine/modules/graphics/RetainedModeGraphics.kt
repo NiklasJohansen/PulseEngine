@@ -22,13 +22,15 @@ class RetainedModeGraphics : GraphicsEngineInterface
     override lateinit var mainSurface: EngineSurface2D
     private lateinit var renderer: FrameTextureRenderer
 
+    private var zOrder = 0
+
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
         graphicState.defaultFont = Font("/FiraSans-Regular.ttf","default_font", floatArrayOf(24f, 72f))
         graphicState.textureArray = TextureArray(1024, 1024, 100)
 
         mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)
-        mainSurface = Surface2DImpl.create("default", SurfaceType.MAIN_CAM, 100, graphicState, mainCamera)
+        mainSurface = Surface2DImpl.create("main", zOrder++, 100, graphicState, mainCamera)
         surfaces.add(mainSurface)
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
@@ -103,28 +105,27 @@ class RetainedModeGraphics : GraphicsEngineInterface
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        surfaces.forEachFiltered({ it.surfaceType == SurfaceType.MAIN_CAM }) { renderer.render(ppPipeline.process(it.getTexture())) }
-        surfaces.forEachFiltered({ it.surfaceType == SurfaceType.UI })       { renderer.render(it.getTexture()) }
-        surfaces.forEachFiltered({ it.surfaceType == SurfaceType.OVERLAY })  { renderer.render(it.getTexture()) }
+        surfaces.sortBy { it.zOrder }
+        surfaces.forEach { renderer.render(it.getTexture()) }
     }
 
     override fun addPostProcessingEffect(effect: PostProcessingEffect)  =
         ppPipeline.addEffect(effect)
 
-    override fun createSurface2D(name: String, type: SurfaceType): Surface2D
+    override fun createSurface2D(name: String, zOrder: Int?, camera: CameraInterface?): Surface2D
     {
         surfaces
             .find { it.name == name }
             ?.let { return it }
 
-        val currentTex = mainSurface.getTexture()
-        val camera = when(type)
-        {
-            SurfaceType.MAIN_CAM -> mainCamera
-            SurfaceType.UI, SurfaceType.OVERLAY -> Camera.createOrthographic(currentTex.width, currentTex.height)
-        }
+        if (camera != null && camera !is CameraEngineInterface)
+            throw IllegalArgumentException("Camera must implement interface [CameraEngineInterface]")
 
-        val surface = Surface2DImpl.create(name, type, 100, graphicState, camera)
+        val currentTex = mainSurface.getTexture()
+        val cam = camera ?: Camera.createOrthographic(currentTex.width, currentTex.height)
+        val order = zOrder ?: this.zOrder++
+        val surface = Surface2DImpl.create(name, order, 100, graphicState, cam as CameraEngineInterface)
+
         surface.initRenderers()
         surface.initRenderTargets(currentTex.width, currentTex.height)
         surfaces.add(surface)

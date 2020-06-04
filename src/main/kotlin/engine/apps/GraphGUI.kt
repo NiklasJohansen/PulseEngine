@@ -6,7 +6,6 @@ import engine.data.Font
 import engine.data.Mouse
 import engine.data.Texture
 import engine.modules.console.CommandResult
-import engine.modules.graphics.SurfaceType
 import engine.modules.graphics.Surface2D
 import java.util.*
 import kotlin.math.max
@@ -33,7 +32,7 @@ class GraphGUI : EngineApp
 
     override fun init(engine: GameEngine)
     {
-        engine.gfx.createSurface2D("engineApp", SurfaceType.OVERLAY)
+        engine.gfx.createSurface2D("engineApp", 100)
         engine.asset.loadFont("/clacon.ttf", "graph_font", floatArrayOf(TICK_MARK_FONT_SIZE, HEADER_FONT_SIZE, VALUE_FONT_SIZE))
         engine.console.registerCommand("showGraphs") {
             open = !open

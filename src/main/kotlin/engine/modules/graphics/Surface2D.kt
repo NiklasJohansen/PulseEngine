@@ -24,9 +24,9 @@ interface Surface2D
 
 interface EngineSurface2D : Surface2D
 {
-    val name: String
-    val surfaceType: SurfaceType
     override val camera: CameraEngineInterface
+    val name: String
+    val zOrder: Int
 
     fun initRenderers()
     fun initRenderTargets(width: Int, height: Int)
@@ -37,7 +37,7 @@ interface EngineSurface2D : Surface2D
 
 class Surface2DImpl(
     override val name: String,
-    override val surfaceType: SurfaceType,
+    override val zOrder: Int,
     override val camera: CameraEngineInterface,
     private val renderState: RenderState,
     private val graphicsState: GraphicsState,
@@ -143,12 +143,12 @@ class Surface2DImpl(
 
     companion object
     {
-        fun create(name: String, surfaceType: SurfaceType, initCapacity: Int, graphicsState: GraphicsState, camera: CameraEngineInterface): Surface2DImpl
+        fun create(name: String, zOrder: Int, initCapacity: Int, graphicsState: GraphicsState, camera: CameraEngineInterface): Surface2DImpl
         {
             val renderState = RenderState()
             return Surface2DImpl(
                 name = name,
-                surfaceType = surfaceType,
+                zOrder = zOrder,
                 camera = camera,
                 renderState = renderState,
                 graphicsState = graphicsState,
@@ -161,9 +161,4 @@ class Surface2DImpl(
             )
         }
     }
-}
-
-enum class SurfaceType
-{
-    MAIN_CAM, UI, OVERLAY
 }
