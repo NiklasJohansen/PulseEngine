@@ -9,7 +9,7 @@ import engine.data.ScreenMode.*
 import engine.modules.graphics.BlendFunction
 import engine.modules.graphics.Surface2D
 import engine.modules.graphics.postprocessing.effects.BloomEffect
-import java.text.DecimalFormat
+import engine.util.Camera2DController
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -26,6 +26,7 @@ class ParticleSystem : Game()
     private var renderMonoColor = true
 
     private val bloomEffect = BloomEffect(blurPasses = 2, blurRadius = 0.2f, exposure = 1.3f)
+    private val cameraController = Camera2DController(Mouse.MIDDLE)
 
     companion object
     {
@@ -47,9 +48,10 @@ class ParticleSystem : Game()
         engine.window.title = "Particle system"
         engine.data.addSource("PARTICLES", "COUNT") { particleCount.toFloat() }
 
-        engine.gfx.mainSurface.setBackgroundColor(0.05f, 0.05f, 0.05f, 1f)
-        engine.gfx.mainSurface.setBlendFunction(BlendFunction.ADDITIVE)
-        engine.gfx.mainSurface.addPostProcessingEffect(bloomEffect)
+        engine.gfx.mainSurface
+            .setBackgroundColor(0.05f, 0.05f, 0.05f, 1f)
+            .setBlendFunction(BlendFunction.ADDITIVE)
+            .addPostProcessingEffect(bloomEffect)
     }
 
     override fun update()
@@ -69,14 +71,7 @@ class ParticleSystem : Game()
         if(engine.input.wasClicked(Key.R))
             particleCount = 0
 
-        if(engine.input.isPressed(Mouse.MIDDLE))
-        {
-            engine.gfx.mainCamera.xPos += engine.input.xdMouse
-            engine.gfx.mainCamera.yPos += engine.input.ydMouse
-        }
-
-        engine.gfx.mainCamera.xScale += engine.input.scroll * 0.1f
-        engine.gfx.mainCamera.yScale += engine.input.scroll * 0.1f
+        cameraController.update(engine)
     }
 
     private fun spawnParticles(amount: Float, x: Float, y: Float)

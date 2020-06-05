@@ -3,12 +3,11 @@ package game.cave
 import engine.PulseEngine
 import engine.modules.Game
 import engine.data.*
-import engine.modules.graphics.Camera
 import engine.modules.graphics.postprocessing.effects.BloomEffect
 import engine.modules.graphics.postprocessing.effects.VignetteEffect
+import engine.util.Camera2DController
 import org.joml.Math.sin
 import kotlin.math.abs
-import kotlin.math.max
 
 fun main() = PulseEngine.run(CaveGame())
 
@@ -16,6 +15,7 @@ class CaveGame : Game()
 {
     private var xCam = -16530f
     private var yCam = -25970f
+
     private var angle = 0f
     private var blockWidth = 40f
     private var blockHeight = 40f
@@ -30,47 +30,21 @@ class CaveGame : Game()
 
     private val bloomEffect = BloomEffect()
     private val vignetteEffect = VignetteEffect()
+    private val cameraController = Camera2DController(Mouse.LEFT, minScale = 0.05f, smoothing = 0f)
 
     override fun init()
     {
         engine.config.targetFps = 120
         engine.window.title = "Cave Game"
-        engine.data.addSource("Blocks", "count") { blockCount }
-
-        engine.gfx.mainSurface.addPostProcessingEffect(bloomEffect)
-        engine.gfx.mainSurface.addPostProcessingEffect(vignetteEffect)
+        engine.data.addSource("BLOCKS", "COUNT") { blockCount }
+        engine.gfx.mainSurface
+            .addPostProcessingEffect(bloomEffect)
+            .addPostProcessingEffect(vignetteEffect)
     }
 
     override fun update()
     {
         val dt = engine.data.deltaTime
-
-        if(engine.input.scroll != 0)
-        {
-            blockWidth = max(1f, blockWidth + engine.input.scroll)
-            blockHeight = max(1f, blockHeight + engine.input.scroll)
-            println(blockWidth)
-        }
-
-        if(engine.input.isPressed(Mouse.LEFT))
-        {
-            xCam += engine.input.xdMouse
-            yCam += engine.input.ydMouse
-        }
-
-        if(engine.input.isPressed(Key.W)) engine.gfx.mainCamera.yPos += 100 * dt
-        if(engine.input.isPressed(Key.A)) engine.gfx.mainCamera.xPos += 100 * dt
-        if(engine.input.isPressed(Key.S)) engine.gfx.mainCamera.yPos -= 100 * dt
-        if(engine.input.isPressed(Key.D)) engine.gfx.mainCamera.xPos -= 100 * dt
-
-        engine.gfx.mainCamera.xOrigin = engine.window.width / 2f
-        engine.gfx.mainCamera.yOrigin = engine.window.height / 2f
-
-        if(engine.input.isPressed(Key.K_1)) engine.gfx.mainCamera.zRot -= 1 * dt
-        if(engine.input.isPressed(Key.K_2)) engine.gfx.mainCamera.zRot += 1 * dt
-
-        if(engine.input.isPressed(Key.K_3)) engine.gfx.mainCamera.xScale -= 1f * dt
-        if(engine.input.isPressed(Key.K_4)) engine.gfx.mainCamera.xScale += 1f * dt
 
         if(engine.input.gamepads.firstOrNull()?.isPressed(Button.A) == true)
             blockWidth += 1 * dt
@@ -81,8 +55,8 @@ class CaveGame : Game()
         engine.input.gamepads.forEach { gamepad ->
             val xLeft = gamepad.getAxis(Axis.LEFT_X)
             val yLeft = gamepad.getAxis(Axis.LEFT_Y)
-            xCam -= if (abs(xLeft) > 0.15f) (xLeft-0.15f) * 10 * dt else 0.0f
-            yCam -= if (abs(yLeft) > 0.15f) (yLeft-0.15f) * 10 * dt else 0.0f
+            engine.gfx.mainSurface.camera.xPos -= if (abs(xLeft) > 0.15f) (xLeft-0.15f) * 10 * dt else 0.0f
+            engine.gfx.mainSurface.camera.yPos -= if (abs(yLeft) > 0.15f) (yLeft-0.15f) * 10 * dt else 0.0f
         }
 
         if(engine.input.isPressed(Mouse.MIDDLE))
@@ -91,53 +65,60 @@ class CaveGame : Game()
         if(engine.input.isPressed(Mouse.RIGHT))
             vignetteEffect.strength -= engine.input.ydMouse / 10f
 
-//        if(engine.input.isPressed(Mouse.RIGHT))
-//            bloomEffect.blurRadius += engine.input.ydMouse / 10f
-
         if(engine.input.wasClicked(Key.UP))
             bloomEffect.blurPasses++
 
         if(engine.input.wasClicked(Key.DOWN))
             bloomEffect.blurPasses--
+
+        cameraController.update(engine)
+
+        val worldPos = engine.gfx.mainSurface.camera.screenPosToWorldPos(engine.window.width / 2f, engine.window.height / 2f)
+        xCam = worldPos.x
+        yCam = worldPos.y
     }
 
     override fun fixedUpdate()
     {
-        xCam -= 100f * engine.data.fixedDeltaTime
-        yCam -= sin(angle) * 100f * engine.data.fixedDeltaTime
+        engine.gfx.mainSurface.camera.xPos -= 100f * engine.data.fixedDeltaTime
+        engine.gfx.mainSurface.camera.yPos -= sin(angle) * 100f * engine.data.fixedDeltaTime
         angle += 0.5f * engine.data.fixedDeltaTime
     }
 
     override fun render()
     {
         val surface = engine.gfx.mainSurface
+        val blockWidthInt = blockWidth.toInt()
+        val blockHeightInt = blockHeight.toInt()
+        val windowWidth = engine.window.width / surface.camera.xScale
+        val windowHeight = engine.window.height / surface.camera.yScale
 
-        val width = blockWidth.toInt()
-        val height = blockHeight.toInt()
-
-        val xCellCount = (engine.window.width / width)
-        val yCellCount = (engine.window.height / height)
+        val xStart = xCam - windowWidth / 2f - blockWidth
+        val yStart = yCam - windowHeight / 2f - blockHeight
+        val xEnd = xCam + windowWidth / 2f + blockWidth
+        val yEnd = yCam + windowHeight / 2f + blockHeight
 
         blockCount = 0f
-
-        for (y in -1 until yCellCount + 2)
+        var y = yStart
+        while ( y < yEnd )
         {
-            for (x in -1 until xCellCount + 2)
+            var x = xStart
+            while (x < xEnd)
             {
-                val c = getColor(
-                    x - (xCam.toInt() / width).toFloat(),
-                    y - (yCam.toInt() / height).toFloat()
-                )
+                val xBlock = (x / blockWidthInt).toInt().toFloat()
+                val yBlock = (y / blockHeightInt).toInt().toFloat()
 
-                //val c = Color((x % 10) / 10f, (y % 10) / 10f, ((x+y) % 10) / 10f)
+                val c = getColor(xBlock, yBlock)
 
-                val xBlock = x * width + xCam % width
-                val yBlock = y * height + yCam % height
+                // val c = Color((xBlock % 10) / 10f, (yBlock % 10) / 10f, ((xBlock+yBlock) % 10) / 10f)
 
                 surface.setDrawColor(c.red, c.green, c.blue)
-                surface.drawQuad(xBlock, yBlock, width.toFloat(), height.toFloat())
+                surface.drawQuad(x - (x.toInt() % blockWidthInt), y - (y.toInt() % blockHeightInt), blockWidth, blockHeight)
+
                 blockCount++
+                x += blockWidthInt
             }
+            y += blockHeightInt
         }
     }
 
