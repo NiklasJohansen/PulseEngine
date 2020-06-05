@@ -45,17 +45,17 @@ class ParticleSystem : Game()
         engine.config.targetFps = 10000
         engine.config.fixedTickRate = 15
         engine.window.title = "Particle system"
+        engine.data.addSource("PARTICLES", "COUNT") { particleCount.toFloat() }
 
         engine.gfx.mainSurface.setBackgroundColor(0.05f, 0.05f, 0.05f, 1f)
         engine.gfx.mainSurface.setBlendFunction(BlendFunction.ADDITIVE)
-        engine.gfx.createSurface2D("textSurface")
         engine.gfx.mainSurface.addPostProcessingEffect(bloomEffect)
     }
 
     override fun update()
     {
         if(engine.input.isPressed(Mouse.LEFT))
-            spawnParticles(1000000f * engine.data.deltaTime, engine.input.xWorldMouse, engine.input.yWorldMouse)
+            spawnParticles(50000f * engine.data.deltaTime, engine.input.xWorldMouse, engine.input.yWorldMouse)
 
         if(engine.input.wasClicked(Key.F))
             engine.window.updateScreenMode(if(engine.window.screenMode == WINDOWED) FULLSCREEN else WINDOWED)
@@ -169,14 +169,6 @@ class ParticleSystem : Game()
             renderMonoColoredParticles(engine.gfx.mainSurface)
         else
             renderIndividualColoredParticles(engine.gfx.mainSurface)
-
-        val textSurface = engine.gfx.getSurface2D("textSurface")
-        textSurface.setDrawColor(1f, 1f, 1f)
-        textSurface.drawText("FPS: ${engine.data.currentFps}",  20f, 40f)
-        textSurface.drawText("UPDATE: ${"%.1f".format(engine.data.updateTimeMS)} ms/f", 20f, 70f)
-        textSurface.drawText("FIX_UPDATE: ${"%.1f".format(engine.data.fixedUpdateTimeMS)} ms/f", 20f, 100f)
-        textSurface.drawText("RENDER: ${"%.1f".format(engine.data.renderTimeMs)} ms/f", 20f, 130f)
-        textSurface.drawText("PARTICLES: ${DecimalFormat("#,###.##").format(particleCount)}", 20f, 160f)
     }
 
     private fun renderMonoColoredParticles(surface: Surface2D)
