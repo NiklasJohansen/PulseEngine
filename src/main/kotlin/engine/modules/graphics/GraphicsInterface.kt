@@ -12,7 +12,6 @@ interface GraphicsInterface
 
     fun createSurface2D(name: String, zOrder: Int? = null, camera: CameraInterface? = null): Surface2D
     fun getSurface2D(name: String): Surface2D
-    fun addPostProcessingEffect(effect: PostProcessingEffect)
 }
 
 // Exposed to game engine

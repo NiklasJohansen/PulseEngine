@@ -37,8 +37,8 @@ class CaveGame : Game()
         engine.window.title = "Cave Game"
         engine.data.addSource("Blocks", "count") { blockCount }
 
-        engine.gfx.addPostProcessingEffect(bloomEffect)
-        engine.gfx.addPostProcessingEffect(vignetteEffect)
+        engine.gfx.mainSurface.addPostProcessingEffect(bloomEffect)
+        engine.gfx.mainSurface.addPostProcessingEffect(vignetteEffect)
     }
 
     override fun update()

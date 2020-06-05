@@ -49,7 +49,7 @@ class ParticleSystem : Game()
         engine.gfx.mainSurface.setBackgroundColor(0.05f, 0.05f, 0.05f, 1f)
         engine.gfx.mainSurface.setBlendFunction(BlendFunction.ADDITIVE)
         engine.gfx.createSurface2D("textSurface")
-        engine.gfx.addPostProcessingEffect(bloomEffect)
+        engine.gfx.mainSurface.addPostProcessingEffect(bloomEffect)
     }
 
     override fun update()

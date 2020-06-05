@@ -61,8 +61,8 @@ class FeatureExample : Game()
         engine.gfx.createSurface2D("text")
 
         // Add post processing effects
-        engine.gfx.addPostProcessingEffect(BloomEffect())
-        engine.gfx.addPostProcessingEffect(VignetteEffect())
+        engine.gfx.mainSurface.addPostProcessingEffect(BloomEffect())
+        engine.gfx.mainSurface.addPostProcessingEffect(VignetteEffect())
     }
 
     // Runs every frame
