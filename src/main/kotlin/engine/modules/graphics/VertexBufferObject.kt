@@ -1,5 +1,6 @@
 package engine.modules.graphics
 
+import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL15.*
 import org.lwjgl.system.MemoryUtil
 import java.lang.IllegalArgumentException
@@ -8,7 +9,7 @@ import java.nio.FloatBuffer
 import java.nio.IntBuffer
 
 sealed class VertexBufferObject(
-    private val id: Int,
+    val id: Int,
     private val target: Int,
     private val usage: Int,
     private var maxSize: Long
@@ -85,17 +86,22 @@ sealed class VertexBufferObject(
     companion object
     {
         inline fun <reified T: VertexBufferObject> createAndBind(size: Long, usage: Int = GL_DYNAMIC_DRAW): T
-             = createAndBindBuffer(size, usage, GL_ARRAY_BUFFER)
+             = createAndBindBuffer(size, usage, GL_ARRAY_BUFFER, null)
 
-         fun createAndBindElementBuffer(size: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject
-            = createAndBindBuffer(size, usage, GL_ELEMENT_ARRAY_BUFFER)
+        inline fun <reified T: VertexBufferObject> createAndBindUniformBuffer(size: Long, bufferBaseIndex: Int, usage: Int = GL_DYNAMIC_DRAW): T =
+             createAndBindBuffer(size, usage, GL_UNIFORM_BUFFER, bufferBaseIndex)
 
-        inline fun <reified T> createAndBindBuffer(size: Long, usage: Int, target: Int): T
+        fun createAndBindElementBuffer(size: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject
+            = createAndBindBuffer(size, usage, GL_ELEMENT_ARRAY_BUFFER, null)
+
+        inline fun <reified T> createAndBindBuffer(size: Long, usage: Int, target: Int, bufferBaseIndex: Int?): T
         {
             val id = glGenBuffers()
 
             glBindBuffer(target, id)
             glBufferData(target, size, usage)
+
+            bufferBaseIndex?.let { glBindBufferBase(target, bufferBaseIndex, id) }
 
             return when(T::class)
             {
