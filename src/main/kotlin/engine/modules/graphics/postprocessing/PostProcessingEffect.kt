@@ -52,9 +52,9 @@ abstract class SinglePassEffect : PostProcessingEffect
 
     override fun cleanUp()
     {
-        program.delete()
-        renderer.cleanUp()
-        fbo.delete()
+        if (this::program.isInitialized) program.delete()
+        if (this::renderer.isInitialized) renderer.cleanUp()
+        if (this::fbo.isInitialized) fbo.delete()
     }
 }
 

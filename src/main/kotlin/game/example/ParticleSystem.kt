@@ -7,10 +7,9 @@ import engine.data.Key
 import engine.data.Mouse
 import engine.data.ScreenMode.*
 import engine.modules.graphics.BlendFunction
-import engine.modules.graphics.SurfaceType
 import engine.modules.graphics.Surface2D
 import engine.modules.graphics.postprocessing.effects.BloomEffect
-import java.text.DecimalFormat
+import engine.util.Camera2DController
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -27,6 +26,7 @@ class ParticleSystem : Game()
     private var renderMonoColor = true
 
     private val bloomEffect = BloomEffect(blurPasses = 2, blurRadius = 0.2f, exposure = 1.3f)
+    private val cameraController = Camera2DController(Mouse.MIDDLE)
 
     companion object
     {
@@ -46,17 +46,18 @@ class ParticleSystem : Game()
         engine.config.targetFps = 10000
         engine.config.fixedTickRate = 15
         engine.window.title = "Particle system"
+        engine.data.addSource("PARTICLES", "COUNT") { particleCount.toFloat() }
 
-        engine.gfx.mainSurface.setBackgroundColor(0.05f, 0.05f, 0.05f)
-        engine.gfx.mainSurface.setBlendFunction(BlendFunction.ADDITIVE)
-        engine.gfx.createSurface2D("textSurface", SurfaceType.UI)
-        engine.gfx.addPostProcessingEffect(bloomEffect)
+        engine.gfx.mainSurface
+            .setBackgroundColor(0.05f, 0.05f, 0.05f, 1f)
+            .setBlendFunction(BlendFunction.ADDITIVE)
+            .addPostProcessingEffect(bloomEffect)
     }
 
     override fun update()
     {
         if(engine.input.isPressed(Mouse.LEFT))
-            spawnParticles(1000000f * engine.data.deltaTime, engine.input.xWorldMouse, engine.input.yWorldMouse)
+            spawnParticles(50000f * engine.data.deltaTime, engine.input.xWorldMouse, engine.input.yWorldMouse)
 
         if(engine.input.wasClicked(Key.F))
             engine.window.updateScreenMode(if(engine.window.screenMode == WINDOWED) FULLSCREEN else WINDOWED)
@@ -70,14 +71,7 @@ class ParticleSystem : Game()
         if(engine.input.wasClicked(Key.R))
             particleCount = 0
 
-        if(engine.input.isPressed(Mouse.MIDDLE))
-        {
-            engine.gfx.mainCamera.xPos += engine.input.xdMouse
-            engine.gfx.mainCamera.yPos += engine.input.ydMouse
-        }
-
-        engine.gfx.mainCamera.xScale += engine.input.scroll * 0.1f
-        engine.gfx.mainCamera.yScale += engine.input.scroll * 0.1f
+        cameraController.update(engine)
     }
 
     private fun spawnParticles(amount: Float, x: Float, y: Float)
@@ -170,14 +164,6 @@ class ParticleSystem : Game()
             renderMonoColoredParticles(engine.gfx.mainSurface)
         else
             renderIndividualColoredParticles(engine.gfx.mainSurface)
-
-        val textSurface = engine.gfx.getSurface2D("textSurface")
-        textSurface.setDrawColor(1f, 1f, 1f)
-        textSurface.drawText("FPS: ${engine.data.currentFps}",  20f, 40f)
-        textSurface.drawText("UPDATE: ${"%.1f".format(engine.data.updateTimeMS)} ms/f", 20f, 70f)
-        textSurface.drawText("FIX_UPDATE: ${"%.1f".format(engine.data.fixedUpdateTimeMS)} ms/f", 20f, 100f)
-        textSurface.drawText("RENDER: ${"%.1f".format(engine.data.renderTimeMs)} ms/f", 20f, 130f)
-        textSurface.drawText("PARTICLES: ${DecimalFormat("#,###.##").format(particleCount)}", 20f, 160f)
     }
 
     private fun renderMonoColoredParticles(surface: Surface2D)

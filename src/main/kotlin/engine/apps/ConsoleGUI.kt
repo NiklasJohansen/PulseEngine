@@ -4,7 +4,6 @@ import engine.GameEngine
 import engine.data.*
 import engine.modules.console.CommandResult
 import engine.modules.console.MessageType
-import engine.modules.graphics.SurfaceType
 import kotlin.math.max
 import kotlin.math.min
 
@@ -26,7 +25,7 @@ class ConsoleGUI : EngineApp
 
     override fun init(engine: GameEngine)
     {
-        engine.gfx.createSurface2D("engineApp", SurfaceType.OVERLAY)
+        engine.gfx.createSurface2D("engineApp", 100)
         engine.asset.loadFont("/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("showConsole") {
             active = !active
