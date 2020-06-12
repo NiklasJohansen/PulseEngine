@@ -178,6 +178,16 @@ enum class Axis(val code: Int)
     RIGHT_TRIGGER(5),
 }
 
+enum class CursorType(val code: Int)
+{
+    ARROW(0x00036001),
+    HAND(0x00036004),
+    IBEAM(0x00036002),
+    CROSSHAIR(0x00036003),
+    HORIZONTAL_RESIZE(0x00036005),
+    VERTICAL_RESIZE(0x00036006)
+}
+
 enum class ScreenMode
 {
     WINDOWED,

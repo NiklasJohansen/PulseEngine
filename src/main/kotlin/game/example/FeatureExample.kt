@@ -8,7 +8,6 @@ import engine.modules.entity.Transform2D
 import engine.modules.graphics.BlendFunction
 import engine.modules.graphics.postprocessing.effects.BloomEffect
 import engine.modules.graphics.postprocessing.effects.VignetteEffect
-import engine.modules.graphics.SurfaceType
 import engine.util.interpolateFrom
 import kotlin.math.PI
 import kotlin.math.sin
@@ -59,11 +58,11 @@ class FeatureExample : Game()
         engine.gfx.mainCamera.targetTrackingSmoothing = 1f
 
         // Add separate UI graphics layer for text
-        engine.gfx.createSurface2D("text", SurfaceType.UI)
+        engine.gfx.createSurface2D("text")
 
         // Add post processing effects
-        engine.gfx.addPostProcessingEffect(BloomEffect())
-        engine.gfx.addPostProcessingEffect(VignetteEffect())
+        engine.gfx.mainSurface.addPostProcessingEffect(BloomEffect())
+        engine.gfx.mainSurface.addPostProcessingEffect(VignetteEffect())
     }
 
     // Runs every frame

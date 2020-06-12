@@ -31,6 +31,7 @@ interface InputInterface
     fun acquireFocus(focusArea: FocusArea)
     fun releaseFocus(focusArea: FocusArea)
     fun hasFocus(focusArea: FocusArea): Boolean
+    fun setCursor(cursorType: CursorType)
 }
 
 // Exposed to game engine
@@ -64,6 +65,8 @@ class Input : InputEngineInterface
     private var xMouseLast = 0.0f
     private var yMouseLast = 0.0f
     private var windowHandle: Long = -1
+    private var cursorHandle: Long = -1
+    private var currentCursorType: CursorType = CursorType.ARROW
     private val clicked = ByteArray(Key.LAST.code + 1)
     private val onKeyPressedCallbacks = mutableListOf<(Key) -> Unit>()
     private var onFocusChangedCallback: (Boolean) -> Unit = {}
@@ -188,6 +191,20 @@ class Input : InputEngineInterface
     override fun hasFocus(focusArea: FocusArea): Boolean =
          focusArea == currentFocusArea
 
+    override fun setCursor(cursorType: CursorType)
+    {
+        if(cursorType != currentCursorType)
+        {
+            if(cursorHandle != -1L)
+                glfwDestroyCursor(cursorHandle)
+
+            cursorHandle = glfwCreateStandardCursor(cursorType.code)
+            currentCursorType = cursorType
+
+            glfwSetCursor(windowHandle, cursorHandle)
+        }
+    }
+
     override fun setOnFocusChanged(callback: (Boolean) -> Unit)
     {
         this.onFocusChangedCallback = callback
@@ -256,6 +273,7 @@ class IdleInput(private val activeInput: InputEngineInterface) : InputEngineInte
     override fun acquireFocus(focusArea: FocusArea) = activeInput.acquireFocus(focusArea)
     override fun releaseFocus(focusArea: FocusArea) = activeInput.releaseFocus(focusArea)
     override fun hasFocus(focusArea: FocusArea): Boolean = activeInput.hasFocus(focusArea)
+    override fun setCursor(cursorType: CursorType) { }
 }
 
 
