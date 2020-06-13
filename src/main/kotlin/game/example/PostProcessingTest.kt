@@ -4,55 +4,53 @@ import engine.PulseEngine
 import engine.data.Mouse
 import engine.data.Texture
 import engine.modules.Game
-import engine.modules.graphics.BlendFunction
-import engine.modules.graphics.postprocessing.effects.BloomEffect
-import engine.modules.graphics.postprocessing.effects.BlurEffect
-import engine.modules.graphics.postprocessing.effects.MultiplyEffect
-import engine.modules.graphics.postprocessing.effects.LightingEffect
+import engine.modules.graphics.postprocessing.effects.*
 import engine.util.Camera2DController
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-fun main() = PulseEngine.run(object : Game()
-{
-    private val camControl = Camera2DController(Mouse.MIDDLE, smoothing = 0f)
+fun main() = PulseEngine.run(LightingDemo())
 
+class LightingDemo : Game()
+{
     private lateinit var lightingEffect: LightingEffect
 
-    private var boxes = mutableListOf<Box>()
-    private var lights = mutableListOf<Light>()
+    private val camControl = Camera2DController(Mouse.MIDDLE, smoothing = 0f)
+    private val boxes = mutableListOf<Box>()
+    private val lights = mutableListOf<Light>()
+
     private var angle = 0f
+    private var drawnLights = 0f
+    private var drawnEdges = 0f
 
     override fun init()
     {
-        engine.data.addSource("Lights","") { lights.size.toFloat() }
-        engine.data.addSource("Edges","") { boxes.size.toFloat() * 4 }
-
         lightingEffect = LightingEffect(engine.gfx.mainCamera)
 
         val lightMask = engine.gfx
-            .createSurface2D("lightMask", camera = engine.gfx.mainCamera)
-            .setBlendFunction(BlendFunction.SCREEN)
-            .setBackgroundColor(0.01f, 0.01f, 0.01f, 1f)
+            .createSurface2D("lightMask")
+            .setBackgroundColor(0.02f, 0.02f, 0.02f, 1f)
             .addPostProcessingEffect(lightingEffect)
             .addPostProcessingEffect(BlurEffect(radius = 0.1f))
             .setIsVisible(false)
 
         engine.gfx.mainSurface
-            .setBackgroundColor(0.0f, 0.0f, 0.0f, 0f)
+            .setBackgroundColor(1f, 1f, 1f, 1f)
             .addPostProcessingEffect(MultiplyEffect(lightMask))
-            //.addPostProcessingEffect(BloomEffect(threshold = 0.2f, exposure = 2f, blurPasses = 3, blurRadius = 0.1f))
 
-        engine.asset.loadTexture("/flashlight.png",  "flashlight")
-        engine.asset.loadTexture("/box.png",         "box")
-        engine.asset.loadTexture("/paper.png",       "paper")
+        engine.gfx.createSurface2D("objects", camera = engine.gfx.mainCamera)
+        engine.asset.loadTexture("/box.png","box")
+        engine.data.addSource("Total Lights","") { lights.size.toFloat() }
+        engine.data.addSource("Drawn lights","") { drawnLights }
+        engine.data.addSource("Total Edges","")  { boxes.size.toFloat() * 4 }
+        engine.data.addSource("Drawn edges","")  { drawnEdges }
     }
 
     override fun fixedUpdate()
     {
-        angle = (angle + 0.1f) % (2f * PI.toFloat())
+        angle = (angle + 0.02f + 0.08f * Random.nextFloat()) % (2f * PI.toFloat())
     }
 
     override fun update()
@@ -63,45 +61,73 @@ fun main() = PulseEngine.run(object : Game()
             boxes.add(Box(engine.input.xWorldMouse, engine.input.yWorldMouse, 50 + 200f * Random.nextFloat(), 50 + 200f * Random.nextFloat()))
 
         if (engine.input.wasClicked(Mouse.LEFT))
+        {
             lights.add(Light(
-                engine.input.xWorldMouse,
-                engine.input.yWorldMouse,
-                1000f,
-                0.8f,
-                0f,
-                Random.nextFloat(),
-                Random.nextFloat(),
-                Random.nextFloat())
+                x = engine.input.xWorldMouse,
+                y = engine.input.yWorldMouse,
+                radius = 500f + 2000f * Random.nextFloat(),
+                intensity = 0.7f,
+                type = 0f,
+                red = 0.7f + 0.3f * Random.nextFloat(),
+                green = 0.7f + 0.3f * Random.nextFloat(),
+                blue = 0.7f + 0.3f * Random.nextFloat())
             )
+        }
     }
 
     override fun render()
     {
-        val box: Texture = engine.asset.get("box")
-        val paper: Texture = Texture.BLANK //engine.asset.get("paper")
-        val surface = engine.gfx.mainSurface
+        drawnLights = 0f
+        drawnEdges = 0f
 
-        surface.setDrawColor(1f, 1f, 1f)
-        surface.drawTexture(paper, 0f, 0f, 2024f, 2024f)
-        surface.drawTexture(paper, 3000f, 0f, 2024f, 2024f)
+        val boxTexture: Texture = engine.asset.get("box")
+        val cam = engine.gfx.mainCamera
+        val objSurface = engine.gfx
+            .getSurface2D("objects")
+            .setDrawColor(0.2f, 0.2f, 0.2f)
 
-        boxes.forEach {
-            surface.drawTexture(box,it.x, it.y, it.w, it.h)
-            lightingEffect.addEdge(it.x, it.y, it.x+it.w, it.y)
-            lightingEffect.addEdge(it.x, it.y, it.x, it.y+it.h)
-            lightingEffect.addEdge(it.x, it.y+it.h, it.x+it.w, it.y+it.h)
-            lightingEffect.addEdge(it.x+it.w, it.y, it.x+it.w, it.y+it.h)
+        for(box in boxes)
+        {
+            if (cam.isInView(box.x, box.y, box.w, box.h, padding = 500f))
+            {
+                drawnEdges += 4
+                lightingEffect.addEdge(box.x, box.y, box.x + box.w, box.y)
+                lightingEffect.addEdge(box.x, box.y, box.x, box.y + box.h)
+                lightingEffect.addEdge(box.x, box.y + box.h, box.x + box.w, box.y + box.h)
+                lightingEffect.addEdge(box.x + box.w, box.y, box.x + box.w, box.y + box.h)
+                objSurface.drawTexture(boxTexture, box.x, box.y, box.w, box.h)
+
+            }
         }
 
-        lights.forEach {
-            lightingEffect.addLight(it.x + sin(angle)*100f, it.y + cos(angle)*100f, it.radius, it.intensity, it.type, it.red, it.green, it.blue)
+        for(light in lights)
+        {
+            if (cam.isInView(light.x - light.radius, light.y - light.radius, light.radius * 2, light.radius * 2))
+            {
+                drawnLights++
+                lightingEffect.addLight(
+                    x = light.x + sin(angle + light.radius) * light.radius / 100f,
+                    y = light.y + cos(angle + light.radius) * light.radius / 100f,
+                    radius = light.radius,
+                    intensity = light.intensity,
+                    type = light.type,
+                    red = light.red,
+                    green = light.green,
+                    blue = light.blue)
+            }
         }
     }
 
     override fun cleanup() { }
-})
+}
 
-data class Box(val x: Float, val y: Float, val w: Float, val h: Float)
+data class Box(
+    val x: Float,
+    val y: Float,
+    val w: Float,
+    val h: Float
+)
+
 data class Light(
     val x: Float,
     val y: Float,
@@ -112,4 +138,3 @@ data class Light(
     val green: Float,
     val blue: Float
 )
-

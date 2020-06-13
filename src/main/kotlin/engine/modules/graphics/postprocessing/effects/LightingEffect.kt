@@ -39,10 +39,8 @@ class LightingEffect (
         program.bind()
         program.assignUniformBlockBinding("LightBlock", 0)
         program.assignUniformBlockBinding("EdgeBlock", 1)
-
         lightUbo = BufferObject.createAndBindUniformBuffer(8 * 1000, 0)
         edgeUbo = BufferObject.createAndBindUniformBuffer(8 * 1000, 1)
-
     }
 
     override fun cleanUp()
@@ -68,7 +66,6 @@ class LightingEffect (
         program.setUniform("lightCount", lights)
         program.setUniform("edgeCount", edges)
         program.setUniform("resolution", texture.width.toFloat(), texture.height.toFloat())
-
         renderer.render(texture)
         fbo.release()
         lights = 0
