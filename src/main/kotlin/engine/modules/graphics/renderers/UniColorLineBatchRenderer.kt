@@ -23,7 +23,7 @@ class UniColorLineBatchRenderer(
 
         if (!this::program.isInitialized)
         {
-            vbo = VertexBufferObject.createAndBind(initialCapacity * layout.stride *  2L)
+            vbo = BufferObject.createAndBind(initialCapacity * layout.stride *  2L)
             program = ShaderProgram.create("/engine/shaders/default/lineUniColor.vert", "/engine/shaders/default/line.frag").bind()
         }
 

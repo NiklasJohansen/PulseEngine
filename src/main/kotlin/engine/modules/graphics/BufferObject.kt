@@ -1,5 +1,6 @@
 package engine.modules.graphics
 
+import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL15.*
 import org.lwjgl.system.MemoryUtil
 import java.lang.IllegalArgumentException
@@ -7,17 +8,22 @@ import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
 
-sealed class VertexBufferObject(
-    private val id: Int,
+sealed class BufferObject(
+    val id: Int,
     private val target: Int,
     private val usage: Int,
+    private val blockBinding: Int?,
     private var maxSize: Long
 ) {
     protected var byteBuffer: ByteBuffer = MemoryUtil.memAlloc(maxSize.toInt())
     protected var size: Int = 0
     private var countToDraw = 0
 
-    fun bind() = this.also { glBindBuffer(target, id) }
+    fun bind() = this.also {
+        glBindBuffer(target, id)
+        if (blockBinding != null)
+            glBindBufferBase(target, blockBinding, id)
+    }
 
     fun release() = this.also { glBindBuffer(target, 0) }
 
@@ -84,13 +90,16 @@ sealed class VertexBufferObject(
 
     companion object
     {
-        inline fun <reified T: VertexBufferObject> createAndBind(size: Long, usage: Int = GL_DYNAMIC_DRAW): T
-             = createAndBindBuffer(size, usage, GL_ARRAY_BUFFER)
+        inline fun <reified T: BufferObject> createAndBind(size: Long, usage: Int = GL_DYNAMIC_DRAW): T
+             = createAndBindBuffer(size, usage, GL_ARRAY_BUFFER, null)
 
-         fun createAndBindElementBuffer(size: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject
-            = createAndBindBuffer(size, usage, GL_ELEMENT_ARRAY_BUFFER)
+        inline fun <reified T: BufferObject> createAndBindUniformBuffer(size: Long, blockBinding: Int, usage: Int = GL_DYNAMIC_DRAW): T =
+             createAndBindBuffer(size, usage, GL_UNIFORM_BUFFER, blockBinding)
 
-        inline fun <reified T> createAndBindBuffer(size: Long, usage: Int, target: Int): T
+        fun createAndBindElementBuffer(size: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject
+            = createAndBindBuffer(size, usage, GL_ELEMENT_ARRAY_BUFFER, null)
+
+        inline fun <reified T> createAndBindBuffer(size: Long, usage: Int, target: Int, blockBinding: Int?): T
         {
             val id = glGenBuffers()
 
@@ -99,16 +108,16 @@ sealed class VertexBufferObject(
 
             return when(T::class)
             {
-                FloatBufferObject::class -> FloatBufferObject(id, target, usage, size) as T
-                IntBufferObject::class -> IntBufferObject(id, target, usage, size) as T
-                ByteBufferObject::class -> ByteBufferObject(id, target, usage, size) as T
+                FloatBufferObject::class -> FloatBufferObject(id, target, usage, blockBinding, size) as T
+                IntBufferObject::class -> IntBufferObject(id, target, usage, blockBinding, size) as T
+                ByteBufferObject::class -> ByteBufferObject(id, target, usage, blockBinding, size) as T
                 else -> throw IllegalArgumentException("type: ${T::class.simpleName} not supported")
             }
         }
     }
 }
 
-class FloatBufferObject(id: Int, target: Int, usage: Int, maxSize: Long) : VertexBufferObject(id, target, usage, maxSize)
+class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxSize: Long) : BufferObject(id, target, usage, blockBinding, maxSize)
 {
     private var floatBuffer: FloatBuffer = byteBuffer.asFloatBuffer()
 
@@ -144,7 +153,7 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, maxSize: Long) : Verte
     }
 }
 
-class IntBufferObject(id: Int, target: Int, usage: Int, maxSize: Long) : VertexBufferObject(id, target, usage, maxSize)
+class IntBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxSize: Long) : BufferObject(id, target, usage, blockBinding, maxSize)
 {
     private var intBuffer: IntBuffer = byteBuffer.asIntBuffer()
 
@@ -196,7 +205,7 @@ class IntBufferObject(id: Int, target: Int, usage: Int, maxSize: Long) : VertexB
     }
 }
 
-class ByteBufferObject(id: Int, target: Int, usage: Int, maxSize: Long) : VertexBufferObject(id, target, usage, maxSize)
+class ByteBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxSize: Long) : BufferObject(id, target, usage, blockBinding, maxSize)
 {
     override fun hasCapacityFor(elements: Int): Boolean = byteBuffer.position() + elements < byteBuffer.capacity()
 

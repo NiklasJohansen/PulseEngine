@@ -4,10 +4,11 @@ import engine.data.ShaderType
 import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.joml.Vector4f
+import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL30.glBindFragDataLocation
 
-class ShaderProgram(private val id: Int)
+class ShaderProgram(val id: Int)
 {
     // Used for getting matrix data as array
     private val floatArray16 = FloatArray(16)
@@ -77,6 +78,13 @@ class ShaderProgram(private val id: Int)
             glVertexAttribPointer(location, attribute.count, attribute.type, attribute.normalized, layout.stride, offset)
             offset += attribute.bytes
         }
+    }
+
+    fun assignUniformBlockBinding(blockName: String, blockBinding: Int): Int
+    {
+        val index = glGetUniformBlockIndex(id, blockName)
+        glUniformBlockBinding(id, index, blockBinding)
+        return index
     }
 
     companion object

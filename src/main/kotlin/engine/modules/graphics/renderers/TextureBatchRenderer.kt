@@ -32,8 +32,8 @@ class TextureBatchRenderer(
         if(!this::program.isInitialized)
         {
             val capacity = initialCapacity * layout.stride * 4L
-            vbo = VertexBufferObject.createAndBind(capacity)
-            ebo = VertexBufferObject.createAndBindElementBuffer(capacity / 6)
+            vbo = BufferObject.createAndBind(capacity)
+            ebo = BufferObject.createAndBindElementBuffer(capacity / 6)
             program = ShaderProgram.create("/engine/shaders/default/arrayTexture.vert", "/engine/shaders/default/arrayTexture.frag").bind()
         }
 
