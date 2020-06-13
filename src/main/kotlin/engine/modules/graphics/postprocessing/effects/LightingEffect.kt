@@ -86,7 +86,7 @@ class LightingEffect (
         }
 
         pos0.set(x, y, 0f).mul(camera.viewMatrix)
-        lightUbo.put(pos0.x, pos0.y, radius * scale, intensity, type, red, green, blue)
+        lightUbo.put(pos0.x, pos0.y, red, green, blue, intensity, radius * scale, type)
         lights++
     }
 

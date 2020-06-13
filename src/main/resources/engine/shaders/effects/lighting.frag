@@ -13,12 +13,12 @@ const int NR_EDGES = 1000;
 
 struct Light {
     vec2 position;
-    float radius;
-    float intensity;
-    float type;
     float red;
     float green;
     float blue;
+    float intensity;
+    float radius;
+    float type;
 };
 
 struct Edge {
@@ -27,11 +27,11 @@ struct Edge {
 };
 
 
-layout (std140, binding=1) uniform LightBlock {
+layout (std140) uniform LightBlock {
     Light lights[NR_LIGHTS];
 };
 
-layout (std140, binding=2) uniform EdgeBlock {
+layout (std140) uniform EdgeBlock {
     Edge edges[NR_EDGES];
 };
 
@@ -55,9 +55,7 @@ void main() {
     for (int i = 0; i < lightCount; i++)
     {
         Light light = lights[i];
-
-        vec2 diff = light.position - uv;
-        float dist = length(diff);
+        float dist = length(light.position - uv);
         float radius = light.radius;
 
         if (dist < radius)
@@ -69,8 +67,6 @@ void main() {
 
                 if (hasIntersection(light.position, uv, edge.point1, edge.point2))
                 {
-                    // TODO: soft shadows send two additional rays from normals of light point, need a light size
-                    
                     inShadow = true;
                     break;
                 }
@@ -78,13 +74,8 @@ void main() {
 
             if (!inShadow)
             {
-                float att = clamp(1.0 - dist*dist/(radius*radius), 0.0, 1.0);
-
-                att = clamp(1.0 - dist/radius, 0.0, 1.0);
-
-                att *= att;
-
-                tex0Color.rgb += vec3(light.red, light.green, light.blue) * light.intensity * att;
+                float att = clamp(1.0 - dist / radius, 0.0, 1.0);
+                tex0Color.rgb += vec3(light.red, light.green, light.blue) * light.intensity * att * att;
             }
         }
     }
