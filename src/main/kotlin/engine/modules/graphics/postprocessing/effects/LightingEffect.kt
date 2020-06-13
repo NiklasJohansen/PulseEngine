@@ -4,12 +4,10 @@ import engine.data.Texture
 import engine.modules.graphics.CameraInterface
 import engine.modules.graphics.FloatBufferObject
 import engine.modules.graphics.ShaderProgram
-import engine.modules.graphics.VertexBufferObject
+import engine.modules.graphics.BufferObject
 import engine.modules.graphics.postprocessing.SinglePassEffect
 import org.joml.Math
 import org.joml.Vector4f
-import org.lwjgl.opengl.ARBUniformBufferObject.GL_UNIFORM_BUFFER
-import org.lwjgl.opengl.ARBUniformBufferObject.glBindBufferBase
 
 class LightingEffect (
     val camera: CameraInterface
@@ -39,14 +37,12 @@ class LightingEffect (
     private fun initialize()
     {
         program.bind()
-        program.assignUniformBlockBinding("LightBlock", 1)
-            .let { index ->
-                lightUbo = VertexBufferObject.createAndBindUniformBuffer(8 * 1000, index)
-            }
-        program.assignUniformBlockBinding("EdgeBlock", 2)
-            .let { index ->
-                edgeUbo = VertexBufferObject.createAndBindUniformBuffer(8 * 1000, index)
-            }
+        program.assignUniformBlockBinding("LightBlock", 0)
+        program.assignUniformBlockBinding("EdgeBlock", 1)
+
+        lightUbo = BufferObject.createAndBindUniformBuffer(8 * 1000, 0)
+        edgeUbo = BufferObject.createAndBindUniformBuffer(8 * 1000, 1)
+
     }
 
     override fun cleanUp()
@@ -59,12 +55,10 @@ class LightingEffect (
     override fun applyEffect(texture: Texture): Texture
     {
         lightUbo.bind()
-        glBindBufferBase(GL_UNIFORM_BUFFER, 1, lightUbo.id) // TODO: This should be handled in buffer class
         lightUbo.flush()
         lightUbo.release()
 
         edgeUbo.bind()
-        glBindBufferBase(GL_UNIFORM_BUFFER, 2, edgeUbo.id)
         edgeUbo.flush()
         edgeUbo.release()
 

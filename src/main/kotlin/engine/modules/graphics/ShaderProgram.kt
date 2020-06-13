@@ -80,10 +80,10 @@ class ShaderProgram(val id: Int)
         }
     }
 
-    fun assignUniformBlockBinding(blockName: String, binding: Int): Int
+    fun assignUniformBlockBinding(blockName: String, blockBinding: Int): Int
     {
         val index = glGetUniformBlockIndex(id, blockName)
-        glUniformBlockBinding(id, index, binding)
+        glUniformBlockBinding(id, index, blockBinding)
         return index
     }
 
