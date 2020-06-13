@@ -91,7 +91,7 @@ class Surface2DImpl(
     {
         renderTarget.begin()
         setOpenGlState()
-        camera.updateViewMatrix()
+        camera.updateViewMatrix(width, height)
         renderers.forEach { it.render(camera) }
         renderTarget.end()
         renderState.resetDepth(camera.nearPlane)

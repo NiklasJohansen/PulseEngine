@@ -47,11 +47,12 @@ abstract class CameraInterface
     abstract fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     abstract fun worldPosToScreenPos(x: Float, y: Float, z: Float = 0f): Vector2f
     abstract fun updateProjection(width: Int, height: Int, type: ProjectionType? = null)
+    abstract fun isInView(x: Float, y: Float, width: Float, height: Float, padding: Float = 0f): Boolean
 }
 
 abstract class CameraEngineInterface : CameraInterface()
 {
-    abstract fun updateViewMatrix()
+    abstract fun updateViewMatrix(surfaceWidth: Int, surfaceHeight: Int)
     abstract fun updateTransform(deltaTime: Float)
 }
 
@@ -78,9 +79,11 @@ class Camera(
     private val screenPositionVector = Vector2f()
     private var target: Transform2D? = null
 
+    private val topLeftWorldPosition = Vector2f()
+    private val bottomRightWorldPosition = Vector2f()
+
     override fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     {
-        viewMatrix.invert(invViewMatrix)
         val pos = positionVector.set(x, y, 0f, 1f).mul(invViewMatrix)
         return worldPositionVector.set(pos.x, pos.y, pos.z)
     }
@@ -105,7 +108,13 @@ class Camera(
         }
     }
 
-    override fun updateViewMatrix()
+    override fun isInView(x: Float, y: Float, width: Float, height: Float, padding: Float) =
+        x + width >= topLeftWorldPosition.x - padding &&
+        x <= bottomRightWorldPosition.x + padding &&
+        y + height >= topLeftWorldPosition.y - padding &&
+        y <= bottomRightWorldPosition.y + padding
+
+    override fun updateViewMatrix(surfaceWidth: Int, surfaceHeight: Int)
     {
         val xPos = xPos.interpolateFrom(xLastPos)
         val yPos = yPos.interpolateFrom(yLastPos)
@@ -122,6 +131,14 @@ class Camera(
             .translate(-xOrigin, -yOrigin, -zOrigin)
             .setRotationXYZ(xRot, yRot, zRot)
             .scale(xScale, yScale, zScale)
+
+        viewMatrix.invert(invViewMatrix)
+
+        val topLeft = screenPosToWorldPos(0f, 0f)
+        topLeftWorldPosition.set(topLeft.x, topLeft.y)
+
+        val bottomRight = screenPosToWorldPos(surfaceWidth.toFloat(), surfaceHeight.toFloat())
+        bottomRightWorldPosition.set(bottomRight.x, bottomRight.y)
     }
 
     override fun updateTransform(deltaTime: Float)
