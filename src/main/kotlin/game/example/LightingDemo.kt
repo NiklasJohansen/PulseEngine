@@ -46,6 +46,12 @@ class LightingDemo : Game()
         engine.data.addSource("Drawn lights","") { drawnLights }
         engine.data.addSource("Total Edges","")  { boxes.size.toFloat() * 4 }
         engine.data.addSource("Drawn edges","")  { drawnEdges }
+
+        engine.data.loadAsync<GameState>("game_state.dat")
+        {
+            boxes.addAll(it.boxes)
+            lights.addAll(it.lights)
+        }
     }
 
     override fun fixedUpdate()
@@ -58,7 +64,10 @@ class LightingDemo : Game()
         camControl.update(engine)
 
         if (engine.input.wasClicked(Mouse.RIGHT))
+        {
             boxes.add(Box(engine.input.xWorldMouse, engine.input.yWorldMouse, 50 + 200f * Random.nextFloat(), 50 + 200f * Random.nextFloat()))
+            saveState()
+        }
 
         if (engine.input.wasClicked(Mouse.LEFT))
         {
@@ -72,6 +81,7 @@ class LightingDemo : Game()
                 green = 0.7f + 0.3f * Random.nextFloat(),
                 blue = 0.7f + 0.3f * Random.nextFloat())
             )
+            saveState()
         }
     }
 
@@ -118,8 +128,24 @@ class LightingDemo : Game()
         }
     }
 
-    override fun cleanup() { }
+    private fun saveState()
+    {
+        engine.data.saveAsync(GameState(boxes, lights), "game_state.dat")
+
+        engine.data
+
+    }
+
+    override fun cleanup()
+    {
+
+    }
 }
+
+data class GameState(
+    val boxes: List<Box>,
+    val lights: List<Light>
+)
 
 data class Box(
     val x: Float,
