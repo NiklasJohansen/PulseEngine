@@ -67,7 +67,6 @@ class Window : WindowEngineInterface
         glfwWindowHint(GLFW_DEPTH_BITS,24)
 
         this.screenMode = screenMode
-        this.renderMode = renderMode
         this.windowedWidth = initWidth
         this.windowedHeight = initHeight
         this.width = initWidth
@@ -91,6 +90,7 @@ class Window : WindowEngineInterface
             glfwDestroyWindow(windowHandle)
 
         this.windowHandle = newWindowHandle
+        this.title = gameName
 
         if(screenMode == WINDOWED)
         {
@@ -122,7 +122,7 @@ class Window : WindowEngineInterface
             return
 
         // Create new window
-        init(windowedWidth, windowedHeight, mode, renderMode)
+        init(windowedWidth, windowedHeight, mode, title)
 
         // Notify observers
         resizeCallBack(width, height, true)

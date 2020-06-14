@@ -63,7 +63,8 @@ class PulseEngine(
     {
         // Initialize engine components
         config.init()
-        window.init(config.windowWidth, config.windowHeight, config.screenMode, gfx.getRenderMode())
+        data.init(config.creatorName, config.gameName)
+        window.init(config.windowWidth, config.windowHeight, config.screenMode, config.gameName)
         gfx.init(window.width, window.height)
         input.init(window.windowHandle)
         audio.init()

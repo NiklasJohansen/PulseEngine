@@ -8,6 +8,8 @@ import java.util.*
 // Exposed to game and engine
 interface ConfigurationInterface
 {
+    val creatorName: String
+    val gameName: String
     var targetFps: Int
     var fixedTickRate: Int
 
@@ -30,6 +32,8 @@ interface ConfigurationEngineInterface : ConfigurationInterface
 class Configuration : ConfigurationEngineInterface
 {
     // Exposed properties
+    override lateinit var creatorName: String
+    override lateinit var gameName: String
     override var fixedTickRate: Int = 60
     override var targetFps: Int = 60
     override var windowWidth: Int = 800
@@ -41,7 +45,9 @@ class Configuration : ConfigurationEngineInterface
 
     override fun init()
     {
-        load("/default.config")
+        load("/main.config")
+        creatorName = getString("creatorName")
+        gameName = getString("gameName")
         targetFps = getInt("targetFps")
         windowWidth = getInt("windowWidth")
         windowHeight = getInt("windowHeight")
