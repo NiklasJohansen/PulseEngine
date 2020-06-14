@@ -42,13 +42,12 @@ class LightingDemo : Game()
 
         engine.gfx.createSurface2D("objects", camera = engine.gfx.mainCamera)
         engine.asset.loadTexture("/box.png","box")
+
         engine.data.addSource("Total Lights","") { lights.size.toFloat() }
         engine.data.addSource("Drawn lights","") { drawnLights }
         engine.data.addSource("Total Edges","")  { boxes.size.toFloat() * 4 }
         engine.data.addSource("Drawn edges","")  { drawnEdges }
-
-        engine.data.loadAsync<GameState>("game_state.dat")
-        {
+        engine.data.loadAsync<GameState>("game_state.dat") {
             boxes.addAll(it.boxes)
             lights.addAll(it.lights)
         }
@@ -131,15 +130,9 @@ class LightingDemo : Game()
     private fun saveState()
     {
         engine.data.saveAsync(GameState(boxes, lights), "game_state.dat")
-
-        engine.data
-
     }
 
-    override fun cleanup()
-    {
-
-    }
+    override fun cleanup() { }
 }
 
 data class GameState(
