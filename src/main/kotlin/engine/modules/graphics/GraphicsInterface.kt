@@ -1,8 +1,6 @@
 package engine.modules.graphics
 
 import engine.data.Texture
-import engine.data.RenderMode
-import engine.modules.graphics.postprocessing.PostProcessingEffect
 
 // Exposed to game code
 interface GraphicsInterface
@@ -19,7 +17,6 @@ interface GraphicsEngineInterface : GraphicsInterface
 {
     override val mainCamera: CameraEngineInterface
 
-    fun getRenderMode(): RenderMode
     fun init(viewPortWidth: Int, viewPortHeight: Int)
     fun initTexture(texture: Texture)
     fun cleanUp()

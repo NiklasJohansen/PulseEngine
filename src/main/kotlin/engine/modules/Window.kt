@@ -1,7 +1,5 @@
 package engine.modules
 
-import engine.data.RenderMode
-import engine.data.RenderMode.*
 import engine.data.ScreenMode
 import engine.data.ScreenMode.FULLSCREEN
 import engine.data.ScreenMode.WINDOWED
@@ -24,7 +22,7 @@ interface WindowInterface
 // Exposed to game engine
 interface WindowEngineInterface : WindowInterface
 {
-    fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, renderMode: RenderMode)
+    fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
     fun cleanUp()
     fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit)
     fun swapBuffers()
@@ -49,9 +47,8 @@ class Window : WindowEngineInterface
     private var resizeCallBack: (width: Int, height: Int, windowRecreated: Boolean) -> Unit = { _, _, _ -> }
     private var windowedWidth: Int = 800
     private var windowedHeight: Int = 600
-    private var renderMode: RenderMode = RETAINED
 
-    override fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, renderMode: RenderMode)
+    override fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
     {
         println("Initializing Window...")
 
@@ -63,15 +60,11 @@ class Window : WindowEngineInterface
         glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE)
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE)
 
-        // Use OpenGL version 3.2 in retained mode
-        if (renderMode == RETAINED)
-        {
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2)
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
-            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
-            glfwWindowHint(GLFW_DEPTH_BITS,24)
-        }
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2)
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
+        glfwWindowHint(GLFW_DEPTH_BITS,24)
 
         this.screenMode = screenMode
         this.renderMode = renderMode

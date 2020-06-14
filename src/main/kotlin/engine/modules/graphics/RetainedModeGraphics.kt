@@ -1,10 +1,7 @@
 package engine.modules.graphics
 
 import engine.data.Font
-import engine.data.RenderMode
 import engine.data.Texture
-import engine.modules.graphics.postprocessing.PostProcessingEffect
-import engine.modules.graphics.postprocessing.PostProcessingPipeline
 import engine.modules.graphics.renderers.FrameTextureRenderer
 import engine.util.forEachFiltered
 import org.lwjgl.opengl.GL
@@ -12,8 +9,6 @@ import org.lwjgl.opengl.GL11.*
 
 class RetainedModeGraphics : GraphicsEngineInterface
 {
-    override fun getRenderMode() = RenderMode.RETAINED
-
     private val surfaces = mutableListOf<EngineSurface2D>()
     private val graphicState = GraphicsState()
 

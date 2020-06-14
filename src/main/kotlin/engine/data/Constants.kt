@@ -194,12 +194,6 @@ enum class ScreenMode
     FULLSCREEN
 }
 
-enum class RenderMode
-{
-    IMMEDIATE,
-    RETAINED
-}
-
 enum class ShaderType
 {
     VERTEX,
