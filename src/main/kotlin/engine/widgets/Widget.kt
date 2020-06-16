@@ -1,8 +1,8 @@
-package engine.apps
+package engine.widgets
 
 import engine.GameEngine
 
-interface EngineApp
+interface Widget
 {
     fun init(engine: GameEngine)
     fun update(engine: GameEngine)

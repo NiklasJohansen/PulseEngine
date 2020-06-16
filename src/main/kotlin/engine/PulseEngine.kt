@@ -1,8 +1,8 @@
 package engine
 
-import engine.apps.ConsoleGUI
-import engine.apps.EngineApp
-import engine.apps.GraphGUI
+import engine.widgets.ConsoleWidget
+import engine.widgets.Widget
+import engine.widgets.GraphWidget
 import engine.data.FocusArea
 import engine.data.Font
 import engine.data.Sound
@@ -44,7 +44,7 @@ class PulseEngine(
     override val data: MutableDataContainer           = MutableDataContainer(),
     override val entity: EntityManagerEngineBase      = EntityManager(),
     override val console: Console                     = Console(),
-    private  val apps: List<EngineApp>                = listOf(ConsoleGUI(), GraphGUI())
+    private  val widgets: List<Widget>                = listOf(ConsoleWidget(), GraphWidget())
 ) : GameEngine {
 
     // Internal engine properties
@@ -102,7 +102,7 @@ class PulseEngine(
         }
 
         // Initialize engine apps
-        apps.forEach { it.init(this) }
+        widgets.forEach { it.init(this) }
     }
 
     fun run(game: Game)
@@ -139,7 +139,7 @@ class PulseEngine(
 
         updateInput()
         game.update()
-        apps.forEach { it.update(this) }
+        widgets.forEach { it.update(this) }
 
         lastFrameTime = glfwGetTime()
         data.updateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
@@ -183,7 +183,7 @@ class PulseEngine(
         data.interpolation = fixedUpdateAccumulator.toFloat() / data.fixedDeltaTime
         entity.render(this)
         game.render()
-        apps.forEach { it.render(this) }
+        widgets.forEach { it.render(this) }
         gfx.postRender()
         window.swapBuffers()
         data.renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()

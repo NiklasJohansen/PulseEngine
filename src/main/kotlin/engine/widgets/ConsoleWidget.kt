@@ -1,4 +1,4 @@
-package engine.apps
+package engine.widgets
 
 import engine.GameEngine
 import engine.data.*
@@ -8,7 +8,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 
-class ConsoleGUI : EngineApp
+class ConsoleWidget : Widget
 {
     private var active: Boolean = false
     private var widthFraction = 0.3f

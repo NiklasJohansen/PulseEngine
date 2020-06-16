@@ -1,4 +1,4 @@
-package engine.apps
+package engine.widgets
 
 import engine.GameEngine
 import engine.data.FocusArea
@@ -11,7 +11,7 @@ import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
-class GraphGUI : EngineApp
+class GraphWidget : Widget
 {
     private var open =  false
     private var xPos = 10f
