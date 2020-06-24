@@ -12,8 +12,8 @@ import org.joml.Vector4f
 
 abstract class CameraInterface
 {
-    open val modelMatrix: Matrix4f = Matrix4f()
-    open val viewMatrix: Matrix4f = Matrix4f()
+    val modelMatrix: Matrix4f = Matrix4f()
+    val viewMatrix: Matrix4f = Matrix4f()
     open val projectionMatrix: Matrix4f = Matrix4f()
 
     // Position
@@ -43,6 +43,10 @@ abstract class CameraInterface
     var farPlane = 5f
     var nearPlane = -1f
 
+    // Screen positions in world
+    val topLeftWorldPosition = Vector2f()
+    val bottomRightWorldPosition = Vector2f()
+
     abstract fun setTarget(target: Transform2D?)
     abstract fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     abstract fun worldPosToScreenPos(x: Float, y: Float, z: Float = 0f): Vector2f
@@ -60,7 +64,6 @@ abstract class CameraEngineInterface : CameraInterface()
 class Camera(
     private var projectionType: ProjectionType
 ) : CameraEngineInterface() {
-    override var viewMatrix = Matrix4f()
     override var projectionMatrix = Matrix4f()
 
     private var xLastPos: Float = 0f
@@ -78,9 +81,6 @@ class Camera(
     private val worldPositionVector = Vector3f()
     private val screenPositionVector = Vector2f()
     private var target: Transform2D? = null
-
-    private val topLeftWorldPosition = Vector2f()
-    private val bottomRightWorldPosition = Vector2f()
 
     override fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     {
