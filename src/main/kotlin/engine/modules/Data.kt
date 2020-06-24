@@ -79,8 +79,12 @@ class MutableDataContainer : DataEngineInterface()
 
     override fun <T> save(data: T, fileName: String): Boolean =
         runCatching {
-            File("$saveDirectory/$fileName")
-                .writeBytes(objectMapper.writeValueAsBytes(data))
+            File("$saveDirectory/$fileName").let { file ->
+                if (!file.parentFile.exists())
+                    file.parentFile.mkdirs()
+                file.writeBytes(objectMapper.writeValueAsBytes(data))
+            }
+
             true
         }
         .onFailure { System.err.println("Failed to save file: $fileName - reason: ${it.message}"); }
