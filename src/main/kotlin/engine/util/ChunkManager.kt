@@ -1,5 +1,6 @@
 package engine.util
 
+import engine.data.Array2D
 import engine.modules.graphics.CameraInterface
 import engine.modules.graphics.GraphicsInterface
 import engine.modules.graphics.Surface2D
@@ -13,15 +14,13 @@ class ChunkManager <T: Chunk> (
     private val minSurroundingLoadedChunkBorder: Int = 5,
     private val activeOfScreenChunkBorder: Int = 1
 ) {
-    private lateinit var loadedChunks: Array<Array<Any>>
     private lateinit var onChunkLoadCallback: (x: Int, y: Int) -> T
     private lateinit var onChunkSaveCallback: (chunk: T, x: Int, y: Int) -> Unit
+    private lateinit var loadedChunks: Array2D<T>
     private lateinit var debugSurface: Surface2D
 
-    private var yChunkCount: Int = 5 + minSurroundingLoadedChunkBorder * 2
-    private var xChunkCount: Int = 5 + minSurroundingLoadedChunkBorder * 2
-    private var xOffsetIndex = -xChunkCount / 2
-    private var yOffsetIndex = -yChunkCount / 2
+    private var xOffsetIndex = 0
+    private var yOffsetIndex = 0
     private var xStart: Int = 0
     private var yStart: Int = 0
     private var xEnd: Int = 0
@@ -41,7 +40,6 @@ class ChunkManager <T: Chunk> (
         this.onChunkSaveCallback = callback
     }
 
-    @Suppress("UNCHECKED_CAST")
     fun init()
     {
         if (!this::onChunkLoadCallback.isInitialized)
@@ -50,12 +48,11 @@ class ChunkManager <T: Chunk> (
         if (!this::onChunkSaveCallback.isInitialized)
             throw IllegalStateException("onChunkSave callback has not been set for ChunkManager")
 
-        loadedChunks =
-            IntRange(0, yChunkCount).map { y ->
-                IntRange(0, xChunkCount).map { x ->
-                    onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex) as Any
-                }.toTypedArray()
-            }.toTypedArray()
+        val width = 5 + minSurroundingLoadedChunkBorder * 2
+        val height = 5 + minSurroundingLoadedChunkBorder * 2
+        xOffsetIndex = -width / 2
+        yOffsetIndex = -height / 2
+        loadedChunks = Array2D(height, width) { y, x -> onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex) }
     }
 
     fun update(camera: CameraInterface)
@@ -82,9 +79,9 @@ class ChunkManager <T: Chunk> (
     private fun calculateArrayOffset(topLeft: Vector2f, bottomRight: Vector2f)
     {
         val closeToLeftSide = xStart < 0
-        val closeToRightSide = xEnd > xChunkCount
+        val closeToRightSide = xEnd > loadedChunks.width
         var closeToTop = yStart < 0
-        var closeToBottom = yEnd > yChunkCount
+        var closeToBottom = yEnd > loadedChunks.height
 
         if ((closeToLeftSide && closeToRightSide) || (closeToTop && closeToBottom))
         {
@@ -102,7 +99,7 @@ class ChunkManager <T: Chunk> (
             }
 
             closeToTop = yStart < 0
-            closeToBottom = yEnd > yChunkCount
+            closeToBottom = yEnd > loadedChunks.height
 
             if (closeToTop || closeToBottom)
             {
@@ -116,10 +113,10 @@ class ChunkManager <T: Chunk> (
 
     private fun clampArrayCoordinatesToArraySize()
     {
-        xStart = xStart.coerceIn(0, xChunkCount)
-        yStart = yStart.coerceIn(0, yChunkCount)
-        xEnd = xEnd.coerceIn(0, xChunkCount)
-        yEnd = yEnd.coerceIn(0, yChunkCount)
+        xStart = xStart.coerceIn(0, loadedChunks.width)
+        yStart = yStart.coerceIn(0, loadedChunks.height)
+        xEnd = xEnd.coerceIn(0, loadedChunks.width)
+        yEnd = yEnd.coerceIn(0, loadedChunks.height)
     }
 
     private fun unloadChunksIfPossible(topLeft: Vector2f, bottomRight: Vector2f)
@@ -131,7 +128,7 @@ class ChunkManager <T: Chunk> (
             val newWidth = width + 2 * minSurroundingLoadedChunkBorder
             val newHeight = height + 2 * minSurroundingLoadedChunkBorder
 
-            if (newWidth < xChunkCount * 0.80f || newHeight < yChunkCount * 0.80f)
+            if (newWidth < loadedChunks.width * 0.80f || newHeight < loadedChunks.height * 0.80f)
             {
                 shrinkArray(newWidth, newHeight)
                 calculateArrayCoordinates(topLeft, bottomRight)
@@ -148,31 +145,23 @@ class ChunkManager <T: Chunk> (
     {
         val newWidth = (xEnd - xStart) + 2 * minSurroundingLoadedChunkBorder
         val newHeight = (yEnd - yStart) + 2 * minSurroundingLoadedChunkBorder
-        val xSizeDiff = newWidth - xChunkCount
-        val ySizeDiff = newHeight - yChunkCount
+        val xSizeDiff = newWidth - loadedChunks.width
+        val ySizeDiff = newHeight - loadedChunks.height
         val xNewOffsetIndex = xOffsetIndex - xSizeDiff / 2
         val yNewOffsetIndex = yOffsetIndex - ySizeDiff / 2
         val xOffsetDiff = xOffsetIndex - xNewOffsetIndex
         val yOffsetDiff = yOffsetIndex - yNewOffsetIndex
 
-        val newLoadedChunks =
-            IntRange(0, newHeight).map { y ->
-                IntRange(0, newWidth).map { x ->
-                    if(x >= xOffsetDiff && y >= yOffsetDiff && x < xOffsetDiff + xChunkCount && y < yOffsetDiff + yChunkCount)
-                        loadedChunks[y - yOffsetDiff][x - xOffsetDiff]
-                    else
-                        onChunkLoadCallback.invoke(x + xNewOffsetIndex, y + yNewOffsetIndex)
-                }.toTypedArray()
-            }.toTypedArray()
-
-        xChunkCount = newWidth
-        yChunkCount = newHeight
         xOffsetIndex = xNewOffsetIndex
         yOffsetIndex = yNewOffsetIndex
-        loadedChunks = newLoadedChunks
+        loadedChunks = Array2D(newHeight, newWidth) { y, x ->
+            if (x >= xOffsetDiff && y >= yOffsetDiff && x < xOffsetDiff + loadedChunks.width && y < yOffsetDiff + loadedChunks.height)
+                loadedChunks[y - yOffsetDiff, x - xOffsetDiff]
+            else
+                onChunkLoadCallback.invoke(x + xNewOffsetIndex, y + yNewOffsetIndex)
+        }
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun shrinkArray(newWidth: Int, newHeight: Int)
     {
         val xNewOffsetIndex = xOffsetIndex + (xStart + xEnd) / 2 - newWidth / 2
@@ -180,39 +169,32 @@ class ChunkManager <T: Chunk> (
         val xDiff = xNewOffsetIndex - xOffsetIndex
         val yDiff = yNewOffsetIndex - yOffsetIndex
 
-        val newLoadedChunks =
-            IntRange(0, newHeight).map { y ->
-                IntRange(0, newWidth).map { x ->
-                    val xOld = x + xDiff
-                    val yOld = y + yDiff
-                    if(xOld >= 0 && xOld < xChunkCount && yOld >= 0 && yOld < yChunkCount)
-                        loadedChunks[yOld][xOld]
-                    else
-                        onChunkLoadCallback.invoke(x + xNewOffsetIndex, y + yNewOffsetIndex)
-                }.toTypedArray()
-            }.toTypedArray()
+        val newLoadedChunks = Array2D(newHeight, newWidth) { y, x ->
+            val xOld = x + xDiff
+            val yOld = y + yDiff
+            if(xOld >= 0 && xOld < loadedChunks.width && yOld >= 0 && yOld < loadedChunks.height)
+                loadedChunks[yOld, xOld]
+            else
+                onChunkLoadCallback.invoke(x + xNewOffsetIndex, y + yNewOffsetIndex)
+        }
 
-        // Save all chunks outside off new array
-        for (y in 0 until yChunkCount)
-            for (x in 0 until xChunkCount)
+        for (y in 0 until loadedChunks.height)
+            for (x in 0 until loadedChunks.width)
                 if (x < xDiff || y < yDiff || x > xDiff + newWidth || y > yDiff + newHeight)
-                    saveChunk(loadedChunks[y][x] as T, x + xOffsetIndex, y + yOffsetIndex)
+                    saveChunk(loadedChunks[y, x], x + xOffsetIndex, y + yOffsetIndex)
 
         xStart -= xDiff
         yStart -= yDiff
         xEnd -= xDiff
         yEnd -= yDiff
-        xChunkCount = newWidth
-        yChunkCount = newHeight
         xOffsetIndex = xNewOffsetIndex
         yOffsetIndex = yNewOffsetIndex
         loadedChunks = newLoadedChunks
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun recenterXAxis(): Boolean
     {
-        val xNewOffsetIndex = xOffsetIndex + (xEnd + xStart) / 2 - xChunkCount / 2
+        val xNewOffsetIndex = xOffsetIndex + (xEnd + xStart) / 2 - loadedChunks.width / 2
         val xDiff = xNewOffsetIndex - xOffsetIndex
 
         if (xDiff == 0)
@@ -220,37 +202,37 @@ class ChunkManager <T: Chunk> (
 
         if (xDiff > 0)
         {
-            for (y in 0 until yChunkCount)
+            for (y in 0 until loadedChunks.height)
             {
                 // Save chunks outside of array on left side
                 for (x in 0 until xDiff)
-                    saveChunk(loadedChunks[y][x] as T, x + xOffsetIndex, y + yOffsetIndex)
+                    saveChunk(loadedChunks[y, x], x + xOffsetIndex, y + yOffsetIndex)
 
                 // Move data to the left in array and load chunks for new right side region
-                for (x in 0 until xChunkCount)
+                for (x in 0 until loadedChunks.width)
                 {
-                    if(x + xDiff < xChunkCount)
-                        loadedChunks[y][x] = loadedChunks[y][x+xDiff]
+                    if(x + xDiff < loadedChunks.width)
+                        loadedChunks[y, x] = loadedChunks[y, x + xDiff]
                     else
-                        loadedChunks[y][x] = onChunkLoadCallback.invoke(x + xOffsetIndex + xDiff, y + yOffsetIndex)
+                        loadedChunks[y, x] = onChunkLoadCallback.invoke(x + xOffsetIndex + xDiff, y + yOffsetIndex)
                 }
             }
         }
         else
         {
-            for (y in 0 until yChunkCount)
+            for (y in 0 until loadedChunks.height)
             {
                 // Save chunks outside of array on right side
-                for (x in xChunkCount + xDiff until xChunkCount)
-                    saveChunk(loadedChunks[y][x] as T, x + xOffsetIndex, y + yOffsetIndex)
+                for (x in loadedChunks.width + xDiff until loadedChunks.width)
+                    saveChunk(loadedChunks[y, x], x + xOffsetIndex, y + yOffsetIndex)
 
                 // Move data to the right in array and load chunks for new left side region
-                for (x in (xChunkCount - 1) downTo 0)
+                for (x in (loadedChunks.width - 1) downTo 0)
                 {
                     if(x + xDiff >= 0)
-                        loadedChunks[y][x] = loadedChunks[y][x + xDiff]
+                        loadedChunks[y, x] = loadedChunks[y, x + xDiff]
                     else
-                        loadedChunks[y][x] = onChunkLoadCallback.invoke(x + xOffsetIndex + xDiff, y + yOffsetIndex)
+                        loadedChunks[y, x] = onChunkLoadCallback.invoke(x + xOffsetIndex + xDiff, y + yOffsetIndex)
                 }
             }
         }
@@ -259,10 +241,9 @@ class ChunkManager <T: Chunk> (
         return true
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun recenterYAxis(): Boolean
     {
-        val yNewOffsetIndex = yOffsetIndex + (yEnd + yStart) / 2 - yChunkCount / 2
+        val yNewOffsetIndex = yOffsetIndex + (yEnd + yStart) / 2 - loadedChunks.height / 2
         val yDiff = yNewOffsetIndex - yOffsetIndex
 
         if(yDiff == 0)
@@ -272,45 +253,45 @@ class ChunkManager <T: Chunk> (
         {
             // Save chunks outside of array on top side
             for (y in 0 until yDiff)
-                for (x in 0 until xChunkCount)
-                    saveChunk(loadedChunks[y][x] as T, x + xOffsetIndex, y + yOffsetIndex)
+                for (x in 0 until loadedChunks.width)
+                    saveChunk(loadedChunks[y, x], x + xOffsetIndex, y + yOffsetIndex)
 
-            for (y in 0 until yChunkCount)
+            for (y in 0 until loadedChunks.height)
             {
-                if(y + yDiff < yChunkCount)
+                if(y + yDiff < loadedChunks.height)
                 {
                     // Move data upward in array
-                    for (x in 0 until xChunkCount)
-                        loadedChunks[y][x] = loadedChunks[y + yDiff][x]
+                    for (x in 0 until loadedChunks.width)
+                        loadedChunks[y, x] = loadedChunks[y + yDiff, x]
                 }
                 else
                 {
                     // Load chunks for new lower region
-                    for (x in 0 until xChunkCount)
-                        loadedChunks[y][x] = onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex + yDiff)
+                    for (x in 0 until loadedChunks.width)
+                        loadedChunks[y, x] = onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex + yDiff)
                 }
             }
         }
         else
         {
             // Save chunks outside of array on bottom side
-            for (y in yChunkCount + yDiff until yChunkCount)
-                for (x in 0 until xChunkCount)
-                    saveChunk(loadedChunks[y][x] as T, x + xOffsetIndex, y + yOffsetIndex)
+            for (y in loadedChunks.height + yDiff until loadedChunks.height)
+                for (x in 0 until loadedChunks.width)
+                    saveChunk(loadedChunks[y, x], x + xOffsetIndex, y + yOffsetIndex)
 
-            for (y in (yChunkCount - 1) downTo  0)
+            for (y in (loadedChunks.height - 1) downTo  0)
             {
                 if (y + yDiff >= 0)
                 {
                     // Move data downward in array
-                    for (x in 0 until xChunkCount)
-                        loadedChunks[y][x] = loadedChunks[y+yDiff][x]
+                    for (x in 0 until loadedChunks.width)
+                        loadedChunks[y, x] = loadedChunks[y + yDiff, x]
                 }
                 else
                 {
                     // Load chunks for new upper region
-                    for (x in 0 until xChunkCount)
-                        loadedChunks[y][x] = onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex + yDiff)
+                    for (x in 0 until loadedChunks.width)
+                        loadedChunks[y, x] = onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex + yDiff)
                 }
             }
         }
@@ -319,10 +300,10 @@ class ChunkManager <T: Chunk> (
         return true
     }
 
-    private fun saveChunk(chunk: T, xIndex: Int, yIndedx: Int)
+    private fun saveChunk(chunk: T, xIndex: Int, yIndex: Int)
     {
         if (chunk.hasData())
-            onChunkSaveCallback.invoke(chunk, xIndex, yIndedx)
+            onChunkSaveCallback.invoke(chunk, xIndex, yIndex)
     }
 
     fun renderDebug(gfx: GraphicsInterface)
@@ -344,9 +325,9 @@ class ChunkManager <T: Chunk> (
             gfx.mainSurface.drawText("(${chunk.x},${chunk.y})", x + chunkSize / 2, y + chunkSize / 2f, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 72f)
         }
 
-        for (yi in 0 until yChunkCount)
+        for (yi in 0 until loadedChunks.height)
         {
-            for (xi in 0 until xChunkCount)
+            for (xi in 0 until loadedChunks.width)
             {
                 val size = 10f
                 val x = 10 + xi * size
@@ -373,16 +354,16 @@ class ChunkManager <T: Chunk> (
         }
 
         debugSurface.setDrawColor(1f, 1f, 1f, 1f)
-        debugSurface.drawText("x: $xOffsetIndex", 10f, 30f + 10 * yChunkCount )
-        debugSurface.drawText("y: $yOffsetIndex", 10f, 50f + 10 * yChunkCount )
-        debugSurface.drawText("Loaded: ${getLoadedChunkCount()}", 10f, 70f + 10 * yChunkCount )
-        debugSurface.drawText("Active: ${getActiveChunkCount()}", 10f, 90f + 10 * yChunkCount )
-        debugSurface.drawText("Visible: ${getVisibleChunkCount()}", 10f, 110f + 10 * yChunkCount )
-        debugSurface.drawText("Border: $activeOfScreenChunkBorder", 10f, 130f + 10 * yChunkCount )
+        debugSurface.drawText("x: $xOffsetIndex", 10f, 30f + 10 * loadedChunks.height )
+        debugSurface.drawText("y: $yOffsetIndex", 10f, 50f + 10 * loadedChunks.height )
+        debugSurface.drawText("Loaded: ${getLoadedChunkCount()}", 10f, 70f + 10 * loadedChunks.height )
+        debugSurface.drawText("Active: ${getActiveChunkCount()}", 10f, 90f + 10 * loadedChunks.height )
+        debugSurface.drawText("Visible: ${getVisibleChunkCount()}", 10f, 110f + 10 * loadedChunks.height )
+        debugSurface.drawText("Border: $activeOfScreenChunkBorder", 10f, 130f + 10 * loadedChunks.height )
     }
 
     fun getLoadedChunkCount() =
-        xChunkCount * yChunkCount
+        loadedChunks.width * loadedChunks.height
 
     fun getActiveChunkCount() =
         (xEnd - xStart) * (yEnd - yStart)
@@ -391,7 +372,7 @@ class ChunkManager <T: Chunk> (
         (xEnd - xStart - 2 * activeOfScreenChunkBorder) * (yEnd - yStart - 2 * activeOfScreenChunkBorder)
 
     fun getLoadedChunks() =
-        iterator.also { it.reset(0, 0, xChunkCount, yChunkCount) }
+        iterator.also { it.reset(0, 0, loadedChunks.width, loadedChunks.height) }
 
     fun getActiveChunks() =
         iterator.also { it.reset(xStart, yStart, xEnd, yEnd) }
@@ -399,14 +380,13 @@ class ChunkManager <T: Chunk> (
     fun getVisibleChunks() =
         iterator.also {
             val border = activeOfScreenChunkBorder
-            it.reset(xStart + border, yStart + border, xEnd + border, yEnd + border)
+            it.reset(xStart + border, yStart + border, xEnd - border, yEnd - border)
         }
 
     inner class ChunkIterator : Iterator<T>
     {
         private var x = 0
         private var y = 0
-
         private var xIteratorStart = 0
         private var yIteratorStart = 0
         private var xIteratorEnd = 0
@@ -425,16 +405,15 @@ class ChunkManager <T: Chunk> (
         override fun hasNext(): Boolean =
             y < yIteratorEnd
 
-        @Suppress("UNCHECKED_CAST")
         override fun next(): T
         {
-            val next = loadedChunks[y][x]
+            val next = loadedChunks[y, x]
             if (++x >= xIteratorEnd)
             {
                 x = xIteratorStart
                 y++
             }
-            return next as T
+            return next
         }
     }
 }
