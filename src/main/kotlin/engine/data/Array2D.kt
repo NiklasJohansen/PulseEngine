@@ -1,19 +1,16 @@
 package engine.data
 
 class Array2D <T> (
-    val height: Int,
     val width: Int,
-    val init: (y: Int, x: Int) -> T? = { _, _ -> null }
+    val height: Int,
+    val init: (x: Int, y: Int) -> T? = { _, _ -> null }
 ): Iterable<T> {
-
-    private val data: Array<Any?> = Array(width * height) { i -> init.invoke(i / width, i % width) }
+    private val data: Array<Any?> = Array(width * height) { i -> init.invoke(i % width, i / width) }
     private val iterator = Array2DIterator()
 
     @Suppress("UNCHECKED_CAST")
-    operator fun get(y: Int, x: Int): T = data[y * width + x] as T
-
-    operator fun set(y: Int, x: Int, value: T) { data[y * width + x] = value }
-
+    operator fun get(x: Int, y: Int): T = data[y * width + x] as T
+    operator fun set(x: Int, y: Int, value: T) { data[y * width + x] = value }
     override fun iterator(): Iterator<T> = iterator.apply { index = 0 }
 
     inner class Array2DIterator(var index: Int = 0) : Iterator<T>

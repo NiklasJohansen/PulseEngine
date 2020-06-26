@@ -52,7 +52,7 @@ class ChunkManager <T: Chunk> (
         val height = 5 + minSurroundingLoadedChunkBorder * 2
         xOffsetIndex = -width / 2
         yOffsetIndex = -height / 2
-        loadedChunks = Array2D(height, width) { y, x -> onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex) }
+        loadedChunks = Array2D(width, height) { x, y -> onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex) }
     }
 
     fun update(camera: CameraInterface)
@@ -154,9 +154,9 @@ class ChunkManager <T: Chunk> (
 
         xOffsetIndex = xNewOffsetIndex
         yOffsetIndex = yNewOffsetIndex
-        loadedChunks = Array2D(newHeight, newWidth) { y, x ->
+        loadedChunks = Array2D(newWidth, newHeight) { x, y ->
             if (x >= xOffsetDiff && y >= yOffsetDiff && x < xOffsetDiff + loadedChunks.width && y < yOffsetDiff + loadedChunks.height)
-                loadedChunks[y - yOffsetDiff, x - xOffsetDiff]
+                loadedChunks[x - xOffsetDiff, y - yOffsetDiff]
             else
                 onChunkLoadCallback.invoke(x + xNewOffsetIndex, y + yNewOffsetIndex)
         }
@@ -169,11 +169,11 @@ class ChunkManager <T: Chunk> (
         val xDiff = xNewOffsetIndex - xOffsetIndex
         val yDiff = yNewOffsetIndex - yOffsetIndex
 
-        val newLoadedChunks = Array2D(newHeight, newWidth) { y, x ->
+        val newLoadedChunks = Array2D(newWidth, newHeight) { x, y ->
             val xOld = x + xDiff
             val yOld = y + yDiff
             if(xOld >= 0 && xOld < loadedChunks.width && yOld >= 0 && yOld < loadedChunks.height)
-                loadedChunks[yOld, xOld]
+                loadedChunks[xOld, yOld]
             else
                 onChunkLoadCallback.invoke(x + xNewOffsetIndex, y + yNewOffsetIndex)
         }
@@ -181,7 +181,7 @@ class ChunkManager <T: Chunk> (
         for (y in 0 until loadedChunks.height)
             for (x in 0 until loadedChunks.width)
                 if (x < xDiff || y < yDiff || x > xDiff + newWidth || y > yDiff + newHeight)
-                    saveChunk(loadedChunks[y, x], x + xOffsetIndex, y + yOffsetIndex)
+                    saveChunk(loadedChunks[x, y], x + xOffsetIndex, y + yOffsetIndex)
 
         xStart -= xDiff
         yStart -= yDiff
@@ -206,15 +206,15 @@ class ChunkManager <T: Chunk> (
             {
                 // Save chunks outside of array on left side
                 for (x in 0 until xDiff)
-                    saveChunk(loadedChunks[y, x], x + xOffsetIndex, y + yOffsetIndex)
+                    saveChunk(loadedChunks[x, y], x + xOffsetIndex, y + yOffsetIndex)
 
                 // Move data to the left in array and load chunks for new right side region
                 for (x in 0 until loadedChunks.width)
                 {
                     if(x + xDiff < loadedChunks.width)
-                        loadedChunks[y, x] = loadedChunks[y, x + xDiff]
+                        loadedChunks[x, y] = loadedChunks[x + xDiff, y]
                     else
-                        loadedChunks[y, x] = onChunkLoadCallback.invoke(x + xOffsetIndex + xDiff, y + yOffsetIndex)
+                        loadedChunks[x, y] = onChunkLoadCallback.invoke(x + xOffsetIndex + xDiff, y + yOffsetIndex)
                 }
             }
         }
@@ -224,15 +224,15 @@ class ChunkManager <T: Chunk> (
             {
                 // Save chunks outside of array on right side
                 for (x in loadedChunks.width + xDiff until loadedChunks.width)
-                    saveChunk(loadedChunks[y, x], x + xOffsetIndex, y + yOffsetIndex)
+                    saveChunk(loadedChunks[x, y], x + xOffsetIndex, y + yOffsetIndex)
 
                 // Move data to the right in array and load chunks for new left side region
                 for (x in (loadedChunks.width - 1) downTo 0)
                 {
                     if(x + xDiff >= 0)
-                        loadedChunks[y, x] = loadedChunks[y, x + xDiff]
+                        loadedChunks[x, y] = loadedChunks[x + xDiff, y]
                     else
-                        loadedChunks[y, x] = onChunkLoadCallback.invoke(x + xOffsetIndex + xDiff, y + yOffsetIndex)
+                        loadedChunks[x, y] = onChunkLoadCallback.invoke(x + xOffsetIndex + xDiff, y + yOffsetIndex)
                 }
             }
         }
@@ -254,7 +254,7 @@ class ChunkManager <T: Chunk> (
             // Save chunks outside of array on top side
             for (y in 0 until yDiff)
                 for (x in 0 until loadedChunks.width)
-                    saveChunk(loadedChunks[y, x], x + xOffsetIndex, y + yOffsetIndex)
+                    saveChunk(loadedChunks[x, y], x + xOffsetIndex, y + yOffsetIndex)
 
             for (y in 0 until loadedChunks.height)
             {
@@ -262,13 +262,13 @@ class ChunkManager <T: Chunk> (
                 {
                     // Move data upward in array
                     for (x in 0 until loadedChunks.width)
-                        loadedChunks[y, x] = loadedChunks[y + yDiff, x]
+                        loadedChunks[x, y] = loadedChunks[x, y + yDiff]
                 }
                 else
                 {
                     // Load chunks for new lower region
                     for (x in 0 until loadedChunks.width)
-                        loadedChunks[y, x] = onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex + yDiff)
+                        loadedChunks[x, y] = onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex + yDiff)
                 }
             }
         }
@@ -277,7 +277,7 @@ class ChunkManager <T: Chunk> (
             // Save chunks outside of array on bottom side
             for (y in loadedChunks.height + yDiff until loadedChunks.height)
                 for (x in 0 until loadedChunks.width)
-                    saveChunk(loadedChunks[y, x], x + xOffsetIndex, y + yOffsetIndex)
+                    saveChunk(loadedChunks[x, y], x + xOffsetIndex, y + yOffsetIndex)
 
             for (y in (loadedChunks.height - 1) downTo  0)
             {
@@ -285,13 +285,13 @@ class ChunkManager <T: Chunk> (
                 {
                     // Move data downward in array
                     for (x in 0 until loadedChunks.width)
-                        loadedChunks[y, x] = loadedChunks[y + yDiff, x]
+                        loadedChunks[x, y] = loadedChunks[x, y + yDiff]
                 }
                 else
                 {
                     // Load chunks for new upper region
                     for (x in 0 until loadedChunks.width)
-                        loadedChunks[y, x] = onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex + yDiff)
+                        loadedChunks[x, y] = onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex + yDiff)
                 }
             }
         }
@@ -407,7 +407,7 @@ class ChunkManager <T: Chunk> (
 
         override fun next(): T
         {
-            val next = loadedChunks[y, x]
+            val next = loadedChunks[x, y]
             if (++x >= xIteratorEnd)
             {
                 x = xIteratorStart
