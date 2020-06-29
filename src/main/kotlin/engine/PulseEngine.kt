@@ -73,6 +73,7 @@ class PulseEngine(
 
         // Create focus area for game
         focusArea = FocusArea(0f, 0f, window.width.toFloat(), window.height.toFloat())
+        input.acquireFocus(focusArea)
 
         // Set up window resize event handler
         window.setOnResizeEvent { w, h, windowRecreated ->

@@ -26,10 +26,14 @@ abstract class DataInterface
     abstract fun <T> saveAsync(data: T, fileName: String, onComplete: (T) -> Unit = {})
 
     @PublishedApi internal abstract fun <T> load(fileName: String, type: Class<T>): T?
+    @PublishedApi internal abstract fun <T> loadInternal(fileName: String, type: Class<T>): T?
     @PublishedApi internal abstract fun <T> loadAsync(fileName: String, type: Class<T>, onComplete: (T) -> Unit)
 
     inline fun <reified T> load(fileName: String): T? =
         load(fileName, T::class.java)
+
+    inline fun <reified T> loadInternal(fileName: String): T? =
+        loadInternal(fileName, T::class.java)
 
     inline fun <reified T> loadAsync(fileName: String, noinline onLoad: (T) -> Unit) =
         loadAsync(fileName, T::class.java, onLoad)
@@ -97,6 +101,15 @@ class MutableDataContainer : DataEngineInterface()
                 .let { byteArray -> objectMapper.readValue(byteArray, type) }
         }
         .onFailure { System.err.println("Failed to load file: $fileName - reason: ${it.message}") }
+        .getOrNull()
+
+    override fun <T> loadInternal(fileName: String, type: Class<T>): T? =
+        runCatching {
+            MutableDataContainer::class.java.getResource("/$fileName")
+                .readBytes()
+                .let { byteArray -> objectMapper.readValue(byteArray, type) }
+        }
+        .onFailure { System.err.println("Failed to load internal resource: $fileName - reason: ${it.message}") }
         .getOrNull()
 
     override fun <T> saveAsync(data: T, fileName: String, onComplete: (T) -> Unit)

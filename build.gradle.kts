@@ -62,7 +62,7 @@ val sourcesJar by tasks.creating(Jar::class) {
 
 val jar by tasks.getting(Jar::class) {
     manifest {
-        attributes["Main-Class"] = "game.example.ConsoleExampleKt"
+        attributes["Main-Class"] = "game.eight.EightKt"
     }
     from({
         configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
