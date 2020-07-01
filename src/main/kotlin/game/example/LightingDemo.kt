@@ -74,7 +74,7 @@ class LightingDemo : Game()
                 x = engine.input.xWorldMouse,
                 y = engine.input.yWorldMouse,
                 radius = 500f + 2000f * Random.nextFloat(),
-                intensity = 0.7f,
+                intensity = 1.4f,
                 type = 0f,
                 red = 0.7f + 0.3f * Random.nextFloat(),
                 green = 0.7f + 0.3f * Random.nextFloat(),
