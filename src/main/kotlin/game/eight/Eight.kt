@@ -22,8 +22,9 @@ class Eight : Game()
     private val targetBoard = Array2D(8, 8) { x, y -> GROUND }
     private val board = Array2D(8, 8) { x, y -> GROUND }
     private var levels: MutableList<Level> = mutableListOf()
+    private var maxRacedLevel = 0
+    private var changLevelTo = -1
 
-    private var juiceMode = true
     private var xPlayer = 4
     private var yPlayer = 4
     private var winningFade = 0f
@@ -33,14 +34,18 @@ class Eight : Game()
     private var shakeDampening = 0.8f
     private var yMoveInterpolation = 0f
     private var xMoveInterpolation = 0f
-
     private lateinit var currentLevel: Level
+
     private var editBlockType = WALL
+    private var editMode = false
+    private var juiceMode = true
+    private var bgColor = Color(0.2f, 0.2f, 0.2f)
 
     // Effects
     private lateinit var lightingEffect: LightingEffect
     private lateinit var bloomEffect: BloomEffect
     private lateinit var vignetteEffect: VignetteEffect
+    private lateinit var multiplyEffect: MultiplyEffect
 
     override fun init()
     {
@@ -48,8 +53,6 @@ class Eight : Game()
         engine.config.targetFps = 120
 
         lightingEffect = LightingEffect(engine.gfx.mainCamera)
-        bloomEffect = BloomEffect(0.1f, exposure = 1.0f)
-        vignetteEffect = VignetteEffect()
 
         val lightMask = engine.gfx
             .createSurface2D("lightMask")
@@ -58,9 +61,13 @@ class Eight : Game()
             .addPostProcessingEffect(BlurEffect(radius = 0.1f))
             .setIsVisible(false)
 
+        bloomEffect = BloomEffect(0.1f, exposure = 1.0f, blurPasses = 3, blurRadius = 0.3f)
+        vignetteEffect = VignetteEffect()
+        multiplyEffect = MultiplyEffect(lightMask)
+
         engine.gfx.mainSurface
             .setBackgroundColor(0f, 0f, 0f, 1f)
-            .addPostProcessingEffect(MultiplyEffect(lightMask))
+            .addPostProcessingEffect(multiplyEffect)
 
         engine.gfx
             .createSurface2D("blocks", camera = engine.gfx.mainCamera)
@@ -69,7 +76,7 @@ class Eight : Game()
 
         levels = engine.data.load<LevelList>("levels.dat")
             ?.toLevels()?.toMutableList()
-            ?: (engine.data.loadInternal<LevelList>("levelsInternal.dat")?.toLevels()?.toMutableList()
+            ?: (engine.data.loadInternal<LevelList>("eight/levels.dat")?.toLevels()?.toMutableList()
             ?: createBlankLevel())
         currentLevel = levels.first()
 
@@ -81,77 +88,40 @@ class Eight : Game()
     private fun createBlankLevel(): MutableList<Level>
     {
         println("Creating blank level")
-        currentLevel = Level(
+        val newLevel = Level(
             targetBoard = Array2D(8, 8) { x, y -> GROUND },
             board = Array2D(8, 8) { x, y -> GROUND },
             xPlayer = 4,
             yPlayer = 4
         )
-        currentLevel.board[4, 4] = PLAYER
-        levels.add(currentLevel)
+        newLevel.board[4, 4] = PLAYER
+
+        val index = levels.indexOf(currentLevel) + 1
+        if(index >= levels.size)
+            levels.add(newLevel)
+        else
+            levels.add(index, newLevel)
+        currentLevel = newLevel
         reset()
         return levels
     }
 
-    private fun reset()
+    override fun fixedUpdate()
     {
-        xPlayer = currentLevel.xPlayer
-        yPlayer = currentLevel.yPlayer
-
-        for (y in 0 until board.height)
-            for (x in 0 until board.width)
-            {
-                board[x, y] = currentLevel.board[x, y]
-                targetBoard[x, y] = currentLevel.targetBoard[x, y]
-            }
-    }
-
-    private fun nextLevel()
-    {
-        if (winningFade < 0f)
-        {
-            winningFade = 1f
-        }
-        else if (winningFade < 0.5f)
-        {
-            val index = levels.indexOf(currentLevel) + 1
-            if (index < levels.size)
-            {
-                currentLevel = levels[index]
-                reset()
-            }
-        }
-    }
-
-    fun toggleJuiceMode()
-    {
-        juiceMode = !juiceMode
-        val lightSurface = engine.gfx.getSurface2D("lightMask")
-        if (juiceMode)
-        {
-            lightSurface.setBackgroundColor(0.02f,0.02f,0.02f, 1f)
-            vignetteEffect.strength = 0.2f
-            bloomEffect.threshold = 0.1f
-        }
-        else
-        {
-            lightSurface.setBackgroundColor(1f, 1f, 1f, 1f)
-            vignetteEffect.strength = 0f
-            bloomEffect.threshold = 10f
-        }
+        angle += 2
+        winningFade -= 0.006f + if (editMode) 0.1f else 0f
+        screenShake *= shakeDampening
+        xMoveInterpolation *= 0.8f
+        yMoveInterpolation *= 0.8f
     }
 
     override fun update()
     {
-        winningFade -= 0.003f
-        screenShake *= shakeDampening
-        xMoveInterpolation *= 0.9f
-        yMoveInterpolation *= 0.9f
+        if (winningFade > 0)
+            screenShake = (cos(winningFade * PI * 2f + PI).toFloat() + 1f) / 2f
 
-        if(winningFade > 0)
-            screenShake = (cos(winningFade * PI*2f + PI).toFloat() + 1f) / 2f
-
-        edit()
+        if (engine.input.wasClicked(Key.L) && engine.input.isPressed(Key.LEFT_CONTROL))
+            editMode = !editMode
 
         if (engine.input.wasClicked(Key.R))
             reset()
@@ -159,20 +129,40 @@ class Eight : Game()
         if (engine.input.wasClicked(Key.J))
             toggleJuiceMode()
 
-        if (checkWin())
-            nextLevel()
+        if (engine.input.wasClicked(Key.PAGE_DOWN))
+            increaseLevel(-1)
+
+        if (engine.input.wasClicked(Key.PAGE_UP))
+            increaseLevel(1)
+
+        if (editMode)
+            edit()
+
+        if (checkWin() && !editMode)
+        {
+            if (levels.indexOf(currentLevel) == maxRacedLevel)
+                maxRacedLevel++
+            increaseLevel(1)
+        }
 
         if (winningFade >= 0)
+        {
+            if (winningFade < 0.5f && changLevelTo != -1)
+            {
+                currentLevel = levels[changLevelTo]
+                changLevelTo = -1
+                reset()
+            }
             return
+        }
 
-        board[xPlayer, yPlayer] = GROUND
         var xPlayerNew = xPlayer
         var yPlayerNew = yPlayer
 
-        if (engine.input.wasClicked(Key.W)) yPlayerNew--
-        if (engine.input.wasClicked(Key.A)) xPlayerNew--
-        if (engine.input.wasClicked(Key.S)) yPlayerNew++
-        if (engine.input.wasClicked(Key.D)) xPlayerNew++
+        if (engine.input.wasClicked(Key.W) || engine.input.wasClicked(Key.UP)) yPlayerNew--
+        if (engine.input.wasClicked(Key.A) || engine.input.wasClicked(Key.LEFT)) xPlayerNew--
+        if (engine.input.wasClicked(Key.S) || engine.input.wasClicked(Key.DOWN)) yPlayerNew++
+        if (engine.input.wasClicked(Key.D) || engine.input.wasClicked(Key.RIGHT)) xPlayerNew++
 
         xPlayerNew = xPlayerNew.coerceIn(0, board.width - 1)
         yPlayerNew = yPlayerNew.coerceIn(0, board.height - 1)
@@ -180,9 +170,11 @@ class Eight : Game()
         val xMoveDiff = xPlayerNew - xPlayer
         val yMoveDiff = yPlayerNew - yPlayer
 
+        board[xPlayer, yPlayer] = GROUND
         val block = board[xPlayerNew, yPlayerNew]
         if (block == BLOCK)
         {
+            // Pushing
             val moved = move(xPlayerNew, yPlayerNew, xMoveDiff, yMoveDiff)
             screenShake = 0.2f
             if (!moved)
@@ -190,11 +182,13 @@ class Eight : Game()
         }
         else if (block == STICKY_BLOCK || block == WALL)
         {
+            // Stop player movement
             board[xPlayer, yPlayer] = PLAYER
             screenShake = 0.4f
             return
         }
 
+        // Pulling
         for(y in 0 until 3)
         {
             for(x in 0 until 3)
@@ -206,22 +200,22 @@ class Eight : Game()
                     when
                     {
                         board[x0, y0] != STICKY_BLOCK -> {}
-                        x0 > xPlayer && xMoveDiff < 0 -> move(x0, y0, -1, 0)
-                        x0 < xPlayer && xMoveDiff > 0 -> move(x0, y0, 1, 0)
-                        y0 > yPlayer && yMoveDiff < 0 -> move(x0, y0, 0, -1)
-                        y0 < yPlayer && yMoveDiff > 0 -> move(x0, y0, 0, 1)
+                        x0 > xPlayer && xMoveDiff < 0 -> { move(x0, y0, -1, 0); screenShake = 0.2f }
+                        x0 < xPlayer && xMoveDiff > 0 -> { move(x0, y0, 1, 0); screenShake = 0.2f }
+                        y0 > yPlayer && yMoveDiff < 0 -> { move(x0, y0, 0, -1); screenShake = 0.2f }
+                        y0 < yPlayer && yMoveDiff > 0 -> { move(x0, y0, 0, 1); screenShake = 0.2f }
                     }
                 }
             }
         }
 
-        if (juiceMode && (xMoveDiff != 0 || yMoveDiff != 0))
+        if (xMoveDiff != 0 || yMoveDiff != 0)
         {
-            screenShake = max(0.0f, screenShake)
             xMoveInterpolation = abs(xMoveDiff.toFloat())
             yMoveInterpolation = abs(yMoveDiff.toFloat())
         }
 
+        // Move player
         board[xPlayerNew, yPlayerNew] = PLAYER
         xPlayer = xPlayerNew
         yPlayer = yPlayerNew
@@ -242,12 +236,63 @@ class Eight : Game()
     }
 
     private fun checkWin(): Boolean {
+        if(currentLevel == levels.last())
+            return false
+
         for (y in 0 until board.height)
             for (x in 0 until board.width)
                 if (targetBoard[x, y] == BLOCK || targetBoard[x, y] == STICKY_BLOCK)
                     if(targetBoard[x, y] != board[x, y])
                         return false
         return true
+    }
+
+    private fun increaseLevel(amount: Int)
+    {
+        val index = levels.indexOf(currentLevel) + amount
+
+        if (index >= 0 && index < levels.size && (editMode || index <= maxRacedLevel))
+        {
+            if (winningFade < 0f && changLevelTo == -1)
+            {
+                winningFade = 1f
+                changLevelTo = index
+            }
+        }
+    }
+
+    private fun reset()
+    {
+        xPlayer = currentLevel.xPlayer
+        yPlayer = currentLevel.yPlayer
+
+        for (y in 0 until board.height)
+            for (x in 0 until board.width)
+            {
+                board[x, y] = currentLevel.board[x, y]
+                targetBoard[x, y] = currentLevel.targetBoard[x, y]
+            }
+    }
+
+    private fun toggleJuiceMode()
+    {
+        juiceMode = !juiceMode
+        if (juiceMode)
+        {
+            multiplyEffect.active = true
+            lightingEffect.active = true
+            bloomEffect.active = true
+            vignetteEffect.active = true
+            bgColor = Color(1f, 1f, 1f)
+        }
+        else
+        {
+            multiplyEffect.active = false
+            lightingEffect.active = false
+            bloomEffect.active = false
+            vignetteEffect.active = false
+            bgColor = Color(0.2f, 0.2f, 0.2f)
+        }
     }
 
     private fun edit()
@@ -292,42 +337,16 @@ class Eight : Game()
         if (engine.input.wasClicked(Key.K_3)) editBlockType = STICKY_BLOCK
         if (engine.input.wasClicked(Key.K_4)) editBlockType = WINNING
         if (engine.input.wasClicked(Key.ENTER)) createBlankLevel()
-
-        if (engine.input.wasClicked(Key.DOWN))
-        {
-            val index = levels.indexOf(currentLevel) + 1
-            if (index < levels.size)
-            {
-                currentLevel = levels[index]
-                reset()
-            }
-        }
-        else if (engine.input.wasClicked(Key.UP))
-        {
-            val index = levels.indexOf(currentLevel) - 1
-            if (index >= 0)
-            {
-                currentLevel = levels[index]
-                reset()
-            }
-        }
     }
 
     override fun render()
     {
-        val alpha = 0.1f + 0.9f * ((sin(angle++ / 45) + 1f) / 2f)
-        val cellHeight = engine.window.height / 8f
-        val cellWidth = cellHeight
-        val xOffset = (engine.window.width - cellWidth * 8) / 2
+        val alpha = 0.1f + 0.9f * ((sin(angle / 45) + 1f) / 2f)
+        val cellSize = engine.window.height / 8f
+        val xOffset = (engine.window.width - cellSize * 8) / 2
 
-        engine.gfx.mainSurface.setDrawColor(0.95f, 0.95f, 0.95f)
-        engine.gfx.mainSurface.drawQuad(xOffset, 0f, cellWidth * 8f, cellHeight * 8f)
-
-        if (screenShake > 0 && juiceMode)
-        {
-            engine.gfx.mainCamera.xPos = (Random.nextFloat() * 2 - 1) * screenShake * shakeMagnitude
-            engine.gfx.mainCamera.yPos = (Random.nextFloat() * 2 - 1) * screenShake * shakeMagnitude
-        }
+        engine.gfx.mainSurface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue)
+        engine.gfx.mainSurface.drawQuad(xOffset, 0f, cellSize * 8f, cellSize * 8f)
 
         for (y in 0 until board.height)
         {
@@ -336,60 +355,37 @@ class Eight : Game()
                 val surface = engine.gfx.getSurface2D("blocks")
                 val targetColor = targetBoard[x, y].color
                 surface.setDrawColor(targetColor.red, targetColor.green, targetColor.blue, targetColor.alpha * alpha)
-                surface.drawQuad(x * cellWidth + xOffset, y * cellHeight, cellWidth, cellHeight)
+                surface.drawQuad(x * cellSize + xOffset, y * cellSize, cellSize, cellSize)
 
                 var xScale = 1f
                 var yScale = 1f
-                val color = board[x, y].color
+                var color = board[x, y].color
 
-                if (board[x, y] == PLAYER)
+                if (board[x, y] == PLAYER && juiceMode)
                 {
                     xScale = 1f - yMoveInterpolation * 0.5f + xMoveInterpolation * 0.5f
                     yScale = 1f - xMoveInterpolation * 0.5f + yMoveInterpolation * 0.5f
                 }
 
+                if ((board[x, y] == BLOCK || board[x, y] == STICKY_BLOCK) && board[x, y] == targetBoard[x, y])
+                    color = GREEN
+
                 surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
                 surface.drawQuad(
-                    x * cellWidth + xOffset + (1 - xScale) * cellWidth / 2f,
-                    y * cellHeight + (1 - yScale) * cellHeight / 2f,
-                    cellWidth * xScale,
-                    cellHeight * yScale)
+                    x = x * cellSize + xOffset + (1 - xScale) * cellSize / 2f,
+                    y = y * cellSize + (1 - yScale) * cellSize / 2f,
+                    width = cellSize * xScale,
+                    height = cellSize * yScale)
+            }
+        }
 
-                if(board[x, y] == PLAYER || board[x, y] == BLOCK || board[x, y] == STICKY_BLOCK)
-                {
-                    lightingEffect.addLight(
-                        (x+0.5f) * cellWidth + xOffset,
-                        (y+0.5f) * cellHeight,
-                        400f,
-                        1.2f,
-                        0f,
-                        color.red,
-                        color.green,
-                        color.blue
-                    )
-                }
-                else if (board[x, y] == WALL)
-                {
-                    val xPos = x * cellWidth + xOffset
-                    val yPos = y * cellHeight
-                    lightingEffect.addEdge(xPos, yPos, xPos+cellWidth, yPos)
-                    lightingEffect.addEdge(xPos, yPos+cellHeight, xPos+cellWidth, yPos+cellHeight)
-                    lightingEffect.addEdge(xPos, yPos, xPos, yPos+cellHeight)
-                    lightingEffect.addEdge(xPos+cellWidth, yPos, xPos+cellWidth, yPos+cellHeight)
-                }
-                else if (targetBoard[x, y] == STICKY_BLOCK || targetBoard[x, y] == BLOCK)
-                {
-                    lightingEffect.addLight(
-                        (x+0.5f) * cellWidth + xOffset,
-                        (y+0.5f) * cellHeight,
-                        300f,
-                        1f * alpha,
-                        0f,
-                        targetColor.red,
-                        targetColor.green,
-                        targetColor.blue
-                    )
-                }
+        if (juiceMode)
+        {
+            addLighting()
+            if (screenShake > 0)
+            {
+                engine.gfx.mainCamera.xPos = (Random.nextFloat() * 2 - 1) * screenShake * shakeMagnitude
+                engine.gfx.mainCamera.yPos = (Random.nextFloat() * 2 - 1) * screenShake * shakeMagnitude
             }
         }
 
@@ -398,7 +394,52 @@ class Eight : Game()
             val surface = engine.gfx.getSurface2D("blocks")
             val fade = (cos(winningFade * PI*2f + PI).toFloat() + 1f) / 2f
             surface.setDrawColor(0.0f, 0.0f, 0.0f, fade)
-            surface.drawQuad(xOffset, 0f, cellWidth * 8f, cellHeight * 8f)
+            surface.drawQuad(xOffset, 0f, cellSize * 8f, cellSize * 8f)
+        }
+    }
+
+    private fun addLighting()
+    {
+        val alpha = 0.1f + 0.9f * ((sin(angle / 45) + 1f) / 2f)
+        val cellSize = engine.window.height / 8f
+        val xOffset = (engine.window.width - cellSize * 8) / 2
+
+        for (y in 0 until board.height)
+        {
+            for (x in 0 until board.width)
+            {
+                val color = board[x, y].color
+                val targetColor = targetBoard[x, y].color
+                val type = board[x, y]
+                val targetType = targetBoard[x, y]
+                var xPos = (x + 0.5f) * cellSize + xOffset
+                var yPos = (y + 0.5f) * cellSize
+
+                if (type == BLOCK || type == STICKY_BLOCK)
+                {
+                    if (type == targetType)
+                        lightingEffect.addLight(xPos, yPos, 400f, 1.2f, 0f, GREEN.red, GREEN.green, GREEN.blue)
+                    else
+                        lightingEffect.addLight(xPos, yPos, 400f, 1.2f, 0f, color.red, color.green, color.blue)
+                }
+                else if (type == PLAYER)
+                {
+                    lightingEffect.addLight(xPos, yPos, 400f, 1.2f, 0f, color.red, color.green, color.blue)
+                }
+                else if (type == WALL)
+                {
+                    xPos = x * cellSize + xOffset
+                    yPos = y * cellSize
+                    lightingEffect.addEdge(xPos, yPos, xPos + cellSize, yPos)
+                    lightingEffect.addEdge(xPos, yPos + cellSize, xPos + cellSize, yPos + cellSize)
+                    lightingEffect.addEdge(xPos, yPos, xPos, yPos + cellSize)
+                    lightingEffect.addEdge(xPos + cellSize, yPos, xPos + cellSize, yPos + cellSize)
+                }
+                else if (targetType == STICKY_BLOCK || targetType == BLOCK)
+                {
+                    lightingEffect.addLight(xPos, yPos, 300f, alpha, 0f, targetColor.red, targetColor.green, targetColor.blue)
+                }
+            }
         }
     }
 
@@ -413,7 +454,6 @@ class Eight : Game()
         PLAYER(Color(0.7f, 0.1f, 0.1f)),
         BLOCK(Color(36/255f, 95/255f, 166/255f)),
         STICKY_BLOCK(Color(250/255f, 196/255f, 35/255f)),
-        //WALL(Color(0.3f, 0.3f, 0.3f)),
         WALL(Color(0.1f, 0.1f, 0.1f)),
         WINNING(Color(120/255f, 209/255f, 69/255f))
     }
@@ -462,6 +502,11 @@ class Eight : Game()
 
     fun LevelList.toLevels(): List<Level> =
         this.levels.map { DiskLevel.toLevel(it) }
+
+    companion object
+    {
+        val GREEN = Color(120/255f, 209/255f, 69/255f)
+    }
 }
 
 

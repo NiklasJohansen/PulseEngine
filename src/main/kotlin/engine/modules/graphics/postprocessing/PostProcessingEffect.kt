@@ -7,6 +7,7 @@ import engine.modules.graphics.renderers.FrameTextureRenderer
 
 interface PostProcessingEffect
 {
+    var active: Boolean
     fun init()
     fun process(texture: Texture): Texture
     fun cleanUp()
@@ -14,6 +15,8 @@ interface PostProcessingEffect
 
 abstract class SinglePassEffect : PostProcessingEffect
 {
+    override var active = true
+
     protected lateinit var fbo: FrameBufferObject
     protected lateinit var program: ShaderProgram
     protected lateinit var renderer: FrameTextureRenderer
@@ -34,6 +37,9 @@ abstract class SinglePassEffect : PostProcessingEffect
 
     override fun process(texture: Texture): Texture
     {
+        if (!active)
+            return texture
+
         updateFBO(texture)
         return applyEffect(texture)
     }
@@ -60,6 +66,8 @@ abstract class SinglePassEffect : PostProcessingEffect
 
 abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProcessingEffect
 {
+    override var active = true
+
     protected val fbo = mutableListOf<FrameBufferObject>()
     protected val renderer = mutableListOf<FrameTextureRenderer>()
     protected val program = mutableListOf<ShaderProgram>()
@@ -80,6 +88,9 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
 
     override fun process(texture: Texture): Texture
     {
+        if (!active)
+            return texture
+
         updateFBO(texture)
         return applyEffect(texture)
     }
