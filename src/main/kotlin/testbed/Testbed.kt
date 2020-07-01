@@ -20,7 +20,13 @@ class Testbed : PulseEngineGame()
 
     override fun onRender()
     {
-        engine.gfx.mainSurface.drawText("TESTBED", engine.window.width / 2f, engine.window.height / 2f, xOrigin = 0.5f, fontSize = 72f)
+        engine.gfx.mainSurface.drawText(
+            text = "TESTBED",
+            x = engine.window.width / 2f,
+            y = engine.window.height / 2f,
+            xOrigin = 0.5f,
+            fontSize = 72f
+        )
     }
 
     override fun onDestroy()

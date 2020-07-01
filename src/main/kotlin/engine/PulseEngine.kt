@@ -56,16 +56,9 @@ class PulseEngineImplementation(
     private  val widgets: List<Widget>                = listOf(ConsoleWidget(), GraphWidget())
 ) : PulseEngine {
 
-    // Internal engine properties
-    private var fpsTimer = 0.0
-    private val fpsFilter = FloatArray(20)
-    private var frameCounter = 0
-    private var fixedUpdateAccumulator = 0.0
-    private var fixedUpdateLastTime = 0.0
-    private var lastFrameTime = 0.0
-    private val frameRateLimiter = FpsLimiter()
     private val activeInput = input
     private val idleInput = IdleInput(activeInput)
+    private val frameRateLimiter = FpsLimiter()
     private lateinit var focusArea: FocusArea
 
     init { PulseEngine.GLOBAL_INSTANCE = this }
@@ -149,33 +142,30 @@ class PulseEngineImplementation(
 
     private fun update(game: PulseEngineGame)
     {
-        val time = glfwGetTime()
-        data.deltaTime = (time - lastFrameTime).toFloat()
-
-        updateInput()
-        game.onUpdate()
-        widgets.forEach { it.onUpdate(this) }
-
-        lastFrameTime = glfwGetTime()
-        data.updateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
-        data.update()
-        input = activeInput
+        data.updateMemoryStats()
+        data.measureAndUpdateTimeStats()
+        {
+            updateInput()
+            game.onUpdate()
+            widgets.forEach { it.onUpdate(this) }
+            input = activeInput
+        }
     }
 
     private fun fixedUpdate(game: PulseEngineGame)
     {
         val dt = 1.0 / config.fixedTickRate.toDouble()
         val time = glfwGetTime()
-        var frameTime = time - fixedUpdateLastTime
+        var frameTime = time - data.fixedUpdateLastTime
         if(frameTime > 0.25)
             frameTime = 0.25
 
-        fixedUpdateLastTime = time
-        fixedUpdateAccumulator += frameTime
+        data.fixedUpdateLastTime = time
+        data.fixedUpdateAccumulator += frameTime
         data.fixedDeltaTime = dt.toFloat()
 
         var updated = false
-        while(fixedUpdateAccumulator >= dt)
+        while(data.fixedUpdateAccumulator >= dt)
         {
             audio.cleanSources()
             input.requestFocus(focusArea)
@@ -184,7 +174,7 @@ class PulseEngineImplementation(
             gfx.updateCamera(dt.toFloat())
 
             updated = true
-            fixedUpdateAccumulator -= dt
+            data.fixedUpdateAccumulator -= dt
             input = activeInput
         }
 
@@ -194,26 +184,19 @@ class PulseEngineImplementation(
 
     private fun render(game: PulseEngineGame)
     {
-        val startTime = glfwGetTime()
-        data.interpolation = fixedUpdateAccumulator.toFloat() / data.fixedDeltaTime
-        entity.render(this)
-        game.onRender()
-        widgets.forEach { it.onRender(this) }
-        gfx.postRender()
-        window.swapBuffers()
-        data.renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        data.measureRenderTimeAndUpdateInterpolationValue()
+        {
+            entity.render(this)
+            game.onRender()
+            widgets.forEach { it.onRender(this) }
+            gfx.postRender()
+            window.swapBuffers()
+        }
     }
 
     private fun syncFps()
     {
-        // Calculates a filtered frame rate
-        val time = glfwGetTime()
-        fpsFilter[frameCounter] = 1.0f / (time - fpsTimer).toFloat()
-        frameCounter = (frameCounter + 1) % fpsFilter.size
-        data.currentFps = fpsFilter.average().toInt()
-        fpsTimer = time
-
-        // Limits framerate to defined target value
+        data.calculateFrameRate()
         frameRateLimiter.sync(config.targetFps)
     }
 
