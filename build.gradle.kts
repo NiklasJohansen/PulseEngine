@@ -4,7 +4,7 @@ group = "no.njoh"
 version = "0.1.0"
 
 val lwjglVersion = "3.2.3"
-val kotlinVersion = "1.3.11"
+val kotlinVersion = "1.3.72"
 
 var lwjglNatives = when (OperatingSystem.current()) {
     OperatingSystem.LINUX   -> System.getProperty("os.arch").let {
@@ -23,7 +23,7 @@ println("OS: $lwjglNatives")
 plugins {
     java
     `maven-publish`
-    kotlin("jvm") version "1.3.11"
+    kotlin("jvm") version "1.3.72"
 }
 
 repositories {
@@ -64,9 +64,8 @@ val jar by tasks.getting(Jar::class) {
     manifest {
         attributes["Main-Class"] = "game.example.ConsoleExampleKt"
     }
-    from({
-        configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
-    })
+    exclude( "**/*.kotlin_metadata", "**/*.kotlin_module", "**/*.kotlin_builtins")
+    from({ configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) } })
 }
 
 publishing {
