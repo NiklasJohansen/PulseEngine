@@ -33,11 +33,6 @@ abstract class DataInterface
 
     inline fun <reified T> loadAsync(fileName: String, noinline onLoad: (T) -> Unit) =
         loadAsync(fileName, T::class.java, onLoad)
-
-    companion object
-    {
-        internal lateinit var INSTANCE: DataInterface
-    }
 }
 
 abstract class DataEngineInterface : DataInterface()
@@ -62,7 +57,6 @@ class MutableDataContainer : DataEngineInterface()
 
     override fun init(creatorName: String, gameName: String)
     {
-        INSTANCE = this
         saveDirectory = createAndGetDefaultSaveDirectory(creatorName, gameName)
     }
 

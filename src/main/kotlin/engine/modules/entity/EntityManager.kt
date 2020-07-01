@@ -1,6 +1,6 @@
 package engine.modules.entity
 
-import engine.GameEngine
+import engine.PulseEngine
 import kotlin.collections.ArrayList
 
 typealias EntityId = Int
@@ -17,8 +17,8 @@ abstract class EntityManagerBase
 // Exposed to game engine
 abstract class EntityManagerEngineBase : EntityManagerBase()
 {
-    abstract fun fixedUpdate(engine: GameEngine)
-    abstract fun render(engine: GameEngine)
+    abstract fun fixedUpdate(engine: PulseEngine)
+    abstract fun render(engine: PulseEngine)
 }
 
 class EntityManager(
@@ -74,18 +74,18 @@ class EntityManager(
 
     override fun get(id: EntityId): Entity? = if(id > -1 && id <= entitiesHead) entities[id] else null
 
-    override fun fixedUpdate(engine: GameEngine)
+    override fun fixedUpdate(engine: PulseEngine)
     {
         tickSystems(engine, logicSystems)
         removeDeadEntities()
     }
 
-    override fun render(engine: GameEngine)
+    override fun render(engine: PulseEngine)
     {
         tickSystems(engine, renderSystems)
     }
 
-    private fun tickSystems(engine: GameEngine, systems: ArrayList<ComponentSystem>)
+    private fun tickSystems(engine: PulseEngine, systems: ArrayList<ComponentSystem>)
     {
         var lastSignature = -1L
         var entityCount = 0

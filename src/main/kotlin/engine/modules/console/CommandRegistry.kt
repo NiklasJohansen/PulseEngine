@@ -1,6 +1,6 @@
 package engine.modules.console
 
-import engine.GameEngine
+import engine.PulseEngine
 import engine.data.Key
 import engine.data.ScreenMode.*
 import engine.data.Subscription
@@ -27,7 +27,7 @@ object CommandRegistry
     private const val SCRIPT_EXTENSION_TYPE = ".ps"
     private val keyBindingSubscriptions = mutableMapOf<String, Subscription>()
 
-    fun registerEngineCommands(engine: GameEngine)
+    fun registerEngineCommands(engine: PulseEngine)
     {
         ///////////////////////////////////////////// EXIT COMMAND /////////////////////////////////////////////
 

@@ -1,10 +1,11 @@
 package engine.util
 
+import engine.PulseEngine
 import engine.modules.DataInterface
 
 fun Float.interpolateFrom(lastState: Float): Float
 {
-    val i = DataInterface.INSTANCE.interpolation
+    val i = PulseEngine.GLOBAL_INSTANCE.data.interpolation
     return this * i + lastState * (1f - i)
 }
 

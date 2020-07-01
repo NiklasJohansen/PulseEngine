@@ -1,6 +1,6 @@
 package engine.widgets
 
-import engine.GameEngine
+import engine.PulseEngine
 import engine.data.FocusArea
 import engine.data.Font
 import engine.data.Mouse
@@ -30,10 +30,10 @@ class GraphWidget : Widget
     private var minWidth = 285f
     private val graphs =  mutableListOf<Graph>()
 
-    override fun init(engine: GameEngine)
+    override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface2D("engineApp", 100)
-        engine.asset.loadFont("/clacon.ttf", "graph_font", floatArrayOf(TICK_MARK_FONT_SIZE, HEADER_FONT_SIZE, VALUE_FONT_SIZE))
+        engine.asset.loadFont("/engine/assets/clacon.ttf", "graph_font", floatArrayOf(TICK_MARK_FONT_SIZE, HEADER_FONT_SIZE, VALUE_FONT_SIZE))
         engine.console.registerCommand("showGraphs") {
             open = !open
             CommandResult("", showCommand = false)
@@ -49,7 +49,7 @@ class GraphWidget : Widget
         ))
     }
 
-    override fun update(engine: GameEngine)
+    override fun onUpdate(engine: PulseEngine)
     {
         if(!open) return
 
@@ -100,7 +100,7 @@ class GraphWidget : Widget
         }
     }
 
-    override fun render(engine: GameEngine)
+    override fun onRender(engine: PulseEngine)
     {
         if(!open) return
 
@@ -146,7 +146,7 @@ class GraphWidget : Widget
         }
     }
 
-    override fun cleanup(engine: GameEngine) {  }
+    override fun onDestroy(engine: PulseEngine) {  }
 
     class Graph(
         val name: String,

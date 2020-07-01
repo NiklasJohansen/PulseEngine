@@ -1,6 +1,6 @@
 package engine.modules.console
 
-import engine.GameEngine
+import engine.PulseEngine
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
@@ -18,7 +18,7 @@ interface ConsoleInterface
 
 interface ConsoleEngineInterface : ConsoleInterface
 {
-    fun init(engine: GameEngine)
+    fun init(engine: PulseEngine)
 }
 
 class Console : ConsoleEngineInterface
@@ -26,7 +26,7 @@ class Console : ConsoleEngineInterface
     private val commandMap = ConcurrentHashMap<String, Command>()
     private val history = mutableListOf<ConsoleEntry>()
 
-    override fun init(engine: GameEngine)
+    override fun init(engine: PulseEngine)
     {
         // Register console commands and functions marked with @ConsoleTarget
         GlobalScope.launch {

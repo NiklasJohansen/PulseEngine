@@ -17,9 +17,10 @@ import engine.modules.graphics.GraphicsInterface
 import engine.modules.graphics.RetainedModeGraphics
 import engine.util.FpsLimiter
 import org.lwjgl.glfw.GLFW.glfwGetTime
+import kotlin.reflect.KClass
+import kotlin.reflect.full.createInstance
 
-// Exposed to the game code
-interface GameEngine
+interface PulseEngine
 {
     val config: ConfigurationInterface
     val window: WindowInterface
@@ -31,9 +32,17 @@ interface GameEngine
     val data: DataInterface
     val entity: EntityManagerBase
     val console: Console
+
+    companion object
+    {
+        fun run(game: KClass<out PulseEngineGame>) =
+            PulseEngineImplementation().run(game.createInstance())
+
+        internal lateinit var GLOBAL_INSTANCE: PulseEngine
+    }
 }
 
-class PulseEngine(
+class PulseEngineImplementation(
     override val config: ConfigurationEngineInterface = Configuration(),
     override val window: WindowEngineInterface        = Window(),
     override val gfx: GraphicsEngineInterface         = RetainedModeGraphics(),
@@ -45,7 +54,7 @@ class PulseEngine(
     override val entity: EntityManagerEngineBase      = EntityManager(),
     override val console: Console                     = Console(),
     private  val widgets: List<Widget>                = listOf(ConsoleWidget(), GraphWidget())
-) : GameEngine {
+) : PulseEngine {
 
     // Internal engine properties
     private var fpsTimer = 0.0
@@ -57,9 +66,11 @@ class PulseEngine(
     private val frameRateLimiter = FpsLimiter()
     private val activeInput = input
     private val idleInput = IdleInput(activeInput)
-    private val focusArea: FocusArea
+    private lateinit var focusArea: FocusArea
 
-    init
+    init { PulseEngine.GLOBAL_INSTANCE = this }
+
+    private fun preGameCreate()
     {
         // Initialize engine components
         config.init()
@@ -73,6 +84,7 @@ class PulseEngine(
 
         // Create focus area for game
         focusArea = FocusArea(0f, 0f, window.width.toFloat(), window.height.toFloat())
+        input.acquireFocus(focusArea)
 
         // Set up window resize event handler
         window.setOnResizeEvent { w, h, windowRecreated ->
@@ -102,20 +114,24 @@ class PulseEngine(
         }
 
         // Initialize engine apps
-        widgets.forEach { it.init(this) }
+        widgets.forEach { it.onCreate(this) }
     }
 
-    fun run(game: Game)
+    private fun postGameCreate()
     {
-        // Set engine reference and initialize game
-        game.engine = this
-        game.init()
-
         // Load assets from disk
         asset.loadInitialAssets()
 
         // Run startup script
-        console.run("run startup.ps")
+        console.run("run /engine/scripts/startup.ps")
+    }
+
+    fun run(game: PulseEngineGame)
+    {
+        // Setup engine and game
+        preGameCreate()
+        game.onCreate()
+        postGameCreate()
 
         // Run main game loop
         while (window.isOpen())
@@ -123,23 +139,22 @@ class PulseEngine(
             update(game)
             fixedUpdate(game)
             render(game)
-            updateFps()
-            frameRateLimiter.sync(config.targetFps)
+            syncFps()
         }
 
         // Clean up game and engine
-        game.cleanup()
-        cleanUp()
+        game.onDestroy()
+        destroy()
     }
 
-    private fun update(game: Game)
+    private fun update(game: PulseEngineGame)
     {
         val time = glfwGetTime()
         data.deltaTime = (time - lastFrameTime).toFloat()
 
         updateInput()
-        game.update()
-        widgets.forEach { it.update(this) }
+        game.onUpdate()
+        widgets.forEach { it.onUpdate(this) }
 
         lastFrameTime = glfwGetTime()
         data.updateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
@@ -147,7 +162,7 @@ class PulseEngine(
         input = activeInput
     }
 
-    private fun fixedUpdate(game: Game)
+    private fun fixedUpdate(game: PulseEngineGame)
     {
         val dt = 1.0 / config.fixedTickRate.toDouble()
         val time = glfwGetTime()
@@ -165,7 +180,7 @@ class PulseEngine(
             audio.cleanSources()
             input.requestFocus(focusArea)
             entity.fixedUpdate(this)
-            game.fixedUpdate()
+            game.onFixedUpdate()
             gfx.updateCamera(dt.toFloat())
 
             updated = true
@@ -177,25 +192,29 @@ class PulseEngine(
             data.fixedUpdateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
     }
 
-    private fun render(game: Game)
+    private fun render(game: PulseEngineGame)
     {
         val startTime = glfwGetTime()
         data.interpolation = fixedUpdateAccumulator.toFloat() / data.fixedDeltaTime
         entity.render(this)
-        game.render()
-        widgets.forEach { it.render(this) }
+        game.onRender()
+        widgets.forEach { it.onRender(this) }
         gfx.postRender()
         window.swapBuffers()
         data.renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
-    private fun updateFps()
+    private fun syncFps()
     {
+        // Calculates a filtered frame rate
         val time = glfwGetTime()
         fpsFilter[frameCounter] = 1.0f / (time - fpsTimer).toFloat()
         frameCounter = (frameCounter + 1) % fpsFilter.size
         data.currentFps = fpsFilter.average().toInt()
         fpsTimer = time
+
+        // Limits framerate to defined target value
+        frameRateLimiter.sync(config.targetFps)
     }
 
     private fun updateInput()
@@ -211,7 +230,7 @@ class PulseEngine(
         input.requestFocus(focusArea)
     }
 
-    private fun cleanUp()
+    private fun destroy()
     {
         network.cleanUp()
         audio.cleanUp()
@@ -219,22 +238,5 @@ class PulseEngine(
         input.cleanUp()
         gfx.cleanUp()
         window.cleanUp()
-    }
-
-    companion object
-    {
-        // For simple games with single draw loop
-        inline fun draw(crossinline game: GameEngine.() -> Unit) = PulseEngine().run(object: Game()
-        {
-            override fun init() {}
-            override fun update() {}
-            override fun cleanup() {}
-            override fun render() = game.invoke(engine)
-        })
-
-        fun run(game: Game)
-        {
-            PulseEngine().run(game)
-        }
     }
 }

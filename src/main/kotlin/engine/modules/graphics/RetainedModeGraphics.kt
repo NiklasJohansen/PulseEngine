@@ -20,7 +20,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
-        graphicState.defaultFont = Font("/FiraSans-Regular.ttf","default_font", floatArrayOf(24f, 72f))
+        graphicState.defaultFont = Font("/engine/assets/FiraSans-Regular.ttf","default_font", floatArrayOf(24f, 72f))
         graphicState.textureArray = TextureArray(1024, 1024, 100)
 
         mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)

@@ -45,7 +45,7 @@ class Configuration : ConfigurationEngineInterface
 
     override fun init()
     {
-        load("/main.config")
+        load("/engine/config/application.cfg")
         creatorName = getString("creatorName")
         gameName = getString("gameName")
         targetFps = getInt("targetFps")

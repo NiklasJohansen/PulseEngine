@@ -1,6 +1,6 @@
 package engine.modules.entity
 
-import engine.GameEngine
+import engine.PulseEngine
 
 sealed class ComponentSystem(vararg val componentTypes: ComponentType<out Component>)
 {
@@ -16,17 +16,17 @@ sealed class ComponentSystem(vararg val componentTypes: ComponentType<out Compon
         }
     }
 
-    abstract fun tick(engine: GameEngine, entities: EntityCollection)
+    abstract fun tick(engine: PulseEngine, entities: EntityCollection)
 }
 
 abstract class LogicSystem(vararg types: ComponentType<out Component>) : ComponentSystem(*types)
 {
-    override fun tick(engine: GameEngine, entities: EntityCollection) = update(engine, entities)
-    abstract fun update(engine: GameEngine, entities: EntityCollection)
+    override fun tick(engine: PulseEngine, entities: EntityCollection) = update(engine, entities)
+    abstract fun update(engine: PulseEngine, entities: EntityCollection)
 }
 
 abstract class RenderSystem(vararg types: ComponentType<out Component>) : ComponentSystem(*types)
 {
-    override fun tick(engine: GameEngine, entities: EntityCollection) = render(engine, entities)
-    abstract fun render(engine: GameEngine, entities: EntityCollection)
+    override fun tick(engine: PulseEngine, entities: EntityCollection) = render(engine, entities)
+    abstract fun render(engine: PulseEngine, entities: EntityCollection)
 }

@@ -1,11 +1,11 @@
 package engine.widgets
 
-import engine.GameEngine
+import engine.PulseEngine
 
 interface Widget
 {
-    fun init(engine: GameEngine)
-    fun update(engine: GameEngine)
-    fun render(engine: GameEngine)
-    fun cleanup(engine: GameEngine)
+    fun onCreate(engine: PulseEngine)
+    fun onUpdate(engine: PulseEngine)
+    fun onRender(engine: PulseEngine)
+    fun onDestroy(engine: PulseEngine)
 }

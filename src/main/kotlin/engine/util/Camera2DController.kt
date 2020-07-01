@@ -1,6 +1,6 @@
 package engine.util
 
-import engine.GameEngine
+import engine.PulseEngine
 import engine.data.Mouse
 import engine.modules.graphics.CameraInterface
 import kotlin.math.max
@@ -16,7 +16,7 @@ class Camera2DController(
     private var xPosChangeRate = 0f
     private var yPosChangeRate = 0f
 
-    fun update(engine: GameEngine, camera: CameraInterface? = null)
+    fun update(engine: PulseEngine, camera: CameraInterface? = null)
     {
         val cam = camera ?: engine.gfx.mainCamera
 

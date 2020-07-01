@@ -1,6 +1,6 @@
 package engine.modules.console
 
-import engine.GameEngine
+import engine.PulseEngine
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -15,12 +15,12 @@ annotation class ConsoleTarget(val description: String = "")
 
 object ConsoleUtil
 {
-    private const val PACKAGE_NAME = "engine";
+    private const val PACKAGE_NAME = "engine"
 
     /**
      * Registers top-level functions marked with a [ConsoleTarget] annotation
      */
-    fun registerConsoleFunctions(engine: GameEngine)
+    fun registerConsoleFunctions(engine: PulseEngine)
     {
         // Don't search for ConsoleTarget annotations in class paths containing the following
         val stringsToIgnore = listOf("$", "/kotlin", "/org/joml", "/org/lwjgl", "/jetbrains", "/intellij")
@@ -56,7 +56,7 @@ object ConsoleUtil
             }
     }
 
-    private fun registerConsoleFunctions(engine: GameEngine, className: String)
+    private fun registerConsoleFunctions(engine: PulseEngine, className: String)
     {
         try
         {

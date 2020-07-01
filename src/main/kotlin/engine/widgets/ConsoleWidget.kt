@@ -1,6 +1,6 @@
 package engine.widgets
 
-import engine.GameEngine
+import engine.PulseEngine
 import engine.data.*
 import engine.modules.console.CommandResult
 import engine.modules.console.MessageType
@@ -23,10 +23,10 @@ class ConsoleWidget : Widget
     private var suggestionCursor = -1
     private var area = FocusArea(0f, 0f, widthFraction, heightFraction)
 
-    override fun init(engine: GameEngine)
+    override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface2D("engineApp", 100)
-        engine.asset.loadFont("/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
+        engine.asset.loadFont("/engine/assets/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("showConsole") {
             active = !active
             if(active)
@@ -39,7 +39,7 @@ class ConsoleWidget : Widget
         area.update(0f, 0f, widthFraction * engine.window.width, heightFraction * engine.window.height)
     }
 
-    override fun update(engine: GameEngine)
+    override fun onUpdate(engine: PulseEngine)
     {
         ///////////////////////////////// Open/close terminal /////////////////////////////////
 
@@ -311,7 +311,7 @@ class ConsoleWidget : Widget
         }
     }
 
-    override fun render(engine: GameEngine)
+    override fun onRender(engine: PulseEngine)
     {
         // Dont render if console is not active
         if(!active)
@@ -445,7 +445,7 @@ class ConsoleWidget : Widget
     private fun StringBuilder.remove(index: Int) =
         this.set(this.removeRange(IntRange(index, index)))
 
-    override fun cleanup(engine: GameEngine) { }
+    override fun onDestroy(engine: PulseEngine) { }
 
     companion object
     {
