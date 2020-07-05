@@ -1,0 +1,26 @@
+package no.njoh.pulseengine.modules.graphics.postprocessing.effects
+
+import no.njoh.pulseengine.data.Texture
+import no.njoh.pulseengine.modules.graphics.ShaderProgram
+import no.njoh.pulseengine.modules.graphics.Surface
+import no.njoh.pulseengine.modules.graphics.postprocessing.SinglePassEffect
+
+class MultiplyEffect(
+    private val baseSurface: Surface
+) : SinglePassEffect() {
+    override fun loadShaderProgram(): ShaderProgram =
+        ShaderProgram.create(
+            vertexShaderFileName = "/pulseengine/shaders/effects/textureMultiplyBlend.vert",
+            fragmentShaderFileName = "/pulseengine/shaders/effects/textureMultiplyBlend.frag"
+        )
+
+    override fun applyEffect(texture: Texture): Texture
+    {
+        fbo.bind()
+        program.bind()
+        renderer.render(baseSurface.getTexture(), texture)
+        fbo.release()
+
+        return fbo.texture
+    }
+}

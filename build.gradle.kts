@@ -62,7 +62,7 @@ val sourcesJar by tasks.creating(Jar::class) {
 
 val jar by tasks.getting(Jar::class) {
     manifest {
-        attributes["Main-Class"] = "game.example.ConsoleExampleKt"
+        attributes["Main-Class"] = "testbed.TestbedKt"
     }
     exclude( "**/*.kotlin_metadata", "**/*.kotlin_module", "**/*.kotlin_builtins")
     from({ configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) } })

@@ -1,7 +1,7 @@
 package testbed
 
-import engine.PulseEngine
-import engine.modules.PulseEngineGame
+import no.njoh.pulseengine.PulseEngine
+import no.njoh.pulseengine.modules.PulseEngineGame
 
 fun main() = PulseEngine.run(Testbed::class)
 
