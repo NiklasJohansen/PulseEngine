@@ -9,8 +9,11 @@ class Testbed : PulseEngineGame()
 {
     override fun onCreate()
     {
-        engine.window.title = "Testbed"
+        engine.window.title = "Pulse Engine - Testbed"
+        engine.config.creatorName = "PulseEngine"
+        engine.config.gameName = "Testbed"
         engine.config.targetFps = 120
+        engine.console.runScript("/pulseengine/scripts/defaultKeyBindings.ps")
     }
 
     override fun onUpdate()

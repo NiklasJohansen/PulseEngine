@@ -101,6 +101,15 @@ class PulseEngineImplementation(
             }
         }
 
+        // Update save directory based on creator and game name
+        config.setOnChanged { property, value ->
+            when (property.name)
+            {
+                config::creatorName.name -> data.updateSaveDirectory(config.creatorName, config.gameName)
+                config::gameName.name -> data.updateSaveDirectory(config.creatorName, config.gameName)
+            }
+        }
+
         // Sets the active input implementation
         input.setOnFocusChanged { hasFocus ->
             input = if (hasFocus) activeInput else idleInput
@@ -114,9 +123,6 @@ class PulseEngineImplementation(
     {
         // Load assets from disk
         asset.loadInitialAssets()
-
-        // Run startup script
-        console.run("run /pulseengine/scripts/startup.ps")
     }
 
     fun run(game: PulseEngineGame)

@@ -9,6 +9,7 @@ interface ConsoleInterface
 {
     fun registerCommand(template: String, description: String = "", isAlias: Boolean = false, block: CommandArguments.() -> CommandResult)
     fun run(commandString: String, showCommand: Boolean = true): List<CommandResult>
+    fun runScript(filename: String)
     fun log(text: String, type: MessageType = MessageType.INFO)
     fun getHistory(index: Int, type: MessageType): ConsoleEntry?
     fun getHistory(): List<ConsoleEntry>
@@ -94,6 +95,11 @@ class Console : ConsoleEngineInterface
 
                 return@map result
             }
+    }
+
+    override fun runScript(filename: String)
+    {
+        run("run $filename")
     }
 
     override fun log(text: String, type: MessageType)

@@ -40,6 +40,7 @@ abstract class DataInterface
 abstract class DataEngineInterface : DataInterface()
 {
     abstract fun init(creatorName: String, gameName: String)
+    abstract fun updateSaveDirectory(creatorName: String, gameName: String)
 }
 
 class MutableDataContainer : DataEngineInterface()
@@ -66,7 +67,7 @@ class MutableDataContainer : DataEngineInterface()
 
     override fun init(creatorName: String, gameName: String)
     {
-        saveDirectory = createAndGetDefaultSaveDirectory(creatorName, gameName)
+        updateSaveDirectory(creatorName, gameName)
     }
 
     override fun addSource(name: String, unit: String, source: () -> Float)
@@ -124,14 +125,12 @@ class MutableDataContainer : DataEngineInterface()
         }
     }
 
-    private fun createAndGetDefaultSaveDirectory(creatorName: String, gameName: String): String =
+    override fun updateSaveDirectory(creatorName: String, gameName: String) =
         javax.swing.JFileChooser().fileSystemView.defaultDirectory
             .toString()
             .let {
                 val file = File("$it/$creatorName/$gameName")
-                if (!file.isDirectory)
-                    file.mkdirs()
-                file.absolutePath
+                saveDirectory = file.absolutePath
             }
 
     inline fun measureAndUpdateTimeStats(block: () -> Unit)
