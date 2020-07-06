@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.graphics
 import no.njoh.pulseengine.data.Font
 import no.njoh.pulseengine.data.Texture
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
+import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.forEachFiltered
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
@@ -37,7 +38,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun cleanUp()
     {
-        println("Cleaning up graphics...")
+        Logger.info("Cleaning up graphics...")
         graphicState.cleanup()
         surfaces.forEach { it.cleanup() }
     }

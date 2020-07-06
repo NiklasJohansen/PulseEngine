@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.graphics
 
+import no.njoh.pulseengine.util.Logger
 import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL15.*
 import org.lwjgl.system.MemoryUtil
@@ -34,7 +35,7 @@ sealed class BufferObject(
 
     private fun changeSize(size: Long)
     {
-        println("Changing buffer object capacity from $maxSize to: $size bytes (${"${size/1_000_000f}".format("%.2f")} MB)")
+        Logger.debug("Changing buffer object capacity from $maxSize to: $size bytes (${"${size/1_000_000f}".format("%.2f")} MB)")
         maxSize = size
         glBindBuffer(target, id)
         glBufferData(target, maxSize, usage)

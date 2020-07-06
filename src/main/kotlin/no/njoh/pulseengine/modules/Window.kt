@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules
 import no.njoh.pulseengine.data.ScreenMode
 import no.njoh.pulseengine.data.ScreenMode.FULLSCREEN
 import no.njoh.pulseengine.data.ScreenMode.WINDOWED
+import no.njoh.pulseengine.util.Logger
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWErrorCallback
 import org.lwjgl.glfw.GLFWWindowSizeCallback
@@ -50,7 +51,7 @@ class Window : WindowEngineInterface
 
     override fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
     {
-        println("Initializing Window...")
+        Logger.info("Initializing Window...")
 
         if (!glfwInit())
             throw IllegalStateException("Unable to initialize GLFW")
@@ -141,7 +142,7 @@ class Window : WindowEngineInterface
 
     override fun cleanUp()
     {
-        println("Cleaning up window...")
+        Logger.info("Cleaning up window...")
         glfwSetErrorCallback(null)
         glfwDestroyWindow(windowHandle)
         glfwTerminate()

@@ -2,6 +2,9 @@ package testbed
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.PulseEngineGame
+import no.njoh.pulseengine.util.LogLevel
+import no.njoh.pulseengine.util.LogTarget
+import no.njoh.pulseengine.util.Logger
 
 fun main() = PulseEngine.run(Testbed::class)
 

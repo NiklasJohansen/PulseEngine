@@ -1,5 +1,7 @@
 package no.njoh.pulseengine.modules
 
+import no.njoh.pulseengine.util.Logger
+
 // Exposed to game code
 interface NetworkInterface
 {
@@ -17,17 +19,17 @@ class Network : NetworkEngineInterface
 {
     override fun init()
     {
-        println("Initializing network...")
+        Logger.info("Initializing network...")
     }
 
     override fun startServer(address: String, port: String)
     {
-        println("Starting server on address: $address:$port")
+        Logger.info("Starting server on address: $address:$port")
     }
 
     override fun cleanUp()
     {
-        println("Cleaning up network...")
+        Logger.info("Cleaning up network...")
     }
 }
 

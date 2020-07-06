@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules
 import no.njoh.pulseengine.data.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import no.njoh.pulseengine.util.Logger
 
 // Exposed to game code
 interface AssetManagerInterface
@@ -62,12 +63,12 @@ class AssetManager : AssetManagerEngineInterface
 
     override fun loadInitialAssets()
     {
-        println("Loading assets...")
+        Logger.info("Loading assets...")
         runBlocking {
             assets.values.forEach {
                 launch {
                     it.load()
-                    println("Loaded asset: ${it.name}")
+                    Logger.info("Loaded asset: ${it.name}")
                 }
             }
         }
@@ -92,7 +93,7 @@ class AssetManager : AssetManagerEngineInterface
 
     override fun cleanUp()
     {
-        println("Cleaning up assets...")
+        Logger.info("Cleaning up assets...")
         assets.values.forEach { it.delete() }
     }
 }

@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules
 
 import no.njoh.pulseengine.data.Sound
+import no.njoh.pulseengine.util.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.*
 import org.lwjgl.openal.AL10.*
@@ -56,7 +57,7 @@ class Audio : AudioEngineInterface
 
     override fun init()
     {
-        println("Initializing audio...")
+        Logger.info("Initializing audio...")
 
         // Use default output device
         setupDevice(alcOpenDevice(null as ByteBuffer?))
@@ -83,13 +84,13 @@ class Audio : AudioEngineInterface
         attributes.flip()
 
         if (!SOFTHRTF.alcResetDeviceSOFT(device, attributes))
-            println("Failed to reset device: ${ alcGetString(device, alcGetError(device)) }")
+            Logger.error("Failed to reset device: ${ alcGetString(device, alcGetError(device)) }")
 
         val hrtfState = ALC10.alcGetInteger(device, SOFTHRTF.ALC_HRTF_SOFT)
         if (hrtfState == 0)
-            println("HRTF not enabled")
+            Logger.warn("HRTF not enabled")
         else
-            println("HRTF enabled, using ${ alcGetString(device, SOFTHRTF.ALC_HRTF_SPECIFIER_SOFT) }")
+            Logger.info("HRTF enabled, using ${ alcGetString(device, SOFTHRTF.ALC_HRTF_SPECIFIER_SOFT) }")
 
         this.device = device
     }
@@ -144,10 +145,10 @@ class Audio : AudioEngineInterface
 
     override fun setOutputDevice(deviceName: String)
     {
-        println("Setting output device: $deviceName")
+        Logger.info("Setting output device: $deviceName")
         val device = alcOpenDevice(deviceName)
         if (device == NULL)
-            println("Failed to set output device: $deviceName")
+            Logger.error("Failed to set output device: $deviceName")
         else
         {
             alcDestroyContext(context)

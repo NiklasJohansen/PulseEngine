@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules
 import no.njoh.pulseengine.data.*
+import no.njoh.pulseengine.util.Logger
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*
 import java.nio.ByteBuffer
@@ -76,7 +77,7 @@ class Input : InputEngineInterface
 
     override fun init(windowHandle: Long)
     {
-        println("Initializing input...")
+        Logger.info("Initializing input...")
         this.windowHandle = windowHandle
 
         glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
@@ -121,9 +122,9 @@ class Input : InputEngineInterface
             if (glfwJoystickIsGamepad(jid))
             {
                 if (event == GLFW_CONNECTED)
-                    gamepads.add(Gamepad(jid)).also { println("Added joystick: $jid") }
+                    gamepads.add(Gamepad(jid)).also { Logger.info("Added joystick: $jid") }
                 else if(event == GLFW_DISCONNECTED)
-                    gamepads.removeIf { it.id == jid }.also { println("Removed joystick: $jid") }
+                    gamepads.removeIf { it.id == jid }.also { Logger.info("Removed joystick: $jid") }
             }
         }
 
@@ -224,7 +225,7 @@ class Input : InputEngineInterface
 
     override fun cleanUp()
     {
-        println("Cleaning up input...")
+        Logger.info("Cleaning up input...")
         glfwFreeCallbacks(windowHandle)
     }
 }

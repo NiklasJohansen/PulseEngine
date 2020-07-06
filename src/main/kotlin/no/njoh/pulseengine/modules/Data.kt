@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import de.undercouch.bson4jackson.BsonFactory
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import no.njoh.pulseengine.util.Logger
 import org.lwjgl.glfw.GLFW.*
 import java.io.File
 
@@ -91,7 +92,7 @@ class MutableDataContainer : DataEngineInterface()
 
             true
         }
-        .onFailure { System.err.println("Failed to save file: $fileName - reason: ${it.message}"); }
+        .onFailure { Logger.error("Failed to save file: $fileName - reason: ${it.message}"); }
         .getOrDefault(false)
 
     override fun <T> loadState(fileName: String, type: Class<T>, fromClassPath: Boolean): T? =
@@ -105,7 +106,7 @@ class MutableDataContainer : DataEngineInterface()
                     .readBytes()
                     .let { byteArray -> objectMapper.readValue(byteArray, type) }
         }
-        .onFailure { System.err.println("Failed to load file (fromClassPath=$fromClassPath): $fileName - reason: ${it.message}") }
+        .onFailure { Logger.error("Failed to load file (fromClassPath=$fromClassPath): $fileName - reason: ${it.message}") }
         .getOrNull()
 
     override fun <T> saveStateAsync(data: T, fileName: String, onComplete: (T) -> Unit)

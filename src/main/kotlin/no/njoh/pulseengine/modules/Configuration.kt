@@ -2,7 +2,9 @@ package no.njoh.pulseengine.modules
 
 import no.njoh.pulseengine.data.ScreenMode
 import no.njoh.pulseengine.data.ScreenMode.WINDOWED
+import no.njoh.pulseengine.data.Text
 import no.njoh.pulseengine.modules.console.ConsoleTarget
+import no.njoh.pulseengine.util.Logger
 import java.lang.Exception
 import java.util.*
 import kotlin.reflect.KProperty
@@ -67,10 +69,10 @@ class Configuration : ConfigurationEngineInterface
         try {
             javaClass.getResourceAsStream(fileName)
                 ?.let {
-                    println("Loading configuration from file: $fileName ...")
+                    Logger.info("Loading configuration from file: $fileName ...")
                     properties.load(it)
-                } ?: println("Configuration file: $fileName was not found")
-        } catch (e: Exception) { System.err.println("Failed to load configuration: $fileName, reason: ${e.message}") }
+                } ?: Logger.warn("Configuration file: $fileName was not found")
+        } catch (e: Exception) { Logger.error("Failed to load configuration: $fileName, reason: ${e.message}") }
 
     override fun getString(name: String): String? =
         try { properties[name] as String? }

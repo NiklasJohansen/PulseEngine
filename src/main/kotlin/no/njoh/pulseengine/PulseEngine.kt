@@ -1,12 +1,9 @@
 package no.njoh.pulseengine
 
+import no.njoh.pulseengine.data.*
 import no.njoh.pulseengine.widgets.ConsoleWidget
 import no.njoh.pulseengine.widgets.Widget
 import no.njoh.pulseengine.widgets.GraphWidget
-import no.njoh.pulseengine.data.FocusArea
-import no.njoh.pulseengine.data.Font
-import no.njoh.pulseengine.data.Sound
-import no.njoh.pulseengine.data.Texture
 import no.njoh.pulseengine.modules.*
 import no.njoh.pulseengine.modules.console.Console
 import no.njoh.pulseengine.modules.entity.EntityManager
@@ -65,6 +62,8 @@ class PulseEngineImplementation(
 
     private fun preGameCreate()
     {
+        printLogo()
+
         // Initialize engine components
         config.init()
         data.init(config.creatorName, config.gameName)
@@ -218,6 +217,13 @@ class PulseEngineImplementation(
         // Give game area input focus
         input.requestFocus(focusArea)
     }
+
+    private fun printLogo() =
+        Text("/pulseengine/assets/logo.txt", "logo")
+            .let {
+                it.load()
+                println("${it.text}\n")
+            }
 
     private fun destroy()
     {

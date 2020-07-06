@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules.entity
 
 import no.njoh.pulseengine.PulseEngine
+import no.njoh.pulseengine.util.Logger
 import kotlin.collections.ArrayList
 
 typealias EntityId = Int
@@ -49,7 +50,7 @@ class EntityManager(
     private fun initSystem(system: ComponentSystem)
     {
         system.updateComponentSignature()
-        println("Registered ${system::class.java.simpleName} to handle entities with components [${system.componentTypes.joinToString { it.type.simpleName }}]")
+        Logger.info("Registered ${system::class.java.simpleName} to handle entities with components [${system.componentTypes.joinToString { it.type.simpleName }}]")
     }
 
     override fun createWith(vararg componentTypes: ComponentType<out Component>): Entity?
