@@ -9,7 +9,7 @@ import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
 import java.nio.ShortBuffer
 
-class Sound(fileName: String, override val name: String) : Asset(fileName, name)
+class Sound(fileName: String, override val name: String) : Asset(name, fileName)
 {
     private lateinit var buffer: ShortBuffer
     private var format: Int = AL10.AL_FORMAT_MONO16
@@ -33,7 +33,7 @@ class Sound(fileName: String, override val name: String) : Asset(fileName, name)
 
     private fun readVorbis(resource: String?, info: STBVorbisInfo): ShortBuffer
     {
-        val bytes = Font::class.java.getResource(resource).readBytes()
+        val bytes = Sound::class.java.getResource(resource).readBytes()
         val byteBuffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer
 
         val error = IntArray(1)
