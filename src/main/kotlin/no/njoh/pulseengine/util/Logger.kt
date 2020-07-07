@@ -27,7 +27,7 @@ object Logger
 
     private fun log(text: String, level: LogLevel)
     {
-        if (level < logLevel)
+        if (level == OFF || level < logLevel)
             return
 
         when (logTarget)
@@ -47,8 +47,9 @@ object Logger
             INFO -> MessageType.INFO
             WARN -> MessageType.WARN
             ERROR -> MessageType.ERROR
+            else -> MessageType.INFO
         }
-        PulseEngine.GLOBAL_INSTANCE.console.log("$levelText [$time] $text", messageType)
+        PulseEngine.GLOBAL_INSTANCE.console.log("$levelText [$time]  $text", messageType)
     }
 
     private fun logToStandardOut(text: String, level: LogLevel)
@@ -61,8 +62,9 @@ object Logger
             INFO -> RESET
             WARN -> YELLOW
             ERROR -> RED
+            else -> RESET
         }
-        println("${levelColor}$levelText ${WHITE}[$time]$RESET $text")
+        println("${levelColor}$levelText ${WHITE}[$time]$RESET  $text")
     }
 }
 
@@ -71,7 +73,8 @@ enum class LogLevel
     DEBUG,
     INFO,
     WARN,
-    ERROR
+    ERROR,
+    OFF
 }
 
 enum class LogTarget

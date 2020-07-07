@@ -2,8 +2,8 @@ package no.njoh.pulseengine.modules
 
 import no.njoh.pulseengine.data.ScreenMode
 import no.njoh.pulseengine.data.ScreenMode.WINDOWED
-import no.njoh.pulseengine.data.Text
 import no.njoh.pulseengine.modules.console.ConsoleTarget
+import no.njoh.pulseengine.util.LogLevel
 import no.njoh.pulseengine.util.Logger
 import java.lang.Exception
 import java.util.*
@@ -52,12 +52,6 @@ class Configuration : ConfigurationEngineInterface
     override fun init()
     {
         load("/application.cfg")
-        getString("creatorName")?.let { creatorName = it }
-        getString("gameName")?.let { gameName = it }
-        getInt("targetFps")?.let { targetFps = it }
-        getInt("windowWidth")?.let { windowWidth = it }
-        getInt("windowHeight")?.let { windowHeight = it }
-        getString("screenMode")?.let { ScreenMode.valueOf(it.toUpperCase()) }
     }
 
     override fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
@@ -69,10 +63,22 @@ class Configuration : ConfigurationEngineInterface
         try {
             javaClass.getResourceAsStream(fileName)
                 ?.let {
-                    Logger.info("Loading configuration from file: $fileName ...")
                     properties.load(it)
+                    applyConfigProperties()
+                    Logger.info("Configuration file: $fileName was loaded successfully")
                 } ?: Logger.warn("Configuration file: $fileName was not found")
         } catch (e: Exception) { Logger.error("Failed to load configuration: $fileName, reason: ${e.message}") }
+
+    private fun applyConfigProperties()
+    {
+        getString("logLevel")?.let { Logger.logLevel = LogLevel.valueOf(it.toUpperCase()) }
+        getString("creatorName")?.let { creatorName = it }
+        getString("gameName")?.let { gameName = it }
+        getInt("targetFps")?.let { targetFps = it }
+        getInt("windowWidth")?.let { windowWidth = it }
+        getInt("windowHeight")?.let { windowHeight = it }
+        getString("screenMode")?.let { ScreenMode.valueOf(it.toUpperCase()) }
+    }
 
     override fun getString(name: String): String? =
         try { properties[name] as String? }
