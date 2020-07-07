@@ -15,7 +15,7 @@ object Logger
     private const val YELLOW = "\u001B[33m"
     private const val BLUE = "\u001B[34m"
     private const val WHITE = "\u001B[37m"
-    private val TIME_FORMAT = DateTimeFormatter.ofPattern("hh:mm:ss.SS")
+    private val TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss.SS")
 
     var logLevel = DEBUG
     var logTarget = STDOUT
