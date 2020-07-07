@@ -16,7 +16,7 @@ class Testbed : PulseEngineGame()
         engine.config.creatorName = "PulseEngine"
         engine.config.gameName = "Testbed"
         engine.config.targetFps = 120
-        engine.console.runScript("/pulseengine/scripts/defaultKeyBindings.ps")
+        engine.console.runScript("/testbed/startup.ps")
     }
 
     override fun onUpdate()
