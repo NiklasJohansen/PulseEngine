@@ -7,6 +7,7 @@ import no.njoh.pulseengine.util.LogLevel
 import no.njoh.pulseengine.util.Logger
 import java.lang.Exception
 import java.util.*
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 // Exposed to game and engine
@@ -21,6 +22,7 @@ interface ConfigurationInterface
     fun getString(name: String): String?
     fun getInt(name: String): Int?
     fun getBool(name: String): Boolean?
+    fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T?
 }
 
 // Exposed to engine
@@ -72,12 +74,6 @@ class Configuration : ConfigurationEngineInterface
     private fun applyConfigProperties()
     {
         getString("logLevel")?.let { Logger.logLevel = LogLevel.valueOf(it.toUpperCase()) }
-        getString("creatorName")?.let { creatorName = it }
-        getString("gameName")?.let { gameName = it }
-        getInt("targetFps")?.let { targetFps = it }
-        getInt("windowWidth")?.let { windowWidth = it }
-        getInt("windowHeight")?.let { windowHeight = it }
-        getString("screenMode")?.let { ScreenMode.valueOf(it.toUpperCase()) }
     }
 
     override fun getString(name: String): String? =
@@ -90,6 +86,10 @@ class Configuration : ConfigurationEngineInterface
 
     override fun getBool(name: String): Boolean? =
         try { properties[name]?.toString()?.toBoolean() }
+        catch (e: Exception) { throw Exception("Failed to find or parse Boolean property: $name") }
+
+    override fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T? =
+        try { java.lang.Enum.valueOf(type.java, properties[name].toString()) }
         catch (e: Exception) { throw Exception("Failed to find or parse Boolean property: $name") }
 
     inner class StringConfig(private val initValue: String)
