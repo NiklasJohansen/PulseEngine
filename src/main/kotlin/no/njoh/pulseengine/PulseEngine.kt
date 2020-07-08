@@ -122,6 +122,9 @@ class PulseEngineImplementation(
     {
         // Load assets from disk
         asset.loadInitialAssets()
+
+        // Run startup script
+        console.runScript("/startup.ps")
     }
 
     fun run(game: PulseEngineGame)
