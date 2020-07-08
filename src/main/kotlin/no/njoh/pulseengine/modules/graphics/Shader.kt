@@ -12,7 +12,7 @@ class Shader(val id: Int, val type: ShaderType)
         fun load(fileName: String, type: ShaderType) : Shader
         {
             val source = Shader::class.java.getResource(fileName).readText()
-            val id = glCreateShader(when(type)
+            val id = glCreateShader(when (type)
             {
                 ShaderType.FRAGMENT -> GL_FRAGMENT_SHADER
                 ShaderType.VERTEX -> GL_VERTEX_SHADER

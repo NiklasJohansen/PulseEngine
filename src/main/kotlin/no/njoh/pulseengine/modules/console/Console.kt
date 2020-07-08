@@ -41,7 +41,7 @@ class Console : ConsoleEngineInterface
             description = "Lists all available commands if no specific command name is given."
         ) {
             val commandName = getOptionalString("command")
-            if(commandName != null)
+            if (commandName != null)
             {
                 val command = commandMap[commandName.toLowerCase()]
                     ?: return@registerCommand CommandResult("No command with name: $commandName", MessageType.ERROR)
@@ -66,7 +66,7 @@ class Console : ConsoleEngineInterface
         val baseCommand = template.getCleanBaseCommand()
         val arguments = getTemplateArguments(template)
 
-        if(commandMap.containsKey(baseCommand))
+        if (commandMap.containsKey(baseCommand))
             log("Overwriting already existing command with name $baseCommand", MessageType.WARN)
 
         commandMap[baseCommand] = Command(baseCommand, template, description, arguments, block, isAlias)
@@ -90,7 +90,7 @@ class Console : ConsoleEngineInterface
                 commandEntry.visible = showCommand && result.showCommand
 
                 // Add result to history
-                if(result.message.isNotEmpty())
+                if (result.message.isNotEmpty())
                     history.add(ConsoleEntry(result.message, true, result.type))
 
                 return@map result
@@ -109,7 +109,7 @@ class Console : ConsoleEngineInterface
 
     private fun runCommand(command: String): CommandResult
     {
-        if(command.isBlank())
+        if (command.isBlank())
             return CommandResult("")
 
         // Clean command string
@@ -135,7 +135,7 @@ class Console : ConsoleEngineInterface
         var foundIndex = 0
         for (i in history.lastIndex downTo  0)
         {
-            if(history[i].type == type && foundIndex++ == index)
+            if (history[i].type == type && foundIndex++ == index)
                 return history[i]
         }
         return null
@@ -169,7 +169,7 @@ class Console : ConsoleEngineInterface
             .filter { it.index < commandWords.size && !argMap.contains(it.name)}
             .forEach { argTemplate ->
                 val word = commandWords[argTemplate.index]
-                if(!word.isVerboseArgument(command))
+                if (!word.isVerboseArgument(command))
                     argMap[argTemplate.name] = word.getTypedValue(argTemplate.type, argTemplate.name)
             }
 
@@ -204,7 +204,7 @@ class Console : ConsoleEngineInterface
 
             val value = this.cleanStringLiteral().trim()
 
-            return when(type.toLowerCase())
+            return when (type.toLowerCase())
             {
                 "string" -> value
                 "int" -> value.toInt()

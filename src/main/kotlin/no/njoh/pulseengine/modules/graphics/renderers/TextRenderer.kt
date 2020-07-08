@@ -17,8 +17,8 @@ class TextRenderer
 
     fun draw(surface: Surface2D, text: String, x: Float, y: Float, font: Font, fontSize: Float, xOrigin: Float, yOrigin: Float)
     {
-        val fontIndex = if(fontSize != -1f) font.fontSizes.indexOf(fontSize) else 0
-        if(fontIndex == -1)
+        val fontIndex = if (fontSize != -1f) font.fontSizes.indexOf(fontSize) else 0
+        if (fontIndex == -1)
             throw IllegalArgumentException("Font size $fontSize not among available sizes [${font.fontSizes.joinToString()}] in font asset: ${font.name}")
 
         val charData = font.charData

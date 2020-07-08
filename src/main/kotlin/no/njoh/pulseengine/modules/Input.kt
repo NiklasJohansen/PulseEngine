@@ -81,10 +81,10 @@ class Input : InputEngineInterface
         this.windowHandle = windowHandle
 
         glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
-            if(key >= 0)
+            if (key >= 0)
             {
-                clicked[key] = if(action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
-                if(action == GLFW_PRESS && onKeyPressedCallbacks.isNotEmpty())
+                clicked[key] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
+                if (action == GLFW_PRESS && onKeyPressedCallbacks.isNotEmpty())
                 {
                     Key.values()
                         .find { it.code == key }
@@ -109,8 +109,8 @@ class Input : InputEngineInterface
         }
 
         glfwSetMouseButtonCallback(windowHandle) { window, button, action, mods ->
-            clicked[button] = if(action == GLFW_PRESS) 1 else -1
-            if(action == GLFW_PRESS && focusStack.isNotEmpty())
+            clicked[button] = if (action == GLFW_PRESS) 1 else -1
+            if (action == GLFW_PRESS && focusStack.isNotEmpty())
             {
                 focusStack
                     .lastOrNull { it.isInside(xMouse, yMouse) }
@@ -123,7 +123,7 @@ class Input : InputEngineInterface
             {
                 if (event == GLFW_CONNECTED)
                     gamepads.add(Gamepad(jid)).also { Logger.info("Added joystick: $jid") }
-                else if(event == GLFW_DISCONNECTED)
+                else if (event == GLFW_DISCONNECTED)
                     gamepads.removeIf { it.id == jid }.also { Logger.info("Removed joystick: $jid") }
             }
         }
@@ -165,7 +165,7 @@ class Input : InputEngineInterface
 
     override fun acquireFocus(focusArea: FocusArea)
     {
-        if(focusArea != currentFocusArea)
+        if (focusArea != currentFocusArea)
         {
             previousFocusArea = currentFocusArea
             currentFocusArea = focusArea
@@ -174,7 +174,7 @@ class Input : InputEngineInterface
 
     override fun requestFocus(focusArea: FocusArea)
     {
-        if(focusArea !in focusStack)
+        if (focusArea !in focusStack)
             focusStack.add(focusArea)
 
         onFocusChangedCallback.invoke(hasFocus(focusArea))
@@ -194,9 +194,9 @@ class Input : InputEngineInterface
 
     override fun setCursor(cursorType: CursorType)
     {
-        if(cursorType != currentCursorType)
+        if (cursorType != currentCursorType)
         {
-            if(cursorHandle != -1L)
+            if (cursorHandle != -1L)
                 glfwDestroyCursor(cursorHandle)
 
             cursorHandle = glfwCreateStandardCursor(cursorType.code)

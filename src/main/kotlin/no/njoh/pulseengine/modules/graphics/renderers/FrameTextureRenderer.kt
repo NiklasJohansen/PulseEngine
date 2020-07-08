@@ -39,7 +39,7 @@ class FrameTextureRenderer(private val program: ShaderProgram)
 
         program.bind()
 
-        for((i, tex) in texture.withIndex())
+        for ((i, tex) in texture.withIndex())
         {
             glActiveTexture(GL_TEXTURE0 + i)
             glBindTexture(GL_TEXTURE_2D, tex.id)
@@ -47,7 +47,7 @@ class FrameTextureRenderer(private val program: ShaderProgram)
 
         glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
 
-        for(i in texture.indices)
+        for (i in texture.indices)
         {
             glActiveTexture(GL_TEXTURE0 + i)
             glBindTexture(GL_TEXTURE_2D, 0)

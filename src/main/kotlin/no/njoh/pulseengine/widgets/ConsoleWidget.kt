@@ -29,7 +29,7 @@ class ConsoleWidget : Widget
         engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("showConsole") {
             active = !active
-            if(active)
+            if (active)
                 engine.input.acquireFocus(area)
             else
                 engine.input.releaseFocus(area)
@@ -43,7 +43,7 @@ class ConsoleWidget : Widget
     {
         ///////////////////////////////// Open/close terminal /////////////////////////////////
 
-        if(!active)
+        if (!active)
             return
 
         engine.input.requestFocus(area)
@@ -68,11 +68,11 @@ class ConsoleWidget : Widget
 
         ///////////////////////////////// Remove text with backspace /////////////////////////////////
 
-        if(engine.input.wasClicked(Key.BACKSPACE) && inputCursor >= 0)
+        if (engine.input.wasClicked(Key.BACKSPACE) && inputCursor >= 0)
         {
-            if(engine.input.isPressed(Key.LEFT_CONTROL))
+            if (engine.input.isPressed(Key.LEFT_CONTROL))
             {
-                if(engine.input.isPressed(Key.LEFT_SHIFT))
+                if (engine.input.isPressed(Key.LEFT_SHIFT))
                 {
                     // Remove all text (BACKSPACE + CTRL + SHIFT)
                     inputText.setLength(0)
@@ -116,7 +116,7 @@ class ConsoleWidget : Widget
                 // Removes selected text (DELETE)
                 removeSelectedText()
             }
-            else if(inputCursor < inputText.length)
+            else if (inputCursor < inputText.length)
             {
                 // Remove one single character to the right of cursor (DELETE)
                 inputText.remove(inputCursor)
@@ -127,7 +127,7 @@ class ConsoleWidget : Widget
 
         ///////////////////////////////// Select all text /////////////////////////////////
 
-        if(engine.input.isPressed(Key.LEFT_CONTROL) && engine.input.wasClicked(Key.A))
+        if (engine.input.isPressed(Key.LEFT_CONTROL) && engine.input.wasClicked(Key.A))
         {
             inputCursor = inputText.length
             selectCursor = 0
@@ -136,24 +136,24 @@ class ConsoleWidget : Widget
 
         ///////////////////////////////// Cut, Copy and Paste /////////////////////////////////
 
-        if(engine.input.isPressed(Key.LEFT_CONTROL))
+        if (engine.input.isPressed(Key.LEFT_CONTROL))
         {
-            if(isTextSelected())
+            if (isTextSelected())
             {
-                if(engine.input.wasClicked(Key.X))
+                if (engine.input.wasClicked(Key.X))
                 {
                     // Cut selected text and send to clipboard (CTRL + X)
                     engine.input.setClipboard(getSelectedText())
                     removeSelectedText()
                 }
-                else if(engine.input.wasClicked(Key.C))
+                else if (engine.input.wasClicked(Key.C))
                 {
                     // Send selected text to clipboard (CTRL + C)
                     engine.input.setClipboard(getSelectedText())
                 }
             }
 
-            if(engine.input.wasClicked(Key.V))
+            if (engine.input.wasClicked(Key.V))
             {
                 // Past text from clipboard into text box. Replaces selected text. (CTRL + V)
                 removeSelectedText()
@@ -171,7 +171,7 @@ class ConsoleWidget : Widget
         {
             if (!engine.input.isPressed(Key.LEFT_SHIFT) && isTextSelected())
             {
-                if(hasLeftToRightSelection())
+                if (hasLeftToRightSelection())
                 {
                     // Deselect text by moving cursor to left side of selection (LEFT)
                     inputCursor = selectCursor
@@ -208,7 +208,7 @@ class ConsoleWidget : Widget
         {
             if (!engine.input.isPressed(Key.LEFT_SHIFT) && isTextSelected())
             {
-                if(hasRightToLeftSelection())
+                if (hasRightToLeftSelection())
                 {
                     // Deselect text by moving cursor to right side of selection (RIGHT)
                     inputCursor = selectCursor
@@ -272,16 +272,16 @@ class ConsoleWidget : Widget
         if (engine.input.wasClicked(Key.TAB))
         {
             // Set text to be used for searching through suggestions
-            if(suggestionCursor == -1)
+            if (suggestionCursor == -1)
                 suggestionBaseText = inputText.toString()
 
             // Cycle through suggestions (TAB)
             val suggestions = engine.console.getSuggestions(suggestionBaseText)
-            if(suggestions.isNotEmpty())
+            if (suggestions.isNotEmpty())
             {
                 suggestionCursor = (suggestionCursor + 1) % suggestions.size
                 inputText.set(suggestions[suggestionCursor].base)
-                if(suggestions.size == 1)
+                if (suggestions.size == 1)
                     inputText.append(" ")
                 inputCursor = inputText.length
                 selectCursor = inputCursor
@@ -303,7 +303,7 @@ class ConsoleWidget : Widget
         }
 
         // Resize width of console window (MOUSE LEFT)
-        if(engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(Mouse.LEFT))
         {
             widthFraction = max(0f, min(1f, widthFraction + engine.input.xdMouse / engine.window.width))
             heightFraction = max(0f, min(1f, heightFraction + engine.input.ydMouse / engine.window.height))
@@ -314,7 +314,7 @@ class ConsoleWidget : Widget
     override fun onRender(engine: PulseEngine)
     {
         // Dont render if console is not active
-        if(!active)
+        if (!active)
             return
 
         val cliFont = engine.asset.get<Font>("cli_font")
@@ -344,9 +344,9 @@ class ConsoleWidget : Widget
         // Draw selection rectangle
         val selectionDistance = selectCursor - inputCursor
         val inBoxCursor = inputCursor - inputTextOffset
-        if(selectionDistance != 0)
+        if (selectionDistance != 0)
         {
-            val selectionStart = getTextWidth(inBoxCursor + if(selectionDistance > 0) 1 else 0)
+            val selectionStart = getTextWidth(inBoxCursor + if (selectionDistance > 0) 1 else 0)
             val selectionWidth = getTextWidth(selectionDistance.coerceIn(-inBoxCursor, charsPerLine - inBoxCursor - 1))
             surface.setDrawColor(0.2f, 0.4f, 1f, 0.9f)
             surface.drawQuad(TEXT_PADDING_X + selectionStart, height - INPUT_BOX_HEIGHT + INPUT_BOX_PADDING, selectionWidth, FONT_SIZE)
@@ -466,7 +466,7 @@ data class MessageColor(
         private val RED = MessageColor(1f, 0.2f, 0.2f)
         private val WHITE = MessageColor(1f, 1f, 1f)
         private val YELLOW = MessageColor(1f, 1f, 0.2f)
-        fun from(type: MessageType) = when(type)
+        fun from(type: MessageType) = when (type)
         {
             MessageType.COMMAND -> WHITE
             MessageType.INFO -> WHITE

@@ -66,10 +66,10 @@ object ConsoleUtil
                 .mapNotNull { it.kotlinFunction }
                 .filter { it.annotations.any { it.annotationClass == ConsoleTarget::class} }
 
-            for(func in functions)
+            for (func in functions)
             {
                 // Functions with parameters missing its name is bound to an instance and not top-level
-                if(func.parameters.any { it.name == null})
+                if (func.parameters.any { it.name == null})
                 {
                     engine.console.log("Cannot register function: ${func.name} in class $className. It is not a top-level function!", MessageType.WARN)
                     continue

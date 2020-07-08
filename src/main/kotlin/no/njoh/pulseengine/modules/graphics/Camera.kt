@@ -102,7 +102,7 @@ class Camera(
     override fun updateProjection(width: Int, height: Int, type: ProjectionType?)
     {
         projectionType = type ?: projectionType
-        projectionMatrix = when(projectionType)
+        projectionMatrix = when (projectionType)
         {
             ORTHOGRAPHIC -> Matrix4f().ortho(0.0f, width.toFloat(), height.toFloat(), 0.0f, nearPlane, farPlane)
         }

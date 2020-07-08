@@ -35,7 +35,7 @@ class Camera2DController(
             cam.yPos -= engine.input.yWorldMouse * yScaleDiff
         }
 
-        if(engine.input.isPressed(dragMouseKey))
+        if (engine.input.isPressed(dragMouseKey))
         {
             xPosChangeRate += engine.input.xdMouse * (1f - smoothing)
             yPosChangeRate += engine.input.ydMouse * (1f - smoothing)
