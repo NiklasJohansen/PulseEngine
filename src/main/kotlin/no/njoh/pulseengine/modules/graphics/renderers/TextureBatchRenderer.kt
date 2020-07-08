@@ -29,7 +29,7 @@ class TextureBatchRenderer(
             .withAttribute("texIndex",1, GL_FLOAT)
             .withAttribute("color",1, GL_FLOAT)
 
-        if(!this::program.isInitialized)
+        if (!this::program.isInitialized)
         {
             val capacity = initialCapacity * layout.stride * 4L
             vbo = BufferObject.createAndBind(capacity)
@@ -51,7 +51,7 @@ class TextureBatchRenderer(
         val vMin = texture.vMin
         val uMax = texture.uMax
         val vMax = texture.vMax
-        val texIndex = texture.id.toFloat() + if(texture.format == GL_ALPHA) 0.5f else 0.0f
+        val texIndex = texture.id.toFloat() + if (texture.format == GL_ALPHA) 0.5f else 0.0f
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
         val rgba = renderState.rgba
@@ -83,7 +83,7 @@ class TextureBatchRenderer(
         val vMax = texture.vMax * vMax
         val uMin = texture.uMax * uMin
         val vMin = texture.vMax * vMin
-        val index = texture.id.toFloat() + if(texture.format == GL_ALPHA) 0.5f else 0.0f
+        val index = texture.id.toFloat() + if (texture.format == GL_ALPHA) 0.5f else 0.0f
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
         val rgba = renderState.rgba
@@ -111,7 +111,7 @@ class TextureBatchRenderer(
 
     override fun render(camera: CameraEngineInterface)
     {
-        if(vertexCount == 0)
+        if (vertexCount == 0)
             return
 
         vao.bind()

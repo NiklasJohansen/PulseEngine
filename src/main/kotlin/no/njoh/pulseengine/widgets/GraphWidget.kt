@@ -51,7 +51,7 @@ class GraphWidget : Widget
 
     override fun onUpdate(engine: PulseEngine)
     {
-        if(!open) return
+        if (!open) return
 
         for (source in engine.data.dataSources.values)
         {
@@ -69,14 +69,14 @@ class GraphWidget : Widget
 
         if (engine.input.isPressed(Mouse.RIGHT))
         {
-            if(insideArea)
+            if (insideArea)
                 adjustingSize = true
         }
         else adjustingSize = false
 
-        if(engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(Mouse.LEFT))
         {
-            if(insideArea)
+            if (insideArea)
                 grabbed = true
         }
         else grabbed = false
@@ -102,7 +102,7 @@ class GraphWidget : Widget
 
     override fun onRender(engine: PulseEngine)
     {
-        if(!open) return
+        if (!open) return
 
         var x = xPos
         var y = yPos
@@ -121,7 +121,7 @@ class GraphWidget : Widget
         val surface = engine.gfx.getSurface2D("engineApp")
         val font = engine.asset.get<Font>("graph_font")
         
-        for(graph in graphs)
+        for (graph in graphs)
         {
             graph.render(surface, font, x, y, w, h)
             xMax = max(xMax, x + w + graphPadding)
@@ -172,13 +172,13 @@ class GraphWidget : Widget
             data[headCursor] = value
             headCursor = (headCursor + 1) % data.size
 
-            if(size() >= WINDOWS_LENGTH)
+            if (size() >= WINDOWS_LENGTH)
                 taleCursor = (taleCursor + 1) % data.size
         }
 
         fun render(surface: Surface2D, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
         {
-            val headerText = name + if(unit.isNotEmpty()) " ($unit)" else ""
+            val headerText = name + if (unit.isNotEmpty()) " ($unit)" else ""
 
             surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)
             surface.drawTexture(Texture.BLANK, xPos, yPos, width, height)
@@ -190,7 +190,7 @@ class GraphWidget : Widget
             val valueRange = (max - min)
             val nTicks = 4
             val tickLength = 8
-            val maxTickText = if(max < nTicks) "%.1f".format(Locale.US, max) else max.toInt().toString()
+            val maxTickText = if (max < nTicks) "%.1f".format(Locale.US, max) else max.toInt().toString()
             val tickTextSize = (2 + maxTickText.length) * (TICK_MARK_FONT_SIZE / 2f)
 
             val x = xPos + PADDING
@@ -212,10 +212,10 @@ class GraphWidget : Widget
                 val xTick = x + w - tickLength / 2
                 val yTick = y + (h / 2) + (h / 2) * fraction
                 val tickValue = min + (valueRange / 2f) - (valueRange / 2f) * fraction
-                val tickValueText = if(max < nTicks) "%.1f".format(Locale.US, tickValue) else tickValue.toInt().toString()
+                val tickValueText = if (max < nTicks) "%.1f".format(Locale.US, tickValue) else tickValue.toInt().toString()
 
                 // Guide line
-                if(i % 2 != 0)
+                if (i % 2 != 0)
                 {
                     surface.setDrawColor(1f, 1f, 1f, 0.01f)
                     surface.setDrawColor(0.3f, 0.3f, 0.3f, 1f)
@@ -249,7 +249,7 @@ class GraphWidget : Widget
                 i++
             }
 
-            val text = if(latestValue < 5) "%.2f".format(Locale.US, latestValue) else latestValue.toInt().toString()
+            val text = if (latestValue < 5) "%.2f".format(Locale.US, latestValue) else latestValue.toInt().toString()
             surface.drawText(text, x + 5, y + 22f, font = font, fontSize = VALUE_FONT_SIZE, yOrigin = 0.5f)
         }
 

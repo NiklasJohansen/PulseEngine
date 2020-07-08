@@ -78,13 +78,13 @@ class MutableDataContainer : DataEngineInterface()
 
     override fun exists(fileName: String): Boolean
     {
-        val file = File("$saveDirectory/$fileName")
+        val file = File("$saveDirectory$fileName")
         return file.exists() || file.isDirectory
     }
 
     override fun <T> saveState(data: T, fileName: String): Boolean =
         runCatching {
-            File("$saveDirectory/$fileName").let { file ->
+            File("$saveDirectory$fileName").let { file ->
                 if (!file.parentFile.exists())
                     file.parentFile.mkdirs()
                 file.writeBytes(objectMapper.writeValueAsBytes(data))
@@ -98,15 +98,15 @@ class MutableDataContainer : DataEngineInterface()
     override fun <T> loadState(fileName: String, type: Class<T>, fromClassPath: Boolean): T? =
         runCatching {
             if (fromClassPath)
-                MutableDataContainer::class.java.getResource("/$fileName")
+                MutableDataContainer::class.java.getResource(fileName)
                     .readBytes()
                     .let { byteArray -> objectMapper.readValue(byteArray, type) }
             else
-                File("$saveDirectory/$fileName")
+                File("$saveDirectory$fileName")
                     .readBytes()
                     .let { byteArray -> objectMapper.readValue(byteArray, type) }
         }
-        .onFailure { Logger.error("Failed to load file (fromClassPath=$fromClassPath): $fileName - reason: ${it.message}") }
+        .onFailure { Logger.error("Failed to load state (fromClassPath=$fromClassPath): $fileName - reason: ${it.message}") }
         .getOrNull()
 
     override fun <T> saveStateAsync(data: T, fileName: String, onComplete: (T) -> Unit)

@@ -87,7 +87,7 @@ sealed class BufferObject(
 
     abstract fun flipTypeBuffer()
     abstract fun setTypeBuffer()
-    abstract fun hasCapacityFor(elements: Int = 0): Boolean
+    abstract fun hasCapacityfor (elements: Int = 0): Boolean
 
     companion object
     {
@@ -107,7 +107,7 @@ sealed class BufferObject(
             glBindBuffer(target, id)
             glBufferData(target, size, usage)
 
-            return when(T::class)
+            return when (T::class)
             {
                 FloatBufferObject::class -> FloatBufferObject(id, target, usage, blockBinding, size) as T
                 IntBufferObject::class -> IntBufferObject(id, target, usage, blockBinding, size) as T
@@ -122,7 +122,7 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
 {
     private var floatBuffer: FloatBuffer = byteBuffer.asFloatBuffer()
 
-    override fun hasCapacityFor(elements: Int): Boolean = floatBuffer.position() + elements <= floatBuffer.capacity()
+    override fun hasCapacityfor (elements: Int): Boolean = floatBuffer.position() + elements <= floatBuffer.capacity()
 
     override fun setTypeBuffer()
     {
@@ -143,7 +143,7 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
 
     fun put(vararg values: Float): FloatBufferObject
     {
-        if (!hasCapacityFor(values.size))
+        if (!hasCapacityfor (values.size))
             growSize()
 
         for (v in values)
@@ -158,7 +158,7 @@ class IntBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxS
 {
     private var intBuffer: IntBuffer = byteBuffer.asIntBuffer()
 
-    override fun hasCapacityFor(elements: Int): Boolean = intBuffer.position() + elements < intBuffer.capacity()
+    override fun hasCapacityfor (elements: Int): Boolean = intBuffer.position() + elements < intBuffer.capacity()
 
     override fun setTypeBuffer()
     {
@@ -179,7 +179,7 @@ class IntBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxS
 
     fun put(vararg values: Int): IntBufferObject
     {
-        if (!hasCapacityFor(values.size))
+        if (!hasCapacityfor (values.size))
             growSize()
 
         for (v in values)
@@ -191,7 +191,7 @@ class IntBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxS
 
     fun put(v01: Int, v02: Int, v03: Int, v04: Int, v05: Int, v06: Int): IntBufferObject
     {
-        if (!hasCapacityFor(6))
+        if (!hasCapacityfor (6))
             growSize()
 
         intBuffer.put(v01)
@@ -208,7 +208,7 @@ class IntBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxS
 
 class ByteBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxSize: Long) : BufferObject(id, target, usage, blockBinding, maxSize)
 {
-    override fun hasCapacityFor(elements: Int): Boolean = byteBuffer.position() + elements < byteBuffer.capacity()
+    override fun hasCapacityfor (elements: Int): Boolean = byteBuffer.position() + elements < byteBuffer.capacity()
 
     override fun setTypeBuffer() { }
 

@@ -55,17 +55,17 @@ class EntityManager(
 
     override fun createWith(vararg componentTypes: ComponentType<out Component>): Entity?
     {
-        if(count >= maxEntities)
+        if (count >= maxEntities)
             return null
 
         var signature = 0L
         val components = arrayOfNulls<Component>(ComponentType.count)
-        for(type in componentTypes) {
+        for (type in componentTypes) {
             signature = signature or (1L shl type.index)
             components[type.index] = type.getInstance()
         }
 
-        val index = if(freeIndexesHead >= 0) freeIndexes[freeIndexesHead--] else ++entitiesHead
+        val index = if (freeIndexesHead >= 0) freeIndexes[freeIndexesHead--] else ++entitiesHead
         val entity = Entity(index, true, signature, components)
 
         count++
@@ -73,7 +73,7 @@ class EntityManager(
         return entity
     }
 
-    override fun get(id: EntityId): Entity? = if(id > -1 && id <= entitiesHead) entities[id] else null
+    override fun get(id: EntityId): Entity? = if (id > -1 && id <= entitiesHead) entities[id] else null
 
     override fun fixedUpdate(engine: PulseEngine)
     {
@@ -90,10 +90,10 @@ class EntityManager(
     {
         var lastSignature = -1L
         var entityCount = 0
-        for(system in systems)
+        for (system in systems)
         {
             val signature = system.componentSignature
-            if(signature == 0L)
+            if (signature == 0L)
             {
                 // An empty entity list is passed to systems that dont require any components
                 system.tick(engine, EMPTY_COLLECTION)
@@ -101,15 +101,15 @@ class EntityManager(
             }
 
             // Gathers all entities containing components required by the system
-            if(signature != lastSignature)
+            if (signature != lastSignature)
             {
                 lastSignature = signature
                 entityCount = 0
                 val last = entitiesHead
-                for(i in 0 .. last)
+                for (i in 0 .. last)
                 {
                     val entity = entities[i]
-                    if(entity != null && (signature and entity.signature) == signature)
+                    if (entity != null && (signature and entity.signature) == signature)
                         indexesToUpdate[entityCount++] = i
                 }
             }
@@ -122,14 +122,14 @@ class EntityManager(
     private fun removeDeadEntities()
     {
         val last = entitiesHead
-        for(i in last downTo 0)
+        for (i in last downTo 0)
         {
             val entity = entities[i]
-            if(entity != null && !entity.alive)
+            if (entity != null && !entity.alive)
             {
                 count--
                 entities[i] = null
-                if(i == entitiesHead)
+                if (i == entitiesHead)
                     entitiesHead--
                 else
                     freeIndexes[++freeIndexesHead] = i

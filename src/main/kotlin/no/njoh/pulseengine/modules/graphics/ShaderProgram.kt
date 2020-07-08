@@ -102,7 +102,7 @@ class ShaderProgram(val id: Int)
         fun create(vararg shaders: Shader): ShaderProgram
         {
             val programId = glCreateProgram()
-            for(shader in shaders)
+            for (shader in shaders)
                 glAttachShader(programId, shader.id)
 
             glBindFragDataLocation(programId, 0, "fragColor")

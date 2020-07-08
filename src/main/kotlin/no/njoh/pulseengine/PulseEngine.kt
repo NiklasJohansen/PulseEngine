@@ -82,7 +82,7 @@ class PulseEngineImplementation(
         window.setOnResizeEvent { w, h, windowRecreated ->
             gfx.updateViewportSize(w, h, windowRecreated)
             focusArea.update(0f, 0f, w.toFloat(), h.toFloat())
-            if(windowRecreated)
+            if (windowRecreated)
                 input.init(window.windowHandle)
         }
 
@@ -122,6 +122,9 @@ class PulseEngineImplementation(
     {
         // Load assets from disk
         asset.loadInitialAssets()
+
+        // Run startup script
+        console.runScript("/startup.ps")
     }
 
     fun run(game: PulseEngineGame)
@@ -162,7 +165,7 @@ class PulseEngineImplementation(
         val dt = 1.0 / config.fixedTickRate.toDouble()
         val time = glfwGetTime()
         var frameTime = time - data.fixedUpdateLastTime
-        if(frameTime > 0.25)
+        if (frameTime > 0.25)
             frameTime = 0.25
 
         data.fixedUpdateLastTime = time
@@ -183,7 +186,7 @@ class PulseEngineImplementation(
             input = activeInput
         }
 
-        if(updated)
+        if (updated)
             data.fixedUpdateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
     }
 

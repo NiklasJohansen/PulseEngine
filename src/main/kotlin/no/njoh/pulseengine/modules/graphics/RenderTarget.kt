@@ -8,7 +8,7 @@ class RenderTarget
 
     fun init(width: Int, height: Int)
     {
-        if(this::fbo.isInitialized)
+        if (this::fbo.isInitialized)
             fbo.delete()
 
         fbo = FrameBufferObject.create(width, height)

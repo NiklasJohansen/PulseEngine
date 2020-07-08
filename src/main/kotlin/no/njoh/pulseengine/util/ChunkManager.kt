@@ -172,7 +172,7 @@ class ChunkManager <T: Chunk> (
         val newLoadedChunks = Array2D(newWidth, newHeight) { x, y ->
             val xOld = x + xDiff
             val yOld = y + yDiff
-            if(xOld >= 0 && xOld < loadedChunks.width && yOld >= 0 && yOld < loadedChunks.height)
+            if (xOld >= 0 && xOld < loadedChunks.width && yOld >= 0 && yOld < loadedChunks.height)
                 loadedChunks[xOld, yOld]
             else
                 onChunkLoadCallback.invoke(x + xNewOffsetIndex, y + yNewOffsetIndex)
@@ -211,7 +211,7 @@ class ChunkManager <T: Chunk> (
                 // Move data to the left in array and load chunks for new right side region
                 for (x in 0 until loadedChunks.width)
                 {
-                    if(x + xDiff < loadedChunks.width)
+                    if (x + xDiff < loadedChunks.width)
                         loadedChunks[x, y] = loadedChunks[x + xDiff, y]
                     else
                         loadedChunks[x, y] = onChunkLoadCallback.invoke(x + xOffsetIndex + xDiff, y + yOffsetIndex)
@@ -229,7 +229,7 @@ class ChunkManager <T: Chunk> (
                 // Move data to the right in array and load chunks for new left side region
                 for (x in (loadedChunks.width - 1) downTo 0)
                 {
-                    if(x + xDiff >= 0)
+                    if (x + xDiff >= 0)
                         loadedChunks[x, y] = loadedChunks[x + xDiff, y]
                     else
                         loadedChunks[x, y] = onChunkLoadCallback.invoke(x + xOffsetIndex + xDiff, y + yOffsetIndex)
@@ -246,7 +246,7 @@ class ChunkManager <T: Chunk> (
         val yNewOffsetIndex = yOffsetIndex + (yEnd + yStart) / 2 - loadedChunks.height / 2
         val yDiff = yNewOffsetIndex - yOffsetIndex
 
-        if(yDiff == 0)
+        if (yDiff == 0)
             return false
 
         if (yDiff > 0)
@@ -258,7 +258,7 @@ class ChunkManager <T: Chunk> (
 
             for (y in 0 until loadedChunks.height)
             {
-                if(y + yDiff < loadedChunks.height)
+                if (y + yDiff < loadedChunks.height)
                 {
                     // Move data upward in array
                     for (x in 0 until loadedChunks.width)
@@ -311,7 +311,7 @@ class ChunkManager <T: Chunk> (
         if (!this::debugSurface.isInitialized)
             debugSurface = gfx.createSurface2D("cmDebugSurface")
 
-        for(chunk in getActiveChunks())
+        for (chunk in getActiveChunks())
         {
             val x = chunk.x * chunkSize.toFloat()
             val y = chunk.y * chunkSize.toFloat()

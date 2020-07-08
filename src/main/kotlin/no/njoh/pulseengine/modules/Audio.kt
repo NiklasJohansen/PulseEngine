@@ -127,7 +127,7 @@ class Audio : AudioEngineInterface
 
     override fun setPitch(sourceId: Int, pitch: Float) = alSourcef(sourceId, AL_PITCH, pitch)
 
-    override fun setLooping(sourceId: Int, looping: Boolean) = alSourcei(sourceId, AL_LOOPING, if(looping) AL_TRUE else AL_FALSE)
+    override fun setLooping(sourceId: Int, looping: Boolean) = alSourcei(sourceId, AL_LOOPING, if (looping) AL_TRUE else AL_FALSE)
 
     override fun setPosition(sourceId: Int, x: Float, y: Float, z: Float) = alSource3f(sourceId, AL_POSITION, x, y, z)
 
@@ -162,7 +162,7 @@ class Audio : AudioEngineInterface
     {
        sources.removeIf {
            val stopped = !isPlaying(it) && !isPaused(it)
-           if(stopped)
+           if (stopped)
                alDeleteSources(it)
            stopped
        }

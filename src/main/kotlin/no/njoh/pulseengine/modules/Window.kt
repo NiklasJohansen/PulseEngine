@@ -87,13 +87,13 @@ class Window : WindowEngineInterface
             throw RuntimeException("Failed to create the GLFW windowHandle")
 
         // Destroy previous window if it existed
-        if(windowHandle != NULL)
+        if (windowHandle != NULL)
             glfwDestroyWindow(windowHandle)
 
         this.windowHandle = newWindowHandle
         this.title = gameName
 
-        if(screenMode == WINDOWED)
+        if (screenMode == WINDOWED)
         {
             val mode = glfwGetVideoMode(getWindowMonitor())!!
             glfwSetWindowPos(windowHandle, (mode.width() - width) / 2, (mode.height() - height) / 2)
@@ -103,7 +103,7 @@ class Window : WindowEngineInterface
         {
             override fun invoke(window: Long, width: Int, height: Int)
             {
-                if(width != 0 && height != 0)
+                if (width != 0 && height != 0)
                 {
                     this@Window.width = width
                     this@Window.height = height
@@ -119,7 +119,7 @@ class Window : WindowEngineInterface
 
     override fun updateScreenMode(mode: ScreenMode)
     {
-        if(mode == this.screenMode)
+        if (mode == this.screenMode)
             return
 
         // Create new window
@@ -150,7 +150,7 @@ class Window : WindowEngineInterface
 
     private fun getWindowMonitor(): Long
     {
-        if(windowHandle == NULL)
+        if (windowHandle == NULL)
             return glfwGetPrimaryMonitor()
 
         val xWindow = IntArray(1)

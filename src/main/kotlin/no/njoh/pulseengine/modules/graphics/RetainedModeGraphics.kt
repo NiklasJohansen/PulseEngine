@@ -45,12 +45,12 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     {
-        if(windowRecreated)
+        if (windowRecreated)
        {
            GL.createCapabilities()
 
            // Create frameRenderer
-           if(!this::renderer.isInitialized)
+           if (!this::renderer.isInitialized)
                renderer = FrameTextureRenderer(ShaderProgram.create("/pulseengine/shaders/effects/texture.vert", "/pulseengine/shaders/effects/texture.frag"))
 
            // Initialize frameRenderer

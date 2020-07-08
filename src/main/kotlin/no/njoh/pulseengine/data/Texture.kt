@@ -17,7 +17,7 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
     var id: Int = -2
         private set
         get() {
-            if(field == -2)
+            if (field == -2)
                 throw IllegalStateException("Accessing unfinalized texture with asset name: $name")
             return field
         }

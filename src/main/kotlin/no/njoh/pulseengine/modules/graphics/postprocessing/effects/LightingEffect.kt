@@ -76,7 +76,7 @@ class LightingEffect (
 
     fun addLight(x: Float, y: Float, radius: Float, intensity: Float, type: Float, red: Float, green: Float, blue: Float)
     {
-        if(lights == 0)
+        if (lights == 0)
         {
             val vm = camera.viewMatrix
             scale = Math.sqrt(vm.m00() * vm.m00() + vm.m01() * vm.m01() + vm.m02() * vm.m02())

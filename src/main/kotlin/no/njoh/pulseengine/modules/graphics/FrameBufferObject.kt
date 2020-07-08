@@ -46,7 +46,7 @@ class FrameBufferObject(
             glBindRenderbuffer(GL_RENDERBUFFER, 0)
 
             // Check if frame buffer is complete
-            if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
                 throw RuntimeException("Failed to create frame buffer object")
 
             // Unbind frame buffer (binds default buffer)

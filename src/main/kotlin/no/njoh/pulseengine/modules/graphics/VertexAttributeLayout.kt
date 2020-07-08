@@ -15,7 +15,7 @@ class VertexAttributeLayout
             attributes.add(Attribute(name, count,  type, size, normalized))
         }
 
-    private fun sizeOf(glType: Int): Int = when(glType)
+    private fun sizeOf(glType: Int): Int = when (glType)
     {
         GL_FLOAT -> 4
         GL_INT -> 4

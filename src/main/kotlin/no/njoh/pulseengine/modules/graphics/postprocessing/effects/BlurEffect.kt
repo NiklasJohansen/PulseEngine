@@ -26,7 +26,7 @@ class BlurEffect(
     {
         blurPasses = max(0,  blurPasses)
         var tex = texture
-        for(i in 0 until blurPasses)
+        for (i in 0 until blurPasses)
             tex = applyBlurPass(tex,radius * (1f + i))
         return tex
     }

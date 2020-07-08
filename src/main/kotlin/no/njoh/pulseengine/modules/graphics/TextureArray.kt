@@ -35,11 +35,11 @@ class TextureArray(
         check(texture.width <= maxTextureWidth) { "Texture width (${texture.width} px) cannot be larger than $maxTextureWidth px" }
         check(texture.height <= maxTextureHeight) { "Texture width (${texture.height} px) cannot be larger than $maxTextureHeight px" }
 
-        if(textureArrayId == -1)
+        if (textureArrayId == -1)
             init()
 
         val index = uploadedTextureCount++
-        if(index >= capacity)
+        if (index >= capacity)
             throw RuntimeException("Texture array with capacity: $capacity is full!")
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)

@@ -23,10 +23,10 @@ abstract class SinglePassEffect : PostProcessingEffect
 
     override fun init()
     {
-        if(!this::program.isInitialized)
+        if (!this::program.isInitialized)
             program = loadShaderProgram()
 
-        if(!this::renderer.isInitialized)
+        if (!this::renderer.isInitialized)
             renderer = FrameTextureRenderer(program)
 
         renderer.init()
@@ -69,10 +69,10 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
 
     override fun init()
     {
-        if(program.isEmpty())
+        if (program.isEmpty())
             program.addAll(loadShaderPrograms())
 
-        if(renderer.isEmpty())
+        if (renderer.isEmpty())
             renderer.addAll(program.map { FrameTextureRenderer(it) })
 
         renderer.forEach { it.init() }

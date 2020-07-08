@@ -82,7 +82,7 @@ object CommandRegistry
             template = "toggleFullscreen",
             description = "Toggles fullscreen "
         ) {
-            engine.window.updateScreenMode(if(engine.window.screenMode == WINDOWED) FULLSCREEN else WINDOWED)
+            engine.window.updateScreenMode(if (engine.window.screenMode == WINDOWED) FULLSCREEN else WINDOWED)
             CommandResult("Screen mode set to: ${engine.window.screenMode}", showCommand = true)
         }
 
@@ -97,7 +97,7 @@ object CommandRegistry
                 return@registerCommand CommandResult("$scriptPath is not a PulseEngine script ($SCRIPT_EXTENSION_TYPE)", MessageType.ERROR)
 
             var url = CommandRegistry::class.java.getResource(scriptPath)
-            if(url == null)
+            if (url == null)
             {
                 val file = File(".$scriptPath")
                 if (!file.exists() || !file.isFile)
@@ -124,10 +124,10 @@ object CommandRegistry
             val command = getString("command")
             val description = "Alias for ($command). ".plus(getOptionalString("description") ?: "")
 
-            if(command.substringBefore(" ") == name)
+            if (command.substringBefore(" ") == name)
                 return@registerCommand CommandResult("Recursive commands are not supported", MessageType.ERROR)
 
-            if(engine.console.getSuggestions(name).any { it.base == name && !it.isAlias })
+            if (engine.console.getSuggestions(name).any { it.base == name && !it.isAlias })
                 return@registerCommand CommandResult("$name is already a registered command", MessageType.ERROR)
 
             engine.console.registerCommand(name, description, true) {
