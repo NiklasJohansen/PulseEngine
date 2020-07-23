@@ -21,6 +21,12 @@ class Font(
     lateinit var info: STBTTFontinfo
     private lateinit var ttfBuffer: ByteBuffer
 
+    private val advanceWidth = IntArray(1)
+    private val leftSideBearing = IntArray(1)
+    private var textWidthString: String = ""
+    private var textWidthLength: Float = 0f
+    private var textWidthFontSize: Float = 0f
+
     override fun load()
     {
         val fontData = Font::class.java.getResource(fileName).readBytes()
@@ -70,6 +76,25 @@ class Font(
     {
         glDeleteTextures(charTexture.id)
         charData.free()
+    }
+
+    fun getWidth(text: String, fontSize: Float = fontSizes[0]): Float
+    {
+        if (text == textWidthString && fontSize == textWidthFontSize)
+            return textWidthLength
+
+        textWidthLength = 0f
+        for (character in text)
+        {
+            stbtt_GetCodepointHMetrics(info, character.toInt(), advanceWidth, leftSideBearing)
+            textWidthLength += advanceWidth[0].toFloat()
+        }
+
+        textWidthLength *= stbtt_ScaleForPixelHeight(info, fontSize)
+        textWidthFontSize = fontSize
+        textWidthString = text
+
+        return textWidthLength
     }
 
     companion object
