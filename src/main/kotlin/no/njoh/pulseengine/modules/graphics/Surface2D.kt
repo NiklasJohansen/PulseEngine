@@ -27,6 +27,7 @@ interface Surface2D : Surface
     fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
     fun drawText(text: String, x: Float, y: Float, font: Font? = null, fontSize: Float = -1f, xOrigin: Float = 0f, yOrigin: Float = 0f)
     fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float = 1f): Surface2D
+    fun setDrawColor(color: Color): Surface2D
     fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface2D
     fun setBlendFunction(func: BlendFunction): Surface2D
     fun setIsVisible(isVisible: Boolean): Surface2D
@@ -149,6 +150,12 @@ class Surface2DImpl(
     override fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float): Surface2D
     {
         renderState.setRGBA(red, green, blue, alpha)
+        return this
+    }
+
+    override fun setDrawColor(color: Color): Surface2D
+    {
+        renderState.setRGBA(color.red, color.green, color.blue, color.alpha)
         return this
     }
 
