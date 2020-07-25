@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.renderers
 
-import no.njoh.pulseengine.data.Texture
+import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.*
 import org.lwjgl.opengl.GL11.*
 

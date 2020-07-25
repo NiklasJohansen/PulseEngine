@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules
 
-import no.njoh.pulseengine.data.Sound
+import no.njoh.pulseengine.data.assets.Sound
 import no.njoh.pulseengine.util.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.*

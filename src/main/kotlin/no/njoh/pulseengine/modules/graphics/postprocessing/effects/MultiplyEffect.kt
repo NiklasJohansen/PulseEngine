@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.postprocessing.effects
 
-import no.njoh.pulseengine.data.Texture
+import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.ShaderProgram
 import no.njoh.pulseengine.modules.graphics.Surface
 import no.njoh.pulseengine.modules.graphics.postprocessing.SinglePassEffect
@@ -17,6 +17,7 @@ class MultiplyEffect(
     override fun applyEffect(texture: Texture): Texture
     {
         fbo.bind()
+        fbo.clear()
         program.bind()
         renderer.render(baseSurface.getTexture(), texture)
         fbo.release()

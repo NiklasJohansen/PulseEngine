@@ -1,6 +1,10 @@
 package no.njoh.pulseengine
 
 import no.njoh.pulseengine.data.*
+import no.njoh.pulseengine.data.assets.Font
+import no.njoh.pulseengine.data.assets.Sound
+import no.njoh.pulseengine.data.assets.Text
+import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.widgets.ConsoleWidget
 import no.njoh.pulseengine.widgets.Widget
 import no.njoh.pulseengine.widgets.GraphWidget
@@ -25,7 +29,7 @@ interface PulseEngine
     val audio: AudioInterface
     val input: InputInterface
     val network: NetworkInterface
-    val asset: AssetManagerInterface
+    val asset: Assets
     val data: DataInterface
     val entity: EntityManagerBase
     val console: Console
@@ -46,7 +50,7 @@ class PulseEngineImplementation(
     override val audio: AudioEngineInterface          = Audio(),
     override var input: InputEngineInterface          = Input(),
     override val network: NetworkEngineInterface      = Network(),
-    override val asset: AssetManagerEngineInterface   = AssetManager(),
+    override val asset: AssetsEngineInterface         = AssetsImpl(),
     override val data: MutableDataContainer           = MutableDataContainer(),
     override val entity: EntityManagerEngineBase      = EntityManager(),
     override val console: Console                     = Console(),

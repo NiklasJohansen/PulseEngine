@@ -1,6 +1,5 @@
-package no.njoh.pulseengine.data
+package no.njoh.pulseengine.data.assets
 
-import no.njoh.pulseengine.modules.Asset
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.stb.STBTTFontinfo

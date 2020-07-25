@@ -1,8 +1,8 @@
 package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.Color
-import no.njoh.pulseengine.data.Font
-import no.njoh.pulseengine.data.Texture
+import no.njoh.pulseengine.data.assets.Font
+import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.modules.graphics.renderers.*

@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics
 
-import no.njoh.pulseengine.data.Texture
+import no.njoh.pulseengine.data.assets.Texture
 import org.lwjgl.opengl.ARBInternalformatQuery2.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.ARBTextureStorage
 import org.lwjgl.opengl.GL11.*

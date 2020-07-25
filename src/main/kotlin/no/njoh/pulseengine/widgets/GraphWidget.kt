@@ -2,9 +2,9 @@ package no.njoh.pulseengine.widgets
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.FocusArea
-import no.njoh.pulseengine.data.Font
+import no.njoh.pulseengine.data.assets.Font
 import no.njoh.pulseengine.data.Mouse
-import no.njoh.pulseengine.data.Texture
+import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import java.util.*

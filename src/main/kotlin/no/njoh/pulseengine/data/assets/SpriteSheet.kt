@@ -1,4 +1,6 @@
-package no.njoh.pulseengine.data
+package no.njoh.pulseengine.data.assets
+
+import no.njoh.pulseengine.data.assets.Texture
 
 class SpriteSheet(
     fileName: String,
