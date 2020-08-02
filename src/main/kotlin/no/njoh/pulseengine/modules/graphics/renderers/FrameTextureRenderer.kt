@@ -33,6 +33,22 @@ class FrameTextureRenderer(private val program: ShaderProgram)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
     }
 
+    fun render(texture: Texture)
+    {
+        glBindVertexArray(vaoId)
+
+        program.bind()
+
+        glActiveTexture(GL_TEXTURE0)
+        glBindTexture(GL_TEXTURE_2D, texture.id)
+
+        glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
+
+        glBindTexture(GL_TEXTURE_2D, 0)
+        glBindVertexArray(0)
+        glActiveTexture(GL_TEXTURE0)
+    }
+
     fun render(vararg texture: Texture)
     {
         glBindVertexArray(vaoId)

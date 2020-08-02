@@ -57,12 +57,10 @@ class TextureBatchRenderer(
         val rgba = renderState.rgba
         val depth = renderState.depth
 
-        vbo.put(
-            x, y, depth, -xOffset, -yOffset,   rot, uMin, vMin, texIndex, rgba,
-            x, y, depth, -xOffset, h-yOffset,  rot, uMin, vMax, texIndex, rgba,
-            x, y, depth, w-xOffset, h-yOffset, rot, uMax, vMax, texIndex, rgba,
-            x, y, depth, w-xOffset, -yOffset,  rot, uMax, vMin, texIndex, rgba
-        )
+        vbo.put(x, y, depth, -xOffset, -yOffset,   rot, uMin, vMin, texIndex, rgba)
+        vbo.put(x, y, depth, -xOffset, h-yOffset,  rot, uMin, vMax, texIndex, rgba)
+        vbo.put(x, y, depth, w-xOffset, h-yOffset, rot, uMax, vMax, texIndex, rgba)
+        vbo.put(x, y, depth, w-xOffset, -yOffset,  rot, uMax, vMin, texIndex, rgba)
 
         ebo.put(
             vertexCount + 0,
@@ -89,12 +87,10 @@ class TextureBatchRenderer(
         val rgba = renderState.rgba
         val depth = renderState.depth
 
-        vbo.put(
-            x, y, depth, -xOffset, -yOffset,  rot, uMin, vMin, index, rgba,
-            x, y, depth, -xOffset, h-yOffset, rot, uMin, vMax, index, rgba,
-            x, y, depth, w-xOffset, h-yOffset, rot, uMax, vMax, index, rgba,
-            x, y, depth, w-xOffset, -yOffset, rot, uMax, vMin, index, rgba
-        )
+        vbo.put(x, y, depth, -xOffset, -yOffset,  rot, uMin, vMin, index, rgba)
+        vbo.put(x, y, depth, -xOffset, h-yOffset, rot, uMin, vMax, index, rgba)
+        vbo.put(x, y, depth, w-xOffset, h-yOffset, rot, uMax, vMax, index, rgba)
+        vbo.put(x, y, depth, w-xOffset, -yOffset, rot, uMax, vMin, index, rgba)
 
         ebo.put(
             vertexCount + 0,

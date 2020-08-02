@@ -141,15 +141,84 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
         return this
     }
 
-    fun put(vararg values: Float): FloatBufferObject
+    fun put(v0: Float, v1: Float, v2: Float): FloatBufferObject
     {
-        if (!hasCapacityfor (values.size))
+        if (!hasCapacityfor (3))
             growSize()
 
-        for (v in values)
-            floatBuffer.put(v)
+        floatBuffer.put(v0)
+        floatBuffer.put(v1)
+        floatBuffer.put(v2)
 
-        size += values.size
+        size += 3
+        return this
+    }
+
+    fun put(v0: Float, v1: Float, v2: Float, v3: Float): FloatBufferObject
+    {
+        if (!hasCapacityfor (4))
+            growSize()
+
+        floatBuffer.put(v0)
+        floatBuffer.put(v1)
+        floatBuffer.put(v2)
+        floatBuffer.put(v3)
+
+        size += 4
+        return this
+    }
+
+    fun put(v0: Float, v1: Float, v2: Float, v3: Float, v4: Float, v5: Float): FloatBufferObject
+    {
+        if (!hasCapacityfor (6))
+            growSize()
+
+        floatBuffer.put(v0)
+        floatBuffer.put(v1)
+        floatBuffer.put(v2)
+        floatBuffer.put(v3)
+        floatBuffer.put(v4)
+        floatBuffer.put(v5)
+
+        size += 10
+        return this
+    }
+
+    fun put(v0: Float, v1: Float, v2: Float, v3: Float, v4: Float, v5: Float, v6: Float, v7: Float): FloatBufferObject
+    {
+        if (!hasCapacityfor (8))
+            growSize()
+
+        floatBuffer.put(v0)
+        floatBuffer.put(v1)
+        floatBuffer.put(v2)
+        floatBuffer.put(v3)
+        floatBuffer.put(v4)
+        floatBuffer.put(v5)
+        floatBuffer.put(v6)
+        floatBuffer.put(v7)
+
+        size += 8
+        return this
+    }
+
+    fun put(v0: Float, v1: Float, v2: Float, v3: Float, v4: Float, v5: Float, v6: Float, v7: Float, v8: Float, v9: Float): FloatBufferObject
+    {
+        if (!hasCapacityfor (10))
+            growSize()
+
+        floatBuffer.put(v0)
+        floatBuffer.put(v1)
+        floatBuffer.put(v2)
+        floatBuffer.put(v3)
+        floatBuffer.put(v4)
+        floatBuffer.put(v5)
+        floatBuffer.put(v6)
+        floatBuffer.put(v7)
+        floatBuffer.put(v8)
+        floatBuffer.put(v9)
+
+        size += 10
         return this
     }
 }
