@@ -113,6 +113,11 @@ class PulseEngineImplementation(
             }
         }
 
+        // Load all custom cursors
+        input.loadCursors { fileName, assetName, xHotspot, yHotspot ->
+            asset.loadCursor(fileName, assetName, xHotspot, yHotspot)
+        }
+
         // Sets the active input implementation
         input.setOnFocusChanged { hasFocus ->
             input = if (hasFocus) activeInput else idleInput

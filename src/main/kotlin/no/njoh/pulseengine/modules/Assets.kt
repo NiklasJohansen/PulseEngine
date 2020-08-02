@@ -23,6 +23,7 @@ abstract class Assets
     abstract fun loadTexture(filename: String, assetName: String): Texture
     abstract fun loadSpriteSheet(filename: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet
     abstract fun loadFont(filename: String, assetName: String, fontSizes: FloatArray): Font
+    abstract fun loadCursor(filename: String, assetName: String, xHotSpot: Int, yHotSpot: Int): Cursor
     abstract fun loadSound(filename: String, assetName: String): Sound
     abstract fun loadText(filename: String, assetName: String): Text
     abstract fun loadBinary(filename: String, assetName: String): Binary
@@ -62,6 +63,9 @@ class AssetsImpl : AssetsEngineInterface()
     override fun loadFont(filename: String, assetName: String, fontSizes: FloatArray): Font
         = Font(filename, assetName, fontSizes).also { add(it) }
 
+    override fun loadCursor(filename: String, assetName: String, xHotSpot: Int, yHotSpot: Int): Cursor
+        = Cursor(filename, assetName, xHotSpot, yHotSpot).also { add(it) }
+
     override fun loadSound(filename: String, assetName: String): Sound
         = Sound(filename, assetName).also { add(it)  }
 
@@ -99,6 +103,9 @@ class AssetsImpl : AssetsEngineInterface()
 
     override fun <T: Asset> add(asset: T): T
     {
+        if (assets.containsKey(asset.name))
+            Logger.warn("Asset with name: ${asset.name} already exists and will be overridden")
+
         assets[asset.name] = asset
         if (initialAssetsLoaded) {
             asset.load()
