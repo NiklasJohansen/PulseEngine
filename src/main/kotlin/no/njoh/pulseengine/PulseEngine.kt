@@ -16,7 +16,11 @@ import no.njoh.pulseengine.modules.entity.EntityManagerBase
 import no.njoh.pulseengine.modules.graphics.GraphicsEngineInterface
 import no.njoh.pulseengine.modules.graphics.GraphicsInterface
 import no.njoh.pulseengine.modules.graphics.RetainedModeGraphics
+import no.njoh.pulseengine.modules.scene.SceneManager
+import no.njoh.pulseengine.modules.scene.SceneManagerEngineInterface
+import no.njoh.pulseengine.modules.scene.SceneManagerImpl
 import no.njoh.pulseengine.util.FpsLimiter
+import no.njoh.pulseengine.widgets.SceneEditor
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
@@ -30,6 +34,7 @@ interface PulseEngine
     val input: InputInterface
     val network: NetworkInterface
     val asset: Assets
+    val scene: SceneManager
     val data: DataInterface
     val entity: EntityManagerBase
     val console: Console
@@ -51,10 +56,11 @@ class PulseEngineImplementation(
     override var input: InputEngineInterface          = Input(),
     override val network: NetworkEngineInterface      = Network(),
     override val asset: AssetsEngineInterface         = AssetsImpl(),
+    override val scene: SceneManagerEngineInterface   = SceneManagerImpl(),
     override val data: MutableDataContainer           = MutableDataContainer(),
     override val entity: EntityManagerEngineBase      = EntityManager(),
     override val console: Console                     = Console(),
-    private  val widgets: List<Widget>                = listOf(ConsoleWidget(), GraphWidget())
+    private  val widgets: List<Widget>                = listOf(ConsoleWidget(), GraphWidget(), SceneEditor())
 ) : PulseEngine {
 
     private val activeInput = input
@@ -77,6 +83,7 @@ class PulseEngineImplementation(
         audio.init()
         network.init()
         console.init(this)
+        scene.init(asset, data)
 
         // Create focus area for game
         focusArea = FocusArea(0f, 0f, window.width.toFloat(), window.height.toFloat())
@@ -122,15 +129,15 @@ class PulseEngineImplementation(
         input.setOnFocusChanged { hasFocus ->
             input = if (hasFocus) activeInput else idleInput
         }
-
-        // Initialize engine apps
-        widgets.forEach { it.onCreate(this) }
     }
 
     private fun postGameCreate()
     {
         // Load assets from disk
         asset.loadInitialAssets()
+
+        // Initialize engine apps
+        widgets.forEach { it.onCreate(this) }
 
         // Run startup script
         console.runScript("/startup.ps")
@@ -164,6 +171,7 @@ class PulseEngineImplementation(
         {
             updateInput()
             game.onUpdate()
+            scene.update(this)
             widgets.forEach { it.onUpdate(this) }
             input = activeInput
         }
@@ -182,11 +190,12 @@ class PulseEngineImplementation(
         data.fixedDeltaTime = dt.toFloat()
 
         var updated = false
-        while(data.fixedUpdateAccumulator >= dt)
+        while (data.fixedUpdateAccumulator >= dt)
         {
             audio.cleanSources()
             input.requestFocus(focusArea)
             entity.fixedUpdate(this)
+            scene.fixedUpdate(this)
             game.onFixedUpdate()
             gfx.updateCamera(dt.toFloat())
 
@@ -204,10 +213,12 @@ class PulseEngineImplementation(
         data.measureRenderTimeAndUpdateInterpolationValue()
         {
             entity.render(this)
+            scene.render(gfx)
             game.onRender()
             widgets.forEach { it.onRender(this) }
             gfx.postRender()
             window.swapBuffers()
+            window.wasResized = false
         }
     }
 
