@@ -34,12 +34,14 @@ class BlurEffect(
     private fun applyBlurPass(texture: Texture, radius: Float): Texture
     {
         fbo[0].bind()
+        fbo[0].clear()
         program[0].bind()
         program[0].setUniform("radius", radius)
         renderer[0].render(texture)
         fbo[0].release()
 
         fbo[1].bind()
+        fbo[1].clear()
         program[1].bind()
         program[1].setUniform("radius", radius)
         renderer[1].render(fbo[0].texture)

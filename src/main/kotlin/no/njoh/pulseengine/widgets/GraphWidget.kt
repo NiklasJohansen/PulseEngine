@@ -45,7 +45,7 @@ class GraphWidget : Widget
             Graph("UPDATE TIME", "MS") { engine.data.updateTimeMS },
             Graph("FIXED UPDATE TIME", "MS") { engine.data.fixedUpdateTimeMS },
             Graph("USED MEMORY", "MB") { engine.data.usedMemory.toFloat() },
-            Graph("TOTAL MEMORY", "MB") { engine.data.totalMemory.toFloat() }
+            Graph("MEMORY OF TOTAL", "%") { engine.data.usedMemory * 100f / engine.data.totalMemory  }
         ))
     }
 

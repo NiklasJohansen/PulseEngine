@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules
 
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import de.undercouch.bson4jackson.BsonFactory
@@ -8,6 +9,7 @@ import kotlinx.coroutines.launch
 import no.njoh.pulseengine.util.Logger
 import org.lwjgl.glfw.GLFW.*
 import java.io.File
+import kotlin.system.measureNanoTime
 
 abstract class DataInterface
 {
@@ -29,13 +31,13 @@ abstract class DataInterface
     abstract fun <T> saveStateAsync(data: T, fileName: String, onComplete: (T) -> Unit = {})
 
     @PublishedApi internal abstract fun <T> loadState(fileName: String, type: Class<T>, fromClassPath: Boolean): T?
-    @PublishedApi internal abstract fun <T> loadStateAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onComplete: (T) -> Unit)
+    @PublishedApi internal abstract fun <T> loadStateAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
 
     inline fun <reified T> loadState(fileName: String, fromClassPath: Boolean = false): T? =
         loadState(fileName, T::class.java, fromClassPath)
 
-    inline fun <reified T> loadStateAsync(fileName: String, fromClassPath: Boolean = false, noinline onLoad: (T) -> Unit) =
-        loadStateAsync(fileName, T::class.java, fromClassPath, onLoad)
+    inline fun <reified T> loadStateAsync(fileName: String, fromClassPath: Boolean = false, noinline onFail: () -> Unit = {}, noinline onComplete: (T) -> Unit) =
+        loadStateAsync(fileName, T::class.java, fromClassPath, onFail, onComplete)
 }
 
 abstract class DataEngineInterface : DataInterface()
@@ -84,12 +86,13 @@ class MutableDataContainer : DataEngineInterface()
 
     override fun <T> saveState(data: T, fileName: String): Boolean =
         runCatching {
-            File("$saveDirectory$fileName").let { file ->
+            val nanoTime = measureNanoTime {
+                val file = File("$saveDirectory$fileName")
                 if (!file.parentFile.exists())
                     file.parentFile.mkdirs()
                 file.writeBytes(objectMapper.writeValueAsBytes(data))
             }
-
+            Logger.debug("Saved state in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
             true
         }
         .onFailure { Logger.error("Failed to save file: $fileName - reason: ${it.message}"); }
@@ -97,14 +100,19 @@ class MutableDataContainer : DataEngineInterface()
 
     override fun <T> loadState(fileName: String, type: Class<T>, fromClassPath: Boolean): T? =
         runCatching {
-            if (fromClassPath)
-                MutableDataContainer::class.java.getResource(fileName)
-                    .readBytes()
-                    .let { byteArray -> objectMapper.readValue(byteArray, type) }
-            else
-                File("$saveDirectory$fileName")
-                    .readBytes()
-                    .let { byteArray -> objectMapper.readValue(byteArray, type) }
+            var state: T? = null
+            val nanoTime = measureNanoTime {
+                state = if (fromClassPath)
+                    MutableDataContainer::class.java.getResource(fileName)
+                        .readBytes()
+                        .let { byteArray -> objectMapper.readValue(byteArray, type) }
+                else
+                    File("$saveDirectory$fileName")
+                        .readBytes()
+                        .let { byteArray -> objectMapper.readValue(byteArray, type) }
+            }
+            Logger.debug("Loaded state in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
+            state
         }
         .onFailure { Logger.error("Failed to load state (fromClassPath=$fromClassPath): $fileName - reason: ${it.message}") }
         .getOrNull()
@@ -118,11 +126,12 @@ class MutableDataContainer : DataEngineInterface()
         }
     }
 
-    override fun <T> loadStateAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onComplete: (T) -> Unit)
+    override fun <T> loadStateAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
     {
         GlobalScope.launch {
             loadState(fileName, type, fromClassPath)
                 ?.let(onComplete)
+                ?: onFail()
         }
     }
 
@@ -174,6 +183,7 @@ class MutableDataContainer : DataEngineInterface()
     {
         private val objectMapper = ObjectMapper(BsonFactory())
             .registerModule(KotlinModule())
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
         private val runtime = Runtime.getRuntime()
         private const val MEGA_BYTE = 1048576L
     }

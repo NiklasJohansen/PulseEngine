@@ -15,7 +15,7 @@ annotation class ConsoleTarget(val description: String = "")
 
 object ConsoleUtil
 {
-    private const val PACKAGE_NAME = "engine"
+    private const val PACKAGE_NAME = "pulseengine"
 
     /**
      * Registers top-level functions marked with a [ConsoleTarget] annotation

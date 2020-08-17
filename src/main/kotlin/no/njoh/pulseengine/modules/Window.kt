@@ -17,6 +17,7 @@ interface WindowInterface
     val screenMode: ScreenMode
     val width: Int
     val height: Int
+    val wasResized: Boolean
     var title: String
 }
 
@@ -29,6 +30,7 @@ interface WindowEngineInterface : WindowInterface
     fun swapBuffers()
     fun isOpen(): Boolean
     val windowHandle: Long
+    override var wasResized: Boolean
 }
 
 class Window : WindowEngineInterface
@@ -38,6 +40,7 @@ class Window : WindowEngineInterface
     override var screenMode: ScreenMode = WINDOWED
     override var width: Int = 800
     override var height: Int = 600
+    override var wasResized: Boolean = false
     override var title: String = ""
         set(value) {
             glfwSetWindowTitle(windowHandle, value)
@@ -108,6 +111,7 @@ class Window : WindowEngineInterface
                     this@Window.width = width
                     this@Window.height = height
                     resizeCallBack(width, height, false)
+                    wasResized = true
                 }
             }
         })
@@ -127,6 +131,7 @@ class Window : WindowEngineInterface
 
         // Notify observers
         resizeCallBack(width, height, true)
+        wasResized = true
     }
 
     override fun close()
