@@ -96,12 +96,29 @@ class Font(
         return textWidthLength
     }
 
+    fun getCharacterWidths(text: String, fontSize: Float = fontSizes[0]): FloatArray
+    {
+        val scale = stbtt_ScaleForPixelHeight(info, fontSize)
+        val widths = FloatArray(text.length)
+        for (i in text.indices)
+        {
+            stbtt_GetCodepointHMetrics(info, text[i].toInt(), advanceWidth, leftSideBearing)
+            widths[i] = advanceWidth[0].toFloat() * scale
+        }
+        return widths
+    }
+
     companion object
     {
-        const val TOTAL_CHAR_COUNT = 128
+        private const val TOTAL_CHAR_COUNT = 128
         private const val BITMAP_W = 512
         private const val BITMAP_H = 512
         private const val FIRST_CHAR = 32
         private const val CHAR_COUNT = TOTAL_CHAR_COUNT - FIRST_CHAR - 1
+        val DEFAULT: Font = Font(
+            fileName = "/pulseengine/assets/FiraSans-Regular.ttf",
+            name = "default_font",
+            fontSizes = floatArrayOf(24f, 72f)
+        )
     }
 }

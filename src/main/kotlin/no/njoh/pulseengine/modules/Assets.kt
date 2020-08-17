@@ -88,17 +88,18 @@ class AssetsImpl : AssetsEngineInterface()
 
     override fun loadInitialAssets()
     {
-        Logger.info("Loading assets...")
+        val startTime = System.nanoTime()
+        add(Font.DEFAULT)
         runBlocking {
             assets.values.forEach {
                 launch {
                     it.load()
-                    Logger.info("Loaded asset: ${it.name}")
                 }
             }
         }
         assets.values.forEach(onAssetLoadedCallback)
         initialAssetsLoaded = true
+        Logger.debug("Loaded ${assets.size} assets in ${(System.nanoTime() - startTime) / 1_000_000} ms. [${assets.values.joinToString { it.name }}]")
     }
 
     override fun <T: Asset> add(asset: T): T

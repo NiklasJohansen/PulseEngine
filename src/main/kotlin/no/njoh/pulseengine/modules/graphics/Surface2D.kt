@@ -145,7 +145,7 @@ class Surface2DImpl(
         textureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin, uMin, vMin, uMax, vMax)
 
     override fun drawText(text: String, x: Float, y: Float, font: Font?, fontSize: Float, xOrigin: Float, yOrigin: Float) =
-        textRenderer.draw(this, text, x, y, font ?: graphicsState.defaultFont, fontSize, xOrigin, yOrigin)
+        textRenderer.draw(this, text, x, y, font ?: Font.DEFAULT, fontSize, xOrigin, yOrigin)
 
     override fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float): Surface2D
     {
