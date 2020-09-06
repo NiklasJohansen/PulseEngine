@@ -1,13 +1,14 @@
 package no.njoh.pulseengine.modules.scene
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import no.njoh.pulseengine.PulseEngine
+import no.njoh.pulseengine.data.FileFormat
+import no.njoh.pulseengine.data.FileFormat.*
+import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.modules.Assets
 import no.njoh.pulseengine.modules.graphics.GraphicsInterface
+import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.util.SpatialIndex
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.reflect.full.findAnnotation
 
 open class Scene(
@@ -17,122 +18,86 @@ open class Scene(
     val entities: MutableList<SceneEntity> = mutableListOf()
 ) {
     @JsonIgnore
-    val layerMap: MutableMap<String, SceneLayer> = mutableMapOf()
+    @PublishedApi
+    internal val typeMap: MutableMap<String, MutableList<SceneEntity>> = mutableMapOf()
 
     @JsonIgnore
-    val typeMap: MutableMap<String?, MutableList<SceneEntity>> = mutableMapOf()
+    @PublishedApi
+    internal val spatialIndex = SpatialIndex(entities, 350f, 3000f, 0.2f)
 
     @JsonIgnore
-    val spatialIndex: SpatialIndex
-    
+    private val removeList = mutableListOf<SceneEntity>()
+
     init
     {
-        var xMin = Float.POSITIVE_INFINITY
-        var xMax = Float.NEGATIVE_INFINITY
-        var yMin = Float.POSITIVE_INFINITY
-        var yMax = Float.NEGATIVE_INFINITY
-        for (layer in layers)
+        for (entity in entities)
         {
-            for (entity in layer.entities)
-            {
-                xMax = max(entity.x, xMax)
-                xMin = min(entity.x, xMin)
-                yMax = max(entity.y, yMax)
-                yMin = min(entity.y, yMin)
-
-                typeMap[entity.className]
-                    ?.add(entity)
-                    ?: run { typeMap[entity.className] = mutableListOf(entity) }
-            }
-            layerMap[layer.name] = layer
-            entities.addAll(layer.entities)
+            typeMap[entity.typeName]
+                ?.add(entity)
+                ?: run { typeMap[entity.typeName] = mutableListOf(entity) }
         }
+    }
 
-        if (layers.isNotEmpty() && layers.first().entities.isNotEmpty())
+    fun addEntities(entities: List<SceneEntity>)
+    {
+        this.entities.addAll(entities)
+        for (entity in entities)
         {
-            val width = (xMax - xMin) + 1000
-            val height =  (yMax - yMin) + 1000
-            val xCenter = (xMin + xMax) / 2f
-            val yCenter = (yMin + yMax) / 2f
-
-            spatialIndex = SpatialIndex(xCenter - width / 2f, yCenter - height / 2f, width, height, 350f)
-
-            for (layer in layers)
-                for (entity in layer.entities)
-                    spatialIndex.insert(entity)
-        }
-        else spatialIndex = SpatialIndex(2500f, 2500f, 5000f, 5000f, 250f)
-    }
-
-    fun addLayer(layer: SceneLayer)
-    {
-        layerMap[layer.name] = layer
-        layer.entities.forEach {
-            typeMap[it.className]?.add(it) ?: run { typeMap[it.className] = mutableListOf(it) }
+            spatialIndex.insert(entity)
+            typeMap[entity.typeName]
+                ?.add(entity)
+                ?: run { typeMap[entity.typeName] = mutableListOf(entity) }
         }
     }
 
-    fun addEntities(layerName: String, entities: List<SceneEntity>)
+    fun addEntity(entity: SceneEntity)
     {
-        layerMap[layerName]?.let { layer ->
-            for (entity in entities)
-            {
-                layer.addEntity(entity)
-                typeMap[entity.className]
-                    ?.add(entity)
-                    ?: run { typeMap[entity.className] = mutableListOf(entity) }
-            }
-        }
+        entities.add(entity)
+        spatialIndex.insert(entity)
+        typeMap[entity.typeName]
+            ?.add(entity)
+            ?: run { typeMap[entity.typeName] = mutableListOf(entity) }
     }
 
-    fun addEntity(layerName: String, entity: SceneEntity)
+    fun removeEntity(entity: SceneEntity)
     {
-        layerMap[layerName]
-            ?.let { layer ->
-                layer.addEntity(entity)
-                typeMap[entity.className]
-                    ?.add(entity)
-                    ?: run { typeMap[entity.className] = mutableListOf(entity) }
-            }
+        entities.remove(entity)
+        spatialIndex.remove(entity)
+        typeMap[entity.typeName]?.remove(entity)
     }
 
-    fun removeEntity(layerName: String, entity: SceneEntity)
+    fun removeEntities(entities: List<SceneEntity>)
     {
-        layerMap[layerName]?.let { layer ->
-            layer.entities.remove(entity)
-            typeMap[entity.className]?.remove(entity)
-        }
-    }
-
-    fun removeEntities(layerName: String, entities: List<SceneEntity>)
-    {
-        layerMap[layerName]?.let { layer ->
-            layer.entities.removeAll(entities)
-            for (entity in entities)
-                typeMap[entity.className]?.remove(entity)
-        }
-    }
-
-    fun replaceEntity(layerName: String, oldEntity: SceneEntity, newEntity: SceneEntity)
-    {
-        layerMap[layerName]?.entities?.let {
-            val index = it.indexOf(oldEntity)
-            if (index >= 0 && index < it.size)
-                it[index] = newEntity
-            else
-                it.add(newEntity)
-        }
-        if (oldEntity.className != newEntity.className)
+        this.entities.removeAll(entities)
+        for (entity in entities)
         {
-            removeEntity(layerName, oldEntity)
-            addEntity(layerName, newEntity)
+            spatialIndex.remove(entity)
+            typeMap[entity.typeName]?.remove(entity)
+        }
+    }
+
+    fun replaceEntity(oldEntity: SceneEntity, newEntity: SceneEntity)
+    {
+        val index = entities.indexOf(oldEntity)
+        if (index >= 0 && index < entities.size)
+            entities[index] = newEntity
+        else
+            entities.add(newEntity)
+
+        spatialIndex.remove(oldEntity)
+        spatialIndex.insert(newEntity)
+
+        if (oldEntity.typeName != newEntity.typeName)
+        {
+            typeMap[oldEntity.typeName]?.remove(oldEntity)
+            typeMap[newEntity.typeName]?.add(newEntity)
         }
         else
         {
-            typeMap[oldEntity.className]?.let {
-                val index = it.indexOf(oldEntity)
-                if (index >= 0 && index < it.size)
-                    it[index] = newEntity
+            typeMap[oldEntity.typeName]?.let {
+                val i = it.indexOf(oldEntity)
+                if (i >= 0 && i < it.size)
+                    it[i] = newEntity
                 else
                     it.add(newEntity)
             }
@@ -143,29 +108,48 @@ open class Scene(
     inline fun <reified T: SceneEntity> getEntitiesOfType(): List<T> =
         typeMap[T::class.simpleName]?.let { it as List<T> } ?: emptyList()
 
+    inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit) =
+        spatialIndex.forEachEntityInArea(x, y, width, height, block)
+
     fun start()
     {
-        for (layer in layers)
-            layer.start()
+        spatialIndex.recalculate()
+        for (entity in entities)
+            entity.onStart()
     }
 
     fun update(engine: PulseEngine)
     {
-        for (layer in layers)
-            layer.update(engine)
+        spatialIndex.update()
+
+        for (entity in entities)
+        {
+            entity.onUpdate(engine)
+            if (entity.isSet(DEAD))
+                removeList.add(entity)
+        }
+
+        if (removeList.isNotEmpty())
+        {
+            removeEntities(removeList)
+            removeList.clear()
+        }
     }
 
     fun fixedUpdate(engine: PulseEngine)
     {
-        for (layer in layers)
-            layer.fixedUpdate(engine)
+        var i = 0
+        while (i < entities.size)
+        {
+            entities[i].onFixedUpdate(engine)
+            i++
+        }
     }
 
-    fun render(gfx: GraphicsInterface, assets: Assets, isRunning: Boolean)
+    fun render(gfx: GraphicsInterface, assets: Assets, sceneState: SceneState)
     {
         spatialIndex.render(gfx.mainSurface)
-
-        typeMap.forEach { type, entities ->
+        typeMap.forEach { (type, entities) ->
 
             if (entities.isNotEmpty())
             {
@@ -177,7 +161,7 @@ open class Scene(
                         surface = gfx.getSurface2D(it.name)
                     }
 
-                entities.forEach { it.onRender(surface, assets, isRunning) }
+                entities.forEach { it.onRender(surface, assets, sceneState) }
             }
         }
     }
@@ -185,5 +169,3 @@ open class Scene(
 
 @Target(AnnotationTarget.CLASS)
 annotation class SurfaceName(val name: String)
-
-
