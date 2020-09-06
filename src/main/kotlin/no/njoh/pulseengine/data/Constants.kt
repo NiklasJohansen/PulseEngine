@@ -203,3 +203,15 @@ enum class ShaderType
     VERTEX,
     FRAGMENT
 }
+
+enum class FileFormat
+{
+    JSON,
+    BINARY
+}
+
+enum class SceneState {
+    STOPPED,
+    PAUSED,
+    RUNNING
+}

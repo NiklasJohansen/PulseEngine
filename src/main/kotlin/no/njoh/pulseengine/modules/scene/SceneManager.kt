@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.modules.scene
 
 import no.njoh.pulseengine.PulseEngine
+import no.njoh.pulseengine.data.SceneState
+import no.njoh.pulseengine.data.SceneState.*
 import no.njoh.pulseengine.modules.Assets
 import no.njoh.pulseengine.modules.DataInterface
 import no.njoh.pulseengine.modules.graphics.GraphicsInterface
@@ -13,14 +15,16 @@ interface SceneManager
 {
     fun start()
     fun stop()
+    fun pause()
     fun save()
     fun saveAsync()
+    fun reload()
     fun loadAndSetActive(fileName: String)
     fun createEmptyAndSetActive(fileName: String)
     fun transitionInto(fileName: String, fadeTimeMs: Long = 1000L)
-    fun setActive(fileName: String, scene: Scene)
+    fun setActive(scene: Scene)
     val activeScene: Scene?
-    val isRunning: Boolean
+    val sceneState: SceneState
 }
 
 interface SceneManagerEngineInterface : SceneManager
@@ -34,7 +38,7 @@ interface SceneManagerEngineInterface : SceneManager
 class SceneManagerImpl : SceneManagerEngineInterface {
 
     override var activeScene: Scene? = null
-    override var isRunning: Boolean = false
+    override var sceneState: SceneState = STOPPED
 
     private lateinit var assets: Assets
     private lateinit var data: DataInterface
@@ -42,7 +46,6 @@ class SceneManagerImpl : SceneManagerEngineInterface {
 
     private var nextStagedScene: Scene? = null
     private var nextSceneFileName: String? = null
-    private var activeSceneFileName: String? = null
 
     private var transitionFade = 0f
     private var fadeTimeMs = 0L
@@ -61,27 +64,32 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             Logger.error("No active scene to start")
         else
         {
-            if (!isRunning)
+            when (sceneState)
             {
-                save()
-                isRunning = true
-                activeScene?.start()
+                STOPPED -> {
+                    sceneState = RUNNING
+                    activeScene?.start()
+                }
+                PAUSED -> sceneState = RUNNING
+                RUNNING -> {  }
             }
         }
     }
 
     override fun stop()
     {
-        if (isRunning)
-            activeSceneFileName?.let { loadAndSetActive(it) }
+        sceneState = STOPPED
+    }
 
-        isRunning = false
+    override fun pause()
+    {
+        sceneState = PAUSED
     }
 
     override fun loadAndSetActive(fileName: String)
     {
         data.loadState<Scene>(fileName)?.let {
-            setActive(fileName, it)
+            setActive(it)
         }
     }
 
@@ -95,15 +103,17 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         }
     }
 
-    override fun setActive(fileName: String, scene: Scene)
+    override fun setActive(scene: Scene)
     {
-        activeScene = null
-        System.gc()
-        activeSceneFileName = fileName
-        activeScene = scene
+        if (scene != activeScene)
+        {
+            activeScene = null
+            System.gc()
 
-        if (isRunning)
-            activeScene?.start()
+            activeScene = scene
+            if (sceneState != STOPPED)
+                activeScene?.start()
+        }
     }
 
     override fun createEmptyAndSetActive(fileName: String)
@@ -112,26 +122,27 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             .substringAfterLast("/")
             .substringAfterLast("\\")
             .substringBefore(".")
-        val scene = Scene(sceneName, mutableListOf(SceneLayer("default_layer", mutableListOf())))
-        setActive(fileName, scene)
+        val scene = Scene(sceneName, fileName)
+        setActive(scene)
         save()
     }
 
     override fun save()
     {
         activeScene?.let { scene ->
-            activeSceneFileName?.let { fileName ->
-                data.saveState(scene, fileName)
-            }
+            data.saveState(scene, scene.fileName, scene.fileFormat)
         }
+    }
+
+    override fun reload()
+    {
+        activeScene?.let { loadAndSetActive(it.fileName) }
     }
 
     override fun saveAsync()
     {
         activeScene?.let { scene ->
-            activeSceneFileName?.let { fileName ->
-                data.saveStateAsync(scene, fileName)
-            }
+            data.saveStateAsync(scene, scene.fileName, scene.fileFormat)
         }
     }
 
@@ -140,7 +151,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         if (nextSceneFileName != null && nextStagedScene == null && !loadingScene)
         {
             loadingScene = true
-            data.loadStateAsync<Scene>(nextSceneFileName!!, false, {
+            data.loadStateAsync<Scene>(nextSceneFileName!!, false, { // TODO: support class path loading
                 loadingScene = false
                 nextSceneFileName = null
                 Logger.error("Failed to load scene from file: $nextSceneFileName")
@@ -153,12 +164,12 @@ class SceneManagerImpl : SceneManagerEngineInterface {
 
         if (nextStagedScene != null && !loadingScene && transitionFade <= 0.5)
         {
-            setActive(nextSceneFileName!!, nextStagedScene!!)
+            setActive(nextStagedScene!!)
             nextSceneFileName = null
             nextStagedScene = null
         }
 
-        if (isRunning)
+        if (sceneState == RUNNING)
             activeScene?.update(engine)
     }
 
@@ -171,13 +182,13 @@ class SceneManagerImpl : SceneManagerEngineInterface {
                 transitionFade = transitionFade.coerceAtLeast(0.5f)
         }
 
-        if (isRunning)
+        if (sceneState == RUNNING)
             activeScene?.fixedUpdate(engine)
     }
 
     override fun render(gfx: GraphicsInterface)
     {
-        activeScene?.render(gfx, assets, isRunning)
+        activeScene?.render(gfx, assets, sceneState)
 
         if (transitionFade >= 0)
         {

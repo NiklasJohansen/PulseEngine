@@ -6,6 +6,8 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import de.undercouch.bson4jackson.BsonFactory
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import no.njoh.pulseengine.data.FileFormat
+import no.njoh.pulseengine.data.FileFormat.*
 import no.njoh.pulseengine.util.Logger
 import org.lwjgl.glfw.GLFW.*
 import java.io.File
@@ -27,8 +29,8 @@ abstract class DataInterface
 
     abstract fun addSource(name: String, unit: String, source: () -> Float)
     abstract fun exists(fileName: String): Boolean
-    abstract fun <T> saveState(data: T, fileName: String): Boolean
-    abstract fun <T> saveStateAsync(data: T, fileName: String, onComplete: (T) -> Unit = {})
+    abstract fun <T> saveState(data: T, fileName: String, fileFormat: FileFormat = JSON): Boolean
+    abstract fun <T> saveStateAsync(data: T, fileName: String, fileFormat: FileFormat = JSON, onComplete: (T) -> Unit = {})
 
     @PublishedApi internal abstract fun <T> loadState(fileName: String, type: Class<T>, fromClassPath: Boolean): T?
     @PublishedApi internal abstract fun <T> loadStateAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
@@ -84,13 +86,13 @@ class MutableDataContainer : DataEngineInterface()
         return file.exists() || file.isDirectory
     }
 
-    override fun <T> saveState(data: T, fileName: String): Boolean =
+    override fun <T> saveState(data: T, fileName: String, fileFormat: FileFormat): Boolean =
         runCatching {
             val nanoTime = measureNanoTime {
                 val file = File("$saveDirectory$fileName")
                 if (!file.parentFile.exists())
                     file.parentFile.mkdirs()
-                file.writeBytes(objectMapper.writeValueAsBytes(data))
+                file.writeBytes(getMapper(fileFormat).writeValueAsBytes(data))
             }
             Logger.debug("Saved state in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
             true
@@ -105,11 +107,11 @@ class MutableDataContainer : DataEngineInterface()
                 state = if (fromClassPath)
                     MutableDataContainer::class.java.getResource(fileName)
                         .readBytes()
-                        .let { byteArray -> objectMapper.readValue(byteArray, type) }
+                        .let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
                 else
                     File("$saveDirectory$fileName")
                         .readBytes()
-                        .let { byteArray -> objectMapper.readValue(byteArray, type) }
+                        .let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
             }
             Logger.debug("Loaded state in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
             state
@@ -117,17 +119,21 @@ class MutableDataContainer : DataEngineInterface()
         .onFailure { Logger.error("Failed to load state (fromClassPath=$fromClassPath): $fileName - reason: ${it.message}") }
         .getOrNull()
 
-    override fun <T> saveStateAsync(data: T, fileName: String, onComplete: (T) -> Unit)
+    override fun <T> saveStateAsync(data: T, fileName: String, fileFormat: FileFormat, onComplete: (T) -> Unit)
     {
         GlobalScope.launch {
-            saveState(data, fileName)
+            saveState(data, fileName, fileFormat)
                 .takeIf { it }
                 ?.let { onComplete.invoke(data) }
         }
     }
 
-    override fun <T> loadStateAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
-    {
+    override fun <T> loadStateAsync(
+        fileName: String, type: Class<T>,
+        fromClassPath: Boolean,
+        onFail: () -> Unit,
+        onComplete: (T) -> Unit
+    ) {
         GlobalScope.launch {
             loadState(fileName, type, fromClassPath)
                 ?.let(onComplete)
@@ -179,11 +185,28 @@ class MutableDataContainer : DataEngineInterface()
         fpsTimer = nowTime
     }
 
+    private fun getMapper(fileFormat: FileFormat) =
+        when (fileFormat)
+        {
+            JSON -> jsonMapper
+            BINARY -> bsonMapper
+        }
+
+    private fun getFormat(byteArray: ByteArray) =
+        if (byteArray.firstOrNull() == '{'.toByte()) JSON else BINARY
+
     companion object
     {
-        private val objectMapper = ObjectMapper(BsonFactory())
+        private val bsonMapper = ObjectMapper(BsonFactory())
             .registerModule(KotlinModule())
+            .enableDefaultTyping()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+
+        private val jsonMapper = ObjectMapper()
+            .registerModule(KotlinModule())
+            .enableDefaultTyping()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+
         private val runtime = Runtime.getRuntime()
         private const val MEGA_BYTE = 1048576L
     }

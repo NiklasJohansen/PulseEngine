@@ -10,10 +10,10 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.reflect.full.findAnnotation
 
-@JsonDeserialize(using = SceneDeserializer::class)
 open class Scene(
-    val name: String = "scene",
-    val layers: MutableList<SceneLayer>,
+    val name: String,
+    val fileName: String = "/$name.scn",
+    val fileFormat: FileFormat = JSON,
     val entities: MutableList<SceneEntity> = mutableListOf()
 ) {
     @JsonIgnore
