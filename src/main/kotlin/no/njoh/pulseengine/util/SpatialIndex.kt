@@ -11,7 +11,7 @@ import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.SIZE_UPDATED
 import kotlin.math.*
 
 class SpatialIndex (
-    private val entities: List<SceneEntity>,
+    private val entityCollections : List<SwapList<SceneEntity>>,
     var cellSize: Float,
     private val minBorderSize: Float = 3000f,
     private val percentageToUpdatePerFrame: Float = 1f
@@ -38,13 +38,16 @@ class SpatialIndex (
         var yMin = Float.POSITIVE_INFINITY
         var yMax = Float.NEGATIVE_INFINITY
 
-        for (entity in entities)
+        for (collection in entityCollections)
         {
-            val r = max(entity.width, entity.height) / 2f
-            xMax = max(entity.x + r, xMax)
-            xMin = min(entity.x - r, xMin)
-            yMax = max(entity.y + r, yMax)
-            yMin = min(entity.y - r, yMin)
+            for (entity in collection)
+            {
+                val r = max(entity.width, entity.height) / 2f
+                xMax = max(entity.x + r, xMax)
+                xMin = min(entity.x - r, xMin)
+                yMax = max(entity.y + r, yMax)
+                yMin = min(entity.y - r, yMin)
+            }
         }
 
         val xCenter = (xMin + xMax) / 2f
@@ -59,7 +62,9 @@ class SpatialIndex (
         array = Array2D(xCells, yCells) { x, y -> null }
         scanRanges = IntArray(2 * yCells)
 
-        entities.forEach { insert(it) }
+        for (collection in entityCollections)
+            for (entity in collection)
+                insert(entity)
     }
 
     inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit)
@@ -218,7 +223,7 @@ class SpatialIndex (
                 }
                 else
                 {
-                    sy += dsy;
+                    sy += dsy
                     if (yCornerDelta > 0) yCell++ else yCell--
                 }
 
@@ -277,11 +282,6 @@ class SpatialIndex (
         node.prev = null
         array[xCell, yCell] = node
         return node
-    }
-
-    fun remove(entity: SceneEntity)
-    {
-        entity.set(DEAD)
     }
 
     private fun remove(node: Node)
@@ -346,7 +346,7 @@ class SpatialIndex (
                             if (!inserted)
                                 return
 
-                            entity.clear(POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED)
+                            entity.setNot(POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED)
                         }
                     }
                 }

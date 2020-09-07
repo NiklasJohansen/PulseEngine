@@ -130,6 +130,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
     override fun save()
     {
         activeScene?.let { scene ->
+            scene.entityTypes.values.forEach { it.fitToSize() }
             data.saveState(scene, scene.fileName, scene.fileFormat)
         }
     }
@@ -169,8 +170,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             nextStagedScene = null
         }
 
-        if (sceneState == RUNNING)
-            activeScene?.update(engine)
+        activeScene?.update(engine, sceneState)
     }
 
     override fun fixedUpdate(engine: PulseEngine)

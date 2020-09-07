@@ -28,7 +28,7 @@ abstract class SceneEntity(
     open fun onRender(surface: Surface2D, assets: Assets, sceneState: SceneState) { }
 
     fun set(flag: Int) { flags = flags or flag }
-    fun clear(flag: Int) { flags = flags and flag.inv() }
+    fun setNot(flag: Int) { flags = flags and flag.inv() }
     fun isSet(flag: Int) = flags and flag == flag
     fun isAnySet(flag: Int) = flags and flag != 0
     fun isNot(flag: Int) = flags and flag == 0
