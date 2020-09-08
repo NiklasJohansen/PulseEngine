@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.util
+package no.njoh.pulseengine.data
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 

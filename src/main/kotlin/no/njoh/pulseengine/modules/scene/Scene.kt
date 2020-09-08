@@ -9,9 +9,8 @@ import no.njoh.pulseengine.data.SceneState.*
 import no.njoh.pulseengine.modules.Assets
 import no.njoh.pulseengine.modules.graphics.GraphicsInterface
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DEAD
-import no.njoh.pulseengine.util.SwapList
-import no.njoh.pulseengine.util.SwapList.Companion.fastListOf
-import no.njoh.pulseengine.util.SpatialIndex
+import no.njoh.pulseengine.data.SwapList
+import no.njoh.pulseengine.data.SwapList.Companion.fastListOf
 import kotlin.reflect.full.findAnnotation
 
 open class Scene(

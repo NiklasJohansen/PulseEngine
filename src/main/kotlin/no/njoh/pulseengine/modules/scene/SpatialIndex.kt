@@ -1,13 +1,13 @@
-package no.njoh.pulseengine.util
+package no.njoh.pulseengine.modules.scene
 
 import no.njoh.pulseengine.data.Array2D
 import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.modules.scene.SceneEntity
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DISCOVERABLE
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.data.SwapList
 import kotlin.math.*
 
 class SpatialIndex (
