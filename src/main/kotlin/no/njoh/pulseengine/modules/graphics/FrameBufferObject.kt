@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics
 
-import no.njoh.pulseengine.data.Texture
+import no.njoh.pulseengine.data.assets.Texture
 import org.lwjgl.opengl.ARBFramebufferObject.*
 import org.lwjgl.opengl.GL11.*
 import java.lang.RuntimeException
@@ -53,7 +53,7 @@ class FrameBufferObject(
             glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
             // Create texture asset
-            val texture = Texture("",  "")
+            val texture = Texture("", "")
             texture.load(null, width, height, GL_RGBA)
             texture.finalize(textureId)
 

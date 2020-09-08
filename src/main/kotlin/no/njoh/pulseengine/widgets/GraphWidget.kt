@@ -2,9 +2,9 @@ package no.njoh.pulseengine.widgets
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.FocusArea
-import no.njoh.pulseengine.data.Font
+import no.njoh.pulseengine.data.assets.Font
 import no.njoh.pulseengine.data.Mouse
-import no.njoh.pulseengine.data.Texture
+import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import java.util.*
@@ -45,7 +45,7 @@ class GraphWidget : Widget
             Graph("UPDATE TIME", "MS") { engine.data.updateTimeMS },
             Graph("FIXED UPDATE TIME", "MS") { engine.data.fixedUpdateTimeMS },
             Graph("USED MEMORY", "MB") { engine.data.usedMemory.toFloat() },
-            Graph("TOTAL MEMORY", "MB") { engine.data.totalMemory.toFloat() }
+            Graph("MEMORY OF TOTAL", "%") { engine.data.usedMemory * 100f / engine.data.totalMemory  }
         ))
     }
 

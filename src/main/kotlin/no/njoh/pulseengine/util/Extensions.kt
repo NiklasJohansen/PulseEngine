@@ -14,3 +14,20 @@ inline fun <T> List<T>.forEachFiltered(predicate: (T) -> Boolean, action: (T) ->
         if (predicate.invoke(element))
             action(element)
 }
+
+inline fun <T> Iterable<T>.sumIf(predicate: (T) -> Boolean, selector: (T) -> Float): Float
+{
+    var sum = 0f
+    for (element in this)
+        if (predicate(element))
+            sum += selector(element)
+    return sum
+}
+
+inline fun <T> Iterable<T>.sumByFloat(selector: (T) -> Float): Float {
+    var sum = 0f
+    for (element in this) {
+        sum += selector(element)
+    }
+    return sum
+}

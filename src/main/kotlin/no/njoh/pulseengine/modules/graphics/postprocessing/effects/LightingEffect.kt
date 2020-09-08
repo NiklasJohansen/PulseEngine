@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.postprocessing.effects
 
-import no.njoh.pulseengine.data.Texture
+import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.CameraInterface
 import no.njoh.pulseengine.modules.graphics.FloatBufferObject
 import no.njoh.pulseengine.modules.graphics.ShaderProgram

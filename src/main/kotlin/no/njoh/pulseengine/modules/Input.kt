@@ -1,5 +1,7 @@
 package no.njoh.pulseengine.modules
 import no.njoh.pulseengine.data.*
+import no.njoh.pulseengine.data.CursorType.*
+import no.njoh.pulseengine.data.assets.Cursor
 import no.njoh.pulseengine.util.Logger
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*
@@ -45,6 +47,7 @@ interface InputEngineInterface : InputInterface
     fun cleanUp()
     fun pollEvents()
     fun setOnFocusChanged(callback: (Boolean) -> Unit)
+    fun loadCursors(loader: (String, String, Int, Int) -> Cursor)
 }
 
 class Input : InputEngineInterface
@@ -62,18 +65,19 @@ class Input : InputEngineInterface
     override val ydMouse: Float
         get() = yMouse - yMouseLast
 
-    // Internal properties
     private var xMouseLast = 0.0f
     private var yMouseLast = 0.0f
     private var windowHandle: Long = -1
-    private var cursorHandle: Long = -1
-    private var currentCursorType: CursorType = CursorType.ARROW
     private val clicked = ByteArray(Key.LAST.code + 1)
     private val onKeyPressedCallbacks = mutableListOf<(Key) -> Unit>()
     private var onFocusChangedCallback: (Boolean) -> Unit = {}
     private var focusStack = mutableListOf<FocusArea>()
     private var currentFocusArea: FocusArea? = null
     private var previousFocusArea: FocusArea? = null
+
+    private var cursors = mutableMapOf<CursorType, Cursor>()
+    private var selectedCursor = ARROW
+    private var activeCursor = ARROW
 
     override fun init(windowHandle: Long)
     {
@@ -135,6 +139,26 @@ class Input : InputEngineInterface
             .toMutableList()
     }
 
+    override fun loadCursors(loader: (String, String, Int, Int) -> Cursor)
+    {
+        for (type in values())
+        {
+            cursors[type] = when (type)
+            {
+                ARROW -> Cursor.createWithHandle(glfwCreateStandardCursor(0x00036001))
+                HAND -> Cursor.createWithHandle(glfwCreateStandardCursor(0x00036004))
+                IBEAM -> Cursor.createWithHandle(glfwCreateStandardCursor(0x00036002))
+                CROSSHAIR -> Cursor.createWithHandle(glfwCreateStandardCursor(0x00036003))
+                HORIZONTAL_RESIZE -> Cursor.createWithHandle(glfwCreateStandardCursor(0x00036005))
+                VERTICAL_RESIZE -> Cursor.createWithHandle(glfwCreateStandardCursor(0x00036006))
+                MOVE -> loader.invoke("/pulseengine/cursors/move.png", "move_cursor", 8, 8)
+                ROTATE -> loader.invoke("/pulseengine/cursors/rotate.png", "rotate_cursor", 6, 6)
+                TOP_LEFT_RESIZE -> loader.invoke("/pulseengine/cursors/resize_top_left.png", "resize_top_left_cursor", 8, 8)
+                TOP_RIGHT_RESIZE -> loader.invoke("/pulseengine/cursors/resize_top_right.png", "resize_top_right_cursor", 8, 8)
+            }
+        }
+    }
+
     override fun isPressed(btn: Mouse): Boolean = glfwGetMouseButton(windowHandle, btn.code) == 1
 
     override fun isPressed(key: Key): Boolean = glfwGetKey(windowHandle, key.code) == 1
@@ -170,6 +194,8 @@ class Input : InputEngineInterface
             previousFocusArea = currentFocusArea
             currentFocusArea = focusArea
         }
+
+        onFocusChangedCallback.invoke(true)
     }
 
     override fun requestFocus(focusArea: FocusArea)
@@ -194,16 +220,7 @@ class Input : InputEngineInterface
 
     override fun setCursor(cursorType: CursorType)
     {
-        if (cursorType != currentCursorType)
-        {
-            if (cursorHandle != -1L)
-                glfwDestroyCursor(cursorHandle)
-
-            cursorHandle = glfwCreateStandardCursor(cursorType.code)
-            currentCursorType = cursorType
-
-            glfwSetCursor(windowHandle, cursorHandle)
-        }
+        selectedCursor = cursorType
     }
 
     override fun setOnFocusChanged(callback: (Boolean) -> Unit)
@@ -221,6 +238,22 @@ class Input : InputEngineInterface
         glfwPollEvents()
         gamepads.forEach { it.updateState() }
         focusStack.clear()
+        updateSelectedCursor()
+    }
+
+    private fun updateSelectedCursor()
+    {
+        if (activeCursor != selectedCursor)
+        {
+            cursors[selectedCursor]
+                ?.let { cursor ->
+                    if (cursor.handle != -1L) glfwSetCursor(windowHandle, cursor.handle)
+                    else Logger.error("Cursor of type: $selectedCursor has not been loaded")
+                }
+                ?: run { Logger.error("Cursor of type: $selectedCursor has not been registered in input module") }
+
+            activeCursor = selectedCursor
+        }
     }
 
     override fun cleanUp()
@@ -248,10 +281,12 @@ data class Gamepad(var id: Int)
 
 class IdleInput(private val activeInput: InputEngineInterface) : InputEngineInterface
 {
-    override var xWorldMouse: Float = 0f
-    override var yWorldMouse: Float = 0f
-    override val xMouse = 0f
-    override val yMouse = 0f
+    override var xWorldMouse = 0f
+    override var yWorldMouse = 0f
+    override val xMouse
+        get() = activeInput.xMouse
+    override val yMouse
+        get() = activeInput.yMouse
     override val xdMouse = 0f
     override val ydMouse = 0f
     override val scroll = 0
@@ -269,12 +304,13 @@ class IdleInput(private val activeInput: InputEngineInterface) : InputEngineInte
     override fun setClipboard(text: String)  {}
     override fun getClipboard(): String = ""
     override fun setOnFocusChanged(callback: (Boolean) -> Unit) = activeInput.setOnFocusChanged(callback)
+    override fun loadCursors(callback: (String, String, Int, Int) -> Cursor) = activeInput.loadCursors(callback)
     override fun setOnKeyPressed(callback: (Key) -> Unit) = activeInput.setOnKeyPressed(callback)
     override fun requestFocus(focusArea: FocusArea) = activeInput.requestFocus(focusArea)
     override fun acquireFocus(focusArea: FocusArea) = activeInput.acquireFocus(focusArea)
     override fun releaseFocus(focusArea: FocusArea) = activeInput.releaseFocus(focusArea)
     override fun hasFocus(focusArea: FocusArea): Boolean = activeInput.hasFocus(focusArea)
-    override fun setCursor(cursorType: CursorType) { }
+    override fun setCursor(cursorType: CursorType) = activeInput.setCursor(cursorType)
 }
 
 

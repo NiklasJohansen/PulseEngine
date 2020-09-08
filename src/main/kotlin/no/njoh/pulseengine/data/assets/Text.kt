@@ -1,6 +1,4 @@
-package no.njoh.pulseengine.data
-
-import no.njoh.pulseengine.modules.Asset
+package no.njoh.pulseengine.data.assets
 
 class Text(fileName: String, override val name: String) : Asset(name, fileName)
 {

@@ -175,7 +175,7 @@ object CommandRegistry
                 return@registerCommand CommandResult("Field ${field.name} is not mutable", MessageType.ERROR)
 
             val type = field.javaField?.type
-            val typedValue = try
+            val typedValue: Any = try
             {
                 when (type)
                 {

@@ -1,7 +1,6 @@
-package no.njoh.pulseengine.data
+package no.njoh.pulseengine.data.assets
 
 import de.matthiasmann.twl.utils.PNGDecoder
-import no.njoh.pulseengine.modules.Asset
 import org.lwjgl.opengl.GL11.*
 import java.nio.ByteBuffer
 
@@ -78,6 +77,7 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
 
     companion object
     {
+        val SUPPORTED_FORMATS = listOf("png")
         val BLANK = Texture("", "BLANK")
             .also {
                 it.load(null, 1, 1, GL_RGBA)

@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.modules.graphics
 
-import no.njoh.pulseengine.data.Font
-import no.njoh.pulseengine.data.Texture
+import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.forEachFiltered
@@ -21,7 +20,6 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
-        graphicState.defaultFont = Font("/pulseengine/assets/FiraSans-Regular.ttf","default_font", floatArrayOf(24f, 72f))
         graphicState.textureArray = TextureArray(1024, 1024, 100)
 
         mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)
@@ -30,10 +28,6 @@ class RetainedModeGraphics : GraphicsEngineInterface
         surfaces.add(mainSurface)
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
-
-        // Load default font
-        graphicState.defaultFont.load()
-        initTexture(graphicState.defaultFont.charTexture)
     }
 
     override fun cleanUp()

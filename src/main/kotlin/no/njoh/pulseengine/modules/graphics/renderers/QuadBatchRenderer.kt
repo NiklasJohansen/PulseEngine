@@ -46,12 +46,8 @@ class QuadBatchRenderer(
         val depth = gfxState.depth
         val rgba = gfxState.rgba
 
-        vbo.put(
-            x, y, depth, rgba,
-            x, y+height, depth, rgba,
-            x+width, y+height, depth, rgba,
-            x+width, y, depth, rgba
-        )
+        vbo.put(x, y, depth, rgba, x, y + height, depth, rgba)
+        vbo.put(x + width, y + height, depth, rgba, x + width, y, depth, rgba)
 
         ebo.put(
             vertexCount + 0,

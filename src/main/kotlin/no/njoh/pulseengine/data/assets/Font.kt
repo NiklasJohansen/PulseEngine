@@ -1,6 +1,5 @@
-package no.njoh.pulseengine.data
+package no.njoh.pulseengine.data.assets
 
-import no.njoh.pulseengine.modules.Asset
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.stb.STBTTFontinfo
@@ -20,6 +19,12 @@ class Font(
     lateinit var charData: STBTTPackedchar.Buffer
     lateinit var info: STBTTFontinfo
     private lateinit var ttfBuffer: ByteBuffer
+
+    private val advanceWidth = IntArray(1)
+    private val leftSideBearing = IntArray(1)
+    private var textWidthString: String = ""
+    private var textWidthLength: Float = 0f
+    private var textWidthFontSize: Float = 0f
 
     override fun load()
     {
@@ -72,12 +77,48 @@ class Font(
         charData.free()
     }
 
+    fun getWidth(text: String, fontSize: Float = fontSizes[0]): Float
+    {
+        if (text == textWidthString && fontSize == textWidthFontSize)
+            return textWidthLength
+
+        textWidthLength = 0f
+        for (character in text)
+        {
+            stbtt_GetCodepointHMetrics(info, character.toInt(), advanceWidth, leftSideBearing)
+            textWidthLength += advanceWidth[0].toFloat()
+        }
+
+        textWidthLength *= stbtt_ScaleForPixelHeight(info, fontSize)
+        textWidthFontSize = fontSize
+        textWidthString = text
+
+        return textWidthLength
+    }
+
+    fun getCharacterWidths(text: String, fontSize: Float = fontSizes[0]): FloatArray
+    {
+        val scale = stbtt_ScaleForPixelHeight(info, fontSize)
+        val widths = FloatArray(text.length)
+        for (i in text.indices)
+        {
+            stbtt_GetCodepointHMetrics(info, text[i].toInt(), advanceWidth, leftSideBearing)
+            widths[i] = advanceWidth[0].toFloat() * scale
+        }
+        return widths
+    }
+
     companion object
     {
-        const val TOTAL_CHAR_COUNT = 128
+        private const val TOTAL_CHAR_COUNT = 128
         private const val BITMAP_W = 512
         private const val BITMAP_H = 512
         private const val FIRST_CHAR = 32
         private const val CHAR_COUNT = TOTAL_CHAR_COUNT - FIRST_CHAR - 1
+        val DEFAULT: Font = Font(
+            fileName = "/pulseengine/assets/FiraSans-Regular.ttf",
+            name = "default_font",
+            fontSizes = floatArrayOf(24f, 72f)
+        )
     }
 }
