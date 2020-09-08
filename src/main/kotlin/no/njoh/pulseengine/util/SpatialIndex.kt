@@ -22,9 +22,9 @@ class SpatialIndex (
     @PublishedApi internal var yCells = 0
     @PublishedApi internal lateinit var array: Array2D<Node?>
 
-    private var currentNodeIndex = 0
     private var width = 0f
     private var height = 0f
+    private var currentNodeIndex = 0
     private var cornerPositions = FloatArray(8)
     private var emptyClusterArray = emptyArray<Node?>()
     private lateinit var scanRanges: IntArray
@@ -60,7 +60,7 @@ class SpatialIndex (
         xCells = (width / cellSize).toInt()
         yCells = (height / cellSize).toInt()
         array = Array2D(xCells, yCells) { x, y -> null }
-        scanRanges = IntArray(2 * yCells)
+        scanRanges = IntArray(2 * yCells) { if (it % 2 == 0) xCells else 0 }
 
         for (collection in entityCollections)
             for (entity in collection)
@@ -178,10 +178,6 @@ class SpatialIndex (
         cornerPositions[6] = x - x1 - xOffset
         cornerPositions[7] = y - y1 - yOffset
 
-        // Clear min/max values in scan ranges
-        for (i in 0 until scanRanges.size)
-            scanRanges[i] = if (i % 2 == 0) xCells else 0
-
         var yMin = yCells
         var yMax = 0
         var i = 0
@@ -255,6 +251,10 @@ class SpatialIndex (
             val xMin = scanRanges[yi * 2]
             val xMax = scanRanges[yi * 2 + 1]
 
+            // clear scan ranges
+            scanRanges[yi * 2] = xCells
+            scanRanges[yi * 2 + 1] = 0
+
             if (xMin < 0 || xMin >= xCells || xMax < 0 || xMax >= xCells)
                 return false.also { recalculate() }
 
@@ -265,8 +265,6 @@ class SpatialIndex (
                 else
                     cluster[count++] = insert(xi, yi, entity)
             }
-
-            // TODO: clear scan ranges
         }
 
         mainCell?.cluster = cluster
@@ -294,10 +292,7 @@ class SpatialIndex (
                 first.next?.prev = null
                 array[node.xCell, node.yCell] = first.next
             }
-            else
-            {
-                println("Entity not first in current cell.. should not happen")
-            }
+            else println("Entity not first in current cell.. should not happen")
         }
         else
         {
