@@ -4,8 +4,8 @@ import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.SceneState.*
 import no.njoh.pulseengine.modules.Assets
-import no.njoh.pulseengine.modules.DataInterface
-import no.njoh.pulseengine.modules.graphics.GraphicsInterface
+import no.njoh.pulseengine.modules.Data
+import no.njoh.pulseengine.modules.graphics.Graphics
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.util.Logger
 import kotlin.math.PI
@@ -29,8 +29,8 @@ interface SceneManager
 
 interface SceneManagerEngineInterface : SceneManager
 {
-    fun init(assets: Assets, data: DataInterface)
-    fun render(gfx: GraphicsInterface)
+    fun init(assets: Assets, data: Data)
+    fun render(gfx: Graphics)
     fun update(engine: PulseEngine)
     fun fixedUpdate(engine: PulseEngine)
 }
@@ -41,7 +41,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
     override var sceneState: SceneState = STOPPED
 
     private lateinit var assets: Assets
-    private lateinit var data: DataInterface
+    private lateinit var data: Data
     private lateinit var fadeSurface: Surface2D
 
     private var nextStagedScene: Scene? = null
@@ -51,7 +51,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
     private var fadeTimeMs = 0L
     private var loadingScene = false
 
-    override fun init(assets: Assets, data: DataInterface)
+    override fun init(assets: Assets, data: Data)
     {
         this.assets = assets
         this.data = data
@@ -186,7 +186,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             activeScene?.fixedUpdate(engine)
     }
 
-    override fun render(gfx: GraphicsInterface)
+    override fun render(gfx: Graphics)
     {
         activeScene?.render(gfx, assets, sceneState)
 

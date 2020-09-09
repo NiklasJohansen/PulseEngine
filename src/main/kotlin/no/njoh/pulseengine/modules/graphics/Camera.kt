@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.modules.console.ConsoleTarget
-import no.njoh.pulseengine.modules.entity.Transform2D
 import no.njoh.pulseengine.modules.graphics.Camera.*
 import no.njoh.pulseengine.modules.graphics.Camera.ProjectionType.*
 import no.njoh.pulseengine.util.interpolateFrom
@@ -36,9 +35,6 @@ abstract class CameraInterface
     var yOrigin: Float = 0f
     var zOrigin: Float = 0f
 
-    // Smoothing
-    var targetTrackingSmoothing = 1f
-
     // Depth range
     var farPlane = 5f
     var nearPlane = -1f
@@ -47,7 +43,6 @@ abstract class CameraInterface
     val topLeftWorldPosition = Vector2f()
     val bottomRightWorldPosition = Vector2f()
 
-    abstract fun setTarget(target: Transform2D?)
     abstract fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     abstract fun worldPosToScreenPos(x: Float, y: Float, z: Float = 0f): Vector2f
     abstract fun updateProjection(width: Int, height: Int, type: ProjectionType? = null)
@@ -80,7 +75,6 @@ class Camera(
     private val positionVector = Vector4f()
     private val worldPositionVector = Vector3f()
     private val screenPositionVector = Vector2f()
-    private var target: Transform2D? = null
 
     override fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     {
@@ -92,11 +86,6 @@ class Camera(
     {
         val pos = positionVector.set(x, y, z, 1f).mul(viewMatrix)
         return screenPositionVector.set(pos.x, pos.y)
-    }
-
-    override fun setTarget(target: Transform2D?)
-    {
-        this.target = target
     }
 
     override fun updateProjection(width: Int, height: Int, type: ProjectionType?)
@@ -152,12 +141,6 @@ class Camera(
         xLastScale = xScale
         yLastScale = yScale
         zLastScale = zScale
-
-        target?.let { transform ->
-            val targetScreenPos = worldPosToScreenPos(transform.x, transform.y)
-            xPos += (-targetScreenPos.x - (xPos / xScale - xOrigin)) * targetTrackingSmoothing * deltaTime
-            yPos += (-targetScreenPos.y - (yPos / yScale - yOrigin)) * targetTrackingSmoothing * deltaTime
-        }
     }
 
     companion object

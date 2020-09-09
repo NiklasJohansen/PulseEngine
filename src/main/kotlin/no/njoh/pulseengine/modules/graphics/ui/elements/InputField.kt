@@ -5,7 +5,7 @@ import no.njoh.pulseengine.data.*
 import no.njoh.pulseengine.data.CursorType.*
 import no.njoh.pulseengine.data.assets.Font
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.InputInterface
+import no.njoh.pulseengine.modules.Input
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
@@ -147,7 +147,7 @@ class InputField (
         }
     }
 
-    private fun handleTextEditing(input: InputInterface)
+    private fun handleTextEditing(input: Input)
     {
         ///////////////////////////////// Add new text to text box /////////////////////////////////
 

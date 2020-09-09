@@ -7,7 +7,7 @@ import no.njoh.pulseengine.data.FileFormat.*
 import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.SceneState.*
 import no.njoh.pulseengine.modules.Assets
-import no.njoh.pulseengine.modules.graphics.GraphicsInterface
+import no.njoh.pulseengine.modules.graphics.Graphics
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.data.SwapList
 import no.njoh.pulseengine.data.SwapList.Companion.fastListOf
@@ -91,7 +91,7 @@ open class Scene(
         }
     }
 
-    fun render(gfx: GraphicsInterface, assets: Assets, sceneState: SceneState)
+    fun render(gfx: Graphics, assets: Assets, sceneState: SceneState)
     {
         spatialIndex.render(gfx.mainSurface)
         entityTypes.forEach { (type, entities) ->

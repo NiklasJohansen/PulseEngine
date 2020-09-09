@@ -14,8 +14,7 @@ import java.lang.Float.max
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
 
-// Exposed to game code
-interface AudioInterface
+interface Audio
 {
     fun createSource(sound: Sound, volume: Float = 1.0f, looping: Boolean = false): Int
     fun play(sourceId: Int)
@@ -39,8 +38,7 @@ interface AudioInterface
     fun setOutputDevice(deviceName: String)
 }
 
-// Exposed to game engine
-interface AudioEngineInterface : AudioInterface
+interface AudioEngineInterface : Audio
 {
     fun init()
     fun setOnOutputDeviceChanged(callback: () -> Unit)
@@ -48,7 +46,7 @@ interface AudioEngineInterface : AudioInterface
     fun cleanUp()
 }
 
-class Audio : AudioEngineInterface
+class AudioImpl : AudioEngineInterface
 {
     private var device: Long = NULL
     private var context: Long = NULL

@@ -9,12 +9,10 @@ import no.njoh.pulseengine.widgets.ConsoleWidget
 import no.njoh.pulseengine.widgets.Widget
 import no.njoh.pulseengine.widgets.GraphWidget
 import no.njoh.pulseengine.modules.*
+import no.njoh.pulseengine.modules.console.ConsoleImpl
 import no.njoh.pulseengine.modules.console.Console
-import no.njoh.pulseengine.modules.entity.EntityManager
-import no.njoh.pulseengine.modules.entity.EntityManagerEngineBase
-import no.njoh.pulseengine.modules.entity.EntityManagerBase
 import no.njoh.pulseengine.modules.graphics.GraphicsEngineInterface
-import no.njoh.pulseengine.modules.graphics.GraphicsInterface
+import no.njoh.pulseengine.modules.graphics.Graphics
 import no.njoh.pulseengine.modules.graphics.RetainedModeGraphics
 import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.SceneManagerEngineInterface
@@ -27,40 +25,36 @@ import kotlin.reflect.full.createInstance
 
 interface PulseEngine
 {
-    val config: ConfigurationInterface
-    val window: WindowInterface
-    val gfx: GraphicsInterface
-    val audio: AudioInterface
-    val input: InputInterface
-    val network: NetworkInterface
+    val config: Configuration
+    val window: Window
+    val gfx: Graphics
+    val audio: Audio
+    val input: Input
     val asset: Assets
     val scene: SceneManager
-    val data: DataInterface
-    val entity: EntityManagerBase
+    val data: Data
     val console: Console
 
     companion object
     {
         fun run(game: KClass<out PulseEngineGame>) =
-            PulseEngineImplementation().run(game.createInstance())
+            PulseEngineImpl().run(game.createInstance())
 
         internal lateinit var GLOBAL_INSTANCE: PulseEngine
     }
 }
 
-class PulseEngineImplementation(
-    override val config: ConfigurationEngineInterface = Configuration(),
-    override val window: WindowEngineInterface        = Window(),
+class PulseEngineImpl(
+    override val config: ConfigurationEngineInterface = ConfigurationImpl(),
+    override val window: WindowEngineInterface        = WindowImpl(),
     override val gfx: GraphicsEngineInterface         = RetainedModeGraphics(),
-    override val audio: AudioEngineInterface          = Audio(),
-    override var input: InputEngineInterface          = Input(),
-    override val network: NetworkEngineInterface      = Network(),
+    override val audio: AudioEngineInterface          = AudioImpl(),
+    override var input: InputEngineInterface          = InputImpl(),
     override val asset: AssetsEngineInterface         = AssetsImpl(),
     override val scene: SceneManagerEngineInterface   = SceneManagerImpl(),
     override val data: MutableDataContainer           = MutableDataContainer(),
-    override val entity: EntityManagerEngineBase      = EntityManager(),
-    override val console: Console                     = Console(),
-    private  val widgets: List<Widget>                = listOf(ConsoleWidget(), GraphWidget(), SceneEditor())
+    override val console: ConsoleImpl                 = ConsoleImpl(),
+    private  val widgets: List<Widget>                = listOf(GraphWidget(), ConsoleWidget())
 ) : PulseEngine {
 
     private val activeInput = input
@@ -81,7 +75,6 @@ class PulseEngineImplementation(
         gfx.init(window.width, window.height)
         input.init(window.windowHandle)
         audio.init()
-        network.init()
         console.init(this)
         scene.init(asset, data)
 
@@ -194,7 +187,6 @@ class PulseEngineImplementation(
         {
             audio.cleanSources()
             input.requestFocus(focusArea)
-            entity.fixedUpdate(this)
             scene.fixedUpdate(this)
             game.onFixedUpdate()
             gfx.updateCamera(dt.toFloat())
@@ -212,7 +204,6 @@ class PulseEngineImplementation(
     {
         data.measureRenderTimeAndUpdateInterpolationValue()
         {
-            entity.render(this)
             scene.render(gfx)
             game.onRender()
             widgets.forEach { it.onRender(this) }
@@ -250,7 +241,6 @@ class PulseEngineImplementation(
 
     private fun destroy()
     {
-        network.cleanUp()
         audio.cleanUp()
         asset.cleanUp()
         input.cleanUp()

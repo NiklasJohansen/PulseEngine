@@ -9,8 +9,7 @@ import org.lwjgl.glfw.GLFWErrorCallback
 import org.lwjgl.glfw.GLFWWindowSizeCallback
 import org.lwjgl.system.MemoryUtil.NULL
 
-// Exposed to game code
-interface WindowInterface
+interface Window
 {
     fun updateScreenMode(mode: ScreenMode)
     fun close()
@@ -21,8 +20,7 @@ interface WindowInterface
     var title: String
 }
 
-// Exposed to game engine
-interface WindowEngineInterface : WindowInterface
+interface WindowEngineInterface : Window
 {
     fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
     fun cleanUp()
@@ -33,7 +31,7 @@ interface WindowEngineInterface : WindowInterface
     override var wasResized: Boolean
 }
 
-class Window : WindowEngineInterface
+class WindowImpl : WindowEngineInterface
 {
     // Exposed properties
     override var windowHandle : Long = NULL
@@ -108,8 +106,8 @@ class Window : WindowEngineInterface
             {
                 if (width != 0 && height != 0)
                 {
-                    this@Window.width = width
-                    this@Window.height = height
+                    this@WindowImpl.width = width
+                    this@WindowImpl.height = height
                     resizeCallBack(width, height, false)
                     wasResized = true
                 }

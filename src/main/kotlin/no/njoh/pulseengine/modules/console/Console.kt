@@ -5,7 +5,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
-interface ConsoleInterface
+interface Console
 {
     fun registerCommand(template: String, description: String = "", isAlias: Boolean = false, block: CommandArguments.() -> CommandResult)
     fun run(commandString: String, showCommand: Boolean = true): List<CommandResult>
@@ -17,12 +17,12 @@ interface ConsoleInterface
     fun getSuggestions(command: String): List<Command>
 }
 
-interface ConsoleEngineInterface : ConsoleInterface
+interface ConsoleEngineInterface : Console
 {
     fun init(engine: PulseEngine)
 }
 
-class Console : ConsoleEngineInterface
+class ConsoleImpl : ConsoleEngineInterface
 {
     private val commandMap = ConcurrentHashMap<String, Command>()
     private val history = mutableListOf<ConsoleEntry>()

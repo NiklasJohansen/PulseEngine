@@ -5,7 +5,7 @@ import no.njoh.pulseengine.data.Color
 import no.njoh.pulseengine.data.CursorType.*
 import no.njoh.pulseengine.data.Mouse
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.InputInterface
+import no.njoh.pulseengine.modules.Input
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
@@ -38,7 +38,7 @@ open class Panel(
         handleMovingAndResizing(engine.input)
     }
 
-    private fun handleMovingAndResizing(input: InputInterface)
+    private fun handleMovingAndResizing(input: Input)
     {
         // TODO: add resize on top and left side (need to invert direction...)
         val isInsideArea = area.isInside(input.xMouse, input.yMouse)

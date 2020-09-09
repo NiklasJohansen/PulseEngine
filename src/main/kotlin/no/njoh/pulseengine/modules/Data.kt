@@ -13,7 +13,7 @@ import org.lwjgl.glfw.GLFW.*
 import java.io.File
 import kotlin.system.measureNanoTime
 
-abstract class DataInterface
+abstract class Data
 {
     abstract val currentFps: Int
     abstract val renderTimeMs: Float
@@ -42,7 +42,7 @@ abstract class DataInterface
         loadStateAsync(fileName, T::class.java, fromClassPath, onFail, onComplete)
 }
 
-abstract class DataEngineInterface : DataInterface()
+abstract class DataEngineInterface : Data()
 {
     abstract fun init(creatorName: String, gameName: String)
     abstract fun updateSaveDirectory(creatorName: String, gameName: String)

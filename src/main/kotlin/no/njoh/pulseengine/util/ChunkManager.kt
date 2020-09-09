@@ -2,7 +2,7 @@ package no.njoh.pulseengine.util
 
 import no.njoh.pulseengine.data.Array2D
 import no.njoh.pulseengine.modules.graphics.CameraInterface
-import no.njoh.pulseengine.modules.graphics.GraphicsInterface
+import no.njoh.pulseengine.modules.graphics.Graphics
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import org.joml.Vector2f
 import java.lang.IllegalStateException
@@ -306,7 +306,7 @@ class ChunkManager <T: Chunk> (
             onChunkSaveCallback.invoke(chunk, xIndex, yIndex)
     }
 
-    fun renderDebug(gfx: GraphicsInterface)
+    fun renderDebug(gfx: Graphics)
     {
         if (!this::debugSurface.isInitialized)
             debugSurface = gfx.createSurface2D("cmDebugSurface")

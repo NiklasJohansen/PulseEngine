@@ -10,8 +10,7 @@ import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
-// Exposed to game and engine
-interface ConfigurationInterface
+interface Configuration
 {
     var creatorName: String
     var gameName: String
@@ -25,8 +24,7 @@ interface ConfigurationInterface
     fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T?
 }
 
-// Exposed to engine
-interface ConfigurationEngineInterface : ConfigurationInterface
+interface ConfigurationEngineInterface : Configuration
 {
     val windowWidth: Int
     val windowHeight: Int
@@ -36,7 +34,7 @@ interface ConfigurationEngineInterface : ConfigurationInterface
 }
 
 @ConsoleTarget
-class Configuration : ConfigurationEngineInterface
+class ConfigurationImpl : ConfigurationEngineInterface
 {
     // Exposed properties
     override var creatorName: String    by StringConfig("PulseEngine")

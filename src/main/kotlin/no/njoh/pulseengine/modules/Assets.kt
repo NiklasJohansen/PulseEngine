@@ -9,7 +9,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import kotlin.reflect.KClass
 
-// Exposed to game code
 abstract class Assets
 {
     abstract fun <T : Asset> add(asset: T): T
@@ -29,7 +28,6 @@ abstract class Assets
     abstract fun loadBinary(filename: String, assetName: String): Binary
 }
 
-// Exposed to game engine
 abstract class AssetsEngineInterface : Assets()
 {
     abstract fun loadInitialAssets()

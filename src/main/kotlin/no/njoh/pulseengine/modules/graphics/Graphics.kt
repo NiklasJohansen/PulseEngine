@@ -2,8 +2,7 @@ package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.assets.Texture
 
-// Exposed to game code
-interface GraphicsInterface
+interface Graphics
 {
     val mainCamera: CameraInterface
     val mainSurface: Surface2D
@@ -12,8 +11,7 @@ interface GraphicsInterface
     fun getSurface2D(name: String): Surface2D
 }
 
-// Exposed to game engine
-interface GraphicsEngineInterface : GraphicsInterface
+interface GraphicsEngineInterface : Graphics
 {
     override val mainCamera: CameraEngineInterface
 

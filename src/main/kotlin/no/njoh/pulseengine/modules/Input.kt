@@ -8,8 +8,7 @@ import org.lwjgl.glfw.GLFW.*
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 
-// Exposed to game code
-interface InputInterface
+interface Input
 {
     val xMouse: Float
     val yMouse: Float
@@ -37,8 +36,7 @@ interface InputInterface
     fun setCursor(cursorType: CursorType)
 }
 
-// Exposed to game engine
-interface InputEngineInterface : InputInterface
+interface InputEngineInterface : Input
 {
     override var xWorldMouse: Float
     override var yWorldMouse: Float
@@ -50,7 +48,7 @@ interface InputEngineInterface : InputInterface
     fun loadCursors(loader: (String, String, Int, Int) -> Cursor)
 }
 
-class Input : InputEngineInterface
+class InputImpl : InputEngineInterface
 {
     // Exposed properties
     override var xMouse = 0.0f
