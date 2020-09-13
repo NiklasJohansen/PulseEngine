@@ -31,7 +31,7 @@ class Font(
         val fontData = Font::class.java.getResource(fileName).readBytes()
 
         STBTTPackContext.malloc().use { packContext ->
-            val charData = STBTTPackedchar.malloc(fontSizes.size * 3 * TOTAL_CHAR_COUNT)
+            val charData = STBTTPackedchar.malloc(fontSizes.size * TOTAL_CHAR_COUNT)
             val ttf = BufferUtils.createByteBuffer(fontData.size).put(fontData).flip() as ByteBuffer
             val bitmap = BufferUtils.createByteBuffer(BITMAP_W * BITMAP_H)
             val info = STBTTFontinfo.create()
@@ -42,24 +42,13 @@ class Font(
             fontSizes.sort()
             for (i in fontSizes.indices)
             {
-                var p = (i * 3 + 0) * TOTAL_CHAR_COUNT + FIRST_CHAR
-                charData.limit(p + CHAR_COUNT)
-                charData.position(p)
-                stbtt_PackSetOversampling(packContext, 1, 1)
-                stbtt_PackFontRange(packContext, ttf, 0, fontSizes[i], FIRST_CHAR, charData)
-
-                p = (i * 3 + 1) * TOTAL_CHAR_COUNT + FIRST_CHAR
+                val p = i * TOTAL_CHAR_COUNT + FIRST_CHAR
                 charData.limit(p + CHAR_COUNT)
                 charData.position(p)
                 stbtt_PackSetOversampling(packContext, 2, 2)
                 stbtt_PackFontRange(packContext, ttf, 0, fontSizes[i], FIRST_CHAR, charData)
-
-                p = (i * 3 + 2) * TOTAL_CHAR_COUNT + FIRST_CHAR
-                charData.limit(p + CHAR_COUNT)
-                charData.position(p)
-                stbtt_PackSetOversampling(packContext, 3, 1)
-                stbtt_PackFontRange(packContext, ttf, 0, fontSizes[i], FIRST_CHAR, charData)
             }
+
             charData.clear()
             stbtt_PackEnd(packContext)
 
@@ -110,15 +99,15 @@ class Font(
 
     companion object
     {
-        private const val TOTAL_CHAR_COUNT = 128
-        private const val BITMAP_W = 512
-        private const val BITMAP_H = 512
+        const val TOTAL_CHAR_COUNT = 128
+        private const val BITMAP_W = 1024
+        private const val BITMAP_H = 1024
         private const val FIRST_CHAR = 32
         private const val CHAR_COUNT = TOTAL_CHAR_COUNT - FIRST_CHAR - 1
         val DEFAULT: Font = Font(
             fileName = "/pulseengine/assets/FiraSans-Regular.ttf",
             name = "default_font",
-            fontSizes = floatArrayOf(24f, 72f)
+            fontSizes = floatArrayOf(24f, 48f, 96f)
         )
     }
 }

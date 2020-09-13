@@ -16,7 +16,7 @@ void main() {
     if(textureIndex >= 0)
         textureColor = texture(textureArray, vec3(textureCoord.x, textureCoord.y, floor(textureIndex)));
 
-    if(textureColor.a < 0.2)
+    if(textureColor.a < 0.4)
         discard;
 
     // A texture index with decimal higher than 0 is used as alpha mask
