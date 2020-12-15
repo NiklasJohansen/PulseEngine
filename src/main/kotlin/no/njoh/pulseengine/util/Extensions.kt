@@ -24,10 +24,10 @@ inline fun <T> Iterable<T>.sumIf(predicate: (T) -> Boolean, selector: (T) -> Flo
     return sum
 }
 
-inline fun <T> Iterable<T>.sumByFloat(selector: (T) -> Float): Float {
+inline fun <T> Iterable<T>.sumByFloat(selector: (T) -> Float): Float
+{
     var sum = 0f
-    for (element in this) {
+    for (element in this)
         sum += selector(element)
-    }
     return sum
 }

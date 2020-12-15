@@ -6,7 +6,6 @@ import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.*
 import no.njoh.pulseengine.util.sumByFloat
 import no.njoh.pulseengine.util.sumIf
 import kotlin.math.max
-import kotlin.math.min
 
 class HorizontalPanel(
     x: Position = Position.auto(),
@@ -19,8 +18,8 @@ class HorizontalPanel(
     {
         val requiredAbsoluteSpace = children.sumIf({ !it.hidden && it.width.type == ABSOLUTE }, { it.width.value }) + children.sumByFloat { it.padding.left + it.padding.right }
         val availableRelativeSpace = max(0f, width.value - requiredAbsoluteSpace)
-        val fractionSum = min(1f, children.sumIf({ !it.hidden }) { it.width.fraction })
-        val requiredRelativeSpace = availableRelativeSpace * fractionSum
+        val fractionSum = children.sumIf({ !it.hidden && it.width.type == RELATIVE }) { it.width.fraction }
+        val requiredRelativeSpace = availableRelativeSpace * fractionSum.coerceAtMost(1f)
         val countAutoChildren = children.count { !it.hidden && it.width.type == AUTO }
         val availableAutoSpace = max(0f, availableRelativeSpace - requiredRelativeSpace) / countAutoChildren
         var xPos = x.value
@@ -34,8 +33,8 @@ class HorizontalPanel(
             val availableHeight = height.value - (child.padding.top + child.padding.bottom)
             val availableWidth = when (child.width.type)
             {
-                ABSOLUTE -> requiredAbsoluteSpace
-                RELATIVE -> availableRelativeSpace
+                ABSOLUTE -> 0f // Uses width.value
+                RELATIVE -> availableRelativeSpace / fractionSum.coerceAtLeast(1f)
                 AUTO -> availableAutoSpace
             }
 
@@ -52,5 +51,8 @@ class HorizontalPanel(
 
             xPos += widthChild + child.padding.left + child.padding.right
         }
+
+        if (popup is HorizontalResizeGizmo)
+            popup?.updateLayout()
     }
 }

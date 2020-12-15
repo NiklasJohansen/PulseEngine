@@ -4,7 +4,7 @@ import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.*
 
 class Size internal constructor(
     value: Float,
-    val type: ValueType,
+    var type: ValueType,
     var fraction: Float = 0f
 ) {
     var value = value
@@ -27,9 +27,24 @@ class Size internal constructor(
         notify = true
     }
 
+    fun setQuiet(size: Size)
+    {
+        notify = false
+        this.value = size.value
+        this.fraction = size.fraction
+        this.type = size.type
+        notify = true
+    }
+
     fun setOnUpdated(callback: () -> Unit)
     {
         onUpdatedCallback = callback
+    }
+
+    fun updateType(type: ValueType)
+    {
+        this.type = type
+        onUpdatedCallback()
     }
 
     fun calculate(value: Float): Float = when (type)
@@ -38,6 +53,16 @@ class Size internal constructor(
         RELATIVE -> value * this.fraction
         AUTO -> value
     }
+
+    operator fun plus(other: Size) = value / other.value
+    operator fun minus(other: Size) = value - other.value
+    operator fun times(other: Size) = value * other.value
+    operator fun div(other: Size) = value / other.value
+
+    operator fun plus(other: Float) = value / other
+    operator fun minus(other: Float) = value - other
+    operator fun times(other: Float) = value * other
+    operator fun div(other: Float) = value / other
 
     companion object
     {

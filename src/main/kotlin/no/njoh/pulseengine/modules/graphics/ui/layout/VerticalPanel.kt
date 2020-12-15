@@ -6,7 +6,6 @@ import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.*
 import no.njoh.pulseengine.util.sumByFloat
 import no.njoh.pulseengine.util.sumIf
 import kotlin.math.max
-import kotlin.math.min
 
 class VerticalPanel(
     x: Position = Position.auto(),
@@ -19,8 +18,8 @@ class VerticalPanel(
     {
         val requiredAbsoluteSpace = children.sumIf({ !it.hidden && it.height.type == ABSOLUTE }, { it.height.value }) + children.sumByFloat { it.padding.top + it.padding.bottom }
         val availableRelativeSpace = max(0f, height.value - requiredAbsoluteSpace)
-        val fractionSum = min(1f, children.sumIf({ !it.hidden }, { it.height.fraction }))
-        val requiredRelativeSpace = availableRelativeSpace * fractionSum
+        val fractionSum = children.sumIf({ !it.hidden && it.height.type == RELATIVE }) { it.height.fraction }
+        val requiredRelativeSpace = availableRelativeSpace * fractionSum.coerceAtMost(1f)
         val countAutoChildren = children.count { !it.hidden && it.height.type == AUTO }
         val availableAutoSpace = max(0f, availableRelativeSpace - requiredRelativeSpace) / countAutoChildren
         var yPos = y.value
@@ -34,8 +33,8 @@ class VerticalPanel(
             val availableWidth = width.value - (child.padding.left + child.padding.right)
             val availableHeight = when (child.height.type)
             {
-                ABSOLUTE -> 0f // Uses its own value
-                RELATIVE -> availableRelativeSpace
+                ABSOLUTE -> 0f // Uses height.value
+                RELATIVE -> availableRelativeSpace / fractionSum.coerceAtLeast(1f)
                 AUTO -> availableAutoSpace
             }
 
@@ -52,5 +51,8 @@ class VerticalPanel(
 
             yPos += heightChild + child.padding.top + child.padding.bottom
         }
+
+        if (popup is VerticalResizeGizmo)
+            popup?.updateLayout()
     }
 }
