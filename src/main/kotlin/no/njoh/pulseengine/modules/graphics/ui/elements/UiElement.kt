@@ -56,6 +56,24 @@ abstract class UiElement(
         setLayoutDirty()
     }
 
+    fun insertChild(element: UiElement, index: Int)
+    {
+        children.add(index, element)
+        element.parent = this
+        setLayoutDirty()
+    }
+
+    fun replaceChild(oldElement: UiElement, newElement: UiElement)
+    {
+        val index = children.indexOf(oldElement)
+        if (index != -1)
+            children[index] = newElement
+        else
+            children.add(newElement)
+        newElement.parent = this
+        setLayoutDirty()
+    }
+
     fun clearChildren()
     {
         if (children.isNotEmpty())
