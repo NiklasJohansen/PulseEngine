@@ -8,6 +8,7 @@ import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
 import no.njoh.pulseengine.modules.graphics.ui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.RowPanel
+import no.njoh.pulseengine.modules.graphics.ui.layout.WindowPanel
 
 class DropdownMenu <T> (
     x: Position = Position.auto(),
@@ -18,7 +19,7 @@ class DropdownMenu <T> (
     dropDownHeight: Size = Size.absolute(300f)
 ) : Button(x, y, width, height) {
 
-    var dropdown = HorizontalPanel(width = dropDownWidth, height = dropDownHeight)
+    var dropdown = WindowPanel(width = dropDownWidth, height = dropDownHeight)
     var rowPanel: RowPanel
     var menuLabel: Label
     var scrollbar: Scrollbar

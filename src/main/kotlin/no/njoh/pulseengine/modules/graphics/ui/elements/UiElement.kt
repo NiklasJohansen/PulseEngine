@@ -14,6 +14,7 @@ abstract class UiElement(
     val width: Size,
     val height: Size
 ) {
+    var id: String? = null
     var parent: UiElement? = null
         private set
     val children = mutableListOf<UiElement>()
@@ -29,13 +30,14 @@ abstract class UiElement(
     var hidden = false
         set (isHidden)
         {
-            if (field != isHidden) setLayoutDirty()
+            if (field != isHidden)
+                setLayoutDirty()
             field = isHidden
         }
 
     private var created = false
     private var dirtyLayout = false
-    protected var mouseInsideArea = false
+    var mouseInsideArea = false
         private set
 
     init
@@ -201,6 +203,7 @@ abstract class UiElement(
     {
         var data = if (this is Label) " (${this.text})" else ""
         data += popup?.let { " popup hidden: (${it.hidden})" } ?: ""
+        data += " id: $id"
         println(" ".repeat(indent) + this::class.simpleName + data)
         for (child in children)
             child.printStructure(indent + 2)
