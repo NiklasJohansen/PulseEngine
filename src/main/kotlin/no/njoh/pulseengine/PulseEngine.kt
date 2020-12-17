@@ -54,7 +54,7 @@ class PulseEngineImpl(
     override val scene: SceneManagerEngineInterface   = SceneManagerImpl(),
     override val data: MutableDataContainer           = MutableDataContainer(),
     override val console: ConsoleImpl                 = ConsoleImpl(),
-    private  val widgets: List<Widget>                = listOf(GraphWidget(), ConsoleWidget())
+    private  val widgets: List<Widget>                = listOf(SceneEditor(), GraphWidget(), ConsoleWidget())
 ) : PulseEngine {
 
     private val activeInput = input
@@ -241,6 +241,7 @@ class PulseEngineImpl(
 
     private fun destroy()
     {
+        widgets.forEach { it.onDestroy(this) }
         audio.cleanUp()
         asset.cleanUp()
         input.cleanUp()

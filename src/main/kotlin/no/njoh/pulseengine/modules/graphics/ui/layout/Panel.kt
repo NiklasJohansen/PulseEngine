@@ -23,11 +23,15 @@ open class Panel(
 
     override fun onRender(surface: Surface2D)
     {
-        surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
-        surface.drawTexture(texture ?: Texture.BLANK, x.value, y.value, width.value, height.value)
+        if (color.alpha != 0f)
+        {
+            surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
+            surface.drawTexture(texture ?: Texture.BLANK, x.value, y.value, width.value, height.value)
+        }
 
-        strokeColor?.let {
-            surface.setDrawColor(it)
+        if (strokeColor != null && strokeColor!!.alpha != 0f)
+        {
+            surface.setDrawColor(strokeColor!!)
             surface.drawLine(x.value, y.value, x.value + width.value, y.value)
             surface.drawLine(x.value, y.value, x.value, y.value + height.value)
             surface.drawLine(x.value + width.value, y.value, x.value + width.value, y.value + height.value)
