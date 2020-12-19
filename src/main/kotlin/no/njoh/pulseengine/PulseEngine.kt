@@ -18,7 +18,7 @@ import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.SceneManagerEngineInterface
 import no.njoh.pulseengine.modules.scene.SceneManagerImpl
 import no.njoh.pulseengine.util.FpsLimiter
-import no.njoh.pulseengine.widgets.SceneEditor
+import no.njoh.pulseengine.widgets.SceneEditor.SceneEditor
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance

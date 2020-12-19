@@ -31,12 +31,9 @@ class ResizeBarGizmo(
             if (!resizing && engine.input.isPressed(Mouse.LEFT))
                 resizing = true
 
-            if (!cursorSet)
-            {
-                val cursor = if (isVertical) HORIZONTAL_RESIZE else VERTICAL_RESIZE
-                engine.input.setCursor(cursor)
-                cursorSet = true
-            }
+            val cursor = if (isVertical) HORIZONTAL_RESIZE else VERTICAL_RESIZE
+            engine.input.setCursor(cursor)
+            cursorSet = true
         }
         else if (cursorSet && !engine.input.isPressed(Mouse.LEFT))
         {

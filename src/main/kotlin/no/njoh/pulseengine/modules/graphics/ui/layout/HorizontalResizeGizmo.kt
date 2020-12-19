@@ -17,7 +17,7 @@ class HorizontalResizeGizmo(
     private val hPanel: HorizontalPanel
 ): UiElement(hPanel.x, hPanel.y, hPanel.width, hPanel.height) {
 
-    init { intractable = false }
+    init { focusable = false }
 
     override fun updateChildLayout()
     {

@@ -17,7 +17,7 @@ class VerticalResizeGizmo(
     private val vPanel: VerticalPanel
 ): UiElement(vPanel.x, vPanel.y, vPanel.width, vPanel.height) {
 
-    init { intractable = false }
+    init { focusable = false }
 
     override fun updateChildLayout()
     {

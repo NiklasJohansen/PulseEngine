@@ -40,7 +40,7 @@ class DockingPanel(
         popup?.hidden = true
 
         viewPort.id = "viewport"
-        viewPort.intractable = false
+        viewPort.focusable = false
         viewPort.resizable = false
         viewPort.movable = false
         viewPort.clearChildren()
@@ -143,7 +143,7 @@ class DockingPanel(
         panel.setAuto()
         panel.width.type = ABSOLUTE
         val hPanel = HorizontalPanel()
-        hPanel.intractable = false
+        hPanel.focusable = false
         hPanel.addPopup(HorizontalResizeGizmo(hPanel))
         val childrenToMove = getDockedElements()
         if (leftSide)
@@ -161,7 +161,7 @@ class DockingPanel(
         panel.setAuto()
         panel.height.type = ABSOLUTE
         val vPanel = VerticalPanel()
-        vPanel.intractable = false
+        vPanel.focusable = false
         vPanel.addPopup(VerticalResizeGizmo(vPanel))
         val childrenToMove = getDockedElements()
         if (topSide)
@@ -178,7 +178,7 @@ class DockingPanel(
         panel.removeFromParent()
         val parent = this.parent
         val hPanel = HorizontalPanel()
-        hPanel.intractable = false
+        hPanel.focusable = false
         hPanel.height.setQuiet(this.height)
         hPanel.width.setQuiet(this.width)
         if (leftSide)
@@ -202,7 +202,7 @@ class DockingPanel(
         panel.removeFromParent()
         val parent = this.parent
         val vPanel = VerticalPanel()
-        vPanel.intractable = false
+        vPanel.focusable = false
         vPanel.width.setQuiet(this.width)
         vPanel.height.setQuiet(this.height)
         if (topSide)
@@ -386,7 +386,7 @@ class DockingPanel(
                 HorizontalPanel().apply()
                 {
                     addPopup(HorizontalResizeGizmo(this))
-                    intractable = false
+                    focusable = false
                     width.setQuiet(node.width)
                     height.setQuiet(node.height)
                     node.children
@@ -399,7 +399,7 @@ class DockingPanel(
             {
                 VerticalPanel().apply {
                     addPopup(VerticalResizeGizmo(this))
-                    intractable = false
+                    focusable = false
                     width.setQuiet(node.width)
                     height.setQuiet(node.height)
                     node.children

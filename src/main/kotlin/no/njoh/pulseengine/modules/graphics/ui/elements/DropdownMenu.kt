@@ -40,7 +40,7 @@ class DropdownMenu <T> (
     init
     {
         menuLabel = Label("", width = Size.relative(0.9f))
-        menuLabel.intractable = false
+        menuLabel.focusable = false
         menuLabel.padding.setAll(5f)
         menuLabel.color = Color(1f, 1f, 1f)
 
@@ -71,11 +71,11 @@ class DropdownMenu <T> (
     fun addItem(item: T)
     {
         val label = Label(onItemToString(item))
-        label.intractable = false
+        label.focusable = false
         label.padding.left = 10f
         label.font = menuLabel.font
         label.color = menuLabel.color
-        label.textSize = menuLabel.textSize
+        label.fontSize = menuLabel.fontSize
 
         val button = Button()
         button.color = bgColor

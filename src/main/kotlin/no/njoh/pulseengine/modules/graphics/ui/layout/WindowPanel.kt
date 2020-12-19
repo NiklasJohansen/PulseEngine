@@ -5,7 +5,6 @@ import no.njoh.pulseengine.data.CursorType.*
 import no.njoh.pulseengine.data.Mouse
 import no.njoh.pulseengine.modules.Input
 import no.njoh.pulseengine.modules.Window
-import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
 import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.*
@@ -38,26 +37,16 @@ open class WindowPanel(
 
     override fun onCreate(engine: PulseEngine)
     {
-        header.intractable = false
+        header.focusable = false
         header.id = id + "_header"
-        body.intractable = false
+        body.focusable = false
         body.id = id + "_body"
         body.padding.setAll(5f)
 
         val content = VerticalPanel()
-        content.intractable = false
+        content.focusable = false
         content.addChildren(header, body)
         addChildren(content)
-    }
-
-    override fun onRender(surface: Surface2D)
-    {
-        super.onRender(surface)
-        surface.setDrawColor(1f, 1f, 1f)
-        surface.drawText("W: ${width.type}", x.value + width.value / 2f - 100, y.value + height.value / 2f)
-        surface.drawText("H: ${height.type}", x.value + width.value / 2f - 100, y.value + height.value / 2f + 20)
-        surface.drawText("X: ${x.type}", x.value + width.value / 2f - 100, y.value + height.value / 2f + 40)
-        surface.drawText("Y: ${y.type}", x.value + width.value / 2f - 100, y.value + height.value / 2f + 60)
     }
 
     override fun onUpdate(engine: PulseEngine)

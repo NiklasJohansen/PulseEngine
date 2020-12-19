@@ -26,7 +26,7 @@ abstract class UiElement(
     var minHeight = 0f
     var maxWidth = 10000f
     var maxHeight = 10000f
-    var intractable = true
+    var focusable = true
     var hidden = false
         set (isHidden)
         {
@@ -100,7 +100,7 @@ abstract class UiElement(
         if (hidden)
             return
 
-        if (intractable)
+        if (focusable)
         {
             engine.input.requestFocus(area)
 
@@ -113,9 +113,9 @@ abstract class UiElement(
                 if (insideArea) onMouseEnter(engine) else onMouseLeave(engine)
                 mouseInsideArea = insideArea
             }
-
-            onUpdate(engine)
         }
+
+        onUpdate(engine)
 
         children.forEach { child ->
             child.update(engine)
