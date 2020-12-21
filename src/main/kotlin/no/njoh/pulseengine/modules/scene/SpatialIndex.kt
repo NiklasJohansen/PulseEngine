@@ -100,7 +100,7 @@ class SpatialIndex (
     fun insert(entity: SceneEntity): Boolean =
         when {
             entity.isNot(DISCOVERABLE) -> true
-            entity.width + entity.height < cellSize * 0.5 -> insertPoint(entity)
+            abs(entity.width) + abs(entity.height) < cellSize * 0.5 -> insertPoint(entity)
             entity.rotation == 0.0f -> insertAxisAligned(entity)
             else -> insertRotated(entity)
         }
@@ -122,10 +122,12 @@ class SpatialIndex (
 
     private fun insertAxisAligned(entity: SceneEntity): Boolean
     {
-        val left = ((entity.x - entity.width / 2f - xOffset)  / cellSize).toInt()
-        val right = ((entity.x + entity.width / 2f - xOffset)  / cellSize).toInt()
-        val top = ((entity.y - entity.height / 2f - yOffset)  / cellSize).toInt()
-        val bottom = ((entity.y + entity.height / 2f - yOffset) / cellSize).toInt()
+        val halfWidth = abs(entity.width) / 2f
+        val halfHeight = abs(entity.height) / 2f
+        val left = ((entity.x - halfWidth - xOffset)  / cellSize).toInt()
+        val right = ((entity.x + halfWidth - xOffset)  / cellSize).toInt()
+        val top = ((entity.y - halfHeight - yOffset)  / cellSize).toInt()
+        val bottom = ((entity.y + halfHeight - yOffset) / cellSize).toInt()
 
         if (left < 0 || top < 0 || right >= xCells || bottom >= yCells)
         {
