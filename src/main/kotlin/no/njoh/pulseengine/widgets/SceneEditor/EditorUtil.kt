@@ -82,32 +82,47 @@ object EditorUtil
      */
     fun createMenuBarUI(): UiElement
     {
+        val menuBar = HorizontalPanel(height = Size.absolute(25f))
+        menuBar.color = style.getColor("BG_COLOR")
+        menuBar.strokeColor = style.getColor("HEADER_COLOR")
+        menuBar.addChildren(
+            addMenuBarButton("File"),
+            addMenuBarButton("Edit"),
+            addMenuBarButton("View"),
+            addMenuBarButton("Run"),
+            Panel()
+        )
+
+        return menuBar
+    }
+
+    /**
+     * Creates a menu button with a dropdown.
+     */
+    private fun addMenuBarButton(name: String): UiElement
+    {
         val filePopup = RowPanel(height = Size.absolute(300f), width = Size.absolute(200f))
         filePopup.padding.top = 25f
         filePopup.color = style.getColor("BG_COLOR")
         filePopup.strokeColor = style.getColor("HEADER_COLOR")
         filePopup.hidden = true
 
-        val fileLabel = Label("File", x = Position.center(), width = Size.relative(0.5f))
+        val fileLabel = Label(name, x = Position.center(), width = Size.relative(1f)) // TODO: Fix sizing
         fileLabel.focusable = false
         fileLabel.padding.top = 3f
+        fileLabel.padding.left = 12f
         fileLabel.font = style.getFont()
         fileLabel.fontSize = 22f
         fileLabel.color = style.getColor("FONT_COLOR")
 
-        val fileButton = Button(width = Size.absolute(70f))
+        val fileButton = Button(width = Size.absolute(60f))
         fileButton.color = Color(1f, 1f, 1f, 0f)
         fileButton.colorHover = style.getColor("TILE_COLOR_HOVER")
         fileButton.addChildren(fileLabel)
         fileButton.addPopup(filePopup)
         fileButton.setOnClicked { filePopup.hidden = !filePopup.hidden }
 
-        val menuBar = HorizontalPanel(height = Size.absolute(25f))
-        menuBar.color = style.getColor("BG_COLOR")
-        menuBar.strokeColor = style.getColor("HEADER_COLOR")
-        menuBar.addChildren(fileButton, Panel())
-
-        return menuBar
+        return fileButton
     }
 
     /**
