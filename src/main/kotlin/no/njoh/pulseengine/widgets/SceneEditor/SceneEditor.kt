@@ -15,6 +15,7 @@ import no.njoh.pulseengine.modules.scene.Scene
 import no.njoh.pulseengine.modules.scene.SceneEntity
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.POSITION_UPDATED
+import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.util.Camera2DController
@@ -548,20 +549,21 @@ class SceneEditor: Widget
 
     private fun createDragAndDropEntity(engine: PulseEngine, texture: Texture)
     {
-        if (dragAndDropEntity == null) return
+        if (dragAndDropEntity != null) return
 
-        SceneEntity.REGISTERED_TYPES
-            .find { it.memberProperties.any { it.name == "textureName" } }
-            ?: SceneEntity.REGISTERED_TYPES.firstOrNull()
-            ?.let { type ->
-                val entity = type.constructors.first().call()
-                entity.x = engine.input.xWorldMouse
-                entity.y = engine.input.yWorldMouse
-                entity.width = texture.width.toFloat()
-                entity.height = texture.height.toFloat()
-                EditorUtil.setEntityProperty(entity, "textureName", texture.name)
-                dragAndDropEntity = entity
-            }
+        val type = REGISTERED_TYPES
+            .find { it.memberProperties.any { prop -> prop.name == "textureName" } }
+            ?: REGISTERED_TYPES.firstOrNull()
+
+        type?.let { type ->
+            val entity = type.constructors.first().call()
+            entity.x = engine.input.xWorldMouse
+            entity.y = engine.input.yWorldMouse
+            entity.width = texture.width.toFloat()
+            entity.height = texture.height.toFloat()
+            EditorUtil.setEntityProperty(entity, "textureName", texture.name)
+            dragAndDropEntity = entity
+        }
     }
 
     private fun selectSingleEntity(entity: SceneEntity)

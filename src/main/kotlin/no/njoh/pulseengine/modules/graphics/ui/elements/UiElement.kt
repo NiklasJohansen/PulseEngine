@@ -190,8 +190,8 @@ abstract class UiElement(
     {
         val newWidth = width.calculate(availableWidth - (padding.left + padding.right)).coerceIn(minWidth, maxWidth)
         val newHeight = height.calculate(availableHeight - (padding.top + padding.bottom)).coerceIn(minHeight, maxHeight)
-        val xNew = x.calculate(minVal = xPos + padding.left, maxVal = availableWidth - newWidth)
-        val yNew = y.calculate(minVal = yPos + padding.top, maxVal = availableHeight - newHeight)
+        val xNew = x.calculate(minVal = xPos + padding.left, maxVal = xPos + availableWidth - newWidth)
+        val yNew = y.calculate(minVal = yPos + padding.top, maxVal = yPos + availableHeight - newHeight)
 
         width.setQuiet(newWidth)
         height.setQuiet(newHeight)
