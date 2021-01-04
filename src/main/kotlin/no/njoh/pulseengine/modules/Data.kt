@@ -201,11 +201,13 @@ class MutableDataContainer : DataEngineInterface()
             .registerModule(KotlinModule())
             .enableDefaultTyping()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)
 
         private val jsonMapper = ObjectMapper()
             .registerModule(KotlinModule())
             .enableDefaultTyping()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)
 
         private val runtime = Runtime.getRuntime()
         private const val MEGA_BYTE = 1048576L

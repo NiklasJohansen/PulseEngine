@@ -27,12 +27,14 @@ class DropdownMenu <T> (
         set (value)
         {
             field = value
-            menuLabel.text = value?.let { onItemToString(it) } ?: ""
+            if (useSelectedItemAsMenuLabel)
+                menuLabel.text = value?.let { onItemToString(it) } ?: ""
             value?.let { onItemChanged(it) }
         }
 
     var closeOnItemSelect = true
     var showArrow = true
+    var useSelectedItemAsMenuLabel = true
 
     private var onItemToString: (T) -> String = { it.toString() }
     private var onItemChanged: (T) -> Unit = { }
@@ -67,6 +69,17 @@ class DropdownMenu <T> (
         addPopup(dropdown)
         addChildren(menuLabel)
     }
+
+    override fun onUpdate(engine: PulseEngine)
+    {
+        super.onUpdate(engine)
+        if (!dropdown.hidden && !hasFocus(engine))
+            dropdown.hidden = true
+    }
+
+    private fun UiElement.hasFocus(engine: PulseEngine): Boolean =
+        if (engine.input.hasFocus(this.area)) true
+        else popup?.hasFocus(engine) ?: false || children.any { it.hasFocus(engine) }
 
     fun addItem(item: T)
     {

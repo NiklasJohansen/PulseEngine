@@ -80,49 +80,52 @@ object EditorUtil
     /**
      * Creates a menu bar containing buttons with dropdown menus.
      */
-    fun createMenuBarUI(): UiElement
+    fun createMenuBarUI(vararg buttons: MenuBarButton): UiElement
     {
         val menuBar = HorizontalPanel(height = Size.absolute(25f))
         menuBar.color = style.getColor("BG_COLOR")
         menuBar.strokeColor = style.getColor("HEADER_COLOR")
-        menuBar.addChildren(
-            addMenuBarButton("File"),
-            addMenuBarButton("Edit"),
-            addMenuBarButton("View"),
-            addMenuBarButton("Run"),
-            Panel()
-        )
-
+        menuBar.addChildren(*buttons.map { createMenuBarButtonUI(it) }.toTypedArray(), Panel())
         return menuBar
     }
+
+    data class MenuBarButton(val labelText: String, val items: List<MenuBarItem>)
+    data class MenuBarItem(val labelText: String, val onClick: () -> Unit)
 
     /**
      * Creates a menu button with a dropdown.
      */
-    private fun addMenuBarButton(name: String): UiElement
+    private fun createMenuBarButtonUI(menuBarButton: MenuBarButton): UiElement
     {
-        val filePopup = RowPanel(height = Size.absolute(300f), width = Size.absolute(200f))
-        filePopup.padding.top = 25f
-        filePopup.color = style.getColor("BG_COLOR")
-        filePopup.strokeColor = style.getColor("HEADER_COLOR")
-        filePopup.hidden = true
+        val font = style.getFont()
+        val fontSize = 18f
+        val menu = DropdownMenu<MenuBarItem>(
+            width = Size.absolute(55f),
+            dropDownWidth = Size.absolute(menuBarButton.items.map { font.getCharacterWidths(it.labelText, fontSize).sum() + 30f }.max() ?: 100f ),
+            dropDownHeight = Size.absolute(menuBarButton.items.size * (35f))
+        ).apply {
+            showArrow = false
+            useSelectedItemAsMenuLabel = false
+            bgColor = Color(0f, 0f, 0f, 0f)
+            bgColorHover = style.getColor("TILE_COLOR_HOVER")
+            menuLabel.text = menuBarButton.labelText
+            menuLabel.fontSize = fontSize
+            menuLabel.padding.left = 12f
+            menuLabel.padding.top = 10f
+            menuLabel.font = style.getFont()
+            rowPanel.rowHeight = 25f
+            rowPanel.rowPadding = 5f
+            dropdown.color = style.getColor("BG_COLOR")
+            dropdown.strokeColor = style.getColor("HEADER_COLOR")
+            dropdown.minHeight = 0f
+            dropdown.resizable = false
+            scrollbar.hidden = true
+            setOnItemToString { it.labelText }
+            menuBarButton.items.forEach { addItem(it) }
+            setOnItemChanged { it.onClick() }
+        }
 
-        val fileLabel = Label(name, x = Position.center(), width = Size.relative(1f)) // TODO: Fix sizing
-        fileLabel.focusable = false
-        fileLabel.padding.top = 3f
-        fileLabel.padding.left = 12f
-        fileLabel.font = style.getFont()
-        fileLabel.fontSize = 22f
-        fileLabel.color = style.getColor("FONT_COLOR")
-
-        val fileButton = Button(width = Size.absolute(60f))
-        fileButton.color = Color(1f, 1f, 1f, 0f)
-        fileButton.colorHover = style.getColor("TILE_COLOR_HOVER")
-        fileButton.addChildren(fileLabel)
-        fileButton.addPopup(filePopup)
-        fileButton.setOnClicked { filePopup.hidden = !filePopup.hidden }
-
-        return fileButton
+        return menu
     }
 
     /**

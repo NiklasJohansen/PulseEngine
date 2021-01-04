@@ -1,15 +1,21 @@
 package no.njoh.pulseengine.widgets.SceneEditor
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.*
 import no.njoh.pulseengine.data.CursorType.*
+import no.njoh.pulseengine.data.FocusArea
+import no.njoh.pulseengine.data.Key
+import no.njoh.pulseengine.data.Mouse
+import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.graphics.CameraInterface
 import no.njoh.pulseengine.modules.graphics.Surface2D
-
-import no.njoh.pulseengine.modules.graphics.ui.elements.*
-import no.njoh.pulseengine.modules.graphics.ui.layout.*
+import no.njoh.pulseengine.modules.graphics.ui.elements.InputField
+import no.njoh.pulseengine.modules.graphics.ui.elements.UiElement
+import no.njoh.pulseengine.modules.graphics.ui.layout.RowPanel
+import no.njoh.pulseengine.modules.graphics.ui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.docking.DockingPanel
 import no.njoh.pulseengine.modules.scene.Scene
 import no.njoh.pulseengine.modules.scene.SceneEntity
@@ -18,11 +24,16 @@ import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.modules.scene.SpatialIndex
 import no.njoh.pulseengine.util.Camera2DController
 import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.modules.scene.SpatialIndex
+import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.MenuBarButton
+import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.MenuBarItem
 import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.createMenuBarUI
 import no.njoh.pulseengine.widgets.Widget
+import java.awt.FileDialog
+import java.awt.Frame
+import java.io.File
 import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
@@ -38,11 +49,12 @@ class SceneEditor: Widget
     private lateinit var screenArea: FocusArea
     private lateinit var dragAndDropArea: FocusArea
     private var propertyUiRows = mutableMapOf<String, UiElement>()
-    private var isVisible = true
+    private var isEditorOpen = true
 
     // Camera
     private val cameraController = Camera2DController(Mouse.MIDDLE)
     private lateinit var activeCamera: CameraInterface
+    private lateinit var storedCameraState: CameraState
 
     // Scene
     private var scene: Scene? = null
@@ -82,39 +94,29 @@ class SceneEditor: Widget
 
     override fun onCreate(engine: PulseEngine)
     {
+        // Load editor config
+        engine.config.load("/pulseengine/config/editor_config.cfg")
+
+        // Set editor data
         screenArea = FocusArea(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
         dragAndDropArea = FocusArea(0f, 0f, 0f, 0f)
         activeCamera = engine.gfx.mainCamera
-
-        engine.config.load("/pulseengine/config/editor_config.cfg")
+        storedCameraState = CameraState.from(activeCamera)
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
-        isVisible = engine.config.getBool("openEditorOnStart") ?: false
+        isEditorOpen = engine.config.getBool("openEditorOnStart") ?: false
 
+        // Create separate render surface for editor UI
         engine.gfx.createSurface2D("sceneEditorSurface")
-        engine.console.registerCommand("showSceneEditor") {
-            isVisible = !isVisible
-            if (!isVisible)
-            {
-                setScene(null)
-                engine.input.setCursor(ARROW)
-                if (engine.scene.sceneState == SceneState.STOPPED) {
-                    engine.scene.save()
-                    engine.scene.start()
-                }
-            }
-            else
-            {
-                engine.scene.stop()
-                engine.scene.reload()
-            }
 
+        // Register a console command to toggle editor visibility
+        engine.console.registerCommand("showSceneEditor") {
+            isEditorOpen = !isEditorOpen
+            if (!isEditorOpen) play(engine) else stop(engine)
             CommandResult("", showCommand = false)
         }
 
+        // Create and populate editor with UI
         createSceneEditorUI(engine)
-
-        if (shouldPersistEditorLayout)
-            dockingUI.loadLayout(engine, "/editor_layout.cfg")
     }
 
     private fun createSceneEditorUI(engine: PulseEngine)
@@ -130,9 +132,23 @@ class SceneEditor: Widget
         val entityPropertyWindow = EditorUtil.createWindowUI("Entity Properties")
 
         // Create content
-        val menuBar = createMenuBarUI()
         val assetPanel = EditorUtil.createAssetPanelUI(engine) { createDragAndDropEntity(engine, it) }
         val propertyPanel = EditorUtil.createScrollableSectionUI(propertiesUI)
+        val menuBar = createMenuBarUI(
+            MenuBarButton("File", listOf(
+                MenuBarItem("Open") { onLoad(engine) },
+                MenuBarItem("Save") { engine.scene.save() },
+                MenuBarItem("Save as") { onSaveAs(engine) }
+            )),
+            MenuBarButton("View", listOf(
+                MenuBarItem("Spatial index") { SpatialIndex.draw = !SpatialIndex.draw }
+            )),
+            MenuBarButton("Run", listOf(
+                MenuBarItem("Start") { play(engine) },
+                MenuBarItem("Stop") { stop(engine) },
+                MenuBarItem("Pause") { engine.scene.pause() }
+            ))
+        )
 
         // Add content to windows
         assetWindow.body.addChildren(assetPanel)
@@ -146,17 +162,23 @@ class SceneEditor: Widget
         rootUI = VerticalPanel()
         rootUI.focusable = false
         rootUI.addChildren(menuBar, dockingUI)
-        rootUI.update(engine)
+        rootUI.updateLayout()
+        rootUI.setLayoutClean()
+
 
         // Insert windows into docking
         dockingUI.insertLeft(entityPropertyWindow)
         dockingUI.insertRight(scenePropertyWindows)
         dockingUI.insertBottom(assetWindow)
+
+        // Load previous layout from file
+        if (shouldPersistEditorLayout)
+            dockingUI.loadLayout(engine, "/editor_layout.cfg")
     }
 
     override fun onUpdate(engine: PulseEngine)
     {
-         if (!isVisible) return
+        if (!isEditorOpen) return
 
         if (engine.scene.sceneState == SceneState.STOPPED)
         {
@@ -202,13 +224,81 @@ class SceneEditor: Widget
 
     override fun onRender(engine: PulseEngine)
     {
-        if (!isVisible) return
+        if (!isEditorOpen) return
 
         val uiSurface = engine.gfx.getSurface2D("sceneEditorSurface")
         val showResizeDots = (entitySelection.size == 1)
         entitySelection.forEach { it.renderGizmo(uiSurface, showResizeDots) }
         renderSelectionRectangle(uiSurface)
         rootUI.render(uiSurface)
+    }
+
+    private fun onSaveAs(engine: PulseEngine)
+    {
+        GlobalScope.launch {
+            val dialog = FileDialog(null as Frame?, "Save scene")
+            dialog.mode = FileDialog.SAVE
+            dialog.isAlwaysOnTop = true
+            dialog.directory = engine.data.saveDirectory
+            dialog.setFile("*.scn")
+            dialog.isVisible = true
+            dialog.files.firstOrNull()?.let { f ->
+                if (engine.scene.sceneState == SceneState.RUNNING)
+                    engine.scene.stop()
+                engine.scene.activeScene?.let { scene ->
+                    val newScene = Scene(scene.name, "/${f.name}", scene.fileFormat, scene.entityTypes)
+                    engine.scene.setActive(newScene)
+                }
+            }
+        }
+    }
+
+    private fun onLoad(engine: PulseEngine)
+    {
+        if (engine.scene.sceneState != SceneState.RUNNING)
+            engine.scene.save()
+
+        GlobalScope.launch {
+            val dialog = FileDialog(null as Frame?, "Select scene to open")
+            dialog.mode = FileDialog.LOAD
+            dialog.isAlwaysOnTop = true
+            dialog.directory = engine.data.saveDirectory
+            dialog.file = "*.scn"
+            dialog.setFilenameFilter { dir: File?, name: String -> name.endsWith(".scn") }
+            dialog.isVisible = true
+            dialog.files.firstOrNull()?.let { f -> engine.scene.loadAndSetActive("/${f.name}") }
+        }
+    }
+
+    private fun play(engine: PulseEngine)
+    {
+        isEditorOpen = false
+        storedCameraState.saveFrom(activeCamera)
+        activeCamera.xScale = 1f
+        activeCamera.yScale = 1f
+        activeCamera.xPos = 0f
+        activeCamera.yPos = 0f
+
+        setScene(null)
+        engine.input.setCursor(ARROW)
+
+        if (engine.scene.sceneState == SceneState.STOPPED)
+        {
+            engine.scene.save()
+            engine.scene.start()
+        }
+    }
+
+    private fun stop(engine: PulseEngine)
+    {
+        isEditorOpen = true
+        storedCameraState.loadInto(activeCamera)
+
+        if (engine.scene.sceneState != SceneState.STOPPED)
+        {
+            engine.scene.stop()
+            engine.scene.reload()
+        }
     }
 
     ////////////////////////////// EDIT TOOLS  //////////////////////////////
@@ -513,7 +603,6 @@ class SceneEditor: Widget
             else null // ARROW
 
         cursorType?.let { engine.input.setCursor(it) }
-        //engine.input.setCursor(cursorType)
 
         if (isRotating || isResizingHorizontally || isResizingVertically)
         {
@@ -737,9 +826,13 @@ class SceneEditor: Widget
         entitySelection.clear()
     }
 
-    override fun onDestroy(engine: PulseEngine) {
+    override fun onDestroy(engine: PulseEngine)
+    {
         if (shouldPersistEditorLayout)
             dockingUI.saveLayout(engine, "/editor_layout.cfg")
+
+        if (isEditorOpen && engine.scene.sceneState == SceneState.STOPPED)
+            engine.scene.save()
     }
 
     companion object
@@ -751,3 +844,31 @@ class SceneEditor: Widget
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class ValueRange(val min: Float, val max: Float)
+
+data class CameraState(
+    var xPos: Float,
+    var yPos: Float,
+    var xScale: Float,
+    var yScale: Float
+) {
+    fun saveFrom(camera: CameraInterface)
+    {
+        xPos = camera.xPos
+        yPos = camera.yPos
+        xScale = camera.xScale
+        yScale = camera.yScale
+    }
+
+    fun loadInto(camera: CameraInterface)
+    {
+       camera.xPos = xPos
+       camera.yPos = yPos
+       camera.xScale = xScale
+       camera.yScale = yScale
+    }
+    companion object
+    {
+        fun from(camera: CameraInterface) =
+            CameraState(camera.xPos, camera.yPos, camera.xScale, camera.yScale)
+    }
+}
