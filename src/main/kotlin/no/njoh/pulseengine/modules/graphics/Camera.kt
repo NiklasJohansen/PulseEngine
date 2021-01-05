@@ -116,10 +116,11 @@ class Camera(
         val zScale = zScale.interpolateFrom(zLastScale)
 
         viewMatrix
-            .setTranslation(xPos + xOrigin, yPos + yOrigin, zPos + zOrigin)
-            .translate(-xOrigin, -yOrigin, -zOrigin)
-            .setRotationXYZ(xRot, yRot, zRot)
+            .identity()
+            .translate(xOrigin, yOrigin, zOrigin)
             .scale(xScale, yScale, zScale)
+            .rotateXYZ(xRot, yRot, zRot)
+            .translate(xPos - xOrigin, yPos - yOrigin, zPos - zOrigin)
 
         viewMatrix.invert(invViewMatrix)
 

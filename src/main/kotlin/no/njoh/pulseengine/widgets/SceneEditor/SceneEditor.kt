@@ -849,7 +849,10 @@ data class CameraState(
     var xPos: Float,
     var yPos: Float,
     var xScale: Float,
-    var yScale: Float
+    var yScale: Float,
+    var xOrigin: Float,
+    var yOrigin: Float,
+    var zRot: Float
 ) {
     fun saveFrom(camera: CameraInterface)
     {
@@ -857,6 +860,9 @@ data class CameraState(
         yPos = camera.yPos
         xScale = camera.xScale
         yScale = camera.yScale
+        xOrigin = camera.xOrigin
+        yOrigin = camera.yOrigin
+        zRot = camera.zRot
     }
 
     fun loadInto(camera: CameraInterface)
@@ -865,10 +871,13 @@ data class CameraState(
        camera.yPos = yPos
        camera.xScale = xScale
        camera.yScale = yScale
+       camera.xOrigin = xOrigin
+       camera.yOrigin = yOrigin
+       camera.zRot = zRot
     }
     companion object
     {
         fun from(camera: CameraInterface) =
-            CameraState(camera.xPos, camera.yPos, camera.xScale, camera.yScale)
+            CameraState(camera.xPos, camera.yPos, camera.xScale, camera.yScale, camera.zRot, camera.xOrigin, camera.yOrigin)
     }
 }
