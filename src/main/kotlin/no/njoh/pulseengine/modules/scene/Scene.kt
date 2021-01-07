@@ -39,8 +39,8 @@ open class Scene(
     }
 
     @Suppress("UNCHECKED_CAST")
-    inline fun <reified T: SceneEntity> getEntitiesOfType(): List<T> =
-        entityTypes[T::class.simpleName]?.let { it as List<T> } ?: emptyList()
+    inline fun <reified T: SceneEntity> getEntitiesOfType(): Iterable<T>? =
+        entityTypes[T::class.simpleName] as Iterable<T>?
 
     inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit) =
         spatialIndex.forEachEntityInArea(x, y, width, height, block)

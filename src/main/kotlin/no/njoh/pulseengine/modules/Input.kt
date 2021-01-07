@@ -235,6 +235,8 @@ class InputImpl : InputEngineInterface
         clicked.fill(0)
         glfwPollEvents()
         gamepads.forEach { it.updateState() }
+        if (focusStack.size == 1)
+            currentFocusArea = focusStack.first()
         focusStack.clear()
         updateSelectedCursor()
     }
