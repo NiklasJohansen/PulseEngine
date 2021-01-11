@@ -7,6 +7,7 @@ import no.njoh.pulseengine.data.Subscription
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import no.njoh.pulseengine.modules.scene.SceneEntity
 import java.io.File
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.declaredMemberProperties
@@ -244,6 +245,15 @@ object CommandRegistry
             }
 
             CommandResult("No command bound for key: ${keys.joinToString("+")}", MessageType.ERROR)
+        }
+
+        ///////////////////////////////////////////// RELOAD ENTITY TYPES COMMAND /////////////////////////////////////////////
+
+        engine.console.registerCommand(
+            "reloadEntityTypes"
+        ) {
+            SceneEntity.autoRegisterEntityTypes()
+            CommandResult("Reloaded entity types", showCommand = false)
         }
     }
 }

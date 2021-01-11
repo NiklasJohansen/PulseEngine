@@ -5,7 +5,7 @@ import kotlin.math.max
 
 class Position internal constructor(
     value: Float,
-    val type: PositionType,
+    var type: PositionType,
     val offset: Float = 0f
 ) {
     var value = value
@@ -26,6 +26,20 @@ class Position internal constructor(
         notify = false
         this.value = value
         notify = true
+    }
+
+    fun setQuiet(pos: Position)
+    {
+        notify = false
+        this.value = pos.value
+        this.type = pos.type
+        notify = true
+    }
+
+    fun updateType(type: PositionType)
+    {
+        this.type = type
+        onUpdatedCallback()
     }
 
     fun setOnUpdated(callback: () -> Unit)

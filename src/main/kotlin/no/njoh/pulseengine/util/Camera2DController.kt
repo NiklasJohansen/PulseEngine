@@ -28,17 +28,21 @@ class Camera2DController(
             val yScale = min(maxScale, max(minScale, cam.yScale + scaleChangeRate))
             val xScaleDiff = xScale - cam.xScale
             val yScaleDiff = yScale - cam.yScale
+            val xCenter = engine.window.width * 0.5f
+            val yCenter = engine.window.height * 0.5f
 
             cam.xScale = xScale
             cam.yScale = yScale
-            cam.xPos -= engine.input.xWorldMouse * xScaleDiff
-            cam.yPos -= engine.input.yWorldMouse * yScaleDiff
+            cam.xOrigin = xCenter
+            cam.yOrigin = yCenter
+            cam.xPos -= (engine.input.xMouse - xCenter) * xScaleDiff / (xScale * xScale)
+            cam.yPos -= (engine.input.yMouse - yCenter) * yScaleDiff / (yScale * yScale)
         }
 
         if (engine.input.isPressed(dragMouseKey))
         {
-            xPosChangeRate += engine.input.xdMouse * (1f - smoothing)
-            yPosChangeRate += engine.input.ydMouse * (1f - smoothing)
+            xPosChangeRate += engine.input.xdMouse / cam.xScale * (1f - smoothing)
+            yPosChangeRate += engine.input.ydMouse / cam.yScale * (1f - smoothing)
         }
 
         cam.xPos += xPosChangeRate

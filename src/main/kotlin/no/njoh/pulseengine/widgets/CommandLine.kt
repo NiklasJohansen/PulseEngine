@@ -6,13 +6,14 @@ import no.njoh.pulseengine.data.assets.Font
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.console.MessageType
+import no.njoh.pulseengine.modules.widget.Widget
 import kotlin.math.max
 import kotlin.math.min
 
-
-class ConsoleWidget : Widget
+class CommandLine : Widget
 {
-    private var active: Boolean = false
+    override var isRunning = false
+
     private var widthFraction = 0.3f
     private var heightFraction = 1f
 
@@ -30,8 +31,8 @@ class ConsoleWidget : Widget
         engine.gfx.createSurface2D("engineApp", 100)
         engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("showConsole") {
-            active = !active
-            if (active)
+            isRunning = !isRunning
+            if (isRunning)
                 engine.input.acquireFocus(area)
             else
                 engine.input.releaseFocus(area)
@@ -43,11 +44,6 @@ class ConsoleWidget : Widget
 
     override fun onUpdate(engine: PulseEngine)
     {
-        ///////////////////////////////// Open/close terminal /////////////////////////////////
-
-        if (!active)
-            return
-
         engine.input.requestFocus(area)
 
         ///////////////////////////////// Add new text to text box /////////////////////////////////
@@ -315,10 +311,6 @@ class ConsoleWidget : Widget
 
     override fun onRender(engine: PulseEngine)
     {
-        // Dont render if console is not active
-        if (!active)
-            return
-
         val cliFont = engine.asset.get<Font>("cli_font")
         val height = engine.window.height * heightFraction
         val width = engine.window.width * widthFraction
@@ -341,7 +333,7 @@ class ConsoleWidget : Widget
 
         // Draw input box rectangle
         surface.setDrawColor(0f, 0f, 0f, 0.3f)
-        surface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width-INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING)
+        surface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width- INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING)
 
         // Draw selection rectangle
         val selectionDistance = selectCursor - inputCursor

@@ -24,7 +24,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
         mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = Surface2DImpl.create("main", zOrder++, 100, graphicState, mainCamera)
-        mainSurface.setBackgroundColor(0.1f, 0.1f, 0.1f, 1f)
+        mainSurface.setBackgroundColor(0.043f, 0.047f, 0.054f, 1f)
         surfaces.add(mainSurface)
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
@@ -99,7 +99,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
             ?: Surface2DImpl.create(
                 name = name,
                 zOrder = zOrder ?: this.zOrder++,
-                initCapacity = 100,
+                initCapacity = 5000,
                 graphicsState = graphicState,
                 camera = (camera ?: Camera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraEngineInterface
             ).also {

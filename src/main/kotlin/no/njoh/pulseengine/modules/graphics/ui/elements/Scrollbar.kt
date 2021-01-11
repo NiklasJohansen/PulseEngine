@@ -2,6 +2,7 @@ package no.njoh.pulseengine.modules.graphics.ui.elements
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.Color
+import no.njoh.pulseengine.data.CursorType
 import no.njoh.pulseengine.data.Mouse
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
@@ -73,6 +74,9 @@ class Scrollbar(
 
             updateSliderFraction(engine.input.ydMouse, engine.input.scroll, sliderTravelDist)
         }
+
+        if (isMouseOverSlider)
+            engine.input.setCursor(CursorType.ARROW)
     }
 
     private fun updateSliderFraction(mouseChange: Float, scroll: Int, sliderTravelDist: Float)
@@ -103,7 +107,7 @@ class Scrollbar(
 
     override fun updateChildLayout()
     {
-        if(hidden)
+        if (hidden)
         {
             val sliderTravelDist = (height.value - sliderHeight - 2f * sliderPadding)
             if(sliderTravelDist > 0)

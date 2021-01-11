@@ -8,6 +8,7 @@ import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
 import no.njoh.pulseengine.modules.graphics.ui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.RowPanel
+import no.njoh.pulseengine.modules.graphics.ui.layout.WindowPanel
 
 class DropdownMenu <T> (
     x: Position = Position.auto(),
@@ -18,7 +19,7 @@ class DropdownMenu <T> (
     dropDownHeight: Size = Size.absolute(300f)
 ) : Button(x, y, width, height) {
 
-    var dropdown = HorizontalPanel(width = dropDownWidth, height = dropDownHeight)
+    var dropdown = WindowPanel(width = dropDownWidth, height = dropDownHeight)
     var rowPanel: RowPanel
     var menuLabel: Label
     var scrollbar: Scrollbar
@@ -26,12 +27,16 @@ class DropdownMenu <T> (
         set (value)
         {
             field = value
-            menuLabel.text = value?.let { onItemToString(it) } ?: ""
+            if (useSelectedItemAsMenuLabel)
+                menuLabel.text = value?.let { onItemToString(it) } ?: ""
             value?.let { onItemChanged(it) }
         }
 
+    var itemBgColor = Color(0.5f, 0.5f, 0.5f)
+    var itemBgHoverColor = Color(0.8f, 0.8f, 0.8f)
     var closeOnItemSelect = true
     var showArrow = true
+    var useSelectedItemAsMenuLabel = true
 
     private var onItemToString: (T) -> String = { it.toString() }
     private var onItemChanged: (T) -> Unit = { }
@@ -39,7 +44,7 @@ class DropdownMenu <T> (
     init
     {
         menuLabel = Label("", width = Size.relative(0.9f))
-        menuLabel.intractable = false
+        menuLabel.focusable = false
         menuLabel.padding.setAll(5f)
         menuLabel.color = Color(1f, 1f, 1f)
 
@@ -67,18 +72,29 @@ class DropdownMenu <T> (
         addChildren(menuLabel)
     }
 
+    override fun onUpdate(engine: PulseEngine)
+    {
+        super.onUpdate(engine)
+        if (!dropdown.hidden && !hasFocus(engine))
+            dropdown.hidden = true
+    }
+
+    private fun UiElement.hasFocus(engine: PulseEngine): Boolean =
+        if (engine.input.hasFocus(this.area)) true
+        else popup?.hasFocus(engine) ?: false || children.any { it.hasFocus(engine) }
+
     fun addItem(item: T)
     {
         val label = Label(onItemToString(item))
-        label.intractable = false
-        label.padding.left = 10f
+        label.focusable = false
+        label.padding.left = 5f
         label.font = menuLabel.font
         label.color = menuLabel.color
-        label.textSize = menuLabel.textSize
+        label.fontSize = menuLabel.fontSize
 
         val button = Button()
-        button.color = bgColor
-        button.colorHover = bgColorHover
+        button.color = itemBgColor
+        button.hoverColor = itemBgHoverColor
         button.addChildren(label)
         button.setOnClicked {
             selectedItem = item
@@ -116,7 +132,7 @@ class DropdownMenu <T> (
 
     override fun onRender(surface: Surface2D)
     {
-        val bgColor = if (mouseInsideArea) bgColorHover else bgColor
+        val bgColor = if (mouseInsideArea) bgHoverColor else bgColor
         surface.setDrawColor(bgColor)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)
 

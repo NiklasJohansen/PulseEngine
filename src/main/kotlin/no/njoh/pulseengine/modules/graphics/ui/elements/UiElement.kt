@@ -7,6 +7,7 @@ import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Padding
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
+import no.njoh.pulseengine.util.forEachVolatile
 
 abstract class UiElement(
     val x: Position,
@@ -14,6 +15,7 @@ abstract class UiElement(
     val width: Size,
     val height: Size
 ) {
+    var id: String? = null
     var parent: UiElement? = null
         private set
     val children = mutableListOf<UiElement>()
@@ -25,17 +27,18 @@ abstract class UiElement(
     var minHeight = 0f
     var maxWidth = 10000f
     var maxHeight = 10000f
-    var intractable = true
+    var focusable = true
     var hidden = false
         set (isHidden)
         {
-            if (field != isHidden) setLayoutDirty()
+            if (field != isHidden)
+                setLayoutDirty()
             field = isHidden
         }
 
     private var created = false
     private var dirtyLayout = false
-    protected var mouseInsideArea = false
+    var mouseInsideArea = false
         private set
 
     init
@@ -51,6 +54,30 @@ abstract class UiElement(
     {
         children.addAll(uiElements)
         children.forEach { it.parent = this }
+        setLayoutDirty()
+    }
+
+    fun insertChild(element: UiElement, index: Int)
+    {
+        children.add(index, element)
+        element.parent = this
+        setLayoutDirty()
+    }
+
+    fun replaceChild(oldElement: UiElement, newElement: UiElement)
+    {
+        val index = children.indexOf(oldElement)
+        if (index != -1)
+            children[index] = newElement
+        else
+            children.add(newElement)
+        newElement.parent = this
+        setLayoutDirty()
+    }
+
+    fun removeChild(vararg uiElements: UiElement)
+    {
+        children.removeAll(uiElements)
         setLayoutDirty()
     }
 
@@ -80,7 +107,7 @@ abstract class UiElement(
         if (hidden)
             return
 
-        if (intractable)
+        if (focusable)
         {
             engine.input.requestFocus(area)
 
@@ -93,11 +120,11 @@ abstract class UiElement(
                 if (insideArea) onMouseEnter(engine) else onMouseLeave(engine)
                 mouseInsideArea = insideArea
             }
-
-            onUpdate(engine)
         }
 
-        children.forEach { child ->
+        onUpdate(engine)
+
+        children.forEachVolatile { child ->
             child.update(engine)
             if (child.dirtyLayout || child.popup?.dirtyLayout == true)
                 setLayoutDirty()
@@ -170,8 +197,8 @@ abstract class UiElement(
     {
         val newWidth = width.calculate(availableWidth - (padding.left + padding.right)).coerceIn(minWidth, maxWidth)
         val newHeight = height.calculate(availableHeight - (padding.top + padding.bottom)).coerceIn(minHeight, maxHeight)
-        val xNew = x.calculate(minVal = xPos + padding.left, maxVal = availableWidth - newWidth)
-        val yNew = y.calculate(minVal = yPos + padding.top, maxVal = availableHeight - newHeight)
+        val xNew = x.calculate(minVal = xPos + padding.left, maxVal = xPos + availableWidth - newWidth)
+        val yNew = y.calculate(minVal = yPos + padding.top, maxVal = yPos + availableHeight - newHeight)
 
         width.setQuiet(newWidth)
         height.setQuiet(newHeight)
@@ -201,6 +228,7 @@ abstract class UiElement(
     {
         var data = if (this is Label) " (${this.text})" else ""
         data += popup?.let { " popup hidden: (${it.hidden})" } ?: ""
+        data += " id: $id"
         println(" ".repeat(indent) + this::class.simpleName + data)
         for (child in children)
             child.printStructure(indent + 2)

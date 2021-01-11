@@ -23,7 +23,7 @@ class InputField (
     height: Size = Size.auto()
 )  : UiElement(x, y, width, height)  {
 
-    enum class ContentType  { TEXT, INTEGER, FLOAT, BOOLEAN }
+    enum class ContentType  { TEXT, INTEGER, FLOAT, BOOLEAN, HEX_COLOR }
 
     var editable = true
     var bgColor = Color(1f, 1f, 1f, 0f)
@@ -72,9 +72,12 @@ class InputField (
     private var lastHasFocus = false
     private var lastText = text
 
+    private val hexColorRegex = "#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})".toRegex()
+
     private var onFocusLost: (InputField) -> Unit = {  }
     private var onEnterPressed: () -> Unit = { unfocus() }
     private var onTextChanged: (InputField) -> Unit = { }
+    private var onValidTextChanged: (InputField) -> Unit = { }
     private var onGetHistory: (Int) -> String? = { _ -> null }
     private var onGetSuggestion: (String) -> List<String> = { _ -> emptyList() }
 
@@ -141,7 +144,9 @@ class InputField (
 
         if (text != lastText)
         {
-            validateContent()
+            isValid = validateContent()
+            if (isValid)
+                onValidTextChanged(this)
             onTextChanged(this)
             lastText = text
         }
@@ -398,15 +403,13 @@ class InputField (
             onEnterPressed()
     }
 
-    private fun validateContent()
+    private fun validateContent() = when (contentType)
     {
-        isValid = text.isEmpty() || when (contentType)
-        {
-            TEXT -> true
-            INTEGER -> { val num = text.toIntOrNull(); num != null && num >= numberMinVal && num <= numberMaxVal }
-            FLOAT -> { val num = text.toFloatOrNull(); num != null && num >= numberMinVal && num <= numberMaxVal }
-            BOOLEAN -> text == "true" || text == "false"
-        }
+        TEXT -> true
+        INTEGER -> { val num = text.toIntOrNull(); num != null && num >= numberMinVal && num <= numberMaxVal }
+        FLOAT -> { val num = text.toFloatOrNull(); num != null && num >= numberMinVal && num <= numberMaxVal }
+        BOOLEAN -> text == "true" || text == "false"
+        HEX_COLOR -> hexColorRegex.matches(text)
     }
 
     private fun handleNumberStepper(engine: PulseEngine)
@@ -491,14 +494,14 @@ class InputField (
 
         // Draw input text
         surface.setDrawColor(fontColor)
-        surface.drawText(text, x.value + leftTextPadding, y.value + height.value / 2f, font, yOrigin = 0.5f)
+        surface.drawText(text, x.value + leftTextPadding, y.value + height.value / 2f, font, fontSize, yOrigin = 0.6f)
 
         if (contentType == INTEGER || contentType == FLOAT)
         {
             val xArrow = x.value + width.value - numberStepperWidth / 2
             val yArrow = y.value + height.value / 2
-            drawArrow(xArrow, yArrow - 6f, 7f, 7f,surface, fontColor, -2.5f)
-            drawArrow(xArrow, yArrow + 6f, 7f, 7f, surface, fontColor, 2.5f)
+            drawArrow(xArrow, yArrow - 5f, 7f, 7f,surface, fontColor, -2.5f)
+            drawArrow(xArrow, yArrow + 5f, 7f, 7f, surface, fontColor, 2.5f)
         }
     }
 
@@ -525,6 +528,16 @@ class InputField (
         suggestionCursor = -1
     }
 
+    /**
+     * Sets the text without triggering an onTextChange Event
+     */
+    fun setTextQuiet(newText: String)
+    {
+        text = newText
+        lastText = newText
+        isValid = validateContent()
+    }
+
     fun setOnFocusLost(callback: (InputField) -> Unit)
     {
         onFocusLost = callback
@@ -533,6 +546,11 @@ class InputField (
     fun setOnTextChanged(callback: (InputField) -> Unit)
     {
         onTextChanged = callback
+    }
+
+    fun setOnValidTextChanged(callback: (InputField) -> Unit)
+    {
+        onValidTextChanged = callback
     }
 
     fun setOnEnterPressed(callback: () -> Unit)
