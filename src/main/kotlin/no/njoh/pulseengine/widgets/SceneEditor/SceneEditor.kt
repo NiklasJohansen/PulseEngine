@@ -121,6 +121,15 @@ class SceneEditor: Widget
 
         // Create and populate editor with UI
         createSceneEditorUI(engine)
+
+        // Set or load temp scene if no scene has been set
+        if (engine.scene.activeScene == null)
+        {
+            if (engine.data.exists("/temp.scn"))
+                engine.scene.loadAndSetActive("/temp.scn")
+            else
+                engine.scene.createEmptyAndSetActive("/temp.scn")
+        }
     }
 
     private fun createSceneEditorUI(engine: PulseEngine)
