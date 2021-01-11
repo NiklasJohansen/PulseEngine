@@ -313,7 +313,7 @@ object EditorUtil
 
     /**
      * Creates a property row UI element for the given entity.
-     * Returns the main UI panel and the input field / dropdown menu
+     * Returns the main UI panel and the input UiElement
      */
     fun createEntityPropertyUI(entity: SceneEntity, prop: KMutableProperty<*>): Pair<HorizontalPanel, UiElement>
     {
@@ -344,36 +344,6 @@ object EditorUtil
                 createInputFieldUI(value, prop).apply {
                     setOnTextChanged { if (it.isValid) setEntityProperty(entity, prop, it.text) }
                 }
-//
-//                val type = when (propType)
-//                {
-//                    Float::class.java, Double::class.java -> FLOAT
-//                    Int::class.java, Long::class.java, Char::class.java -> INTEGER
-//                    Boolean::class.java -> BOOLEAN
-//                    else -> TEXT
-//                }
-//
-//                val propValue = prop.getter.call(entity)?.toString() ?: "nan"
-//                val inputField = InputField(propValue, width = Size.relative(0.5f)).apply {
-//                    padding.top = 5f
-//                    padding.bottom = 5f
-//                    padding.right = 5f
-//                    font = style.getFont()
-//                    fontSize = 20f
-//                    fontColor = style.getColor("LABEL")
-//                    bgColor = style.getColor("BUTTON")
-//                    editable = true
-//                    contentType = type
-//                    setOnTextChanged { if (it.isValid) setEntityProperty(entity, prop, it.text) }
-//                }
-//
-//                if (type == FLOAT || type == INTEGER)
-//                    prop.findAnnotation<ValueRange>()?.let {
-//                        inputField.numberMinVal = it.min
-//                        inputField.numberMaxVal = it.max
-//                    }
-//
-//                inputField
             }
         }
 

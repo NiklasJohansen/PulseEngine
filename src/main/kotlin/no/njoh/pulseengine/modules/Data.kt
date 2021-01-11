@@ -24,10 +24,10 @@ abstract class Data
     abstract val interpolation: Float
     abstract val totalMemory: Long
     abstract val usedMemory: Long
-    abstract val dataSources: Map<String, DataSource>
+    abstract val metrics: Map<String, Metric>
     abstract var saveDirectory: String
 
-    abstract fun addSource(name: String, unit: String, source: () -> Float)
+    abstract fun addMetric(name: String, unit: String = "", source: () -> Float)
     abstract fun exists(fileName: String): Boolean
     abstract fun <T> saveState(data: T, fileName: String, fileFormat: FileFormat = JSON): Boolean
     abstract fun <T> saveStateAsync(data: T, fileName: String, fileFormat: FileFormat = JSON, onComplete: (T) -> Unit = {})
@@ -59,7 +59,7 @@ class MutableDataContainer : DataEngineInterface()
     override var interpolation: Float = 0f
     override var usedMemory: Long = 0L
     override var totalMemory: Long = 0L
-    override var dataSources = mutableMapOf<String, DataSource>()
+    override var metrics = mutableMapOf<String, Metric>()
     override lateinit var saveDirectory: String
 
     // Used by engine
@@ -75,9 +75,9 @@ class MutableDataContainer : DataEngineInterface()
         updateSaveDirectory(creatorName, gameName)
     }
 
-    override fun addSource(name: String, unit: String, source: () -> Float)
+    override fun addMetric(name: String, unit: String, source: () -> Float)
     {
-        dataSources[name] = DataSource(name, unit, source)
+        metrics[name] = Metric(name, unit, source)
     }
 
     override fun exists(fileName: String): Boolean
@@ -214,7 +214,7 @@ class MutableDataContainer : DataEngineInterface()
     }
 }
 
-data class DataSource(
+data class Metric(
     val name: String,
     val unit: String,
     val source: () -> Float

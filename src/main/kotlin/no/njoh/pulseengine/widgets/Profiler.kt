@@ -7,13 +7,15 @@ import no.njoh.pulseengine.data.Mouse
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.graphics.Surface2D
+import no.njoh.pulseengine.modules.widget.Widget
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
-class GraphWidget : Widget
+class Profiler : Widget
 {
-    private var open =  false
+    override var isRunning = false
+
     private var xPos = 10f
     private var yPos = 10f
 
@@ -35,7 +37,7 @@ class GraphWidget : Widget
         engine.gfx.createSurface2D("engineApp", 100)
         engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "graph_font", floatArrayOf(TICK_MARK_FONT_SIZE, HEADER_FONT_SIZE, VALUE_FONT_SIZE))
         engine.console.registerCommand("showGraphs") {
-            open = !open
+            isRunning = !isRunning
             CommandResult("", showCommand = false)
         }
 
@@ -45,15 +47,13 @@ class GraphWidget : Widget
             Graph("UPDATE TIME", "MS") { engine.data.updateTimeMS },
             Graph("FIXED UPDATE TIME", "MS") { engine.data.fixedUpdateTimeMS },
             Graph("USED MEMORY", "MB") { engine.data.usedMemory.toFloat() },
-            Graph("MEMORY OF TOTAL", "%") { engine.data.usedMemory * 100f / engine.data.totalMemory  }
+            Graph("MEMORY OF TOTAL", "%") { engine.data.usedMemory * 100f / engine.data.totalMemory }
         ))
     }
 
     override fun onUpdate(engine: PulseEngine)
     {
-        if (!open) return
-
-        for (source in engine.data.dataSources.values)
+        for (source in engine.data.metrics.values)
         {
             val graph = graphs.find { it.name == source.name }
             if (graph == null)
@@ -102,8 +102,6 @@ class GraphWidget : Widget
 
     override fun onRender(engine: PulseEngine)
     {
-        if (!open) return
-
         var x = xPos
         var y = yPos
         var w = graphWidth

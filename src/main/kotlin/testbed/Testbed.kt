@@ -1,10 +1,10 @@
 package testbed
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.*
-import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.Assets
 import no.njoh.pulseengine.modules.PulseEngineGame
+import no.njoh.pulseengine.widgets.CommandLine
+import no.njoh.pulseengine.widgets.Profiler
+import no.njoh.pulseengine.widgets.SceneEditor.SceneEditor
 
 fun main() = PulseEngine.run(Testbed::class)
 
@@ -16,7 +16,9 @@ class Testbed : PulseEngineGame()
         engine.config.creatorName = "PulseEngine"
         engine.config.gameName = "Testbed"
         engine.config.targetFps = 120
+        engine.widget.add(CommandLine(), Profiler(), SceneEditor())
         engine.console.runScript("/testbed/startup.ps")
+        engine.asset.loadAllTextures("/testbed/images")
     }
 
     override fun onUpdate()

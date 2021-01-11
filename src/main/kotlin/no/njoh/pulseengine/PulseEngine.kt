@@ -5,9 +5,6 @@ import no.njoh.pulseengine.data.assets.Font
 import no.njoh.pulseengine.data.assets.Sound
 import no.njoh.pulseengine.data.assets.Text
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.widgets.ConsoleWidget
-import no.njoh.pulseengine.widgets.Widget
-import no.njoh.pulseengine.widgets.GraphWidget
 import no.njoh.pulseengine.modules.*
 import no.njoh.pulseengine.modules.console.ConsoleImpl
 import no.njoh.pulseengine.modules.console.Console
@@ -17,8 +14,8 @@ import no.njoh.pulseengine.modules.graphics.RetainedModeGraphics
 import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.SceneManagerEngineInterface
 import no.njoh.pulseengine.modules.scene.SceneManagerImpl
+import no.njoh.pulseengine.modules.widget.*
 import no.njoh.pulseengine.util.FpsLimiter
-import no.njoh.pulseengine.widgets.SceneEditor.SceneEditor
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
@@ -34,6 +31,7 @@ interface PulseEngine
     val scene: SceneManager
     val data: Data
     val console: Console
+    val widget: WidgetManager
 
     companion object
     {
@@ -54,7 +52,7 @@ class PulseEngineImpl(
     override val scene: SceneManagerEngineInterface   = SceneManagerImpl(),
     override val data: MutableDataContainer           = MutableDataContainer(),
     override val console: ConsoleImpl                 = ConsoleImpl(),
-    private  val widgets: List<Widget>                = listOf(SceneEditor(), GraphWidget(), ConsoleWidget())
+    override val widget: WidgetManagerEngineInterface = WidgetManagerImpl()
 ) : PulseEngine {
 
     private val activeInput = input
@@ -129,8 +127,8 @@ class PulseEngineImpl(
         // Load assets from disk
         asset.loadInitialAssets()
 
-        // Initialize engine apps
-        widgets.forEach { it.onCreate(this) }
+        // Initialize widgets
+        widget.init(this)
 
         // Run startup script
         console.runScript("/startup.ps")
@@ -165,7 +163,7 @@ class PulseEngineImpl(
             updateInput()
             game.onUpdate()
             scene.update(this)
-            widgets.forEach { it.onUpdate(this) }
+            widget.update(this)
             input = activeInput
         }
     }
@@ -206,7 +204,7 @@ class PulseEngineImpl(
         {
             scene.render(gfx)
             game.onRender()
-            widgets.forEach { it.onRender(this) }
+            widget.render(this)
             gfx.postRender()
             window.swapBuffers()
             window.wasResized = false
@@ -241,7 +239,7 @@ class PulseEngineImpl(
 
     private fun destroy()
     {
-        widgets.forEach { it.onDestroy(this) }
+        widget.cleanUp(this)
         audio.cleanUp()
         asset.cleanUp()
         input.cleanUp()

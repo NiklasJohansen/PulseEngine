@@ -10,9 +10,12 @@ fun Float.interpolateFrom(lastState: Float): Float
 
 inline fun <T> List<T>.forEachFiltered(predicate: (T) -> Boolean, action: (T) -> Unit)
 {
-    for (element in this)
-        if (predicate.invoke(element))
-            action(element)
+    var i = 0
+    while (i < size)
+    {
+        val element = this[i++]
+        if (predicate(element)) action(element)
+    }
 }
 
 inline fun <T> Iterable<T>.sumIf(predicate: (T) -> Boolean, selector: (T) -> Float): Float

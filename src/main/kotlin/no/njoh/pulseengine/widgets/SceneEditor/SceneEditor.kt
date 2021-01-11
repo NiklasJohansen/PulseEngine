@@ -31,7 +31,7 @@ import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.MenuBarButton
 import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.MenuBarItem
 import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.createMenuBarUI
-import no.njoh.pulseengine.widgets.Widget
+import no.njoh.pulseengine.modules.widget.Widget
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -45,6 +45,8 @@ import kotlin.reflect.full.memberProperties
 
 class SceneEditor: Widget
 {
+    override var isRunning = false
+
     // UI
     private lateinit var rootUI: VerticalPanel
     private lateinit var propertiesUI: RowPanel
@@ -52,7 +54,6 @@ class SceneEditor: Widget
     private lateinit var screenArea: FocusArea
     private lateinit var dragAndDropArea: FocusArea
     private var propertyUiRows = mutableMapOf<String, UiElement>()
-    private var isEditorOpen = true
 
     // Camera
     private val cameraController = Camera2DController(Mouse.MIDDLE)
@@ -106,15 +107,15 @@ class SceneEditor: Widget
         activeCamera = engine.gfx.mainCamera
         storedCameraState = CameraState.from(activeCamera)
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
-        isEditorOpen = engine.config.getBool("openEditorOnStart") ?: false
+        isRunning = engine.config.getBool("openEditorOnStart") ?: false
 
         // Create separate render surface for editor UI
         engine.gfx.createSurface2D("sceneEditorSurface")
 
         // Register a console command to toggle editor visibility
         engine.console.registerCommand("showSceneEditor") {
-            isEditorOpen = !isEditorOpen
-            if (!isEditorOpen) play(engine) else stop(engine)
+            isRunning = !isRunning
+            if (!isRunning) play(engine) else stop(engine)
             CommandResult("", showCommand = false)
         }
 
@@ -208,17 +209,13 @@ class SceneEditor: Widget
 
     override fun onUpdate(engine: PulseEngine)
     {
-        if (!isEditorOpen) return
-
         if (engine.scene.sceneState == SceneState.STOPPED)
         {
             screenArea.update(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
             engine.input.requestFocus(screenArea)
         }
 
-        // Set default cursor
         engine.input.setCursor(ARROW)
-
         cameraController.update(engine, activeCamera)
 
         if (engine.scene.activeScene != scene)
@@ -254,8 +251,6 @@ class SceneEditor: Widget
 
     override fun onRender(engine: PulseEngine)
     {
-        if (!isEditorOpen) return
-
         val uiSurface = engine.gfx.getSurface2D("sceneEditorSurface")
         val showResizeDots = (entitySelection.size == 1)
         entitySelection.forEach { it.renderGizmo(uiSurface, showResizeDots) }
@@ -270,7 +265,7 @@ class SceneEditor: Widget
             dialog.mode = FileDialog.SAVE
             dialog.isAlwaysOnTop = true
             dialog.directory = engine.data.saveDirectory
-            dialog.setFile("*.scn")
+            dialog.file = engine.scene.activeScene?.fileName?.removePrefix("/") ?: "*.scn"
             dialog.isVisible = true
             dialog.files.firstOrNull()?.let { f ->
                 if (engine.scene.sceneState == SceneState.RUNNING)
@@ -302,7 +297,7 @@ class SceneEditor: Widget
 
     private fun play(engine: PulseEngine)
     {
-        isEditorOpen = false
+        isRunning = false
         storedCameraState.saveFrom(activeCamera)
         activeCamera.xScale = 1f
         activeCamera.yScale = 1f
@@ -321,7 +316,7 @@ class SceneEditor: Widget
 
     private fun stop(engine: PulseEngine)
     {
-        isEditorOpen = true
+        isRunning = true
         storedCameraState.loadInto(activeCamera)
 
         if (engine.scene.sceneState != SceneState.STOPPED)
@@ -874,7 +869,7 @@ class SceneEditor: Widget
         if (shouldPersistEditorLayout)
             dockingUI.saveLayout(engine, "/editor_layout.cfg")
 
-        if (isEditorOpen && engine.scene.sceneState == SceneState.STOPPED)
+        if (isRunning && engine.scene.sceneState == SceneState.STOPPED)
             engine.scene.save()
     }
 
