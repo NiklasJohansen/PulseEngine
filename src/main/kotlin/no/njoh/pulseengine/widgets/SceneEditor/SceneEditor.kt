@@ -12,6 +12,7 @@ import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.graphics.CameraInterface
 import no.njoh.pulseengine.modules.graphics.Surface2D
+import no.njoh.pulseengine.modules.graphics.ui.UiUtil.findElementById
 import no.njoh.pulseengine.modules.graphics.ui.elements.InputField
 import no.njoh.pulseengine.modules.graphics.ui.elements.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.layout.RowPanel
@@ -38,6 +39,8 @@ import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KVisibility
+import kotlin.reflect.full.instanceParameter
+import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
 
 class SceneEditor: Widget
@@ -123,17 +126,10 @@ class SceneEditor: Widget
     {
         // Properties
         propertiesUI = RowPanel()
-        propertiesUI.rowHeight = 50f
+        propertiesUI.rowHeight = 40f
         propertiesUI.rowPadding = 0f
 
-        // Create windows
-        val scenePropertyWindows = EditorUtil.createWindowUI("Scene Properties")
-        val assetWindow = EditorUtil.createWindowUI("Scene Assets")
-        val entityPropertyWindow = EditorUtil.createWindowUI("Entity Properties")
-
         // Create content
-        val assetPanel = EditorUtil.createAssetPanelUI(engine) { createDragAndDropEntity(engine, it) }
-        val propertyPanel = EditorUtil.createScrollableSectionUI(propertiesUI)
         val menuBar = createMenuBarUI(
             MenuBarButton("File", listOf(
                 MenuBarItem("Open") { onLoad(engine) },
@@ -141,7 +137,15 @@ class SceneEditor: Widget
                 MenuBarItem("Save as") { onSaveAs(engine) }
             )),
             MenuBarButton("View", listOf(
-                MenuBarItem("Spatial index") { SpatialIndex.draw = !SpatialIndex.draw }
+                MenuBarItem("Entity properties") { createEntityPropertyWindow() },
+                MenuBarItem("Scene assets") { createAssetWindow(engine) },
+                MenuBarItem("Scene properties") { createScenePropertyWindow() },
+                MenuBarItem("Spatial index") { SpatialIndex.draw = !SpatialIndex.draw },
+                MenuBarItem("Reset") {
+                    createSceneEditorUI(engine)
+                    SpatialIndex.draw = false
+                    storedCameraState.apply { reset() }.loadInto(engine.gfx.mainCamera)
+                }
             )),
             MenuBarButton("Run", listOf(
                 MenuBarItem("Start") { play(engine) },
@@ -149,10 +153,6 @@ class SceneEditor: Widget
                 MenuBarItem("Pause") { engine.scene.pause() }
             ))
         )
-
-        // Add content to windows
-        assetWindow.body.addChildren(assetPanel)
-        entityPropertyWindow.body.addChildren(propertyPanel)
 
         // Panel for docking of windows
         dockingUI = DockingPanel()
@@ -165,15 +165,45 @@ class SceneEditor: Widget
         rootUI.updateLayout()
         rootUI.setLayoutClean()
 
-
-        // Insert windows into docking
-        dockingUI.insertLeft(entityPropertyWindow)
-        dockingUI.insertRight(scenePropertyWindows)
-        dockingUI.insertBottom(assetWindow)
+        // Create default windows and insert into docking
+        createEntityPropertyWindow()
+        createScenePropertyWindow()
+        createAssetWindow(engine)
 
         // Load previous layout from file
         if (shouldPersistEditorLayout)
             dockingUI.loadLayout(engine, "/editor_layout.cfg")
+    }
+
+    private fun createEntityPropertyWindow()
+    {
+        if (dockingUI.findElementById("Entity Properties") == null)
+        {
+            val entityPropertyWindow = EditorUtil.createWindowUI("Entity Properties")
+            val propertyPanel = EditorUtil.createScrollableSectionUI(propertiesUI)
+            entityPropertyWindow.body.addChildren(propertyPanel)
+            dockingUI.insertLeft(entityPropertyWindow)
+        }
+    }
+
+    private fun createAssetWindow(engine: PulseEngine)
+    {
+        if (dockingUI.findElementById("Scene Assets") == null)
+        {
+            val assetWindow = EditorUtil.createWindowUI("Scene Assets")
+            val assetPanel = EditorUtil.createAssetPanelUI(engine) { createDragAndDropEntity(engine, it) }
+            assetWindow.body.addChildren(assetPanel)
+            dockingUI.insertBottom(assetWindow)
+        }
+    }
+
+    private fun createScenePropertyWindow()
+    {
+        if (dockingUI.findElementById("Scene Properties") == null)
+        {
+            val scenePropertyWindows = EditorUtil.createWindowUI("Scene Properties")
+            dockingUI.insertRight(scenePropertyWindows)
+        }
     }
 
     override fun onUpdate(engine: PulseEngine)
@@ -777,7 +807,7 @@ class SceneEditor: Widget
         }
     }
 
-    ////////////////////////////// SceneEntity UTILS  //////////////////////////////
+    ////////////////////////////// SceneEntity UTILS //////////////////////////////
 
     private fun SceneEntity.isInside(xWorld: Float, yWorld: Float): Boolean
     {
@@ -804,7 +834,20 @@ class SceneEditor: Widget
         for (prop in this::class.members)
         {
             if (prop is KMutableProperty<*> && prop.visibility == KVisibility.PUBLIC)
-                prop.getter.call(this)?.let { EditorUtil.setEntityProperty(copy, prop.name, it) }
+            {
+                prop.getter.call(this)?.let { param: Any ->
+                    if (param::class.isData)
+                    {
+                        // Use .copy() if parameter is a data class
+                        val copyFunc = param::class.memberFunctions.first { it.name == "copy" }
+                        val instanceParam = copyFunc.instanceParameter!!
+                        copyFunc.callBy(mapOf(instanceParam to param))?.let {
+                            EditorUtil.setEntityProperty(copy, prop.name, it)
+                        }
+                    }
+                    else EditorUtil.setEntityProperty(copy, prop.name, param)
+                }
+            }
         }
         return copy
     }
@@ -875,6 +918,18 @@ data class CameraState(
        camera.yOrigin = yOrigin
        camera.zRot = zRot
     }
+
+    fun reset()
+    {
+        xPos = 0f
+        yPos = 0f
+        xScale = 1f
+        yScale = 1f
+        xOrigin = 0f
+        yOrigin =  0f
+        zRot = 0f
+    }
+
     companion object
     {
         fun from(camera: CameraInterface) =

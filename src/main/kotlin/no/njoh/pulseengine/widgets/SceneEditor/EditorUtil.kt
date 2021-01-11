@@ -23,15 +23,15 @@ import kotlin.reflect.jvm.javaField
 object EditorUtil
 {
     private val style = EditorStyle().apply {
-        colors["INPUT_COLOR"] = Color(41, 43, 46)
-        colors["INPUT_COLOR_HOVER_LIGHT"] = Color(46, 48, 51)
-        colors["HEADER_COLOR"] = Color(46, 48, 51)
-        colors["HEADER_COLOR_HOVER_DARK"] = Color(42, 44, 47)
-        colors["BG_COLOR"] = Color(59, 63, 67)
-        colors["BG2_COLOR"] = Color(54, 58, 62)
-        colors["TILE_COLOR"] = Color(52, 53, 56)
-        colors["TILE_COLOR_HOVER"] = Color(56, 57, 60)
-        colors["FONT_COLOR"] = Color(212, 214, 218)
+        colors["LABEL"] = Color(222, 224, 228)
+        colors["BG_LIGHT"] = Color(59 / 2, 63 / 2, 67 / 2)
+        colors["BG_DARK"] = Color(54 / 2, 58 / 2, 62 / 2)
+        colors["HEADER"] = Color(46 / 2, 48 / 2, 51 / 2)
+        colors["HEADER_HOVER"] = Color(42 * 3, 44, 47)
+        colors["BUTTON"] = Color(41 / 2, 43 / 2, 46 / 2)
+        colors["BUTTON_HOVER"] = Color(56 / 4 * 3, 57 / 4 * 3, 60 /  4 * 3)
+        colors["ITEM"] = Color(52 / 2, 53 / 2, 56 / 2)
+        colors["ITEM_HOVER"] = Color(56 / 3 * 2, 57 / 3 * 2, 60 / 3 * 2)
     }
 
     /**
@@ -39,24 +39,6 @@ object EditorUtil
      */
     fun createWindowUI(title: String): WindowPanel
     {
-        val label = Label(title)
-        label.padding.left = 10f
-        label.font = style.getFont()
-        label.color = style.getColor("FONT_COLOR")
-        label.focusable = false
-
-        val exitButton = Button(width = Size.absolute(15f), height = Size.absolute(15f))
-        exitButton.padding.top = 7.5f
-        exitButton.padding.right = 10f
-        exitButton.color = Color(0.8f, 0.2f, 0.2f)
-        exitButton.colorHover = Color(1f, 0.4f, 0.4f)
-        exitButton.setOnClicked { println("EXIT") }
-
-        val headerPanel = HorizontalPanel(height = Size.absolute(30f))
-        headerPanel.color = style.getColor("HEADER_COLOR")
-        headerPanel.focusable = false
-        headerPanel.addChildren(label, exitButton)
-
         val windowPanel = WindowPanel(
             x = Position.fixed(0f),
             y = Position.fixed(20f),
@@ -64,14 +46,44 @@ object EditorUtil
             height = Size.absolute(200f)
         )
 
-        windowPanel.color = style.getColor("BG_COLOR")
-        windowPanel.strokeColor = style.getColor("HEADER_COLOR")
+        val label = Label(title).apply {
+            padding.left = 10f
+            fontSize = 22f
+            font = style.getFont()
+            color = style.getColor("LABEL")
+            focusable = false
+        }
+
+        val xLabel = Label("x").apply {
+            focusable = false
+            fontSize = 20f
+            padding.top = 0f
+            padding.left = 6f
+            color = style.getColor("LABEL")
+        }
+
+        val exitButton = Button(width = Size.absolute(20f), height = Size.absolute(20f)).apply {
+            padding.top = 5f
+            padding.right = 5f
+            color = Color.BLANK
+            hoverColor = style.getColor("BUTTON_HOVER")
+            setOnClicked { windowPanel.parent?.removeChild(windowPanel) }
+            addChildren(xLabel)
+        }
+
+        val headerPanel = HorizontalPanel(height = Size.absolute(30f)).apply {
+            color = style.getColor("HEADER")
+            focusable = false
+            addChildren(label, exitButton)
+        }
+
+        windowPanel.color = style.getColor("BG_LIGHT")
+        windowPanel.strokeColor = style.getColor("HEADER")
         windowPanel.movable = true
         windowPanel.resizable = true
         windowPanel.minHeight = windowPanel.header.height.value
         windowPanel.minWidth = 50f
         windowPanel.id = title
-
         windowPanel.header.addChildren(headerPanel)
 
         return windowPanel
@@ -82,11 +94,11 @@ object EditorUtil
      */
     fun createMenuBarUI(vararg buttons: MenuBarButton): UiElement
     {
-        val menuBar = HorizontalPanel(height = Size.absolute(25f))
-        menuBar.color = style.getColor("BG_COLOR")
-        menuBar.strokeColor = style.getColor("HEADER_COLOR")
-        menuBar.addChildren(*buttons.map { createMenuBarButtonUI(it) }.toTypedArray(), Panel())
-        return menuBar
+        return HorizontalPanel(height = Size.absolute(25f)).apply {
+            color = style.getColor("BG_LIGHT")
+            strokeColor = style.getColor("HEADER")
+            addChildren(*buttons.map { createMenuBarButtonUI(it) }.toTypedArray(), Panel())
+        }
     }
 
     data class MenuBarButton(val labelText: String, val items: List<MenuBarItem>)
@@ -99,24 +111,26 @@ object EditorUtil
     {
         val font = style.getFont()
         val fontSize = 18f
-        val menu = DropdownMenu<MenuBarItem>(
+        return DropdownMenu<MenuBarItem>(
             width = Size.absolute(55f),
             dropDownWidth = Size.absolute(menuBarButton.items.map { font.getCharacterWidths(it.labelText, fontSize).sum() + 30f }.max() ?: 100f ),
-            dropDownHeight = Size.absolute(menuBarButton.items.size * (35f))
+            dropDownHeight = Size.absolute(5f + menuBarButton.items.size * 30)
         ).apply {
             showArrow = false
             useSelectedItemAsMenuLabel = false
-            bgColor = Color(0f, 0f, 0f, 0f)
-            bgColorHover = style.getColor("TILE_COLOR_HOVER")
+            bgColor = Color.BLANK
+            bgHoverColor = style.getColor("BUTTON_HOVER")
+            itemBgColor = Color.BLANK
+            itemBgHoverColor = style.getColor("BUTTON_HOVER")
             menuLabel.text = menuBarButton.labelText
             menuLabel.fontSize = fontSize
             menuLabel.padding.left = 12f
-            menuLabel.padding.top = 10f
+            menuLabel.padding.top = 7f
             menuLabel.font = style.getFont()
             rowPanel.rowHeight = 25f
             rowPanel.rowPadding = 5f
-            dropdown.color = style.getColor("BG_COLOR")
-            dropdown.strokeColor = style.getColor("HEADER_COLOR")
+            dropdown.color = style.getColor("BG_LIGHT")
+            dropdown.strokeColor = style.getColor("HEADER")
             dropdown.minHeight = 0f
             dropdown.resizable = false
             scrollbar.hidden = true
@@ -124,8 +138,6 @@ object EditorUtil
             menuBarButton.items.forEach { addItem(it) }
             setOnItemChanged { it.onClick() }
         }
-
-        return menu
     }
 
     /**
@@ -133,30 +145,32 @@ object EditorUtil
      */
     private fun <T> createDropdownUI(selectedItem: T, items: List<T>, onItemToString: (T) -> String): DropdownMenu<T>
     {
-        val dropdown = DropdownMenu<T>(
+        return DropdownMenu<T>(
             width = Size.relative(0.5f),
             dropDownWidth = Size.absolute(250f),
             dropDownHeight = Size.absolute(180f)
-        )
+        ).apply {
+            padding.top = 5f
+            padding.bottom = 5f
+            padding.right = 5f
+            rowPanel.rowPadding = 5f
+            menuLabel.font = style.getFont()
+            menuLabel.fontSize = 20f
+            menuLabel.color = style.getColor("LABEL")
+            menuLabel.padding.left = 10f
+            bgColor = style.getColor("BUTTON")
+            bgHoverColor = style.getColor("BUTTON_HOVER")
+            dropdown.color = style.getColor("BG_LIGHT")
+            itemBgColor = style.getColor("ITEM")
+            itemBgHoverColor = style.getColor("ITEM_HOVER")
+            scrollbar.sliderColor = style.getColor("BUTTON")
+            scrollbar.sliderColorHover = style.getColor("BUTTON_HOVER")
+            scrollbar.bgColor = style.getColor("ITEM")
 
-        dropdown.padding.top = 5f
-        dropdown.padding.bottom = 5f
-        dropdown.padding.right = 5f
-        dropdown.rowPanel.rowPadding = 5f
-        dropdown.menuLabel.font = style.getFont()
-        dropdown.menuLabel.color = style.getColor("FONT_COLOR")
-        dropdown.menuLabel.padding.left = 10f
-        dropdown.bgColor = style.getColor("INPUT_COLOR")
-        dropdown.bgColorHover = style.getColor("INPUT_COLOR_HOVER_LIGHT")
-        dropdown.dropdown.color = style.getColor("BG_COLOR")
-        dropdown.scrollbar.sliderColor = style.getColor("HEADER_COLOR")
-        dropdown.scrollbar.sliderColorHover = style.getColor("HEADER_COLOR_HOVER_DARK")
-        dropdown.scrollbar.bgColor = style.getColor("TILE_COLOR")
-        dropdown.setOnItemToString(onItemToString)
-        dropdown.selectedItem = selectedItem
-        items.forEach(dropdown::addItem)
-
-        return dropdown
+            setOnItemToString(onItemToString)
+            this.selectedItem = selectedItem
+            items.forEach(this::addItem)
+        }
     }
 
     /**
@@ -164,20 +178,22 @@ object EditorUtil
      */
     fun createAssetPanelUI(engine: PulseEngine, onAssetClicked: (Texture) -> Unit): UiElement
     {
-        val tilePanel = TilePanel()
-        tilePanel.horizontalTiles = 5
-        tilePanel.maxTileSize = 80f
-        tilePanel.tilePadding = 5f
+        val tilePanel = TilePanel().apply {
+            horizontalTiles = 5
+            maxTileSize = 80f
+            tilePadding = 5f
+        }
 
         val textureAssets = engine.asset.getAll(Texture::class.java)
-        for (texture in textureAssets)
+        for (tex in textureAssets)
         {
-            val tile = Button()
-            tile.bgColor = style.getColor("TILE_COLOR")
-            tile.bgColorHover = style.getColor("TILE_COLOR_HOVER")
-            tile.textureScale = 0.9f
-            tile.texture = texture
-            tile.setOnClicked { onAssetClicked(texture) }
+            val tile = Button().apply {
+                bgColor = style.getColor("ITEM")
+                bgHoverColor = style.getColor("ITEM_HOVER")
+                textureScale = 0.9f
+                texture = tex
+                setOnClicked { onAssetClicked(tex) }
+            }
             tilePanel.addChildren(tile)
         }
 
@@ -192,11 +208,10 @@ object EditorUtil
         if (panel !is Scrollable)
             throw IllegalArgumentException("${panel::class.simpleName} is not Scrollable")
 
-        val hPanel = HorizontalPanel()
-        hPanel.color = style.getColor("BG2_COLOR")
-        hPanel.addChildren(panel, createScrollbarUI(panel))
-
-        return hPanel
+        return HorizontalPanel().apply {
+            color = style.getColor("BG_DARK")
+            addChildren(panel, createScrollbarUI(panel))
+        }
     }
 
     /**
@@ -204,16 +219,72 @@ object EditorUtil
      */
     private fun createScrollbarUI(scrollBinding: Scrollable): Scrollbar
     {
-        val scrollbar = Scrollbar(width = Size.absolute(20f))
-        scrollbar.bgColor = style.getColor("TILE_COLOR")
-        scrollbar.sliderColor = style.getColor("HEADER_COLOR")
-        scrollbar.sliderColorHover = style.getColor("HEADER_COLOR_HOVER_DARK")
-        scrollbar.padding.top = 5f
-        scrollbar.padding.bottom = 5f
-        scrollbar.padding.right = 5f
-        scrollbar.sliderPadding = 3f
-        scrollbar.bind(scrollBinding)
-        return scrollbar
+        return Scrollbar(width = Size.absolute(20f)).apply {
+            bgColor = style.getColor("ITEM")
+            sliderColor = style.getColor("BUTTON")
+            sliderColorHover = style.getColor("BUTTON_HOVER")
+            padding.top = 5f
+            padding.bottom = 5f
+            padding.right = 5f
+            sliderPadding = 3f
+            bind(scrollBinding)
+        }
+    }
+
+    /**
+     * Creates a [ColorPicker] UI element.
+     */
+    private fun createColorPickerUI(color: Color) =
+        ColorPicker(color).apply {
+            padding.setAll(5f)
+            bgColor = style.getColor("BUTTON")
+            hexInput.fontSize = 20f
+            hexInput.fontColor = style.getColor("FONT_COLOR")
+            colorEditor.color = style.getColor("BG_LIGHT")
+            colorEditor.strokeColor = style.getColor("HEADER")
+            saturationBrightnessPicker.strokeColor = style.getColor("HEADER")
+            huePicker.strokeColor = style.getColor("HEADER")
+            hsbSection.color = style.getColor("ITEM")
+            rgbaSection.color = style.getColor("ITEM")
+            listOf(redInput, greenInput, blueInput, alphaInput).forEach {
+                it.fontSize = 20f
+                it.fontColor = style.getColor("FONT_COLOR")
+                it.bgColor = style.getColor("BUTTON")
+            }
+        }
+
+    private fun createInputFieldUI(value: Any?, prop: KMutableProperty<*>): InputField
+    {
+        val type = when (prop.javaField?.type)
+        {
+            Float::class.java, Double::class.java -> FLOAT
+            Int::class.java, Long::class.java, Char::class.java -> INTEGER
+            Boolean::class.java -> BOOLEAN
+            else -> TEXT
+        }
+
+        return InputField(
+            defaultText = value?.toString() ?: "",
+            width = Size.relative(0.5f)
+        ).apply {
+            padding.top = 5f
+            padding.bottom = 5f
+            padding.right = 5f
+            font = style.getFont()
+            fontSize = 20f
+            fontColor = style.getColor("LABEL")
+            bgColor = style.getColor("BUTTON")
+            editable = true
+            contentType = type
+
+            if (type == FLOAT || type == INTEGER)
+            {
+                prop.findAnnotation<ValueRange>()?.let {
+                    numberMinVal = it.min
+                    numberMaxVal = it.max
+                }
+            }
+        }
     }
 
     /**
@@ -221,23 +292,23 @@ object EditorUtil
      */
     fun createEntityTypePropertyUI(entity: SceneEntity, onItemChange: (KClass<out SceneEntity>) -> Unit): UiElement
     {
-        val typeLabel = Label("Entity type", width = Size.relative(0.5f))
-        typeLabel.padding.setAll(5f)
-        typeLabel.padding.left = 10f
-        typeLabel.font = style.getFont()
-        typeLabel.color = style.getColor("FONT_COLOR")
+        val typeLabel = Label("Entity type", width = Size.relative(0.5f)).apply {
+            padding.setAll(5f)
+            padding.left = 10f
+            font = style.getFont()
+            color = style.getColor("LABEL")
+        }
 
         val typeDropdown = createDropdownUI(entity::class, SceneEntity.REGISTERED_TYPES.toList()) { it.simpleName ?: "NO NAME" }
         typeDropdown.setOnItemChanged(onItemChange)
 
-        val typeHPanel = HorizontalPanel()
-        typeHPanel.padding.left = 5f
-        typeHPanel.padding.right = 5f
-        typeHPanel.padding.top = 5f
-        typeHPanel.color = style.getColor("TILE_COLOR")
-        typeHPanel.addChildren(typeLabel, Panel(), typeDropdown)
-
-        return typeHPanel
+        return HorizontalPanel().apply {
+            padding.left = 5f
+            padding.right = 5f
+            padding.top = 5f
+            color = style.getColor("ITEM")
+            addChildren(typeLabel, Panel(), typeDropdown)
+        }
     }
 
     /**
@@ -246,58 +317,80 @@ object EditorUtil
      */
     fun createEntityPropertyUI(entity: SceneEntity, prop: KMutableProperty<*>): Pair<HorizontalPanel, UiElement>
     {
-        val propValue = prop.getter.call(entity)?.toString() ?: "nan"
         val propType = prop.javaField?.type
-
-        val propUi: UiElement = if (propType?.kotlin?.isSubclassOf(Enum::class) == true)
+        val propUi: UiElement = when
         {
-            val items = propType.enumConstants?.toList() ?: emptyList()
-            val dropdownMenu = createDropdownUI(prop.getter.call(entity), items) { it.toString() }
-            dropdownMenu.setOnItemChanged { it?.let { setEntityProperty(entity, prop.name, it) } }
-            dropdownMenu
-        }
-        else
-        {
-            val contentType = when (propType)
+            propType?.kotlin?.isSubclassOf(Enum::class) == true ->
             {
-                Float::class.java, Double::class.java -> FLOAT
-                Int::class.java, Long::class.java, Char::class.java -> INTEGER
-                Boolean::class.java -> BOOLEAN
-                else -> TEXT
-            }
-
-            val inputField = InputField(propValue, width = Size.relative(0.5f))
-            inputField.padding.top = 5f
-            inputField.padding.bottom = 5f
-            inputField.padding.right = 5f
-            inputField.font = style.getFont()
-            inputField.fontColor = style.getColor("FONT_COLOR")
-            inputField.bgColor = style.getColor("INPUT_COLOR")
-            inputField.editable = true
-            inputField.contentType = contentType
-            inputField.setOnTextChanged { if (it.isValid) setEntityProperty(entity, prop, it.text) }
-
-            if (contentType == FLOAT || contentType == INTEGER)
-                prop.findAnnotation<ValueRange>()?.let {
-                    inputField.numberMinVal = it.min
-                    inputField.numberMaxVal = it.max
+                val items = propType.enumConstants?.toList() ?: emptyList()
+                createDropdownUI(prop.getter.call(entity), items, { it.toString() }).apply {
+                    setOnItemChanged { it?.let { setEntityProperty(entity, prop.name, it) } }
                 }
-
-            inputField
+            }
+            propType?.kotlin?.isSubclassOf(Boolean::class) == true ->
+            {
+                createDropdownUI(prop.getter.call(entity), listOf(true, false), { it.toString() }).apply {
+                    setOnItemChanged { it?.let { setEntityProperty(entity, prop.name, it) } }
+                }
+            }
+            propType?.kotlin?.isSubclassOf(Color::class) == true ->
+            {
+                val color = prop.getter.call(entity) as Color
+                createColorPickerUI(color)
+            }
+            else ->
+            {
+                val value = prop.getter.call(entity)
+                createInputFieldUI(value, prop).apply {
+                    setOnTextChanged { if (it.isValid) setEntityProperty(entity, prop, it.text) }
+                }
+//
+//                val type = when (propType)
+//                {
+//                    Float::class.java, Double::class.java -> FLOAT
+//                    Int::class.java, Long::class.java, Char::class.java -> INTEGER
+//                    Boolean::class.java -> BOOLEAN
+//                    else -> TEXT
+//                }
+//
+//                val propValue = prop.getter.call(entity)?.toString() ?: "nan"
+//                val inputField = InputField(propValue, width = Size.relative(0.5f)).apply {
+//                    padding.top = 5f
+//                    padding.bottom = 5f
+//                    padding.right = 5f
+//                    font = style.getFont()
+//                    fontSize = 20f
+//                    fontColor = style.getColor("LABEL")
+//                    bgColor = style.getColor("BUTTON")
+//                    editable = true
+//                    contentType = type
+//                    setOnTextChanged { if (it.isValid) setEntityProperty(entity, prop, it.text) }
+//                }
+//
+//                if (type == FLOAT || type == INTEGER)
+//                    prop.findAnnotation<ValueRange>()?.let {
+//                        inputField.numberMinVal = it.min
+//                        inputField.numberMaxVal = it.max
+//                    }
+//
+//                inputField
+            }
         }
 
-        val label = Label(prop.name, width = Size.relative(0.5f))
-        label.padding.setAll(5f)
-        label.padding.left = 10f
-        label.font = style.getFont()
-        label.color = style.getColor("FONT_COLOR")
+        val label = Label(prop.name.capitalize(), width = Size.relative(0.5f)).apply {
+            padding.setAll(5f)
+            padding.left = 10f
+            font = style.getFont()
+            color = style.getColor("LABEL")
+        }
 
-        val hPanel = HorizontalPanel()
-        hPanel.padding.left = 5f
-        hPanel.padding.right = 5f
-        hPanel.padding.top = 5f
-        hPanel.color = style.getColor("TILE_COLOR")
-        hPanel.addChildren(label, propUi)
+        val hPanel = HorizontalPanel().apply {
+            padding.left = 5f
+            padding.right = 5f
+            padding.top = 5f
+            color = style.getColor("ITEM")
+            addChildren(label, propUi)
+        }
 
         return Pair(hPanel, propUi)
     }

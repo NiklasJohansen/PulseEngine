@@ -58,8 +58,11 @@ class ResizeBarGizmo(
         if (fade > 0f)
         {
             val alpha = (1f + sin(fade * PI - PI / 2f).toFloat()) / 2f
-            surface.setDrawColor(0.4f, 0.4f, 0.7f, alpha * 0.8f)
-            surface.drawTexture(Texture.BLANK, area.x0, area.y0, area.width, area.height)
+            surface.setDrawColor(0.2f, 0.4f, 0.9f, alpha * 0.8f)
+            if (isVertical)
+                surface.drawTexture(Texture.BLANK, area.x0 + area.width / 4, area.y0, area.width / 4, area.height)
+            else
+                surface.drawTexture(Texture.BLANK, area.x0, area.y0 + area.height / 4, area.width, area.height / 4)
         }
     }
 }
