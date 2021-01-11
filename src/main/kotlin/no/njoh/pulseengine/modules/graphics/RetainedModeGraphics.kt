@@ -99,7 +99,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
             ?: Surface2DImpl.create(
                 name = name,
                 zOrder = zOrder ?: this.zOrder++,
-                initCapacity = 100,
+                initCapacity = 5000,
                 graphicsState = graphicState,
                 camera = (camera ?: Camera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraEngineInterface
             ).also {
