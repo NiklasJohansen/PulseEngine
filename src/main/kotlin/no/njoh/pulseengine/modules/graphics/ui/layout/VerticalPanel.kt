@@ -14,6 +14,8 @@ class VerticalPanel(
     height: Size = Size.auto()
 ) : Panel(x, y, width, height) {
 
+    init { focusable = false }
+
     override fun updateChildLayout()
     {
         val requiredAbsoluteSpace = children.sumIf({ !it.hidden && it.height.type == ABSOLUTE }, { it.height.value }) + children.sumByFloat { it.padding.top + it.padding.bottom }

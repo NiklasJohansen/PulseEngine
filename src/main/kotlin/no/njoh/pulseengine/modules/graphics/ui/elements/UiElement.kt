@@ -7,6 +7,7 @@ import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Padding
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
+import no.njoh.pulseengine.util.forEachVolatile
 
 abstract class UiElement(
     val x: Position,
@@ -74,6 +75,12 @@ abstract class UiElement(
         setLayoutDirty()
     }
 
+    fun removeChild(vararg uiElements: UiElement)
+    {
+        children.removeAll(uiElements)
+        setLayoutDirty()
+    }
+
     fun clearChildren()
     {
         if (children.isNotEmpty())
@@ -117,7 +124,7 @@ abstract class UiElement(
 
         onUpdate(engine)
 
-        children.forEach { child ->
+        children.forEachVolatile { child ->
             child.update(engine)
             if (child.dirtyLayout || child.popup?.dirtyLayout == true)
                 setLayoutDirty()

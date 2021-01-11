@@ -52,6 +52,6 @@ class Label(
     override fun onRender(surface: Surface2D)
     {
         surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
-        surface.drawText(croppedText, x.value, y.value + height.value / 2, font, fontSize = fontSize, yOrigin = 0.5f)
+        surface.drawText(croppedText, x.value, y.value + height.value / 2, font, fontSize = fontSize, yOrigin = 0.6f)
     }
 }

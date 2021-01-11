@@ -20,10 +20,10 @@ open class Button(
     var state = false
 
     var bgColor = Color(1f, 1f, 1f, 0f)
-    var bgColorHover = Color(1f, 1f, 1f, 0f)
+    var bgHoverColor = Color(1f, 1f, 1f, 0f)
     var color = Color(1f, 1f, 1f)
-    var colorHover = Color(1f, 1f, 1f)
-    var colorActive = Color(1f, 1f, 1f)
+    var hoverColor = Color(1f, 1f, 1f)
+    var activeColor = Color(1f, 1f, 1f)
     var texture: Texture? = null
     var textureScale = 1f
 
@@ -57,8 +57,8 @@ open class Button(
 
     override fun onRender(surface: Surface2D)
     {
-        val color = if (toggleButton && state) colorActive else if (mouseInsideArea) colorHover else color
-        val bgColor = if (mouseInsideArea) bgColorHover else bgColor
+        val color = if (toggleButton && state) activeColor else if (mouseInsideArea) hoverColor else color
+        val bgColor = if (mouseInsideArea) bgHoverColor else bgColor
 
         surface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue, bgColor.alpha)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)

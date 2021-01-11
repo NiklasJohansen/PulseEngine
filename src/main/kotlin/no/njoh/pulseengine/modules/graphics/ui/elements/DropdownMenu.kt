@@ -32,6 +32,8 @@ class DropdownMenu <T> (
             value?.let { onItemChanged(it) }
         }
 
+    var itemBgColor = Color(0.5f, 0.5f, 0.5f)
+    var itemBgHoverColor = Color(0.8f, 0.8f, 0.8f)
     var closeOnItemSelect = true
     var showArrow = true
     var useSelectedItemAsMenuLabel = true
@@ -85,14 +87,14 @@ class DropdownMenu <T> (
     {
         val label = Label(onItemToString(item))
         label.focusable = false
-        label.padding.left = 10f
+        label.padding.left = 5f
         label.font = menuLabel.font
         label.color = menuLabel.color
         label.fontSize = menuLabel.fontSize
 
         val button = Button()
-        button.color = bgColor
-        button.colorHover = bgColorHover
+        button.color = itemBgColor
+        button.hoverColor = itemBgHoverColor
         button.addChildren(label)
         button.setOnClicked {
             selectedItem = item
@@ -130,7 +132,7 @@ class DropdownMenu <T> (
 
     override fun onRender(surface: Surface2D)
     {
-        val bgColor = if (mouseInsideArea) bgColorHover else bgColor
+        val bgColor = if (mouseInsideArea) bgHoverColor else bgColor
         surface.setDrawColor(bgColor)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)
 

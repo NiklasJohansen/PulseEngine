@@ -31,3 +31,8 @@ inline fun <T> Iterable<T>.sumByFloat(selector: (T) -> Float): Float
         sum += selector(element)
     return sum
 }
+
+inline fun <T> List<T>.forEachVolatile(block: (T) -> Unit) {
+    var i = 0
+    while (i < size) block(this[i++])
+}
