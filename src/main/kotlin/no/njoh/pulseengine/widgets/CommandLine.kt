@@ -333,7 +333,7 @@ class CommandLine : Widget
 
         // Draw input box rectangle
         surface.setDrawColor(0f, 0f, 0f, 0.3f)
-        surface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width- INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING)
+        surface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width - INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING)
 
         // Draw selection rectangle
         val selectionDistance = selectCursor - inputCursor
@@ -348,10 +348,10 @@ class CommandLine : Widget
 
         // Draw input text
         surface.setDrawColor(1f, 1f, 1f, 1f)
-        surface.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2 + INPUT_BOX_PADDING / 2, cliFont)
+        surface.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2, cliFont, yOrigin = 0.2f)
 
         // Draw console history
-        var yPos = height - INPUT_BOX_HEIGHT + FONT_SIZE / 2
+        var yPos = height - INPUT_BOX_HEIGHT
         engine.console.getHistory()
             .reversed()
             .filter { it.visible }
@@ -363,7 +363,7 @@ class CommandLine : Widget
 
                 yPos -= lines.size * FONT_SIZE
                 surface.setDrawColor(color.red, color.green, color.blue)
-                lines.forEachIndexed { i, line -> surface.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont) }
+                lines.forEachIndexed { i, line -> surface.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont, yOrigin = 0.5f) }
             }
     }
 

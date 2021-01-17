@@ -57,7 +57,7 @@ object EditorUtil
         val xLabel = Label("x").apply {
             focusable = false
             fontSize = 20f
-            padding.top = 0f
+            padding.top = -3f
             padding.left = 6f
             color = style.getColor("LABEL")
         }
