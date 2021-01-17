@@ -350,12 +350,12 @@ class DockingPanel(
     fun saveLayout(engine: PulseEngine, layoutFileName: String)
     {
         val layoutGraph = createLayoutGraph(dockingPanel)
-        engine.data.saveState(layoutGraph, layoutFileName)
+        engine.data.saveObject(layoutGraph, layoutFileName)
     }
 
     fun loadLayout(engine: PulseEngine, layoutFileName: String)
     {
-        engine.data.loadState<LayoutNode>(layoutFileName)?.let { layoutGraph ->
+        engine.data.loadObject<LayoutNode>(layoutFileName)?.let { layoutGraph ->
             rebuildLayoutFromGraph(dockingPanel, layoutGraph)?.let { newDockingPanel ->
                 dockingPanel.clearChildren()
                 dockingPanel.addChildren(*newDockingPanel.children.toTypedArray())

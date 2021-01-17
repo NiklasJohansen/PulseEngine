@@ -15,12 +15,16 @@ import kotlin.reflect.full.findAnnotation
 
 open class Scene(
     val name: String,
-    val fileName: String = "/$name.scn",
-    val fileFormat: FileFormat = JSON,
-    val entityTypes: MutableMap<String, SwapList<SceneEntity>> = mutableMapOf()
+    val entities: MutableMap<String, SwapList<SceneEntity>> = mutableMapOf()
 ) {
     @JsonIgnore
-    private val entityCollections = entityTypes.map { it.value }.toMutableList()
+    var fileName: String = "$name.scn"
+
+    @JsonIgnore
+    var fileFormat: FileFormat = JSON
+
+    @JsonIgnore
+    private val entityCollections = entities.map { it.value }.toMutableList()
 
     @JsonIgnore
     @PublishedApi
@@ -29,18 +33,18 @@ open class Scene(
     fun addEntity(entity: SceneEntity)
     {
         spatialIndex.insert(entity)
-        entityTypes[entity.typeName]
+        entities[entity.typeName]
             ?.add(entity)
             ?: run {
                 val list = fastListOf(entity)
-                entityTypes[entity.typeName] = list
+                entities[entity.typeName] = list
                 entityCollections.add(list)
             }
     }
 
     @Suppress("UNCHECKED_CAST")
     inline fun <reified T: SceneEntity> getEntitiesOfType(): Iterable<T>? =
-        entityTypes[T::class.simpleName] as Iterable<T>?
+        entities[T::class.simpleName] as Iterable<T>?
 
     inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit) =
         spatialIndex.forEachEntityInArea(x, y, width, height, block)
@@ -94,7 +98,7 @@ open class Scene(
     fun render(gfx: Graphics, assets: Assets, sceneState: SceneState)
     {
         spatialIndex.render(gfx.mainSurface)
-        entityTypes.forEach { (type, entities) ->
+        entities.forEach { (type, entities) ->
             if (entities.isNotEmpty())
             {
                 var surface = gfx.mainSurface

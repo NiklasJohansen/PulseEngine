@@ -1,6 +1,7 @@
 package testbed
 
 import no.njoh.pulseengine.PulseEngine
+import no.njoh.pulseengine.data.SceneState.STOPPED
 import no.njoh.pulseengine.modules.PulseEngineGame
 import no.njoh.pulseengine.widgets.CommandLine
 import no.njoh.pulseengine.widgets.Profiler
@@ -17,8 +18,9 @@ class Testbed : PulseEngineGame()
         engine.config.gameName = "Testbed"
         engine.config.targetFps = 120
         engine.widget.add(CommandLine(), Profiler(), SceneEditor())
-        engine.console.runScript("/testbed/startup.ps")
-        engine.asset.loadAllTextures("/testbed/images")
+        engine.console.runScript("testbed/startup.ps")
+        engine.asset.loadAllTextures("testbed/images")
+        engine.scene.reload()
     }
 
     override fun onUpdate()
@@ -39,6 +41,6 @@ class Testbed : PulseEngineGame()
 
     override fun onDestroy()
     {
-
+        engine.scene.saveIf { it.state == STOPPED }
     }
 }

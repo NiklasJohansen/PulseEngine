@@ -5,8 +5,7 @@ import kotlinx.coroutines.runBlocking
 import no.njoh.pulseengine.data.assets.*
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.forEachFiltered
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import no.njoh.pulseengine.util.loadFileNames
 import kotlin.reflect.KClass
 
 abstract class Assets
@@ -19,13 +18,13 @@ abstract class Assets
     @PublishedApi internal abstract fun <T : Asset> getSafe(assetName: String, type: KClass<T>): T?
 
     abstract fun loadAllTextures(directory: String)
-    abstract fun loadTexture(filename: String, assetName: String): Texture
-    abstract fun loadSpriteSheet(filename: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet
-    abstract fun loadFont(filename: String, assetName: String, fontSizes: FloatArray): Font
-    abstract fun loadCursor(filename: String, assetName: String, xHotSpot: Int, yHotSpot: Int): Cursor
-    abstract fun loadSound(filename: String, assetName: String): Sound
-    abstract fun loadText(filename: String, assetName: String): Text
-    abstract fun loadBinary(filename: String, assetName: String): Binary
+    abstract fun loadTexture(fileName: String, assetName: String): Texture
+    abstract fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet
+    abstract fun loadFont(fileName: String, assetName: String, fontSizes: FloatArray): Font
+    abstract fun loadCursor(fileName: String, assetName: String, xHotSpot: Int, yHotSpot: Int): Cursor
+    abstract fun loadSound(fileName: String, assetName: String): Sound
+    abstract fun loadText(fileName: String, assetName: String): Text
+    abstract fun loadBinary(fileName: String, assetName: String): Binary
 }
 
 abstract class AssetsEngineInterface : Assets()
@@ -49,40 +48,37 @@ class AssetsImpl : AssetsEngineInterface()
     override fun <T : Asset> getSafe(assetName: String, type: KClass<T>): T? =
         assets[assetName]?.takeIf { it::class == type }?.let { it as T }
 
-    override fun <T : Asset> getAll(type: Class<T>): List<T>
-        = assets.values.filterIsInstance(type)
+    override fun <T : Asset> getAll(type: Class<T>): List<T> =
+        assets.values.filterIsInstance(type)
 
-    override fun loadTexture(filename: String, assetName: String): Texture
-        = Texture(filename, assetName).also { add(it)  }
+    override fun loadTexture(fileName: String, assetName: String): Texture =
+        Texture(fileName, assetName).also { add(it)  }
 
-    override fun loadSpriteSheet(filename: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet
-        = SpriteSheet(filename, assetName, horizontalCells, verticalCells).also{ add(it) }
+    override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet =
+        SpriteSheet(fileName, assetName, horizontalCells, verticalCells).also{ add(it) }
 
-    override fun loadFont(filename: String, assetName: String, fontSizes: FloatArray): Font
-        = Font(filename, assetName, fontSizes).also { add(it) }
+    override fun loadFont(fileName: String, assetName: String, fontSizes: FloatArray): Font =
+        Font(fileName, assetName, fontSizes).also { add(it) }
 
-    override fun loadCursor(filename: String, assetName: String, xHotSpot: Int, yHotSpot: Int): Cursor
-        = Cursor(filename, assetName, xHotSpot, yHotSpot).also { add(it) }
+    override fun loadCursor(fileName: String, assetName: String, xHotSpot: Int, yHotSpot: Int): Cursor =
+        Cursor(fileName, assetName, xHotSpot, yHotSpot).also { add(it) }
 
-    override fun loadSound(filename: String, assetName: String): Sound
-        = Sound(filename, assetName).also { add(it)  }
+    override fun loadSound(fileName: String, assetName: String): Sound =
+        Sound(fileName, assetName).also { add(it)  }
 
-    override fun loadText(filename: String, assetName: String): Text
-        = Text(filename, assetName).also { add(it) }
+    override fun loadText(fileName: String, assetName: String): Text =
+        Text(fileName, assetName).also { add(it) }
 
-    override fun loadBinary(filename: String, assetName: String): Binary
-        = Binary(filename, assetName).also { add(it) }
+    override fun loadBinary(fileName: String, assetName: String): Binary =
+        Binary(fileName, assetName).also { add(it) }
 
     override fun loadAllTextures(directory: String) =
-        getResourceFilenames(directory)
+        directory
+            .loadFileNames()
             .forEachFiltered(
-                { filename -> Texture.SUPPORTED_FORMATS.any { filename.endsWith(it) } },
-                { filename -> loadTexture("$directory/$filename", filename.substringBeforeLast(".")) })
-
-    private fun getResourceFilenames(path: String): List<String> =
-        AssetsImpl::class.java.getResourceAsStream(path)
-            ?.let { BufferedReader(InputStreamReader(it)).readLines() }
-            ?: emptyList()
+                { fileName -> Texture.SUPPORTED_FORMATS.any { fileName.endsWith(it) } },
+                { fileName -> loadTexture(fileName, fileName.substringAfterLast("/").substringBeforeLast(".")) }
+            )
 
     override fun loadInitialAssets()
     {
@@ -90,9 +86,7 @@ class AssetsImpl : AssetsEngineInterface()
         add(Font.DEFAULT)
         runBlocking {
             assets.values.forEach {
-                launch {
-                    it.load()
-                }
+                launch { it.load() }
             }
         }
         assets.values.forEach(onAssetLoadedCallback)

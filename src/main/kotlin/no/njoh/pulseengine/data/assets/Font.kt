@@ -1,5 +1,7 @@
 package no.njoh.pulseengine.data.assets
 
+import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.loadBytes
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.stb.STBTTFontinfo
@@ -28,7 +30,10 @@ class Font(
 
     override fun load()
     {
-        val fontData = Font::class.java.getResource(fileName).readBytes()
+        val fontData: ByteArray = fileName.loadBytes() ?: run {
+            Logger.error("Failed to find and load Font asset: $fileName")
+            return
+        }
 
         STBTTPackContext.malloc().use { packContext ->
             val charData = STBTTPackedchar.malloc(fontSizes.size * TOTAL_CHAR_COUNT)

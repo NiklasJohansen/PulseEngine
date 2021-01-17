@@ -1,5 +1,7 @@
 package no.njoh.pulseengine.data.assets
 
+import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.loadStream
 import org.lwjgl.BufferUtils
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFW.glfwDestroyCursor
@@ -19,7 +21,10 @@ class Cursor(
 
     override fun load()
     {
-        val stream = Cursor::class.java.getResourceAsStream(fileName)
+        val stream = fileName.loadStream() ?: run {
+            Logger.error("Failed to find and load Cursor asset: $fileName")
+            return
+        }
         val image = ImageIO.read(stream)
         val width = image.width
         val height = image.height

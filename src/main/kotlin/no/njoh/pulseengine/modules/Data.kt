@@ -9,8 +9,10 @@ import kotlinx.coroutines.launch
 import no.njoh.pulseengine.data.FileFormat
 import no.njoh.pulseengine.data.FileFormat.*
 import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.loadBytes
 import org.lwjgl.glfw.GLFW.*
 import java.io.File
+import java.io.FileNotFoundException
 import kotlin.system.measureNanoTime
 
 abstract class Data
@@ -29,17 +31,20 @@ abstract class Data
 
     abstract fun addMetric(name: String, unit: String = "", source: () -> Float)
     abstract fun exists(fileName: String): Boolean
-    abstract fun <T> saveState(data: T, fileName: String, fileFormat: FileFormat = JSON): Boolean
-    abstract fun <T> saveStateAsync(data: T, fileName: String, fileFormat: FileFormat = JSON, onComplete: (T) -> Unit = {})
+    abstract fun <T> saveObject(data: T, fileName: String, format: FileFormat = JSON): Boolean
+    abstract fun <T> saveObjectAsync(data: T, fileName: String, format: FileFormat = JSON, onComplete: (T) -> Unit = {})
 
-    @PublishedApi internal abstract fun <T> loadState(fileName: String, type: Class<T>, fromClassPath: Boolean): T?
-    @PublishedApi internal abstract fun <T> loadStateAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
+    inline fun <reified T> loadObject(fileName: String, fromClassPath: Boolean = false): T? =
+        loadObject(fileName, T::class.java, fromClassPath)
 
-    inline fun <reified T> loadState(fileName: String, fromClassPath: Boolean = false): T? =
-        loadState(fileName, T::class.java, fromClassPath)
+    inline fun <reified T> loadObjectAsync(fileName: String, fromClassPath: Boolean = false, noinline onFail: () -> Unit = {}, noinline onComplete: (T) -> Unit) =
+        loadObjectAsync(fileName, T::class.java, fromClassPath, onFail, onComplete)
 
-    inline fun <reified T> loadStateAsync(fileName: String, fromClassPath: Boolean = false, noinline onFail: () -> Unit = {}, noinline onComplete: (T) -> Unit) =
-        loadStateAsync(fileName, T::class.java, fromClassPath, onFail, onComplete)
+    @PublishedApi
+    internal abstract fun <T> loadObject(fileName: String, type: Class<T>, fromClassPath: Boolean): T?
+
+    @PublishedApi
+    internal abstract fun <T> loadObjectAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
 }
 
 abstract class DataEngineInterface : Data()
@@ -80,19 +85,16 @@ class MutableDataContainer : DataEngineInterface()
         metrics[name] = Metric(name, unit, source)
     }
 
-    override fun exists(fileName: String): Boolean
-    {
-        val file = File("$saveDirectory$fileName")
-        return file.exists() || file.isDirectory
-    }
+    override fun exists(fileName: String): Boolean =
+        getFile(fileName).let { it.exists() || it.isDirectory }
 
-    override fun <T> saveState(data: T, fileName: String, fileFormat: FileFormat): Boolean =
+    override fun <T> saveObject(data: T, fileName: String, format: FileFormat): Boolean =
         runCatching {
             val nanoTime = measureNanoTime {
-                val file = File("$saveDirectory$fileName")
+                val file = getFile(fileName)
                 if (!file.parentFile.exists())
                     file.parentFile.mkdirs()
-                file.writeBytes(getMapper(fileFormat).writeValueAsBytes(data))
+                file.writeBytes(getMapper(format).writeValueAsBytes(data))
             }
             Logger.debug("Saved state in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
             true
@@ -100,16 +102,16 @@ class MutableDataContainer : DataEngineInterface()
         .onFailure { Logger.error("Failed to save file: $fileName - reason: ${it.message}"); }
         .getOrDefault(false)
 
-    override fun <T> loadState(fileName: String, type: Class<T>, fromClassPath: Boolean): T? =
+    override fun <T> loadObject(fileName: String, type: Class<T>, fromClassPath: Boolean): T? =
         runCatching {
             var state: T? = null
             val nanoTime = measureNanoTime {
                 state = if (fromClassPath)
-                    MutableDataContainer::class.java.getResource(fileName)
-                        .readBytes()
-                        .let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
+                    fileName.loadBytes()
+                        ?.let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
+                        ?: throw FileNotFoundException("File not found!")
                 else
-                    File("$saveDirectory$fileName")
+                    getFile(fileName)
                         .readBytes()
                         .let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
             }
@@ -119,23 +121,23 @@ class MutableDataContainer : DataEngineInterface()
         .onFailure { Logger.error("Failed to load state (fromClassPath=$fromClassPath): $fileName - reason: ${it.message}") }
         .getOrNull()
 
-    override fun <T> saveStateAsync(data: T, fileName: String, fileFormat: FileFormat, onComplete: (T) -> Unit)
+    override fun <T> saveObjectAsync(data: T, fileName: String, format: FileFormat, onComplete: (T) -> Unit)
     {
         GlobalScope.launch {
-            saveState(data, fileName, fileFormat)
+            saveObject(data, fileName, format)
                 .takeIf { it }
                 ?.let { onComplete.invoke(data) }
         }
     }
 
-    override fun <T> loadStateAsync(
+    override fun <T> loadObjectAsync(
         fileName: String, type: Class<T>,
         fromClassPath: Boolean,
         onFail: () -> Unit,
         onComplete: (T) -> Unit
     ) {
         GlobalScope.launch {
-            loadState(fileName, type, fromClassPath)
+            loadObject(fileName, type, fromClassPath)
                 ?.let(onComplete)
                 ?: onFail()
         }
@@ -194,6 +196,11 @@ class MutableDataContainer : DataEngineInterface()
 
     private fun getFormat(byteArray: ByteArray) =
         if (byteArray.firstOrNull() == '{'.toByte()) JSON else BINARY
+
+    private fun getFile(fileName: String): File =
+        File(fileName)
+            .takeIf { it.isAbsolute }
+            ?: File("$saveDirectory/$fileName")
 
     companion object
     {

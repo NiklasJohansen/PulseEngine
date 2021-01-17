@@ -1,5 +1,8 @@
 package no.njoh.pulseengine.data.assets
 
+import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.loadText
+
 class Text(fileName: String, override val name: String) : Asset(name, fileName)
 {
     lateinit var text: String
@@ -7,7 +10,10 @@ class Text(fileName: String, override val name: String) : Asset(name, fileName)
 
     override fun load()
     {
-        this.text = Text::class.java.getResource(fileName).readText()
+        this.text = fileName.loadText() ?: run {
+            Logger.error("Failed to find and load Text asset: ${this.fileName}")
+            ""
+        }
     }
 
     override fun delete() { }

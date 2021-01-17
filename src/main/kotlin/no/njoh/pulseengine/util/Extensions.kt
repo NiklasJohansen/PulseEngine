@@ -1,6 +1,11 @@
 package no.njoh.pulseengine.util
 
 import no.njoh.pulseengine.PulseEngine
+import java.io.BufferedReader
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.nio.file.FileSystems
+import java.nio.file.Files
 
 fun Float.interpolateFrom(lastState: Float): Float
 {
@@ -38,4 +43,51 @@ inline fun <T> Iterable<T>.sumByFloat(selector: (T) -> Float): Float
 inline fun <T> List<T>.forEachVolatile(block: (T) -> Unit) {
     var i = 0
     while (i < size) block(this[i++])
+}
+
+/**
+ * Class path resources (inside jar or at build dir) needs a leading forward slash
+ */
+fun String.toClassPath(): String =
+    this.takeIf { it.startsWith("/") } ?: "/$this"
+
+/**
+ * Loads the file as a [InputStream] from class path
+ */
+fun String.loadStream(): InputStream? =
+    javaClass.getResourceAsStream(this.toClassPath())
+
+/**
+ * Loads the file as a [ByteArray] from class path
+ */
+fun String.loadBytes(): ByteArray? =
+    javaClass.getResource(this.toClassPath())?.readBytes()
+
+/**
+ * Loads the text content from the given file in class path
+ */
+fun String.loadText(): String? =
+    javaClass.getResource(this.toClassPath())?.readText()
+
+/**
+ * Loads all file names in given directory
+ */
+fun String.loadFileNames(): List<String>
+{
+    val uri = javaClass.getResource(this.toClassPath()).toURI()
+    return if (uri.scheme == "jar")
+    {
+        val fileSystem =
+            try { FileSystems.getFileSystem(uri) }
+            catch (e: Exception) { FileSystems.newFileSystem(uri, emptyMap<String, Any>()) }
+        Files.walk(fileSystem.getPath(this.toClassPath()), 1).iterator()
+            .asSequence()
+            .map { it.toAbsolutePath().toString() }
+            .toList()
+    }
+    else {
+        this.loadStream()
+            ?.let { stream -> BufferedReader(InputStreamReader(stream)).readLines().map { "$this/$it" } }
+            ?: emptyList()
+    }
 }

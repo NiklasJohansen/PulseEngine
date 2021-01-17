@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.data.assets
 
 import de.matthiasmann.twl.utils.PNGDecoder
+import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.loadStream
 import org.lwjgl.opengl.GL11.*
 import java.nio.ByteBuffer
 
@@ -53,7 +55,13 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
     {
         if (fileName.isNotBlank())
         {
-            val decoder = PNGDecoder(Texture::class.java.getResourceAsStream(fileName))
+            val stream = fileName.loadStream() ?: run {
+                Logger.error("Failed to find and load Texture asset: $fileName")
+                load(ByteBuffer.allocate(0), 0, 0, GL_RGBA)
+                return
+            }
+
+            val decoder = PNGDecoder(stream)
             val buffer = ByteBuffer.allocateDirect(4 * decoder.width * decoder.height)
             decoder.decode(buffer, decoder.width * 4, PNGDecoder.Format.RGBA)
             buffer.flip()
@@ -78,10 +86,9 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
     companion object
     {
         val SUPPORTED_FORMATS = listOf("png")
-        val BLANK = Texture("", "BLANK")
-            .also {
-                it.load(null, 1, 1, GL_RGBA)
-                it.finalize(-1, 0f, 0f, 1f, 1f)
-            }
+        val BLANK = Texture("", "BLANK").apply {
+            load(null, 1, 1, GL_RGBA)
+            finalize(-1, 0f, 0f, 1f, 1f)
+        }
     }
 }

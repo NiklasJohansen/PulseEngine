@@ -86,11 +86,16 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         sceneState = PAUSED
     }
 
-    override fun loadAndSetActive(fileName: String)
+    override fun loadAndSetActive(fileName: String, fromClassPath: Boolean)
     {
-        data.loadState<Scene>(fileName)?.let {
-            setActive(it)
+        if (fileName.isNotBlank())
+        {
+            data.loadObject<Scene>(fileName, fromClassPath)?.let {
+                it.fileName = fileName
+                setActive(it)
+            }
         }
+        else Logger.error("Cannot load scene: ${activeScene.name} - fileName to is not set!")
     }
 
     override fun transitionInto(fileName: String, fadeTimeMs: Long)
@@ -122,9 +127,25 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             .substringAfterLast("/")
             .substringAfterLast("\\")
             .substringBefore(".")
-        val scene = Scene(sceneName, fileName)
+        val scene = Scene(sceneName)
+        scene.fileName = fileName
         setActive(scene)
-        save()
+    }
+
+    override fun save()
+    {
+        if (activeScene.fileName.isNotBlank())
+        {
+            activeScene.entities.values.forEach { it.fitToSize() }
+            data.saveObject(activeScene, activeScene.fileName, activeScene.fileFormat)
+        }
+        else Logger.error("Cannot save scene: ${activeScene.name} - fileName is not set!")
+    }
+
+    override fun saveIf(predicate: (SceneManager) -> Boolean)
+    {
+        if (predicate(this))
+            save()
     }
 
     override fun save()
@@ -142,9 +163,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
 
     override fun saveAsync()
     {
-        activeScene?.let { scene ->
-            data.saveStateAsync(scene, scene.fileName, scene.fileFormat)
-        }
+        data.saveObjectAsync(activeScene, activeScene.fileName, activeScene.fileFormat)
     }
 
     override fun update(engine: PulseEngine)
@@ -152,7 +171,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         if (nextSceneFileName != null && nextStagedScene == null && !loadingScene)
         {
             loadingScene = true
-            data.loadStateAsync<Scene>(nextSceneFileName!!, false, { // TODO: support class path loading
+            data.loadObjectAsync<Scene>(nextSceneFileName!!, false, { // TODO: support class path loading
                 loadingScene = false
                 nextSceneFileName = null
                 Logger.error("Failed to load scene from file: $nextSceneFileName")

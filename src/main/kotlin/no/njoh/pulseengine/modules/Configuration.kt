@@ -2,9 +2,9 @@ package no.njoh.pulseengine.modules
 
 import no.njoh.pulseengine.data.ScreenMode
 import no.njoh.pulseengine.data.ScreenMode.WINDOWED
-import no.njoh.pulseengine.modules.console.ConsoleTarget
 import no.njoh.pulseengine.util.LogLevel
 import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.loadStream
 import java.lang.Exception
 import java.util.*
 import kotlin.reflect.KClass
@@ -33,7 +33,6 @@ interface ConfigurationEngineInterface : Configuration
     fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
 }
 
-@ConsoleTarget
 class ConfigurationImpl : ConfigurationEngineInterface
 {
     // Exposed properties
@@ -51,7 +50,7 @@ class ConfigurationImpl : ConfigurationEngineInterface
 
     override fun init()
     {
-        load("/application.cfg")
+        load("application.cfg")
     }
 
     override fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
@@ -60,14 +59,16 @@ class ConfigurationImpl : ConfigurationEngineInterface
     }
 
     override fun load(fileName: String) =
-        try {
-            javaClass.getResourceAsStream(fileName)
+        try
+        {
+            fileName.loadStream()
                 ?.let {
                     properties.load(it)
                     applyConfigProperties()
                     Logger.info("Configuration file: $fileName was loaded successfully")
                 } ?: Logger.warn("Configuration file: $fileName was not found")
-        } catch (e: Exception) { Logger.error("Failed to load configuration: $fileName, reason: ${e.message}") }
+        }
+        catch (e: Exception) { Logger.error("Failed to load configuration: $fileName, reason: ${e.message}") }
 
     private fun applyConfigProperties()
     {

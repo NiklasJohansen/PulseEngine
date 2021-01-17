@@ -1,5 +1,7 @@
 package no.njoh.pulseengine.data.assets
 
+import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.loadBytes
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.AL10
 import org.lwjgl.stb.STBVorbis
@@ -30,11 +32,14 @@ class Sound(fileName: String, override val name: String) : Asset(name, fileName)
         AL10.alDeleteBuffers(pointer)
     }
 
-    private fun readVorbis(resource: String?, info: STBVorbisInfo): ShortBuffer
+    private fun readVorbis(fileName: String, info: STBVorbisInfo): ShortBuffer
     {
-        val bytes = Sound::class.java.getResource(resource).readBytes()
-        val byteBuffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer
+        val bytes = fileName.loadBytes() ?: run {
+            Logger.error("Failed to find and load Sound asset: ${this.fileName}")
+            return ShortBuffer.allocate(0)
+        }
 
+        val byteBuffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer
         val error = IntArray(1)
         val decoder: Long = STBVorbis.stb_vorbis_open_memory(byteBuffer, error, null)
 
