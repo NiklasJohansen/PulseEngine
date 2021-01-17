@@ -55,7 +55,6 @@ object ReflectionUtil
         this.mapNotNull { className ->
             runCatching { if (className !in classCache) Class.forName(className) else classCache[className]!! }
                 .onSuccess { classCache[className] = it }
-                .onFailure { Logger.debug("Failed to create class from: $it") }
                 .getOrNull()
         }
 
