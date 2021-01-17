@@ -1,59 +1,62 @@
 package no.njoh.pulseengine.util
 
-import java.lang.Exception
+import java.net.URLClassLoader
 import java.nio.file.FileSystems
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
 import kotlin.reflect.KClass
 
 object ReflectionUtil
 {
-    val DEFAULT_STRINGS_TO_IGNORE_IN_CLASS_SEARCH = mutableListOf(
+    val STRINGS_TO_IGNORE_IN_CLASS_SEARCH = mutableListOf(
         "$", "/kotlin", "/org/joml", "/org/lwjgl", "/jetbrains", "/intellij"
     )
 
-    fun getFullyQualifiedClassNames(packageName: String, ignoreStrings: List<String> = emptyList(), maxSearchDepth: Int = 10): List<String>
+    private val classCache = mutableMapOf<String, Class<*>>()
+
+    fun getFullyQualifiedClassNames(maxSearchDepth: Int = 10): List<String>
     {
-        val ignore = DEFAULT_STRINGS_TO_IGNORE_IN_CLASS_SEARCH + ignoreStrings
-        val uri = ReflectionUtil::class.java.getResource("/$packageName")?.toURI()
-            ?: return emptyList()
+        // Get paths from classloader - necessary for when the application is run in IDE
+        val paths = (ClassLoader.getSystemClassLoader() as URLClassLoader).urLs
+            .mapNotNull { if (it.file.endsWith("/")) Paths.get(it.toURI()) else null }
+            .toMutableList()
 
-        val packagePath = if (uri.scheme == "jar")
-            FileSystems.newFileSystem(uri, Collections.emptyMap<String, Any>()).getPath("/.")
-        else
-        {
-            // If the uri does not point to a JAR, use the code source location
-            Paths.get(ReflectionUtil::class.java.protectionDomain.codeSource.location.toURI())
-        }
+        // Get paths from inside JAR file - used when application is run from a JAR or imported as a library
+        ReflectionUtil::class.java.getResource("/no").toURI()
+            ?.takeIf { it.scheme == "jar" }
+            ?.let { jarUri ->
+                val fileSystem =
+                    try { FileSystems.getFileSystem(jarUri) }
+                    catch (e: Exception) { FileSystems.newFileSystem(jarUri, emptyMap<String, Any>()) }
+                paths.add(fileSystem.getPath("/"))
+            }
 
-        // Walk the directory/JAR and search for functions marked as console targets
-        return Files.walk(packagePath, maxSearchDepth)
-            .iterator()
-            .asSequence()
-            .filter {
-                val filePath = it.toString()
-                filePath.endsWith(".class") && !ignore.any { filePath.contains(it) }
-            }
-            .map { path -> path
-                .toString()
-                .removePrefix("$packagePath")
-                .removePrefix("/")
-                .removePrefix("\\")
-                .removeSuffix(".class")
-                .replace("/", ".")
-                .replace("\\", ".")
-            }
-            .toList()
+        return paths.flatMap { findClassNames(it, maxSearchDepth, STRINGS_TO_IGNORE_IN_CLASS_SEARCH ) }
     }
 
+    private fun findClassNames(startPath: Path, maxSearchDepth: Int, ignoreStrings: List<String> ): List<String> =
+        Files.walk(startPath, maxSearchDepth)
+            .iterator()
+            .asSequence()
+            .mapNotNull { path ->
+                val filePath = path.toString()
+                if (!filePath.endsWith(".class") || ignoreStrings.any { filePath.contains(it) }) null
+                else filePath
+                    .removePrefix("$startPath")
+                    .removePrefix("/")
+                    .removePrefix("\\")
+                    .removeSuffix(".class")
+                    .replace("/", ".")
+                    .replace("\\", ".")
+            }.toList()
+
     fun List<String>.getClassesFromFullyQualifiedClassNames() : List<Class<*>> =
-        this.mapNotNull {
-            try { Class.forName(it) }
-            catch (e: Exception) {
-                Logger.error("Failed to create class from: $it")
-                null
-            }
+        this.mapNotNull { className ->
+            runCatching { if (className !in classCache) Class.forName(className) else classCache[className]!! }
+                .onSuccess { classCache[className] = it }
+                .onFailure { Logger.debug("Failed to create class from: $it") }
+                .getOrNull()
         }
 
     fun List<Class<*>>.getClassesWithAnnotation(annotationType: KClass<*>): List<Class<*>> =

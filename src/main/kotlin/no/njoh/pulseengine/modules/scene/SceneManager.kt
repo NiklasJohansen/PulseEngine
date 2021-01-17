@@ -17,14 +17,15 @@ interface SceneManager
     fun stop()
     fun pause()
     fun save()
+    fun saveIf(predicate: (SceneManager) -> Boolean)
     fun saveAsync()
-    fun reload()
-    fun loadAndSetActive(fileName: String)
+    fun reload(fromClassPath: Boolean = false)
+    fun loadAndSetActive(fileName: String, fromClassPath: Boolean = false)
     fun createEmptyAndSetActive(fileName: String)
     fun transitionInto(fileName: String, fadeTimeMs: Long = 1000L)
     fun setActive(scene: Scene)
-    val activeScene: Scene?
-    val sceneState: SceneState
+    val activeScene: Scene
+    val state: SceneState
 }
 
 interface SceneManagerEngineInterface : SceneManager
@@ -37,8 +38,8 @@ interface SceneManagerEngineInterface : SceneManager
 
 class SceneManagerImpl : SceneManagerEngineInterface {
 
-    override var activeScene: Scene? = null
-    override var sceneState: SceneState = STOPPED
+    override lateinit var activeScene: Scene
+    override var state: SceneState = STOPPED
 
     private lateinit var assets: Assets
     private lateinit var data: Data
@@ -55,35 +56,32 @@ class SceneManagerImpl : SceneManagerEngineInterface {
     {
         this.assets = assets
         this.data = data
+        this.activeScene = Scene("default")
+        this.activeScene.fileName = "default.scn"
         SceneEntity.autoRegisterEntityTypes()
     }
 
     override fun start()
     {
-        if (activeScene == null)
-            Logger.error("No active scene to start")
-        else
+        when (state)
         {
-            when (sceneState)
-            {
-                STOPPED -> {
-                    sceneState = RUNNING
-                    activeScene?.start()
-                }
-                PAUSED -> sceneState = RUNNING
-                RUNNING -> {  }
+            STOPPED -> {
+                state = RUNNING
+                activeScene.start()
             }
+            PAUSED -> state = RUNNING
+            RUNNING -> {  }
         }
     }
 
     override fun stop()
     {
-        sceneState = STOPPED
+        state = STOPPED
     }
 
     override fun pause()
     {
-        sceneState = PAUSED
+        state = PAUSED
     }
 
     override fun loadAndSetActive(fileName: String, fromClassPath: Boolean)
@@ -112,12 +110,16 @@ class SceneManagerImpl : SceneManagerEngineInterface {
     {
         if (scene != activeScene)
         {
-            activeScene = null
-            System.gc()
+            if (scene.entities != activeScene.entities)
+            {
+                activeScene.entities.forEach { it.value.clear() }
+                activeScene.entities.clear()
+                System.gc()
+            }
 
             activeScene = scene
-            if (sceneState != STOPPED)
-                activeScene?.start()
+            if (state != STOPPED)
+                activeScene.start()
         }
     }
 
@@ -148,17 +150,9 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             save()
     }
 
-    override fun save()
+    override fun reload(fromClassPath: Boolean)
     {
-        activeScene?.let { scene ->
-            scene.entityTypes.values.forEach { it.fitToSize() }
-            data.saveState(scene, scene.fileName, scene.fileFormat)
-        }
-    }
-
-    override fun reload()
-    {
-        activeScene?.let { loadAndSetActive(it.fileName) }
+        loadAndSetActive(activeScene.fileName, fromClassPath)
     }
 
     override fun saveAsync()
@@ -189,7 +183,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             nextStagedScene = null
         }
 
-        activeScene?.update(engine, sceneState)
+        activeScene.update(engine, state)
     }
 
     override fun fixedUpdate(engine: PulseEngine)
@@ -201,13 +195,13 @@ class SceneManagerImpl : SceneManagerEngineInterface {
                 transitionFade = transitionFade.coerceAtLeast(0.5f)
         }
 
-        if (sceneState == RUNNING)
-            activeScene?.fixedUpdate(engine)
+        if (state == RUNNING)
+            activeScene.fixedUpdate(engine)
     }
 
     override fun render(gfx: Graphics)
     {
-        activeScene?.render(gfx, assets, sceneState)
+        activeScene.render(gfx, assets, state)
 
         if (transitionFade >= 0)
         {

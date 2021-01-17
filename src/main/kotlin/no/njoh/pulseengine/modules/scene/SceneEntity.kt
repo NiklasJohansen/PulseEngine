@@ -62,11 +62,12 @@ abstract class SceneEntity(
             measureNanoTime {
                 REGISTERED_TYPES.clear()
                 ReflectionUtil
-                    .getFullyQualifiedClassNames(".")
+                    .getFullyQualifiedClassNames()
                     .getClassesFromFullyQualifiedClassNames()
                     .getClassesOfSuperType(SceneEntity::class)
                     .forEach { REGISTERED_TYPES.add(it.kotlin) }
                 REGISTERED_TYPES.remove(SceneEntity::class)
-            }.let { Logger.debug("Registered ${REGISTERED_TYPES.size} scene entity types in " + "${"%.3f".format(it / 1_000_000f)} ms. [${REGISTERED_TYPES.joinToString { it.simpleName ?: "" }}]") }
+            }.let { Logger.debug("Registered ${REGISTERED_TYPES.size} scene entity types in " +
+                "${"%.3f".format(it / 1_000_000f)} ms. [${REGISTERED_TYPES.joinToString { it.simpleName ?: "" }}]") }
     }
 }

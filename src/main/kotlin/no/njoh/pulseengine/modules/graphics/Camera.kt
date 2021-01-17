@@ -1,6 +1,5 @@
 package no.njoh.pulseengine.modules.graphics
 
-import no.njoh.pulseengine.modules.console.ConsoleTarget
 import no.njoh.pulseengine.modules.graphics.Camera.*
 import no.njoh.pulseengine.modules.graphics.Camera.ProjectionType.*
 import no.njoh.pulseengine.util.interpolateFrom
@@ -55,7 +54,6 @@ abstract class CameraEngineInterface : CameraInterface()
     abstract fun updateTransform(deltaTime: Float)
 }
 
-@ConsoleTarget
 class Camera(
     private var projectionType: ProjectionType
 ) : CameraEngineInterface() {

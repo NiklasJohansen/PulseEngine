@@ -26,15 +26,13 @@ import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.modules.scene.SpatialIndex
+import no.njoh.pulseengine.modules.widget.Widget
 import no.njoh.pulseengine.util.Camera2DController
+import no.njoh.pulseengine.util.FileChooser
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.MenuBarButton
 import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.MenuBarItem
 import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.createMenuBarUI
-import no.njoh.pulseengine.modules.widget.Widget
-import java.awt.FileDialog
-import java.awt.Frame
-import java.io.File
 import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
@@ -42,6 +40,7 @@ import kotlin.reflect.KVisibility
 import kotlin.reflect.full.instanceParameter
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
+
 
 class SceneEditor: Widget
 {
@@ -61,7 +60,7 @@ class SceneEditor: Widget
     private lateinit var storedCameraState: CameraState
 
     // Scene
-    private var scene: Scene? = null
+    private var lastSceneHashCode = -1
     private val entitySelection = mutableListOf<SceneEntity>()
     private var dragAndDropEntity: SceneEntity? = null
     private var changeToType: KClass<out SceneEntity>? = null
@@ -95,6 +94,7 @@ class SceneEditor: Widget
 
     // Loading and saving
     private var shouldPersistEditorLayout = false
+    private var lastSaveLoadDirectory = ""
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -108,6 +108,7 @@ class SceneEditor: Widget
         storedCameraState = CameraState.from(activeCamera)
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
         isRunning = engine.config.getBool("openEditorOnStart") ?: false
+        lastSaveLoadDirectory = engine.data.saveDirectory
 
         // Create separate render surface for editor UI
         engine.gfx.createSurface2D("sceneEditorSurface")
@@ -121,15 +122,6 @@ class SceneEditor: Widget
 
         // Create and populate editor with UI
         createSceneEditorUI(engine)
-
-        // Set or load temp scene if no scene has been set
-        if (engine.scene.activeScene == null)
-        {
-            if (engine.data.exists("/temp.scn"))
-                engine.scene.loadAndSetActive("/temp.scn")
-            else
-                engine.scene.createEmptyAndSetActive("/temp.scn")
-        }
     }
 
     private fun createSceneEditorUI(engine: PulseEngine)
@@ -218,17 +210,23 @@ class SceneEditor: Widget
 
     override fun onUpdate(engine: PulseEngine)
     {
-        if (engine.scene.sceneState == SceneState.STOPPED)
+        if (engine.scene.state == SceneState.STOPPED)
         {
             screenArea.update(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
             engine.input.requestFocus(screenArea)
         }
 
+        if (engine.scene.activeScene.hashCode() != lastSceneHashCode)
+        {
+            resetUI()
+            engine.window.title = engine.window.title
+                .substringBeforeLast(" [")
+                .plus(" [${engine.scene.activeScene.fileName.removePrefix("/")}]")
+            lastSceneHashCode = engine.scene.activeScene.hashCode()
+        }
+
         engine.input.setCursor(ARROW)
         cameraController.update(engine, activeCamera)
-
-        if (engine.scene.activeScene != scene)
-            engine.scene.activeScene?.let { setScene(it) }
 
         if (engine.input.wasClicked(Key.P))
             rootUI.printStructure()
@@ -237,7 +235,7 @@ class SceneEditor: Widget
             SpatialIndex.draw = !SpatialIndex.draw
 
         changeToType?.let {
-            handleEntityTypeChanged(it)
+            handleEntityTypeChanged(engine.scene.activeScene, it)
             changeToType = null
         }
 
@@ -269,38 +267,31 @@ class SceneEditor: Widget
 
     private fun onSaveAs(engine: PulseEngine)
     {
+        if (engine.scene.state == SceneState.RUNNING)
+            engine.scene.stop()
+
         GlobalScope.launch {
-            val dialog = FileDialog(null as Frame?, "Save scene")
-            dialog.mode = FileDialog.SAVE
-            dialog.isAlwaysOnTop = true
-            dialog.directory = engine.data.saveDirectory
-            dialog.file = engine.scene.activeScene?.fileName?.removePrefix("/") ?: "*.scn"
-            dialog.isVisible = true
-            dialog.files.firstOrNull()?.let { f ->
-                if (engine.scene.sceneState == SceneState.RUNNING)
-                    engine.scene.stop()
-                engine.scene.activeScene?.let { scene ->
-                    val newScene = Scene(scene.name, "/${f.name}", scene.fileFormat, scene.entityTypes)
-                    engine.scene.setActive(newScene)
+            FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
+                val oldScene = engine.scene.activeScene
+                val newScene = Scene(oldScene.name, oldScene.entities).apply {
+                    fileName = filePath
+                    fileFormat = oldScene.fileFormat
                 }
+                engine.scene.setActive(newScene)
+                engine.scene.save()
             }
         }
     }
 
     private fun onLoad(engine: PulseEngine)
     {
-        if (engine.scene.sceneState != SceneState.RUNNING)
+        if (engine.scene.state != SceneState.RUNNING)
             engine.scene.save()
 
         GlobalScope.launch {
-            val dialog = FileDialog(null as Frame?, "Select scene to open")
-            dialog.mode = FileDialog.LOAD
-            dialog.isAlwaysOnTop = true
-            dialog.directory = engine.data.saveDirectory
-            dialog.file = "*.scn"
-            dialog.setFilenameFilter { dir: File?, name: String -> name.endsWith(".scn") }
-            dialog.isVisible = true
-            dialog.files.firstOrNull()?.let { f -> engine.scene.loadAndSetActive("/${f.name}") }
+            FileChooser.showFileSelectionDialog("scn", engine.data.saveDirectory) { saveFile ->
+                engine.scene.loadAndSetActive(saveFile)
+            }
         }
     }
 
@@ -313,10 +304,10 @@ class SceneEditor: Widget
         activeCamera.xPos = 0f
         activeCamera.yPos = 0f
 
-        setScene(null)
+        resetUI()
         engine.input.setCursor(ARROW)
 
-        if (engine.scene.sceneState == SceneState.STOPPED)
+        if (engine.scene.state == SceneState.STOPPED)
         {
             engine.scene.save()
             engine.scene.start()
@@ -328,7 +319,7 @@ class SceneEditor: Widget
         isRunning = true
         storedCameraState.loadInto(activeCamera)
 
-        if (engine.scene.sceneState != SceneState.STOPPED)
+        if (engine.scene.state != SceneState.STOPPED)
         {
             engine.scene.stop()
             engine.scene.reload()
@@ -366,8 +357,8 @@ class SceneEditor: Widget
                     propertiesUI.clearChildren()
                     entitySelection.addAll(copies)
                 }
-
-                copies.forEach { scene?.addEntity(it) }
+                val scene = engine.scene.activeScene
+                copies.forEach { scene.addEntity(it) }
                 isCopying = true
             }
         } else isCopying = false
@@ -383,24 +374,21 @@ class SceneEditor: Widget
             // Select entity
             if (!isMoving && !isSelecting && !isRotating && !isResizingVertically && !isResizingHorizontally)
             {
-                scene?.let { scene ->
+                engine.scene.activeScene.entities.forEach { (type, entities) ->
 
-                    scene.entityTypes.forEach { (type, entities) ->
-
-                        for (i in entities.size - 1 downTo 0)
+                    for (i in entities.size - 1 downTo 0)
+                    {
+                        val entity = entities[i]
+                        if (entity.isInside(xMouse, yMouse))
                         {
-                            val entity = entities[i]
-                            if (entity.isInside(xMouse, yMouse))
+                            if (entity !in entitySelection)
                             {
-                                if (entity !in entitySelection)
-                                {
-                                    entitySelection.clear()
-                                    selectSingleEntity(entity)
-                                }
-
-                                isMoving = true
-                                break
+                                entitySelection.clear()
+                                selectSingleEntity(entity)
                             }
+
+                            isMoving = true
+                            break
                         }
                     }
                 }
@@ -426,31 +414,28 @@ class SceneEditor: Widget
 
         if (isSelecting)
         {
-            scene?.let {
+            val xStart = min(xStartSelect, xEndSelect)
+            val yStart = min(yStartSelect, yEndSelect)
+            val width  = abs(xEndSelect - xStartSelect)
+            val height  = abs(yEndSelect - yStartSelect)
+            val selectedEntity = entitySelection.firstOrNull()
 
-                val xStart = min(xStartSelect, xEndSelect)
-                val yStart = min(yStartSelect, yEndSelect)
-                val width  = abs(xEndSelect - xStartSelect)
-                val height  = abs(yEndSelect - yStartSelect)
-                val selectedEntity = entitySelection.firstOrNull()
+            entitySelection.clear()
 
-                entitySelection.clear()
-
-                it.entityTypes.forEach { (type, entities) ->
-                    for (entity in entities)
-                    {
-                        if (entity.isOverlapping(xStart, yStart, width, height))
-                            entitySelection.add(entity)
-                    }
-                }
-
-                if (entitySelection.size == 1)
+            engine.scene.activeScene.entities.forEach { (type, entities) ->
+                for (entity in entities)
                 {
-                    if (entitySelection.first() != selectedEntity)
-                        selectSingleEntity(entitySelection.first())
+                    if (entity.isOverlapping(xStart, yStart, width, height))
+                        entitySelection.add(entity)
                 }
-                else propertiesUI.clearChildren()
             }
+
+            if (entitySelection.size == 1)
+            {
+                if (entitySelection.first() != selectedEntity)
+                    selectSingleEntity(entitySelection.first())
+            }
+            else propertiesUI.clearChildren()
         }
 
         var xMove = 0f
@@ -497,7 +482,7 @@ class SceneEditor: Widget
         if (!engine.input.isPressed(Mouse.LEFT))
         {
             dragAndDropEntity = null
-            scene?.addEntity(this)
+            engine.scene.activeScene.addEntity(this)
         }
     }
 
@@ -701,7 +686,7 @@ class SceneEditor: Widget
 
         for (prop in entity::class.memberProperties)
         {
-            if (prop !is KMutableProperty<*> || prop.visibility == KVisibility.PRIVATE)
+            if (prop !is KMutableProperty<*> || prop.visibility == KVisibility.PRIVATE || prop.name == SceneEntity::flags.name)
                 continue
 
             val (propertyPanel, inputElement) = EditorUtil.createEntityPropertyUI(entity, prop)
@@ -710,7 +695,7 @@ class SceneEditor: Widget
         }
     }
 
-    private fun handleEntityTypeChanged(type: KClass<out SceneEntity>)
+    private fun handleEntityTypeChanged(scene: Scene, type: KClass<out SceneEntity>)
     {
         if (entitySelection.size != 1) return
 
@@ -725,7 +710,7 @@ class SceneEditor: Widget
             }
 
             oldEntity.set(DEAD)
-            scene?.addEntity(newEntity)
+            scene.addEntity(newEntity)
             selectSingleEntity(newEntity)
         }
         catch (e: Exception) { Logger.error("Failed to change entity type, reason: ${e.message}") }
@@ -856,10 +841,8 @@ class SceneEditor: Widget
         return copy
     }
 
-    private fun setScene(scene: Scene?)
+    private fun resetUI()
     {
-        Logger.debug("Setting scene")
-        this.scene = scene
         dragAndDropEntity = null
         changeToType = null
         isMoving = false
@@ -877,9 +860,6 @@ class SceneEditor: Widget
     {
         if (shouldPersistEditorLayout)
             dockingUI.saveLayout(engine, "/editor_layout.cfg")
-
-        if (isRunning && engine.scene.sceneState == SceneState.STOPPED)
-            engine.scene.save()
     }
 
     companion object

@@ -55,6 +55,14 @@ class SwapList<T>(
     override fun iterator(): Iterator<T> =
         iterator.also { it.index = 0 }
 
+    fun clear()
+    {
+        items.fill(null)
+        itemsToKeep.fill(null)
+        size = 0
+        keepIndex = 0
+    }
+
     private fun resize()
     {
         val capacity = ((items.size + 2) * 1.5f).toInt()

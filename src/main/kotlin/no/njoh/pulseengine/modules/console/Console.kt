@@ -30,10 +30,7 @@ class ConsoleImpl : ConsoleEngineInterface
     override fun init(engine: PulseEngine)
     {
         // Register console commands and functions marked with @ConsoleTarget
-        GlobalScope.launch {
-            CommandRegistry.registerEngineCommands(engine)
-            ConsoleUtil.registerConsoleFunctions(engine)
-        }
+        GlobalScope.launch { CommandRegistry.registerEngineCommands(engine) }
 
         // Help command
         registerCommand(

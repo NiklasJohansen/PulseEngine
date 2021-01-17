@@ -14,15 +14,6 @@ import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
 
-@ConsoleTarget("Prints the given text as an info message")
-fun info(text: String) = CommandResult(text, MessageType.INFO, false)
-
-@ConsoleTarget("Prints the given text as a warning message")
-fun warning(text: String) = CommandResult(text, MessageType.WARN, false)
-
-@ConsoleTarget("Prints the given text as an error message")
-fun error(text: String) = CommandResult(text, MessageType.ERROR, false)
-
 object CommandRegistry
 {
     private const val SCRIPT_EXTENSION_TYPE = ".ps"
@@ -166,11 +157,6 @@ object CommandRegistry
 
             val field = moduleInstance::class.memberProperties.find { it.name == fieldName }
                 ?: return@registerCommand CommandResult("Field $fieldName was not found in module ${moduleInstance::class.simpleName}", MessageType.ERROR)
-
-            field.annotations
-                .plus(moduleInstance::class.annotations)
-                .filterIsInstance<ConsoleTarget>()
-                .ifEmpty { return@registerCommand CommandResult("Field ${field.name} or class ${moduleInstance::class.simpleName} is not marked as a @ConsoleTarget", MessageType.ERROR) }
 
             if (field !is KMutableProperty<*>)
                 return@registerCommand CommandResult("Field ${field.name} is not mutable", MessageType.ERROR)
