@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.scene.systems.physics.bodies
+package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
 import kotlin.math.PI
 import kotlin.math.atan2

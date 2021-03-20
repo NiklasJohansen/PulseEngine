@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.scene.systems.physics
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.SpatialGrid
-import no.njoh.pulseengine.modules.scene.systems.physics.bodies.Shape
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape
 import kotlin.math.sqrt
 
 interface RigidBody
@@ -88,7 +88,28 @@ interface RigidBody
 
     fun updateCollisions(engine: PulseEngine, spatialGrid: SpatialGrid)
     {
-        // TODO
+        val xMin = shape.xMin
+        val xMax = shape.xMax
+        val yMin = shape.yMin
+        val yMax = shape.yMax
+
+        spatialGrid.forEachEntityInArea(shape.xCenter, shape.yCenter, xMax - xMin, yMax - yMin)
+        {
+            if (it is RigidBody && it.shape !== shape)
+            {
+                if (xMin < it.shape.xMax &&
+                    xMax > it.shape.xMin &&
+                    yMin < it.shape.yMax &&
+                    yMax > it.shape.yMin
+                ) {
+                    BodyInteraction.detectAndResolve(this, it)?.let { result ->
+                        onCollision(engine, it, result)
+                        if (this is SceneEntity)
+                            it.onCollision(engine, this, result)
+                    }
+                }
+            }
+        }
     }
 
     fun updateWorldConstraint(worldWidth: Int, worldHeight: Int)
