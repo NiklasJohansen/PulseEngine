@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.scene
+package no.njoh.pulseengine.modules.scene.entities
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
@@ -68,6 +68,7 @@ abstract class SceneEntity(
                     .forEach { REGISTERED_TYPES.add(it.kotlin) }
                 REGISTERED_TYPES.remove(SceneEntity::class)
             }.let { Logger.debug("Registered ${REGISTERED_TYPES.size} scene entity types in " +
-                "${"%.3f".format(it / 1_000_000f)} ms. [${REGISTERED_TYPES.joinToString { it.simpleName ?: "" }}]") }
+                "${"%.3f".format(it / 1_000_000f)} ms. [${REGISTERED_TYPES.joinToString { it.simpleName ?: "" }}]")
+            }
     }
 }

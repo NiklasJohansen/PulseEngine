@@ -7,7 +7,7 @@ import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Padding
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
-import no.njoh.pulseengine.util.forEachVolatile
+import no.njoh.pulseengine.util.forEachFast
 
 abstract class UiElement(
     val x: Position,
@@ -124,7 +124,7 @@ abstract class UiElement(
 
         onUpdate(engine)
 
-        children.forEachVolatile { child ->
+        children.forEachFast { child ->
             child.update(engine)
             if (child.dirtyLayout || child.popup?.dirtyLayout == true)
                 setLayoutDirty()

@@ -2,15 +2,17 @@ package no.njoh.pulseengine.modules.scene
 
 import no.njoh.pulseengine.data.Array2D
 import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DEAD
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DISCOVERABLE
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.POSITION_UPDATED
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.ROTATION_UPDATED
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DEAD
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DISCOVERABLE
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.data.SwapList
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity
+import no.njoh.pulseengine.util.forEachFast
 import kotlin.math.*
 
-class SpatialIndex (
+class SpatialGrid (
     private val entityCollections : List<SwapList<SceneEntity>>,
     var cellSize: Float,
     private val minBorderSize: Float = 3000f,
@@ -38,10 +40,8 @@ class SpatialIndex (
         var yMin = Float.POSITIVE_INFINITY
         var yMax = Float.NEGATIVE_INFINITY
 
-        for (collection in entityCollections)
-        {
-            for (entity in collection)
-            {
+        entityCollections.forEachFast { entities ->
+            entities.forEachFast { entity ->
                 val r = max(entity.width, entity.height) / 2f
                 xMax = max(entity.x + r, xMax)
                 xMin = min(entity.x - r, xMin)
@@ -62,9 +62,9 @@ class SpatialIndex (
         array = Array2D(xCells, yCells) { x, y -> null }
         scanRanges = IntArray(2 * yCells) { if (it % 2 == 0) xCells else 0 }
 
-        for (collection in entityCollections)
-            for (entity in collection)
-                insert(entity)
+        entityCollections.forEachFast { entities ->
+            entities.forEachFast { insert(it) }
+        }
     }
 
     inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit)
@@ -77,8 +77,9 @@ class SpatialIndex (
         val yStart = (yCell - verticalNeighbours).coerceAtLeast(0)
         val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
         val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
+        val array = array
+        val iterNum = ++iterationNumber
 
-        iterationNumber++
         for (yi in yStart .. yEnd)
         {
             for (xi in xStart .. xEnd)
@@ -86,10 +87,10 @@ class SpatialIndex (
                 var node = array[xi, yi]
                 while (node != null)
                 {
-                    if (node.entity.isNot(DEAD) && node.itrNum != iterationNumber)
+                    if (node.entity.isNot(DEAD) && node.itrNum != iterNum)
                     {
                         block(node.entity)
-                        node.itrNum = iterationNumber
+                        node.itrNum = iterNum
                     }
                     node = node.next
                 }
@@ -98,7 +99,8 @@ class SpatialIndex (
     }
 
     fun insert(entity: SceneEntity): Boolean =
-        when {
+        when
+        {
             entity.isNot(DISCOVERABLE) -> true
             abs(entity.width) + abs(entity.height) < cellSize * 0.5 -> insertPoint(entity)
             entity.rotation == 0.0f -> insertAxisAligned(entity)
@@ -389,7 +391,7 @@ class SpatialIndex (
         val width = xCells * cellSize
         val height = yCells * cellSize
 
-        for (x in 0 until  xCells + 1)
+        for (x in 0 until xCells + 1)
             surface.drawLine(xOffset + x * cellSize, yOffset, xOffset + x * cellSize, yOffset + height)
 
         for (y in 0 until yCells + 1)

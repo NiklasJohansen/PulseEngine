@@ -5,8 +5,8 @@ import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.SceneState.*
 import no.njoh.pulseengine.modules.Assets
 import no.njoh.pulseengine.modules.Data
-import no.njoh.pulseengine.modules.graphics.Graphics
 import no.njoh.pulseengine.modules.graphics.Surface2D
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.util.Logger
 import kotlin.math.PI
 import kotlin.math.cos
@@ -16,13 +16,12 @@ interface SceneManager
     fun start()
     fun stop()
     fun pause()
-    fun save()
-    fun saveIf(predicate: (SceneManager) -> Boolean)
-    fun saveAsync()
+    fun save(async: Boolean = false)
+    fun saveIf(async: Boolean = false, predicate: (SceneManager) -> Boolean)
     fun reload(fromClassPath: Boolean = false)
     fun loadAndSetActive(fileName: String, fromClassPath: Boolean = false)
     fun createEmptyAndSetActive(fileName: String)
-    fun transitionInto(fileName: String, fadeTimeMs: Long = 1000L)
+    fun transitionInto(fileName: String, fromClassPath: Boolean = false, fadeTimeMs: Long = 1000L)
     fun setActive(scene: Scene)
     val activeScene: Scene
     val state: SceneState
@@ -31,7 +30,7 @@ interface SceneManager
 interface SceneManagerEngineInterface : SceneManager
 {
     fun init(assets: Assets, data: Data)
-    fun render(gfx: Graphics)
+    fun render(engine: PulseEngine)
     fun update(engine: PulseEngine)
     fun fixedUpdate(engine: PulseEngine)
 }
@@ -47,6 +46,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
 
     private var nextStagedScene: Scene? = null
     private var nextSceneFileName: String? = null
+    private var nextSceneFromClassPath = false
 
     private var transitionFade = 0f
     private var fadeTimeMs = 0L
@@ -96,12 +96,13 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         else Logger.error("Cannot load scene: ${activeScene.name} - fileName to is not set!")
     }
 
-    override fun transitionInto(fileName: String, fadeTimeMs: Long)
+    override fun transitionInto(fileName: String, fromClassPath: Boolean, fadeTimeMs: Long)
     {
         if (fileName != nextSceneFileName)
         {
             this.transitionFade = 1f
             this.nextSceneFileName = fileName
+            this.nextSceneFromClassPath = fromClassPath
             this.fadeTimeMs = fadeTimeMs
         }
     }
@@ -134,20 +135,25 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         setActive(scene)
     }
 
-    override fun save()
+    override fun save(async: Boolean)
     {
         if (activeScene.fileName.isNotBlank())
         {
+            activeScene.entities.values.removeIf { it.isEmpty() }
             activeScene.entities.values.forEach { it.fitToSize() }
-            data.saveObject(activeScene, activeScene.fileName, activeScene.fileFormat)
+            activeScene.entityCollections.removeIf { it.isEmpty() }
+            if (async)
+                data.saveObjectAsync(activeScene, activeScene.fileName, activeScene.fileFormat)
+            else
+                data.saveObject(activeScene, activeScene.fileName, activeScene.fileFormat)
         }
         else Logger.error("Cannot save scene: ${activeScene.name} - fileName is not set!")
     }
 
-    override fun saveIf(predicate: (SceneManager) -> Boolean)
+    override fun saveIf(async: Boolean, predicate: (SceneManager) -> Boolean)
     {
         if (predicate(this))
-            save()
+            save(async)
     }
 
     override fun reload(fromClassPath: Boolean)
@@ -155,24 +161,19 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         loadAndSetActive(activeScene.fileName, fromClassPath)
     }
 
-    override fun saveAsync()
-    {
-        data.saveObjectAsync(activeScene, activeScene.fileName, activeScene.fileFormat)
-    }
-
     override fun update(engine: PulseEngine)
     {
         if (nextSceneFileName != null && nextStagedScene == null && !loadingScene)
         {
             loadingScene = true
-            data.loadObjectAsync<Scene>(nextSceneFileName!!, false, { // TODO: support class path loading
+            data.loadObjectAsync<Scene>(nextSceneFileName!!, nextSceneFromClassPath, {
                 loadingScene = false
                 nextSceneFileName = null
                 Logger.error("Failed to load scene from file: $nextSceneFileName")
             }) { scene ->
                 loadingScene = false
                 nextStagedScene = scene
-                Logger.debug("Transitioning to scene: ${scene.name}")
+                Logger.debug("Transitioning into scene: ${scene.name}")
             }
         }
 
@@ -183,7 +184,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             nextStagedScene = null
         }
 
-        activeScene.update(engine, state)
+        activeScene.update(engine)
     }
 
     override fun fixedUpdate(engine: PulseEngine)
@@ -199,14 +200,14 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             activeScene.fixedUpdate(engine)
     }
 
-    override fun render(gfx: Graphics)
+    override fun render(engine: PulseEngine)
     {
-        activeScene.render(gfx, assets, state)
+        activeScene.render(engine)
 
         if (transitionFade >= 0)
         {
             if (!this::fadeSurface.isInitialized)
-                fadeSurface = gfx.createSurface2D("sceneFadeSurface", zOrder = 99)
+                fadeSurface = engine.gfx.createSurface2D("sceneFadeSurface", zOrder = 99)
 
             val fade = (cos(transitionFade * PI * 2f + PI).toFloat() + 1f) / 2f
             fadeSurface.setDrawColor(0f, 0f, 0f, fade)

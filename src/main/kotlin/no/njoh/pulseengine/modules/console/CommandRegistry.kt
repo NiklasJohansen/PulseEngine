@@ -7,7 +7,7 @@ import no.njoh.pulseengine.data.Subscription
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import no.njoh.pulseengine.modules.scene.SceneEntity
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import java.io.File
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.declaredMemberProperties

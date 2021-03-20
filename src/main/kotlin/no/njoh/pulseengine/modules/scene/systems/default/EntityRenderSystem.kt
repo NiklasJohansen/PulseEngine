@@ -1,0 +1,32 @@
+package no.njoh.pulseengine.modules.scene.systems.default
+
+import no.njoh.pulseengine.PulseEngine
+import no.njoh.pulseengine.modules.scene.Scene
+import no.njoh.pulseengine.modules.scene.SurfaceName
+import no.njoh.pulseengine.modules.scene.systems.SceneSystem
+import kotlin.reflect.full.findAnnotation
+
+open class EntityRenderSystem : SceneSystem
+{
+    override fun onStart(scene: Scene) { }
+    override fun onFixedUpdate(scene: Scene, engine: PulseEngine) { }
+    override fun onUpdate(scene: Scene, engine: PulseEngine) { }
+    override fun onRender(scene: Scene, engine: PulseEngine)
+    {
+        val assets = engine.asset
+        val sceneState = engine.scene.state
+        val gfx = engine.gfx
+
+        scene.entities.forEach { (_, entities) ->
+            if (entities.isNotEmpty())
+            {
+                var surface = gfx.mainSurface
+                entities[0]::class
+                    .findAnnotation<SurfaceName>()
+                    ?.let { surface = gfx.getSurface2D(it.name) }
+
+                entities.forEachFast { it.onRender(surface, assets, sceneState) }
+            }
+        }
+    }
+}

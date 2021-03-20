@@ -5,7 +5,6 @@ import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.Assets
 import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.modules.scene.SceneEntity
 import kotlin.math.*
 
 open class CameraEntity : SceneEntity() {

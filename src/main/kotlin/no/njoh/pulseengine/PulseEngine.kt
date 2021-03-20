@@ -202,7 +202,7 @@ class PulseEngineImpl(
     {
         data.measureRenderTimeAndUpdateInterpolationValue()
         {
-            scene.render(gfx)
+            scene.render(this)
             game.onRender()
             widget.render(this)
             gfx.postRender()

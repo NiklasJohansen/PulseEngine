@@ -9,7 +9,7 @@ import no.njoh.pulseengine.modules.graphics.ui.Size
 import no.njoh.pulseengine.modules.graphics.ui.elements.*
 import no.njoh.pulseengine.modules.graphics.ui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.modules.graphics.ui.layout.*
-import no.njoh.pulseengine.modules.scene.SceneEntity
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.util.Logger
 import java.lang.IllegalArgumentException
 import kotlin.reflect.KClass

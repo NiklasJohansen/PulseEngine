@@ -40,7 +40,10 @@ inline fun <T> Iterable<T>.sumByFloat(selector: (T) -> Float): Float
     return sum
 }
 
-inline fun <T> List<T>.forEachVolatile(block: (T) -> Unit) {
+/**
+ * Fast iteration of constant lookup lists.
+ */
+inline fun <T> List<T>.forEachFast(block: (T) -> Unit) {
     var i = 0
     while (i < size) block(this[i++])
 }
@@ -70,7 +73,7 @@ fun String.loadText(): String? =
     javaClass.getResource(this.toClassPath())?.readText()
 
 /**
- * Loads all file names in given directory
+ * Loads all file names in the given directory
  */
 fun String.loadFileNames(): List<String>
 {
@@ -85,7 +88,8 @@ fun String.loadFileNames(): List<String>
             .map { it.toAbsolutePath().toString() }
             .toList()
     }
-    else {
+    else
+    {
         this.loadStream()
             ?.let { stream -> BufferedReader(InputStreamReader(stream)).readLines().map { "$this/$it" } }
             ?: emptyList()
