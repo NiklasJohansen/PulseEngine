@@ -67,7 +67,7 @@ class SpatialGrid (
         }
     }
 
-    inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit)
+    inline fun query(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit)
     {
         val xCell = ((x - xOffset) / cellSize).toInt()
         val yCell = ((y - yOffset) / cellSize).toInt()
@@ -90,6 +90,38 @@ class SpatialGrid (
                     if (node.entity.isNot(DEAD) && node.itrNum != iterNum)
                     {
                         block(node.entity)
+                        node.itrNum = iterNum
+                    }
+                    node = node.next
+                }
+            }
+        }
+    }
+
+    inline fun <reified T> queryType(x: Float, y: Float, width: Float, height: Float, block: (T) -> Unit)
+    {
+        val xCell = ((x - xOffset) / cellSize).toInt()
+        val yCell = ((y - yOffset) / cellSize).toInt()
+        val horizontalNeighbours = 1 + (width / 2f / cellSize).toInt()
+        val verticalNeighbours = 1 + (height / 2f / cellSize).toInt()
+        val xStart = (xCell - horizontalNeighbours).coerceAtLeast(0)
+        val yStart = (yCell - verticalNeighbours).coerceAtLeast(0)
+        val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
+        val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
+        val array = array
+        val iterNum = ++iterationNumber
+
+        for (yi in yStart .. yEnd)
+        {
+            for (xi in xStart .. xEnd)
+            {
+                var node = array[xi, yi]
+                while (node != null)
+                {
+                    val entity = node.entity
+                    if (entity.isNot(DEAD) && node.itrNum != iterNum && entity is T)
+                    {
+                        block(entity as T)
                         node.itrNum = iterNum
                     }
                     node = node.next

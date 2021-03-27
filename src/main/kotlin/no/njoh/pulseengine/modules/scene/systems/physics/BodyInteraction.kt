@@ -36,7 +36,7 @@ object BodyInteraction
         var xCollisionNormal = 0f
         var yCollisionNormal = 0f
 
-        lateinit var edgeBody: RigidBody
+        var edgeBody: RigidBody? = null
         var edgePoint0 = -1
         var edgePoint1 = -1
 
@@ -106,6 +106,9 @@ object BodyInteraction
 
             edgeIndex++
         }
+
+        if (edgeBody == null)
+            return null
 
         // Inverts the collision normal if it doesn't point in the direction of the pointBody
         val pointBody = if (edgeBody === aBody) bBody else aBody

@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems.physics
 
 import no.njoh.pulseengine.PulseEngine
+import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.SpatialGrid
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape
@@ -93,15 +94,12 @@ interface RigidBody
         val yMin = shape.yMin
         val yMax = shape.yMax
 
-        spatialGrid.forEachEntityInArea(shape.xCenter, shape.yCenter, xMax - xMin, yMax - yMin)
+        spatialGrid.query(shape.xCenter, shape.yCenter, xMax - xMin, yMax - yMin)
         {
             if (it is RigidBody && it.shape !== shape)
             {
-                if (xMin < it.shape.xMax &&
-                    xMax > it.shape.xMin &&
-                    yMin < it.shape.yMax &&
-                    yMax > it.shape.yMin
-                ) {
+                if (xMin < it.shape.xMax && xMax > it.shape.xMin && yMin < it.shape.yMax && yMax > it.shape.yMin)
+                {
                     BodyInteraction.detectAndResolve(this, it)?.let { result ->
                         onCollision(engine, it, result)
                         if (this is SceneEntity)
@@ -120,6 +118,28 @@ interface RigidBody
             shape.yCenter > worldHeight / 2f
         ) {
             bodyType = BodyType.STATIC
+        }
+    }
+
+    fun drawConstraints(surface: Surface2D)
+    {
+        if (shape.isSleeping)
+            surface.setDrawColor(1f, 0.3f, 0.3f)
+        else
+            surface.setDrawColor(1f, 1f, 1f)
+
+        val points = shape.points
+        shape.forEachConstraint { i ->
+            val p0 = this[i + Shape.POINT_0].toInt() * Shape.N_POINT_FIELDS
+            val p1 = this[i + Shape.POINT_1].toInt() * Shape.N_POINT_FIELDS
+            val x0 = points[p0 + Shape.X]
+            val y0 = points[p0 + Shape.Y]
+            val x1 = points[p1 + Shape.X]
+            val y1 = points[p1 + Shape.Y]
+
+            surface.drawQuad(x0 - 5f, y0 - 5f, 10f, 10f)
+            surface.drawQuad(x1 - 5f, y1 - 5f, 10f, 10f)
+            surface.drawLine(x0, y0, x1, y1)
         }
     }
 
