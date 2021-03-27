@@ -141,9 +141,10 @@ class SceneEditor: Widget
         // Create content
         val menuBar = createMenuBarUI(
             MenuBarButton("File", listOf(
-                MenuBarItem("Open") { onLoad(engine) },
+                MenuBarItem("New...") { onNewScene(engine) },
+                MenuBarItem("Open...") { onLoad(engine) },
                 MenuBarItem("Save") { engine.scene.save() },
-                MenuBarItem("Save as") { onSaveAs(engine) }
+                MenuBarItem("Save as...") { onSaveAs(engine) }
             )),
             MenuBarButton("View", listOf(
                 MenuBarItem("Entity properties") { createEntityPropertyWindow() },
@@ -222,6 +223,11 @@ class SceneEditor: Widget
 
     override fun onUpdate(engine: PulseEngine)
     {
+        sceneFileToLoad?.let {
+            engine.scene.loadAndSetActive(it)
+            sceneFileToLoad = null
+        }
+
         if (engine.scene.state == SceneState.STOPPED)
         {
             screenArea.update(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
@@ -266,6 +272,9 @@ class SceneEditor: Widget
             entitySelection.forEach { it.handleEntityMoving(engine) }
         }
 
+        if (rootUI.width.value.toInt() != engine.window.width || rootUI.height.value.toInt() != engine.window.height)
+            rootUI.setLayoutDirty()
+
         rootUI.update(engine)
     }
 
@@ -286,8 +295,8 @@ class SceneEditor: Widget
         GlobalScope.launch {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
                 val oldScene = engine.scene.activeScene
-                val newScene = Scene(oldScene.name, oldScene.entities).apply {
-                    fileName = filePath
+                val newScene = Scene(oldScene.name, oldScene.entities, oldScene.systems).apply {
+                    fileName = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
                     fileFormat = oldScene.fileFormat
                 }
                 engine.scene.setActive(newScene)
@@ -302,8 +311,24 @@ class SceneEditor: Widget
             engine.scene.save()
 
         GlobalScope.launch {
-            FileChooser.showFileSelectionDialog("scn", engine.data.saveDirectory) { saveFile ->
-                engine.scene.loadAndSetActive(saveFile)
+            FileChooser.showFileSelectionDialog("scn", engine.data.saveDirectory) { filePath ->
+                sceneFileToLoad = filePath
+            }
+        }
+    }
+
+    private fun onNewScene(engine: PulseEngine)
+    {
+        if (engine.scene.state == SceneState.RUNNING)
+        {
+            engine.scene.stop()
+            engine.scene.save()
+        }
+
+        GlobalScope.launch {
+            FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
+                engine.scene.createEmptyAndSetActive(filePath)
+                engine.scene.save()
             }
         }
     }
@@ -349,6 +374,7 @@ class SceneEditor: Widget
             {
                 entitySelection.forEach { it.set(DEAD) }
                 entitySelection.clear()
+                isMoving = false
             }
         }
     }

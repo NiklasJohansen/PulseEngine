@@ -28,16 +28,19 @@ import kotlin.reflect.jvm.javaField
 
 object EditorUtil
 {
-    private val style = EditorStyle().apply {
-        colors["LABEL"] = Color(222, 224, 228)
-        colors["BG_LIGHT"] = Color(59 / 2, 63 / 2, 67 / 2)
-        colors["BG_DARK"] = Color(54 / 2, 58 / 2, 62 / 2)
-        colors["HEADER"] = Color(46 / 2, 48 / 2, 51 / 2)
-        colors["HEADER_HOVER"] = Color(42 * 3, 44, 47)
-        colors["BUTTON"] = Color(41 / 2, 43 / 2, 46 / 2)
-        colors["BUTTON_HOVER"] = Color(56 / 4 * 3, 57 / 4 * 3, 60 /  4 * 3)
-        colors["ITEM"] = Color(52 / 2, 53 / 2, 56 / 2)
-        colors["ITEM_HOVER"] = Color(56 / 3 * 2, 57 / 3 * 2, 60 / 3 * 2)
+    val style = EditorStyle().apply()
+    {
+        colors["LABEL"] = Color(0.9436735f, 0.9595646f, 0.9714286f, 1.0f)
+        colors["BG_LIGHT"] = Color(0.06857083f, 0.12020138f, 0.17142856f, 0.98039216f)
+        colors["BG_DARK"] = Color(0.19515306f, 0.2608163f, 0.3642857f, 0.92156863f)
+        colors["STROKE"] = Color(0.2509804f, 0.40784314f, 0.58431375f, 1.0f)
+        colors["HEADER"] = Color(0.25101838f, 0.4111474f, 0.5857143f, 1.0f)
+        colors["HEADER_HOVER"] = Color(0.25744683f, 0.4315871f, 0.6214286f, 1.0f)
+        colors["BUTTON"] = Color(0.16760094f, 0.21887684f, 0.3214286f, 1.0f)
+        colors["BUTTON_HOVER"] = Color(0.26428387f, 0.39176375f, 0.5285714f, 1.0f)
+        colors["BUTTON_EXIT"] = Color(0.7642857f, 0.3603061f, 0.3603061f, 0.69803923f)
+        colors["ITEM"] = Color(0.124080695f, 0.18301985f, 0.27142859f, 1.0f)
+        colors["ITEM_HOVER"] = Color(0.3053039f, 0.45996523f, 0.6285714f, 1.0f)
     }
 
     /**
@@ -72,8 +75,8 @@ object EditorUtil
             padding.top = 5f
             padding.right = 5f
             color = Color.BLANK
-            hoverColor = style.getColor("BUTTON_HOVER")
-            setOnClicked { windowPanel.parent?.removeChild(windowPanel) }
+            hoverColor = style.getColor("BUTTON_EXIT")
+            setOnClicked { windowPanel.parent?.removeChildren(windowPanel) }
             addChildren(xLabel)
         }
 
@@ -84,11 +87,11 @@ object EditorUtil
         }
 
         windowPanel.color = style.getColor("BG_LIGHT")
-        windowPanel.strokeColor = style.getColor("HEADER")
+        windowPanel.strokeColor = style.getColor("STROKE")
         windowPanel.movable = true
         windowPanel.resizable = true
-        windowPanel.minHeight = windowPanel.header.height.value
-        windowPanel.minWidth = 50f
+        windowPanel.minHeight = windowPanel.header.height.value + 100
+        windowPanel.minWidth = 150f
         windowPanel.id = title
         windowPanel.header.addChildren(headerPanel)
 
@@ -102,8 +105,8 @@ object EditorUtil
     {
         return HorizontalPanel(height = Size.absolute(25f)).apply {
             color = style.getColor("BG_LIGHT")
-            strokeColor = style.getColor("HEADER")
-            addChildren(*buttons.map { createMenuBarButtonUI(it) }.toTypedArray(), Panel())
+            strokeColor = style.getColor("STROKE")
+            addChildren(*buttons.map { createMenuBarButtonUI(it, 18f, false) }.toTypedArray(), Panel())
         }
     }
 
@@ -136,16 +139,21 @@ object EditorUtil
             itemBgHoverColor = style.getColor("BUTTON_HOVER")
             menuLabel.text = menuBarButton.labelText
             menuLabel.fontSize = fontSize
-            menuLabel.padding.left = 12f
+            menuLabel.font = font
             menuLabel.padding.top = 7f
+            menuLabel.centerHorizontally = true
             menuLabel.font = style.getFont()
             rowPanel.rowHeight = 25f
             rowPanel.rowPadding = 5f
             dropdown.color = style.getColor("BG_LIGHT")
-            dropdown.strokeColor = style.getColor("HEADER")
+            dropdown.strokeColor = style.getColor("STROKE")
             dropdown.minHeight = 0f
+            dropdown.minWidth = 10f
             dropdown.resizable = false
-            scrollbar.hidden = true
+            scrollbar.bgColor = style.getColor("ITEM")
+            scrollbar.sliderColor = style.getColor("BUTTON")
+            scrollbar.sliderColorHover = style.getColor("BUTTON_HOVER")
+            scrollbar.hidden = !showScrollbar
             setOnItemToString { it.labelText }
             menuBarButton.items.forEach { addItem(it) }
             setOnItemChanged { it.onClick() }
@@ -168,26 +176,28 @@ object EditorUtil
         val (width, height) = getDropDownDimensions(font, fontSize, scrollBarWidth, 35f, 8, stringItems)
         return DropdownMenu<T>(
             width = Size.relative(0.5f),
-            dropDownWidth = Size.absolute(250f),
-            dropDownHeight = Size.absolute(180f)
+            dropDownWidth = Size.absolute(width),
+            dropDownHeight = Size.absolute(height)
         ).apply {
             padding.top = 5f
             padding.bottom = 5f
             padding.right = 5f
             rowPanel.rowPadding = 5f
-            menuLabel.font = style.getFont()
-            menuLabel.fontSize = 20f
+            rowPanel.rowHeight = 30f
+            menuLabel.font = font
+            menuLabel.fontSize = fontSize
             menuLabel.color = style.getColor("LABEL")
             menuLabel.padding.left = 10f
             bgColor = style.getColor("BUTTON")
             bgHoverColor = style.getColor("BUTTON_HOVER")
-            dropdown.color = style.getColor("BG_LIGHT")
-            itemBgColor = style.getColor("ITEM")
-            itemBgHoverColor = style.getColor("ITEM_HOVER")
+            itemBgColor = Color.BLANK
+            itemBgHoverColor = style.getColor("BUTTON_HOVER")
+            dropdown.color = style.getColor("BG_DARK") // BG_LIGHT
+            dropdown.strokeColor = style.getColor("STROKE")
+            scrollbar.bgColor = style.getColor("ITEM")
             scrollbar.sliderColor = style.getColor("BUTTON")
             scrollbar.sliderColorHover = style.getColor("BUTTON_HOVER")
-            scrollbar.bgColor = style.getColor("ITEM")
-
+            scrollbar.hidden = !showScrollbar
             setOnItemToString(onItemToString)
             this.selectedItem = selectedItem
             items.forEach(this::addItem)
@@ -389,7 +399,7 @@ object EditorUtil
      */
     private fun createScrollbarUI(scrollBinding: Scrollable): Scrollbar
     {
-        return Scrollbar(width = Size.absolute(20f)).apply {
+        return Scrollbar(width = Size.absolute(15f)).apply {
             bgColor = style.getColor("ITEM")
             sliderColor = style.getColor("BUTTON")
             sliderColorHover = style.getColor("BUTTON_HOVER")
@@ -409,17 +419,19 @@ object EditorUtil
             padding.setAll(5f)
             bgColor = style.getColor("BUTTON")
             hexInput.fontSize = 20f
-            hexInput.fontColor = style.getColor("FONT_COLOR")
+            hexInput.fontColor = style.getColor("LABEL")
+            hexInput.bgColorHover = style.getColor("BUTTON_HOVER")
             colorEditor.color = style.getColor("BG_LIGHT")
-            colorEditor.strokeColor = style.getColor("HEADER")
+            colorEditor.strokeColor = style.getColor("STROKE")
             saturationBrightnessPicker.strokeColor = style.getColor("HEADER")
-            huePicker.strokeColor = style.getColor("HEADER")
+            huePicker.strokeColor = style.getColor("STROKE")
             hsbSection.color = style.getColor("ITEM")
             rgbaSection.color = style.getColor("ITEM")
             listOf(redInput, greenInput, blueInput, alphaInput).forEach {
                 it.fontSize = 20f
-                it.fontColor = style.getColor("FONT_COLOR")
+                it.fontColor = style.getColor("LABEL")
                 it.bgColor = style.getColor("BUTTON")
+                it.bgColorHover = style.getColor("BUTTON_HOVER")
             }
         }
 
@@ -444,6 +456,7 @@ object EditorUtil
             fontSize = 20f
             fontColor = style.getColor("LABEL")
             bgColor = style.getColor("BUTTON")
+            bgColorHover = style.getColor("BUTTON_HOVER")
             editable = true
             contentType = type
 
@@ -465,6 +478,7 @@ object EditorUtil
         val typeLabel = Label("Entity type", width = Size.relative(0.5f)).apply {
             padding.setAll(5f)
             padding.left = 10f
+            fontSize = 20f
             font = style.getFont()
             color = style.getColor("LABEL")
         }
@@ -482,7 +496,7 @@ object EditorUtil
     }
 
     /**
-     * Creates a property row UI element for the given entity.
+     * Creates a property row UI element for the given object.
      * Returns the main UI panel and the input UiElement
      */
     fun createPropertyUI(obj: Any, prop: KMutableProperty<*>): Pair<HorizontalPanel, UiElement>
@@ -520,6 +534,7 @@ object EditorUtil
         val label = Label(prop.name.capitalize(), width = Size.relative(0.5f)).apply {
             padding.setAll(5f)
             padding.left = 10f
+            fontSize = 20f
             font = style.getFont()
             color = style.getColor("LABEL")
         }

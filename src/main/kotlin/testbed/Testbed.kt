@@ -21,6 +21,7 @@ class Testbed : PulseEngineGame()
         engine.console.runScript("testbed/startup.ps")
         engine.asset.loadAllTextures("testbed/images")
         engine.scene.reload()
+        engine.scene.start()
     }
 
     override fun onUpdate()
