@@ -9,6 +9,7 @@ import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Scrollable
 import no.njoh.pulseengine.modules.graphics.ui.Size
+import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import kotlin.math.max
 
 class Scrollbar(
@@ -33,6 +34,18 @@ class Scrollbar(
     private var sliderWidth = 0f
     private var xSlider = 0f
     private var ySlider = 0f
+
+    override fun onVisibilityIndependentUpdate(engine: PulseEngine)
+    {
+        boundScrollable?.let { scrollable ->
+            val shouldHide = scrollable.getUsedSpaceFraction() < 1f
+            if (scrollable.hideScrollbarOnEnoughSpaceAvailable && shouldHide == isVisible())
+            {
+                preventRender(shouldHide)
+                setLayoutDirty()
+            }
+        }
+    }
 
     override fun onUpdate(engine: PulseEngine)
     {
@@ -107,10 +120,10 @@ class Scrollbar(
 
     override fun updateChildLayout()
     {
-        if (hidden)
+        if (!isVisible())
         {
             val sliderTravelDist = (height.value - sliderHeight - 2f * sliderPadding)
-            if(sliderTravelDist > 0)
+            if (sliderTravelDist > 0)
                 hidden = false
         }
         super.updateChildLayout()

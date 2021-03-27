@@ -21,6 +21,7 @@ class TilePanel(
     private var currentTileSize = 0f
     private var currentPaddingSize = 0f
     override var scrollFraction = 0f
+    override var hideScrollbarOnEnoughSpaceAvailable = false
 
     override fun updateChildLayout()
     {
@@ -32,7 +33,7 @@ class TilePanel(
         var yPos = y.value - rowScroll * (currentTileSize + tilePadding)
         var xPos = x.value
 
-        rows = 0
+        rows = 1
         for (child in children)
         {
             val widthChild = currentTileSize - (child.padding.left + child.padding.right)
@@ -45,7 +46,7 @@ class TilePanel(
             child.height.setQuiet(heightChild)
             child.x.setQuiet(xChild)
             child.y.setQuiet(yChild)
-            child.hidden = isHidden
+            child.preventRender(isHidden)
             child.setLayoutClean()
             child.updateLayout()
 

@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.ui
 
 import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.ABSOLUTE
-import no.njoh.pulseengine.modules.graphics.ui.elements.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.VerticalPanel
 import no.njoh.pulseengine.util.sumByFloat

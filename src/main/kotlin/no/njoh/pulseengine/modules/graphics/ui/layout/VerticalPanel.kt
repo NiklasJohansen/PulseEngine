@@ -18,18 +18,19 @@ class VerticalPanel(
 
     override fun updateChildLayout()
     {
-        val requiredAbsoluteSpace = children.sumIf({ !it.hidden && it.height.type == ABSOLUTE }, { it.height.value }) + children.sumByFloat { it.padding.top + it.padding.bottom }
-        val availableRelativeSpace = max(0f, height.value - requiredAbsoluteSpace)
-        val fractionSum = children.sumIf({ !it.hidden && it.height.type == RELATIVE }) { it.height.fraction }
+        val requiredPadding = children.sumIf({ it.isVisible() }, { it.padding.top + it.padding.bottom })
+        val requiredAbsoluteSpace = children.sumIf({ it.isVisible() && it.height.type == ABSOLUTE }, { it.height.value })
+        val availableRelativeSpace = max(0f, height.value - requiredAbsoluteSpace - requiredPadding)
+        val fractionSum = children.sumIf({ it.isVisible() && it.height.type == RELATIVE }) { it.height.fraction }
         val requiredRelativeSpace = availableRelativeSpace * fractionSum.coerceAtMost(1f)
-        val countAutoChildren = children.count { !it.hidden && it.height.type == AUTO }
+        val countAutoChildren = children.count { it.isVisible() && it.height.type == AUTO }
         val availableAutoSpace = max(0f, availableRelativeSpace - requiredRelativeSpace) / countAutoChildren
         var yPos = y.value
 
         for (child in children)
         {
             child.setLayoutClean()
-            if (child.hidden)
+            if (!child.isVisible())
                 continue
 
             val availableWidth = width.value - (child.padding.left + child.padding.right)

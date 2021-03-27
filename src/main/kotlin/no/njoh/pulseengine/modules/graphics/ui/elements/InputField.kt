@@ -9,6 +9,7 @@ import no.njoh.pulseengine.modules.Input
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
+import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.elements.InputField.ContentType.*
 import java.util.*
 import kotlin.math.max
@@ -27,6 +28,7 @@ class InputField (
 
     var editable = true
     var bgColor = Color(1f, 1f, 1f, 0f)
+    var bgColorHover = Color(1f, 1f, 1f, 0f)
     var strokeColor = Color(0.4f, 0.4f, 0.4f, 1f)
     var fontColor = Color(1f, 1f, 1f, 1f)
     var selectionColor = Color(0.2f, 0.4f, 1f, 0.9f)
@@ -447,7 +449,7 @@ class InputField (
         text = text.substring(max(inputTextOffset, 0), min(inputTextOffset + charsPerLine, text.length))
 
         // Draw input box rectangle
-        surface.setDrawColor(bgColor)
+        surface.setDrawColor(if (mouseInsideArea && !hasFocus) bgColorHover else bgColor)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)
 
         if (hasFocus)
@@ -487,16 +489,17 @@ class InputField (
         {
             val xCursor = x.value + leftTextPadding + cursorStart
             val yCursorCenter = y.value + height.value / 2f
+            val cursorHeight = fontSize / 2.5f
 
             surface.setDrawColor(fontColor)
-            surface.drawLine(xCursor, yCursorCenter - fontSize / 2f, xCursor, yCursorCenter + fontSize / 2f)
+            surface.drawLine(xCursor, yCursorCenter - cursorHeight, xCursor, yCursorCenter + cursorHeight)
         }
 
         // Draw input text
         surface.setDrawColor(fontColor)
         surface.drawText(text, x.value + leftTextPadding, y.value + height.value / 2f, font, fontSize, yOrigin = 0.6f)
 
-        if (contentType == INTEGER || contentType == FLOAT)
+        if ((contentType == INTEGER || contentType == FLOAT) && width.value > 50f )
         {
             val xArrow = x.value + width.value - numberStepperWidth / 2
             val yArrow = y.value + height.value / 2
@@ -569,7 +572,7 @@ class InputField (
     }
 
     private fun getTextWidth(text: String): Float
-        = font?.getWidth(text, fontSize) ?: (text.length * (fontSize / 2f))
+        = font.getWidth(text, fontSize)
 
     private fun getNumberOfChars(availableWidth: Float): Int
         = max(1f, availableWidth / (fontSize / 2f)).toInt()

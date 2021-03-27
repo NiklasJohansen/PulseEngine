@@ -59,6 +59,9 @@ open class CameraEntity : SceneEntity() {
         surface.drawLine(x - x3, y - y3, x - x1, y - y1)
         surface.drawLine(x - x2, y - y2, x - x0, y - y0)
         surface.drawLine(x + x3, y + y3, x + x1, y + y1)
+
+        surface.setDrawColor(1f, 1f, 1f, 1f)
+        surface.drawText("CAMERA", x, y, xOrigin = 0.5f, yOrigin = 0.5f)
     }
 
     override fun onFixedUpdate(engine: PulseEngine)

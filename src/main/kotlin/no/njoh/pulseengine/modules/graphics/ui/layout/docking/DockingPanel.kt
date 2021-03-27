@@ -9,7 +9,7 @@ import no.njoh.pulseengine.modules.graphics.ui.Size
 import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.*
 import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.AUTO
 import no.njoh.pulseengine.modules.graphics.ui.UiUtil.findElementById
-import no.njoh.pulseengine.modules.graphics.ui.elements.UiElement
+import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.layout.*
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.sumByFloat

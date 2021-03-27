@@ -8,7 +8,7 @@ import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.ABSOLUTE
 import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.AUTO
 import no.njoh.pulseengine.modules.graphics.ui.UiUtil.getRequiredHorizontalSpace
 import no.njoh.pulseengine.modules.graphics.ui.elements.ResizeBarGizmo
-import no.njoh.pulseengine.modules.graphics.ui.elements.UiElement
+import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import no.njoh.pulseengine.util.sumByFloat
 import kotlin.math.max
 import kotlin.math.min
