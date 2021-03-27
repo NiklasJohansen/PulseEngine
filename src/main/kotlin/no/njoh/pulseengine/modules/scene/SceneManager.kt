@@ -3,13 +3,18 @@ package no.njoh.pulseengine.modules.scene
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.SceneState.*
-import no.njoh.pulseengine.modules.Assets
-import no.njoh.pulseengine.modules.Data
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
+import no.njoh.pulseengine.modules.scene.systems.SceneSystem
+import no.njoh.pulseengine.modules.scene.systems.default.EntityRenderSystem
+import no.njoh.pulseengine.modules.scene.systems.default.EntityUpdateSystem
 import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.ReflectionUtil
+import no.njoh.pulseengine.util.ReflectionUtil.getClassesFromFullyQualifiedClassNames
+import no.njoh.pulseengine.util.ReflectionUtil.getClassesOfSuperType
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.system.measureNanoTime
 
 interface SceneManager
 {
@@ -29,10 +34,12 @@ interface SceneManager
 
 interface SceneManagerEngineInterface : SceneManager
 {
-    fun init(assets: Assets, data: Data)
-    fun render(engine: PulseEngine)
-    fun update(engine: PulseEngine)
-    fun fixedUpdate(engine: PulseEngine)
+    fun init(engine: PulseEngine)
+    fun render()
+    fun update()
+    fun fixedUpdate()
+    fun cleanUp()
+    fun registerSystemsAndEntityClasses()
 }
 
 class SceneManagerImpl : SceneManagerEngineInterface {
@@ -40,8 +47,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
     override lateinit var activeScene: Scene
     override var state: SceneState = STOPPED
 
-    private lateinit var assets: Assets
-    private lateinit var data: Data
+    private lateinit var engine: PulseEngine
     private lateinit var fadeSurface: Surface2D
 
     private var nextStagedScene: Scene? = null
@@ -52,31 +58,41 @@ class SceneManagerImpl : SceneManagerEngineInterface {
     private var fadeTimeMs = 0L
     private var loadingScene = false
 
-    override fun init(assets: Assets, data: Data)
+    override fun init(engine: PulseEngine)
     {
-        this.assets = assets
-        this.data = data
+        this.engine = engine
         this.activeScene = Scene("default")
         this.activeScene.fileName = "default.scn"
-        SceneEntity.autoRegisterEntityTypes()
+        this.activeScene.addSystem(EntityUpdateSystem())
+        this.activeScene.addSystem(EntityRenderSystem())
+        registerSystemsAndEntityClasses()
     }
 
     override fun start()
     {
         when (state)
         {
-            STOPPED -> {
+            STOPPED ->
+            {
                 state = RUNNING
-                activeScene.start()
+                activeScene.start(engine)
             }
             PAUSED -> state = RUNNING
-            RUNNING -> {  }
+            RUNNING -> { }
         }
     }
 
     override fun stop()
     {
-        state = STOPPED
+        when (state)
+        {
+            PAUSED, RUNNING ->
+            {
+                state = STOPPED
+                activeScene.stop(engine)
+            }
+            STOPPED -> { }
+        }
     }
 
     override fun pause()
@@ -88,7 +104,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
     {
         if (fileName.isNotBlank())
         {
-            data.loadObject<Scene>(fileName, fromClassPath)?.let {
+            engine.data.loadObject<Scene>(fileName, fromClassPath)?.let {
                 it.fileName = fileName
                 setActive(it)
             }
@@ -111,6 +127,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
     {
         if (scene != activeScene)
         {
+            activeScene.stop(engine)
             if (scene.entities != activeScene.entities)
             {
                 activeScene.entities.forEach { it.value.clear() }
@@ -120,7 +137,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
 
             activeScene = scene
             if (state != STOPPED)
-                activeScene.start()
+                activeScene.start(engine)
         }
     }
 
@@ -132,6 +149,8 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             .substringBefore(".")
         val scene = Scene(sceneName)
         scene.fileName = fileName
+        scene.addSystem(EntityUpdateSystem())
+        scene.addSystem(EntityRenderSystem())
         setActive(scene)
     }
 
@@ -143,9 +162,9 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             activeScene.entities.values.forEach { it.fitToSize() }
             activeScene.entityCollections.removeIf { it.isEmpty() }
             if (async)
-                data.saveObjectAsync(activeScene, activeScene.fileName, activeScene.fileFormat)
+                engine.data.saveObjectAsync(activeScene, activeScene.fileName, activeScene.fileFormat)
             else
-                data.saveObject(activeScene, activeScene.fileName, activeScene.fileFormat)
+                engine.data.saveObject(activeScene, activeScene.fileName, activeScene.fileFormat)
         }
         else Logger.error("Cannot save scene: ${activeScene.name} - fileName is not set!")
     }
@@ -161,12 +180,12 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         loadAndSetActive(activeScene.fileName, fromClassPath)
     }
 
-    override fun update(engine: PulseEngine)
+    override fun update()
     {
         if (nextSceneFileName != null && nextStagedScene == null && !loadingScene)
         {
             loadingScene = true
-            data.loadObjectAsync<Scene>(nextSceneFileName!!, nextSceneFromClassPath, {
+            engine.data.loadObjectAsync<Scene>(nextSceneFileName!!, nextSceneFromClassPath, {
                 loadingScene = false
                 nextSceneFileName = null
                 Logger.error("Failed to load scene from file: $nextSceneFileName")
@@ -187,7 +206,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         activeScene.update(engine)
     }
 
-    override fun fixedUpdate(engine: PulseEngine)
+    override fun fixedUpdate()
     {
         if (transitionFade > 0)
         {
@@ -200,7 +219,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             activeScene.fixedUpdate(engine)
     }
 
-    override fun render(engine: PulseEngine)
+    override fun render()
     {
         activeScene.render(engine)
 
@@ -213,6 +232,34 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             fadeSurface.setDrawColor(0f, 0f, 0f, fade)
             fadeSurface.drawQuad(0f, 0f, fadeSurface.width.toFloat(), fadeSurface.height.toFloat())
         }
+    }
+
+    override fun registerSystemsAndEntityClasses()
+    {
+        measureNanoTime {
+            SceneEntity.REGISTERED_TYPES.clear()
+            SceneSystem.REGISTERED_TYPES.clear()
+
+            val classes = ReflectionUtil
+                .getFullyQualifiedClassNames()
+                .getClassesFromFullyQualifiedClassNames()
+
+            classes.getClassesOfSuperType(SceneEntity::class).forEach { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
+            classes.getClassesOfSuperType(SceneSystem::class).forEach { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
+
+            SceneEntity.REGISTERED_TYPES.remove(SceneEntity::class)
+            SceneSystem.REGISTERED_TYPES.remove(SceneSystem::class)
+        }.let {
+            val entityCount = SceneEntity.REGISTERED_TYPES.size
+            val systemCount = SceneSystem.REGISTERED_TYPES.size
+            Logger.debug("Registered $entityCount scene entity classes and $systemCount scene system classes " +
+                "in ${"%.3f".format(it / 1_000_000f)} ms. ")
+        }
+    }
+
+    override fun cleanUp()
+    {
+        activeScene.stop(engine)
     }
 }
 

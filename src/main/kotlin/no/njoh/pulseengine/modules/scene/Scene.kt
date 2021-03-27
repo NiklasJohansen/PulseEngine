@@ -7,11 +7,9 @@ import no.njoh.pulseengine.data.FileFormat.*
 import no.njoh.pulseengine.data.SwapList
 import no.njoh.pulseengine.data.SwapList.Companion.swapListOf
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
-import no.njoh.pulseengine.modules.scene.systems.default.EntityRenderSystem
-import no.njoh.pulseengine.modules.scene.systems.default.EntityUpdateSystem
-import no.njoh.pulseengine.modules.scene.systems.physics.PhysicsSystem
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.util.forEachFiltered
 import kotlin.reflect.KClass
 
 open class Scene(
@@ -32,35 +30,32 @@ open class Scene(
     @PublishedApi
     internal val spatialGrid = SpatialGrid(entityCollections, 350f, 3000f, 0.2f)
 
-    init
+    fun start(engine: PulseEngine)
     {
-        systems.clear()
-        addSystem(EntityUpdateSystem())
-        addSystem(PhysicsSystem())
-        addSystem(EntityRenderSystem())
-    }
-
-    fun start()
-    {
-        systems.forEachFast { it.onStart(this) }
+        systems.forEachFiltered({ it.enabled }) { it.onStart(this, engine) }
         spatialGrid.recalculate()
     }
 
     fun update(engine: PulseEngine)
     {
         spatialGrid.update()
-        systems.forEachFast { it.onUpdate(this, engine) }
+        systems.forEachFiltered({ it.enabled }) { it.onUpdate(this, engine) }
     }
 
     fun fixedUpdate(engine: PulseEngine)
     {
-        systems.forEachFast { it.onFixedUpdate(this, engine) }
+        systems.forEachFiltered({ it.enabled }) { it.onFixedUpdate(this, engine) }
     }
 
     fun render(engine: PulseEngine)
     {
         spatialGrid.render(engine.gfx.mainSurface)
-        systems.forEachFast { it.onRender(this, engine) }
+        systems.forEachFiltered({ it.enabled }) { it.onRender(this, engine) }
+    }
+
+    fun stop(engine: PulseEngine)
+    {
+        systems.forEachFiltered({ it.enabled }) { it.onStop(this, engine) }
     }
 
     fun addEntity(entity: SceneEntity)
@@ -89,7 +84,10 @@ open class Scene(
         entities[type.simpleName] as Iterable<T>?
 
     inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit) =
-        spatialGrid.forEachEntityInArea(x, y, width, height, block)
+        spatialGrid.query(x, y, width, height, block)
+
+    inline fun forEachEntity(block: (SceneEntity) -> Unit) =
+        entityCollections.forEachFast { entities -> entities.forEachFast { block(it) } }
 }
 
 @Target(AnnotationTarget.CLASS)

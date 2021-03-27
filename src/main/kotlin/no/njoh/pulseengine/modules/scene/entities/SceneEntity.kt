@@ -57,18 +57,5 @@ abstract class SceneEntity(
         const val DISCOVERABLE      = 0x00000000000000000000000000010000 // Can it be discovered by other entities
 
         val REGISTERED_TYPES = mutableSetOf<KClass<out SceneEntity>>()
-
-        fun autoRegisterEntityTypes() =
-            measureNanoTime {
-                REGISTERED_TYPES.clear()
-                ReflectionUtil
-                    .getFullyQualifiedClassNames()
-                    .getClassesFromFullyQualifiedClassNames()
-                    .getClassesOfSuperType(SceneEntity::class)
-                    .forEach { REGISTERED_TYPES.add(it.kotlin) }
-                REGISTERED_TYPES.remove(SceneEntity::class)
-            }.let { Logger.debug("Registered ${REGISTERED_TYPES.size} scene entity types in " +
-                "${"%.3f".format(it / 1_000_000f)} ms. [${REGISTERED_TYPES.joinToString { it.simpleName ?: "" }}]")
-            }
     }
 }

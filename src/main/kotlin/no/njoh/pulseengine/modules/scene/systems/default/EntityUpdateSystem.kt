@@ -7,24 +7,16 @@ import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.util.forEachFast
 
-open class EntityUpdateSystem : SceneSystem
+open class EntityUpdateSystem : SceneSystem()
 {
-    override fun onStart(scene: Scene)
+    override fun onStart(scene: Scene, engine: PulseEngine)
     {
-        scene.entityCollections.forEachFast { entities ->
-            entities.forEachFast {
-                it.onStart()
-            }
-        }
+        scene.forEachEntity { it.onStart() }
     }
 
     override fun onFixedUpdate(scene: Scene, engine: PulseEngine)
     {
-        scene.entityCollections.forEachFast { entities ->
-            entities.forEachFast { entity ->
-                entity.onFixedUpdate(engine)
-            }
-        }
+        scene.forEachEntity { it.onFixedUpdate(engine) }
     }
 
     override fun onUpdate(scene: Scene, engine: PulseEngine)
@@ -41,6 +33,4 @@ open class EntityUpdateSystem : SceneSystem
             entities.swap()
         }
     }
-
-    override fun onRender(scene: Scene, engine: PulseEngine) { }
 }

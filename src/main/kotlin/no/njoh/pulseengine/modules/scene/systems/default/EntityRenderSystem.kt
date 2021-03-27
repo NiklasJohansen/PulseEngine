@@ -6,11 +6,8 @@ import no.njoh.pulseengine.modules.scene.SurfaceName
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import kotlin.reflect.full.findAnnotation
 
-open class EntityRenderSystem : SceneSystem
+open class EntityRenderSystem : SceneSystem()
 {
-    override fun onStart(scene: Scene) { }
-    override fun onFixedUpdate(scene: Scene, engine: PulseEngine) { }
-    override fun onUpdate(scene: Scene, engine: PulseEngine) { }
     override fun onRender(scene: Scene, engine: PulseEngine)
     {
         val assets = engine.asset

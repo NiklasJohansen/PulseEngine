@@ -10,9 +10,8 @@ import no.njoh.pulseengine.data.FileFormat
 import no.njoh.pulseengine.data.FileFormat.*
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.loadBytes
-import org.lwjgl.glfw.GLFW.*
-import java.io.File
-import java.io.FileNotFoundException
+import org.lwjgl.glfw.GLFW.glfwGetTime
+import java.io.*
 import kotlin.system.measureNanoTime
 
 abstract class Data
