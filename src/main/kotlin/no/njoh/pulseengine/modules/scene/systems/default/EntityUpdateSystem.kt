@@ -6,7 +6,9 @@ import no.njoh.pulseengine.modules.scene.Scene
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.widgets.sceneEditor.Name
 
+@Name("Entity Updater")
 open class EntityUpdateSystem : SceneSystem()
 {
     override fun onStart(scene: Scene, engine: PulseEngine)

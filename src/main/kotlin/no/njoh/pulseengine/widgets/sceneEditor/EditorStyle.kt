@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.SceneEditor
+package no.njoh.pulseengine.widgets.sceneEditor
 
 import no.njoh.pulseengine.data.Color
 import no.njoh.pulseengine.data.assets.Font

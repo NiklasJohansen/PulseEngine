@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.SceneEditor
+package no.njoh.pulseengine.widgets.sceneEditor
 
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -14,25 +14,27 @@ import no.njoh.pulseengine.modules.graphics.CameraInterface
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.UiUtil.findElementById
 import no.njoh.pulseengine.modules.graphics.ui.elements.InputField
-import no.njoh.pulseengine.modules.graphics.ui.elements.UiElement
+import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.layout.RowPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.docking.DockingPanel
 import no.njoh.pulseengine.modules.scene.Scene
+import no.njoh.pulseengine.modules.scene.SpatialGrid
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.SIZE_UPDATED
-import no.njoh.pulseengine.modules.scene.SpatialGrid
 import no.njoh.pulseengine.modules.widget.Widget
 import no.njoh.pulseengine.util.Camera2DController
 import no.njoh.pulseengine.util.FileChooser
 import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.MenuBarButton
-import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.MenuBarItem
-import no.njoh.pulseengine.widgets.SceneEditor.EditorUtil.createMenuBarUI
+import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.MenuBarButton
+import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.MenuBarItem
+import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.createMenuBarUI
+import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.insertSceneSystemProperties
+import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.isPrimitiveValue
 import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
@@ -41,18 +43,18 @@ import kotlin.reflect.full.instanceParameter
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
 
-
 class SceneEditor: Widget
 {
     override var isRunning = false
 
     // UI
     private lateinit var rootUI: VerticalPanel
-    private lateinit var propertiesUI: RowPanel
+    private lateinit var entityPropertiesUI: RowPanel
+    private lateinit var systemPropertiesUI: RowPanel
     private lateinit var dockingUI: DockingPanel
     private lateinit var screenArea: FocusArea
     private lateinit var dragAndDropArea: FocusArea
-    private var propertyUiRows = mutableMapOf<String, UiElement>()
+    private var entityPropertyUiRows = mutableMapOf<String, UiElement>()
 
     // Camera
     private val cameraController = Camera2DController(Mouse.MIDDLE)
@@ -64,6 +66,7 @@ class SceneEditor: Widget
     private val entitySelection = mutableListOf<SceneEntity>()
     private var dragAndDropEntity: SceneEntity? = null
     private var changeToType: KClass<out SceneEntity>? = null
+    private var sceneFileToLoad: String? = null
 
     // Moving and copying
     private var isMoving = false
@@ -127,9 +130,13 @@ class SceneEditor: Widget
     private fun createSceneEditorUI(engine: PulseEngine)
     {
         // Properties
-        propertiesUI = RowPanel()
-        propertiesUI.rowHeight = 40f
-        propertiesUI.rowPadding = 0f
+        entityPropertiesUI = RowPanel()
+        entityPropertiesUI.rowHeight = 38f
+        entityPropertiesUI.rowPadding = 0f
+
+        systemPropertiesUI = RowPanel()
+        systemPropertiesUI.rowHeight = 38f
+        systemPropertiesUI.rowPadding = 0f
 
         // Create content
         val menuBar = createMenuBarUI(
@@ -141,11 +148,11 @@ class SceneEditor: Widget
             MenuBarButton("View", listOf(
                 MenuBarItem("Entity properties") { createEntityPropertyWindow() },
                 MenuBarItem("Scene assets") { createAssetWindow(engine) },
-                MenuBarItem("Scene properties") { createScenePropertyWindow() },
-                MenuBarItem("Spatial index") { SpatialIndex.draw = !SpatialIndex.draw },
+                MenuBarItem("Scene systems") { createSceneSystemsPropertyWindow(engine) },
+                MenuBarItem("Spatial index") { SpatialGrid.draw = !SpatialGrid.draw },
                 MenuBarItem("Reset") {
                     createSceneEditorUI(engine)
-                    SpatialIndex.draw = false
+                    SpatialGrid.draw = false
                     storedCameraState.apply { reset() }.loadInto(engine.gfx.mainCamera)
                 }
             )),
@@ -169,7 +176,7 @@ class SceneEditor: Widget
 
         // Create default windows and insert into docking
         createEntityPropertyWindow()
-        createScenePropertyWindow()
+        createSceneSystemsPropertyWindow(engine)
         createAssetWindow(engine)
 
         // Load previous layout from file
@@ -182,7 +189,7 @@ class SceneEditor: Widget
         if (dockingUI.findElementById("Entity Properties") == null)
         {
             val entityPropertyWindow = EditorUtil.createWindowUI("Entity Properties")
-            val propertyPanel = EditorUtil.createScrollableSectionUI(propertiesUI)
+            val propertyPanel = EditorUtil.createScrollableSectionUI(entityPropertiesUI)
             entityPropertyWindow.body.addChildren(propertyPanel)
             dockingUI.insertLeft(entityPropertyWindow)
         }
@@ -199,12 +206,17 @@ class SceneEditor: Widget
         }
     }
 
-    private fun createScenePropertyWindow()
+    private fun createSceneSystemsPropertyWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElementById("Scene Properties") == null)
+        if (dockingUI.findElementById("Scene Systems") == null)
         {
-            val scenePropertyWindows = EditorUtil.createWindowUI("Scene Properties")
-            dockingUI.insertRight(scenePropertyWindows)
+            val sceneSystemPropertiesUi = EditorUtil.createSystemPropertiesPanelUI(
+                getSystems = { engine.scene.activeScene.systems },
+                propertiesRowPanel = systemPropertiesUI
+            )
+            val sceneSystemWindow = EditorUtil.createWindowUI("Scene Systems")
+            sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
+            dockingUI.insertRight(sceneSystemWindow)
         }
     }
 
@@ -219,6 +231,7 @@ class SceneEditor: Widget
         if (engine.scene.activeScene.hashCode() != lastSceneHashCode)
         {
             resetUI()
+            systemPropertiesUI.insertSceneSystemProperties(engine.scene.activeScene.systems)
             engine.window.title = engine.window.title
                 .substringBeforeLast(" [")
                 .plus(" [${engine.scene.activeScene.fileName.removePrefix("/")}]")
@@ -232,7 +245,7 @@ class SceneEditor: Widget
             rootUI.printStructure()
 
         if (engine.input.wasClicked(Key.G))
-            SpatialIndex.draw = !SpatialIndex.draw
+            SpatialGrid.draw = !SpatialGrid.draw
 
         changeToType?.let {
             handleEntityTypeChanged(engine.scene.activeScene, it)
@@ -353,8 +366,8 @@ class SceneEditor: Widget
                 else
                 {
                     entitySelection.clear()
-                    propertyUiRows.clear()
-                    propertiesUI.clearChildren()
+                    entityPropertyUiRows.clear()
+                    entityPropertiesUI.clearChildren()
                     entitySelection.addAll(copies)
                 }
                 val scene = engine.scene.activeScene
@@ -422,12 +435,10 @@ class SceneEditor: Widget
 
             entitySelection.clear()
 
-            engine.scene.activeScene.entities.forEach { (type, entities) ->
-                for (entity in entities)
-                {
-                    if (entity.isOverlapping(xStart, yStart, width, height))
-                        entitySelection.add(entity)
-                }
+            engine.scene.activeScene.forEachEntity()
+            {
+                if (it.isOverlapping(xStart, yStart, width, height))
+                    entitySelection.add(it)
             }
 
             if (entitySelection.size == 1)
@@ -435,7 +446,7 @@ class SceneEditor: Widget
                 if (entitySelection.first() != selectedEntity)
                     selectSingleEntity(entitySelection.first())
             }
-            else propertiesUI.clearChildren()
+            else entityPropertiesUI.clearChildren()
         }
 
         var xMove = 0f
@@ -669,7 +680,7 @@ class SceneEditor: Widget
             entity.y = engine.input.yWorldMouse
             entity.width = texture.width.toFloat()
             entity.height = texture.height.toFloat()
-            EditorUtil.setEntityProperty(entity, "textureName", texture.name)
+            EditorUtil.setProperty(entity, "textureName", texture.name)
             dragAndDropEntity = entity
         }
     }
@@ -678,20 +689,20 @@ class SceneEditor: Widget
     {
         entitySelection.clear()
         entitySelection.add(entity)
-        propertiesUI.clearChildren()
-        propertyUiRows.clear()
+        entityPropertiesUI.clearChildren()
+        entityPropertyUiRows.clear()
 
         val entityTypePropUI = EditorUtil.createEntityTypePropertyUI(entity) { changeToType = it }
-        propertiesUI.addChildren(entityTypePropUI)
+        entityPropertiesUI.addChildren(entityTypePropUI)
 
         for (prop in entity::class.memberProperties)
         {
-            if (prop !is KMutableProperty<*> || prop.visibility == KVisibility.PRIVATE || prop.name == SceneEntity::flags.name)
+            if (prop !is KMutableProperty<*> || !EditorUtil.isPropertyEditable(prop))
                 continue
 
-            val (propertyPanel, inputElement) = EditorUtil.createEntityPropertyUI(entity, prop)
-            propertiesUI.addChildren(propertyPanel)
-            propertyUiRows[prop.name] = inputElement
+            val (propertyPanel, inputElement) = EditorUtil.createPropertyUI(entity, prop)
+            entityPropertiesUI.addChildren(propertyPanel)
+            entityPropertyUiRows[prop.name] = inputElement
         }
     }
 
@@ -706,7 +717,7 @@ class SceneEditor: Widget
 
             oldEntity::class.memberProperties.forEach { prop ->
                 if (prop.visibility == KVisibility.PUBLIC)
-                    prop.getter.call(oldEntity)?.let { value -> EditorUtil.setEntityProperty(newEntity, prop.name, value) }
+                    prop.getter.call(oldEntity)?.let { value -> EditorUtil.setProperty(newEntity, prop.name, value) }
             }
 
             oldEntity.set(DEAD)
@@ -718,7 +729,7 @@ class SceneEditor: Widget
 
     private fun updatePropertiesPanel(propName: String, value: Any)
     {
-        propertyUiRows[propName]?.let {
+        entityPropertyUiRows[propName]?.let {
             if (it is InputField)
                 it.text = value.toString()
         }
@@ -796,7 +807,7 @@ class SceneEditor: Widget
         }
     }
 
-    ////////////////////////////// SceneEntity UTILS //////////////////////////////
+    ////////////////////////////// UTILS //////////////////////////////
 
     private fun SceneEntity.isInside(xWorld: Float, yWorld: Float): Boolean
     {
@@ -824,17 +835,20 @@ class SceneEditor: Widget
         {
             if (prop is KMutableProperty<*> && prop.visibility == KVisibility.PUBLIC)
             {
-                prop.getter.call(this)?.let { param: Any ->
-                    if (param::class.isData)
+                prop.getter.call(this)?.also { propValue: Any ->
+                    if (propValue::class.isData)
                     {
                         // Use .copy() if parameter is a data class
-                        val copyFunc = param::class.memberFunctions.first { it.name == "copy" }
+                        val copyFunc = propValue::class.memberFunctions.first { it.name == "copy" }
                         val instanceParam = copyFunc.instanceParameter!!
-                        copyFunc.callBy(mapOf(instanceParam to param))?.let {
-                            EditorUtil.setEntityProperty(copy, prop.name, it)
+                        copyFunc.callBy(mapOf(instanceParam to propValue))?.let {
+                            EditorUtil.setProperty(copy, prop.name, it)
                         }
                     }
-                    else EditorUtil.setEntityProperty(copy, prop.name, param)
+                    else if (prop.isPrimitiveValue())
+                    {
+                        EditorUtil.setProperty(copy, prop.name, propValue)
+                    }
                 }
             }
         }
@@ -851,8 +865,8 @@ class SceneEditor: Widget
         isRotating = false
         isResizingVertically = false
         isResizingHorizontally = false
-        propertiesUI.clearChildren()
-        propertyUiRows.clear()
+        entityPropertiesUI.clearChildren()
+        entityPropertyUiRows.clear()
         entitySelection.clear()
     }
 
@@ -867,10 +881,6 @@ class SceneEditor: Widget
         const val GIZMO_PADDING = 3
     }
 }
-
-@Target(AnnotationTarget.PROPERTY)
-@Retention(AnnotationRetention.RUNTIME)
-annotation class ValueRange(val min: Float, val max: Float)
 
 data class CameraState(
     var xPos: Float,

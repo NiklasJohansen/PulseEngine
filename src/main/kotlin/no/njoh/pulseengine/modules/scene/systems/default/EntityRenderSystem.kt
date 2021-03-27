@@ -4,8 +4,10 @@ import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.scene.Scene
 import no.njoh.pulseengine.modules.scene.SurfaceName
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
+import no.njoh.pulseengine.widgets.sceneEditor.Name
 import kotlin.reflect.full.findAnnotation
 
+@Name("Entity Renderer")
 open class EntityRenderSystem : SceneSystem()
 {
     override fun onRender(scene: Scene, engine: PulseEngine)

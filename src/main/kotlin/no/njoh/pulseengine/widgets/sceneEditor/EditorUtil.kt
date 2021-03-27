@@ -1,24 +1,30 @@
-package no.njoh.pulseengine.widgets.SceneEditor
+package no.njoh.pulseengine.widgets.sceneEditor
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.Color
+import no.njoh.pulseengine.data.assets.Font
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Scrollable
 import no.njoh.pulseengine.modules.graphics.ui.Size
+import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.elements.*
 import no.njoh.pulseengine.modules.graphics.ui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.modules.graphics.ui.layout.*
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
+import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.util.Logger
 import java.lang.IllegalArgumentException
+import kotlin.math.min
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
+import kotlin.reflect.KVisibility
+import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
-
 
 object EditorUtil
 {
@@ -107,14 +113,20 @@ object EditorUtil
     /**
      * Creates a menu button with a dropdown.
      */
-    private fun createMenuBarButtonUI(menuBarButton: MenuBarButton): UiElement
-    {
+    private fun createMenuBarButtonUI(
+        menuBarButton: MenuBarButton,
+        fontSize: Float,
+        showScrollbar: Boolean = true
+    ): DropdownMenu<MenuBarItem> {
         val font = style.getFont()
-        val fontSize = 18f
+        val scrollBarWidth = if (showScrollbar) 25f else 0f
+        val maxItemCount = if (showScrollbar) 8 else 100
+        val items = menuBarButton.items.map { it.labelText }
+        val (width, height) = getDropDownDimensions(font, fontSize, scrollBarWidth, 30f, maxItemCount, items)
         return DropdownMenu<MenuBarItem>(
             width = Size.absolute(55f),
-            dropDownWidth = Size.absolute(menuBarButton.items.map { font.getCharacterWidths(it.labelText, fontSize).sum() + 30f }.max() ?: 100f ),
-            dropDownHeight = Size.absolute(5f + menuBarButton.items.size * 30)
+            dropDownWidth = Size.absolute(width),
+            dropDownHeight = Size.absolute(height)
         ).apply {
             showArrow = false
             useSelectedItemAsMenuLabel = false
@@ -143,8 +155,17 @@ object EditorUtil
     /**
      * Creates a [DropdownMenu] with a generic type.
      */
-    private fun <T> createDropdownUI(selectedItem: T, items: List<T>, onItemToString: (T) -> String): DropdownMenu<T>
-    {
+    private fun <T> createItemSelectionDropdownUI(
+        selectedItem: T,
+        items: List<T>,
+        onItemToString: (T) -> String
+    ): DropdownMenu<T> {
+        val fontSize = 20f
+        val font = style.getFont()
+        val showScrollbar = items.size > 8
+        val scrollBarWidth = if (showScrollbar) 25f else 0f
+        val stringItems = items.map { onItemToString(it) }
+        val (width, height) = getDropDownDimensions(font, fontSize, scrollBarWidth, 35f, 8, stringItems)
         return DropdownMenu<T>(
             width = Size.relative(0.5f),
             dropDownWidth = Size.absolute(250f),
@@ -174,6 +195,23 @@ object EditorUtil
     }
 
     /**
+     * Determines the dropdown menu size based on the its content.
+     */
+    private fun getDropDownDimensions(
+        font: Font,
+        fontSize: Float,
+        scrollBarWidth: Float,
+        rowHeight: Float,
+        maxItemCount: Int,
+        items: List<String>
+    ): Pair<Float, Float> {
+        val padding = 5f
+        val height = padding + min(items.size, maxItemCount) * rowHeight
+        val width = 4 * padding + (items.map { font.getWidth(it, fontSize) }.max() ?: 100f) + scrollBarWidth
+        return Pair(width, height)
+    }
+
+    /**
      * Creates an panel containing all loaded texture assets.
      */
     fun createAssetPanelUI(engine: PulseEngine, onAssetClicked: (Texture) -> Unit): UiElement
@@ -198,6 +236,138 @@ object EditorUtil
         }
 
         return createScrollableSectionUI(tilePanel)
+    }
+
+    /**
+     * Creates the properties panel for [SceneSystem]s
+     */
+    fun createSystemPropertiesPanelUI(getSystems: () -> MutableList<SceneSystem>, propertiesRowPanel: RowPanel): HorizontalPanel
+    {
+        propertiesRowPanel.insertSceneSystemProperties(getSystems())
+
+        val menuItems = SceneSystem.REGISTERED_TYPES.map {
+            MenuBarItem(it.simpleName ?: "") {
+                val newSystem = it.createInstance()
+                val systems = getSystems()
+                systems.add(newSystem)
+                propertiesRowPanel.insertSceneSystemProperties(newSystem, onClose = { systems.remove(newSystem) })
+            }
+        }
+
+        val button = MenuBarButton("+", menuItems)
+        val showScrollBar = menuItems.size > 8
+        val buttonUI = createMenuBarButtonUI(button, 20f, showScrollBar).apply {
+            width.setQuiet(Size.absolute(40f))
+            height.setQuiet(Size.absolute(40f))
+            dropdown.resizable = true
+            menuLabel.fontSize = 40f
+            menuLabel.padding.left = 6f
+            menuLabel.padding.top = 6f
+            padding.setAll(5f)
+            bgColor = style.getColor("HEADER")
+            hoverColor = style.getColor("BUTTON_HOVER")
+        }
+
+        return HorizontalPanel().apply {
+            color = style.getColor("BG_DARK")
+            addChildren(
+                VerticalPanel().apply {
+                    addChildren(propertiesRowPanel, buttonUI)// addSystemButton)
+                },
+                createScrollbarUI(propertiesRowPanel)
+            )
+        }
+    }
+
+    /**
+     * Reinserts properties into [RowPanel] for all the given [SceneSystem]s.
+     */
+    fun RowPanel.insertSceneSystemProperties(systems: MutableList<SceneSystem>)
+    {
+        val hiddenSystems = this.children
+            .filterIsInstance<Button>()
+            .filter { it.state }
+            .mapNotNull { it.id }
+
+        this.clearChildren()
+        for (system in systems)
+        {
+            val isHidden = system::class.simpleName in hiddenSystems
+            this.insertSceneSystemProperties(system, isHidden, onClose = { systems.remove(system) })
+        }
+    }
+
+    /**
+     * Creates and inserts properties into the [RowPanel] for the given [SceneSystem]
+     */
+    fun RowPanel.insertSceneSystemProperties(system: SceneSystem, isHidden: Boolean = true, onClose: () -> Unit)
+    {
+        val props = system::class.memberProperties
+            .filter { it is KMutableProperty<*> && isPropertyEditable(it) }
+            .map { prop ->
+                createPropertyUI(system, prop as KMutableProperty<*>).first.apply {
+                    padding.left = 10f
+                    padding.right = 10f
+                    hidden = isHidden
+                }
+            }
+
+        val headerText = system::class.findAnnotation<Name>()?.name
+            ?: (system::class.java.simpleName ?: "")
+                .split("(?=[A-Z])".toRegex())
+                .joinToString(" ")
+
+        val label = Label(headerText).apply {
+            focusable = false
+            padding.left = 10f
+            fontSize = 22f
+            color = style.getColor("LABEL")
+        }
+
+        val xLabel = Label("x").apply {
+            focusable = false
+            fontSize = 20f
+            centerVertically = true
+            centerHorizontally = true
+            padding.top = -2f
+            color = style.getColor("LABEL")
+        }
+
+        val exitButton = Button(width = Size.absolute(20f)).apply {
+            padding.setAll(5f)
+            color = Color.BLANK
+            hoverColor = style.getColor("BUTTON_EXIT")
+            addChildren(xLabel)
+        }
+
+        val header = HorizontalPanel().apply {
+            focusable = false
+            color = Color.BLANK
+            addChildren(label)
+            addChildren(exitButton)
+        }
+
+        val headerButton = Button().apply {
+            id = system::class.simpleName
+            toggleButton = true
+            state = isHidden
+            padding.left = 5f
+            padding.right = 5f
+            padding.top = 5f
+            color = style.getColor("HEADER")
+            activeColor = style.getColor("HEADER")
+            hoverColor = style.getColor("HEADER_HOVER")
+            setOnClicked { btn -> props.forEach { it.hidden = btn.state } }
+            addChildren(header)
+        }
+
+        exitButton.setOnClicked {
+            onClose()
+            this.removeChildren(headerButton, *props.toTypedArray())
+            this.setLayoutDirty()
+        }
+
+        this.addChildren(headerButton, *props.toTypedArray())
     }
 
     /**
@@ -299,7 +469,7 @@ object EditorUtil
             color = style.getColor("LABEL")
         }
 
-        val typeDropdown = createDropdownUI(entity::class, SceneEntity.REGISTERED_TYPES.toList()) { it.simpleName ?: "NO NAME" }
+        val typeDropdown = createItemSelectionDropdownUI(entity::class, SceneEntity.REGISTERED_TYPES.toList()) { it.simpleName ?: "NO NAME" }
         typeDropdown.setOnItemChanged(onItemChange)
 
         return HorizontalPanel().apply {
@@ -315,7 +485,7 @@ object EditorUtil
      * Creates a property row UI element for the given entity.
      * Returns the main UI panel and the input UiElement
      */
-    fun createEntityPropertyUI(entity: SceneEntity, prop: KMutableProperty<*>): Pair<HorizontalPanel, UiElement>
+    fun createPropertyUI(obj: Any, prop: KMutableProperty<*>): Pair<HorizontalPanel, UiElement>
     {
         val propType = prop.javaField?.type
         val propUi: UiElement = when
@@ -323,26 +493,26 @@ object EditorUtil
             propType?.kotlin?.isSubclassOf(Enum::class) == true ->
             {
                 val items = propType.enumConstants?.toList() ?: emptyList()
-                createDropdownUI(prop.getter.call(entity), items, { it.toString() }).apply {
-                    setOnItemChanged { it?.let { setEntityProperty(entity, prop.name, it) } }
+                createItemSelectionDropdownUI(prop.getter.call(obj), items, { it.toString() }).apply {
+                    setOnItemChanged { it?.let { setProperty(obj, prop.name, it) } }
                 }
             }
             propType?.kotlin?.isSubclassOf(Boolean::class) == true ->
             {
-                createDropdownUI(prop.getter.call(entity), listOf(true, false), { it.toString() }).apply {
-                    setOnItemChanged { it?.let { setEntityProperty(entity, prop.name, it) } }
+                createItemSelectionDropdownUI(prop.getter.call(obj), listOf(true, false), { it.toString() }).apply {
+                    setOnItemChanged { it?.let { setProperty(obj, prop.name, it) } }
                 }
             }
             propType?.kotlin?.isSubclassOf(Color::class) == true ->
             {
-                val color = prop.getter.call(entity) as Color
+                val color = prop.getter.call(obj) as Color
                 createColorPickerUI(color)
             }
             else ->
             {
-                val value = prop.getter.call(entity)
+                val value = prop.getter.call(obj)
                 createInputFieldUI(value, prop).apply {
-                    setOnTextChanged { if (it.isValid) setEntityProperty(entity, prop, it.text) }
+                    setOnTextChanged { if (it.isValid) setProperty(obj, prop, it.text) }
                 }
             }
         }
@@ -367,9 +537,9 @@ object EditorUtil
 
     /**
      * Parses the given string value into a the class type given by the [KMutableProperty].
-     * Sets the named property of the entity to the parsed value.
+     * Sets the named property of the obj to the parsed value.
      */
-    private fun setEntityProperty(entity: SceneEntity, property: KMutableProperty<*>, value: String) =
+    private fun setProperty(obj: Any, property: KMutableProperty<*>, value: String) =
         try
         {
             when (property.javaField?.type)
@@ -381,20 +551,36 @@ object EditorUtil
                 Long::class.java    -> value.toLongOrNull()
                 Boolean::class.java -> value.toBoolean()
                 else                -> null
-            }?.let { property.setter.call(entity, it) }
+            }?.let { property.setter.call(obj, it) }
         }
-        catch (e: Exception) { Logger.error("Failed to parse value: $value into required type: ${property.javaField?.type}, reason: ${e.message}") }
+        catch (e: Exception)
+        {
+            Logger.error("Failed to parse value: $value into required type: ${property.javaField?.type}, reason: ${e.message}")
+        }
 
     /**
-     * Sets the named property of the entity to the given value.
+     * Sets the named property of the object to the given value.
      */
-    fun setEntityProperty(entity: SceneEntity, name: String, value: Any)
+    fun setProperty(obj: Any, name: String, value: Any)
     {
-        val prop = entity::class.memberProperties.find { it.name == name }
+        val prop = obj::class.memberProperties.find { it.name == name }
         if (prop != null && prop is KMutableProperty<*>)
         {
-            try { prop.setter.call(entity, value) }
+            try { prop.setter.call(obj, value) }
             catch (e: Exception) { Logger.error("Failed to set property with name: $name, reason: ${e.message}") }
         }
     }
+
+    fun isPropertyEditable(prop: KMutableProperty<*>) =
+        prop.visibility != KVisibility.PRIVATE &&
+        prop.javaField?.getAnnotation(JsonIgnore::class.java) == null
+
+    fun KMutableProperty<*>.isPrimitiveValue() =
+        this.javaField?.type?.kotlin?.let {
+            it.isSubclassOf(Number::class) ||
+            it.isSubclassOf(Boolean::class) ||
+            it.isSubclassOf(Char::class) ||
+            it.isSubclassOf(CharSequence::class) ||
+            it.isSubclassOf(Enum::class)
+        } ?: false
 }
