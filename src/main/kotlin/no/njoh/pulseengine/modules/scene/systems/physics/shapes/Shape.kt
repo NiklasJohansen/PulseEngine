@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
+import no.njoh.pulseengine.util.MathUtil
 import kotlin.math.PI
-import kotlin.math.atan2
 import kotlin.math.sqrt
 
 abstract class Shape
@@ -34,8 +34,8 @@ abstract class Shape
     {
         points[N_POINT_FIELDS * i + X] = x
         points[N_POINT_FIELDS * i + Y] = y
-        points[N_POINT_FIELDS * i + X_OLD] = x
-        points[N_POINT_FIELDS * i + Y_OLD] = y
+        points[N_POINT_FIELDS * i + X_LAST] = x
+        points[N_POINT_FIELDS * i + Y_LAST] = y
     }
 
     fun setConstraint(i: Int, point0: Int, point1: Int, stiffness: Float)
@@ -79,7 +79,7 @@ abstract class Shape
     {
         val xDelta = points[X] - xCenter
         val yDelta = points[Y] - yCenter
-        angle = (atan2(yDelta, xDelta) / PI.toFloat() + 1.0f) * 180f - angleOffset
+        angle = (MathUtil.atan2(yDelta, xDelta) / PI.toFloat() + 1.0f) * 180f - angleOffset
         if (angle < 0) angle += 360
         if (angle > 360) angle -= 360
     }
@@ -127,6 +127,18 @@ abstract class Shape
         }
     }
 
+    inline fun forEachBoundaryPoint(startIndex: Int = 0, block: FloatArray.(Int) -> Unit)
+    {
+        val points = points
+        val size = nBoundaryPoints * N_POINT_FIELDS
+        var i = startIndex * N_POINT_FIELDS
+        while (i < size)
+        {
+            block(points, i)
+            i += N_POINT_FIELDS
+        }
+    }
+
     inline fun forEachConstraint(block: FloatArray.(Int) -> Unit)
     {
         val constraints = constraints
@@ -139,12 +151,26 @@ abstract class Shape
         }
     }
 
+    fun isInside(x: Float, y: Float): Boolean
+    {
+        val p = points
+        var j = p.size - N_POINT_FIELDS
+        var inside = false
+        forEachBoundaryPoint { i ->
+            if (p[i + Y] > y != p[j + Y] > y && x < (p[j + X] - p[i + X]) * (y - p[i + Y]) / (p[j + Y] - p[i + Y]) + p[i + X])
+                inside = !inside
+            j = i
+        }
+
+        return inside
+    }
+
     companion object
     {
         const val X = 0
         const val Y = 1
-        const val X_OLD = 2
-        const val Y_OLD = 3
+        const val X_LAST = 2
+        const val Y_LAST = 3
         const val X_ACC = 4
         const val Y_ACC = 5
         const val N_POINT_FIELDS = 6

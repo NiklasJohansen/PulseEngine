@@ -2,20 +2,17 @@ package no.njoh.pulseengine.modules.scene.systems.physics
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.SpatialGrid
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity
+import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.STATIC
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape
 import kotlin.math.sqrt
 
-interface RigidBody
+interface RigidBody : Body
 {
     val shape: Shape
-    var bodyType: BodyType
-    var friction: Float
-    var drag: Float
-    var mass: Float
 
-    fun init()
+    override fun init()
     {
         if (this is SceneEntity)
         {
@@ -24,22 +21,40 @@ interface RigidBody
         }
     }
 
-    fun updateTransform(gravity: Float)
+    override fun update(engine: PulseEngine, spatialGrid: SpatialGrid, gravity: Float, physicsIterations: Int, worldWidth: Int, worldHeight: Int)
+    {
+        if (bodyType == BodyType.DYNAMIC && !shape.isSleeping)
+        {
+            updateTransform(gravity)
+
+            for (i in 0 until physicsIterations)
+            {
+                updateConstraints()
+                updateCollisions(engine, spatialGrid)
+            }
+
+            updateCenterAndRotation()
+            updateSleepState()
+            updateWorldConstraint(worldWidth, worldHeight)
+        }
+    }
+
+    private fun updateTransform(gravity: Float)
     {
         val drag = 1f - drag
         shape.forEachPoint { i ->
             val xNow = this[i + Shape.X]
             val yNow = this[i + Shape.Y]
-            this[i + Shape.X] += (xNow - this[i + Shape.X_OLD]) * drag + this[i + Shape.X_ACC]
-            this[i + Shape.Y] += (yNow - this[i + Shape.Y_OLD]) * drag + this[i + Shape.Y_ACC]
-            this[i + Shape.X_OLD] = xNow
-            this[i + Shape.Y_OLD] = yNow
+            this[i + Shape.X] += (xNow - this[i + Shape.X_LAST]) * drag + this[i + Shape.X_ACC]
+            this[i + Shape.Y] += (yNow - this[i + Shape.Y_LAST]) * drag + this[i + Shape.Y_ACC]
+            this[i + Shape.X_LAST] = xNow
+            this[i + Shape.Y_LAST] = yNow
             this[i + Shape.X_ACC] = 0f
             this[i + Shape.Y_ACC] = gravity
         }
     }
 
-    fun updateConstraints()
+    private fun updateConstraints()
     {
         val points = shape.points
         shape.forEachConstraint { i ->
@@ -62,14 +77,14 @@ interface RigidBody
         }
     }
 
-    fun updateCenterAndRotation()
+    private fun updateCenterAndRotation()
     {
         shape.recalculateBoundingBox()
         shape.recalculateRotation()
         onBodyUpdated(shape.xCenter, shape.yCenter, shape.xCenterLast, shape.yCenterLast, shape.angle)
     }
 
-    fun updateSleepState()
+    private fun updateSleepState()
     {
         if (shape.xCenter.toInt() != shape.xCenterLast.toInt() || shape.yCenter.toInt() != shape.yCenterLast.toInt())
             shape.sleepCount = 0
@@ -78,8 +93,8 @@ interface RigidBody
         {
             // Kill momentum
             shape.forEachPoint { i ->
-                this[i + Shape.X_OLD] = this[i + Shape.X]
-                this[i + Shape.Y_OLD] = this[i + Shape.Y]
+                this[i + Shape.X_LAST] = this[i + Shape.X]
+                this[i + Shape.Y_LAST] = this[i + Shape.Y]
             }
         }
 
@@ -87,7 +102,7 @@ interface RigidBody
         shape.sleepCount++
     }
 
-    fun updateCollisions(engine: PulseEngine, spatialGrid: SpatialGrid)
+    private fun updateCollisions(engine: PulseEngine, spatialGrid: SpatialGrid)
     {
         val xMin = shape.xMin
         val xMax = shape.xMax
@@ -117,11 +132,11 @@ interface RigidBody
             shape.yCenter < -worldHeight / 2f ||
             shape.yCenter > worldHeight / 2f
         ) {
-            bodyType = BodyType.STATIC
+            bodyType = STATIC
         }
     }
 
-    fun drawConstraints(surface: Surface2D)
+    override fun render(surface: Surface2D)
     {
         if (shape.isSleeping)
             surface.setDrawColor(1f, 0.3f, 0.3f)
@@ -137,12 +152,13 @@ interface RigidBody
             val x1 = points[p1 + Shape.X]
             val y1 = points[p1 + Shape.Y]
 
+            surface.setDrawColor(1f, 1f, 1f)
             surface.drawQuad(x0 - 5f, y0 - 5f, 10f, 10f)
             surface.drawQuad(x1 - 5f, y1 - 5f, 10f, 10f)
             surface.drawLine(x0, y0, x1, y1)
         }
     }
 
-    fun onBodyUpdated(xCenter: Float, yCenter: Float, xCenterLast: Float, yCenterLast: Float, angle: Float)
-    fun onCollision(engine: PulseEngine, otherEntity: SceneEntity, result: CollisionResult) { }
+    // Default implementation
+    override fun onCollision(engine: PulseEngine, otherEntity: SceneEntity, result: CollisionResult) { }
 }
