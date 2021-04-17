@@ -26,6 +26,12 @@ plugins {
     kotlin("jvm") version "1.3.72"
 }
 
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).all {
+    kotlinOptions {
+        freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
+    }
+}
+
 repositories {
     mavenCentral()
 }

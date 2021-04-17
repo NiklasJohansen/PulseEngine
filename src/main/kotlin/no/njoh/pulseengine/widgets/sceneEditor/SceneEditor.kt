@@ -3,11 +3,8 @@ package no.njoh.pulseengine.widgets.sceneEditor
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.PulseEngine
+import no.njoh.pulseengine.data.*
 import no.njoh.pulseengine.data.CursorType.*
-import no.njoh.pulseengine.data.FocusArea
-import no.njoh.pulseengine.data.Key
-import no.njoh.pulseengine.data.Mouse
-import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.graphics.CameraInterface
@@ -26,6 +23,7 @@ import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.modules.widget.Widget
 import no.njoh.pulseengine.util.Camera2DController
 import no.njoh.pulseengine.util.FileChooser
@@ -211,10 +209,7 @@ class SceneEditor: Widget
     {
         if (dockingUI.findElementById("Scene Systems") == null)
         {
-            val sceneSystemPropertiesUi = EditorUtil.createSystemPropertiesPanelUI(
-                getSystems = { engine.scene.activeScene.systems },
-                propertiesRowPanel = systemPropertiesUI
-            )
+            val sceneSystemPropertiesUi = EditorUtil.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
             val sceneSystemWindow = EditorUtil.createWindowUI("Scene Systems")
             sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
             dockingUI.insertRight(sceneSystemWindow)
@@ -237,18 +232,32 @@ class SceneEditor: Widget
         if (engine.scene.activeScene.hashCode() != lastSceneHashCode)
         {
             resetUI()
-            systemPropertiesUI.insertSceneSystemProperties(engine.scene.activeScene.systems)
+            systemPropertiesUI.insertSceneSystemProperties(engine)
             engine.window.title = engine.window.title
                 .substringBeforeLast(" [")
                 .plus(" [${engine.scene.activeScene.fileName.removePrefix("/")}]")
             lastSceneHashCode = engine.scene.activeScene.hashCode()
         }
 
-        engine.input.setCursor(ARROW)
-        cameraController.update(engine, activeCamera)
+        if (engine.scene.state == SceneState.STOPPED)
+        {
+            engine.input.setCursor(ARROW)
+            cameraController.update(engine, activeCamera)
+        }
 
-        if (engine.input.wasClicked(Key.P))
-            rootUI.printStructure()
+        if (engine.input.wasClicked(Key.F10))
+        {
+            if (engine.scene.state == SceneState.STOPPED)
+            {
+                engine.scene.save()
+                engine.scene.start()
+            }
+            else
+            {
+                engine.scene.stop()
+                engine.scene.reload()
+            }
+        }
 
         if (engine.input.wasClicked(Key.G))
             SpatialGrid.draw = !SpatialGrid.draw
@@ -295,7 +304,11 @@ class SceneEditor: Widget
         GlobalScope.launch {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
                 val oldScene = engine.scene.activeScene
-                val newScene = Scene(oldScene.name, oldScene.entities, oldScene.systems).apply {
+                val newScene = Scene(
+                    oldScene.name,
+                    oldScene.entities as MutableMap<String, SwapList<SceneEntity>>,
+                    oldScene.systems as MutableList<SceneSystem>
+                ).apply {
                     fileName = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
                     fileFormat = oldScene.fileFormat
                 }

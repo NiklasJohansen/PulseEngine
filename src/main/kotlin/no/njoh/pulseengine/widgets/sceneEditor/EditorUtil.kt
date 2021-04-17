@@ -251,16 +251,19 @@ object EditorUtil
     /**
      * Creates the properties panel for [SceneSystem]s
      */
-    fun createSystemPropertiesPanelUI(getSystems: () -> MutableList<SceneSystem>, propertiesRowPanel: RowPanel): HorizontalPanel
+    fun createSystemPropertiesPanelUI(engine: PulseEngine, propertiesRowPanel: RowPanel): HorizontalPanel
     {
-        propertiesRowPanel.insertSceneSystemProperties(getSystems())
+        propertiesRowPanel.insertSceneSystemProperties(engine)
 
         val menuItems = SceneSystem.REGISTERED_TYPES.map {
             MenuBarItem(it.simpleName ?: "") {
                 val newSystem = it.createInstance()
-                val systems = getSystems()
-                systems.add(newSystem)
-                propertiesRowPanel.insertSceneSystemProperties(newSystem, onClose = { systems.remove(newSystem) })
+                newSystem.onCreate(engine.scene.activeScene, engine)
+                engine.scene.activeScene.registerSystem(newSystem, callOnCreate = false)
+                propertiesRowPanel.insertSceneSystemProperties(
+                    system = newSystem,
+                    onClose = { engine.scene.activeScene.unregisterSystem(newSystem) }
+                )
             }
         }
 
@@ -292,7 +295,7 @@ object EditorUtil
     /**
      * Reinserts properties into [RowPanel] for all the given [SceneSystem]s.
      */
-    fun RowPanel.insertSceneSystemProperties(systems: MutableList<SceneSystem>)
+    fun RowPanel.insertSceneSystemProperties(engine: PulseEngine)
     {
         val hiddenSystems = this.children
             .filterIsInstance<Button>()
@@ -300,10 +303,10 @@ object EditorUtil
             .mapNotNull { it.id }
 
         this.clearChildren()
-        for (system in systems)
+        for (system in engine.scene.activeScene.systems)
         {
             val isHidden = system::class.simpleName in hiddenSystems
-            this.insertSceneSystemProperties(system, isHidden, onClose = { systems.remove(system) })
+            this.insertSceneSystemProperties(system, isHidden, onClose = { engine.scene.activeScene.unregisterSystem(system) })
         }
     }
 

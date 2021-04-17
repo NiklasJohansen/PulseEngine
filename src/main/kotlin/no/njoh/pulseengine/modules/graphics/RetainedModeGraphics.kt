@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.graphics
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
 import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.forEachFast
 import no.njoh.pulseengine.util.forEachFiltered
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
@@ -34,7 +35,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
     {
         Logger.info("Cleaning up graphics...")
         graphicState.cleanup()
-        surfaces.forEach { it.cleanup() }
+        surfaces.forEachFast { it.cleanup() }
     }
 
     override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
@@ -55,7 +56,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
         mainCamera.updateProjection(width, height)
 
         // Initialize surfaces
-        surfaces.forEach {
+        surfaces.forEachFast {
             it.init(width, height, windowRecreated)
             if (it.camera != mainCamera)
                 it.camera.updateProjection(width, height)
@@ -73,7 +74,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
     override fun updateCamera(deltaTime: Float)
     {
         mainCamera.updateTransform(deltaTime)
-        surfaces.forEach {
+        surfaces.forEachFast {
             if (it.camera != mainCamera)
                 it.camera.updateTransform(deltaTime)
         }
@@ -81,7 +82,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun postRender()
     {
-        surfaces.forEach { it.render() }
+        surfaces.forEachFast { it.render() }
 
         // Prepare OpenGL for rendering FBO textures
         glDisable(GL_DEPTH_TEST)
@@ -108,7 +109,10 @@ class RetainedModeGraphics : GraphicsEngineInterface
             }
 
     override fun getSurface2D(name: String): Surface2D =
-        surfaces.find { it.name == name } ?: throw RuntimeException("No surface exists with name $name")
+        surfaces.find { it.name == name } ?: run {
+            Logger.error("No surface exists with name $name")
+            mainSurface
+        }
 }
 
 interface BatchRenderer

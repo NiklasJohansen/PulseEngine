@@ -39,8 +39,8 @@ class TextRenderer
         yb[0] = y + yOffset
         charData.position(fontIndex * Font.TOTAL_CHAR_COUNT)
 
-        var xChar: Float? = null
-        var yChar: Float? = null
+        var xChar = Float.MAX_VALUE
+        var yChar = 0f
         var x0Last = 0f
         var y0Last = 0f
 
@@ -52,7 +52,7 @@ class TextRenderer
             val charWidth = (quad.x1() - x0) * textScale
             val charHeight = (quad.y1() - y0) * textScale
 
-            if (xChar == null || yChar == null)
+            if (xChar == Float.MAX_VALUE)
             {
                 xChar = x0
                 yChar = y0
