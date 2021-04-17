@@ -15,8 +15,10 @@ import kotlin.math.*
 class SpatialGrid (
     private val entityCollections : List<SwapList<SceneEntity>>,
     var cellSize: Float,
-    private val minBorderSize: Float = 3000f,
-    private val percentageToUpdatePerFrame: Float = 1f
+    var minBorderSize: Int = 3000,
+    var maxWidth: Int = 100_000,
+    var maxHeight: Int = 100_000,
+    var percentageToUpdatePerFrame: Float = 1f
 ) {
     @PublishedApi internal var xOffset = 0f
     @PublishedApi internal var yOffset = 0f
@@ -24,37 +26,61 @@ class SpatialGrid (
     @PublishedApi internal var yCells = 0
     @PublishedApi internal lateinit var array: Array2D<Node?>
 
-    private var width = 0f
-    private var height = 0f
+    private var width = 0
+    private var height = 0
+    private var xMin = 0f
+    private var xMax = 0f
+    private var yMin = 0f
+    private var yMax = 0f
+
+    private var needToRecalculate = false
     private var currentNodeIndex = 0
-    private var cornerPositions = FloatArray(8)
-    private var emptyClusterArray = emptyArray<Node?>()
+    private val cornerPositions = FloatArray(8)
+    private val emptyClusterArray = emptyArray<Node?>()
     private lateinit var scanRanges: IntArray
 
     init { recalculate() }
 
     fun recalculate()
     {
-        var xMin = Float.POSITIVE_INFINITY
-        var xMax = Float.NEGATIVE_INFINITY
-        var yMin = Float.POSITIVE_INFINITY
-        var yMax = Float.NEGATIVE_INFINITY
+        needToRecalculate = false
+        xMin = Float.POSITIVE_INFINITY
+        xMax = Float.NEGATIVE_INFINITY
+        yMin = Float.POSITIVE_INFINITY
+        yMax = Float.NEGATIVE_INFINITY
 
         entityCollections.forEachFast { entities ->
             entities.forEachFast { entity ->
-                val r = max(entity.width, entity.height) / 2f
-                xMax = max(entity.x + r, xMax)
-                xMin = min(entity.x - r, xMin)
-                yMax = max(entity.y + r, yMax)
-                yMin = min(entity.y - r, yMin)
+                if (entity.isNot(DEAD))
+                {
+                    val r = 0.5f * if (entity.width > entity.height) entity.width else entity.height
+                    if (entity.x + r > xMax) xMax = entity.x + r
+                    if (entity.x - r < xMin) xMin = entity.x - r
+                    if (entity.y + r > yMax) yMax = entity.y + r
+                    if (entity.y - r < yMin) yMin = entity.y - r
+                }
             }
         }
 
-        val xCenter = (xMin + xMax) / 2f
-        val yCenter = (yMin + yMax) / 2f
+        // Set default area on empty entity collections
+        if (xMin == Float.POSITIVE_INFINITY)
+        {
+            xMin = 5 * -cellSize
+            xMax = 5 * cellSize
+            yMin = xMin
+            yMax = xMax
+        }
 
-        width = (xMax - xMin) + minBorderSize
-        height = (yMax - yMin) + minBorderSize
+        xMin = max(xMin, maxWidth * -0.5f)
+        xMax = min(xMax, maxWidth * 0.5f)
+        yMin = max(yMin, maxHeight * -0.5f)
+        yMax = min(yMax, maxHeight * 0.5f)
+
+        val xCenter = (xMin + xMax) / 2
+        val yCenter = (yMin + yMax) / 2
+
+        width = ((xMax - xMin) + minBorderSize).toInt()
+        height = ((yMax - yMin) + minBorderSize).toInt()
         xOffset = xCenter - width / 2f
         yOffset = yCenter - height / 2f
         xCells = (width / cellSize).toInt()
@@ -78,7 +104,7 @@ class SpatialGrid (
         val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
         val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
         val array = array
-        val iterNum = ++iterationNumber
+        val iterNum = (++iterationNumber).toInt() % 255
 
         for (yi in yStart .. yEnd)
         {
@@ -87,10 +113,11 @@ class SpatialGrid (
                 var node = array[xi, yi]
                 while (node != null)
                 {
-                    if (node.entity.isNot(DEAD) && node.itrNum != iterNum)
+                    val entity = node.entity
+                    if (entity.isNot(DEAD) && entity.getIterationNumber() != iterNum)
                     {
-                        block(node.entity)
-                        node.itrNum = iterNum
+                        block(entity)
+                        entity.setIterationNumber(iterNum)
                     }
                     node = node.next
                 }
@@ -109,7 +136,7 @@ class SpatialGrid (
         val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
         val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
         val array = array
-        val iterNum = ++iterationNumber
+        val iterNum = (++iterationNumber).toInt() % 255
 
         for (yi in yStart .. yEnd)
         {
@@ -119,10 +146,10 @@ class SpatialGrid (
                 while (node != null)
                 {
                     val entity = node.entity
-                    if (entity.isNot(DEAD) && node.itrNum != iterNum && entity is T)
+                    if (entity.isNot(DEAD) && entity.getIterationNumber() != iterNum && entity is T)
                     {
                         block(entity as T)
-                        node.itrNum = iterNum
+                        entity.setIterationNumber(iterNum)
                     }
                     node = node.next
                 }
@@ -130,8 +157,31 @@ class SpatialGrid (
         }
     }
 
-    fun insert(entity: SceneEntity): Boolean =
-        when
+    @PublishedApi
+    internal inline fun SceneEntity.getIterationNumber(): Int = (flags ushr 24)
+
+    @PublishedApi
+    internal inline fun SceneEntity.setIterationNumber(num: Int)
+    {
+        flags = (flags and 16777215) or (num shl 24) // Clear last 8 bits and set iteration number
+    }
+
+    fun insert(entity: SceneEntity): Boolean
+    {
+        if (entity.isSet(DEAD))
+            return false
+
+        if ((entity.x <= xMin && xMin == maxWidth * -0.5f) ||
+            (entity.x >= xMax && xMax == maxWidth * 0.5f) ||
+            (entity.y <= yMin && yMin == maxHeight * -0.5f) ||
+            (entity.y >= yMax && yMax == maxHeight * 0.5f)
+        ) {
+            entity.set(DEAD)
+            needToRecalculate = true
+            return false
+        }
+
+        val inserted =  when
         {
             entity.isNot(DISCOVERABLE) -> true
             abs(entity.width) + abs(entity.height) < cellSize * 0.5 -> insertPoint(entity)
@@ -139,16 +189,20 @@ class SpatialGrid (
             else -> insertRotated(entity)
         }
 
+        if (!inserted)
+            needToRecalculate = true
+
+        return inserted
+    }
+
+
     private fun insertPoint(entity: SceneEntity): Boolean
     {
         val x = ((entity.x - xOffset)  / cellSize).toInt()
         val y = ((entity.y - yOffset)  / cellSize).toInt()
 
         if (x < 0 || y < 0 || x >= xCells || y >= yCells)
-        {
-            recalculate()
             return false
-        }
 
         insert(x, y, entity)?.cluster = emptyClusterArray
         return true
@@ -164,10 +218,7 @@ class SpatialGrid (
         val bottom = ((entity.y + halfHeight - yOffset) / cellSize).toInt()
 
         if (left < 0 || top < 0 || right >= xCells || bottom >= yCells)
-        {
-            recalculate()
             return false
-        }
 
         val xCell = ((entity.x - xOffset) / cellSize).toInt()
         val yCell = ((entity.y - yOffset) / cellSize).toInt()
@@ -227,7 +278,7 @@ class SpatialGrid (
             var xCell = floor(xCorner0 / cellSize).toInt()
             var yCell = floor(yCorner0 / cellSize).toInt()
             if (yCell < 0 || yCell >= yCells)
-                return false.also { recalculate() }
+                return false
 
             scanRanges[yCell * 2] = min(scanRanges[yCell * 2], xCell)
             scanRanges[yCell * 2 + 1] = max(scanRanges[yCell * 2 + 1], xCell)
@@ -260,7 +311,7 @@ class SpatialGrid (
                 }
 
                 if (yCell < 0 || yCell >= yCells)
-                    return false.also { recalculate() }
+                    return false
 
                 scanRanges[yCell * 2] = min(scanRanges[yCell * 2], xCell)
                 scanRanges[yCell * 2 + 1] = max(scanRanges[yCell * 2 + 1], xCell)
@@ -292,7 +343,7 @@ class SpatialGrid (
             scanRanges[yi * 2 + 1] = 0
 
             if (xMin < 0 || xMin >= xCells || xMax < 0 || xMax >= xCells)
-                return false.also { recalculate() }
+                return false
 
             for (xi in xMin .. xMax)
             {
@@ -341,6 +392,9 @@ class SpatialGrid (
 
     fun update()
     {
+        if (needToRecalculate)
+            recalculate()
+
         val nodesToUpdate = (array.size * percentageToUpdatePerFrame).toInt()
         val start = currentNodeIndex
         var end = start + nodesToUpdate
@@ -373,9 +427,7 @@ class SpatialGrid (
                             (node.cluster!!.isNotEmpty() && entity.isSet(ROTATION_UPDATED)))
                         {
                             remove(node)
-                            val inserted = insert(entity)
-                            if (!inserted)
-                                return
+                            insert(entity)
 
                             entity.setNot(POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED)
                         }
@@ -428,6 +480,23 @@ class SpatialGrid (
 
         for (y in 0 until yCells + 1)
             surface.drawLine(xOffset, yOffset + y * cellSize, xOffset + width, yOffset + y * cellSize)
+    }
+
+    fun clear()
+    {
+        var i = 0
+        while (i < array.size)
+        {
+            var node = array[i]
+            while (node != null)
+            {
+                node.cluster = null
+                node.prev = null
+                node = node.next
+                node?.next = null
+            }
+            array[i++] = null
+        }
     }
 
     data class Node(

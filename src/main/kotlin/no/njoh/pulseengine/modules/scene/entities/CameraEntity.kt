@@ -16,6 +16,8 @@ open class CameraEntity : SceneEntity() {
     private var lastHeight = 0f
     private var camSize = 100f
 
+    init { setNot(DISCOVERABLE) }
+
     override fun onRender(surface: Surface2D, assets: Assets, sceneState: SceneState)
     {
         if (sceneState != SceneState.STOPPED)
