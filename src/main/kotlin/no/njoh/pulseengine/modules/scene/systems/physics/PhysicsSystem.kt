@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.Key
 import no.njoh.pulseengine.data.Mouse
+import no.njoh.pulseengine.data.SceneState.RUNNING
 import no.njoh.pulseengine.modules.Input
 import no.njoh.pulseengine.modules.scene.Scene
 import no.njoh.pulseengine.modules.scene.SpatialGrid
@@ -35,27 +36,17 @@ class PhysicsSystem : SceneSystem()
 
     override fun onStart(scene: Scene, engine: PulseEngine)
     {
-        scene.forEachRigidBody { it.init() }
+        scene.forEachBody { it.init() }
     }
 
     override fun onFixedUpdate(scene: Scene, engine: PulseEngine)
     {
+        if (engine.scene.state != RUNNING)
+            return
+
         val spatialGrid = scene.spatialGrid
-        scene.forEachRigidBody { body ->
-            if (body.bodyType == BodyType.DYNAMIC && !body.shape.isSleeping)
-            {
-                body.updateTransform(gravity)
-
-                for (i in 0 until physicsIterations)
-                {
-                    body.updateConstraints()
-                    body.updateCollisions(engine, spatialGrid)
-                }
-
-                body.updateCenterAndRotation()
-                body.updateSleepState()
-                body.updateWorldConstraint(worldWidth, worldHeight)
-            }
+        scene.forEachBody { body ->
+            body.update(engine, spatialGrid, gravity, physicsIterations, worldWidth, worldHeight)
         }
 
         if (mouseInteraction)
@@ -74,7 +65,7 @@ class PhysicsSystem : SceneSystem()
             return
 
         val surface = engine.gfx.mainSurface
-        scene.forEachRigidBody { it.drawConstraints(surface) }
+        scene.forEachBody { it.render(surface) }
     }
 
     private fun pickBody(spatialGrid: SpatialGrid, input: Input)
@@ -89,6 +80,7 @@ class PhysicsSystem : SceneSystem()
             pickedShape!!.points[pickedPointIndex + Shape.X] = input.xWorldMouse
             pickedShape!!.points[pickedPointIndex + Shape.Y] = input.yWorldMouse
             pickedShape!!.isSleeping = false
+            return
         }
 
         val xMouse = input.xWorldMouse
@@ -115,11 +107,11 @@ class PhysicsSystem : SceneSystem()
         }
     }
 
-    private inline fun Scene.forEachRigidBody(block: (body: RigidBody) -> Unit)
+    private inline fun Scene.forEachBody(block: (body: Body) -> Unit)
     {
         entityCollections.forEachFast { entities ->
-            if (entities.isNotEmpty() && entities[0] is RigidBody)
-                entities.forEachFast { block(it as RigidBody) }
+            if (entities.isNotEmpty() && entities[0] is Body)
+                entities.forEachFast { block(it as Body) }
         }
     }
 }

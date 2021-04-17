@@ -24,7 +24,7 @@ abstract class SceneEntity(
     @JsonIgnore val typeName = this::class.simpleName ?: ""
     @JsonIgnore var flags = DISCOVERABLE
 
-    open fun onStart() {  }
+    open fun onStart(engine: PulseEngine) {  }
     open fun onUpdate(engine: PulseEngine) { }
     open fun onFixedUpdate(engine: PulseEngine) { }
     open fun onRender(surface: Surface2D, assets: Assets, sceneState: SceneState)
@@ -50,11 +50,11 @@ abstract class SceneEntity(
 
     companion object
     {
-        const val DEAD              = 0x00000000000000000000000000000001 // Is the entity alive
-        const val POSITION_UPDATED  = 0x00000000000000000000000000000010 // Was position of entity updated
-        const val ROTATION_UPDATED  = 0x00000000000000000000000000000100 // Was rotation of entity updated
-        const val SIZE_UPDATED      = 0x00000000000000000000000000001000 // Was size of entity updated
-        const val DISCOVERABLE      = 0x00000000000000000000000000010000 // Can it be discovered by other entities
+        const val DEAD              = 1  // Is the entity alive
+        const val POSITION_UPDATED  = 2  // Was position of entity updated
+        const val ROTATION_UPDATED  = 4  // Was rotation of entity updated
+        const val SIZE_UPDATED      = 8  // Was size of entity updated
+        const val DISCOVERABLE      = 16 // Can it be discovered by other entities
 
         val REGISTERED_TYPES = mutableSetOf<KClass<out SceneEntity>>()
     }

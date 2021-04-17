@@ -4,6 +4,7 @@ import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.scene.Scene
 import no.njoh.pulseengine.modules.scene.SurfaceName
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
+import no.njoh.pulseengine.util.forEachFast
 import no.njoh.pulseengine.widgets.sceneEditor.Name
 import kotlin.reflect.full.findAnnotation
 
@@ -16,7 +17,7 @@ open class EntityRenderSystem : SceneSystem()
         val sceneState = engine.scene.state
         val gfx = engine.gfx
 
-        scene.entities.forEach { (_, entities) ->
+        scene.entityCollections.forEachFast { entities ->
             if (entities.isNotEmpty())
             {
                 var surface = gfx.mainSurface

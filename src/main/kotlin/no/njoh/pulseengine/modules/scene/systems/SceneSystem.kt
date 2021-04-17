@@ -9,6 +9,11 @@ abstract class SceneSystem
     var enabled = true
 
     /**
+     * Runs one time when the system is created
+     */
+    open fun onCreate(scene: Scene, engine: PulseEngine) { }
+
+    /**
      * Runs one time when the scene starts
      */
     open fun onStart(scene: Scene, engine: PulseEngine) { }

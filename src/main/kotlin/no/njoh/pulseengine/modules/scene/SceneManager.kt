@@ -63,8 +63,8 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         this.engine = engine
         this.activeScene = Scene("default")
         this.activeScene.fileName = "default.scn"
-        this.activeScene.addSystem(EntityUpdateSystem())
-        this.activeScene.addSystem(EntityRenderSystem())
+        this.activeScene.registerSystem(EntityUpdateSystem())
+        this.activeScene.registerSystem(EntityRenderSystem())
         registerSystemsAndEntityClasses()
     }
 
@@ -129,11 +129,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         {
             activeScene.stop(engine)
             if (scene.entities != activeScene.entities)
-            {
-                activeScene.entities.forEach { it.value.clear() }
-                activeScene.entities.clear()
-                System.gc()
-            }
+                activeScene.clearAll()
 
             activeScene = scene
             if (state != STOPPED)
@@ -149,8 +145,8 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             .substringBefore(".")
         val scene = Scene(sceneName)
         scene.fileName = fileName
-        scene.addSystem(EntityUpdateSystem())
-        scene.addSystem(EntityRenderSystem())
+        scene.registerSystem(EntityUpdateSystem())
+        scene.registerSystem(EntityRenderSystem())
         setActive(scene)
     }
 
@@ -158,9 +154,8 @@ class SceneManagerImpl : SceneManagerEngineInterface {
     {
         if (activeScene.fileName.isNotBlank())
         {
-            activeScene.entities.values.removeIf { it.isEmpty() }
-            activeScene.entities.values.forEach { it.fitToSize() }
-            activeScene.entityCollections.removeIf { it.isEmpty() }
+            activeScene.optimizeCollections()
+
             if (async)
                 engine.data.saveObjectAsync(activeScene, activeScene.fileName, activeScene.fileFormat)
             else
@@ -215,8 +210,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
                 transitionFade = transitionFade.coerceAtLeast(0.5f)
         }
 
-        if (state == RUNNING)
-            activeScene.fixedUpdate(engine)
+        activeScene.fixedUpdate(engine)
     }
 
     override fun render()
@@ -262,4 +256,3 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         activeScene.stop(engine)
     }
 }
-
