@@ -3,12 +3,14 @@ package no.njoh.pulseengine.modules.scene
 import com.fasterxml.jackson.annotation.JsonAutoDetect
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY
 import com.fasterxml.jackson.annotation.JsonIgnore
+import gnu.trove.map.hash.TLongObjectHashMap
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.FileFormat
 import no.njoh.pulseengine.data.FileFormat.*
 import no.njoh.pulseengine.data.SwapList
 import no.njoh.pulseengine.data.SwapList.Companion.swapListOf
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.util.forEachFast
 import no.njoh.pulseengine.util.forEachFiltered
@@ -34,20 +36,41 @@ open class Scene(
     ////////// Internal engine properties //////////
 
     @JsonIgnore
-    @PublishedApi
-    internal val spatialGrid = SpatialGrid(entityCollections, 350f, 3000, 100_000, 100_000, 0.2f)
-
-    @JsonIgnore
     internal var fileName: String = "$name.scn"
 
     @JsonIgnore
     internal var fileFormat: FileFormat = JSON
 
     @JsonIgnore
+    @PublishedApi
+    internal val spatialGrid = SpatialGrid(entityCollections, 350f, 3000, 100_000, 100_000, 0.2f)
+
+    @JsonIgnore
+    @PublishedApi
+    internal val entityIdMap = TLongObjectHashMap<SceneEntity>()
+    private var nextId = -1L
+
+    @JsonIgnore
     private val systemsToRegister = internalSystems.toMutableList()
+
+    init
+    {
+        if (nextId < 0)
+        {
+            nextId = 0
+            forEachEntity {
+                it.id = nextId
+                entityIdMap.put(nextId++, it)
+            }
+        }
+        else forEachEntity { entityIdMap.put(it.id, it) }
+    }
 
     fun addEntity(entity: SceneEntity)
     {
+        entity.id = nextId
+        entityIdMap.put(nextId++, entity)
+
         internalEntities[entity.typeName]
             ?.add(entity)
             ?: run {
@@ -57,6 +80,12 @@ open class Scene(
             }
 
         spatialGrid.insert(entity)
+    }
+
+    fun killEntity(entity: SceneEntity)
+    {
+        entity.set(DEAD)
+        entityIdMap.remove(entity.id)
     }
 
     fun registerSystem(system: SceneSystem, callOnCreate: Boolean = true)
@@ -71,6 +100,25 @@ open class Scene(
     {
         internalSystems.remove(system)
     }
+
+    inline fun <reified T: SceneEntity> getEntity(id: Long): T? =
+        entityIdMap[id] as? T
+
+    @Suppress("UNCHECKED_CAST")
+    inline fun <reified T: SceneEntity> getEntitiesOfType(): SwapList<T>? =
+        entities[T::class.simpleName] as? SwapList<T>?
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T: SceneEntity> getEntitiesOfType(type: KClass<T>): SwapList<T>? =
+        entities[type.simpleName] as? SwapList<T>?
+
+    inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit) =
+        spatialGrid.query(x, y, width, height, block)
+
+    inline fun forEachEntity(block: (SceneEntity) -> Unit) =
+        entityCollections.forEachFast { entities -> entities.forEachFast { block(it) } }
+
+    ////////////////////////////////////// USED BY ENGINE //////////////////////////////////////////////////
 
     internal fun start(engine: PulseEngine)
     {
@@ -122,20 +170,6 @@ open class Scene(
         internalSystems.clear()
         spatialGrid.clear()
     }
-
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified T: SceneEntity> getEntitiesOfType(): SwapList<T>? =
-        entities[T::class.simpleName] as SwapList<T>?
-
-    @Suppress("UNCHECKED_CAST")
-    fun <T: SceneEntity> getEntitiesOfType(type: KClass<T>): SwapList<T>? =
-        entities[type.simpleName] as SwapList<T>?
-
-    inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit) =
-        spatialGrid.query(x, y, width, height, block)
-
-    inline fun forEachEntity(block: (SceneEntity) -> Unit) =
-        entityCollections.forEachFast { entities -> entities.forEachFast { block(it) } }
 }
 
 @Target(AnnotationTarget.CLASS)

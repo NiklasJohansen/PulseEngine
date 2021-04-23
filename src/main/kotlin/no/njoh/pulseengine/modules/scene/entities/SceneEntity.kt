@@ -21,6 +21,8 @@ abstract class SceneEntity(
     open var height: Float = 0f,
     open var rotation: Float = 0f
 ) {
+    var id = -1L // Id gets assigned when entity is added to the scene
+
     @JsonIgnore val typeName = this::class.simpleName ?: ""
     @JsonIgnore var flags = DISCOVERABLE
 

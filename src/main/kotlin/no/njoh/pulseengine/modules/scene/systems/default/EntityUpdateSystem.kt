@@ -45,6 +45,8 @@ open class EntityUpdateSystem : SceneSystem()
 
                 if (entity.isNot(SceneEntity.DEAD))
                     entities.keep(entity)
+                else
+                    scene.killEntity(entity)
             }
             entities.swap()
         }

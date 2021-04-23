@@ -90,7 +90,7 @@ class InputField (
 
     override fun onUpdate(engine: PulseEngine)
     {
-        hasFocus = engine.input.hasFocus(area)
+        hasFocus = engine.input.hasFocus(area) && editable
 
         if (hasFocus != lastHasFocus)
         {
@@ -117,7 +117,7 @@ class InputField (
             mouseInsideArea &&
             engine.input.xMouse > x.value + width.value - numberStepperWidth
 
-        if (engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(Mouse.LEFT) && editable)
         {
             if (!isSteppingNumber && isMouseInsideNumberStepper)
             {
@@ -134,6 +134,7 @@ class InputField (
 
         when
         {
+            !editable -> { }
             isSteppingNumber || isMouseInsideNumberStepper -> engine.input.setCursor(VERTICAL_RESIZE)
             mouseInsideArea -> engine.input.setCursor(IBEAM)
         }

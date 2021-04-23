@@ -533,6 +533,7 @@ class SceneEditor: Widget
         {
             dragAndDropEntity = null
             engine.scene.activeScene.addEntity(this)
+            updatePropertiesPanel("id", this.id)
         }
     }
 

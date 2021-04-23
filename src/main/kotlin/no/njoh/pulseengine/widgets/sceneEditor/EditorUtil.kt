@@ -460,7 +460,6 @@ object EditorUtil
             fontColor = style.getColor("LABEL")
             bgColor = style.getColor("BUTTON")
             bgColorHover = style.getColor("BUTTON_HOVER")
-            editable = true
             contentType = type
 
             if (type == FLOAT || type == INTEGER)
@@ -530,6 +529,7 @@ object EditorUtil
                 val value = prop.getter.call(obj)
                 createInputFieldUI(value, prop).apply {
                     setOnTextChanged { if (it.isValid) setProperty(obj, prop, it.text) }
+                    editable = prop.name != "id"
                 }
             }
         }
