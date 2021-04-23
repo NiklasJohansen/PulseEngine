@@ -47,24 +47,11 @@ open class Scene(
 
     @JsonIgnore
     @PublishedApi
-    internal val entityIdMap = TLongObjectHashMap<SceneEntity>()
-    private var nextId = -1L
+    internal val entityIdMap = TLongObjectHashMap<SceneEntity>().also { map -> forEachEntity { map.put(it.id, it) } }
+    private var nextId = 0L
 
     @JsonIgnore
     private val systemsToRegister = internalSystems.toMutableList()
-
-    init
-    {
-        if (nextId < 0)
-        {
-            nextId = 0
-            forEachEntity {
-                it.id = nextId
-                entityIdMap.put(nextId++, it)
-            }
-        }
-        else forEachEntity { entityIdMap.put(it.id, it) }
-    }
 
     fun addEntity(entity: SceneEntity)
     {
