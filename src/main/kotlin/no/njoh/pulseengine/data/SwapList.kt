@@ -47,7 +47,12 @@ class SwapList<T>(
         itemsToKeep = Array(size) { }
     }
 
+    @Suppress("UNCHECKED_CAST")
     operator fun get(index: Int): T = items[index] as T
+
+    @Suppress("UNCHECKED_CAST")
+    fun first(): T? =
+        if (size > 0) items[0] as T else null
 
     fun isNotEmpty() = size != 0
 
@@ -70,6 +75,8 @@ class SwapList<T>(
 
     @Suppress("UNCHECKED_CAST")
     inline fun forEachFast(block: (T) -> Unit) {
+        val size = size
+        val items = items
         var i = 0
         while (i < size) block(items[i++] as T)
     }

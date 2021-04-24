@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.scene
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.SceneState.*
+import no.njoh.pulseengine.data.SwapList
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
@@ -12,37 +13,76 @@ import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.ReflectionUtil
 import no.njoh.pulseengine.util.ReflectionUtil.getClassesFromFullyQualifiedClassNames
 import no.njoh.pulseengine.util.ReflectionUtil.getClassesOfSuperType
+import no.njoh.pulseengine.util.forEachFast
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.system.measureNanoTime
 
-interface SceneManager
+@Suppress("UNCHECKED_CAST")
+abstract class SceneManager
 {
-    fun start()
-    fun stop()
-    fun pause()
-    fun save(async: Boolean = false)
-    fun saveIf(async: Boolean = false, predicate: (SceneManager) -> Boolean)
-    fun reload(fromClassPath: Boolean = false)
-    fun loadAndSetActive(fileName: String, fromClassPath: Boolean = false)
-    fun createEmptyAndSetActive(fileName: String)
-    fun transitionInto(fileName: String, fromClassPath: Boolean = false, fadeTimeMs: Long = 1000L)
-    fun setActive(scene: Scene)
-    val activeScene: Scene
-    val state: SceneState
+    abstract val activeScene: Scene
+    abstract val state: SceneState
+
+    abstract fun start()
+    abstract fun stop()
+    abstract fun pause()
+    abstract fun save(async: Boolean = false)
+    abstract fun saveIf(async: Boolean = false, predicate: (SceneManager) -> Boolean)
+    abstract fun reload(fromClassPath: Boolean = false)
+    abstract fun loadAndSetActive(fileName: String, fromClassPath: Boolean = false)
+    abstract fun createEmptyAndSetActive(fileName: String)
+    abstract fun transitionInto(fileName: String, fromClassPath: Boolean = false, fadeTimeMs: Long = 1000L)
+    abstract fun setActive(scene: Scene)
+
+    fun addSystem(system: SceneSystem) =
+        activeScene.systems.add(system)
+
+    fun removeSystem(system: SceneSystem) =
+        activeScene.systems.remove(system)
+
+    fun addEntity(entity: SceneEntity) =
+        activeScene.insertEntity(entity)
+
+    fun getEntity(id: Long): SceneEntity? =
+        activeScene.entityIdMap[id]
+
+    inline fun <reified T: SceneEntity> getEntityOfType(id: Long): T? =
+        activeScene.entityIdMap[id] as? T?
+
+    inline fun <reified T: SceneEntity> getFirstEntityOfType(): T? =
+        activeScene.entityTypeMap[T::class.simpleName]?.first() as? T?
+
+    inline fun <reified T: SceneEntity> getAllEntitiesOfType(): SwapList<T>? =
+        (activeScene.entityTypeMap[T::class.simpleName] as? SwapList<T>?)?.takeIf { it.isNotEmpty() }
+
+    inline fun <reified T: SceneEntity> forEachEntityOfType(block: (T) -> Unit) =
+        activeScene.entityTypeMap[T::class.simpleName]?.forEachFast { block(it as T) }
+
+    inline fun forEachEntityTypeList(block: (SwapList<SceneEntity>) -> Unit) =
+        activeScene.entities.forEachFast { if (it.isNotEmpty()) block(it) }
+
+    inline fun <reified T> forEachNearbyEntityOfType(x: Float, y: Float, width: Float, height: Float, block: (T) -> Unit) =
+        activeScene.spatialGrid.queryType(x, y, width, height, block)
+
+    inline fun forEachNearbyEntity(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit) =
+        activeScene.spatialGrid.query(x, y, width, height, block)
+
+    inline fun forEachEntity(block: (SceneEntity) -> Unit) =
+        activeScene.entities.forEachFast { entities -> entities.forEachFast { block(it) } }
 }
 
-interface SceneManagerEngineInterface : SceneManager
+abstract class SceneManagerEngineInterface : SceneManager()
 {
-    fun init(engine: PulseEngine)
-    fun render()
-    fun update()
-    fun fixedUpdate()
-    fun cleanUp()
-    fun registerSystemsAndEntityClasses()
+    abstract fun init(engine: PulseEngine)
+    abstract fun render()
+    abstract fun update()
+    abstract fun fixedUpdate()
+    abstract fun cleanUp()
+    abstract fun registerSystemsAndEntityClasses()
 }
 
-class SceneManagerImpl : SceneManagerEngineInterface {
+class SceneManagerImpl : SceneManagerEngineInterface() {
 
     override lateinit var activeScene: Scene
     override var state: SceneState = STOPPED
@@ -63,8 +103,8 @@ class SceneManagerImpl : SceneManagerEngineInterface {
         this.engine = engine
         this.activeScene = Scene("default")
         this.activeScene.fileName = "default.scn"
-        this.activeScene.registerSystem(EntityUpdateSystem())
-        this.activeScene.registerSystem(EntityRenderSystem())
+        addSystem(EntityUpdateSystem())
+        addSystem(EntityRenderSystem())
         registerSystemsAndEntityClasses()
     }
 
@@ -109,7 +149,7 @@ class SceneManagerImpl : SceneManagerEngineInterface {
                 setActive(it)
             }
         }
-        else Logger.error("Cannot load scene: ${activeScene.name} - fileName to is not set!")
+        else Logger.error("Cannot load scene: ${activeScene.name} - fileName is not set!")
     }
 
     override fun transitionInto(fileName: String, fromClassPath: Boolean, fadeTimeMs: Long)
@@ -145,8 +185,8 @@ class SceneManagerImpl : SceneManagerEngineInterface {
             .substringBefore(".")
         val scene = Scene(sceneName)
         scene.fileName = fileName
-        scene.registerSystem(EntityUpdateSystem())
-        scene.registerSystem(EntityRenderSystem())
+        scene.systems.add(EntityUpdateSystem())
+        scene.systems.add(EntityRenderSystem())
         setActive(scene)
     }
 

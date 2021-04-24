@@ -1,42 +1,58 @@
 package no.njoh.pulseengine.modules.scene.systems
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.modules.scene.Scene
 import kotlin.reflect.KClass
 
 abstract class SceneSystem
 {
+    @JsonIgnore
+    var initialized = false
     var enabled = true
+
+    /**
+     * Called by engine when the system is first created
+     */
+    fun init(engine: PulseEngine)
+    {
+        onCreate(engine)
+        initialized = true
+    }
 
     /**
      * Runs one time when the system is created
      */
-    open fun onCreate(scene: Scene, engine: PulseEngine) { }
+    open fun onCreate(engine: PulseEngine) { }
 
     /**
      * Runs one time when the scene starts
      */
-    open fun onStart(scene: Scene, engine: PulseEngine) { }
+    open fun onStart(engine: PulseEngine) { }
 
     /**
      * Runs at a fixed tick rate independent of frame rate
      */
-    open fun onFixedUpdate(scene: Scene, engine: PulseEngine) { }
+    open fun onFixedUpdate(engine: PulseEngine) { }
 
     /**
      * Runs one time every frame
      */
-    open fun onUpdate(scene: Scene, engine: PulseEngine) { }
+    open fun onUpdate(engine: PulseEngine) { }
 
     /**
      * Runs one time every frame
      */
-    open fun onRender(scene: Scene, engine: PulseEngine) { }
+    open fun onRender(engine: PulseEngine) { }
 
     /**
      * Runs one time when the scene stops
      */
-    open fun onStop(scene: Scene, engine: PulseEngine) { }
+    open fun onStop(engine: PulseEngine) { }
+
+    /**
+     * Whether or not this system takes the responsibility of deleting dead entities
+     */
+    open fun handlesEntityDeletion(): Boolean = false
 
     companion object
     {

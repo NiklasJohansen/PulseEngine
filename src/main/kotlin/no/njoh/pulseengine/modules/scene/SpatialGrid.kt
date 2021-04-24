@@ -13,7 +13,7 @@ import no.njoh.pulseengine.util.forEachFast
 import kotlin.math.*
 
 class SpatialGrid (
-    private val entityCollections : List<SwapList<SceneEntity>>,
+    private val entities : List<SwapList<SceneEntity>>,
     var cellSize: Float,
     var minBorderSize: Int = 3000,
     var maxWidth: Int = 100_000,
@@ -49,7 +49,7 @@ class SpatialGrid (
         yMin = Float.POSITIVE_INFINITY
         yMax = Float.NEGATIVE_INFINITY
 
-        entityCollections.forEachFast { entities ->
+        entities.forEachFast { entities ->
             entities.forEachFast { entity ->
                 if (entity.isNot(DEAD))
                 {
@@ -88,7 +88,7 @@ class SpatialGrid (
         array = Array2D(xCells, yCells) { x, y -> null }
         scanRanges = IntArray(2 * yCells) { if (it % 2 == 0) xCells else 0 }
 
-        entityCollections.forEachFast { entities ->
+        entities.forEachFast { entities ->
             entities.forEachFast { insert(it) }
         }
     }

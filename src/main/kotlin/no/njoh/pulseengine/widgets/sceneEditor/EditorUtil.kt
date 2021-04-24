@@ -258,11 +258,11 @@ object EditorUtil
         val menuItems = SceneSystem.REGISTERED_TYPES.map {
             MenuBarItem(it.simpleName ?: "") {
                 val newSystem = it.createInstance()
-                newSystem.onCreate(engine.scene.activeScene, engine)
-                engine.scene.activeScene.registerSystem(newSystem, callOnCreate = false)
+                newSystem.init(engine)
+                engine.scene.addSystem(newSystem)
                 propertiesRowPanel.insertSceneSystemProperties(
                     system = newSystem,
-                    onClose = { engine.scene.activeScene.unregisterSystem(newSystem) }
+                    onClose = { engine.scene.removeSystem(newSystem) }
                 )
             }
         }
@@ -306,7 +306,7 @@ object EditorUtil
         for (system in engine.scene.activeScene.systems)
         {
             val isHidden = system::class.simpleName in hiddenSystems
-            this.insertSceneSystemProperties(system, isHidden, onClose = { engine.scene.activeScene.unregisterSystem(system) })
+            this.insertSceneSystemProperties(system, isHidden, onClose = { engine.scene.removeSystem(system) })
         }
     }
 

@@ -49,6 +49,20 @@ inline fun <T> List<T>.forEachFast(block: (T) -> Unit) {
 }
 
 /**
+ * Returns the first element matching the given predicate.
+ */
+inline fun <T> List<T>.firstOrNullFast(predicate: (T) -> Boolean): T? {
+    var i = 0
+    while (i < size)
+    {
+        val element = this[i++]
+        if (predicate(element))
+            return element
+    }
+    return null
+}
+
+/**
  * Class path resources (inside jar or at build dir) needs a leading forward slash
  */
 fun String.toClassPath(): String =

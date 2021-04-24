@@ -15,40 +15,43 @@ open class EntityUpdateSystem : SceneSystem()
     @ValueRange(1f, 100000f)
     var tickRate = -1
 
-    override fun onCreate(scene: Scene, engine: PulseEngine)
+    override fun onCreate(engine: PulseEngine)
     {
         if (tickRate == -1)
             tickRate = engine.config.fixedTickRate
     }
 
-    override fun onStart(scene: Scene, engine: PulseEngine)
+    override fun onStart(engine: PulseEngine)
     {
         if (tickRate != engine.config.fixedTickRate)
             engine.config.fixedTickRate = tickRate
 
-        scene.forEachEntity { it.onStart(engine) }
+        engine.scene.forEachEntity { it.onStart(engine) }
     }
 
-    override fun onFixedUpdate(scene: Scene, engine: PulseEngine)
+    override fun onFixedUpdate(engine: PulseEngine)
     {
         if (engine.scene.state == SceneState.RUNNING)
-            scene.forEachEntity { it.onFixedUpdate(engine) }
+            engine.scene.forEachEntity { it.onFixedUpdate(engine) }
     }
 
-    override fun onUpdate(scene: Scene, engine: PulseEngine)
+    override fun onUpdate(engine: PulseEngine)
     {
         val sceneState = engine.scene.state
-        scene.entityCollections.forEachFast { entities ->
-            entities.forEachFast { entity ->
+        engine.scene.forEachEntityTypeList { typeList ->
+            typeList.forEachFast { entity ->
                 if (sceneState == SceneState.RUNNING)
                     entity.onUpdate(engine)
 
+                // Handles the deletion of dead entities in the same update pass
                 if (entity.isNot(SceneEntity.DEAD))
-                    entities.keep(entity)
+                    typeList.keep(entity)
                 else
-                    scene.killEntity(entity)
+                    engine.scene.activeScene.entityIdMap.remove(entity.id)
             }
-            entities.swap()
+            typeList.swap()
         }
     }
+
+    override fun handlesEntityDeletion(): Boolean = true
 }

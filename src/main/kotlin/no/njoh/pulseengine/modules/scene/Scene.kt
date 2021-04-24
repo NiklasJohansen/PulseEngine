@@ -14,26 +14,18 @@ import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.util.forEachFast
 import no.njoh.pulseengine.util.forEachFiltered
-import kotlin.reflect.KClass
 
 @JsonAutoDetect(fieldVisibility = ANY)
 open class Scene(
     val name: String,
-    private val internalEntities: MutableMap<String, SwapList<SceneEntity>> = mutableMapOf(),
-    private val internalSystems: MutableList<SceneSystem> = mutableListOf()
+    val entities: MutableList<SwapList<SceneEntity>> = mutableListOf(),
+    val systems: MutableList<SceneSystem> = mutableListOf()
 ) {
-    ////////// Publicly exposed properties //////////
+    @JsonIgnore
+    val entityIdMap = createEntityIdMap(entities)
 
     @JsonIgnore
-    val systems: List<SceneSystem> = internalSystems
-
-    @JsonIgnore
-    val entities: Map<String, SwapList<SceneEntity>> = internalEntities
-
-    @JsonIgnore
-    val entityCollections = internalEntities.map { it.value }.toMutableList()
-
-    ////////// Internal engine properties //////////
+    val entityTypeMap = createEntityTypeMap(entities)
 
     @JsonIgnore
     internal var fileName: String = "$name.scn"
@@ -43,120 +35,110 @@ open class Scene(
 
     @JsonIgnore
     @PublishedApi
-    internal val spatialGrid = SpatialGrid(entityCollections, 350f, 3000, 100_000, 100_000, 0.2f)
+    internal val spatialGrid = SpatialGrid(entities, 350f, 3000, 100_000, 100_000, 0.2f)
 
-    @JsonIgnore
-    @PublishedApi
-    internal val entityIdMap = TLongObjectHashMap<SceneEntity>().also { map -> forEachEntity { map.put(it.id, it) } }
-    private var nextId = 0L
+    internal var nextId = 0L
 
-    @JsonIgnore
-    private val systemsToRegister = internalSystems.toMutableList()
-
-    fun addEntity(entity: SceneEntity)
+    fun insertEntity(entity: SceneEntity)
     {
         entity.id = nextId
-        entityIdMap.put(nextId++, entity)
-
-        internalEntities[entity.typeName]
+        entityIdMap.put(nextId, entity)
+        entityTypeMap[entity.typeName]
             ?.add(entity)
             ?: run {
                 val list = swapListOf(entity)
-                internalEntities[entity.typeName] = list
-                entityCollections.add(list)
+                entityTypeMap[entity.typeName] = list
+                entities.add(list)
             }
-
         spatialGrid.insert(entity)
+        nextId++
     }
-
-    fun killEntity(entity: SceneEntity)
-    {
-        entity.set(DEAD)
-        entityIdMap.remove(entity.id)
-    }
-
-    fun registerSystem(system: SceneSystem, callOnCreate: Boolean = true)
-    {
-        if (callOnCreate)
-            systemsToRegister.add(system)
-        else
-            internalSystems.add(system)
-    }
-
-    fun unregisterSystem(system: SceneSystem)
-    {
-        internalSystems.remove(system)
-    }
-
-    inline fun <reified T: SceneEntity> getEntity(id: Long): T? =
-        entityIdMap[id] as? T
-
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified T: SceneEntity> getEntitiesOfType(): SwapList<T>? =
-        entities[T::class.simpleName] as? SwapList<T>?
-
-    @Suppress("UNCHECKED_CAST")
-    fun <T: SceneEntity> getEntitiesOfType(type: KClass<T>): SwapList<T>? =
-        entities[type.simpleName] as? SwapList<T>?
-
-    inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit) =
-        spatialGrid.query(x, y, width, height, block)
-
-    inline fun forEachEntity(block: (SceneEntity) -> Unit) =
-        entityCollections.forEachFast { entities -> entities.forEachFast { block(it) } }
-
-    ////////////////////////////////////// USED BY ENGINE //////////////////////////////////////////////////
 
     internal fun start(engine: PulseEngine)
     {
-        internalSystems.forEachFiltered({ it.enabled }) { it.onStart(this, engine) }
+        systems.forEachFiltered({ it.enabled }) { it.onStart(engine) }
         spatialGrid.recalculate()
     }
 
     internal fun stop(engine: PulseEngine)
     {
-        internalSystems.forEachFiltered({ it.enabled }) { it.onStop(this, engine) }
+        systems.forEachFiltered({ it.enabled }) { it.onStop(engine) }
     }
 
     internal fun update(engine: PulseEngine)
     {
-        systemsToRegister.forEachFast { system ->
-            system.onCreate(this, engine)
-            if (system !in internalSystems)
-                internalSystems.add(system)
-        }
-        systemsToRegister.clear()
-
         spatialGrid.update()
-        internalSystems.forEachFiltered({ it.enabled }) { it.onUpdate(this, engine) }
+
+        var deleteDeadEntities = true
+        systems.forEachFiltered({ it.enabled })
+        {
+            if (!it.initialized)
+                it.init(engine)
+            if (it.handlesEntityDeletion())
+                deleteDeadEntities = false
+            it.onUpdate(engine)
+        }
+
+        if (deleteDeadEntities)
+        {
+            engine.scene.forEachEntityTypeList { typeList ->
+                typeList.forEachFast { entity ->
+                    if (entity.isSet(DEAD))
+                        entityIdMap.remove(entity.id)
+                    else
+                        typeList.keep(entity)
+                }
+                typeList.swap()
+            }
+        }
     }
 
     internal fun fixedUpdate(engine: PulseEngine)
     {
-        internalSystems.forEachFiltered({ it.enabled }) { it.onFixedUpdate(this, engine) }
+        systems.forEachFiltered({ it.enabled }) { it.onFixedUpdate(engine) }
     }
 
     internal fun render(engine: PulseEngine)
     {
         spatialGrid.render(engine.gfx.mainSurface)
-        internalSystems.forEachFiltered({ it.enabled }) { it.onRender(this, engine) }
+        systems.forEachFiltered({ it.enabled }) { it.onRender(engine) }
     }
 
     internal fun optimizeCollections()
     {
-        internalEntities.values.removeIf { entities -> entities.isEmpty()}
-        entityCollections.removeIf { it.isEmpty() }
-        entities.values.forEach { it.fitToSize() }
+        entityTypeMap.values.removeIf { entities -> entities.isEmpty() }
+        entities.removeIf { it.isEmpty() }
+        entities.forEachFast { it.fitToSize() }
     }
 
     internal fun clearAll()
     {
-        entityCollections.forEachFast { it.clear() }
-        entityCollections.clear()
-        internalEntities.clear()
-        internalSystems.clear()
+        entities.forEachFast { it.clear() }
+        entities.clear()
+        entityTypeMap.clear()
+        entityIdMap.clear()
+        systems.clear()
         spatialGrid.clear()
     }
+
+    internal fun copy(fileName: String? = null): Scene
+    {
+        val copy = Scene(name, entities, systems)
+        copy.fileName = fileName ?: this.fileName
+        copy.fileFormat = fileFormat
+        copy.nextId = nextId
+        return copy
+    }
+
+    private fun createEntityTypeMap(entities: MutableList<SwapList<SceneEntity>>) =
+        HashMap<String, SwapList<SceneEntity>>(entities.size).also { map ->
+            entities.forEachFast { list -> list.first()?.let { map[it.typeName] = list } }
+        }
+
+    private fun createEntityIdMap(entities: MutableList<SwapList<SceneEntity>>) =
+        TLongObjectHashMap<SceneEntity>().also { map ->
+            entities.forEachFast { typeList -> typeList.forEachFast { map.put(it.id, it) } }
+        }
 }
 
 @Target(AnnotationTarget.CLASS)

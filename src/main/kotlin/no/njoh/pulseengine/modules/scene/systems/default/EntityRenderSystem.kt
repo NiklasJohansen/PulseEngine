@@ -1,31 +1,29 @@
 package no.njoh.pulseengine.modules.scene.systems.default
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.modules.scene.Scene
 import no.njoh.pulseengine.modules.scene.SurfaceName
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
-import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.util.firstOrNullFast
 import no.njoh.pulseengine.widgets.sceneEditor.Name
-import kotlin.reflect.full.findAnnotation
 
 @Name("Entity Renderer")
 open class EntityRenderSystem : SceneSystem()
 {
-    override fun onRender(scene: Scene, engine: PulseEngine)
+    override fun onRender(engine: PulseEngine)
     {
         val assets = engine.asset
         val sceneState = engine.scene.state
         val gfx = engine.gfx
 
-        scene.entityCollections.forEachFast { entities ->
-            if (entities.isNotEmpty())
+        engine.scene.forEachEntityTypeList { typeList ->
+            if (typeList.isNotEmpty())
             {
-                var surface = gfx.mainSurface
-                entities[0]::class
-                    .findAnnotation<SurfaceName>()
-                    ?.let { surface = gfx.getSurface2D(it.name) }
+                val surface = typeList[0]::class.annotations
+                    .firstOrNullFast { it is SurfaceName }
+                    ?.let { gfx.getSurface2D((it as SurfaceName).name) }
+                    ?: gfx.mainSurface
 
-                entities.forEachFast { it.onRender(surface, assets, sceneState) }
+                typeList.forEachFast { it.onRender(surface, assets, sceneState) }
             }
         }
     }

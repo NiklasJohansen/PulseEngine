@@ -23,11 +23,8 @@ import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.SIZE_UPDATED
-import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.modules.widget.Widget
-import no.njoh.pulseengine.util.Camera2DController
-import no.njoh.pulseengine.util.FileChooser
-import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.*
 import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.MenuBarButton
 import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.MenuBarItem
 import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.createMenuBarUI
@@ -303,15 +300,8 @@ class SceneEditor: Widget
 
         GlobalScope.launch {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
-                val oldScene = engine.scene.activeScene
-                val newScene = Scene(
-                    oldScene.name,
-                    oldScene.entities as MutableMap<String, SwapList<SceneEntity>>,
-                    oldScene.systems as MutableList<SceneSystem>
-                ).apply {
-                    fileName = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
-                    fileFormat = oldScene.fileFormat
-                }
+                val fileName = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
+                val newScene = engine.scene.activeScene.copy(fileName)
                 engine.scene.setActive(newScene)
                 engine.scene.save()
             }
@@ -410,7 +400,7 @@ class SceneEditor: Widget
                     entitySelection.addAll(copies)
                 }
                 val scene = engine.scene.activeScene
-                copies.forEach { scene.addEntity(it) }
+                copies.forEachFast { scene.insertEntity(it) }
                 isCopying = true
             }
         } else isCopying = false
@@ -426,7 +416,7 @@ class SceneEditor: Widget
             // Select entity
             if (!isMoving && !isSelecting && !isRotating && !isResizingVertically && !isResizingHorizontally)
             {
-                engine.scene.activeScene.entities.forEach { (type, entities) ->
+                engine.scene.forEachEntityTypeList { entities ->
 
                     for (i in entities.size - 1 downTo 0)
                     {
@@ -474,7 +464,7 @@ class SceneEditor: Widget
 
             entitySelection.clear()
 
-            engine.scene.activeScene.forEachEntity()
+            engine.scene.forEachEntity()
             {
                 if (it.isOverlapping(xStart, yStart, width, height))
                     entitySelection.add(it)
@@ -532,7 +522,7 @@ class SceneEditor: Widget
         if (!engine.input.isPressed(Mouse.LEFT))
         {
             dragAndDropEntity = null
-            engine.scene.activeScene.addEntity(this)
+            engine.scene.activeScene.insertEntity(this)
             updatePropertiesPanel("id", this.id)
         }
     }
@@ -761,7 +751,7 @@ class SceneEditor: Widget
             }
 
             oldEntity.set(DEAD)
-            scene.addEntity(newEntity)
+            scene.insertEntity(newEntity)
             selectSingleEntity(newEntity)
         }
         catch (e: Exception) { Logger.error("Failed to change entity type, reason: ${e.message}") }
@@ -851,11 +841,11 @@ class SceneEditor: Widget
 
     private fun SceneEntity.isInside(xWorld: Float, yWorld: Float): Boolean
     {
-        val w = (abs(width) + GIZMO_PADDING * 2)
-        val h = (abs(height) + GIZMO_PADDING * 2)
+        val w = abs(width) + GIZMO_PADDING * 2
+        val h = abs(height) + GIZMO_PADDING * 2
         val xDiff = xWorld - x
         val yDiff = yWorld - y
-        val angle = atan2(yDiff, xDiff) - (this.rotation / 180f * PI.toFloat())
+        val angle = MathUtil.atan2(yDiff, xDiff) - (this.rotation / 180f * PI.toFloat())
         val len = sqrt(xDiff * xDiff + yDiff * yDiff)
         val xWorldNew = x + cos(angle) * len
         val yWorldNew = y + sin(angle) * len

@@ -5,10 +5,10 @@ import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.Key
 import no.njoh.pulseengine.data.Mouse
 import no.njoh.pulseengine.data.SceneState.RUNNING
-import no.njoh.pulseengine.modules.Input
-import no.njoh.pulseengine.modules.scene.Scene
-import no.njoh.pulseengine.modules.scene.SpatialGrid
+import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
+import no.njoh.pulseengine.modules.scene.systems.physics.bodies.Body
+import no.njoh.pulseengine.modules.scene.systems.physics.bodies.RigidBody
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape
 import no.njoh.pulseengine.util.forEachFast
 import no.njoh.pulseengine.widgets.sceneEditor.ValueRange
@@ -34,60 +34,60 @@ class PhysicsSystem : SceneSystem()
     @JsonIgnore
     private var pickedPointIndex = 0
 
-    override fun onStart(scene: Scene, engine: PulseEngine)
+    override fun onStart(engine: PulseEngine)
     {
-        scene.forEachBody { it.init() }
+        engine.scene.forEachBody { it.init() }
     }
 
-    override fun onFixedUpdate(scene: Scene, engine: PulseEngine)
+    override fun onFixedUpdate(engine: PulseEngine)
     {
         if (engine.scene.state != RUNNING)
             return
 
-        val spatialGrid = scene.spatialGrid
-        scene.forEachBody { body ->
+        val spatialGrid = engine.scene.activeScene.spatialGrid
+        engine.scene.forEachBody { body ->
             body.update(engine, spatialGrid, gravity, physicsIterations, worldWidth, worldHeight)
         }
 
         if (mouseInteraction)
-            pickBody(spatialGrid, engine.input)
+            pickBody(engine)
     }
 
-    override fun onUpdate(scene: Scene, engine: PulseEngine)
+    override fun onUpdate(engine: PulseEngine)
     {
         if (engine.input.wasClicked(Key.COMMA))
             drawShapes = !drawShapes
     }
 
-    override fun onRender(scene: Scene, engine: PulseEngine)
+    override fun onRender(engine: PulseEngine)
     {
         if (!drawShapes)
             return
 
         val surface = engine.gfx.mainSurface
-        scene.forEachBody { it.render(surface) }
+        engine.scene.forEachBody { it.render(surface) }
     }
 
-    private fun pickBody(spatialGrid: SpatialGrid, input: Input)
+    private fun pickBody(engine: PulseEngine)
     {
-        if (!input.isPressed(Mouse.LEFT))
+        if (!engine.input.isPressed(Mouse.LEFT))
         {
             pickedShape = null
             return
         }
         else if (pickedShape != null)
         {
-            pickedShape!!.points[pickedPointIndex + Shape.X] = input.xWorldMouse
-            pickedShape!!.points[pickedPointIndex + Shape.Y] = input.yWorldMouse
+            pickedShape!!.points[pickedPointIndex + Shape.X] = engine.input.xWorldMouse
+            pickedShape!!.points[pickedPointIndex + Shape.Y] = engine.input.yWorldMouse
             pickedShape!!.isSleeping = false
             return
         }
 
-        val xMouse = input.xWorldMouse
-        val yMouse = input.yWorldMouse
+        val xMouse = engine.input.xWorldMouse
+        val yMouse = engine.input.yWorldMouse
         val minDist = 40f * 40f
 
-        spatialGrid.queryType<RigidBody>(xMouse, yMouse, 500f, 500f)
+        engine.scene.forEachNearbyEntityOfType<RigidBody>(xMouse, yMouse, 500f, 500f)
         {
             it.shape.forEachPoint { i ->
                 val xPoint = this[i + Shape.X]
@@ -107,9 +107,9 @@ class PhysicsSystem : SceneSystem()
         }
     }
 
-    private inline fun Scene.forEachBody(block: (body: Body) -> Unit)
+    private inline fun SceneManager.forEachBody(block: (body: Body) -> Unit)
     {
-        entityCollections.forEachFast { entities ->
+        activeScene.entities.forEachFast { entities ->
             if (entities.isNotEmpty() && entities[0] is Body)
                 entities.forEachFast { block(it as Body) }
         }

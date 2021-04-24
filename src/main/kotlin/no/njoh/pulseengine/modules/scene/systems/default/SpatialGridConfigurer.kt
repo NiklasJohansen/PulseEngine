@@ -24,9 +24,9 @@ class SpatialGridConfigurer : SceneSystem()
     @ValueRange(0f, 1f)
     var percentageToUpdatePerFrame = 0.2f
 
-    override fun onUpdate(scene: Scene, engine: PulseEngine)
+    override fun onUpdate(engine: PulseEngine)
     {
-        val spatialGrid = scene.spatialGrid
+        val spatialGrid = engine.scene.activeScene.spatialGrid
 
         if (cellSize != spatialGrid.cellSize ||
             minBorderSize != spatialGrid.minBorderSize ||
