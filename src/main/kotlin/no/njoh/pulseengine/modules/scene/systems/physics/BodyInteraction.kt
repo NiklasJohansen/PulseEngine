@@ -21,7 +21,7 @@ import kotlin.math.sqrt
 
 object BodyInteraction
 {
-    private val result = CollisionResult(0f, 0f, 0f)
+    private val result = CollisionResult()
     private val impulse = Vector2f(0f, 0f)
 
     fun detectAndResolve(b1: Body, b2: Body): CollisionResult?
@@ -202,6 +202,8 @@ object BodyInteraction
         return result.set (
             x = pbPoint.x,
             y = pbPoint.y,
+            xNormal = xNormal,
+            yNormal = yNormal,
             depth = depth
         )
     }
@@ -379,6 +381,8 @@ object BodyInteraction
         return result.set(
             x = xPoint + xResponse,
             y = yPoint + yResponse,
+            xNormal = xNormal,
+            yNormal = yNormal,
             depth = depth
         )
     }
@@ -412,14 +416,18 @@ object BodyInteraction
 }
 
 data class CollisionResult(
-    var x: Float,
-    var y: Float,
-    var depth: Float
+    var x: Float = 0f,
+    var y: Float = 0f,
+    var xNormal: Float = 0f,
+    var yNormal: Float = 0f,
+    var depth: Float = 0f
 ) {
-    fun set(x: Float, y: Float, depth: Float): CollisionResult
+    fun set(x: Float, y: Float, xNormal: Float, yNormal: Float, depth: Float): CollisionResult
     {
         this.x = x
         this.y = y
+        this.xNormal = xNormal
+        this.yNormal = yNormal
         this.depth = depth
         return this
     }

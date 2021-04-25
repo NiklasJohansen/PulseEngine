@@ -43,12 +43,17 @@ class ChamferedRectangleShape(
             for (j in i + 1 until nBoundaryPoints)
                 setStickConstraint(count++, i, j, 1f)
 
+        // Disable axis alignment while calculating initial angle offset
+        val tmpKeepAxisAligned = keepAxisAligned
+        keepAxisAligned = false
+
         // Update position, rotation and bounding box
         recalculateBoundingBox()
         recalculateRotation(angleOffset = rot)
         this.angleOffset = angle
         this.xCenterLast = xCenter
         this.yCenterLast = yCenter
+        this.keepAxisAligned = tmpKeepAxisAligned
     }
 
     override fun recalculateRotation(angleOffset: Float)
@@ -63,10 +68,17 @@ class ChamferedRectangleShape(
             val co = cos(targetAngle)
             val si = sin(targetAngle)
             forEachPoint(1) { i ->
-                val xDelta = this[i + X] - xCenter
-                val yDelta = this[i + Y] - yCenter
-                this[i + X] = xCenter + (xDelta * co - yDelta * si)
-                this[i + Y] = yCenter + (xDelta * si + yDelta * co)
+                val x = this[i + X]
+                val y = this[i + Y]
+                val xDeltaPos = x - xCenter
+                val yDeltaPos = y - yCenter
+                val xNew = xCenter + (xDeltaPos * co - yDeltaPos * si)
+                val yNew = yCenter + (xDeltaPos * si + yDeltaPos * co)
+
+                this[i + X] = xNew
+                this[i + Y] = yNew
+                this[i + X_LAST] += xNew - x
+                this[i + Y_LAST] += yNew - y
             }
         }
     }
