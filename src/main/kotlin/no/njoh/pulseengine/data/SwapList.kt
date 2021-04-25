@@ -74,11 +74,21 @@ class SwapList<T>(
     }
 
     @Suppress("UNCHECKED_CAST")
-    inline fun forEachFast(block: (T) -> Unit) {
+    inline fun forEachFast(block: (T) -> Unit)
+    {
         val size = size
         val items = items
         var i = 0
         while (i < size) block(items[i++] as T)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    inline fun forEachReversed(block: (T) -> Unit)
+    {
+        val size = size
+        val items = items
+        var i = size - 1
+        while (i > -1) block(items[i--] as T)
     }
 
     override fun iterator(): Iterator<T> =

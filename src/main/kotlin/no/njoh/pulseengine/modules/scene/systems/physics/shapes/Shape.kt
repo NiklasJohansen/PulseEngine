@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
-import no.njoh.pulseengine.util.MathUtil
+import no.njoh.pulseengine.util.MathUtil.atan2
 import kotlin.math.PI
 import kotlin.math.sqrt
 
@@ -9,6 +9,7 @@ abstract class Shape
     abstract val points: FloatArray // x, y, xLast, yLast, xAcc, yAcc
     abstract val constraints: FloatArray // index0, index1, length, stiffness
     abstract val nBoundaryPoints: Int // The number of points making up the outer edges of the shape
+    abstract val nStickConstraints: Int
 
     // Position and rotation
     var xCenter = 0f
@@ -38,15 +39,15 @@ abstract class Shape
         points[N_POINT_FIELDS * i + Y_LAST] = y
     }
 
-    fun setConstraint(i: Int, point0: Int, point1: Int, stiffness: Float)
+    fun setStickConstraint(i: Int, point0: Int, point1: Int, stiffness: Float)
     {
         val xDelta = points[N_POINT_FIELDS * point1 + X] - points[N_POINT_FIELDS * point0 + X]
         val yDelta = points[N_POINT_FIELDS * point1 + Y] - points[N_POINT_FIELDS * point0 + Y]
 
-        constraints[N_CONSTRAINT_FIELDS * i + POINT_0] = point0.toFloat()
-        constraints[N_CONSTRAINT_FIELDS * i + POINT_1] = point1.toFloat()
-        constraints[N_CONSTRAINT_FIELDS * i + LENGTH] = sqrt(xDelta * xDelta + yDelta * yDelta)
-        constraints[N_CONSTRAINT_FIELDS * i + STIFFNESS] = stiffness
+        constraints[N_STICK_CONSTRAINT_FIELDS * i + POINT_0] = point0.toFloat()
+        constraints[N_STICK_CONSTRAINT_FIELDS * i + POINT_1] = point1.toFloat()
+        constraints[N_STICK_CONSTRAINT_FIELDS * i + LENGTH] = sqrt(xDelta * xDelta + yDelta * yDelta)
+        constraints[N_STICK_CONSTRAINT_FIELDS * i + STIFFNESS] = stiffness
     }
 
     open fun recalculateBoundingBox()
@@ -75,11 +76,11 @@ abstract class Shape
         yCenter = ySum / (points.size / N_POINT_FIELDS)
     }
 
-    fun recalculateRotation(angleOffset: Float = this.angleOffset)
+    open fun recalculateRotation(angleOffset: Float = this.angleOffset)
     {
         val xDelta = points[X] - xCenter
         val yDelta = points[Y] - yCenter
-        angle = (MathUtil.atan2(yDelta, xDelta) / PI.toFloat() + 1.0f) * 180f - angleOffset
+        angle = (atan2(yDelta, xDelta) / PI.toFloat() + 1.0f) * 180f - angleOffset
         if (angle < 0) angle += 360
         if (angle > 360) angle -= 360
     }
@@ -139,15 +140,15 @@ abstract class Shape
         }
     }
 
-    inline fun forEachConstraint(block: FloatArray.(Int) -> Unit)
+    inline fun forEachStickConstraint(block: FloatArray.(Int) -> Unit)
     {
         val constraints = constraints
-        val size = constraints.size
+        val size = nStickConstraints * N_STICK_CONSTRAINT_FIELDS
         var i = 0
         while (i < size)
         {
             block(constraints, i)
-            i += N_CONSTRAINT_FIELDS
+            i += N_STICK_CONSTRAINT_FIELDS
         }
     }
 
@@ -179,6 +180,6 @@ abstract class Shape
         const val POINT_1 = 1
         const val LENGTH = 2
         const val STIFFNESS = 3
-        const val N_CONSTRAINT_FIELDS = 4
+        const val N_STICK_CONSTRAINT_FIELDS = 4
     }
 }

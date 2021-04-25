@@ -11,6 +11,7 @@ import no.njoh.pulseengine.modules.scene.systems.physics.bodies.Body
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.RigidBody
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape
 import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.util.forEachReversed
 import no.njoh.pulseengine.widgets.sceneEditor.ValueRange
 
 class PhysicsSystem : SceneSystem()
@@ -34,6 +35,9 @@ class PhysicsSystem : SceneSystem()
     @JsonIgnore
     private var pickedPointIndex = 0
 
+    @JsonIgnore
+    private var reversedUpdateOrder = false
+
     override fun onStart(engine: PulseEngine)
     {
         engine.scene.forEachBody { it.init() }
@@ -45,9 +49,12 @@ class PhysicsSystem : SceneSystem()
             return
 
         val spatialGrid = engine.scene.activeScene.spatialGrid
-        engine.scene.forEachBody { body ->
-            body.update(engine, spatialGrid, gravity, physicsIterations, worldWidth, worldHeight)
-        }
+        if (reversedUpdateOrder)
+            engine.scene.forEachBodyReversed { it.update(engine, spatialGrid, gravity, physicsIterations, worldWidth, worldHeight) }
+        else
+            engine.scene.forEachBody { it.update(engine, spatialGrid, gravity, physicsIterations, worldWidth, worldHeight) }
+
+        reversedUpdateOrder = !reversedUpdateOrder
 
         if (mouseInteraction)
             pickBody(engine)
@@ -112,6 +119,14 @@ class PhysicsSystem : SceneSystem()
         activeScene.entities.forEachFast { entities ->
             if (entities.isNotEmpty() && entities[0] is Body)
                 entities.forEachFast { block(it as Body) }
+        }
+    }
+
+    private inline fun SceneManager.forEachBodyReversed(block: (body: Body) -> Unit)
+    {
+        activeScene.entities.forEachReversed { entities ->
+            if (entities.isNotEmpty() && entities[0] is Body)
+                entities.forEachReversed { block(it as Body) }
         }
     }
 }

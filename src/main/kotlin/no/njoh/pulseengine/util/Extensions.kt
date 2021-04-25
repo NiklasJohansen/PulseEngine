@@ -43,15 +43,26 @@ inline fun <T> Iterable<T>.sumByFloat(selector: (T) -> Float): Float
 /**
  * Fast iteration of constant lookup lists.
  */
-inline fun <T> List<T>.forEachFast(block: (T) -> Unit) {
+inline fun <T> List<T>.forEachFast(block: (T) -> Unit)
+{
     var i = 0
     while (i < size) block(this[i++])
 }
 
 /**
+ * Fast and reversed iteration of constant lookup lists.
+ */
+inline fun <T> List<T>.forEachReversed(block: (T) -> Unit)
+{
+    var i = size - 1
+    while (i > -1) block(this[i--])
+}
+
+/**
  * Returns the first element matching the given predicate.
  */
-inline fun <T> List<T>.firstOrNullFast(predicate: (T) -> Boolean): T? {
+inline fun <T> List<T>.firstOrNullFast(predicate: (T) -> Boolean): T?
+{
     var i = 0
     while (i < size)
     {

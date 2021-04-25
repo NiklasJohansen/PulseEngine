@@ -1,9 +1,10 @@
-package no.njoh.pulseengine.modules.scene.systems.physics
+package no.njoh.pulseengine.modules.scene.systems.physics.bodies
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.SpatialGrid
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
+import no.njoh.pulseengine.modules.scene.systems.physics.*
 import kotlin.math.abs
 
 interface PointBody : Body
@@ -16,7 +17,7 @@ interface PointBody : Body
         {
             point.x = x
             point.y = y
-            onBodyUpdated(point.x, point.y, point.xLast, point.yLast, 0f)
+            onBodyUpdated(point)
         }
     }
 
@@ -67,7 +68,7 @@ interface PointBody : Body
             }
         }
 
-        onBodyUpdated(point.x, point.y, point.xLast, point.yLast, 0f)
+        onBodyUpdated(point)
     }
 
     override fun render(surface: Surface2D)
@@ -81,28 +82,15 @@ interface PointBody : Body
         surface.drawQuad(point.x - 0.5f * dotSize, point.y - 0.5f * dotSize, dotSize, dotSize)
     }
 
-    // Default implementation
+    fun onBodyUpdated(point: Point)
+    {
+        if (this is SceneEntity)
+        {
+            x = point.x
+            y = point.y
+            set(SceneEntity.POSITION_UPDATED)
+        }
+    }
+
     override fun onCollision(engine: PulseEngine, otherEntity: SceneEntity, result: CollisionResult) { }
 }
-
-data class Point(
-    // Current position
-    var x: Float = 0f,
-    var y: Float = 0f,
-
-    // Last position, used to calculate velocity
-    var xLast: Float = 0f,
-    var yLast: Float = 0f,
-
-    // Actual last position (updated once per frame, and does not change when direction and velocity changes)
-    var xLastActual: Float = 0f,
-    var yLastActual: Float = 0f,
-
-    // Current velocity, calculated from last position and does not change while resolving collisions
-    var xVel: Float = 0f,
-    var yVel: Float = 0f,
-
-    // Acceleration
-    var xAcc: Float = 0f,
-    var yAcc: Float = 0f
-)

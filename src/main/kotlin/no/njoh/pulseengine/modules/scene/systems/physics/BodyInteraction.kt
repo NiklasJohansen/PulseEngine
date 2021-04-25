@@ -1,6 +1,9 @@
 package no.njoh.pulseengine.modules.scene.systems.physics
 
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.STATIC
+import no.njoh.pulseengine.modules.scene.systems.physics.bodies.Body
+import no.njoh.pulseengine.modules.scene.systems.physics.bodies.PointBody
+import no.njoh.pulseengine.modules.scene.systems.physics.bodies.RigidBody
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.ConvexPolygonShape
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.N_POINT_FIELDS
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.X

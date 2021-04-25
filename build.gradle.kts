@@ -26,12 +26,6 @@ plugins {
     kotlin("jvm") version "1.3.72"
 }
 
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).all {
-    kotlinOptions {
-        freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
-    }
-}
-
 repositories {
     mavenCentral()
 }
@@ -60,6 +54,12 @@ dependencies {
     runtimeOnly("org.lwjgl", "lwjgl-opengl", classifier = lwjglNatives)
     runtimeOnly("org.lwjgl", "lwjgl-stb", classifier = lwjglNatives)
     runtimeOnly("org.lwjgl", "lwjgl-nfd", classifier = lwjglNatives)
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).all {
+    kotlinOptions {
+        freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
+    }
 }
 
 val sourcesJar by tasks.creating(Jar::class) {

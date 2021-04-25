@@ -1,12 +1,26 @@
-package no.njoh.pulseengine.modules.scene.systems.physics
+package no.njoh.pulseengine.modules.scene.systems.physics.bodies
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.SpatialGrid
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
+import no.njoh.pulseengine.modules.scene.systems.physics.BodyInteraction
+import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.STATIC
+import no.njoh.pulseengine.modules.scene.systems.physics.CollisionResult
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape
-import kotlin.math.sqrt
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.LENGTH
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.N_POINT_FIELDS
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.POINT_0
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.POINT_1
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.STIFFNESS
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.X
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.X_ACC
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.X_LAST
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y_ACC
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y_LAST
+import kotlin.math.*
 
 interface RigidBody : Body
 {
@@ -23,57 +37,57 @@ interface RigidBody : Body
 
     override fun update(engine: PulseEngine, spatialGrid: SpatialGrid, gravity: Float, physicsIterations: Int, worldWidth: Int, worldHeight: Int)
     {
-        if (bodyType == BodyType.DYNAMIC && !shape.isSleeping)
+        if (bodyType != BodyType.DYNAMIC || shape.isSleeping)
+            return
+
+        updateTransform(gravity)
+
+        for (i in 0 until physicsIterations)
         {
-            updateTransform(gravity)
-
-            for (i in 0 until physicsIterations)
-            {
-                updateConstraints()
-                updateCollisions(engine, spatialGrid)
-            }
-
-            updateCenterAndRotation()
-            updateSleepState()
-            updateWorldConstraint(worldWidth, worldHeight)
+            updateConstraints()
+            updateCollisions(engine, spatialGrid)
         }
+
+        updateCenterAndRotation()
+        updateSleepState()
+        updateWorldConstraint(worldWidth, worldHeight)
     }
 
     private fun updateTransform(gravity: Float)
     {
         val drag = 1f - drag
         shape.forEachPoint { i ->
-            val xNow = this[i + Shape.X]
-            val yNow = this[i + Shape.Y]
-            this[i + Shape.X] += (xNow - this[i + Shape.X_LAST]) * drag + this[i + Shape.X_ACC]
-            this[i + Shape.Y] += (yNow - this[i + Shape.Y_LAST]) * drag + this[i + Shape.Y_ACC]
-            this[i + Shape.X_LAST] = xNow
-            this[i + Shape.Y_LAST] = yNow
-            this[i + Shape.X_ACC] = 0f
-            this[i + Shape.Y_ACC] = gravity
+            val xNow = this[i + X]
+            val yNow = this[i + Y]
+            this[i + X] += (xNow - this[i + X_LAST]) * drag + this[i + X_ACC]
+            this[i + Y] += (yNow - this[i + Y_LAST]) * drag + this[i + Y_ACC]
+            this[i + X_LAST] = xNow
+            this[i + Y_LAST] = yNow
+            this[i + X_ACC] = 0f
+            this[i + Y_ACC] = gravity
         }
     }
 
     private fun updateConstraints()
     {
         val points = shape.points
-        shape.forEachConstraint { i ->
-            val p0 = this[i + Shape.POINT_0].toInt() * Shape.N_POINT_FIELDS
-            val p1 = this[i + Shape.POINT_1].toInt() * Shape.N_POINT_FIELDS
-            val stiffness = this[i + Shape.STIFFNESS]
-            val xDelta = points[p0 + Shape.X] - points[p1 + Shape.X]
-            val yDelta = points[p0 + Shape.Y] - points[p1 + Shape.Y]
+        shape.forEachStickConstraint { i ->
+            val p0 = this[i + POINT_0].toInt() * N_POINT_FIELDS
+            val p1 = this[i + POINT_1].toInt() * N_POINT_FIELDS
+            val stiffness = this[i + STIFFNESS]
+            val xDelta = points[p0 + X] - points[p1 + X]
+            val yDelta = points[p0 + Y] - points[p1 + Y]
             val actualLength = sqrt(xDelta * xDelta + yDelta * yDelta)
-            val targetLength = this[i + Shape.LENGTH]
+            val targetLength = this[i + LENGTH]
             val deltaLength = (targetLength - actualLength) * 0.5f * stiffness
             val xChange = (xDelta / actualLength) * deltaLength
             val yChange = (yDelta / actualLength) * deltaLength
 
             // Move point positions
-            points[p0 + Shape.X] += xChange
-            points[p0 + Shape.Y] += yChange
-            points[p1 + Shape.X] -= xChange
-            points[p1 + Shape.Y] -= yChange
+            points[p0 + X] += xChange
+            points[p0 + Y] += yChange
+            points[p1 + X] -= xChange
+            points[p1 + Y] -= yChange
         }
     }
 
@@ -93,8 +107,8 @@ interface RigidBody : Body
         {
             // Kill momentum
             shape.forEachPoint { i ->
-                this[i + Shape.X_LAST] = this[i + Shape.X]
-                this[i + Shape.Y_LAST] = this[i + Shape.Y]
+                this[i + X_LAST] = this[i + X]
+                this[i + Y_LAST] = this[i + Y]
             }
         }
 
@@ -144,13 +158,13 @@ interface RigidBody : Body
             surface.setDrawColor(1f, 1f, 1f)
 
         val points = shape.points
-        shape.forEachConstraint { i ->
-            val p0 = this[i + Shape.POINT_0].toInt() * Shape.N_POINT_FIELDS
-            val p1 = this[i + Shape.POINT_1].toInt() * Shape.N_POINT_FIELDS
-            val x0 = points[p0 + Shape.X]
-            val y0 = points[p0 + Shape.Y]
-            val x1 = points[p1 + Shape.X]
-            val y1 = points[p1 + Shape.Y]
+        shape.forEachStickConstraint { i ->
+            val p0 = this[i + POINT_0].toInt() * N_POINT_FIELDS
+            val p1 = this[i + POINT_1].toInt() * N_POINT_FIELDS
+            val x0 = points[p0 + X]
+            val y0 = points[p0 + Y]
+            val x1 = points[p1 + X]
+            val y1 = points[p1 + Y]
 
             surface.setDrawColor(1f, 1f, 1f)
             surface.drawQuad(x0 - 5f, y0 - 5f, 10f, 10f)
@@ -159,6 +173,16 @@ interface RigidBody : Body
         }
     }
 
-    // Default implementation
+    fun onBodyUpdated(xCenter: Float, yCenter: Float, xCenterLast: Float, yCenterLast: Float, angle: Float)
+    {
+        if (this is SceneEntity)
+        {
+            x = xCenter
+            y = yCenter
+            rotation = angle
+            set(SceneEntity.POSITION_UPDATED or SceneEntity.ROTATION_UPDATED)
+        }
+    }
+
     override fun onCollision(engine: PulseEngine, otherEntity: SceneEntity, result: CollisionResult) { }
 }

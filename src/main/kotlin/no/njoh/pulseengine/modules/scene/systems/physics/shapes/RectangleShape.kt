@@ -4,11 +4,12 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-open class RectangleShape : ConvexPolygonShape()
+class RectangleShape : ConvexPolygonShape()
 {
-    override val nBoundaryPoints = 4
-    override var points = FloatArray(N_POINT_FIELDS * 4) // 4 points, one for each corner
-    override var constraints = FloatArray(N_CONSTRAINT_FIELDS * 6) // 6 constrains
+    override val nBoundaryPoints = 4  // 4 points, one for each corner
+    override val nStickConstraints = 6 // 4 edge sticks and 2 crossover sticks
+    override var points = FloatArray(N_POINT_FIELDS * nBoundaryPoints)
+    override var constraints = FloatArray(nStickConstraints * N_STICK_CONSTRAINT_FIELDS)
 
     override fun build(x: Float, y: Float, width: Float, height: Float, rot: Float)
     {
@@ -28,13 +29,13 @@ open class RectangleShape : ConvexPolygonShape()
         setPoint(2, x - x0, y - y0) // Bottom, Right
         setPoint(3, x - x1, y - y1) // Bottom, Left
 
-        // Set all point constrains
-        setConstraint(0, 0, 1, 1f)
-        setConstraint(1, 1, 2, 1f)
-        setConstraint(2, 2, 3, 1f)
-        setConstraint(3, 3, 0, 1f)
-        setConstraint(4, 0, 2, 1f)
-        setConstraint(5, 1, 3, 1f)
+        // Set all stick constrains
+        setStickConstraint(0, 0, 1, 1f)
+        setStickConstraint(1, 1, 2, 1f)
+        setStickConstraint(2, 2, 3, 1f)
+        setStickConstraint(3, 3, 0, 1f)
+        setStickConstraint(4, 0, 2, 1f)
+        setStickConstraint(5, 1, 3, 1f)
 
         // Update position, rotation and bounding box
         recalculateBoundingBox()
