@@ -167,8 +167,8 @@ interface RigidBody : Body
             val y1 = points[p1 + Y]
 
             surface.setDrawColor(1f, 1f, 1f)
-            surface.drawQuad(x0 - 5f, y0 - 5f, 10f, 10f)
-            surface.drawQuad(x1 - 5f, y1 - 5f, 10f, 10f)
+            surface.drawQuad(x0 - 2f, y0 - 2f, 4f, 4f)
+            surface.drawQuad(x1 - 2f, y1 - 2f, 4f, 4f)
             surface.drawLine(x0, y0, x1, y1)
         }
     }

@@ -38,6 +38,7 @@ class SpatialGrid (
     private val cornerPositions = FloatArray(8)
     private val emptyClusterArray = emptyArray<Node?>()
     private lateinit var scanRanges: IntArray
+    var drawGrid = false
 
     init { recalculate() }
 
@@ -440,8 +441,15 @@ class SpatialGrid (
 
     fun render(surface: Surface2D)
     {
-        if (!draw)
+        if (!drawGrid)
             return
+
+        val width = xCells * cellSize
+        val height = yCells * cellSize
+
+        // Background rectangle
+        surface.setDrawColor(1f, 1f, 1f, 0.3f)
+        surface.drawQuad(xOffset, yOffset, width, height)
 
         for (y in 0 until yCells)
         {
@@ -450,36 +458,40 @@ class SpatialGrid (
                 var node = array[x, y]
                 if (node != null)
                 {
-                    surface.setDrawColor(1f, 1f, 1f, 0.2f)
-                    surface.drawQuad(x * cellSize + xOffset, y * cellSize + yOffset, cellSize, cellSize)
-
                     var count = 0
                     while (node != null)
                     {
-                        if (node.cluster != null)
-                            surface.setDrawColor(1f, 0f, 0f, 0.8f)
-                        else
-                            surface.setDrawColor(1f, 1f, 1f, 0.8f)
-
-                        surface.drawQuad(x * cellSize + xOffset + 10, y * cellSize + yOffset + 10 + 20 * count, 15f, 15f)
-
                         node = node.next
                         count++
                     }
+
+                    val xPos = x * cellSize + xOffset
+                    val yPos = y * cellSize + yOffset
+
+                    // Entity count text
+                    surface.setDrawColor(1f, 1f, 1f, 1f)
+                    surface.drawText(count.toString(), xPos + 10f, yPos + 10f, fontSize = 30f)
+
+                    // Cell quad
+                    surface.setDrawColor(1f, 1f, 1f, 0.3f)
+                    surface.drawQuad(xPos, yPos, cellSize, cellSize)
+
+                    // Cell stroke
+                    surface.setDrawColor(1f, 1f, 1f, 0.7f)
+                    surface.drawLine(xPos, yPos, xPos + cellSize, yPos)
+                    surface.drawLine(xPos, yPos + cellSize, xPos + cellSize, yPos + cellSize)
+                    surface.drawLine(xPos, yPos, xPos, yPos + cellSize)
+                    surface.drawLine(xPos + cellSize, yPos, xPos + cellSize, yPos + cellSize)
                 }
             }
         }
 
-        surface.setDrawColor(1f, 1f, 1f, 0.5f)
-
-        val width = xCells * cellSize
-        val height = yCells * cellSize
-
-        for (x in 0 until xCells + 1)
-            surface.drawLine(xOffset + x * cellSize, yOffset, xOffset + x * cellSize, yOffset + height)
-
-        for (y in 0 until yCells + 1)
-            surface.drawLine(xOffset, yOffset + y * cellSize, xOffset + width, yOffset + y * cellSize)
+        // Border stroke
+        surface.setDrawColor(1f, 1f, 1f, 0.8f)
+        surface.drawLine(xOffset, yOffset, xOffset + width, yOffset)
+        surface.drawLine(xOffset, yOffset + height, xOffset + width, yOffset + height)
+        surface.drawLine(xOffset, yOffset, xOffset, yOffset + height)
+        surface.drawLine(xOffset + width, yOffset, xOffset + width, yOffset + height)
     }
 
     fun clear()
@@ -511,7 +523,6 @@ class SpatialGrid (
 
     companion object
     {
-        var draw = false
         var iterationNumber = 1L
     }
 }

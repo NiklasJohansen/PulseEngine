@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.modules.scene.systems.default
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.modules.scene.Scene
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.widgets.sceneEditor.Name
 import no.njoh.pulseengine.widgets.sceneEditor.ValueRange
@@ -24,6 +23,8 @@ class SpatialGridConfigurer : SceneSystem()
     @ValueRange(0f, 1f)
     var percentageToUpdatePerFrame = 0.2f
 
+    var drawGrid = false
+
     override fun onUpdate(engine: PulseEngine)
     {
         val spatialGrid = engine.scene.activeScene.spatialGrid
@@ -32,13 +33,15 @@ class SpatialGridConfigurer : SceneSystem()
             minBorderSize != spatialGrid.minBorderSize ||
             maxWidth != spatialGrid.maxWidth ||
             maxHeight != spatialGrid.maxHeight ||
-            percentageToUpdatePerFrame != spatialGrid.percentageToUpdatePerFrame
+            percentageToUpdatePerFrame != spatialGrid.percentageToUpdatePerFrame ||
+            drawGrid != spatialGrid.drawGrid
         ) {
             spatialGrid.cellSize = cellSize
             spatialGrid.minBorderSize = minBorderSize
             spatialGrid.maxWidth = maxWidth
             spatialGrid.maxHeight = maxHeight
             spatialGrid.percentageToUpdatePerFrame = percentageToUpdatePerFrame
+            spatialGrid.drawGrid = drawGrid
             spatialGrid.recalculate()
         }
     }

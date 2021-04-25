@@ -17,7 +17,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
     override lateinit var mainSurface: EngineSurface2D
     private lateinit var renderer: FrameTextureRenderer
 
-    private var zOrder = 0
+    private var zOrder = 10
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
@@ -25,7 +25,6 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
         mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = Surface2DImpl.create("main", zOrder++, 100, graphicState, mainCamera)
-        mainSurface.setBackgroundColor(0.043f, 0.047f, 0.054f, 1f)
         surfaces.add(mainSurface)
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
@@ -86,6 +85,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
         // Prepare OpenGL for rendering FBO textures
         glDisable(GL_DEPTH_TEST)
+        glClearColor(0.043f, 0.047f, 0.054f, 0f)
         glClear(GL_COLOR_BUFFER_BIT)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)

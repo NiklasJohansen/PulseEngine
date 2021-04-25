@@ -50,6 +50,7 @@ class SceneEditor: Widget
     private lateinit var screenArea: FocusArea
     private lateinit var dragAndDropArea: FocusArea
     private var entityPropertyUiRows = mutableMapOf<String, UiElement>()
+    private var showGrid = true
 
     // Camera
     private val cameraController = Camera2DController(Mouse.MIDDLE)
@@ -109,7 +110,10 @@ class SceneEditor: Widget
         lastSaveLoadDirectory = engine.data.saveDirectory
 
         // Create separate render surface for editor UI
-        engine.gfx.createSurface2D("sceneEditorSurface")
+        engine.gfx.createSurface2D("sceneEditorForegroundSurface")
+
+        // Background surface for grid
+        engine.gfx.createSurface2D("sceneEditorBackgroundSurface", zOrder = 0, camera = activeCamera)
 
         // Register a console command to toggle editor visibility
         engine.console.registerCommand("showSceneEditor") {
@@ -145,10 +149,12 @@ class SceneEditor: Widget
                 MenuBarItem("Entity properties") { createEntityPropertyWindow() },
                 MenuBarItem("Scene assets") { createAssetWindow(engine) },
                 MenuBarItem("Scene systems") { createSceneSystemsPropertyWindow(engine) },
-                MenuBarItem("Spatial index") { SpatialGrid.draw = !SpatialGrid.draw },
+                MenuBarItem("Grid") {
+                    showGrid = !showGrid
+                },
                 MenuBarItem("Reset") {
                     createSceneEditorUI(engine)
-                    SpatialGrid.draw = false
+                    showGrid = true
                     storedCameraState.apply { reset() }.loadInto(engine.gfx.mainCamera)
                 }
             )),
@@ -256,9 +262,6 @@ class SceneEditor: Widget
             }
         }
 
-        if (engine.input.wasClicked(Key.G))
-            SpatialGrid.draw = !SpatialGrid.draw
-
         changeToType?.let {
             handleEntityTypeChanged(engine.scene.activeScene, it)
             changeToType = null
@@ -286,11 +289,14 @@ class SceneEditor: Widget
 
     override fun onRender(engine: PulseEngine)
     {
-        val uiSurface = engine.gfx.getSurface2D("sceneEditorSurface")
+        if (showGrid)
+            renderGrid(engine.gfx.getSurface2D("sceneEditorBackgroundSurface"))
+
+        val foregroundSurface = engine.gfx.getSurface2D("sceneEditorForegroundSurface")
         val showResizeDots = (entitySelection.size == 1)
-        entitySelection.forEach { it.renderGizmo(uiSurface, showResizeDots) }
-        renderSelectionRectangle(uiSurface)
-        rootUI.render(uiSurface)
+        entitySelection.forEach { it.renderGizmo(foregroundSurface, showResizeDots) }
+        renderSelectionRectangle(foregroundSurface)
+        rootUI.render(foregroundSurface)
     }
 
     private fun onSaveAs(engine: PulseEngine)
@@ -835,6 +841,36 @@ class SceneEditor: Widget
                 surface.drawQuad(pos.x + w - halfSize, pos.y + h - halfSize, size, size)
             }
         }
+    }
+
+    private fun renderGrid(surface: Surface2D)
+    {
+        val cellSize = 200
+        val xStart = (activeCamera.topLeftWorldPosition.x.toInt() / cellSize - 2) * cellSize
+        val yStart = (activeCamera.topLeftWorldPosition.y.toInt() / cellSize - 2) * cellSize
+        val xEnd = (activeCamera.bottomRightWorldPosition.x.toInt() / cellSize + 1) * cellSize
+        val yEnd = (activeCamera.bottomRightWorldPosition.y.toInt() / cellSize + 1) * cellSize
+
+        val middleLineSize = 2f / activeCamera.xScale
+        val color = (activeCamera.xScale + 0.2f).coerceIn(0.1f, 0.4f)
+
+        surface.setDrawColor(1f, 1f, 1f, color + 0.1f)
+        for (x in xStart until xEnd step cellSize)
+            if (x != 0 && x % 3 == 0) surface.drawLine(x.toFloat(), yStart.toFloat(), x.toFloat(), yEnd.toFloat())
+
+        for (y in yStart until yEnd step cellSize)
+            if (y != 0 && y % 3 == 0) surface.drawLine(xStart.toFloat(), y.toFloat(), xEnd.toFloat(), y.toFloat())
+
+        surface.setDrawColor(1f, 1f, 1f, color)
+        for (x in xStart until xEnd step cellSize)
+            if (x != 0 && x % 3 != 0) surface.drawLine(x.toFloat(), yStart.toFloat(), x.toFloat(), yEnd.toFloat())
+
+        for (y in yStart until yEnd step cellSize)
+            if (y != 0 && y % 3 != 0) surface.drawLine(xStart.toFloat(), y.toFloat(), xEnd.toFloat(), y.toFloat())
+
+        surface.setDrawColor(1f, 1f, 1f, color + 0.2f)
+        surface.drawTexture(Texture.BLANK, -middleLineSize, yStart.toFloat(), middleLineSize, (yEnd - yStart).toFloat())
+        surface.drawTexture(Texture.BLANK, xStart.toFloat(), -middleLineSize, (xEnd - xStart).toFloat(), middleLineSize)
     }
 
     ////////////////////////////// UTILS //////////////////////////////
