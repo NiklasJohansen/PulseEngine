@@ -28,14 +28,14 @@ class ChamferedRectangleShape(
     {
         val w = width / 2
         val h = height / 2
-        setPoint(0, x - w * widthFraction, y - h)
-        setPoint(1, x + w * widthFraction, y - h)
-        setPoint(2, x + w, y - h * heightFraction)
-        setPoint(3, x + w, y + h * heightFraction)
-        setPoint(4, x + w * widthFraction, y + h)
-        setPoint(5, x - w * widthFraction, y + h)
-        setPoint(6, x - w, y + h * heightFraction)
-        setPoint(7, x - w, y - h * heightFraction)
+        setPoint(0, x - w, y - h * heightFraction)
+        setPoint(1, x - w, y + h * heightFraction)
+        setPoint(2, x - w * widthFraction, y + h)
+        setPoint(3, x + w * widthFraction, y + h)
+        setPoint(4, x + w, y + h * heightFraction)
+        setPoint(5, x + w, y - h * heightFraction)
+        setPoint(6, x + w * widthFraction, y - h)
+        setPoint(7, x - w * widthFraction, y - h)
 
         // Create stick constrains
         var count = 0

@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.scene.systems.physics
 
+import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.DYNAMIC
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.STATIC
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.Body
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.PointBody
@@ -376,6 +377,13 @@ object BodyInteraction
 
             // Wake up body
             pointBody.shape.isSleeping = false
+        }
+
+        if (pointBody.bodyType == STATIC && edgeBody.bodyType == DYNAMIC)
+        {
+            // Flip normal if only edge body moved
+            xNormal = 0f - xNormal
+            yNormal = 0f - yNormal
         }
 
         return result.set(
