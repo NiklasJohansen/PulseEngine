@@ -61,8 +61,7 @@ interface PointBody : Body
             {
                 BodyInteraction.detectAndResolve(this, it)?.let { result ->
                     onCollision(engine, it, result)
-                    if (this is SceneEntity)
-                        it.onCollision(engine, this, result)
+                    it.onCollision(engine, this, result)
                 }
             }
         }
@@ -111,5 +110,5 @@ interface PointBody : Body
 
     override fun getPointCount() = 1
 
-    override fun onCollision(engine: PulseEngine, otherEntity: SceneEntity, result: CollisionResult) { }
+    override fun onCollision(engine: PulseEngine, otherBody: Body, result: CollisionResult) { }
 }

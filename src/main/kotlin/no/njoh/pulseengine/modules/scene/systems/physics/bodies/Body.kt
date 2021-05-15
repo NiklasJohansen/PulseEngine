@@ -42,7 +42,7 @@ interface Body
     /**
      * Called when two bodies collide.
      */
-    fun onCollision(engine: PulseEngine, otherEntity: SceneEntity, result: CollisionResult)
+    fun onCollision(engine: PulseEngine, otherBody: Body, result: CollisionResult)
 
     /**
      * Returns true if the axis aligned bounding boxes of two bodies intersect.
