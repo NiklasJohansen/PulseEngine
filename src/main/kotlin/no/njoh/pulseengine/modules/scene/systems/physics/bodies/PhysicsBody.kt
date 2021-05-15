@@ -14,6 +14,12 @@ interface PhysicsBody
     var drag: Float
     var mass: Float
 
+    /** Bit mask where each bit represents a collision layer this body can be part of. */
+    var layerMask: Int
+
+    /** Bit mask where each bit represents a collision layer this body can collide with. */
+    var collisionMask: Int
+
     /**
      * Called once when the physics system starts.
      */

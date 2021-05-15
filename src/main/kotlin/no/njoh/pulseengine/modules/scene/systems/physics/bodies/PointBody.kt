@@ -59,8 +59,11 @@ interface PointBody : PhysicsBody
 
         engine.scene.forEachNearbyEntity(x, y, xVel * 2, yVel * 2)
         {
-            if (it !== this && it is PhysicsBody && it.hasOverlappingAABB(xMin, yMin, xMax, yMax))
-            {
+            if (it !== this &&
+                it is PhysicsBody &&
+                it.layerMask and this.collisionMask != 0 &&
+                it.hasOverlappingAABB(xMin, yMin, xMax, yMax)
+            ) {
                 ContactSolver.solve(this, it)?.let { result ->
                     onCollision(engine, it, result)
                     it.onCollision(engine, this, result)

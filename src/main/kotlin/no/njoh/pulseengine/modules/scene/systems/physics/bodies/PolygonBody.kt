@@ -138,8 +138,11 @@ interface PolygonBody : PhysicsBody
 
         engine.scene.forEachNearbyEntity(shape.xCenter, shape.yCenter, xMax - xMin, yMax - yMin)
         {
-            if (it !== this && it is PhysicsBody && it.hasOverlappingAABB(xMin, yMin, xMax, yMax))
-            {
+            if (it !== this &&
+                it is PhysicsBody &&
+                it.layerMask and this.collisionMask != 0 &&
+                it.hasOverlappingAABB(xMin, yMin, xMax, yMax)
+            ) {
                 ContactSolver.solve(this, it)?.let { result ->
                     onCollision(engine, it, result)
                     it.onCollision(engine, this, result)
@@ -151,10 +154,10 @@ interface PolygonBody : PhysicsBody
 
     fun updateWorldConstraint(worldWidth: Int, worldHeight: Int)
     {
-        if (shape.xCenter < -worldWidth / 2f ||
-            shape.xCenter > worldWidth / 2f ||
-            shape.yCenter < -worldHeight / 2f ||
-            shape.yCenter > worldHeight / 2f
+        if (shape.xCenter < -worldWidth * 0.5f ||
+            shape.xCenter > worldWidth * 0.5f ||
+            shape.yCenter < -worldHeight * 0.5f ||
+            shape.yCenter > worldHeight * 0.5f
         ) {
             bodyType = STATIC
         }
