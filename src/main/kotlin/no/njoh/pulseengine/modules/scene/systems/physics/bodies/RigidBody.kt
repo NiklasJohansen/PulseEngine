@@ -20,6 +20,7 @@ import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y_ACC
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y_LAST
+import org.joml.Vector2f
 import kotlin.math.*
 
 interface RigidBody : Body
@@ -35,32 +36,41 @@ interface RigidBody : Body
         }
     }
 
-    override fun update(engine: PulseEngine, spatialGrid: SpatialGrid, gravity: Float, physicsIterations: Int, worldWidth: Int, worldHeight: Int)
+    override fun beginStep(timeStep: Float, gravity: Float)
     {
-        if (bodyType != BodyType.DYNAMIC || shape.isSleeping)
+        if (shape.isSleeping)
             return
 
-        updateTransform(gravity)
-
-        for (i in 0 until physicsIterations)
-        {
-            updateConstraints()
-            updateCollisions(engine, spatialGrid)
-        }
-
-        updateCenterAndRotation()
-        updateSleepState()
-        updateWorldConstraint(worldWidth, worldHeight)
+        updateTransform(timeStep, gravity)
     }
 
-    private fun updateTransform(gravity: Float)
+    override fun iterateStep(iteration: Int, totalIterations: Int, engine: PulseEngine, worldWidth: Int, worldHeight: Int)
+    {
+        if (shape.isSleeping)
+            return
+
+        updateConstraints()
+        updateCollisions(engine)
+        updateWorldConstraint(worldWidth, worldHeight)
+
+        // Last iteration
+        if (iteration == totalIterations - 1)
+        {
+            updateCenterAndRotation()
+            updateSleepState()
+            onBodyUpdated(shape.xCenter, shape.yCenter, shape.xCenterLast, shape.yCenterLast, shape.angle)
+        }
+    }
+
+    private fun updateTransform(timeStep: Float, gravity: Float)
     {
         val drag = 1f - drag
+        val ts = timeStep * timeStep
         shape.forEachPoint { i ->
             val xNow = this[i + X]
             val yNow = this[i + Y]
-            this[i + X] += (xNow - this[i + X_LAST]) * drag + this[i + X_ACC]
-            this[i + Y] += (yNow - this[i + Y_LAST]) * drag + this[i + Y_ACC]
+            this[i + X] += (xNow - this[i + X_LAST]) * drag + this[i + X_ACC] * ts
+            this[i + Y] += (yNow - this[i + Y_LAST]) * drag + this[i + Y_ACC] * ts
             this[i + X_LAST] = xNow
             this[i + Y_LAST] = yNow
             this[i + X_ACC] = 0f
@@ -95,7 +105,6 @@ interface RigidBody : Body
     {
         shape.recalculateBoundingBox()
         shape.recalculateRotation()
-        onBodyUpdated(shape.xCenter, shape.yCenter, shape.xCenterLast, shape.yCenterLast, shape.angle)
     }
 
     private fun updateSleepState()
@@ -116,24 +125,21 @@ interface RigidBody : Body
         shape.sleepCount++
     }
 
-    private fun updateCollisions(engine: PulseEngine, spatialGrid: SpatialGrid)
+    private fun updateCollisions(engine: PulseEngine)
     {
         val xMin = shape.xMin
         val xMax = shape.xMax
         val yMin = shape.yMin
         val yMax = shape.yMax
 
-        spatialGrid.query(shape.xCenter, shape.yCenter, xMax - xMin, yMax - yMin)
+        engine.scene.forEachNearbyEntity(shape.xCenter, shape.yCenter, xMax - xMin, yMax - yMin)
         {
-            if (it is RigidBody && it.shape !== shape)
+            if (it !== this && it is Body && it.hasOverlappingAABB(xMin, yMin, xMax, yMax))
             {
-                if (xMin < it.shape.xMax && xMax > it.shape.xMin && yMin < it.shape.yMax && yMax > it.shape.yMin)
-                {
-                    BodyInteraction.detectAndResolve(this, it)?.let { result ->
-                        onCollision(engine, it, result)
-                        if (this is SceneEntity)
-                            it.onCollision(engine, this, result)
-                    }
+                BodyInteraction.detectAndResolve(this, it)?.let { result ->
+                    onCollision(engine, it, result)
+                    if (this is SceneEntity)
+                        it.onCollision(engine, this, result)
                 }
             }
         }
@@ -171,6 +177,13 @@ interface RigidBody : Body
             surface.drawQuad(x1 - 2f, y1 - 2f, 4f, 4f)
             surface.drawLine(x0, y0, x1, y1)
         }
+
+        shape.forEachPoint { i ->
+            val x0 = points[i + X]
+            val y0 = points[i + Y]
+            surface.setDrawColor(1f, 0f, 0f)
+            surface.drawText("${i / N_POINT_FIELDS}", x0 - 10, y0 - 10, fontSize = 50f)
+        }
     }
 
     fun onBodyUpdated(xCenter: Float, yCenter: Float, xCenterLast: Float, yCenterLast: Float, angle: Float)
@@ -183,6 +196,27 @@ interface RigidBody : Body
             set(SceneEntity.POSITION_UPDATED or SceneEntity.ROTATION_UPDATED)
         }
     }
+
+    override fun hasOverlappingAABB(xMin: Float, yMin: Float, xMax: Float, yMax: Float): Boolean
+    {
+        val shape = shape
+        return xMin < shape.xMax && xMax > shape.xMin && yMin < shape.yMax && yMax > shape.yMin
+    }
+
+    override fun setPoint(index: Int, x: Float, y: Float)
+    {
+        if (index >= 0 && index * N_POINT_FIELDS < shape.points.size)
+        {
+            shape.points[index * N_POINT_FIELDS + X] = x
+            shape.points[index * N_POINT_FIELDS + Y] = y
+        }
+    }
+
+    override fun getPoint(index: Int): Vector2f? =
+        if (index < 0 || index * N_POINT_FIELDS >= shape.points.size) null
+        else Shape.reusableVector.set(shape.points[index * N_POINT_FIELDS + X], shape.points[index * N_POINT_FIELDS + Y])
+
+    override fun getPointCount() = shape.points.size / N_POINT_FIELDS
 
     override fun onCollision(engine: PulseEngine, otherEntity: SceneEntity, result: CollisionResult) { }
 }

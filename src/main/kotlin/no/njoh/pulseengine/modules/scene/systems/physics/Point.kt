@@ -1,5 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems.physics
 
+import org.joml.Vector2f
+
 data class Point(
     // Current position
     var x: Float = 0f,
@@ -20,4 +22,6 @@ data class Point(
     // Acceleration
     var xAcc: Float = 0f,
     var yAcc: Float = 0f
-)
+) {
+    companion object { val reusableVector = Vector2f() }
+}

@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
 import no.njoh.pulseengine.util.MathUtil.atan2
+import org.joml.Vector2f
 import kotlin.math.PI
 import kotlin.math.sqrt
 
@@ -181,5 +182,7 @@ abstract class Shape
         const val LENGTH = 2
         const val STIFFNESS = 3
         const val N_STICK_CONSTRAINT_FIELDS = 4
+
+        val reusableVector = Vector2f()
     }
 }

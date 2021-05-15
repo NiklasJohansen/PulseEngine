@@ -47,7 +47,7 @@ abstract class SceneManager
     fun getEntity(id: Long): SceneEntity? =
         activeScene.entityIdMap[id]
 
-    inline fun <reified T: SceneEntity> getEntityOfType(id: Long): T? =
+    inline fun <reified T> getEntityOfType(id: Long): T? =
         activeScene.entityIdMap[id] as? T?
 
     inline fun <reified T: SceneEntity> getFirstEntityOfType(): T? =

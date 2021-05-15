@@ -7,16 +7,14 @@ import no.njoh.pulseengine.data.Mouse
 import no.njoh.pulseengine.data.SceneState.RUNNING
 import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
+import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.DYNAMIC
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.Body
-import no.njoh.pulseengine.modules.scene.systems.physics.bodies.RigidBody
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape
 import no.njoh.pulseengine.util.forEachFast
-import no.njoh.pulseengine.util.forEachReversed
 import no.njoh.pulseengine.widgets.sceneEditor.ValueRange
 
 class PhysicsSystem : SceneSystem()
 {
-    var gravity = 0.6f
+    var gravity = 1500f
     var drawShapes = false
     var mouseInteraction = false
 
@@ -27,16 +25,13 @@ class PhysicsSystem : SceneSystem()
     var worldHeight = 100_000
 
     @ValueRange(0f, 50f)
-    var physicsIterations = 2
+    var physicsIterations = 4
 
     @JsonIgnore
-    private var pickedShape: Shape? = null
+    private var pickedBody: Body? = null
 
     @JsonIgnore
     private var pickedPointIndex = 0
-
-    @JsonIgnore
-    private var reversedUpdateOrder = false
 
     override fun onStart(engine: PulseEngine)
     {
@@ -48,13 +43,11 @@ class PhysicsSystem : SceneSystem()
         if (engine.scene.state != RUNNING)
             return
 
-        val spatialGrid = engine.scene.activeScene.spatialGrid
-        if (reversedUpdateOrder)
-            engine.scene.forEachBodyReversed { it.update(engine, spatialGrid, gravity, physicsIterations, worldWidth, worldHeight) }
-        else
-            engine.scene.forEachBody { it.update(engine, spatialGrid, gravity, physicsIterations, worldWidth, worldHeight) }
+        engine.scene.forEachDynamicBody { it.beginStep(engine.data.fixedDeltaTime, gravity) }
 
-        reversedUpdateOrder = !reversedUpdateOrder
+        val totalIterations = physicsIterations
+        for (i in 0 until totalIterations)
+            engine.scene.forEachDynamicBody { it.iterateStep(i, totalIterations, engine, worldWidth, worldHeight) }
 
         if (mouseInteraction)
             pickBody(engine)
@@ -79,36 +72,32 @@ class PhysicsSystem : SceneSystem()
     {
         if (!engine.input.isPressed(Mouse.LEFT))
         {
-            pickedShape = null
+            pickedBody = null
             return
         }
-        else if (pickedShape != null)
+        else if (pickedBody != null)
         {
-            pickedShape!!.points[pickedPointIndex + Shape.X] = engine.input.xWorldMouse
-            pickedShape!!.points[pickedPointIndex + Shape.Y] = engine.input.yWorldMouse
-            pickedShape!!.isSleeping = false
+            pickedBody!!.setPoint(pickedPointIndex, engine.input.xWorldMouse, engine.input.yWorldMouse)
             return
         }
 
+        val minDist = 40f * 40f
         val xMouse = engine.input.xWorldMouse
         val yMouse = engine.input.yWorldMouse
-        val minDist = 40f * 40f
-
-        engine.scene.forEachNearbyEntityOfType<RigidBody>(xMouse, yMouse, 500f, 500f)
+        engine.scene.forEachNearbyEntityOfType<Body>(xMouse, yMouse, 500f, 500f)
         {
-            it.shape.forEachPoint { i ->
-                val xPoint = this[i + Shape.X]
-                val yPoint = this[i + Shape.Y]
-                val xDelta = xPoint - xMouse
-                val yDelta = yPoint - yMouse
-                val dist = xDelta * xDelta + yDelta * yDelta
-                if (dist < minDist)
-                {
-                    pickedPointIndex = i
-                    pickedShape = it.shape
-                    this[i + Shape.X] = xMouse
-                    this[i + Shape.Y] = yMouse
-                    return
+            for (i in 0 until it.getPointCount())
+            {
+                it.getPoint(i)?.let { point ->
+                    val xDelta = point.x - xMouse
+                    val yDelta = point.y - yMouse
+                    val dist = xDelta * xDelta + yDelta * yDelta
+                    if (dist < minDist)
+                    {
+                        pickedPointIndex = i
+                        pickedBody = it
+                        return
+                    }
                 }
             }
         }
@@ -122,11 +111,15 @@ class PhysicsSystem : SceneSystem()
         }
     }
 
-    private inline fun SceneManager.forEachBodyReversed(block: (body: Body) -> Unit)
+    private inline fun SceneManager.forEachDynamicBody(block: (body: Body) -> Unit)
     {
-        activeScene.entities.forEachReversed { entities ->
+        activeScene.entities.forEachFast { entities ->
             if (entities.isNotEmpty() && entities[0] is Body)
-                entities.forEachReversed { block(it as Body) }
+                entities.forEachFast {
+                    it as Body
+                    if (it.bodyType == DYNAMIC)
+                        block(it)
+                }
         }
     }
 }
