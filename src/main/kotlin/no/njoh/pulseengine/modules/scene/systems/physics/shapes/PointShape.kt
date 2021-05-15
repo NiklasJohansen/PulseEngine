@@ -1,8 +1,8 @@
-package no.njoh.pulseengine.modules.scene.systems.physics
+package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
 import org.joml.Vector2f
 
-data class Point(
+data class PointShape(
     // Current position
     var x: Float = 0f,
     var y: Float = 0f,
@@ -23,5 +23,8 @@ data class Point(
     var xAcc: Float = 0f,
     var yAcc: Float = 0f
 ) {
-    companion object { val reusableVector = Vector2f() }
+    companion object
+    {
+        val reusableVector = Vector2f()
+    }
 }

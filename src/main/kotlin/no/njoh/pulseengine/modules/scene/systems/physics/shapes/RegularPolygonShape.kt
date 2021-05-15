@@ -2,10 +2,9 @@ package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
 import kotlin.math.PI
 import kotlin.math.cos
-import kotlin.math.min
 import kotlin.math.sin
 
-class RegularPolygonShape(edges: Int) : ConvexPolygonShape()
+class RegularPolygonShape(edges: Int) : PolygonShape()
 {
     override val nBoundaryPoints = edges
     override val nStickConstraints = (edges * (edges - 1) / 2)

@@ -5,7 +5,7 @@ import org.joml.Vector2f
 import kotlin.math.PI
 import kotlin.math.sqrt
 
-abstract class Shape
+abstract class PolygonShape
 {
     abstract val points: FloatArray // x, y, xLast, yLast, xAcc, yAcc
     abstract val constraints: FloatArray // index0, index1, length, stiffness
@@ -169,6 +169,7 @@ abstract class Shape
 
     companion object
     {
+        // Point indexes
         const val X = 0
         const val Y = 1
         const val X_LAST = 2
@@ -177,12 +178,18 @@ abstract class Shape
         const val Y_ACC = 5
         const val N_POINT_FIELDS = 6
 
+        // Stick constraint indexes
         const val POINT_0 = 0
         const val POINT_1 = 1
         const val LENGTH = 2
         const val STIFFNESS = 3
         const val N_STICK_CONSTRAINT_FIELDS = 4
 
+        // Number of physics steps a body has to be at rest before it's put to sleep
+        const val RESTING_STEPS_BEFORE_SLEEP = 90
+        const val RESTING_MIN_VEL = 0.2
+
+        // Cached vector object
         val reusableVector = Vector2f()
     }
 }

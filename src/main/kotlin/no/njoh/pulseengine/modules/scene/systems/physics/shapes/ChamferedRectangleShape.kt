@@ -17,7 +17,7 @@ class ChamferedRectangleShape(
     private var keepAxisAligned: Boolean = true,
     private val widthFraction: Float = 0.7f,
     private val heightFraction: Float = 0.8f
-) : ConvexPolygonShape() {
+) : PolygonShape() {
 
     override val nBoundaryPoints = 8
     override val nStickConstraints = (nBoundaryPoints * (nBoundaryPoints - 1) / 2)

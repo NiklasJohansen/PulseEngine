@@ -8,7 +8,7 @@ import no.njoh.pulseengine.data.SceneState.RUNNING
 import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.DYNAMIC
-import no.njoh.pulseengine.modules.scene.systems.physics.bodies.Body
+import no.njoh.pulseengine.modules.scene.systems.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.util.forEachFast
 import no.njoh.pulseengine.widgets.sceneEditor.ValueRange
 
@@ -28,7 +28,7 @@ class PhysicsSystem : SceneSystem()
     var physicsIterations = 4
 
     @JsonIgnore
-    private var pickedBody: Body? = null
+    private var pickedBody: PhysicsBody? = null
 
     @JsonIgnore
     private var pickedPointIndex = 0
@@ -84,7 +84,7 @@ class PhysicsSystem : SceneSystem()
         val minDist = 40f * 40f
         val xMouse = engine.input.xWorldMouse
         val yMouse = engine.input.yWorldMouse
-        engine.scene.forEachNearbyEntityOfType<Body>(xMouse, yMouse, 500f, 500f)
+        engine.scene.forEachNearbyEntityOfType<PhysicsBody>(xMouse, yMouse, 500f, 500f)
         {
             for (i in 0 until it.getPointCount())
             {
@@ -103,20 +103,20 @@ class PhysicsSystem : SceneSystem()
         }
     }
 
-    private inline fun SceneManager.forEachBody(block: (body: Body) -> Unit)
+    private inline fun SceneManager.forEachBody(block: (body: PhysicsBody) -> Unit)
     {
         activeScene.entities.forEachFast { entities ->
-            if (entities.isNotEmpty() && entities[0] is Body)
-                entities.forEachFast { block(it as Body) }
+            if (entities.isNotEmpty() && entities[0] is PhysicsBody)
+                entities.forEachFast { block(it as PhysicsBody) }
         }
     }
 
-    private inline fun SceneManager.forEachDynamicBody(block: (body: Body) -> Unit)
+    private inline fun SceneManager.forEachDynamicBody(block: (body: PhysicsBody) -> Unit)
     {
         activeScene.entities.forEachFast { entities ->
-            if (entities.isNotEmpty() && entities[0] is Body)
+            if (entities.isNotEmpty() && entities[0] is PhysicsBody)
                 entities.forEachFast {
-                    it as Body
+                    it as PhysicsBody
                     if (it.bodyType == DYNAMIC)
                         block(it)
                 }

@@ -2,12 +2,11 @@ package no.njoh.pulseengine.modules.scene.systems.physics.bodies
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
-import no.njoh.pulseengine.modules.scene.systems.physics.CollisionResult
+import no.njoh.pulseengine.modules.scene.systems.physics.ContactResult
 import org.joml.Vector2f
 
-interface Body
+interface PhysicsBody
 {
     var bodyType: BodyType
     var friction: Float

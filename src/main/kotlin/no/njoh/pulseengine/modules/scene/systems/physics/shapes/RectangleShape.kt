@@ -4,7 +4,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-class RectangleShape : ConvexPolygonShape()
+class RectangleShape : PolygonShape()
 {
     override val nBoundaryPoints = 4  // 4 points, one for each corner
     override val nStickConstraints = 6 // 4 edge sticks and 2 crossover sticks

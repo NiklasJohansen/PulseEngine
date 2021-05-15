@@ -3,12 +3,12 @@ package no.njoh.pulseengine.modules.scene.systems.physics
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.DYNAMIC
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.STATIC
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.*
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.ConvexPolygonShape
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.N_POINT_FIELDS
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.X
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.X_LAST
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y_LAST
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.CircleShape
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.N_POINT_FIELDS
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.X
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.X_LAST
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.Y
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.Y_LAST
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.MathUtil
 import no.njoh.pulseengine.util.MathUtil.getLineSegmentCircleIntersection
@@ -18,64 +18,51 @@ import no.njoh.pulseengine.util.MathUtil.pointToLineSegmentDistanceSquared
 import org.joml.Vector2f
 import kotlin.math.*
 
-object BodyInteraction
+object ContactSolver
 {
-    private val result = CollisionResult()
+    private val result = ContactResult()
     private val impulse = Vector2f(0f, 0f)
 
-    fun detectAndResolve(b1: Body, b2: Body): CollisionResult?
+    fun solve(b0: PhysicsBody, b1: PhysicsBody): ContactResult?
     {
-        when (b1)
+        when (b0)
         {
-            is RigidBody -> when (b2)
+            is PolygonBody -> when (b1)
             {
-                is RigidBody -> return rigidBodyOnRigidBodyCollision(b1, b2)
-                is PointBody -> return pointBodyOnRigidBodyCollision(b2, b1)
-                is CircleBody -> return circleOnPolygonCollision(b2, b1)
+                is PolygonBody -> return solvePolygonOnPolygon(b0, b1)
+                is PointBody -> return solvePointOnPolygon(b1, b0)
+                is CircleBody -> return solveCircleOnPolygon(b1, b0)
             }
-            is PointBody -> when (b2)
+            is PointBody -> when (b1)
             {
                 is PointBody -> return null
-                is RigidBody -> return pointBodyOnRigidBodyCollision(b1, b2)
-                is CircleBody -> return circleOnPointCollision(b2, b1)
+                is PolygonBody -> return solvePointOnPolygon(b0, b1)
+                is CircleBody -> return solveCircleOnPoint(b1, b0)
             }
-            is CircleBody -> when (b2)
+            is CircleBody -> when (b1)
             {
-                is RigidBody -> return circleOnPolygonCollision(b1, b2)
-                is PointBody -> return circleOnPointCollision(b1, b2)
-                is CircleBody -> return circleOnCircleCollision(b1, b2)
+                is PolygonBody -> return solveCircleOnPolygon(b0, b1)
+                is PointBody -> return solveCircleOnPoint(b0, b1)
+                is CircleBody -> return solveCircleOnCircle(b0, b1)
             }
         }
 
-        Logger.error("Missing body interaction between ${b1::class.simpleName} and ${b2::class.simpleName}")
+        Logger.error("Missing body interaction between ${b0::class.simpleName} and ${b1::class.simpleName}")
         return null
     }
 
-    private fun rigidBodyOnRigidBodyCollision(b1: RigidBody, b2: RigidBody): CollisionResult?
+    private fun solvePointOnPolygon(pointBody: PointBody, polygonBody: PolygonBody): ContactResult?
     {
-        when (b1.shape)
-        {
-            is ConvexPolygonShape -> when (b2.shape)
-            {
-                is ConvexPolygonShape -> return polygonOnPolygonCollision(b1, b2)
-            }
-        }
-
-        return null
-    }
-
-    private fun pointBodyOnRigidBodyCollision(pointBody: PointBody, rigidBody: RigidBody): CollisionResult?
-    {
-        val rbPoints = rigidBody.shape.points
-        val pbPoint = pointBody.point
+        val rbPoints = polygonBody.shape.points
+        val pbPoint = pointBody.shape
         val xPoint = pbPoint.x
         val yPoint = pbPoint.y
         val xPointLastActual = pbPoint.xLastActual
         val yPointLastActual = pbPoint.yLastActual
-        val indexOfLastBoundaryPoint = (rigidBody.shape.nBoundaryPoints - 1) * N_POINT_FIELDS
+        val indexOfLastBoundaryPoint = (polygonBody.shape.nBoundaryPoints - 1) * N_POINT_FIELDS
 
         // Both current and last position of point may be inside a moving body and line segment intersection is not enough
-        val currentAndLastPointIsInside = rigidBody.shape.isInside(xPoint, yPoint) && rigidBody.shape.isInside(xPointLastActual, yPointLastActual)
+        val currentAndLastPointIsInside = polygonBody.shape.isInside(xPoint, yPoint) && polygonBody.shape.isInside(xPointLastActual, yPointLastActual)
 
         // Find edge closest to point
         var edgePointIndex1 = -1
@@ -85,7 +72,7 @@ object BodyInteraction
         var xEdge0 = rbPoints[indexOfLastBoundaryPoint + X]
         var yEdge0 = rbPoints[indexOfLastBoundaryPoint + Y]
 
-        rigidBody.shape.forEachBoundaryPoint { i ->
+        polygonBody.shape.forEachBoundaryPoint { i ->
             val xEdge1 = this[i + X]
             val yEdge1 = this[i + Y]
 
@@ -136,11 +123,11 @@ object BodyInteraction
         val yResponse = yNormal * depth
 
         // Use the masses of the bodies to determine the ratio of position correction
-        val invMass= 1.0f / (rigidBody.mass + pointBody.mass)
-        val pointRatio = if (rigidBody.bodyType == STATIC) 1f else rigidBody.mass * invMass
+        val invMass= 1.0f / (polygonBody.mass + pointBody.mass)
+        val pointRatio = if (polygonBody.bodyType == STATIC) 1f else polygonBody.mass * invMass
         val bodyRatio = if (pointBody.bodyType == STATIC) 1f else pointBody.mass * invMass
 
-        if (rigidBody.bodyType != STATIC && bodyRatio != 0f)
+        if (polygonBody.bodyType != STATIC && bodyRatio != 0f)
         {
             // Calculate where on the edge the collision point lies (0.0 - 1.0). If-check prevents divide by zero.
             val t =
@@ -185,7 +172,7 @@ object BodyInteraction
             }
             else
             {
-                val friction = 1f - (rigidBody.friction * pointBody.friction)
+                val friction = 1f - (polygonBody.friction * pointBody.friction)
                 val xV = pbPoint.xVel * friction
                 val yV = pbPoint.yVel * friction
                 val vnDot = xV * xNormal + yV * yNormal
@@ -217,13 +204,13 @@ object BodyInteraction
         )
     }
 
-    private fun polygonOnPolygonCollision(aBody: RigidBody, bBody: RigidBody): CollisionResult?
+    private fun solvePolygonOnPolygon(aBody: PolygonBody, bBody: PolygonBody): ContactResult?
     {
         var depth = Float.MAX_VALUE
         var xNormal = 0f
         var yNormal = 0f
 
-        var edgeBody: RigidBody? = null
+        var edgeBody: PolygonBody? = null
         var edgePoint0 = -1
         var edgePoint1 = -1
 
@@ -419,7 +406,7 @@ object BodyInteraction
         )
     }
 
-    private fun circleOnCircleCollision(aBody: CircleBody, bBody: CircleBody): CollisionResult?
+    private fun solveCircleOnCircle(aBody: CircleBody, bBody: CircleBody): ContactResult?
     {
         val aCircle = aBody.shape
         val bCircle = bBody.shape
@@ -517,15 +504,15 @@ object BodyInteraction
         }
     }
 
-    private fun circleOnPolygonCollision(circleBody: CircleBody, rigidBody: RigidBody): CollisionResult?
+    private fun solveCircleOnPolygon(circleBody: CircleBody, polygonBody: PolygonBody): ContactResult?
     {
-        val points = rigidBody.shape.points
+        val points = polygonBody.shape.points
         val circle = circleBody.shape
         val xCircle = circle.x
         val yCircle = circle.y
         val radius = circle.radius
 
-        val indexOfLastBoundaryPoint = (rigidBody.shape.nBoundaryPoints - 1) * N_POINT_FIELDS
+        val indexOfLastBoundaryPoint = (polygonBody.shape.nBoundaryPoints - 1) * N_POINT_FIELDS
         var xLast = points[indexOfLastBoundaryPoint + X]
         var yLast = points[indexOfLastBoundaryPoint + Y]
         var edgePointIndex1 = -1
@@ -534,7 +521,7 @@ object BodyInteraction
         var yClosest = -1f
 
         // Find closest point within radius of circle on rigid body
-        rigidBody.shape.forEachBoundaryPoint { i ->
+        polygonBody.shape.forEachBoundaryPoint { i ->
             val x = points[i + X]
             val y = points[i + Y]
             val point = MathUtil.closestPointOnLineSegment(xCircle, yCircle, x, y, xLast, yLast)
@@ -567,13 +554,13 @@ object BodyInteraction
         val depth = dist - radius
 
         // Calculate mass ratios
-        val invTotalMass= 1.0f / (rigidBody.mass + circleBody.mass)
-        val circleBodyRatio = if (rigidBody.bodyType == STATIC) 1f else rigidBody.mass * invTotalMass
+        val invTotalMass= 1.0f / (polygonBody.mass + circleBody.mass)
+        val circleBodyRatio = if (polygonBody.bodyType == STATIC) 1f else polygonBody.mass * invTotalMass
         val rigidBodyRatio = if (circleBody.bodyType == STATIC) 1f else circleBody.mass * invTotalMass
-        val frictionCoefficient = rigidBody.friction * circleBody.friction
+        val frictionCoefficient = polygonBody.friction * circleBody.friction
 
         val edgePointIndex0 = if (edgePointIndex1 == 0) indexOfLastBoundaryPoint else edgePointIndex1 - N_POINT_FIELDS
-        val ePoints = rigidBody.shape.points
+        val ePoints = polygonBody.shape.points
         val x0 = ePoints[edgePointIndex0 + X]
         val y0 = ePoints[edgePointIndex0 + Y]
         val x1 = ePoints[edgePointIndex1 + X]
@@ -582,7 +569,7 @@ object BodyInteraction
         // Calculate where on the edge the collision point lies (0.0 - 1.0). If-check prevents divide by zero.
         val t = if (abs(x0 - x1) > abs(y0 - y1)) (xClosest - x0) / (x1 - x0) else (yClosest - y0) / (y1 - y0)
 
-        if (rigidBody.bodyType != STATIC)
+        if (polygonBody.bodyType != STATIC)
         {
             // Calculate a scaling factor that ensures that the point lies on the edge after the collision response
             val lambda = 1.0f / (t * t + (1 - t) * (1 - t)) * rigidBodyRatio
@@ -651,7 +638,7 @@ object BodyInteraction
             yP += yVelChange
 
             // Nudge velocity of rigid body in opposite direction
-            if (rigidBody.bodyType != STATIC)
+            if (polygonBody.bodyType != STATIC)
             {
                 ePoints[edgePointIndex0 + X_LAST] += xVelChange * (1f - t)
                 ePoints[edgePointIndex0 + Y_LAST] += yVelChange * (1f - t)
@@ -676,9 +663,9 @@ object BodyInteraction
         )
     }
 
-    private fun circleOnPointCollision(circleBody: CircleBody, pointBody: PointBody): CollisionResult?
+    private fun solveCircleOnPoint(circleBody: CircleBody, pointBody: PointBody): ContactResult?
     {
-        val point = pointBody.point
+        val point = pointBody.shape
         val circle = circleBody.shape
         val radius = circle.radius
         val xDelta = point.x - circle.x
@@ -803,14 +790,14 @@ object BodyInteraction
     }
 }
 
-data class CollisionResult(
+data class ContactResult(
     var x: Float = 0f,
     var y: Float = 0f,
     var xNormal: Float = 0f,
     var yNormal: Float = 0f,
     var depth: Float = 0f
 ) {
-    fun set(x: Float, y: Float, xNormal: Float, yNormal: Float, depth: Float): CollisionResult
+    fun set(x: Float, y: Float, xNormal: Float, yNormal: Float, depth: Float): ContactResult
     {
         this.x = x
         this.y = y

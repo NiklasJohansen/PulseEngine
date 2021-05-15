@@ -4,28 +4,31 @@ import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.SpatialGrid
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
-import no.njoh.pulseengine.modules.scene.systems.physics.BodyInteraction
-import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
+import no.njoh.pulseengine.modules.scene.systems.physics.ContactSolver
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.STATIC
-import no.njoh.pulseengine.modules.scene.systems.physics.CollisionResult
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.LENGTH
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.N_POINT_FIELDS
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.POINT_0
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.POINT_1
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.STIFFNESS
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.X
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.X_ACC
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.X_LAST
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y_ACC
-import no.njoh.pulseengine.modules.scene.systems.physics.shapes.Shape.Companion.Y_LAST
+import no.njoh.pulseengine.modules.scene.systems.physics.ContactResult
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.LENGTH
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.N_POINT_FIELDS
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.POINT_0
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.POINT_1
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.RESTING_MIN_VEL
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.RESTING_STEPS_BEFORE_SLEEP
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.STIFFNESS
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.X
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.X_ACC
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.X_LAST
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.Y
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.Y_ACC
+import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.Y_LAST
 import org.joml.Vector2f
 import kotlin.math.*
 
-interface RigidBody : Body
+interface PolygonBody : PhysicsBody
 {
-    val shape: Shape
+    val shape: PolygonShape
 
     override fun init()
     {
@@ -134,9 +137,9 @@ interface RigidBody : Body
 
         engine.scene.forEachNearbyEntity(shape.xCenter, shape.yCenter, xMax - xMin, yMax - yMin)
         {
-            if (it !== this && it is Body && it.hasOverlappingAABB(xMin, yMin, xMax, yMax))
+            if (it !== this && it is PhysicsBody && it.hasOverlappingAABB(xMin, yMin, xMax, yMax))
             {
-                BodyInteraction.detectAndResolve(this, it)?.let { result ->
+                ContactSolver.solve(this, it)?.let { result ->
                     onCollision(engine, it, result)
                     it.onCollision(engine, this, result)
                 }
@@ -171,7 +174,6 @@ interface RigidBody : Body
             val x1 = points[p1 + X]
             val y1 = points[p1 + Y]
 
-            surface.setDrawColor(1f, 1f, 1f)
             surface.drawQuad(x0 - 2f, y0 - 2f, 4f, 4f)
             surface.drawQuad(x1 - 2f, y1 - 2f, 4f, 4f)
             surface.drawLine(x0, y0, x1, y1)
@@ -213,9 +215,9 @@ interface RigidBody : Body
 
     override fun getPoint(index: Int): Vector2f? =
         if (index < 0 || index * N_POINT_FIELDS >= shape.points.size) null
-        else Shape.reusableVector.set(shape.points[index * N_POINT_FIELDS + X], shape.points[index * N_POINT_FIELDS + Y])
+        else PolygonShape.reusableVector.set(shape.points[index * N_POINT_FIELDS + X], shape.points[index * N_POINT_FIELDS + Y])
 
     override fun getPointCount() = shape.points.size / N_POINT_FIELDS
 
-    override fun onCollision(engine: PulseEngine, otherBody: Body, result: CollisionResult) { }
+    override fun onCollision(engine: PulseEngine, otherBody: PhysicsBody, result: ContactResult) { }
 }
