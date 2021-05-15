@@ -66,9 +66,7 @@ interface PointBody : Body
             }
         }
 
-        // Notify body updated on last iteration
-        if (iteration == totalIterations - 1)
-            onBodyUpdated(point)
+        onBodyUpdated(point)
     }
 
     override fun render(surface: Surface2D)

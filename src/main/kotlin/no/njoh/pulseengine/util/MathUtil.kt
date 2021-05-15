@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.util
 
 import org.joml.Vector2f
+import kotlin.math.abs
+import kotlin.math.sqrt
 
 object MathUtil
 {
@@ -9,12 +11,12 @@ object MathUtil
     /**
      * https://stackoverflow.com/questions/30559799/function-for-finding-the-distance-between-a-point-and-an-edge-in-java/38290399
      */
-    fun pointToLineDistance(x: Float, y: Float, x0: Float, y0: Float, x1: Float, y1: Float): Float
+    fun pointToLineDistanceSquared(x: Float, y: Float, x0: Float, y0: Float, x1: Float, y1: Float): Float
     {
-        val c = x1 - x0
-        val e = y0 - y1
-        val dot = (x - x0) * e + (y - y0) * c
-        return dot * dot / (e * e + c * c)
+        val xLineVec = x1 - x0
+        val yLineVec = y0 - y1
+        val dot = (x - x0) * yLineVec + (y - y0) * xLineVec
+        return dot * dot / (yLineVec * yLineVec + xLineVec * xLineVec)
     }
 
     /**
@@ -22,10 +24,10 @@ object MathUtil
      */
     fun pointToLineSegmentDistanceSquared(x: Float, y: Float, x0: Float, y0: Float, x1: Float, y1: Float): Float
     {
-        val c = x1 - x0
-        val d = y1 - y0
-        val dot = (x - x0) * c + (y - y0) * d
-        val lengthSquared = c * c + d * d
+        val xLineVec = x1 - x0
+        val yLineVec = y1 - y0
+        val dot = (x - x0) * xLineVec + (y - y0) * yLineVec
+        val lengthSquared = xLineVec * xLineVec + yLineVec * yLineVec
 
         var param = -1f
         if (lengthSquared != 0f) // in case of 0 length line
@@ -47,12 +49,35 @@ object MathUtil
             }
             else ->
             {
-                val dx = x - (x0 + param * c)
-                val dy = y - (y0 + param * d)
+                val dx = x - (x0 + param * xLineVec)
+                val dy = y - (y0 + param * yLineVec)
                 dx * dx + dy * dy
             }
         }
     }
+
+    /**
+     * https://stackoverflow.com/questions/30559799/function-for-finding-the-distance-between-a-point-and-an-edge-in-java/38290399
+     */
+    fun closestPointOnLineSegment(x: Float, y: Float, x0: Float, y0: Float, x1: Float, y1: Float): Vector2f
+    {
+        val xLineVec = x1 - x0
+        val yLineVec = y1 - y0
+        val dot = (x - x0) * xLineVec + (y - y0) * yLineVec
+        val lengthSquared = xLineVec * xLineVec + yLineVec * yLineVec
+
+        var param = -1f
+        if (lengthSquared != 0f) // in case of 0 length line
+            param = dot / lengthSquared
+
+        return when
+        {
+            param < 0f -> reusableVector.set(x0, y0)
+            param > 1f -> reusableVector.set(x1, y1)
+            else -> reusableVector.set(x0 + param * xLineVec, y0 + param * yLineVec)
+        }
+    }
+
 
     /**
      * https://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect
@@ -67,11 +92,50 @@ object MathUtil
         val s2y = y3 - y2
 
         val s = (-s1y * (x0 - x2) + s1x * (y0 - y2)) / (-s2x * s1y + s1x * s2y)
-        val t = (s2x * (y0 - y2) - s2y * (x0 - x2)) / (-s2x * s1y + s1x * s2y)
+        if (s < 0 || s > 1)
+            return null
 
-        return if (s >= 0 && s <= 1 && t >= 0 && t <= 1)
-            reusableVector.set(x0 + t * s1x, y0 + t * s1y)
-        else null
+        val t = (s2x * (y0 - y2) - s2y * (x0 - x2)) / (-s2x * s1y + s1x * s2y)
+        if (t < 0 || t > 1)
+            return null
+
+        return reusableVector.set(x0 + t * s1x, y0 + t * s1y)
+    }
+
+    /**
+     * https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm
+     */
+    fun getLineSegmentCircleIntersection(x: Float, y: Float, radius: Float, x0: Float, y0: Float, x1: Float, y1: Float): Vector2f?
+    {
+        val xLineVec = x1 - x0
+        val yLineVec = y1 - y0
+        val lineLength = sqrt(xLineVec * xLineVec + yLineVec * yLineVec)
+        val triangleArea2 = abs(xLineVec * (y - y0) - yLineVec * (x - x0)) // Triangle area times 2
+        val triangleHeight = triangleArea2 / lineLength
+
+        if (triangleHeight < radius)
+        {
+            // Compute the line direction
+            val xLineDir = xLineVec / lineLength
+            val yLineDir = yLineVec / lineLength
+
+            // Distance along the line to the closest point of (x, y)
+            val t = xLineDir * (x - x0) + yLineDir * (y - y0)
+
+            // Compute intersection point distance from t
+            val dt = sqrt(radius * radius - triangleHeight * triangleHeight)
+
+            // Limit intersection point to line segment
+            if (t - dt < 0 || t - dt > lineLength)
+                return null
+
+            // Compute first intersection point
+            reusableVector.x = x0 + xLineDir * (t - dt)
+            reusableVector.y = y0 + yLineDir * (t - dt)
+            return reusableVector
+        }
+
+        return null
     }
 
     /**
