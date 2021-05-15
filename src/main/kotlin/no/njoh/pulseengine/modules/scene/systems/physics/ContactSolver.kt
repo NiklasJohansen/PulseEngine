@@ -143,9 +143,6 @@ object ContactSolver
             rbPoints[edgePointIndex0 + Y] -= yResponse * lambda * (1 - t)
             rbPoints[edgePointIndex1 + X] -= xResponse * lambda * t
             rbPoints[edgePointIndex1 + Y] -= yResponse * lambda * t
-
-            // Wake up body
-            rigidBody.shape.isSleeping = false
         }
 
         if (pointBody.bodyType != STATIC && pointRatio != 0f)
@@ -367,9 +364,6 @@ object ContactSolver
             val frictionImpulse1 = calculateFrictionImpulse(xVel1, yVel1, yNormal, -xNormal, depth, frictionCoefficient)
             ePoints[edgePoint1 + X_LAST] -= frictionImpulse1.x * t
             ePoints[edgePoint1 + Y_LAST] -= frictionImpulse1.y * t
-
-            // Wake up body
-            edgeBody.shape.isSleeping = false
         }
 
         if (pointBody.bodyType != STATIC && pointRatio != 0f)
@@ -385,9 +379,6 @@ object ContactSolver
             val frictionImpulse = calculateFrictionImpulse(xVel, yVel, yNormal, -xNormal, depth, frictionCoefficient)
             pPoints[pointIndex + X_LAST] -= frictionImpulse.x
             pPoints[pointIndex + Y_LAST] -= frictionImpulse.y
-
-            // Wake up body
-            pointBody.shape.isSleeping = false
         }
 
         if (pointBody.bodyType == STATIC && edgeBody.bodyType == DYNAMIC)
@@ -593,9 +584,6 @@ object ContactSolver
             val frictionImpulse1 = calculateFrictionImpulse(xVel1, yVel1, yNormal, -xNormal, depth, frictionCoefficient)
             ePoints[edgePointIndex1 + X_LAST] += frictionImpulse1.x * t
             ePoints[edgePointIndex1 + Y_LAST] += frictionImpulse1.y * t
-
-            // Wake up body
-            rigidBody.shape.isSleeping = false
         }
 
         if (circleBody.bodyType != STATIC)

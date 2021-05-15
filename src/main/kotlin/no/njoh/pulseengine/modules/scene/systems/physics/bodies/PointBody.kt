@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.scene.systems.physics.bodies
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.modules.scene.systems.physics.*
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PointShape
 import org.joml.Vector2f
@@ -63,6 +64,7 @@ interface PointBody : PhysicsBody
                 ContactSolver.solve(this, it)?.let { result ->
                     onCollision(engine, it, result)
                     it.onCollision(engine, this, result)
+                    it.wakeUp()
                 }
             }
         }
@@ -90,6 +92,8 @@ interface PointBody : PhysicsBody
             set(POSITION_UPDATED)
         }
     }
+
+    override fun wakeUp() { /* Point bodies do not sleep */ }
 
     override fun hasOverlappingAABB(xMin: Float, yMin: Float, xMax: Float, yMax: Float): Boolean
     {

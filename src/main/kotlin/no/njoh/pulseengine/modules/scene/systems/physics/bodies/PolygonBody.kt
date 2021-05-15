@@ -2,7 +2,6 @@ package no.njoh.pulseengine.modules.scene.systems.physics.bodies
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.modules.scene.SpatialGrid
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
@@ -112,20 +111,22 @@ interface PolygonBody : PhysicsBody
 
     private fun updateSleepState()
     {
-        if (shape.xCenter.toInt() != shape.xCenterLast.toInt() || shape.yCenter.toInt() != shape.yCenterLast.toInt())
-            shape.sleepCount = 0
-
-        if (!shape.isSleeping && shape.sleepCount > 60)
+        val xVel = abs(shape.xCenter - shape.xCenterLast)
+        val yVel = abs(shape.yCenter - shape.yCenterLast)
+        if (xVel > RESTING_MIN_VEL || yVel > RESTING_MIN_VEL)
         {
-            // Kill momentum
+            shape.stepsAtRest = 0
+            shape.isSleeping = false
+        }
+        else if (shape.stepsAtRest >= RESTING_STEPS_BEFORE_SLEEP && !shape.isSleeping)
+        {
+            shape.isSleeping = true
             shape.forEachPoint { i ->
                 this[i + X_LAST] = this[i + X]
                 this[i + Y_LAST] = this[i + Y]
             }
         }
-
-        shape.isSleeping = (shape.sleepCount > 60)
-        shape.sleepCount++
+        else shape.stepsAtRest++
     }
 
     private fun updateCollisions(engine: PulseEngine)
@@ -142,6 +143,7 @@ interface PolygonBody : PhysicsBody
                 ContactSolver.solve(this, it)?.let { result ->
                     onCollision(engine, it, result)
                     it.onCollision(engine, this, result)
+                    it.wakeUp()
                 }
             }
         }
@@ -194,8 +196,13 @@ interface PolygonBody : PhysicsBody
             x = xCenter
             y = yCenter
             rotation = angle
-            set(SceneEntity.POSITION_UPDATED or SceneEntity.ROTATION_UPDATED)
+            set(POSITION_UPDATED or ROTATION_UPDATED)
         }
+    }
+
+    override fun wakeUp()
+    {
+        shape.isSleeping = false
     }
 
     override fun hasOverlappingAABB(xMin: Float, yMin: Float, xMax: Float, yMax: Float): Boolean

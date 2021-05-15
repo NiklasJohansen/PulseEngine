@@ -41,7 +41,12 @@ interface PhysicsBody
     /**
      * Called when two bodies collide.
      */
-    fun onCollision(engine: PulseEngine, otherBody: Body, result: CollisionResult)
+    fun onCollision(engine: PulseEngine, otherBody: PhysicsBody, result: ContactResult)
+
+    /**
+     * Wakes up sleeping bodies.
+     */
+    fun wakeUp()
 
     /**
      * Returns true if the axis aligned bounding boxes of two bodies intersect.

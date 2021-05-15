@@ -26,9 +26,9 @@ abstract class PolygonShape
     var yMin = 0f
     var yMax = 0f
 
-    // State
+    // Sleep state
     var isSleeping = false
-    var sleepCount = 0
+    var stepsAtRest = 0
 
     abstract fun build(x: Float, y: Float, width: Float, height: Float, rot: Float)
 
@@ -97,7 +97,7 @@ abstract class PolygonShape
         }
 
         isSleeping = false
-        sleepCount = 0
+        stepsAtRest = 0
     }
 
     fun applyAngularAcceleration(acc: Float)
@@ -114,7 +114,7 @@ abstract class PolygonShape
         }
 
         isSleeping = false
-        sleepCount = 0
+        stepsAtRest = 0
     }
 
     inline fun forEachPoint(startIndex: Int = 0, block: FloatArray.(Int) -> Unit)

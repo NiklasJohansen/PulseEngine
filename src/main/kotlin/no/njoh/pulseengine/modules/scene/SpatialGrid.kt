@@ -407,6 +407,7 @@ class SpatialGrid (
             end = array.size
         }
 
+        val invCellSize = 1.0f / cellSize
         for (i in start until end)
         {
             var node = array[i]
@@ -421,15 +422,14 @@ class SpatialGrid (
                     }
                     else if (entity.isAnySet(POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED))
                     {
-                        val xEntity = ((entity.x - xOffset) / cellSize).toInt()
-                        val yEntity = ((entity.y - yOffset) / cellSize).toInt()
+                        val xEntity = ((entity.x - xOffset) * invCellSize).toInt()
+                        val yEntity = ((entity.y - yOffset) * invCellSize).toInt()
 
                         if (node.xCell != xEntity || node.yCell != yEntity || entity.isSet(SIZE_UPDATED) ||
                             (node.cluster!!.isNotEmpty() && entity.isSet(ROTATION_UPDATED)))
                         {
                             remove(node)
                             insert(entity)
-
                             entity.setNot(POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED)
                         }
                     }

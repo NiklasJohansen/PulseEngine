@@ -35,6 +35,9 @@ interface CircleBody : PhysicsBody
 
     override fun beginStep(timeStep: Float, gravity: Float)
     {
+        if (shape.isSleeping)
+            return
+
         val drag = 1f - drag
         val xNow = shape.x
         val yNow = shape.y
@@ -58,6 +61,9 @@ interface CircleBody : PhysicsBody
 
     override fun iterateStep(iteration: Int, totalIterations: Int, engine: PulseEngine, worldWidth: Int, worldHeight: Int)
     {
+        if (shape.isSleeping)
+            return
+
         // Handle world size constraint
         if (shape.x < worldWidth * -0.5f || shape.x > worldWidth * 0.5f || shape.y < worldHeight * -0.5f || shape.y > worldHeight * 0.5f)
             bodyType = BodyType.STATIC
@@ -68,9 +74,12 @@ interface CircleBody : PhysicsBody
         // Update last angular velocity
         shape.lastRotVel = shape.rot - shape.rotLast
 
-        // Notify body updated on last iteration
+        // Last iteration
         if (iteration == totalIterations - 1)
+        {
+            updateSleepState()
             onBodyUpdated(shape)
+        }
     }
 
     private fun updateCollisions(engine: PulseEngine)
@@ -88,9 +97,34 @@ interface CircleBody : PhysicsBody
                 ContactSolver.solve(this, it)?.let { result ->
                     onCollision(engine, it, result)
                     it.onCollision(engine, this, result)
+                    it.wakeUp()
                 }
             }
         }
+    }
+
+    private fun updateSleepState()
+    {
+        val xVel = abs(shape.x - shape.xLast)
+        val yVel = abs(shape.y - shape.yLast)
+        val rVel = abs(shape.lastRotVel * shape.radius)
+        if (xVel > RESTING_MIN_VEL || yVel > RESTING_MIN_VEL || rVel > RESTING_MIN_VEL)
+        {
+            shape.stepsAtRest = 0
+            shape.isSleeping = false
+        }
+        else if (shape.stepsAtRest >= RESTING_STEPS_BEFORE_SLEEP && !shape.isSleeping)
+        {
+            shape.xLast = shape.x
+            shape.yLast = shape.y
+            shape.isSleeping = true
+        }
+        else shape.stepsAtRest++
+    }
+
+    override fun wakeUp()
+    {
+        shape.isSleeping = false
     }
 
     override fun render(surface: Surface2D)
@@ -103,7 +137,11 @@ interface CircleBody : PhysicsBody
         surface.setDrawColor(1f, 0f, 0f)
         surface.drawLine(xCenter, yCenter, shape.xLast, shape.yLast)
         surface.drawQuad(xCenter - 0.5f * dotSize, yCenter - 0.5f * dotSize, dotSize, dotSize)
-        surface.setDrawColor(1f, 1f, 1f, 1f)
+
+        if (shape.isSleeping)
+            surface.setDrawColor(1f, 0.3f, 0.3f)
+        else
+            surface.setDrawColor(1f, 1f, 1f)
 
         val xEnd = xCenter + cos(shape.rot) * radius
         val yEnd = yCenter + sin(shape.rot) * radius
@@ -130,7 +168,7 @@ interface CircleBody : PhysicsBody
             x = shape.x
             y = shape.y
             rotation = shape.rot / PI.toFloat() * 180f
-            set(SceneEntity.POSITION_UPDATED)
+            set(POSITION_UPDATED or ROTATION_UPDATED)
         }
     }
 

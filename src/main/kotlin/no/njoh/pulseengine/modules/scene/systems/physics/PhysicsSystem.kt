@@ -78,6 +78,7 @@ class PhysicsSystem : SceneSystem()
         else if (pickedBody != null)
         {
             pickedBody!!.setPoint(pickedPointIndex, engine.input.xWorldMouse, engine.input.yWorldMouse)
+            pickedBody!!.wakeUp()
             return
         }
 
