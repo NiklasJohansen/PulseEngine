@@ -11,12 +11,15 @@ class RegularPolygonShape(edges: Int) : PolygonShape()
     override var points = FloatArray(N_POINT_FIELDS * edges)
     override var constraints = FloatArray(N_STICK_CONSTRAINT_FIELDS * nStickConstraints)
 
-    override fun build(x: Float, y: Float, width: Float, height: Float, rot: Float)
+    override fun build(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
     {
         setPoints(x, y,  width * 0.5f, height * 0.5f)
         setConstraints()
         recalculateBoundingBox()
         recalculateRotation(angleOffset = rot)
+
+        val r = (width + height) * 0.25f
+        this.mass = density * (r * r * nBoundaryPoints * sin(2f * PI.toFloat() / nBoundaryPoints) * 0.5f)
         this.angleOffset = angle
         this.xCenterLast = xCenter
         this.yCenterLast = yCenter

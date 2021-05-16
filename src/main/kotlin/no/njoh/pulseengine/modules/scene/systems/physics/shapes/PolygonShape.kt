@@ -30,7 +30,10 @@ abstract class PolygonShape
     var isSleeping = false
     var stepsAtRest = 0
 
-    abstract fun build(x: Float, y: Float, width: Float, height: Float, rot: Float)
+    // Mass of the whole shape
+    var mass = 1f
+
+    abstract fun build(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
 
     fun setPoint(i: Int, x: Float, y: Float)
     {

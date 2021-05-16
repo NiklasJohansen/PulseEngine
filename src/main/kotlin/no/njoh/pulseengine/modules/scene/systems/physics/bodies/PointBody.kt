@@ -19,6 +19,7 @@ interface PointBody : PhysicsBody
         {
             shape.x = x
             shape.y = y
+            shape.mass = density
             onBodyUpdated(shape)
         }
     }

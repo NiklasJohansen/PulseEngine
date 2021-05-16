@@ -11,7 +11,7 @@ class RectangleShape : PolygonShape()
     override var points = FloatArray(N_POINT_FIELDS * nBoundaryPoints)
     override var constraints = FloatArray(nStickConstraints * N_STICK_CONSTRAINT_FIELDS)
 
-    override fun build(x: Float, y: Float, width: Float, height: Float, rot: Float)
+    override fun build(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
     {
         val r = rot / 180f * PI.toFloat()
         val c = cos(r)
@@ -43,5 +43,6 @@ class RectangleShape : PolygonShape()
         this.angleOffset = angle
         this.xCenterLast = xCenter
         this.yCenterLast = yCenter
+        this.mass = density * width * height
     }
 }

@@ -123,9 +123,9 @@ object ContactSolver
         val yResponse = yNormal * depth
 
         // Use the masses of the bodies to determine the ratio of position correction
-        val invMass= 1.0f / (polygonBody.mass + pointBody.mass)
-        val pointRatio = if (polygonBody.bodyType == STATIC) 1f else polygonBody.mass * invMass
-        val bodyRatio = if (pointBody.bodyType == STATIC) 1f else pointBody.mass * invMass
+        val invMass = 1.0f / (polygonBody.shape.mass + pointBody.shape.mass)
+        val pointRatio = if (polygonBody.bodyType == STATIC) 1f else polygonBody.shape.mass * invMass
+        val bodyRatio = if (pointBody.bodyType == STATIC) 1f else pointBody.shape.mass * invMass
 
         if (polygonBody.bodyType != STATIC && bodyRatio != 0f)
         {
@@ -317,9 +317,9 @@ object ContactSolver
         val yResponse = yNormal * depth
 
         // Use the masses of the bodies to determine the ratio of position correction for each body
-        val invTotalMass= 1.0f / (edgeBody.mass + pointBody.mass)
-        val pointRatio = if (edgeBody.bodyType == STATIC) 1f else edgeBody.mass * invTotalMass
-        val edgeRatio = if (pointBody.bodyType == STATIC) 1f else pointBody.mass * invTotalMass
+        val invTotalMass = 1.0f / (edgeBody.shape.mass + pointBody.shape.mass)
+        val pointRatio = if (edgeBody.bodyType == STATIC) 1f else edgeBody.shape.mass * invTotalMass
+        val edgeRatio = if (pointBody.bodyType == STATIC) 1f else pointBody.shape.mass * invTotalMass
 
         val pPoints = pointBody.shape.points
         val xPoint = pPoints[pointIndex + X]
@@ -415,9 +415,9 @@ object ContactSolver
             val depth = minDist - dist
             val xNormal = xDelta / dist
             val yNormal = yDelta / dist
-            val invTotalMass= 1.0f / (aBody.mass + bBody.mass)
-            val aRatio = if (bBody.bodyType == STATIC) 1f else bBody.mass * invTotalMass
-            val bRatio = if (aBody.bodyType == STATIC) 1f else aBody.mass * invTotalMass
+            val invTotalMass = 1.0f / (aCircle.mass + bCircle.mass)
+            val aRatio = if (bBody.bodyType == STATIC) 1f else bCircle.mass * invTotalMass
+            val bRatio = if (aBody.bodyType == STATIC) 1f else aCircle.mass * invTotalMass
             val frictionCoefficient = aBody.friction * bBody.friction
 
             val aVelX = aCircle.x - aCircle.xLast
@@ -545,9 +545,9 @@ object ContactSolver
         val depth = dist - radius
 
         // Calculate mass ratios
-        val invTotalMass= 1.0f / (polygonBody.mass + circleBody.mass)
-        val circleBodyRatio = if (polygonBody.bodyType == STATIC) 1f else polygonBody.mass * invTotalMass
-        val rigidBodyRatio = if (circleBody.bodyType == STATIC) 1f else circleBody.mass * invTotalMass
+        val invTotalMass = 1.0f / (polygonBody.shape.mass + circle.mass)
+        val circleBodyRatio = if (polygonBody.bodyType == STATIC) 1f else polygonBody.shape.mass * invTotalMass
+        val rigidBodyRatio = if (circleBody.bodyType == STATIC) 1f else circle.mass * invTotalMass
         val frictionCoefficient = polygonBody.friction * circleBody.friction
 
         val edgePointIndex0 = if (edgePointIndex1 == 0) indexOfLastBoundaryPoint else edgePointIndex1 - N_POINT_FIELDS
@@ -683,9 +683,9 @@ object ContactSolver
         }
 
         // Calculate mass ratios
-        val invTotalMass = 1.0f / (pointBody.mass + circleBody.mass)
-        val circleRatio = if (pointBody.bodyType == STATIC) 1f else pointBody.mass * invTotalMass
-        val pointRatio = if (circleBody.bodyType == STATIC) 1f else circleBody.mass * invTotalMass
+        val invTotalMass = 1.0f / (point.mass + circle.mass)
+        val circleRatio = if (pointBody.bodyType == STATIC) 1f else point.mass * invTotalMass
+        val pointRatio = if (circleBody.bodyType == STATIC) 1f else circle.mass * invTotalMass
 
         val frictionCoefficient = circleBody.friction * pointBody.friction
         val circumference = 2 * PI.toFloat() * radius

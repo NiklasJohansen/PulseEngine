@@ -13,6 +13,7 @@ data class CircleShape(
     var rotLast: Float = 0f,
     var lastRotVel: Float = 0f,
     var radius: Float = 50f,
+    var mass: Float = 1f,
     var isSleeping: Boolean = false,
     var stepsAtRest: Int = 0
 ) {

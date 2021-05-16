@@ -33,7 +33,7 @@ interface PolygonBody : PhysicsBody
     {
         if (this is SceneEntity)
         {
-            shape.build(x, y, width, height, rotation)
+            shape.build(x, y, width, height, rotation, density)
             onBodyUpdated(shape.xCenter, shape.yCenter, shape.xCenterLast, shape.yCenterLast, rotation)
         }
     }
