@@ -14,7 +14,7 @@ import org.joml.Vector2f
  */
 interface PhysicsBody
 {
-    /** Determines how the body is affected by the physics system */
+    /** Determines how the body is affected by the physics system. */
     var bodyType: BodyType
 
     /** Bit mask where each bit represents a collision layer this body can be part of. */
@@ -23,16 +23,16 @@ interface PhysicsBody
     /** Bit mask where each bit represents a collision layer this body can collide with. */
     var collisionMask: Int
 
-    /** Determines the amount of bounce in a collision. Range: 0.0 (inelastic) - 1.0 (perfectly elastic) */
+    /** Determines the amount of bounce in a collision. Range: 0.0 (inelastic) - 1.0 (perfectly elastic). */
     var restitution: Float
 
     /** Density along with the shape size affects the mass of the body. */
     var density: Float
 
-    /** Determines how easily bodies slide of each other on contact. Range: 0.0 (slippery) - 1.0 (rough) */
+    /** Determines how easily bodies slide of each other on contact. Range: 0.0 (slippery) - 1.0 (rough). */
     var friction: Float
 
-    /** Determines how much dampening the bodies experiences from the air. Range: 0.0 (no dampening) - 1.0 (full stop) */
+    /** Determines how much dampening the bodies experiences from the air. Range: 0.0 (no dampening) - 1.0 (full stop). */
     var drag: Float
 
     /**

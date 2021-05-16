@@ -187,8 +187,10 @@ interface PolygonBody : PhysicsBody
         shape.forEachPoint { i ->
             val x0 = points[i + X]
             val y0 = points[i + Y]
-            surface.setDrawColor(1f, 0f, 0f)
-            surface.drawText("${i / N_POINT_FIELDS}", x0 - 10, y0 - 10, fontSize = 50f)
+            surface.setDrawColor(1f, 1f, 1f)
+            surface.drawQuad(x0 - 18f, y0 - 18f, 36f, 36f)
+            surface.setDrawColor(0f, 0f, 0f)
+            surface.drawText("${i / N_POINT_FIELDS}", x0, y0, xOrigin = 0.5f, yOrigin = 0.5f, fontSize = 50f)
         }
     }
 
