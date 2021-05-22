@@ -56,7 +56,11 @@ open class Scene(
 
     internal fun start(engine: PulseEngine)
     {
-        systems.forEachFiltered({ it.enabled }) { it.onStart(engine) }
+        systems.forEachFiltered({ it.enabled }) {
+            if (!it.initialized)
+                it.init(engine)
+            it.onStart(engine)
+        }
         spatialGrid.recalculate()
     }
 
