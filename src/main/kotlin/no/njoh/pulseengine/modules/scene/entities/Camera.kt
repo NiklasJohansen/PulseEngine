@@ -1,26 +1,32 @@
 package no.njoh.pulseengine.modules.scene.entities
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.Assets
 import no.njoh.pulseengine.modules.graphics.Surface2D
+import no.njoh.pulseengine.util.toDegrees
+import no.njoh.pulseengine.util.toRadians
 import kotlin.math.*
 
-open class CameraEntity : SceneEntity() {
-
+open class Camera : SceneEntity()
+{
     var viewPortWidth = 1000f
     var viewPortHeight = 800f
+    var targetEntityId = -1L
+    var trackRotation = false
+    var smoothing = 0.1f
 
-    private var lastWidth = 0f
-    private var lastHeight = 0f
-    private var camSize = 100f
+    @JsonIgnore private var initalized = false
+    @JsonIgnore private var lastWidth = 0f
+    @JsonIgnore private var lastHeight = 0f
+    @JsonIgnore private var camSize = 100f
 
     init { setNot(DISCOVERABLE) }
 
-    override fun onRender(surface: Surface2D, assets: Assets, sceneState: SceneState)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
-        if (sceneState != SceneState.STOPPED)
+        if (engine.scene.state != SceneState.STOPPED)
             return
 
         if (width != camSize || height != camSize)
@@ -57,28 +63,28 @@ open class CameraEntity : SceneEntity() {
         surface.drawText("CAMERA", x, y, xOrigin = 0.5f, yOrigin = 0.5f)
 
         // Top
-        surface.setDrawColor(1f, 1f, 1f, 0.5f)
+        surface.setDrawColor(1f, 1f, 1f, 0.5f * 0.75f)
         surface.drawQuadVertex(x - x1, y - y1) // Left top
         surface.drawQuadVertex(x - x0, y - y0) // Right top
         surface.drawQuadVertex(x - x2, y - y2) // Right bottom
         surface.drawQuadVertex(x - x3, y - y3) // Left bottom
 
         // Right
-        surface.setDrawColor(1f, 1f, 1f, 0.3f)
+        surface.setDrawColor(1f, 1f, 1f, 0.3f * 0.75f)
         surface.drawQuadVertex(x - x2, y - y2) // Left top
         surface.drawQuadVertex(x - x0, y - y0) // Right top
         surface.drawQuadVertex(x + x1, y + y1) // Right bottom
         surface.drawQuadVertex(x + x3, y + y3) // Left bottom
 
         // Bottom
-        surface.setDrawColor(1f, 1f, 1f, 0.25f)
+        surface.setDrawColor(1f, 1f, 1f, 0.25f * 0.75f)
         surface.drawQuadVertex(x + x2, y + y2) // Left top
         surface.drawQuadVertex(x + x3, y + y3) // Right top
         surface.drawQuadVertex(x + x1, y + y1) // Right bottom
         surface.drawQuadVertex(x + x0, y + y0) // Left bottom
 
         // Left
-        surface.setDrawColor(1f, 1f, 1f, 0.4f)
+        surface.setDrawColor(1f, 1f, 1f, 0.4f * 0.75f)
         surface.drawQuadVertex(x - x1, y - y1) // Left top
         surface.drawQuadVertex(x - x3, y - y3) // Right top
         surface.drawQuadVertex(x + x2, y + y2) // Right bottom

@@ -6,11 +6,22 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.nio.file.FileSystems
 import java.nio.file.Files
+import kotlin.math.PI
 
 fun Float.interpolateFrom(lastState: Float): Float
 {
     val i = PulseEngine.GLOBAL_INSTANCE.data.interpolation
     return this * i + lastState * (1f - i)
+}
+
+fun Float.toDegrees() = this / PI.toFloat() * 180f
+
+fun Float.toRadians() = this / 180f * PI.toFloat()
+
+fun Float.degreesBetween(angle: Float): Float
+{
+    val delta = this - angle
+    return delta + if (delta > 180) -360 else if (delta < -180) 360 else 0
 }
 
 inline fun <T> List<T>.forEachFiltered(predicate: (T) -> Boolean, action: (T) -> Unit)

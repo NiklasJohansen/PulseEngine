@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.bodies
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
 import no.njoh.pulseengine.modules.scene.systems.physics.ContactResult
+import no.njoh.pulseengine.modules.scene.systems.physics.PhysicsEntity
 import org.joml.Vector2f
 
 /**
@@ -12,7 +12,7 @@ import org.joml.Vector2f
  * @see CircleBody
  * @see PointBody
  */
-interface PhysicsBody
+interface PhysicsBody : PhysicsEntity
 {
     /** Determines how the body is affected by the physics system. */
     var bodyType: BodyType
@@ -34,30 +34,6 @@ interface PhysicsBody
 
     /** Determines how much dampening the bodies experiences from the air. Range: 0.0 (no dampening) - 1.0 (full stop). */
     var drag: Float
-
-    /**
-     * Called once when the physics system starts.
-     */
-    fun init()
-
-    /**
-     * Called by the physics system once every fixed time step.
-     * Suitable for updating velocities, accelerations and positions.
-     */
-    fun beginStep(timeStep: Float, gravity: Float)
-
-    /**
-     * Called N times by the physics system every fixed time step.
-     * Suitable for iteratively solving collisions and constraints.
-     * @param iteration - the current iteration
-     * @param totalIterations - the total number of iterations to be performed
-     */
-    fun iterateStep(iteration: Int, totalIterations: Int, engine: PulseEngine, worldWidth: Int, worldHeight: Int)
-
-    /**
-     * Called every frame if enabled by the physics system.
-     */
-    fun render(surface: Surface2D)
 
     /**
      * Called when two bodies collide.
@@ -89,4 +65,9 @@ interface PhysicsBody
      * Returns the total amount of points the body is built up of.
      */
     fun getPointCount(): Int
+
+    /**
+     * Returns the total mass of the body.
+     */
+    fun getMass(): Float
 }

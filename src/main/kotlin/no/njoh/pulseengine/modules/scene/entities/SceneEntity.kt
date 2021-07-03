@@ -5,14 +5,8 @@ import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.assets.Font
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.Assets
 import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.ReflectionUtil
-import no.njoh.pulseengine.util.ReflectionUtil.getClassesFromFullyQualifiedClassNames
-import no.njoh.pulseengine.util.ReflectionUtil.getClassesOfSuperType
 import kotlin.reflect.KClass
-import kotlin.system.measureNanoTime
 
 abstract class SceneEntity(
     open var x: Float = 0f,
@@ -29,12 +23,12 @@ abstract class SceneEntity(
     open fun onStart(engine: PulseEngine) {  }
     open fun onUpdate(engine: PulseEngine) { }
     open fun onFixedUpdate(engine: PulseEngine) { }
-    open fun onRender(surface: Surface2D, assets: Assets, sceneState: SceneState)
+    open fun onRender(engine: PulseEngine, surface: Surface2D)
     {
-        if (sceneState != SceneState.RUNNING)
+        if (engine.scene.state == SceneState.STOPPED)
         {
-            surface.setDrawColor(1f, 1f, 1f, 0.2f)
-            surface.drawTexture(Texture.BLANK, x, y, width, height, 0f, 0.5f, 0.5f)
+            surface.setDrawColor(1f, 1f, 1f, 0.5f)
+            surface.drawTexture(Texture.BLANK, x, y, width, height, rotation, 0.5f, 0.5f)
             surface.setDrawColor(1f, 1f, 1f, 1f)
             var text = typeName
             val width = Font.DEFAULT.getWidth(typeName)

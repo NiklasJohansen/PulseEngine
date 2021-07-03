@@ -2,12 +2,10 @@ package no.njoh.pulseengine.modules.scene.systems.physics
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.Key
 import no.njoh.pulseengine.data.Mouse
 import no.njoh.pulseengine.data.SceneState.RUNNING
 import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
-import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.DYNAMIC
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.util.forEachFast
 import no.njoh.pulseengine.widgets.sceneEditor.ValueRange
@@ -35,7 +33,7 @@ class PhysicsSystem : SceneSystem()
 
     override fun onStart(engine: PulseEngine)
     {
-        engine.scene.forEachBody { it.init() }
+        engine.scene.forEachPhysicsEntity { it.init(engine) }
     }
 
     override fun onFixedUpdate(engine: PulseEngine)
@@ -43,21 +41,17 @@ class PhysicsSystem : SceneSystem()
         if (engine.scene.state != RUNNING)
             return
 
-        engine.scene.forEachDynamicBody { it.beginStep(engine.data.fixedDeltaTime, gravity) }
+        engine.scene.forEachPhysicsEntity { it.beginStep(engine, engine.data.fixedDeltaTime, gravity) }
 
         val totalIterations = physicsIterations
         for (i in 0 until totalIterations)
-            engine.scene.forEachDynamicBody { it.iterateStep(i, totalIterations, engine, worldWidth, worldHeight) }
+            engine.scene.forEachPhysicsEntity { it.iterateStep(engine, i, totalIterations, worldWidth, worldHeight) }
 
         if (mouseInteraction)
             pickBody(engine)
     }
 
-    override fun onUpdate(engine: PulseEngine)
-    {
-        if (engine.input.wasClicked(Key.COMMA))
-            drawShapes = !drawShapes
-    }
+    override fun onUpdate(engine: PulseEngine) { }
 
     override fun onRender(engine: PulseEngine)
     {
@@ -65,7 +59,7 @@ class PhysicsSystem : SceneSystem()
             return
 
         val surface = engine.gfx.mainSurface
-        engine.scene.forEachBody { it.render(surface) }
+        engine.scene.forEachPhysicsEntity { it.render(engine, surface) }
     }
 
     private fun pickBody(engine: PulseEngine)
@@ -104,23 +98,11 @@ class PhysicsSystem : SceneSystem()
         }
     }
 
-    private inline fun SceneManager.forEachBody(block: (body: PhysicsBody) -> Unit)
+    private inline fun SceneManager.forEachPhysicsEntity(block: (body: PhysicsEntity) -> Unit)
     {
         activeScene.entities.forEachFast { entities ->
-            if (entities.isNotEmpty() && entities[0] is PhysicsBody)
-                entities.forEachFast { block(it as PhysicsBody) }
-        }
-    }
-
-    private inline fun SceneManager.forEachDynamicBody(block: (body: PhysicsBody) -> Unit)
-    {
-        activeScene.entities.forEachFast { entities ->
-            if (entities.isNotEmpty() && entities[0] is PhysicsBody)
-                entities.forEachFast {
-                    it as PhysicsBody
-                    if (it.bodyType == DYNAMIC)
-                        block(it)
-                }
+            if (entities.isNotEmpty() && entities[0] is PhysicsEntity)
+                entities.forEachFast { block(it as PhysicsEntity) }
         }
     }
 }

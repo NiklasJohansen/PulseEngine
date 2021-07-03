@@ -11,10 +11,7 @@ open class EntityRenderSystem : SceneSystem()
 {
     override fun onRender(engine: PulseEngine)
     {
-        val assets = engine.asset
-        val sceneState = engine.scene.state
         val gfx = engine.gfx
-
         engine.scene.forEachEntityTypeList { typeList ->
             if (typeList.isNotEmpty())
             {
@@ -23,7 +20,7 @@ open class EntityRenderSystem : SceneSystem()
                     ?.let { gfx.getSurface2D((it as SurfaceName).name) }
                     ?: gfx.mainSurface
 
-                typeList.forEachFast { it.onRender(surface, assets, sceneState) }
+                typeList.forEachFast { it.onRender(engine, surface) }
             }
         }
     }

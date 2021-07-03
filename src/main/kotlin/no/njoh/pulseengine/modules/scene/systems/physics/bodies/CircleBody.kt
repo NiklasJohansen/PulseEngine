@@ -6,7 +6,7 @@ import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.modules.scene.systems.physics.ContactSolver
-import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
+import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.*
 import no.njoh.pulseengine.modules.scene.systems.physics.ContactResult
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.CircleShape
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.CircleShape.Companion.RESTING_MIN_VEL
@@ -18,7 +18,7 @@ interface CircleBody : PhysicsBody
 {
     val shape: CircleShape
 
-    override fun init()
+    override fun init(engine: PulseEngine)
     {
         if (this is SceneEntity)
         {
@@ -27,33 +27,31 @@ interface CircleBody : PhysicsBody
             shape.y = y
             shape.xLast = x
             shape.yLast = y
-            shape.rot = rotation
-            shape.rotLast = rotation
+            shape.rot = rotation / 180f * PI.toFloat()
+            shape.rotLast = shape.rot
             shape.radius = radius
             shape.mass = density * PI.toFloat() * radius * radius
-            onBodyUpdated(shape)
         }
     }
 
-    override fun beginStep(timeStep: Float, gravity: Float)
+    override fun beginStep(engine: PulseEngine, timeStep: Float, gravity: Float)
     {
-        if (shape.isSleeping)
+        if (shape.isSleeping || bodyType == STATIC)
             return
 
+        val angularDrag = 1f - drag * 0.1f
         val drag = 1f - drag
         val xNow = shape.x
         val yNow = shape.y
         val xVel = (xNow - shape.xLast) * drag + shape.xAcc * timeStep * timeStep
         val yVel = (yNow - shape.yLast) * drag + shape.yAcc * timeStep * timeStep
-        val xCenter = xNow + xVel
-        val yCenter = yNow + yVel
         val rotNow = shape.rot
-        val rotVel = (rotNow - shape.rotLast) * drag
+        val rotVel = (rotNow - shape.rotLast) * angularDrag
 
         shape.xLast = xNow
         shape.yLast = yNow
-        shape.x = xCenter
-        shape.y = yCenter
+        shape.x = xNow + xVel
+        shape.y = yNow + yVel
         shape.xAcc = 0f
         shape.yAcc = gravity
         shape.rotLast = rotNow
@@ -61,14 +59,14 @@ interface CircleBody : PhysicsBody
         shape.lastRotVel = rotVel
     }
 
-    override fun iterateStep(iteration: Int, totalIterations: Int, engine: PulseEngine, worldWidth: Int, worldHeight: Int)
+    override fun iterateStep(engine: PulseEngine, iteration: Int, totalIterations: Int, worldWidth: Int, worldHeight: Int)
     {
-        if (shape.isSleeping)
+        if (shape.isSleeping || bodyType == STATIC)
             return
 
         // Handle world size constraint
         if (shape.x < worldWidth * -0.5f || shape.x > worldWidth * 0.5f || shape.y < worldHeight * -0.5f || shape.y > worldHeight * 0.5f)
-            bodyType = BodyType.STATIC
+            bodyType = STATIC
 
         // Handle collision
         updateCollisions(engine)
@@ -80,7 +78,7 @@ interface CircleBody : PhysicsBody
         if (iteration == totalIterations - 1)
         {
             updateSleepState()
-            onBodyUpdated(shape)
+            onBodyUpdated()
         }
     }
 
@@ -122,6 +120,7 @@ interface CircleBody : PhysicsBody
         {
             shape.xLast = shape.x
             shape.yLast = shape.y
+            shape.stepsAtRest = 0
             shape.isSleeping = true
         }
         else shape.stepsAtRest++
@@ -132,7 +131,7 @@ interface CircleBody : PhysicsBody
         shape.isSleeping = false
     }
 
-    override fun render(surface: Surface2D)
+    override fun render(engine: PulseEngine, surface: Surface2D)
     {
         val dotSize = 5f
         val radius = shape.radius
@@ -164,9 +163,12 @@ interface CircleBody : PhysicsBody
             xLast = x
             yLast = y
         }
+
+        surface.setDrawColor(1f, 0f, 0f)
+        surface.drawText(shape.stepsAtRest.toString(), xCenter, yCenter, fontSize = 50f)
     }
 
-    fun onBodyUpdated(shape: CircleShape)
+    fun onBodyUpdated()
     {
         if (this is SceneEntity)
         {
@@ -194,6 +196,8 @@ interface CircleBody : PhysicsBody
         CircleShape.reusableVector.set(shape.x, shape.y)
 
     override fun getPointCount() = 1
+
+    override fun getMass() = shape.mass
 
     override fun onCollision(engine: PulseEngine, otherBody: PhysicsBody, result: ContactResult) { }
 }

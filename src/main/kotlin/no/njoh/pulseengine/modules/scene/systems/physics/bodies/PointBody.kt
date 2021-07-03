@@ -5,6 +5,7 @@ import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.modules.scene.systems.physics.*
+import no.njoh.pulseengine.modules.scene.systems.physics.BodyType.STATIC
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PointShape
 import org.joml.Vector2f
 import kotlin.math.abs
@@ -13,19 +14,21 @@ interface PointBody : PhysicsBody
 {
     val shape: PointShape
 
-    override fun init()
+    override fun init(engine: PulseEngine)
     {
         if (this is SceneEntity)
         {
             shape.x = x
             shape.y = y
             shape.mass = density
-            onBodyUpdated(shape)
         }
     }
 
-    override fun beginStep(timeStep: Float, gravity: Float)
+    override fun beginStep(engine: PulseEngine, timeStep: Float, gravity: Float)
     {
+        if (bodyType == STATIC)
+            return
+
         val drag = 1f - drag
         val xNow = shape.x
         val yNow = shape.y
@@ -44,9 +47,9 @@ interface PointBody : PhysicsBody
         shape.yAcc = gravity
     }
 
-    override fun iterateStep(iteration: Int, totalIterations: Int, engine: PulseEngine, worldWidth: Int, worldHeight: Int)
+    override fun iterateStep(engine: PulseEngine, iteration: Int, totalIterations: Int, worldWidth: Int, worldHeight: Int)
     {
-        if (iteration > 0)
+        if (bodyType == STATIC || iteration > 0)
             return
 
         val x = shape.x
@@ -73,10 +76,10 @@ interface PointBody : PhysicsBody
             }
         }
 
-        onBodyUpdated(shape)
+        onBodyUpdated()
     }
 
-    override fun render(surface: Surface2D)
+    override fun render(engine: PulseEngine, surface: Surface2D)
     {
         surface.setDrawColor(0.5f, 0.5f, 1f, 0.1f)
         surface.drawLine(shape.x, shape.y, shape.xLast, shape.yLast)
@@ -87,7 +90,7 @@ interface PointBody : PhysicsBody
         surface.drawQuad(shape.x - 0.5f * dotSize, shape.y - 0.5f * dotSize, dotSize, dotSize)
     }
 
-    fun onBodyUpdated(shape: PointShape)
+    fun onBodyUpdated()
     {
         if (this is SceneEntity)
         {
@@ -116,6 +119,8 @@ interface PointBody : PhysicsBody
         PointShape.reusableVector.set(shape.x, shape.y)
 
     override fun getPointCount() = 1
+
+    override fun getMass() = shape.mass
 
     override fun onCollision(engine: PulseEngine, otherBody: PhysicsBody, result: ContactResult) { }
 }

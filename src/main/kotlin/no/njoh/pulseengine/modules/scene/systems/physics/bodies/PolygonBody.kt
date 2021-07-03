@@ -29,26 +29,25 @@ interface PolygonBody : PhysicsBody
 {
     val shape: PolygonShape
 
-    override fun init()
+    override fun init(engine: PulseEngine)
     {
         if (this is SceneEntity)
         {
             shape.build(x, y, width, height, rotation, density)
-            onBodyUpdated(shape.xCenter, shape.yCenter, shape.xCenterLast, shape.yCenterLast, rotation)
         }
     }
 
-    override fun beginStep(timeStep: Float, gravity: Float)
+    override fun beginStep(engine: PulseEngine, timeStep: Float, gravity: Float)
     {
-        if (shape.isSleeping)
+        if (shape.isSleeping || bodyType == STATIC)
             return
 
         updateTransform(timeStep, gravity)
     }
 
-    override fun iterateStep(iteration: Int, totalIterations: Int, engine: PulseEngine, worldWidth: Int, worldHeight: Int)
+    override fun iterateStep(engine: PulseEngine, iteration: Int, totalIterations: Int, worldWidth: Int, worldHeight: Int)
     {
-        if (shape.isSleeping)
+        if (shape.isSleeping || bodyType == STATIC)
             return
 
         updateConstraints()
@@ -58,9 +57,10 @@ interface PolygonBody : PhysicsBody
         // Last iteration
         if (iteration == totalIterations - 1)
         {
-            updateCenterAndRotation()
+            shape.recalculateBoundingBox()
+            shape.recalculateRotation()
             updateSleepState()
-            onBodyUpdated(shape.xCenter, shape.yCenter, shape.xCenterLast, shape.yCenterLast, shape.angle)
+            onBodyUpdated()
         }
     }
 
@@ -163,7 +163,7 @@ interface PolygonBody : PhysicsBody
         }
     }
 
-    override fun render(surface: Surface2D)
+    override fun render(engine: PulseEngine, surface: Surface2D)
     {
         if (shape.isSleeping)
             surface.setDrawColor(1f, 0.3f, 0.3f)
@@ -194,13 +194,13 @@ interface PolygonBody : PhysicsBody
         }
     }
 
-    fun onBodyUpdated(xCenter: Float, yCenter: Float, xCenterLast: Float, yCenterLast: Float, angle: Float)
+    fun onBodyUpdated()
     {
         if (this is SceneEntity)
         {
-            x = xCenter
-            y = yCenter
-            rotation = angle
+            x = shape.xCenter
+            y = shape.yCenter
+            rotation = shape.angle
             set(POSITION_UPDATED or ROTATION_UPDATED)
         }
     }
@@ -230,6 +230,8 @@ interface PolygonBody : PhysicsBody
         else PolygonShape.reusableVector.set(shape.points[index * N_POINT_FIELDS + X], shape.points[index * N_POINT_FIELDS + Y])
 
     override fun getPointCount() = shape.points.size / N_POINT_FIELDS
+
+    override fun getMass() = shape.mass
 
     override fun onCollision(engine: PulseEngine, otherBody: PhysicsBody, result: ContactResult) { }
 }
