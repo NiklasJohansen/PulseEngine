@@ -589,12 +589,15 @@ object ContactSolver
             ePoints[edgePointIndex1 + Y_LAST] += frictionImpulse1.y * t
         }
 
-        if (circleBody.bodyType != STATIC)
-        {
-            // Calculate circle velocity before position is corrected
-            val xVel = circle.x - circle.xLast
-            val yVel = circle.y - circle.yLast
+        // Calculate circle velocity before position is corrected
+        val xVel = circle.x - circle.xLast
+        val yVel = circle.y - circle.yLast
 
+        // If dot product between edge normal and travel direction is more than 0, then the circle is moving towards the edge
+        val dot = xVel * xNormal + yVel * yNormal
+
+        if (circleBody.bodyType != STATIC && dot > 0f)
+        {
             // Correct circle position
             circle.x += xNormal * depth * circleBodyRatio
             circle.y += yNormal * depth * circleBodyRatio
