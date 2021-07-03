@@ -107,6 +107,27 @@ open class Camera : SceneEntity()
 
     override fun onFixedUpdate(engine: PulseEngine)
     {
+        engine.scene.getEntity(targetEntityId)?.let {
+            if (!initalized)
+            {
+                x = it.x
+                y = it.y
+                if (trackRotation)
+                    rotation = it.rotation
+                initalized = true
+            }
+            else
+            {
+                x += (it.x - x) * smoothing
+                y += (it.y - y) * smoothing
+                if (trackRotation)
+                {
+                    val diff = (it.rotation - rotation).toRadians()
+                    rotation += atan2(sin(diff), cos(diff)).toDegrees() * smoothing
+                }
+            }
+        }
+
         val surfaceWidth = engine.gfx.mainSurface.width
         val surfaceHeight = engine.gfx.mainSurface.height
         val scale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight)

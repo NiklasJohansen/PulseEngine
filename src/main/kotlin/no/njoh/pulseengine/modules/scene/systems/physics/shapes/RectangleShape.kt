@@ -40,6 +40,7 @@ class RectangleShape : PolygonShape()
         // Update position, rotation and bounding box
         recalculateBoundingBox()
         recalculateRotation(angleOffset = rot)
+        this.angleLast = rot
         this.angleOffset = angle
         this.xCenterLast = xCenter
         this.yCenterLast = yCenter

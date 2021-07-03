@@ -20,6 +20,7 @@ class RegularPolygonShape(edges: Int) : PolygonShape()
 
         val r = (width + height) * 0.25f
         this.mass = density * (r * r * nBoundaryPoints * sin(2f * PI.toFloat() / nBoundaryPoints) * 0.5f)
+        this.angleLast = rot
         this.angleOffset = angle
         this.xCenterLast = xCenter
         this.yCenterLast = yCenter

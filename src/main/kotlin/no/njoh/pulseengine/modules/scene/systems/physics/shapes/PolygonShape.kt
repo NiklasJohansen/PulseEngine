@@ -18,6 +18,7 @@ abstract class PolygonShape
     var xCenterLast = 0f
     var yCenterLast = 0f
     var angle = 0f
+    var angleLast = 0f
     var angleOffset = 0f
 
     // Bounding box
@@ -84,9 +85,8 @@ abstract class PolygonShape
     {
         val xDelta = points[X] - xCenter
         val yDelta = points[Y] - yCenter
+        angleLast = angle
         angle = (atan2(yDelta, xDelta) / PI.toFloat() + 1.0f) * 180f - angleOffset
-        if (angle < 0) angle += 360
-        if (angle > 360) angle -= 360
     }
 
     fun applyAcceleration(xAcc: Float, yAcc: Float)

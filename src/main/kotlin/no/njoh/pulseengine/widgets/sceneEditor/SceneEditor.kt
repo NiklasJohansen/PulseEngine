@@ -16,13 +16,13 @@ import no.njoh.pulseengine.modules.graphics.ui.layout.RowPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.docking.DockingPanel
 import no.njoh.pulseengine.modules.scene.Scene
-import no.njoh.pulseengine.modules.scene.SpatialGrid
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.modules.scene.systems.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.modules.widget.Widget
 import no.njoh.pulseengine.util.*
 import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.MenuBarButton
@@ -506,6 +506,7 @@ class SceneEditor: Widget
         {
             engine.input.setCursor(ARROW)
             isMoving = false
+            this.onMovedScaledOrRotated(engine)
         }
 
         this.x += engine.input.xdMouse / activeCamera.xScale
@@ -530,6 +531,7 @@ class SceneEditor: Widget
             dragAndDropEntity = null
             engine.scene.activeScene.insertEntity(this)
             updatePropertiesPanel("id", this.id)
+            this.onMovedScaledOrRotated(engine)
         }
     }
 
@@ -594,6 +596,9 @@ class SceneEditor: Widget
         }
         else
         {
+            if (isResizingHorizontally || isResizingVertically || isRotating)
+                onMovedScaledOrRotated(engine)
+
             isResizingVertically = false
             isResizingHorizontally = false
             isRotating = false
@@ -919,6 +924,12 @@ class SceneEditor: Widget
             }
         }
         return copy
+    }
+
+    private fun SceneEntity.onMovedScaledOrRotated(engine: PulseEngine)
+    {
+        if (this is PhysicsBody)
+            this.init(engine)
     }
 
     private fun resetUI()
