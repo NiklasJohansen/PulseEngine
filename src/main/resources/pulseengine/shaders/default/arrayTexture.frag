@@ -19,11 +19,5 @@ void main() {
     if(textureColor.a < 0.4)
         discard;
 
-    // A texture index with decimal higher than 0 is used as alpha mask
-    bool isAlphaMaskTexture = fract(textureIndex) > 0.0;
-
-    if(isAlphaMaskTexture)
-        fragColor = vertexColor * vec4(1.0, 1.0, 1.0, textureColor.a);
-    else
-        fragColor = vertexColor * textureColor;
+    fragColor = vertexColor * textureColor;
 }

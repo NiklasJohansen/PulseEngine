@@ -81,7 +81,7 @@ class TextureBatchRenderer(
         val vMax = texture.vMax * vMax
         val uMin = texture.uMax * uMin
         val vMin = texture.vMax * vMin
-        val index = texture.id.toFloat() + if (texture.format == GL_ALPHA) 0.5f else 0.0f
+        val index = texture.id.toFloat()
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
         val rgba = renderState.rgba

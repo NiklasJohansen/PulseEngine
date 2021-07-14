@@ -38,12 +38,12 @@ class Font(
         STBTTPackContext.malloc().use { packContext ->
             val charData = STBTTPackedchar.malloc(fontSizes.size * TOTAL_CHAR_COUNT)
             val ttf = BufferUtils.createByteBuffer(fontData.size).put(fontData).flip() as ByteBuffer
-            val bitmap = BufferUtils.createByteBuffer(BITMAP_W * BITMAP_H)
+            val alphaMask = BufferUtils.createByteBuffer(BITMAP_W * BITMAP_H)
             val info = STBTTFontinfo.create()
             if (!stbtt_InitFont(info, ttf))
                 throw IllegalStateException("Failed to initialize font information.");
 
-            stbtt_PackBegin(packContext, bitmap, BITMAP_W, BITMAP_H, 0, 1, MemoryUtil.NULL)
+            stbtt_PackBegin(packContext, alphaMask, BITMAP_W, BITMAP_H, 0, 1, MemoryUtil.NULL)
             fontSizes.sort()
             for (i in fontSizes.indices)
             {
@@ -57,8 +57,17 @@ class Font(
             charData.clear()
             stbtt_PackEnd(packContext)
 
+            val rgbaBuffer = BufferUtils.createByteBuffer(BITMAP_W * BITMAP_H * 4)
+            for (i in 0 until (BITMAP_W * BITMAP_H))  {
+                rgbaBuffer.put(255.toByte())
+                rgbaBuffer.put(255.toByte())
+                rgbaBuffer.put(255.toByte())
+                rgbaBuffer.put(alphaMask.get(i))
+            }
+            rgbaBuffer.flip()
+
             this.charTexture = Texture("char_tex", "")
-            this.charTexture.load(bitmap, BITMAP_W, BITMAP_H, GL_ALPHA)
+            this.charTexture.load(rgbaBuffer, BITMAP_W, BITMAP_H, GL_RGBA)
             this.charData = charData
             this.ttfBuffer = ttf
             this.info = info
