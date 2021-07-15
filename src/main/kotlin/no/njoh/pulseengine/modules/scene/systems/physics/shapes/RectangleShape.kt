@@ -24,18 +24,18 @@ class RectangleShape : PolygonShape()
         val y1 =  w * s + h * c
 
         // Set point positions
-        setPoint(0, x + x0, y + y0) // Top, Left
-        setPoint(1, x + x1, y + y1) // Top, Right
-        setPoint(2, x - x0, y - y0) // Bottom, Right
-        setPoint(3, x - x1, y - y1) // Bottom, Left
+        createPoint(0, x + x0, y + y0) // Top, Left
+        createPoint(1, x + x1, y + y1) // Top, Right
+        createPoint(2, x - x0, y - y0) // Bottom, Right
+        createPoint(3, x - x1, y - y1) // Bottom, Left
 
         // Set all stick constrains
-        setStickConstraint(0, 0, 1, 1f)
-        setStickConstraint(1, 1, 2, 1f)
-        setStickConstraint(2, 2, 3, 1f)
-        setStickConstraint(3, 3, 0, 1f)
-        setStickConstraint(4, 0, 2, 1f)
-        setStickConstraint(5, 1, 3, 1f)
+        createStickConstraint(0, 0, 1, 1f)
+        createStickConstraint(1, 1, 2, 1f)
+        createStickConstraint(2, 2, 3, 1f)
+        createStickConstraint(3, 3, 0, 1f)
+        createStickConstraint(4, 0, 2, 1f)
+        createStickConstraint(5, 1, 3, 1f)
 
         // Update position, rotation and bounding box
         recalculateBoundingBox()

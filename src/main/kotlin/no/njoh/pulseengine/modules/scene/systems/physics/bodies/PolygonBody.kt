@@ -27,7 +27,7 @@ import kotlin.math.*
 
 interface PolygonBody : PhysicsBody
 {
-    val shape: PolygonShape
+    override val shape: PolygonShape
 
     override fun init(engine: PulseEngine)
     {
@@ -215,21 +215,6 @@ interface PolygonBody : PhysicsBody
         val shape = shape
         return xMin < shape.xMax && xMax > shape.xMin && yMin < shape.yMax && yMax > shape.yMin
     }
-
-    override fun setPoint(index: Int, x: Float, y: Float)
-    {
-        if (index >= 0 && index * N_POINT_FIELDS < shape.points.size)
-        {
-            shape.points[index * N_POINT_FIELDS + X] = x
-            shape.points[index * N_POINT_FIELDS + Y] = y
-        }
-    }
-
-    override fun getPoint(index: Int): Vector2f? =
-        if (index < 0 || index * N_POINT_FIELDS >= shape.points.size) null
-        else PolygonShape.reusableVector.set(shape.points[index * N_POINT_FIELDS + X], shape.points[index * N_POINT_FIELDS + Y])
-
-    override fun getPointCount() = shape.points.size / N_POINT_FIELDS
 
     override fun getMass() = shape.mass
 

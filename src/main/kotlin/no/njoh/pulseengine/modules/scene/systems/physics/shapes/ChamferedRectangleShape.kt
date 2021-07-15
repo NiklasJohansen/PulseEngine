@@ -28,20 +28,20 @@ class ChamferedRectangleShape(
     {
         val w = width / 2
         val h = height / 2
-        setPoint(0, x - w, y - h * heightFraction)
-        setPoint(1, x - w, y + h * heightFraction)
-        setPoint(2, x - w * widthFraction, y + h)
-        setPoint(3, x + w * widthFraction, y + h)
-        setPoint(4, x + w, y + h * heightFraction)
-        setPoint(5, x + w, y - h * heightFraction)
-        setPoint(6, x + w * widthFraction, y - h)
-        setPoint(7, x - w * widthFraction, y - h)
+        createPoint(0, x - w, y - h * heightFraction)
+        createPoint(1, x - w, y + h * heightFraction)
+        createPoint(2, x - w * widthFraction, y + h)
+        createPoint(3, x + w * widthFraction, y + h)
+        createPoint(4, x + w, y + h * heightFraction)
+        createPoint(5, x + w, y - h * heightFraction)
+        createPoint(6, x + w * widthFraction, y - h)
+        createPoint(7, x - w * widthFraction, y - h)
 
         // Create stick constrains
         var count = 0
         for (i in 0 until nBoundaryPoints)
             for (j in i + 1 until nBoundaryPoints)
-                setStickConstraint(count++, i, j, 1f)
+                createStickConstraint(count++, i, j, 1f)
 
         // Disable axis alignment while calculating initial angle offset
         val tmpKeepAxisAligned = keepAxisAligned

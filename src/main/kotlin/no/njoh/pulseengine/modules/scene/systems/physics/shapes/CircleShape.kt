@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
+import no.njoh.pulseengine.data.Shape
 import org.joml.Vector2f
 
 data class CircleShape(
@@ -16,7 +17,18 @@ data class CircleShape(
     var mass: Float = 1f,
     var isSleeping: Boolean = false,
     var stepsAtRest: Int = 0
-) {
+
+) : Shape() {
+
+    override fun getPointCount() = 1
+    override fun getRadius() = radius
+    override fun getPoint(index: Int): Vector2f = reusableVector.set(x, y)
+    override fun setPoint(index: Int, x: Float, y: Float)
+    {
+        this.x = x
+        this.y = y
+    }
+
     companion object
     {
         // Number of physics steps a body has to be at rest before it's put to sleep

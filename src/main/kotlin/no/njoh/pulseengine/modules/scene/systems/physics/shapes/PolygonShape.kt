@@ -1,11 +1,12 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
+import no.njoh.pulseengine.data.Shape
 import no.njoh.pulseengine.util.MathUtil.atan2
 import org.joml.Vector2f
 import kotlin.math.PI
 import kotlin.math.sqrt
 
-abstract class PolygonShape
+abstract class PolygonShape : Shape()
 {
     abstract val points: FloatArray // x, y, xLast, yLast, xAcc, yAcc
     abstract val constraints: FloatArray // index0, index1, length, stiffness
@@ -36,7 +37,7 @@ abstract class PolygonShape
 
     abstract fun build(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
 
-    fun setPoint(i: Int, x: Float, y: Float)
+    fun createPoint(i: Int, x: Float, y: Float)
     {
         points[N_POINT_FIELDS * i + X] = x
         points[N_POINT_FIELDS * i + Y] = y
@@ -44,7 +45,7 @@ abstract class PolygonShape
         points[N_POINT_FIELDS * i + Y_LAST] = y
     }
 
-    fun setStickConstraint(i: Int, point0: Int, point1: Int, stiffness: Float)
+    fun createStickConstraint(i: Int, point0: Int, point1: Int, stiffness: Float)
     {
         val xDelta = points[N_POINT_FIELDS * point1 + X] - points[N_POINT_FIELDS * point0 + X]
         val yDelta = points[N_POINT_FIELDS * point1 + Y] - points[N_POINT_FIELDS * point0 + Y]
@@ -168,6 +169,23 @@ abstract class PolygonShape
         }
 
         return inside
+    }
+
+    override fun getPointCount() = points.size / N_POINT_FIELDS
+
+    override fun getRadius(): Float? = null
+
+    override fun getPoint(index: Int): Vector2f? =
+        if (index < 0 || index * N_POINT_FIELDS >= points.size) null
+        else reusableVector.set(points[index * N_POINT_FIELDS + X], points[index * N_POINT_FIELDS + Y])
+
+    override fun setPoint(index: Int, x: Float, y: Float)
+    {
+        if (index >= 0 && index * N_POINT_FIELDS < points.size)
+        {
+            points[index * N_POINT_FIELDS + X] = x
+            points[index * N_POINT_FIELDS + Y] = y
+        }
     }
 
     companion object

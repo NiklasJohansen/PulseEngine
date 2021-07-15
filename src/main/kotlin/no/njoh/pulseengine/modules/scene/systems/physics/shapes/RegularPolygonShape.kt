@@ -33,7 +33,7 @@ class RegularPolygonShape(edges: Int) : PolygonShape()
             val angle = i.toFloat() / nBoundaryPoints * 2 * PI + PI / nBoundaryPoints
             val x0 = x + width * cos(-angle).toFloat()
             val y0 = y + height * sin(-angle).toFloat()
-            setPoint(i, x0, y0)
+            createPoint(i, x0, y0)
         }
     }
 
@@ -42,6 +42,6 @@ class RegularPolygonShape(edges: Int) : PolygonShape()
         var count = 0
         for (i in 0 until nBoundaryPoints)
             for (j in i + 1 until nBoundaryPoints)
-                setStickConstraint(count++, i, j, 1f)
+                createStickConstraint(count++, i, j, 1f)
     }
 }

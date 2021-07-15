@@ -16,7 +16,7 @@ import kotlin.math.*
 
 interface CircleBody : PhysicsBody
 {
-    val shape: CircleShape
+    override val shape: CircleShape
 
     override fun init(engine: PulseEngine)
     {
@@ -185,17 +185,6 @@ interface CircleBody : PhysicsBody
         val radius = circle.radius * 2
         return xMin < circle.x + radius && xMax > circle.x - radius && yMin < circle.y + radius && yMax > circle.y - radius
     }
-
-    override fun setPoint(index: Int, x: Float, y: Float)
-    {
-        shape.x = x
-        shape.y = y
-    }
-
-    override fun getPoint(index: Int): Vector2f? =
-        CircleShape.reusableVector.set(shape.x, shape.y)
-
-    override fun getPointCount() = 1
 
     override fun getMass() = shape.mass
 

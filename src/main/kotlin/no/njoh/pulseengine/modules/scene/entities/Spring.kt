@@ -32,10 +32,10 @@ open class Spring : SceneEntity(), PhysicsEntity
         val body0 = engine.scene.getEntityOfType<PhysicsBody>(bodyRef0)
         val body1 = engine.scene.getEntityOfType<PhysicsBody>(bodyRef1)
 
-        body0?.getPoint(bodyPoint0)?.let { p0 ->
+        body0?.shape?.getPoint(bodyPoint0)?.let { p0 ->
             val p0x = p0.x
             val p0y = p0.y
-            body1?.getPoint(bodyPoint1)?.let { p1 ->
+            body1?.shape?.getPoint(bodyPoint1)?.let { p1 ->
                 // Calculate displacement
                 val xDelta = p0x - p1.x
                 val yDelta = p0y - p1.y
@@ -53,13 +53,13 @@ open class Spring : SceneEntity(), PhysicsEntity
 
                 if (body0.bodyType != BodyType.STATIC)
                 {
-                    body0.setPoint(bodyPoint0, p0x + xDisp * ratio0, p0y + yDisp * ratio0)
+                    body0.shape.setPoint(bodyPoint0, p0x + xDisp * ratio0, p0y + yDisp * ratio0)
                     body0.wakeUp()
                 }
 
                 if (body1.bodyType != BodyType.STATIC)
                 {
-                    body1.setPoint(bodyPoint1, p1.x - xDisp * ratio1, p1.y - yDisp * ratio1)
+                    body1.shape.setPoint(bodyPoint1, p1.x - xDisp * ratio1, p1.y - yDisp * ratio1)
                     body1.wakeUp()
                 }
             }
@@ -108,10 +108,10 @@ open class Spring : SceneEntity(), PhysicsEntity
     {
         val body0 = engine.scene.getEntityOfType<PhysicsBody>(bodyRef0)
         val body1 = engine.scene.getEntityOfType<PhysicsBody>(bodyRef1)
-        body0?.getPoint(bodyPoint0)?.let { p0 ->
+        body0?.shape?.getPoint(bodyPoint0)?.let { p0 ->
             val x0 = p0.x
             val y0 = p0.y
-            body1?.getPoint(bodyPoint1)?.let { p1 ->
+            body1?.shape?.getPoint(bodyPoint1)?.let { p1 ->
                 block(x0, y0, p1.x, p1.y)
             }
         }

@@ -5,13 +5,14 @@ import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
+import no.njoh.pulseengine.modules.scene.systems.lighting.LightOccluder
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.PolygonBody
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.RectangleShape
 import no.njoh.pulseengine.util.degreesBetween
 import no.njoh.pulseengine.util.interpolateFrom
 
-open class Box : SceneEntity(), PolygonBody
+open class Box : SceneEntity(), PolygonBody, LightOccluder
 {
     var textureName: String = ""
 
@@ -24,6 +25,8 @@ open class Box : SceneEntity(), PolygonBody
     override var density = 1f
     override var friction = 0.4f
     override var drag = 0.01f
+
+    override val castShadows = true
 
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {

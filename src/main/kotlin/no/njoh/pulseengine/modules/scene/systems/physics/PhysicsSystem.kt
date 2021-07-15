@@ -71,7 +71,7 @@ class PhysicsSystem : SceneSystem()
         }
         else if (pickedBody != null)
         {
-            pickedBody!!.setPoint(pickedPointIndex, engine.input.xWorldMouse, engine.input.yWorldMouse)
+            pickedBody!!.shape.setPoint(pickedPointIndex, engine.input.xWorldMouse, engine.input.yWorldMouse)
             pickedBody!!.wakeUp()
             return
         }
@@ -81,9 +81,9 @@ class PhysicsSystem : SceneSystem()
         val yMouse = engine.input.yWorldMouse
         engine.scene.forEachNearbyEntityOfType<PhysicsBody>(xMouse, yMouse, 500f, 500f)
         {
-            for (i in 0 until it.getPointCount())
+            for (i in 0 until it.shape.getPointCount())
             {
-                it.getPoint(i)?.let { point ->
+                it.shape.getPoint(i)?.let { point ->
                     val xDelta = point.x - xMouse
                     val yDelta = point.y - yMouse
                     val dist = xDelta * xDelta + yDelta * yDelta

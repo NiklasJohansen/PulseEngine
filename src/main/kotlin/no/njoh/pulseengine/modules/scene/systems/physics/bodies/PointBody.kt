@@ -12,7 +12,7 @@ import kotlin.math.abs
 
 interface PointBody : PhysicsBody
 {
-    val shape: PointShape
+    override val shape: PointShape
 
     override fun init(engine: PulseEngine)
     {
@@ -108,17 +108,6 @@ interface PointBody : PhysicsBody
         val yVel = abs(shape.yVel)
         return xMin < shape.x + xVel && xMax > shape.x - xVel && yMin < shape.y + yVel && yMax > shape.y - yMin
     }
-
-    override fun setPoint(index: Int, x: Float, y: Float)
-    {
-        shape.x = x
-        shape.y = y
-    }
-
-    override fun getPoint(index: Int): Vector2f? =
-        PointShape.reusableVector.set(shape.x, shape.y)
-
-    override fun getPointCount() = 1
 
     override fun getMass() = shape.mass
 

@@ -5,13 +5,14 @@ import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
+import no.njoh.pulseengine.modules.scene.systems.lighting.LightOccluder
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.CircleShape
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.CircleBody
 import no.njoh.pulseengine.util.interpolateFrom
 import no.njoh.pulseengine.util.toDegrees
 
-open class Ball : SceneEntity(), CircleBody
+open class Ball : SceneEntity(), CircleBody, LightOccluder
 {
     var textureName: String = "ball"
 
@@ -24,6 +25,8 @@ open class Ball : SceneEntity(), CircleBody
     override var density = 1f
     override var friction = 0.4f
     override var drag = 0.01f
+
+    override val castShadows = true
 
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {

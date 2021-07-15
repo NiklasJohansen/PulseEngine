@@ -1,10 +1,10 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.bodies
 
 import no.njoh.pulseengine.PulseEngine
+import no.njoh.pulseengine.data.Shape
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
 import no.njoh.pulseengine.modules.scene.systems.physics.ContactResult
 import no.njoh.pulseengine.modules.scene.systems.physics.PhysicsEntity
-import org.joml.Vector2f
 
 /**
  * Base class for all physics bodies.
@@ -14,6 +14,9 @@ import org.joml.Vector2f
  */
 interface PhysicsBody : PhysicsEntity
 {
+    /** Contains data about the shape of the body */
+    val shape: Shape
+
     /** Determines how the body is affected by the physics system. */
     var bodyType: BodyType
 
@@ -50,21 +53,6 @@ interface PhysicsBody : PhysicsEntity
      * Used as a fast way of checking for potential collisions.
      */
     fun hasOverlappingAABB(xMin: Float, yMin: Float, xMax: Float, yMax: Float): Boolean
-
-    /**
-     * Returns the coordinates of a specific body point.
-     */
-    fun getPoint(index: Int): Vector2f?
-
-    /**
-     * Sets the position of a specific body point.
-     */
-    fun setPoint(index: Int, x: Float, y: Float)
-
-    /**
-     * Returns the total amount of points the body is built up of.
-     */
-    fun getPointCount(): Int
 
     /**
      * Returns the total mass of the body.

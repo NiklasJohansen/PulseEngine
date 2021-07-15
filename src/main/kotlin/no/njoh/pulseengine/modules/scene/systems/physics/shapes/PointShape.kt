@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
+import no.njoh.pulseengine.data.Shape
 import org.joml.Vector2f
 
 data class PointShape(
@@ -25,7 +26,17 @@ data class PointShape(
 
     /** Mass */
     var mass: Float = 1f
-) {
+) : Shape() {
+
+    override fun getPointCount() = 1
+    override fun getRadius() = 1f
+    override fun getPoint(index: Int): Vector2f? = reusableVector.set(x, y)
+    override fun setPoint(index: Int, x: Float, y: Float)
+    {
+        this.x = x
+        this.y = y
+    }
+
     companion object
     {
         val reusableVector = Vector2f()
