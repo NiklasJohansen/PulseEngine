@@ -28,6 +28,7 @@ abstract class SceneManager
     abstract fun stop()
     abstract fun pause()
     abstract fun save(async: Boolean = false)
+    abstract fun saveAs(fileName: String, async: Boolean = false)
     abstract fun saveIf(async: Boolean = false, predicate: (SceneManager) -> Boolean)
     abstract fun reload(fromClassPath: Boolean = false)
     abstract fun loadAndSetActive(fileName: String, fromClassPath: Boolean = false)
@@ -167,7 +168,11 @@ class SceneManagerImpl : SceneManagerEngineInterface() {
     {
         if (scene != activeScene)
         {
-            activeScene.stop(engine)
+            if (state != STOPPED)
+                activeScene.stop(engine)
+
+            activeScene.destroy(engine)
+
             if (scene.entities != activeScene.entities)
                 activeScene.clearAll()
 
@@ -202,6 +207,17 @@ class SceneManagerImpl : SceneManagerEngineInterface() {
                 engine.data.saveObject(activeScene, activeScene.fileName, activeScene.fileFormat)
         }
         else Logger.error("Cannot save scene: ${activeScene.name} - fileName is not set!")
+    }
+
+    override fun saveAs(fileName: String, async: Boolean)
+    {
+        activeScene.optimizeCollections()
+        activeScene.fileName = fileName
+
+        if (async)
+            engine.data.saveObjectAsync(activeScene, activeScene.fileName, activeScene.fileFormat)
+        else
+            engine.data.saveObject(activeScene, activeScene.fileName, activeScene.fileFormat)
     }
 
     override fun saveIf(async: Boolean, predicate: (SceneManager) -> Boolean)

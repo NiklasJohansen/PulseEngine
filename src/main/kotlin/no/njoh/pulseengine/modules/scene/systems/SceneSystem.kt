@@ -20,37 +20,42 @@ abstract class SceneSystem
     }
 
     /**
-     * Runs one time when the system is created
+     * Called one time when the system is created
      */
     open fun onCreate(engine: PulseEngine) { }
 
     /**
-     * Runs one time when the scene starts
+     * Called one time when the scene starts
      */
     open fun onStart(engine: PulseEngine) { }
 
     /**
-     * Runs at a fixed tick rate independent of frame rate
+     * Called at a fixed tick rate independent of frame rate
      */
     open fun onFixedUpdate(engine: PulseEngine) { }
 
     /**
-     * Runs one time every frame
+     * Called one time every frame
      */
     open fun onUpdate(engine: PulseEngine) { }
 
     /**
-     * Runs one time every frame
+     * Called one time every frame
      */
     open fun onRender(engine: PulseEngine) { }
 
     /**
-     * Runs one time when the scene stops
+     * Called one time when the scene stops
      */
     open fun onStop(engine: PulseEngine) { }
 
     /**
-     * Whether or not this system takes the responsibility of deleting dead entities
+     * Called one time when the system is destroyed
+     */
+    open fun onDestroy(engine: PulseEngine) { }
+
+    /**
+     * Whether or not this system takes the care of deleting dead entities
      */
     open fun handlesEntityDeletion(): Boolean = false
 

@@ -99,13 +99,18 @@ open class Scene(
 
     internal fun fixedUpdate(engine: PulseEngine)
     {
-        systems.forEachFiltered({ it.enabled }) { it.onFixedUpdate(engine) }
+        systems.forEachFiltered({ it.enabled && it.initialized }) { it.onFixedUpdate(engine) }
     }
 
     internal fun render(engine: PulseEngine)
     {
         spatialGrid.render(engine.gfx.mainSurface)
-        systems.forEachFiltered({ it.enabled }) { it.onRender(engine) }
+        systems.forEachFiltered({ it.enabled && it.initialized }) { it.onRender(engine) }
+    }
+
+    internal fun destroy(engine: PulseEngine)
+    {
+        systems.forEach { it.onDestroy(engine) }
     }
 
     internal fun optimizeCollections()

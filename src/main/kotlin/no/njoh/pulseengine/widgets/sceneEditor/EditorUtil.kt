@@ -262,7 +262,10 @@ object EditorUtil
                 engine.scene.addSystem(newSystem)
                 propertiesRowPanel.insertSceneSystemProperties(
                     system = newSystem,
-                    onClose = { engine.scene.removeSystem(newSystem) }
+                    onClose = {
+                        newSystem.onDestroy(engine)
+                        engine.scene.removeSystem(newSystem)
+                    }
                 )
             }
         }
@@ -306,7 +309,10 @@ object EditorUtil
         for (system in engine.scene.activeScene.systems)
         {
             val isHidden = system::class.simpleName in hiddenSystems
-            this.insertSceneSystemProperties(system, isHidden, onClose = { engine.scene.removeSystem(system) })
+            this.insertSceneSystemProperties(system, isHidden, onClose = {
+                system.onDestroy(engine)
+                engine.scene.removeSystem(system)
+            })
         }
     }
 

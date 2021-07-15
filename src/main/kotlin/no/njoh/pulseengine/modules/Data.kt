@@ -95,7 +95,7 @@ class MutableDataContainer : DataEngineInterface()
                     file.parentFile.mkdirs()
                 file.writeBytes(getMapper(format).writeValueAsBytes(data))
             }
-            Logger.debug("Saved state in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
+            Logger.debug("Saved state into $fileName in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
             true
         }
         .onFailure { Logger.error("Failed to save file: $fileName - reason: ${it.message}"); }
@@ -114,7 +114,7 @@ class MutableDataContainer : DataEngineInterface()
                         .readBytes()
                         .let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
             }
-            Logger.debug("Loaded state in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
+            Logger.debug("Loaded state from $fileName in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
             state
         }
         .onFailure { Logger.error("Failed to load state (fromClassPath=$fromClassPath): $fileName - reason: ${it.message}") }

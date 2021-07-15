@@ -63,6 +63,8 @@ class SceneEditor: Widget
     private var dragAndDropEntity: SceneEntity? = null
     private var changeToType: KClass<out SceneEntity>? = null
     private var sceneFileToLoad: String? = null
+    private var sceneFileToCreate: String? = null
+    private var sceneFileToSaveAs: String? = null
 
     // Moving and copying
     private var isMoving = false
@@ -226,6 +228,18 @@ class SceneEditor: Widget
             sceneFileToLoad = null
         }
 
+        sceneFileToCreate?.let {
+            engine.scene.createEmptyAndSetActive(it)
+            engine.scene.save()
+            sceneFileToCreate = null
+        }
+
+        sceneFileToSaveAs?.let {
+            engine.scene.saveAs(fileName = it)
+            setWindowTitleFromSceneName(engine)
+            sceneFileToSaveAs = null
+        }
+
         if (engine.scene.state == SceneState.STOPPED)
         {
             screenArea.update(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
@@ -236,9 +250,8 @@ class SceneEditor: Widget
         {
             resetUI()
             systemPropertiesUI.insertSceneSystemProperties(engine)
-            engine.window.title = engine.window.title
-                .substringBeforeLast(" [")
-                .plus(" [${engine.scene.activeScene.fileName.removePrefix("/")}]")
+            setWindowTitleFromSceneName(engine)
+            initializeEntities(engine)
             lastSceneHashCode = engine.scene.activeScene.hashCode()
         }
 
@@ -306,10 +319,7 @@ class SceneEditor: Widget
 
         GlobalScope.launch {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
-                val fileName = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
-                val newScene = engine.scene.activeScene.copy(fileName)
-                engine.scene.setActive(newScene)
-                engine.scene.save()
+                sceneFileToSaveAs = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
             }
         }
     }
@@ -336,8 +346,7 @@ class SceneEditor: Widget
 
         GlobalScope.launch {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
-                engine.scene.createEmptyAndSetActive(filePath)
-                engine.scene.save()
+                sceneFileToCreate = filePath
             }
         }
     }
@@ -370,6 +379,7 @@ class SceneEditor: Widget
         {
             engine.scene.stop()
             engine.scene.reload()
+            initializeEntities(engine)
         }
     }
 
@@ -926,6 +936,14 @@ class SceneEditor: Widget
         return copy
     }
 
+    private fun initializeEntities(engine: PulseEngine)
+    {
+        engine.scene.forEachEntity {
+            if (it is PhysicsEntity)
+                it.init(engine)
+        }
+    }
+
     private fun SceneEntity.onMovedScaledOrRotated(engine: PulseEngine)
     {
         if (this is PhysicsBody)
@@ -943,8 +961,16 @@ class SceneEditor: Widget
         isResizingVertically = false
         isResizingHorizontally = false
         entityPropertiesUI.clearChildren()
+        systemPropertiesUI.clearChildren()
         entityPropertyUiRows.clear()
         entitySelection.clear()
+    }
+
+    private fun setWindowTitleFromSceneName(engine: PulseEngine)
+    {
+        engine.window.title = engine.window.title
+            .substringBeforeLast(" [")
+            .plus(" [${engine.scene.activeScene.fileName.removePrefix("/")}]")
     }
 
     override fun onDestroy(engine: PulseEngine)
