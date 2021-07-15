@@ -113,6 +113,16 @@ class RetainedModeGraphics : GraphicsEngineInterface
             Logger.error("No surface exists with name $name")
             mainSurface
         }
+
+    override fun removeSurface2D(name: String)
+    {
+        surfaces
+            .find { it.name == name }
+            ?.let {
+                it.cleanup()
+                surfaces.remove(it)
+            } ?: run { Logger.error("No surface exists with name $name") }
+    }
 }
 
 interface BatchRenderer

@@ -12,6 +12,9 @@ class PostProcessingPipeline
     fun addEffect(effect: PostProcessingEffect) =
         effect.init().also { effects.add(effect) }
 
+    fun removeEffect(effect: PostProcessingEffect) =
+        effects.remove(effect)
+
     fun process(texture: Texture): Texture
     {
         var latestTexture = texture

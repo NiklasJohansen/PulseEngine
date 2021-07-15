@@ -29,9 +29,11 @@ interface Surface2D : Surface
     fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float = 1f): Surface2D
     fun setDrawColor(color: Color): Surface2D
     fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface2D
+    fun setBackgroundColor(color: Color): Surface2D
     fun setBlendFunction(func: BlendFunction): Surface2D
     fun setIsVisible(isVisible: Boolean): Surface2D
     fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
+    fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
 }
 
 interface EngineSurface2D : Surface2D
@@ -168,6 +170,15 @@ class Surface2DImpl(
         return this
     }
 
+    override fun setBackgroundColor(color: Color): Surface2D
+    {
+        backgroundColor.red = color.red
+        backgroundColor.green = color.green
+        backgroundColor.blue = color.blue
+        backgroundColor.alpha = color.alpha
+        return this
+    }
+
     override fun setBlendFunction(func: BlendFunction): Surface2D
     {
         blendFunction = func
@@ -183,6 +194,12 @@ class Surface2DImpl(
     override fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
     {
         postProcessingPipeline.addEffect(effect)
+        return this
+    }
+
+    override fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
+    {
+        postProcessingPipeline.removeEffect(effect)
         return this
     }
 

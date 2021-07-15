@@ -6,7 +6,7 @@ import no.njoh.pulseengine.modules.graphics.Surface
 import no.njoh.pulseengine.modules.graphics.postprocessing.SinglePassEffect
 
 class MultiplyEffect(
-    private val baseSurface: Surface
+    private val surface: Surface
 ) : SinglePassEffect() {
     override fun loadShaderProgram(): ShaderProgram =
         ShaderProgram.create(
@@ -19,7 +19,7 @@ class MultiplyEffect(
         fbo.bind()
         fbo.clear()
         program.bind()
-        renderer.render(baseSurface.getTexture(), texture)
+        renderer.render(texture, surface.getTexture())
         fbo.release()
 
         return fbo.texture
