@@ -276,7 +276,7 @@ class SceneManagerImpl : SceneManagerEngineInterface() {
         if (transitionFade >= 0)
         {
             if (!this::fadeSurface.isInitialized)
-                fadeSurface = engine.gfx.createSurface2D("sceneFadeSurface", zOrder = 99)
+                fadeSurface = engine.gfx.createSurface("sceneFadeSurface", zOrder = -99)
 
             val fade = (cos(transitionFade * PI * 2f + PI).toFloat() + 1f) / 2f
             fadeSurface.setDrawColor(0f, 0f, 0f, fade)

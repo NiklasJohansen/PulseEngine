@@ -22,8 +22,6 @@ open class Camera : SceneEntity()
     @JsonIgnore private var lastHeight = 0f
     @JsonIgnore private var camSize = 100f
 
-    init { setNot(DISCOVERABLE) }
-
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         if (engine.scene.state != SceneState.STOPPED)

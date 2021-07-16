@@ -11,6 +11,7 @@ import kotlin.reflect.KClass
 abstract class SceneEntity(
     open var x: Float = 0f,
     open var y: Float = 0f,
+    open var z: Float = 0f,
     open var width: Float = 0f,
     open var height: Float = 0f,
     open var rotation: Float = 0f

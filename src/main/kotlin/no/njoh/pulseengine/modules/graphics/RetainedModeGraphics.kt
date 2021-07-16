@@ -17,14 +17,14 @@ class RetainedModeGraphics : GraphicsEngineInterface
     override lateinit var mainSurface: EngineSurface2D
     private lateinit var renderer: FrameTextureRenderer
 
-    private var zOrder = 10
+    private var zOrder = 0
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
         graphicState.textureArray = TextureArray(1024, 1024, 100)
 
         mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)
-        mainSurface = Surface2DImpl.create("main", zOrder++, 100, graphicState, mainCamera)
+        mainSurface = Surface2DImpl.create("main", zOrder--, 100, graphicState, mainCamera)
         surfaces.add(mainSurface)
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
@@ -90,16 +90,16 @@ class RetainedModeGraphics : GraphicsEngineInterface
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        surfaces.sortBy { it.zOrder }
+        surfaces.sortByDescending { it.zOrder }
         surfaces.forEachFiltered({ it.isVisible }) { renderer.render(it.getTexture()) }
     }
 
-    override fun createSurface2D(name: String, zOrder: Int?, camera: CameraInterface?): Surface2D =
+    override fun createSurface(name: String, zOrder: Int?, camera: CameraInterface?): Surface2D =
         surfaces
             .find { it.name == name }
             ?: Surface2DImpl.create(
                 name = name,
-                zOrder = zOrder ?: this.zOrder++,
+                zOrder = zOrder ?: this.zOrder--,
                 initCapacity = 5000,
                 graphicsState = graphicState,
                 camera = (camera ?: Camera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraEngineInterface
@@ -108,13 +108,16 @@ class RetainedModeGraphics : GraphicsEngineInterface
                 surfaces.add(it)
             }
 
-    override fun getSurface2D(name: String): Surface2D =
+    override fun getSurfaceOrDefault(name: String): Surface2D =
         surfaces.find { it.name == name } ?: run {
             Logger.error("No surface exists with name $name")
             mainSurface
         }
 
-    override fun removeSurface2D(name: String)
+    override fun getSurface(name: String): Surface2D? =
+        surfaces.find { it.name == name }
+
+    override fun removeSurface(name: String)
     {
         surfaces
             .find { it.name == name }

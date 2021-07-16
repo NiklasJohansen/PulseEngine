@@ -309,7 +309,7 @@ class ChunkManager <T: Chunk> (
     fun renderDebug(gfx: Graphics)
     {
         if (!this::debugSurface.isInitialized)
-            debugSurface = gfx.createSurface2D("cmDebugSurface")
+            debugSurface = gfx.createSurface("cmDebugSurface")
 
         for (chunk in getActiveChunks())
         {

@@ -39,7 +39,7 @@ open class LightingSystem : SceneSystem()
         lightingEffect = LightingEffect(engine.gfx.mainCamera)
 
         val lightMask = engine.gfx
-            .createSurface2D("lightMask")
+            .createSurface("lightMask")
             .setBackgroundColor(ambientColor)
             .addPostProcessingEffect(lightingEffect)
             .addPostProcessingEffect(blurEffect)
@@ -55,7 +55,7 @@ open class LightingSystem : SceneSystem()
     {
         blurEffect.radius = shadowSoftness
         engine.gfx
-            .getSurface2D("lightMask")
+            .getSurfaceOrDefault("lightMask")
             .setBackgroundColor(ambientColor)
     }
 
@@ -121,11 +121,12 @@ open class LightingSystem : SceneSystem()
 
     override fun onDestroy(engine: PulseEngine)
     {
-        engine.gfx.getSurface2D("lightMask")
+        engine.gfx.getSurfaceOrDefault("lightMask")
             .removePostProcessingEffect(lightingEffect)
             .removePostProcessingEffect(blurEffect)
-        engine.gfx.removeSurface2D("lightMask")
+        engine.gfx.removeSurface("lightMask")
         engine.gfx.mainSurface.removePostProcessingEffect(multiplyEffect)
+
         lightingEffect.cleanUp()
         multiplyEffect.cleanUp()
         blurEffect.cleanUp()

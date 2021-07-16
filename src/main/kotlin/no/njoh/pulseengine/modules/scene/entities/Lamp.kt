@@ -11,7 +11,7 @@ open class Lamp : SceneEntity(), LightSource
 {
     override var color: Color = Color(1f, 1f, 1f)
     override var intensity = 0.8f
-    override var radius: Float = 1500f
+    override var radius: Float = 3000f
 
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {

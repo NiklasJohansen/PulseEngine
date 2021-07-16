@@ -10,8 +10,10 @@ import org.lwjgl.opengl.GL11.*
 
 interface Surface
 {
+    val name: String
     val width: Int
     val height: Int
+    val zOrder: Int
     fun getTexture(): Texture
 }
 
@@ -39,8 +41,7 @@ interface Surface2D : Surface
 interface EngineSurface2D : Surface2D
 {
     override val camera: CameraEngineInterface
-    val name: String
-    val zOrder: Int
+
     val isVisible: Boolean
 
     fun init(width: Int, height: Int, glContextRecreated: Boolean)
@@ -193,6 +194,7 @@ class Surface2DImpl(
 
     override fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
     {
+        effect.init()
         postProcessingPipeline.addEffect(effect)
         return this
     }

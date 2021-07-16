@@ -110,7 +110,7 @@ open class Scene(
 
     internal fun destroy(engine: PulseEngine)
     {
-        systems.forEach { it.onDestroy(engine) }
+        systems.forEachFiltered({ it.initialized }) { it.onDestroy(engine) }
     }
 
     internal fun optimizeCollections()

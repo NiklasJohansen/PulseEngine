@@ -113,10 +113,10 @@ class SceneEditor: Widget
         lastSaveLoadDirectory = engine.data.saveDirectory
 
         // Create separate render surface for editor UI
-        engine.gfx.createSurface2D("sceneEditorForegroundSurface")
+        engine.gfx.createSurface("sceneEditorForegroundSurface")
 
         // Background surface for grid
-        engine.gfx.createSurface2D("sceneEditorBackgroundSurface", zOrder = 0, camera = activeCamera)
+        engine.gfx.createSurface("sceneEditorBackgroundSurface", zOrder = 20, camera = activeCamera)
 
         // Register a console command to toggle editor visibility
         engine.console.registerCommand("showSceneEditor") {
@@ -304,9 +304,9 @@ class SceneEditor: Widget
     override fun onRender(engine: PulseEngine)
     {
         if (showGrid)
-            renderGrid(engine.gfx.getSurface2D("sceneEditorBackgroundSurface"))
+            renderGrid(engine.gfx.getSurfaceOrDefault("sceneEditorBackgroundSurface"))
 
-        val foregroundSurface = engine.gfx.getSurface2D("sceneEditorForegroundSurface")
+        val foregroundSurface = engine.gfx.getSurfaceOrDefault("sceneEditorForegroundSurface")
         val showResizeDots = (entitySelection.size == 1)
         entitySelection.forEach { it.renderGizmo(foregroundSurface, showResizeDots) }
         renderSelectionRectangle(foregroundSurface)
@@ -433,23 +433,23 @@ class SceneEditor: Widget
             // Select entity
             if (!isMoving && !isSelecting && !isRotating && !isResizingVertically && !isResizingHorizontally)
             {
-                engine.scene.forEachEntityTypeList { entities ->
-
-                    for (i in entities.size - 1 downTo 0)
+                var zMin = Float.MAX_VALUE
+                var closestEntity: SceneEntity? = null
+                engine.scene.forEachNearbyEntity(xMouse, yMouse, 100f, 100f) {
+                    if (it.z <= zMin && it.isInside(xMouse, yMouse))
                     {
-                        val entity = entities[i]
-                        if (entity.isInside(xMouse, yMouse))
-                        {
-                            if (entity !in entitySelection)
-                            {
-                                entitySelection.clear()
-                                selectSingleEntity(entity)
-                            }
-
-                            isMoving = true
-                            break
-                        }
+                        zMin = it.z
+                        closestEntity = it
                     }
+                }
+
+                closestEntity?.let { entity ->
+                    if (entity !in entitySelection)
+                    {
+                        entitySelection.clear()
+                        selectSingleEntity(entity)
+                    }
+                    isMoving = true
                 }
             }
         }

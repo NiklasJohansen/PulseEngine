@@ -7,9 +7,10 @@ interface Graphics
     val mainCamera: CameraInterface
     val mainSurface: Surface2D
 
-    fun createSurface2D(name: String, zOrder: Int? = null, camera: CameraInterface? = null): Surface2D
-    fun getSurface2D(name: String): Surface2D
-    fun removeSurface2D(name: String)
+    fun createSurface(name: String, zOrder: Int? = null, camera: CameraInterface? = null): Surface2D
+    fun getSurfaceOrDefault(name: String): Surface2D
+    fun getSurface(name: String): Surface2D?
+    fun removeSurface(name: String)
 }
 
 interface GraphicsEngineInterface : Graphics
