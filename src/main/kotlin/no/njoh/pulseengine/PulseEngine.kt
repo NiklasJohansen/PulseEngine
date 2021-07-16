@@ -74,7 +74,7 @@ class PulseEngineImpl(
         input.init(window.windowHandle)
         audio.init()
         console.init(this)
-        scene.init(asset, data)
+        scene.init(this)
 
         // Create focus area for game
         focusArea = FocusArea(0f, 0f, window.width.toFloat(), window.height.toFloat())
@@ -162,7 +162,7 @@ class PulseEngineImpl(
         {
             updateInput()
             game.onUpdate()
-            scene.update(this)
+            scene.update()
             widget.update(this)
             input = activeInput
         }
@@ -186,7 +186,7 @@ class PulseEngineImpl(
             audio.cleanSources()
             input.requestFocus(focusArea)
             gfx.updateCamera(dt.toFloat())
-            scene.fixedUpdate(this)
+            scene.fixedUpdate()
             game.onFixedUpdate()
 
             updated = true
@@ -202,7 +202,7 @@ class PulseEngineImpl(
     {
         data.measureRenderTimeAndUpdateInterpolationValue()
         {
-            scene.render(gfx)
+            scene.render()
             game.onRender()
             widget.render(this)
             gfx.postRender()
@@ -239,6 +239,7 @@ class PulseEngineImpl(
 
     private fun destroy()
     {
+        scene.cleanUp()
         widget.cleanUp(this)
         audio.cleanUp()
         asset.cleanUp()

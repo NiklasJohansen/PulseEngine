@@ -28,7 +28,7 @@ class CommandLine : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface2D("engineApp", 100)
+        engine.gfx.createSurface("engineApp", -100)
         engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
         engine.console.registerCommand("showConsole") {
             isRunning = !isRunning
@@ -325,7 +325,7 @@ class CommandLine : Widget
         text = text.substring(max(inputTextOffset, 0), min(inputTextOffset + charsPerLine, text.length))
 
         // Render to its own layer
-        val surface = engine.gfx.getSurface2D("engineApp")
+        val surface = engine.gfx.getSurfaceOrDefault("engineApp")
 
         // Draw console rectangle
         surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)

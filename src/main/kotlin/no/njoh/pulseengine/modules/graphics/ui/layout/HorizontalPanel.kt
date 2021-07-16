@@ -18,18 +18,19 @@ class HorizontalPanel(
 
     override fun updateChildLayout()
     {
-        val requiredAbsoluteSpace = children.sumIf({ !it.hidden && it.width.type == ABSOLUTE }, { it.width.value }) + children.sumByFloat { it.padding.left + it.padding.right }
-        val availableRelativeSpace = max(0f, width.value - requiredAbsoluteSpace)
-        val fractionSum = children.sumIf({ !it.hidden && it.width.type == RELATIVE }) { it.width.fraction }
+        val requiredPadding = children.sumIf({ it.isVisible() }, { it.padding.left + it.padding.right })
+        val requiredAbsoluteSpace = children.sumIf({ it.isVisible() && it.width.type == ABSOLUTE }, { it.width.value })
+        val availableRelativeSpace = max(0f, width.value - requiredAbsoluteSpace - requiredPadding)
+        val fractionSum = children.sumIf({ it.isVisible() && it.width.type == RELATIVE }) { it.width.fraction }
         val requiredRelativeSpace = availableRelativeSpace * fractionSum.coerceAtMost(1f)
-        val countAutoChildren = children.count { !it.hidden && it.width.type == AUTO }
+        val countAutoChildren = children.count { it.isVisible() && it.width.type == AUTO }
         val availableAutoSpace = max(0f, availableRelativeSpace - requiredRelativeSpace) / countAutoChildren
         var xPos = x.value
 
         for (child in children)
         {
             child.setLayoutClean()
-            if (child.hidden)
+            if (!child.isVisible())
                 continue
 
             val availableHeight = height.value - (child.padding.top + child.padding.bottom)

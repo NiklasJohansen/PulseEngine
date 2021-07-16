@@ -6,6 +6,7 @@ import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
+import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.RowPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.WindowPanel
@@ -43,7 +44,7 @@ class DropdownMenu <T> (
 
     init
     {
-        menuLabel = Label("", width = Size.relative(0.9f))
+        menuLabel = Label("")
         menuLabel.focusable = false
         menuLabel.padding.setAll(5f)
         menuLabel.color = Color(1f, 1f, 1f)
@@ -51,7 +52,7 @@ class DropdownMenu <T> (
         rowPanel = RowPanel()
         rowPanel.padding.setAll(5f)
 
-        scrollbar = Scrollbar(width = Size.absolute(20f))
+        scrollbar = Scrollbar(width = Size.absolute(15f))
         scrollbar.padding.top = 5f
         scrollbar.padding.bottom = 5f
         scrollbar.padding.right = 5f
@@ -64,8 +65,8 @@ class DropdownMenu <T> (
         dropdown.color = color
         dropdown.hidden = true
         dropdown.resizable = true
-        dropdown.minWidth = 100f
-        dropdown.minHeight = 100f
+        dropdown.minWidth = 10f
+        dropdown.minHeight = 10f
         dropdown.addChildren(hPanel)
 
         addPopup(dropdown)
@@ -75,7 +76,7 @@ class DropdownMenu <T> (
     override fun onUpdate(engine: PulseEngine)
     {
         super.onUpdate(engine)
-        if (!dropdown.hidden && !hasFocus(engine))
+        if (dropdown.isVisible() && !hasFocus(engine))
             dropdown.hidden = true
     }
 
@@ -116,8 +117,21 @@ class DropdownMenu <T> (
 
     override fun updatePopupLayout()
     {
-        dropdown.padding.top = height.value
+        updateDropdownAlignment()
         super.updatePopupLayout()
+    }
+
+    private fun updateDropdownAlignment()
+    {
+        var root: UiElement = this
+        while (root.parent != null)
+            root = root.parent!!
+
+        val isOnRightSide = x.value > root.x.value + root.width.value * 0.5f
+        val isOnBottomSide = y.value > root.y.value + root.height.value * 0.5f
+
+        dropdown.padding.left = if (isOnRightSide) -dropdown.width.value + width.value else 0f
+        dropdown.padding.top = if (isOnBottomSide) -dropdown.height.value else height.value
     }
 
     fun setOnItemToString(callback: (T) -> String)
@@ -136,14 +150,14 @@ class DropdownMenu <T> (
         surface.setDrawColor(bgColor)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)
 
-        if (showArrow)
+        if (showArrow && width.value - menuLabel.textWidth > 35f)
         {
             val xArrow = x.value + width.value - 15
             val yArrow = y.value + height.value / 2
             val arrowWidth = 10f
             val arrowHeight = 10f
 
-            val direction = if (dropdown.hidden) 2.5f else -2.5f
+            val direction = if (dropdown.isVisible()) -2.5f else 2.5f
             surface.setDrawColor(menuLabel.color)
             surface.drawQuadVertex(xArrow, yArrow + arrowHeight / direction)
             surface.drawQuadVertex(xArrow, yArrow + arrowHeight / direction)

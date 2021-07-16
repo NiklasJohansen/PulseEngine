@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.graphics
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
 import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.forEachFast
 import no.njoh.pulseengine.util.forEachFiltered
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
@@ -23,8 +24,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
         graphicState.textureArray = TextureArray(1024, 1024, 100)
 
         mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)
-        mainSurface = Surface2DImpl.create("main", zOrder++, 100, graphicState, mainCamera)
-        mainSurface.setBackgroundColor(0.043f, 0.047f, 0.054f, 1f)
+        mainSurface = Surface2DImpl.create("main", zOrder--, 100, graphicState, mainCamera)
         surfaces.add(mainSurface)
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
@@ -34,7 +34,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
     {
         Logger.info("Cleaning up graphics...")
         graphicState.cleanup()
-        surfaces.forEach { it.cleanup() }
+        surfaces.forEachFast { it.cleanup() }
     }
 
     override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
@@ -55,7 +55,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
         mainCamera.updateProjection(width, height)
 
         // Initialize surfaces
-        surfaces.forEach {
+        surfaces.forEachFast {
             it.init(width, height, windowRecreated)
             if (it.camera != mainCamera)
                 it.camera.updateProjection(width, height)
@@ -73,7 +73,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
     override fun updateCamera(deltaTime: Float)
     {
         mainCamera.updateTransform(deltaTime)
-        surfaces.forEach {
+        surfaces.forEachFast {
             if (it.camera != mainCamera)
                 it.camera.updateTransform(deltaTime)
         }
@@ -81,24 +81,25 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun postRender()
     {
-        surfaces.forEach { it.render() }
+        surfaces.forEachFast { it.render() }
 
         // Prepare OpenGL for rendering FBO textures
         glDisable(GL_DEPTH_TEST)
+        glClearColor(0.043f, 0.047f, 0.054f, 0f)
         glClear(GL_COLOR_BUFFER_BIT)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        surfaces.sortBy { it.zOrder }
+        surfaces.sortByDescending { it.zOrder }
         surfaces.forEachFiltered({ it.isVisible }) { renderer.render(it.getTexture()) }
     }
 
-    override fun createSurface2D(name: String, zOrder: Int?, camera: CameraInterface?): Surface2D =
+    override fun createSurface(name: String, zOrder: Int?, camera: CameraInterface?): Surface2D =
         surfaces
             .find { it.name == name }
             ?: Surface2DImpl.create(
                 name = name,
-                zOrder = zOrder ?: this.zOrder++,
+                zOrder = zOrder ?: this.zOrder--,
                 initCapacity = 5000,
                 graphicsState = graphicState,
                 camera = (camera ?: Camera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraEngineInterface
@@ -107,8 +108,24 @@ class RetainedModeGraphics : GraphicsEngineInterface
                 surfaces.add(it)
             }
 
-    override fun getSurface2D(name: String): Surface2D =
-        surfaces.find { it.name == name } ?: throw RuntimeException("No surface exists with name $name")
+    override fun getSurfaceOrDefault(name: String): Surface2D =
+        surfaces.find { it.name == name } ?: run {
+            Logger.error("No surface exists with name $name")
+            mainSurface
+        }
+
+    override fun getSurface(name: String): Surface2D? =
+        surfaces.find { it.name == name }
+
+    override fun removeSurface(name: String)
+    {
+        surfaces
+            .find { it.name == name }
+            ?.let {
+                it.cleanup()
+                surfaces.remove(it)
+            } ?: run { Logger.error("No surface exists with name $name") }
+    }
 }
 
 interface BatchRenderer

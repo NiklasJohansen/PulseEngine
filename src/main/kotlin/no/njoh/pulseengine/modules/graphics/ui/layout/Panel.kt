@@ -6,7 +6,7 @@ import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
-import no.njoh.pulseengine.modules.graphics.ui.elements.UiElement
+import no.njoh.pulseengine.modules.graphics.ui.UiElement
 
 open class Panel(
     x: Position = Position.auto(),

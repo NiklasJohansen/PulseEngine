@@ -17,6 +17,7 @@ class VignetteEffect(
     override fun applyEffect(texture: Texture): Texture
     {
         fbo.bind()
+        fbo.clear()
         program.bind()
         program.setUniform("resolution", texture.width.toFloat(), texture.height.toFloat())
         program.setUniform("strength", strength)

@@ -6,11 +6,22 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.nio.file.FileSystems
 import java.nio.file.Files
+import kotlin.math.PI
 
 fun Float.interpolateFrom(lastState: Float): Float
 {
     val i = PulseEngine.GLOBAL_INSTANCE.data.interpolation
     return this * i + lastState * (1f - i)
+}
+
+fun Float.toDegrees() = this / PI.toFloat() * 180f
+
+fun Float.toRadians() = this / 180f * PI.toFloat()
+
+fun Float.degreesBetween(angle: Float): Float
+{
+    val delta = this - angle
+    return delta + if (delta > 180) -360 else if (delta < -180) 360 else 0
 }
 
 inline fun <T> List<T>.forEachFiltered(predicate: (T) -> Boolean, action: (T) -> Unit)
@@ -40,9 +51,37 @@ inline fun <T> Iterable<T>.sumByFloat(selector: (T) -> Float): Float
     return sum
 }
 
-inline fun <T> List<T>.forEachVolatile(block: (T) -> Unit) {
+/**
+ * Fast iteration of constant lookup lists.
+ */
+inline fun <T> List<T>.forEachFast(block: (T) -> Unit)
+{
     var i = 0
     while (i < size) block(this[i++])
+}
+
+/**
+ * Fast and reversed iteration of constant lookup lists.
+ */
+inline fun <T> List<T>.forEachReversed(block: (T) -> Unit)
+{
+    var i = size - 1
+    while (i > -1) block(this[i--])
+}
+
+/**
+ * Returns the first element matching the given predicate.
+ */
+inline fun <T> List<T>.firstOrNullFast(predicate: (T) -> Boolean): T?
+{
+    var i = 0
+    while (i < size)
+    {
+        val element = this[i++]
+        if (predicate(element))
+            return element
+    }
+    return null
 }
 
 /**
@@ -70,7 +109,7 @@ fun String.loadText(): String? =
     javaClass.getResource(this.toClassPath())?.readText()
 
 /**
- * Loads all file names in given directory
+ * Loads all file names in the given directory
  */
 fun String.loadFileNames(): List<String>
 {
@@ -85,7 +124,8 @@ fun String.loadFileNames(): List<String>
             .map { it.toAbsolutePath().toString() }
             .toList()
     }
-    else {
+    else
+    {
         this.loadStream()
             ?.let { stream -> BufferedReader(InputStreamReader(stream)).readLines().map { "$this/$it" } }
             ?: emptyList()

@@ -37,6 +37,7 @@ class BloomEffect(
         val blurredBrightPass = blurEffect.process(brightTexture)
 
         fbo.bind()
+        fbo.clear()
         program.bind()
         program.setUniform("exposure", exposure)
         renderer.render(texture, blurredBrightPass)

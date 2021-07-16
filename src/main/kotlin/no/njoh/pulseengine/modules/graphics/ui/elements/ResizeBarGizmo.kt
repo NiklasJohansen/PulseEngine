@@ -7,6 +7,7 @@ import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
+import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import kotlin.math.PI
 import kotlin.math.sin
 

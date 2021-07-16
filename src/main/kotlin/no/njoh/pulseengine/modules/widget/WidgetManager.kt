@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.widget
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.util.forEachFiltered
-import no.njoh.pulseengine.util.forEachVolatile
+import no.njoh.pulseengine.util.forEachFast
 
 abstract class WidgetManager
 {
@@ -30,7 +30,7 @@ class WidgetManagerImpl: WidgetManagerEngineInterface()
 
     override fun init(engine: PulseEngine)
     {
-        widgets.forEachVolatile { it.onCreate(engine) }
+        widgets.forEachFast { it.onCreate(engine) }
         engine.data.addMetric("WIDGETS UPDATE", "MS") { updateTimeMs }
         engine.data.addMetric("WIDGETS RENDER", "MS") { renderTimeMs }
     }
@@ -51,7 +51,7 @@ class WidgetManagerImpl: WidgetManagerEngineInterface()
 
     override fun cleanUp(engine: PulseEngine)
     {
-        widgets.forEachVolatile { it.onDestroy(engine) }
+        widgets.forEachFast { it.onDestroy(engine) }
     }
 
     override fun add(vararg widgets: Widget)

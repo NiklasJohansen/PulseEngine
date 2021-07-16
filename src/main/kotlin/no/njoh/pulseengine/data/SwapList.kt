@@ -3,7 +3,8 @@ package no.njoh.pulseengine.data
 import com.fasterxml.jackson.annotation.JsonIgnore
 
 class SwapList<T>(
-    var items: Array<Any?> = Array(10) { null }
+    @PublishedApi
+    internal var items: Array<Any?> = Array(10) { null }
 ) : Iterable<T> {
 
     @JsonIgnore
@@ -17,9 +18,6 @@ class SwapList<T>(
 
     @JsonIgnore
     private var iterator = ListIterator()
-
-    @JsonIgnore
-    fun isNotEmpty() = size > 0
 
     fun add(item: T)
     {
@@ -49,11 +47,16 @@ class SwapList<T>(
         itemsToKeep = Array(size) { }
     }
 
-    operator fun get(index: Int): T =
-        items[index] as T
+    @Suppress("UNCHECKED_CAST")
+    operator fun get(index: Int): T = items[index] as T
 
-    override fun iterator(): Iterator<T> =
-        iterator.also { it.index = 0 }
+    @Suppress("UNCHECKED_CAST")
+    fun first(): T? =
+        if (size > 0) items[0] as T else null
+
+    fun isNotEmpty() = size != 0
+
+    fun isEmpty() = size == 0
 
     fun clear()
     {
@@ -70,6 +73,27 @@ class SwapList<T>(
         itemsToKeep = Array(capacity) { }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    inline fun forEachFast(block: (T) -> Unit)
+    {
+        val size = size
+        val items = items
+        var i = 0
+        while (i < size) block(items[i++] as T)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    inline fun forEachReversed(block: (T) -> Unit)
+    {
+        val size = size
+        val items = items
+        var i = size - 1
+        while (i > -1) block(items[i--] as T)
+    }
+
+    override fun iterator(): Iterator<T> =
+        iterator.also { it.index = 0 }
+
     inner class ListIterator(
         var index: Int = 0
     ) : Iterator<T> {
@@ -80,7 +104,7 @@ class SwapList<T>(
 
     companion object
     {
-        fun <T> fastListOf(item: T) =
+        fun <T> swapListOf(item: T) =
             SwapList<T>().also { it.add(item) }
     }
 }

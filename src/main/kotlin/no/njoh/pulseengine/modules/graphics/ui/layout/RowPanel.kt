@@ -15,11 +15,13 @@ class RowPanel (
     var rowHeight = 30f
     var rowPadding = 10f
     override var scrollFraction: Float = 0f
+    override var hideScrollbarOnEnoughSpaceAvailable = true
 
     override fun updateChildLayout()
     {
+        val visibleChildrenCount = children.count { !it.hidden }
         val availableSpaceCount = (height.value / (rowHeight + rowPadding)).toInt()
-        val rowScroll = (scrollFraction * max(0, children.size - availableSpaceCount)).toInt()
+        val rowScroll = (scrollFraction * max(0, visibleChildrenCount - availableSpaceCount)).toInt()
         var yPos = y.value - rowScroll * (rowHeight + rowPadding)
 
         for (child in children)
@@ -29,17 +31,18 @@ class RowPanel (
 
             val xChild = child.x.calculate(x.value + child.padding.left, x.value + width.value - widthChild)
             val yChild = child.y.calculate(yPos + child.padding.top, yPos + rowHeight - heightChild)
-            val isHidden = yChild < y.value || yChild + heightChild > y.value + height.value
+            val isOutsideBounds = yChild < y.value || yChild + heightChild > y.value + height.value
 
             child.width.setQuiet(widthChild)
             child.height.setQuiet(heightChild)
             child.x.setQuiet(xChild)
             child.y.setQuiet(yChild)
-            child.hidden = isHidden
+            child.preventRender(isOutsideBounds)
             child.setLayoutClean()
             child.updateLayout()
 
-            yPos += rowHeight + rowPadding
+            if (!child.hidden)
+                yPos += rowHeight + rowPadding
         }
     }
 
@@ -51,7 +54,8 @@ class RowPanel (
 
     override fun getUsedSpaceFraction(): Float
     {
-        val neededSpace = children.size * (rowHeight + rowPadding)
+        val visibleChildrenCount = children.count { !it.hidden }
+        val neededSpace = -rowPadding + visibleChildrenCount * (rowHeight + rowPadding)
         val availableSpace = max(1f, height.value)
         return neededSpace / availableSpace
     }

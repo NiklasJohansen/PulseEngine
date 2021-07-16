@@ -1,117 +1,153 @@
 package no.njoh.pulseengine.modules.scene
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY
 import com.fasterxml.jackson.annotation.JsonIgnore
+import gnu.trove.map.hash.TLongObjectHashMap
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.FileFormat
 import no.njoh.pulseengine.data.FileFormat.*
-import no.njoh.pulseengine.data.SceneState
-import no.njoh.pulseengine.data.SceneState.*
-import no.njoh.pulseengine.modules.Assets
-import no.njoh.pulseengine.modules.graphics.Graphics
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.data.SwapList
-import no.njoh.pulseengine.data.SwapList.Companion.fastListOf
-import kotlin.reflect.full.findAnnotation
+import no.njoh.pulseengine.data.SwapList.Companion.swapListOf
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DEAD
+import no.njoh.pulseengine.modules.scene.systems.SceneSystem
+import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.util.forEachFiltered
 
+@JsonAutoDetect(fieldVisibility = ANY)
 open class Scene(
     val name: String,
-    val entities: MutableMap<String, SwapList<SceneEntity>> = mutableMapOf()
+    val entities: MutableList<SwapList<SceneEntity>> = mutableListOf(),
+    val systems: MutableList<SceneSystem> = mutableListOf()
 ) {
     @JsonIgnore
-    var fileName: String = "$name.scn"
+    val entityIdMap = createEntityIdMap(entities)
 
     @JsonIgnore
-    var fileFormat: FileFormat = JSON
+    val entityTypeMap = createEntityTypeMap(entities)
 
     @JsonIgnore
-    private val entityCollections = entities.map { it.value }.toMutableList()
+    internal var fileName: String = "$name.scn"
+
+    @JsonIgnore
+    internal var fileFormat: FileFormat = JSON
 
     @JsonIgnore
     @PublishedApi
-    internal val spatialIndex = SpatialIndex(entityCollections, 350f, 3000f, 0.2f)
+    internal val spatialGrid = SpatialGrid(entities, 350f, 3000, 100_000, 100_000, 0.2f)
 
-    fun addEntity(entity: SceneEntity)
+    internal var nextId = 0L
+
+    fun insertEntity(entity: SceneEntity)
     {
-        spatialIndex.insert(entity)
-        entities[entity.typeName]
+        entity.id = nextId
+        entityIdMap.put(nextId, entity)
+        entityTypeMap[entity.typeName]
             ?.add(entity)
             ?: run {
-                val list = fastListOf(entity)
-                entities[entity.typeName] = list
-                entityCollections.add(list)
+                val list = swapListOf(entity)
+                entityTypeMap[entity.typeName] = list
+                entities.add(list)
             }
+        spatialGrid.insert(entity)
+        nextId++
     }
 
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified T: SceneEntity> getEntitiesOfType(): Iterable<T>? =
-        entities[T::class.simpleName] as Iterable<T>?
-
-    inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit) =
-        spatialIndex.forEachEntityInArea(x, y, width, height, block)
-
-    fun start()
+    internal fun start(engine: PulseEngine)
     {
-        spatialIndex.recalculate()
+        systems.forEachFiltered({ it.enabled }) {
+            if (!it.initialized)
+                it.init(engine)
+            it.onStart(engine)
+        }
+        spatialGrid.recalculate()
+    }
 
-        var index = 0
-        while (index < entityCollections.size)
+    internal fun stop(engine: PulseEngine)
+    {
+        systems.forEachFiltered({ it.enabled }) { it.onStop(engine) }
+    }
+
+    internal fun update(engine: PulseEngine)
+    {
+        spatialGrid.update()
+
+        var deleteDeadEntities = true
+        systems.forEachFiltered({ it.enabled })
         {
-            for (entity in entityCollections[index++])
-            {
-                entity.onStart()
-            }
+            if (!it.initialized)
+                it.init(engine)
+            if (it.handlesEntityDeletion())
+                deleteDeadEntities = false
+            it.onUpdate(engine)
         }
-    }
 
-    fun update(engine: PulseEngine, sceneState: SceneState)
-    {
-        spatialIndex.update()
-
-        var index = 0
-        while (index < entityCollections.size)
+        if (deleteDeadEntities)
         {
-            val entities = entityCollections[index++]
-            for (entity in entities)
-            {
-                if (sceneState == RUNNING)
-                    entity.onUpdate(engine)
-
-                if (entity.isNot(DEAD))
-                    entities.keep(entity)
+            engine.scene.forEachEntityTypeList { typeList ->
+                typeList.forEachFast { entity ->
+                    if (entity.isSet(DEAD))
+                        entityIdMap.remove(entity.id)
+                    else
+                        typeList.keep(entity)
+                }
+                typeList.swap()
             }
-            entities.swap()
         }
     }
 
-    fun fixedUpdate(engine: PulseEngine)
+    internal fun fixedUpdate(engine: PulseEngine)
     {
-        var index = 0
-        while (index < entityCollections.size)
-        {
-            for (entity in entityCollections[index++])
-            {
-                entity.onFixedUpdate(engine)
-            }
-        }
+        systems.forEachFiltered({ it.enabled && it.initialized }) { it.onFixedUpdate(engine) }
     }
 
-    fun render(gfx: Graphics, assets: Assets, sceneState: SceneState)
+    internal fun render(engine: PulseEngine)
     {
-        spatialIndex.render(gfx.mainSurface)
-        entities.forEach { (type, entities) ->
-            if (entities.isNotEmpty())
-            {
-                var surface = gfx.mainSurface
-                entities[0]::class
-                    .findAnnotation<SurfaceName>()
-                    ?.let {
-                        surface = gfx.getSurface2D(it.name)
-                    }
-
-                entities.forEach { it.onRender(surface, assets, sceneState) }
-            }
-        }
+        spatialGrid.render(engine.gfx.mainSurface)
+        systems.forEachFiltered({ it.enabled && it.initialized }) { it.onRender(engine) }
     }
+
+    internal fun destroy(engine: PulseEngine)
+    {
+        systems.forEachFiltered({ it.initialized }) { it.onDestroy(engine) }
+    }
+
+    internal fun optimizeCollections()
+    {
+        entityTypeMap.values.removeIf { entities -> entities.isEmpty() }
+        entities.removeIf { it.isEmpty() }
+        entities.forEachFast { it.fitToSize() }
+    }
+
+    internal fun clearAll()
+    {
+        entities.forEachFast { it.clear() }
+        entities.clear()
+        entityTypeMap.clear()
+        entityIdMap.clear()
+        systems.clear()
+        spatialGrid.clear()
+    }
+
+    internal fun copy(fileName: String? = null): Scene
+    {
+        val copy = Scene(name, entities, systems)
+        copy.fileName = fileName ?: this.fileName
+        copy.fileFormat = fileFormat
+        copy.nextId = nextId
+        return copy
+    }
+
+    private fun createEntityTypeMap(entities: MutableList<SwapList<SceneEntity>>) =
+        HashMap<String, SwapList<SceneEntity>>(entities.size).also { map ->
+            entities.forEachFast { list -> list.first()?.let { map[it.typeName] = list } }
+        }
+
+    private fun createEntityIdMap(entities: MutableList<SwapList<SceneEntity>>) =
+        TLongObjectHashMap<SceneEntity>().also { map ->
+            entities.forEachFast { typeList -> typeList.forEachFast { map.put(it.id, it) } }
+        }
 }
 
 @Target(AnnotationTarget.CLASS)

@@ -6,11 +6,11 @@ class PostProcessingPipeline
 {
     private val effects = mutableListOf<PostProcessingEffect>()
 
-    fun init() =
-        effects.forEach { it.init() }
+    fun init() = effects.forEach { it.init() }
 
-    fun addEffect(effect: PostProcessingEffect) =
-        effect.init().also { effects.add(effect) }
+    fun addEffect(effect: PostProcessingEffect) = effects.add(effect)
+
+    fun removeEffect(effect: PostProcessingEffect) = effects.remove(effect)
 
     fun process(texture: Texture): Texture
     {
@@ -19,6 +19,5 @@ class PostProcessingPipeline
         return latestTexture
     }
 
-    fun cleanUp() =
-        effects.forEach { it.cleanUp() }
+    fun cleanUp() = effects.forEach { it.cleanUp() }
 }

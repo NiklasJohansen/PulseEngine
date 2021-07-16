@@ -1,7 +1,7 @@
 import org.gradle.internal.os.OperatingSystem
 
 group = "no.njoh"
-version = "0.4.1"
+version = "0.5.0-SNAPSHOT"
 
 val lwjglVersion = "3.2.3"
 val kotlinVersion = "1.3.72"
@@ -34,6 +34,7 @@ dependencies {
     implementation(platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
     implementation("org.l33tlabs.twl:pngdecoder:1.0")
     implementation("org.joml:joml:1.9.22")
+    implementation("net.sf.trove4j:trove4j:3.0.3")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}")
     implementation("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.4")
@@ -55,6 +56,12 @@ dependencies {
     runtimeOnly("org.lwjgl", "lwjgl-nfd", classifier = lwjglNatives)
 }
 
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).all {
+    kotlinOptions {
+        freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
+    }
+}
+
 val sourcesJar by tasks.creating(Jar::class) {
     group = JavaBasePlugin.DOCUMENTATION_GROUP
     archiveClassifier.set("sources")
@@ -66,7 +73,7 @@ val jar by tasks.getting(Jar::class) {
     manifest {
         attributes["Main-Class"] = "testbed.TestbedKt"
     }
-    exclude("**/*.kotlin_module", "**/*.kotlin_builtins", "**/*.kotlin_metadata")
+    exclude("**/*.kotlin_module", "**/*.kotlin_metadata")
     from({ configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) } })
 }
 

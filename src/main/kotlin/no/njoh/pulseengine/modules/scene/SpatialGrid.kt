@@ -2,19 +2,23 @@ package no.njoh.pulseengine.modules.scene
 
 import no.njoh.pulseengine.data.Array2D
 import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DEAD
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.DISCOVERABLE
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.POSITION_UPDATED
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.ROTATION_UPDATED
-import no.njoh.pulseengine.modules.scene.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DEAD
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DISCOVERABLE
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.data.SwapList
+import no.njoh.pulseengine.modules.scene.entities.SceneEntity
+import no.njoh.pulseengine.util.forEachFast
 import kotlin.math.*
 
-class SpatialIndex (
-    private val entityCollections : List<SwapList<SceneEntity>>,
+class SpatialGrid (
+    private val entities : List<SwapList<SceneEntity>>,
     var cellSize: Float,
-    private val minBorderSize: Float = 3000f,
-    private val percentageToUpdatePerFrame: Float = 1f
+    var minBorderSize: Int = 3000,
+    var maxWidth: Int = 100_000,
+    var maxHeight: Int = 100_000,
+    var percentageToUpdatePerFrame: Float = 1f
 ) {
     @PublishedApi internal var xOffset = 0f
     @PublishedApi internal var yOffset = 0f
@@ -22,39 +26,62 @@ class SpatialIndex (
     @PublishedApi internal var yCells = 0
     @PublishedApi internal lateinit var array: Array2D<Node?>
 
-    private var width = 0f
-    private var height = 0f
+    private var width = 0
+    private var height = 0
+    private var xMin = 0f
+    private var xMax = 0f
+    private var yMin = 0f
+    private var yMax = 0f
+
+    private var needToRecalculate = false
     private var currentNodeIndex = 0
-    private var cornerPositions = FloatArray(8)
-    private var emptyClusterArray = emptyArray<Node?>()
+    private val cornerPositions = FloatArray(8)
+    private val emptyClusterArray = emptyArray<Node?>()
     private lateinit var scanRanges: IntArray
+    var drawGrid = false
 
     init { recalculate() }
 
     fun recalculate()
     {
-        var xMin = Float.POSITIVE_INFINITY
-        var xMax = Float.NEGATIVE_INFINITY
-        var yMin = Float.POSITIVE_INFINITY
-        var yMax = Float.NEGATIVE_INFINITY
+        needToRecalculate = false
+        xMin = Float.POSITIVE_INFINITY
+        xMax = Float.NEGATIVE_INFINITY
+        yMin = Float.POSITIVE_INFINITY
+        yMax = Float.NEGATIVE_INFINITY
 
-        for (collection in entityCollections)
-        {
-            for (entity in collection)
-            {
-                val r = max(entity.width, entity.height) / 2f
-                xMax = max(entity.x + r, xMax)
-                xMin = min(entity.x - r, xMin)
-                yMax = max(entity.y + r, yMax)
-                yMin = min(entity.y - r, yMin)
+        entities.forEachFast { entities ->
+            entities.forEachFast { entity ->
+                if (entity.isNot(DEAD))
+                {
+                    val r = 0.5f * if (entity.width > entity.height) entity.width else entity.height
+                    if (entity.x + r > xMax) xMax = entity.x + r
+                    if (entity.x - r < xMin) xMin = entity.x - r
+                    if (entity.y + r > yMax) yMax = entity.y + r
+                    if (entity.y - r < yMin) yMin = entity.y - r
+                }
             }
         }
 
-        val xCenter = (xMin + xMax) / 2f
-        val yCenter = (yMin + yMax) / 2f
+        // Set default area on empty entity collections
+        if (xMin == Float.POSITIVE_INFINITY)
+        {
+            xMin = 5 * -cellSize
+            xMax = 5 * cellSize
+            yMin = xMin
+            yMax = xMax
+        }
 
-        width = (xMax - xMin) + minBorderSize
-        height = (yMax - yMin) + minBorderSize
+        xMin = max(xMin, maxWidth * -0.5f)
+        xMax = min(xMax, maxWidth * 0.5f)
+        yMin = max(yMin, maxHeight * -0.5f)
+        yMax = min(yMax, maxHeight * 0.5f)
+
+        val xCenter = (xMin + xMax) / 2
+        val yCenter = (yMin + yMax) / 2
+
+        width = ((xMax - xMin) + minBorderSize).toInt()
+        height = ((yMax - yMin) + minBorderSize).toInt()
         xOffset = xCenter - width / 2f
         yOffset = yCenter - height / 2f
         xCells = (width / cellSize).toInt()
@@ -62,12 +89,12 @@ class SpatialIndex (
         array = Array2D(xCells, yCells) { x, y -> null }
         scanRanges = IntArray(2 * yCells) { if (it % 2 == 0) xCells else 0 }
 
-        for (collection in entityCollections)
-            for (entity in collection)
-                insert(entity)
+        entities.forEachFast { entities ->
+            entities.forEachFast { insert(it) }
+        }
     }
 
-    inline fun forEachEntityInArea(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit)
+    inline fun query(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit)
     {
         val xCell = ((x - xOffset) / cellSize).toInt()
         val yCell = ((y - yOffset) / cellSize).toInt()
@@ -77,8 +104,9 @@ class SpatialIndex (
         val yStart = (yCell - verticalNeighbours).coerceAtLeast(0)
         val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
         val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
+        val array = array
+        val iterNum = (++iterationNumber).toInt() % 255
 
-        iterationNumber++
         for (yi in yStart .. yEnd)
         {
             for (xi in xStart .. xEnd)
@@ -86,10 +114,11 @@ class SpatialIndex (
                 var node = array[xi, yi]
                 while (node != null)
                 {
-                    if (node.entity.isNot(DEAD) && node.itrNum != iterationNumber)
+                    val entity = node.entity
+                    if (entity.isNot(DEAD) && entity.getIterationNumber() != iterNum)
                     {
-                        block(node.entity)
-                        node.itrNum = iterationNumber
+                        block(entity)
+                        entity.setIterationNumber(iterNum)
                     }
                     node = node.next
                 }
@@ -97,13 +126,76 @@ class SpatialIndex (
         }
     }
 
-    fun insert(entity: SceneEntity): Boolean =
-        when {
+    inline fun <reified T> queryType(x: Float, y: Float, width: Float, height: Float, block: (T) -> Unit)
+    {
+        val xCell = ((x - xOffset) / cellSize).toInt()
+        val yCell = ((y - yOffset) / cellSize).toInt()
+        val horizontalNeighbours = 1 + (width / 2f / cellSize).toInt()
+        val verticalNeighbours = 1 + (height / 2f / cellSize).toInt()
+        val xStart = (xCell - horizontalNeighbours).coerceAtLeast(0)
+        val yStart = (yCell - verticalNeighbours).coerceAtLeast(0)
+        val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
+        val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
+        val array = array
+        val iterNum = (++iterationNumber).toInt() % 255
+
+        for (yi in yStart .. yEnd)
+        {
+            for (xi in xStart .. xEnd)
+            {
+                var node = array[xi, yi]
+                while (node != null)
+                {
+                    val entity = node.entity
+                    if (entity.isNot(DEAD) && entity.getIterationNumber() != iterNum && entity is T)
+                    {
+                        block(entity as T)
+                        entity.setIterationNumber(iterNum)
+                    }
+                    node = node.next
+                }
+            }
+        }
+    }
+
+    @PublishedApi
+    internal inline fun SceneEntity.getIterationNumber(): Int = (flags ushr 24)
+
+    @PublishedApi
+    internal inline fun SceneEntity.setIterationNumber(num: Int)
+    {
+        flags = (flags and 16777215) or (num shl 24) // Clear last 8 bits and set iteration number
+    }
+
+    fun insert(entity: SceneEntity): Boolean
+    {
+        if (entity.isSet(DEAD))
+            return false
+
+        if ((entity.x <= xMin && xMin == maxWidth * -0.5f) ||
+            (entity.x >= xMax && xMax == maxWidth * 0.5f) ||
+            (entity.y <= yMin && yMin == maxHeight * -0.5f) ||
+            (entity.y >= yMax && yMax == maxHeight * 0.5f)
+        ) {
+            entity.set(DEAD)
+            needToRecalculate = true
+            return false
+        }
+
+        val inserted =  when
+        {
             entity.isNot(DISCOVERABLE) -> true
             abs(entity.width) + abs(entity.height) < cellSize * 0.5 -> insertPoint(entity)
             entity.rotation == 0.0f -> insertAxisAligned(entity)
             else -> insertRotated(entity)
         }
+
+        if (!inserted)
+            needToRecalculate = true
+
+        return inserted
+    }
+
 
     private fun insertPoint(entity: SceneEntity): Boolean
     {
@@ -111,10 +203,7 @@ class SpatialIndex (
         val y = ((entity.y - yOffset)  / cellSize).toInt()
 
         if (x < 0 || y < 0 || x >= xCells || y >= yCells)
-        {
-            recalculate()
             return false
-        }
 
         insert(x, y, entity)?.cluster = emptyClusterArray
         return true
@@ -130,10 +219,7 @@ class SpatialIndex (
         val bottom = ((entity.y + halfHeight - yOffset) / cellSize).toInt()
 
         if (left < 0 || top < 0 || right >= xCells || bottom >= yCells)
-        {
-            recalculate()
             return false
-        }
 
         val xCell = ((entity.x - xOffset) / cellSize).toInt()
         val yCell = ((entity.y - yOffset) / cellSize).toInt()
@@ -193,7 +279,7 @@ class SpatialIndex (
             var xCell = floor(xCorner0 / cellSize).toInt()
             var yCell = floor(yCorner0 / cellSize).toInt()
             if (yCell < 0 || yCell >= yCells)
-                return false.also { recalculate() }
+                return false
 
             scanRanges[yCell * 2] = min(scanRanges[yCell * 2], xCell)
             scanRanges[yCell * 2 + 1] = max(scanRanges[yCell * 2 + 1], xCell)
@@ -226,7 +312,7 @@ class SpatialIndex (
                 }
 
                 if (yCell < 0 || yCell >= yCells)
-                    return false.also { recalculate() }
+                    return false
 
                 scanRanges[yCell * 2] = min(scanRanges[yCell * 2], xCell)
                 scanRanges[yCell * 2 + 1] = max(scanRanges[yCell * 2 + 1], xCell)
@@ -258,7 +344,7 @@ class SpatialIndex (
             scanRanges[yi * 2 + 1] = 0
 
             if (xMin < 0 || xMin >= xCells || xMax < 0 || xMax >= xCells)
-                return false.also { recalculate() }
+                return false
 
             for (xi in xMin .. xMax)
             {
@@ -307,6 +393,9 @@ class SpatialIndex (
 
     fun update()
     {
+        if (needToRecalculate)
+            recalculate()
+
         val nodesToUpdate = (array.size * percentageToUpdatePerFrame).toInt()
         val start = currentNodeIndex
         var end = start + nodesToUpdate
@@ -318,6 +407,7 @@ class SpatialIndex (
             end = array.size
         }
 
+        val invCellSize = 1.0f / cellSize
         for (i in start until end)
         {
             var node = array[i]
@@ -332,17 +422,14 @@ class SpatialIndex (
                     }
                     else if (entity.isAnySet(POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED))
                     {
-                        val xEntity = ((entity.x - xOffset) / cellSize).toInt()
-                        val yEntity = ((entity.y - yOffset) / cellSize).toInt()
+                        val xEntity = ((entity.x - xOffset) * invCellSize).toInt()
+                        val yEntity = ((entity.y - yOffset) * invCellSize).toInt()
 
                         if (node.xCell != xEntity || node.yCell != yEntity || entity.isSet(SIZE_UPDATED) ||
                             (node.cluster!!.isNotEmpty() && entity.isSet(ROTATION_UPDATED)))
                         {
                             remove(node)
-                            val inserted = insert(entity)
-                            if (!inserted)
-                                return
-
+                            insert(entity)
                             entity.setNot(POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED)
                         }
                     }
@@ -354,8 +441,15 @@ class SpatialIndex (
 
     fun render(surface: Surface2D)
     {
-        if (!draw)
+        if (!drawGrid)
             return
+
+        val width = xCells * cellSize
+        val height = yCells * cellSize
+
+        // Background rectangle
+        surface.setDrawColor(1f, 1f, 1f, 0.3f)
+        surface.drawQuad(xOffset, yOffset, width, height)
 
         for (y in 0 until yCells)
         {
@@ -364,36 +458,57 @@ class SpatialIndex (
                 var node = array[x, y]
                 if (node != null)
                 {
-                    surface.setDrawColor(1f, 1f, 1f, 0.2f)
-                    surface.drawQuad(x * cellSize + xOffset, y * cellSize + yOffset, cellSize, cellSize)
-
                     var count = 0
                     while (node != null)
                     {
-                        if (node.cluster != null)
-                            surface.setDrawColor(1f, 0f, 0f, 0.8f)
-                        else
-                            surface.setDrawColor(1f, 1f, 1f, 0.8f)
-
-                        surface.drawQuad(x * cellSize + xOffset + 10, y * cellSize + yOffset + 10 + 20 * count, 15f, 15f)
-
                         node = node.next
                         count++
                     }
+
+                    val xPos = x * cellSize + xOffset
+                    val yPos = y * cellSize + yOffset
+
+                    // Entity count text
+                    surface.setDrawColor(1f, 1f, 1f, 1f)
+                    surface.drawText(count.toString(), xPos + 10f, yPos + 10f, fontSize = 30f)
+
+                    // Cell quad
+                    surface.setDrawColor(1f, 1f, 1f, 0.3f)
+                    surface.drawQuad(xPos, yPos, cellSize, cellSize)
+
+                    // Cell stroke
+                    surface.setDrawColor(1f, 1f, 1f, 0.7f)
+                    surface.drawLine(xPos, yPos, xPos + cellSize, yPos)
+                    surface.drawLine(xPos, yPos + cellSize, xPos + cellSize, yPos + cellSize)
+                    surface.drawLine(xPos, yPos, xPos, yPos + cellSize)
+                    surface.drawLine(xPos + cellSize, yPos, xPos + cellSize, yPos + cellSize)
                 }
             }
         }
 
-        surface.setDrawColor(1f, 1f, 1f, 0.5f)
+        // Border stroke
+        surface.setDrawColor(1f, 1f, 1f, 0.8f)
+        surface.drawLine(xOffset, yOffset, xOffset + width, yOffset)
+        surface.drawLine(xOffset, yOffset + height, xOffset + width, yOffset + height)
+        surface.drawLine(xOffset, yOffset, xOffset, yOffset + height)
+        surface.drawLine(xOffset + width, yOffset, xOffset + width, yOffset + height)
+    }
 
-        val width = xCells * cellSize
-        val height = yCells * cellSize
-
-        for (x in 0 until  xCells + 1)
-            surface.drawLine(xOffset + x * cellSize, yOffset, xOffset + x * cellSize, yOffset + height)
-
-        for (y in 0 until yCells + 1)
-            surface.drawLine(xOffset, yOffset + y * cellSize, xOffset + width, yOffset + y * cellSize)
+    fun clear()
+    {
+        var i = 0
+        while (i < array.size)
+        {
+            var node = array[i]
+            while (node != null)
+            {
+                node.cluster = null
+                node.prev = null
+                node = node.next
+                node?.next = null
+            }
+            array[i++] = null
+        }
     }
 
     data class Node(
@@ -408,7 +523,6 @@ class SpatialIndex (
 
     companion object
     {
-        var draw = false
         var iterationNumber = 1L
     }
 }

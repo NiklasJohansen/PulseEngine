@@ -1,13 +1,11 @@
-package no.njoh.pulseengine.modules.graphics.ui.elements
+package no.njoh.pulseengine.modules.graphics.ui
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.FocusArea
 import no.njoh.pulseengine.data.Mouse
 import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.modules.graphics.ui.Padding
-import no.njoh.pulseengine.modules.graphics.ui.Position
-import no.njoh.pulseengine.modules.graphics.ui.Size
-import no.njoh.pulseengine.util.forEachVolatile
+import no.njoh.pulseengine.modules.graphics.ui.elements.Label
+import no.njoh.pulseengine.util.forEachFast
 
 abstract class UiElement(
     val x: Position,
@@ -36,6 +34,7 @@ abstract class UiElement(
             field = isHidden
         }
 
+    private var preventRender = false
     private var created = false
     private var dirtyLayout = false
     var mouseInsideArea = false
@@ -75,7 +74,7 @@ abstract class UiElement(
         setLayoutDirty()
     }
 
-    fun removeChild(vararg uiElements: UiElement)
+    fun removeChildren(vararg uiElements: UiElement)
     {
         children.removeAll(uiElements)
         setLayoutDirty()
@@ -104,7 +103,9 @@ abstract class UiElement(
             onCreate(engine)
         }
 
-        if (hidden)
+        onVisibilityIndependentUpdate(engine)
+
+        if (!isVisible())
             return
 
         if (focusable)
@@ -124,7 +125,7 @@ abstract class UiElement(
 
         onUpdate(engine)
 
-        children.forEachVolatile { child ->
+        children.forEachFast { child ->
             child.update(engine)
             if (child.dirtyLayout || child.popup?.dirtyLayout == true)
                 setLayoutDirty()
@@ -144,14 +145,14 @@ abstract class UiElement(
 
     open fun render(surface: Surface2D)
     {
-        if (!hidden)
-        {
-            onRender(surface)
-            children.forEach { it.render(surface) }
+        if (!isVisible())
+            return
 
-            if (parent == null)
-                renderPopup(surface)
-        }
+        onRender(surface)
+        children.forEach { it.render(surface) }
+
+        if (parent == null)
+            renderPopup(surface)
     }
 
     fun setLayoutDirty()
@@ -208,7 +209,7 @@ abstract class UiElement(
 
     private fun updatePopup(engine: PulseEngine)
     {
-        if (hidden)
+        if (!isVisible())
             return
 
         popup?.update(engine)
@@ -217,7 +218,7 @@ abstract class UiElement(
 
     private fun renderPopup(surface: Surface2D)
     {
-        if (hidden)
+        if (!isVisible())
             return
 
         popup?.render(surface)
@@ -227,18 +228,25 @@ abstract class UiElement(
     fun printStructure(indent: Int = 0)
     {
         var data = if (this is Label) " (${this.text})" else ""
-        data += popup?.let { " popup hidden: (${it.hidden})" } ?: ""
+        data += popup?.let { " popup visible: (${it.isVisible()})" } ?: ""
         data += " id: $id"
         println(" ".repeat(indent) + this::class.simpleName + data)
         for (child in children)
             child.printStructure(indent + 2)
     }
 
+    fun isVisible() = !hidden && !preventRender
+
+    fun preventRender(state: Boolean)
+    {
+        preventRender = state
+    }
+
     open fun onCreate(engine: PulseEngine) { }
-    open fun onHiddenUpdate(engine: PulseEngine) { }
     open fun onMouseEnter(engine: PulseEngine) { }
     open fun onMouseLeave(engine: PulseEngine) { }
     open fun onMouseClicked(engine: PulseEngine) { }
+    open fun onVisibilityIndependentUpdate(engine: PulseEngine) { }
 
     protected abstract fun onUpdate(engine: PulseEngine)
     protected abstract fun onRender(surface: Surface2D)

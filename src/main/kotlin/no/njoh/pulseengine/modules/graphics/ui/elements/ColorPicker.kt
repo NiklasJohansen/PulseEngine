@@ -8,6 +8,7 @@ import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
+import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.WindowPanel
@@ -219,7 +220,7 @@ class ColorPicker(
 
     override fun onUpdate(engine: PulseEngine)
     {
-        if (!colorEditor.hidden && !hasFocus(engine))
+        if (colorEditor.isVisible() && !hasFocus(engine))
             colorEditor.hidden = true
     }
 
@@ -233,8 +234,21 @@ class ColorPicker(
 
     override fun updatePopupLayout()
     {
-        colorEditor.padding.top = height.value + 2
+        updateColorEditorAlignment()
         super.updatePopupLayout()
+    }
+
+    private fun updateColorEditorAlignment()
+    {
+        var root: UiElement = this
+        while (root.parent != null)
+            root = root.parent!!
+
+        val isOnRightSide = x.value > root.x.value + root.width.value * 0.5f
+        val isOnBottomSide = y.value > root.y.value + root.height.value * 0.5f
+
+        colorEditor.padding.left = if (isOnRightSide) -colorEditor.width.value + width.value else 0f
+        colorEditor.padding.top = if (isOnBottomSide) -colorEditor.height.value else height.value
     }
 
     override fun onRender(surface: Surface2D)
