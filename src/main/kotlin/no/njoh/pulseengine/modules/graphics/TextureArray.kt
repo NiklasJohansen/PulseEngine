@@ -1,17 +1,18 @@
 package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.assets.Texture
+import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
 import org.lwjgl.opengl.ARBInternalformatQuery2.GL_TEXTURE_2D_ARRAY
-import org.lwjgl.opengl.ARBTextureStorage
+import org.lwjgl.opengl.ARBTextureStorage.glTexStorage3D
 import org.lwjgl.opengl.GL11.*
-import org.lwjgl.opengl.GL12
+import org.lwjgl.opengl.GL12.GL_CLAMP_TO_EDGE
 import org.lwjgl.opengl.GL12.glTexSubImage3D
-import java.lang.RuntimeException
 
 class TextureArray(
     private val maxTextureWidth: Int,
     private val maxTextureHeight: Int,
-    private val capacity: Int
+    private val capacity: Int,
+    private val mipMapLevels: Int = 4
 ) {
     private var uploadedTextureCount = 0
     private var textureArrayId = -1
@@ -20,13 +21,11 @@ class TextureArray(
     {
         textureArrayId = glGenTextures()
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
-        ARBTextureStorage.glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, maxTextureWidth, maxTextureHeight, capacity)
-
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE)
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE)
-        glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR.toFloat())
-        glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR.toFloat())
-
+        glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipMapLevels, GL_RGBA8, maxTextureWidth, maxTextureHeight, capacity)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
     }
 
@@ -44,6 +43,7 @@ class TextureArray(
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
         glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, index, texture.width, texture.height, 1, texture.format, GL_UNSIGNED_BYTE, texture.textureData!!)
+        glGenerateMipmap(GL_TEXTURE_2D_ARRAY)
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
 
         val u = texture.width / maxTextureWidth.toFloat()
@@ -51,13 +51,7 @@ class TextureArray(
         texture.finalize(index, 0.0f, 0.0f, u, v)
     }
 
-    fun bind()
-    {
-        glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
-    }
+    fun bind() = glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
 
-    fun cleanup()
-    {
-        glDeleteTextures(textureArrayId)
-    }
+    fun cleanup() = glDeleteTextures(textureArrayId)
 }
