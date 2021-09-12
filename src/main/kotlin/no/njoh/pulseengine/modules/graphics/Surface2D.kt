@@ -38,6 +38,7 @@ interface Surface2D : Surface
     fun setIsVisible(isVisible: Boolean): Surface2D
     fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
     fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
+    fun reloadPostProcessingShaders()
 }
 
 interface EngineSurface2D : Surface2D
@@ -97,7 +98,6 @@ class Surface2DImpl(
     {
         renderTarget.begin()
         setOpenGlState()
-        camera.updateViewMatrix(width, height)
         renderers.forEach { it.render(camera) }
         renderTarget.end()
         renderState.resetDepth(camera.nearPlane)
@@ -216,6 +216,11 @@ class Surface2DImpl(
     {
         postProcessingPipeline.removeEffect(effect)
         return this
+    }
+
+    override fun reloadPostProcessingShaders()
+    {
+        postProcessingPipeline.reloadShaders()
     }
 
     override fun getTexture(): Texture =

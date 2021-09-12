@@ -1,10 +1,7 @@
 package no.njoh.pulseengine
 
 import no.njoh.pulseengine.data.*
-import no.njoh.pulseengine.data.assets.Font
-import no.njoh.pulseengine.data.assets.Sound
-import no.njoh.pulseengine.data.assets.Text
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.data.assets.*
 import no.njoh.pulseengine.modules.*
 import no.njoh.pulseengine.modules.console.ConsoleImpl
 import no.njoh.pulseengine.modules.console.Console
@@ -202,6 +199,7 @@ class PulseEngineImpl(
     {
         data.measureRenderTimeAndUpdateInterpolationValue()
         {
+            gfx.preRender()
             scene.render()
             game.onRender()
             widget.render(this)

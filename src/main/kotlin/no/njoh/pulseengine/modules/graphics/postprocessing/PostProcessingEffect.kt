@@ -4,11 +4,13 @@ import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.FrameBufferObject
 import no.njoh.pulseengine.modules.graphics.ShaderProgram
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
+import no.njoh.pulseengine.util.Logger
 
 interface PostProcessingEffect
 {
     fun init()
     fun process(texture: Texture): Texture
+    fun reloadShaders()
     fun cleanUp()
 }
 
@@ -50,6 +52,19 @@ abstract class SinglePassEffect : PostProcessingEffect
         }
     }
 
+    override fun reloadShaders()
+    {
+        runCatching { loadShaderProgram() }
+            .onFailure { Logger.error("Failed to reload shaders for post processing effect ${this::class.simpleName}, reason: ${it.message}") }
+            .onSuccess {
+                if (this::program.isInitialized) program.delete()
+                if (this::renderer.isInitialized) renderer.cleanUp()
+                program = it
+                renderer = FrameTextureRenderer(program)
+                init()
+            }
+    }
+
     override fun cleanUp()
     {
         if (this::program.isInitialized) program.delete()
@@ -61,21 +76,21 @@ abstract class SinglePassEffect : PostProcessingEffect
 abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProcessingEffect
 {
     protected val fbo = mutableListOf<FrameBufferObject>()
-    protected val renderer = mutableListOf<FrameTextureRenderer>()
-    protected val program = mutableListOf<ShaderProgram>()
+    protected val renderers = mutableListOf<FrameTextureRenderer>()
+    protected val programs = mutableListOf<ShaderProgram>()
 
     protected abstract fun loadShaderPrograms(): List<ShaderProgram>
     protected abstract fun applyEffect(texture: Texture): Texture
 
     override fun init()
     {
-        if (program.isEmpty())
-            program.addAll(loadShaderPrograms())
+        if (programs.isEmpty())
+            programs.addAll(loadShaderPrograms())
 
-        if (renderer.isEmpty())
-            renderer.addAll(program.map { FrameTextureRenderer(it) })
+        if (renderers.isEmpty())
+            renderers.addAll(programs.map { FrameTextureRenderer(it) })
 
-        renderer.forEach { it.init() }
+        renderers.forEach { it.init() }
     }
 
     override fun process(texture: Texture): Texture
@@ -100,10 +115,24 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
     private fun createNewFBOList(amount: Int, width: Int, height: Int): List<FrameBufferObject> =
         0.until(amount).map { FrameBufferObject.create(width, height) }
 
+    override fun reloadShaders()
+    {
+        runCatching { loadShaderPrograms() }
+            .onFailure { Logger.error("Failed to reload shaders for post processing effect ${this::class.simpleName}, reason: ${it.message}") }
+            .onSuccess { newPrograms ->
+                programs.forEach { it.delete() }
+                renderers.forEach { it.cleanUp() }
+                programs.clear()
+                renderers.clear()
+                programs.addAll(newPrograms)
+                init()
+            }
+    }
+
     override fun cleanUp()
     {
-        program.forEach { it.delete() }
-        renderer.forEach { it.cleanUp() }
+        programs.forEach { it.delete() }
+        renderers.forEach { it.cleanUp() }
         fbo.forEach { it.delete() }
     }
 }

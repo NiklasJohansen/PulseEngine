@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
 
 interface Graphics
 {
@@ -10,7 +11,7 @@ interface Graphics
     fun createSurface(name: String, zOrder: Int? = null, camera: CameraInterface? = null, antiAliasing: AntiAliasingType = NONE): Surface2D
     fun getSurface(name: String): Surface2D?
     fun getSurfaceOrDefault(name: String): Surface2D
-    fun getSurface(name: String): Surface2D?
+    fun getAllSurfaces(): List<Surface2D>
     fun removeSurface(name: String)
 }
 
@@ -23,6 +24,7 @@ interface GraphicsEngineInterface : Graphics
     fun cleanUp()
     fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     fun updateCamera(deltaTime: Float)
+    fun preRender()
     fun postRender()
 }
 

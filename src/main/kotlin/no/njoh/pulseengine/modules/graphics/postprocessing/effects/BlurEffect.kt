@@ -35,16 +35,16 @@ class BlurEffect(
     {
         fbo[0].bind()
         fbo[0].clear()
-        program[0].bind()
-        program[0].setUniform("radius", radius)
-        renderer[0].render(texture)
+        programs[0].bind()
+        programs[0].setUniform("radius", radius)
+        renderers[0].render(texture)
         fbo[0].release()
 
         fbo[1].bind()
         fbo[1].clear()
-        program[1].bind()
-        program[1].setUniform("radius", radius)
-        renderer[1].render(fbo[0].texture)
+        programs[1].bind()
+        programs[1].setUniform("radius", radius)
+        renderers[1].render(fbo[0].texture)
         fbo[1].release()
 
         return fbo[1].texture

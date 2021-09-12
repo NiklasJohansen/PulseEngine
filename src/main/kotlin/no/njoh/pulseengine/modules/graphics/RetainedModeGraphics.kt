@@ -83,10 +83,15 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun updateCamera(deltaTime: Float)
     {
-        mainCamera.updateTransform(deltaTime)
         surfaces.forEachFast {
-            if (it.camera != mainCamera)
-                it.camera.updateTransform(deltaTime)
+            it.camera.updateTransform(deltaTime)
+        }
+    }
+
+    override fun preRender()
+    {
+        surfaces.forEachFast {
+            it.camera.updateViewMatrix(it.width, it.height)
         }
     }
 
@@ -129,8 +134,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
             mainSurface
         }
 
-    override fun getSurface(name: String): Surface2D? =
-        surfaces.find { it.name == name }
+    override fun getAllSurfaces() = surfaces
 
     override fun removeSurface(name: String)
     {

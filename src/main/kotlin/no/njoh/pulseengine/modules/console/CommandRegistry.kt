@@ -241,5 +241,14 @@ object CommandRegistry
             (engine.scene as? SceneManagerEngineInterface)?.registerSystemsAndEntityClasses()
             CommandResult("Reloaded entity types", showCommand = false)
         }
+
+        ///////////////////////////////////////////// RELOAD POST PROCESSING SHADERS /////////////////////////////////////////////
+
+        engine.console.registerCommand(
+            "reloadPostProcessingShaders"
+        ) {
+            engine.gfx.getAllSurfaces().forEach { it.reloadPostProcessingShaders() }
+            CommandResult("Reloaded post processing shaders for ${engine.gfx.getAllSurfaces().size} surfaces", showCommand = false)
+        }
     }
 }

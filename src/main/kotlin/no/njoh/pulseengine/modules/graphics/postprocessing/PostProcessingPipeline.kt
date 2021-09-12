@@ -19,5 +19,7 @@ class PostProcessingPipeline
         return latestTexture
     }
 
+    fun reloadShaders() = effects.forEach { it.reloadShaders() }
+
     fun cleanUp() = effects.forEach { it.cleanUp() }
 }
