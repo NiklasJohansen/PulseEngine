@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.graphics.AntiAliasingType.MSAA4
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.forEachFast
@@ -24,7 +25,14 @@ class RetainedModeGraphics : GraphicsEngineInterface
         graphicState.textureArray = TextureArray(1024, 1024, 100)
 
         mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)
-        mainSurface = Surface2DImpl.create("main", zOrder--, 100, graphicState, mainCamera)
+        mainSurface = Surface2DImpl.create(
+            name = "main",
+            zOrder = zOrder--,
+            initCapacity = 5000,
+            graphicsState = graphicState,
+            camera = mainCamera,
+            antiAliasing = MSAA4
+        )
         surfaces.add(mainSurface)
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
@@ -40,16 +48,19 @@ class RetainedModeGraphics : GraphicsEngineInterface
     override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     {
         if (windowRecreated)
-       {
+        {
            GL.createCapabilities()
 
            // Create frameRenderer
            if (!this::renderer.isInitialized)
-               renderer = FrameTextureRenderer(ShaderProgram.create("/pulseengine/shaders/effects/texture.vert", "/pulseengine/shaders/effects/texture.frag"))
+               renderer = FrameTextureRenderer(ShaderProgram.create(
+                   vertexShaderFileName = "/pulseengine/shaders/effects/texture.vert",
+                   fragmentShaderFileName = "/pulseengine/shaders/effects/texture.frag"
+               ))
 
            // Initialize frameRenderer
            renderer.init()
-       }
+        }
 
         // Update projection of main camera
         mainCamera.updateProjection(width, height)
@@ -94,7 +105,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
         surfaces.forEachFiltered({ it.isVisible }) { renderer.render(it.getTexture()) }
     }
 
-    override fun createSurface(name: String, zOrder: Int?, camera: CameraInterface?): Surface2D =
+    override fun createSurface(name: String, zOrder: Int?, camera: CameraInterface?, antiAliasing: AntiAliasingType): Surface2D =
         surfaces
             .find { it.name == name }
             ?: Surface2DImpl.create(
@@ -102,11 +113,15 @@ class RetainedModeGraphics : GraphicsEngineInterface
                 zOrder = zOrder ?: this.zOrder--,
                 initCapacity = 5000,
                 graphicsState = graphicState,
-                camera = (camera ?: Camera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraEngineInterface
+                camera = (camera ?: Camera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraEngineInterface,
+                antiAliasing = antiAliasing
             ).also {
                 it.init(mainSurface.width, mainSurface.height, true)
                 surfaces.add(it)
             }
+
+    override fun getSurface(name: String): Surface2D? =
+        surfaces.find { it.name == name }
 
     override fun getSurfaceOrDefault(name: String): Surface2D =
         surfaces.find { it.name == name } ?: run {

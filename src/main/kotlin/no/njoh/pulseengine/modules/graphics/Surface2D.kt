@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.graphics
 import no.njoh.pulseengine.data.Color
 import no.njoh.pulseengine.data.assets.Font
 import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.modules.graphics.renderers.*
@@ -33,6 +34,7 @@ interface Surface2D : Surface
     fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface2D
     fun setBackgroundColor(color: Color): Surface2D
     fun setBlendFunction(func: BlendFunction): Surface2D
+    fun setAntiAliasingType(antiAliasing: AntiAliasingType)
     fun setIsVisible(isVisible: Boolean): Surface2D
     fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
     fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
@@ -54,8 +56,7 @@ class Surface2DImpl(
     override val zOrder: Int,
     override val camera: CameraEngineInterface,
     private val renderState: RenderState,
-    private val graphicsState: GraphicsState,
-    private val renderTarget: RenderTarget,
+    private var antiAliasing: AntiAliasingType,
     private val textRenderer: TextRenderer,
     private val uniColorLineRenderer: UniColorLineBatchRenderer,
     private val quadRenderer: QuadBatchRenderer,
@@ -67,6 +68,7 @@ class Surface2DImpl(
     override var height = 0
     override var isVisible = true
 
+    private var renderTarget = createRenderTarget(antiAliasing)
     private val backgroundColor = Color(0.1f, 0.1f, 0.1f, 0f)
     private var blendFunction = BlendFunction.NORMAL
     private val postProcessingPipeline = PostProcessingPipeline()
@@ -186,6 +188,17 @@ class Surface2DImpl(
         return this
     }
 
+    override fun setAntiAliasingType(antiAliasing: AntiAliasingType)
+    {
+        if (antiAliasing != this.antiAliasing)
+        {
+            this.antiAliasing = antiAliasing
+            renderTarget.cleanUp()
+            renderTarget = createRenderTarget(antiAliasing)
+            renderTarget.init(width, height)
+        }
+    }
+
     override fun setIsVisible(isVisible: Boolean): Surface2D
     {
         this.isVisible = isVisible
@@ -210,7 +223,13 @@ class Surface2DImpl(
 
     companion object
     {
-        fun create(name: String, zOrder: Int, initCapacity: Int, graphicsState: GraphicsState, camera: CameraEngineInterface): Surface2DImpl
+        private fun createRenderTarget(antiAliasing: AntiAliasingType) = when (antiAliasing)
+        {
+            NONE -> OffScreenRenderTarget()
+            else -> MultisampledOffScreenRenderTarget(antiAliasing)
+        }
+
+        fun create(name: String, zOrder: Int, initCapacity: Int, graphicsState: GraphicsState, camera: CameraEngineInterface, antiAliasing: AntiAliasingType = NONE): Surface2DImpl
         {
             val renderState = RenderState()
             return Surface2DImpl(
@@ -218,8 +237,7 @@ class Surface2DImpl(
                 zOrder = zOrder,
                 camera = camera,
                 renderState = renderState,
-                graphicsState = graphicsState,
-                renderTarget = RenderTarget(),
+                antiAliasing = antiAliasing,
                 textRenderer = TextRenderer(),
                 uniColorLineRenderer = UniColorLineBatchRenderer(initCapacity, renderState),
                 quadRenderer = QuadBatchRenderer(initCapacity, renderState),
