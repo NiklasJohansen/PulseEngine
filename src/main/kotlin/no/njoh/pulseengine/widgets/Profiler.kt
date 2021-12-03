@@ -53,12 +53,16 @@ class Profiler : Widget
 
     override fun onUpdate(engine: PulseEngine)
     {
-        for (source in engine.data.metrics.values)
+        for (metric in engine.data.metrics.values)
         {
-            val graph = graphs.find { it.name == source.name }
+            val graph = graphs.find { it.name == metric.name }
             if (graph == null)
             {
-                graphs.add(Graph(source.name, source.unit, source.source))
+                graphs.add(Graph(metric.name, metric.unit, metric.source))
+                break
+            } else if (!(graph.source === metric.source)) {
+                graphs.remove(graph)
+                graphs.add(Graph(metric.name, metric.unit, metric.source))
                 break
             }
         }
@@ -148,8 +152,8 @@ class Profiler : Widget
 
     class Graph(
         val name: String,
-        private val unit: String,
-        private val source: () -> Float
+        val unit: String,
+        val source: () -> Float
     ) : Iterable<Float> {
         private var data: FloatArray = FloatArray(WINDOWS_LENGTH * 10)
         private var taleCursor: Int = 0
