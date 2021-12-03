@@ -8,5 +8,5 @@ import no.njoh.pulseengine.data.Shape
 interface LightOccluder
 {
     val shape: Shape
-    val castShadows: Boolean
+    var castShadows: Boolean
 }

@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.util
 
+import java.lang.reflect.Modifier
 import java.net.URLClassLoader
 import java.nio.file.FileSystems
 import java.nio.file.Files
@@ -63,5 +64,5 @@ object ReflectionUtil
 
     @Suppress("UNCHECKED_CAST")
     fun <T: Any> List<Class<*>>.getClassesOfSuperType(superType: KClass<T>): List<Class<out T>> =
-        this.filter { superType.java.isAssignableFrom(it) } as List<Class<out T>>
+        this.filter { superType.java.isAssignableFrom(it) && !Modifier.isAbstract(it.modifiers) } as List<Class<out T>>
 }

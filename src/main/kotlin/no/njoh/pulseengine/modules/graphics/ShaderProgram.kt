@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.graphics
 
+import no.njoh.pulseengine.data.Color
 import no.njoh.pulseengine.data.ShaderType
 import org.joml.Matrix4f
 import org.joml.Vector3f
@@ -60,6 +61,12 @@ class ShaderProgram(val id: Int)
     fun setUniform(name: String, value1: Float, value2: Float)
     {
         glUniform2f(getUniformLocation(name), value1, value2)
+    }
+
+    fun setUniform(name: String, color: Color): Color
+    {
+        glUniform4f(getUniformLocation(name), color.red, color.green, color.blue, color.alpha)
+        return color
     }
 
     fun defineVertexAttributeArray(name: String, size: Int, type: Int, stride: Int, offset: Int, normalized: Boolean = false)
