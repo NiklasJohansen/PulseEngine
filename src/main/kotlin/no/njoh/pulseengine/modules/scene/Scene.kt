@@ -130,15 +130,6 @@ open class Scene(
         spatialGrid.clear()
     }
 
-    internal fun copy(fileName: String? = null): Scene
-    {
-        val copy = Scene(name, entities, systems)
-        copy.fileName = fileName ?: this.fileName
-        copy.fileFormat = fileFormat
-        copy.nextId = nextId
-        return copy
-    }
-
     private fun createEntityTypeMap(entities: MutableList<SwapList<SceneEntity>>) =
         HashMap<String, SwapList<SceneEntity>>(entities.size).also { map ->
             entities.forEachFast { list -> list.first()?.let { map[it.typeName] = list } }

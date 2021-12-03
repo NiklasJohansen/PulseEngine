@@ -94,7 +94,7 @@ class SpatialGrid (
         }
     }
 
-    inline fun query(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit)
+    inline fun query(x: Float, y: Float, width: Float, height: Float, queryId: Int, block: (SceneEntity) -> Unit)
     {
         val xCell = ((x - xOffset) / cellSize).toInt()
         val yCell = ((y - yOffset) / cellSize).toInt()
@@ -105,7 +105,7 @@ class SpatialGrid (
         val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
         val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
         val array = array
-        val iterNum = (++iterationNumber).toInt() % 255
+        lastQueryId = queryId
 
         for (yi in yStart .. yEnd)
         {
@@ -115,10 +115,10 @@ class SpatialGrid (
                 while (node != null)
                 {
                     val entity = node.entity
-                    if (entity.isNot(DEAD) && entity.getIterationNumber() != iterNum)
+                    if (entity.isNot(DEAD) && entity.getQueryId() != queryId)
                     {
                         block(entity)
-                        entity.setIterationNumber(iterNum)
+                        entity.setQueryId(queryId)
                     }
                     node = node.next
                 }
@@ -126,7 +126,7 @@ class SpatialGrid (
         }
     }
 
-    inline fun <reified T> queryType(x: Float, y: Float, width: Float, height: Float, block: (T) -> Unit)
+    inline fun <reified T> queryType(x: Float, y: Float, width: Float, height: Float, queryId: Int, block: (T) -> Unit)
     {
         val xCell = ((x - xOffset) / cellSize).toInt()
         val yCell = ((y - yOffset) / cellSize).toInt()
@@ -137,7 +137,7 @@ class SpatialGrid (
         val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
         val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
         val array = array
-        val iterNum = (++iterationNumber).toInt() % 255
+        lastQueryId = queryId
 
         for (yi in yStart .. yEnd)
         {
@@ -147,10 +147,10 @@ class SpatialGrid (
                 while (node != null)
                 {
                     val entity = node.entity
-                    if (entity.isNot(DEAD) && entity.getIterationNumber() != iterNum && entity is T)
+                    if (entity.isNot(DEAD) && entity.getQueryId() != queryId && entity is T)
                     {
                         block(entity as T)
-                        entity.setIterationNumber(iterNum)
+                        entity.setQueryId(queryId)
                     }
                     node = node.next
                 }
@@ -159,12 +159,12 @@ class SpatialGrid (
     }
 
     @PublishedApi
-    internal inline fun SceneEntity.getIterationNumber(): Int = (flags ushr 24)
+    internal inline fun SceneEntity.getQueryId(): Int = (flags ushr 24)
 
     @PublishedApi
-    internal inline fun SceneEntity.setIterationNumber(num: Int)
+    internal inline fun SceneEntity.setQueryId(id: Int)
     {
-        flags = (flags and 16777215) or (num shl 24) // Clear last 8 bits and set iteration number
+        flags = (flags and 16777215) or (id shl 24) // Clear last 8 bits and set queryId
     }
 
     fun insert(entity: SceneEntity): Boolean
@@ -182,7 +182,7 @@ class SpatialGrid (
             return false
         }
 
-        val inserted =  when
+        val inserted = when
         {
             entity.isNot(DISCOVERABLE) -> true
             abs(entity.width) + abs(entity.height) < cellSize * 0.5 -> insertPoint(entity)
@@ -205,7 +205,7 @@ class SpatialGrid (
         if (x < 0 || y < 0 || x >= xCells || y >= yCells)
             return false
 
-        insert(x, y, entity)?.cluster = emptyClusterArray
+        insert(x, y, entity).cluster = emptyClusterArray
         return true
     }
 
@@ -359,7 +359,7 @@ class SpatialGrid (
         return true
     }
 
-    private fun insert(xCell: Int, yCell: Int, entity: SceneEntity): Node?
+    private fun insert(xCell: Int, yCell: Int, entity: SceneEntity): Node
     {
         val node = Node(entity, xCell, yCell)
         val first = array[xCell, yCell]
@@ -517,12 +517,12 @@ class SpatialGrid (
         val yCell: Int,
         var prev: Node? = null,
         var next: Node? = null,
-        var itrNum: Long = 0L,
         var cluster: Array<Node?>? = null
     )
 
     companion object
     {
-        var iterationNumber = 1L
+        var lastQueryId = 1
+        fun nextQueryId() = (++lastQueryId) % 255
     }
 }

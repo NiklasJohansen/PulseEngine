@@ -5,10 +5,11 @@ import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.SceneState.*
 import no.njoh.pulseengine.data.SwapList
 import no.njoh.pulseengine.modules.graphics.Surface2D
+import no.njoh.pulseengine.modules.scene.SpatialGrid.Companion.nextQueryId
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
-import no.njoh.pulseengine.modules.scene.systems.default.EntityRenderSystem
 import no.njoh.pulseengine.modules.scene.systems.default.EntityUpdateSystem
+import no.njoh.pulseengine.modules.scene.systems.rendering.EntityRenderSystem
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.ReflectionUtil
 import no.njoh.pulseengine.util.ReflectionUtil.getClassesFromFullyQualifiedClassNames
@@ -42,6 +43,9 @@ abstract class SceneManager
     fun removeSystem(system: SceneSystem) =
         activeScene.systems.remove(system)
 
+    inline fun <reified T> getSystemOfType(): T? =
+        activeScene.systems.firstOrNull { it is T } as? T?
+
     fun addEntity(entity: SceneEntity) =
         activeScene.insertEntity(entity)
 
@@ -63,11 +67,11 @@ abstract class SceneManager
     inline fun forEachEntityTypeList(block: (SwapList<SceneEntity>) -> Unit) =
         activeScene.entities.forEachFast { if (it.isNotEmpty()) block(it) }
 
-    inline fun <reified T> forEachNearbyEntityOfType(x: Float, y: Float, width: Float, height: Float, block: (T) -> Unit) =
-        activeScene.spatialGrid.queryType(x, y, width, height, block)
+    inline fun <reified T> forEachNearbyEntityOfType(x: Float, y: Float, width: Float, height: Float, queryId: Int = nextQueryId(), block: (T) -> Unit) =
+        activeScene.spatialGrid.queryType(x, y, width, height, queryId, block)
 
-    inline fun forEachNearbyEntity(x: Float, y: Float, width: Float, height: Float, block: (SceneEntity) -> Unit) =
-        activeScene.spatialGrid.query(x, y, width, height, block)
+    inline fun forEachNearbyEntity(x: Float, y: Float, width: Float, height: Float, queryId: Int = nextQueryId(), block: (SceneEntity) -> Unit) =
+        activeScene.spatialGrid.query(x, y, width, height, queryId, block)
 
     inline fun forEachEntity(block: (SceneEntity) -> Unit) =
         activeScene.entities.forEachFast { entities -> entities.forEachFast { block(it) } }
@@ -176,7 +180,10 @@ class SceneManagerImpl : SceneManagerEngineInterface() {
             if (scene.entities != activeScene.entities)
                 activeScene.clearAll()
 
+            // Missing system implementations gets deserialized to null and should be removed
+            scene.systems.removeIf { it == null }
             activeScene = scene
+
             if (state != STOPPED)
                 activeScene.start(engine)
         }
