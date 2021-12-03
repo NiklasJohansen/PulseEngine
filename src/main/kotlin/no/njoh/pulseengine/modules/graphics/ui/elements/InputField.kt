@@ -500,7 +500,7 @@ class InputField (
         surface.setDrawColor(fontColor)
         surface.drawText(text, x.value + leftTextPadding, y.value + height.value / 2f, font, fontSize, yOrigin = 0.6f)
 
-        if ((contentType == INTEGER || contentType == FLOAT) && width.value > 50f )
+        if ((contentType == INTEGER || contentType == FLOAT) && width.value > 50f && editable)
         {
             val xArrow = x.value + width.value - numberStepperWidth / 2
             val yArrow = y.value + height.value / 2

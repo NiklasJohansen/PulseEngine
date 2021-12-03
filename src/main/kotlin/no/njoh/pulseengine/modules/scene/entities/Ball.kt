@@ -11,6 +11,7 @@ import no.njoh.pulseengine.modules.scene.systems.physics.shapes.CircleShape
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.CircleBody
 import no.njoh.pulseengine.util.interpolateFrom
 import no.njoh.pulseengine.util.toDegrees
+import no.njoh.pulseengine.widgets.sceneEditor.Property
 
 open class Ball : SceneEntity(), CircleBody, LightOccluder
 {
@@ -18,15 +19,23 @@ open class Ball : SceneEntity(), CircleBody, LightOccluder
 
     @JsonIgnore
     override val shape = CircleShape()
+    @Property("Physics", 0)
     override var bodyType = BodyType.DYNAMIC
+    @Property("Physics", 1)
     override var layerMask = 1
+    @Property("Physics", 2)
     override var collisionMask = 1
+    @Property("Physics", 3)
     override var restitution = 0.5f
+    @Property("Physics", 4)
     override var density = 1f
+    @Property("Physics", 5)
     override var friction = 0.4f
+    @Property("Physics", 6)
     override var drag = 0.01f
 
-    override val castShadows = true
+    @Property("Lighting")
+    override var castShadows = true
 
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {

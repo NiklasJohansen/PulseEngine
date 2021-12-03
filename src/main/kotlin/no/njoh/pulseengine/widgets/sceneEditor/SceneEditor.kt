@@ -35,6 +35,7 @@ import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KVisibility
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.instanceParameter
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
@@ -307,10 +308,29 @@ class SceneEditor: Widget
             renderGrid(engine.gfx.getSurfaceOrDefault("sceneEditorBackgroundSurface"))
 
         val foregroundSurface = engine.gfx.getSurfaceOrDefault("sceneEditorForegroundSurface")
-        val showResizeDots = (entitySelection.size == 1)
-        entitySelection.forEach { it.renderGizmo(foregroundSurface, showResizeDots) }
+        renderEntityIconAndGizmo(foregroundSurface, engine)
         renderSelectionRectangle(foregroundSurface)
         rootUI.render(foregroundSurface)
+    }
+
+    private fun renderEntityIconAndGizmo(surface: Surface2D, engine: PulseEngine)
+    {
+        val showResizeDots = (entitySelection.size == 1)
+        entitySelection.forEach { it.renderGizmo(surface, showResizeDots) }
+
+        engine.scene.forEachEntityTypeList { entities ->
+            entities[0]::class.findAnnotation<EditorIcon>()?.let { annotation ->
+                engine.asset.getSafe<Texture>(annotation.textureAssetName)?.let { texture ->
+                    val width = annotation.width
+                    val height = annotation.height
+                    surface.setDrawColor(1f, 1f, 1f)
+                    entities.forEachFast { entity ->
+                        val pos = engine.gfx.mainCamera.worldPosToScreenPos(entity.x, entity.y)
+                        surface.drawTexture(texture, pos.x, pos.y, width, height, 0f, 0.5f, 0.5f)
+                    }
+                }
+            }
+        }
     }
 
     private fun onSaveAs(engine: PulseEngine)
@@ -747,15 +767,23 @@ class SceneEditor: Widget
         val entityTypePropUI = EditorUtil.createEntityTypePropertyUI(entity) { changeToType = it }
         entityPropertiesUI.addChildren(entityTypePropUI)
 
-        for (prop in entity::class.memberProperties)
-        {
-            if (prop !is KMutableProperty<*> || !EditorUtil.isPropertyEditable(prop))
-                continue
-
-            val (propertyPanel, inputElement) = EditorUtil.createPropertyUI(entity, prop)
-            entityPropertiesUI.addChildren(propertyPanel)
-            entityPropertyUiRows[prop.name] = inputElement
-        }
+        entity::class.memberProperties
+            .groupBy { it.findAnnotation<Property>()?.category ?: "" }
+            .toList()
+            .sortedBy { it.first }
+            .forEach { (category, props) ->
+                props.sortedBy { it.findAnnotation<Property>()?.order ?: 0 }
+                    .filterIsInstance<KMutableProperty<*>>()
+                    .filter { EditorUtil.isPropertyEditable(it) }
+                    .also {
+                        if (it.isNotEmpty() && category.isNotEmpty())
+                            entityPropertiesUI.addChildren(EditorUtil.createCategoryHeader(category))
+                    }.forEach { prop ->
+                        val (propertyPanel, inputElement) = EditorUtil.createPropertyUI(entity, prop)
+                        entityPropertiesUI.addChildren(propertyPanel)
+                        entityPropertyUiRows[prop.name] = inputElement
+                    }
+            }
     }
 
     private fun handleEntityTypeChanged(scene: Scene, type: KClass<out SceneEntity>)

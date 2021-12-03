@@ -470,7 +470,7 @@ object EditorUtil
 
             if (type == FLOAT || type == INTEGER)
             {
-                prop.findAnnotation<ValueRange>()?.let {
+                prop.findAnnotation<Property>()?.let {
                     numberMinVal = it.min
                     numberMaxVal = it.max
                 }
@@ -558,6 +558,23 @@ object EditorUtil
 
         return Pair(hPanel, propUi)
     }
+
+    fun createCategoryHeader(label: String) =
+        HorizontalPanel().apply {
+            padding.left = 5f
+            padding.right = 5f
+            padding.top = 5f
+            color = style.getColor("HEADER")
+            addChildren(
+                Label(label, width = Size.relative(0.5f)).apply {
+                    padding.setAll(5f)
+                    padding.left = 10f
+                    fontSize = 20f
+                    font = style.getFont()
+                    color = style.getColor("LABEL")
+                }
+            )
+        }
 
     /**
      * Parses the given string value into a the class type given by the [KMutableProperty].

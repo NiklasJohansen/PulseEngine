@@ -5,28 +5,46 @@ import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
+import no.njoh.pulseengine.modules.scene.systems.lighting.NormalMapRenderPassTarget
 import no.njoh.pulseengine.modules.scene.systems.lighting.LightOccluder
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.PolygonBody
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.RectangleShape
 import no.njoh.pulseengine.util.degreesBetween
 import no.njoh.pulseengine.util.interpolateFrom
+import no.njoh.pulseengine.widgets.sceneEditor.Property
 
-open class Box : SceneEntity(), PolygonBody, LightOccluder
+open class Box : SceneEntity(), PolygonBody, LightOccluder, NormalMapRenderPassTarget
 {
     var textureName: String = ""
+    override var normalMapName: String = ""
 
     @JsonIgnore
     override var shape = RectangleShape()
+
+    @Property("Physics", 0)
     override var bodyType = BodyType.DYNAMIC
+
+    @Property("Physics", 1)
     override var layerMask = 1
+
+    @Property("Physics", 2)
     override var collisionMask = 1
+
+    @Property("Physics", 3)
     override var restitution = 0.5f
+
+    @Property("Physics", 4)
     override var density = 1f
+
+    @Property("Physics", 5)
     override var friction = 0.4f
+
+    @Property("Physics", 6)
     override var drag = 0.01f
 
-    override val castShadows = true
+    @Property("Lighting")
+    override var castShadows = true
 
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {

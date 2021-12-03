@@ -6,20 +6,37 @@ import no.njoh.pulseengine.data.SceneState
 import no.njoh.pulseengine.data.assets.Font
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
+import no.njoh.pulseengine.widgets.sceneEditor.Property
 import kotlin.reflect.KClass
 
-abstract class SceneEntity(
-    open var x: Float = 0f,
-    open var y: Float = 0f,
-    open var z: Float = 0f,
-    open var width: Float = 0f,
-    open var height: Float = 0f,
-    open var rotation: Float = 0f
-) {
+abstract class SceneEntity
+{
+    @Property("", -1)
     var id = -1L // Id gets assigned when entity is added to the scene
 
-    @JsonIgnore val typeName = this::class.simpleName ?: ""
-    @JsonIgnore var flags = DISCOVERABLE
+    @Property("Transform", 0)
+    open var x: Float = 0f
+
+    @Property("Transform", 1)
+    open var y: Float = 0f
+
+    @Property("Transform", 2)
+    open var z: Float = -1f
+
+    @Property("Transform", 3)
+    open var width: Float = 0f
+
+    @Property("Transform", 4)
+    open var height: Float = 0f
+
+    @Property("Transform", 5)
+    var rotation: Float = 0f
+
+    @JsonIgnore
+    val typeName = this::class.simpleName ?: ""
+
+    @JsonIgnore
+    var flags = DISCOVERABLE
 
     open fun onStart(engine: PulseEngine) {  }
     open fun onUpdate(engine: PulseEngine) { }
