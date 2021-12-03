@@ -20,13 +20,19 @@ sealed class BufferObject(
     protected var size: Int = 0
     private var countToDraw = 0
 
-    fun bind() = this.also {
+    fun bind(): BufferObject
+    {
         glBindBuffer(target, id)
         if (blockBinding != null)
             glBindBufferBase(target, blockBinding, id)
+        return this
     }
 
-    fun release() = this.also { glBindBuffer(target, 0) }
+    fun release(): BufferObject
+    {
+        glBindBuffer(target, 0)
+        return this
+    }
 
     fun growSize(factor: Float = 2f)
     {
@@ -143,7 +149,7 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
 
     fun put(v0: Float, v1: Float, v2: Float): FloatBufferObject
     {
-        if (!hasCapacityFor (3))
+        if (!hasCapacityFor(3))
             growSize()
 
         floatBuffer.put(v0)
@@ -156,7 +162,7 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
 
     fun put(v0: Float, v1: Float, v2: Float, v3: Float): FloatBufferObject
     {
-        if (!hasCapacityFor (4))
+        if (!hasCapacityFor(4))
             growSize()
 
         floatBuffer.put(v0)
@@ -170,7 +176,7 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
 
     fun put(v0: Float, v1: Float, v2: Float, v3: Float, v4: Float, v5: Float): FloatBufferObject
     {
-        if (!hasCapacityFor (6))
+        if (!hasCapacityFor(6))
             growSize()
 
         floatBuffer.put(v0)
@@ -180,13 +186,13 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
         floatBuffer.put(v4)
         floatBuffer.put(v5)
 
-        size += 10
+        size += 6
         return this
     }
 
     fun put(v0: Float, v1: Float, v2: Float, v3: Float, v4: Float, v5: Float, v6: Float, v7: Float): FloatBufferObject
     {
-        if (!hasCapacityFor (8))
+        if (!hasCapacityFor(8))
             growSize()
 
         floatBuffer.put(v0)
@@ -204,7 +210,7 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
 
     fun put(v0: Float, v1: Float, v2: Float, v3: Float, v4: Float, v5: Float, v6: Float, v7: Float, v8: Float, v9: Float): FloatBufferObject
     {
-        if (!hasCapacityFor (10))
+        if (!hasCapacityFor(10))
             growSize()
 
         floatBuffer.put(v0)
@@ -219,6 +225,28 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
         floatBuffer.put(v9)
 
         size += 10
+        return this
+    }
+
+    fun put(v0: Float, v1: Float, v2: Float, v3: Float, v4: Float, v5: Float, v6: Float, v7: Float, v8: Float, v9: Float, v10: Float, v11: Float): FloatBufferObject
+    {
+        if (!hasCapacityFor(12))
+            growSize()
+
+        floatBuffer.put(v0)
+        floatBuffer.put(v1)
+        floatBuffer.put(v2)
+        floatBuffer.put(v3)
+        floatBuffer.put(v4)
+        floatBuffer.put(v5)
+        floatBuffer.put(v6)
+        floatBuffer.put(v7)
+        floatBuffer.put(v8)
+        floatBuffer.put(v9)
+        floatBuffer.put(v10)
+        floatBuffer.put(v11)
+
+        size += 12
         return this
     }
 }
@@ -248,7 +276,7 @@ class IntBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxS
 
     fun put(vararg values: Int): IntBufferObject
     {
-        if (!hasCapacityFor (values.size))
+        if (!hasCapacityFor(values.size))
             growSize()
 
         for (v in values)
