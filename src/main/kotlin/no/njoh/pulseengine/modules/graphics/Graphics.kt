@@ -8,7 +8,13 @@ interface Graphics
     val mainCamera: CameraInterface
     val mainSurface: Surface2D
 
-    fun createSurface(name: String, zOrder: Int? = null, camera: CameraInterface? = null, antiAliasing: AntiAliasingType = NONE): Surface2D
+    fun createSurface(
+        name: String,
+        zOrder: Int? = null,
+        camera: Camera? = null,
+        antiAliasing: AntiAliasingType = NONE,
+        hdrEnabled: Boolean = false
+    ): Surface2D
     fun getSurface(name: String): Surface2D?
     fun getSurfaceOrDefault(name: String): Surface2D
     fun getAllSurfaces(): List<Surface2D>

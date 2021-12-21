@@ -34,7 +34,8 @@ interface Surface2D : Surface
     fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface2D
     fun setBackgroundColor(color: Color): Surface2D
     fun setBlendFunction(func: BlendFunction): Surface2D
-    fun setAntiAliasingType(antiAliasing: AntiAliasingType)
+    fun setAntiAliasingType(antiAliasing: AntiAliasingType): Surface2D
+    fun enableHdr(enabled: Boolean): Surface2D
     fun setIsVisible(isVisible: Boolean): Surface2D
     fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
     fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
@@ -69,7 +70,7 @@ class Surface2DImpl(
     override var height = 0
     override var isVisible = true
 
-    private var renderTarget = createRenderTarget(antiAliasing)
+    private var renderTarget = createRenderTarget(renderState.antiAliasing, renderState.hdrEnabled)
     private val backgroundColor = Color(0.1f, 0.1f, 0.1f, 0f)
     private var blendFunction = BlendFunction.NORMAL
     private val postProcessingPipeline = PostProcessingPipeline()
@@ -188,15 +189,28 @@ class Surface2DImpl(
         return this
     }
 
-    override fun setAntiAliasingType(antiAliasing: AntiAliasingType)
+    override fun setAntiAliasingType(antiAliasing: AntiAliasingType): Surface2D
     {
-        if (antiAliasing != this.antiAliasing)
+        if (antiAliasing != renderState.antiAliasing)
         {
-            this.antiAliasing = antiAliasing
+            renderState.antiAliasing = antiAliasing
             renderTarget.cleanUp()
-            renderTarget = createRenderTarget(antiAliasing)
+            renderTarget = createRenderTarget(antiAliasing, renderState.hdrEnabled)
             renderTarget.init(width, height)
         }
+        return this
+    }
+
+    override fun enableHdr(enabled: Boolean): Surface2D
+    {
+        if (enabled != renderState.hdrEnabled)
+        {
+            renderState.hdrEnabled = enabled
+            renderTarget.cleanUp()
+            renderTarget = createRenderTarget(renderState.antiAliasing, enabled)
+            renderTarget.init(width, height)
+        }
+        return this
     }
 
     override fun setIsVisible(isVisible: Boolean): Surface2D
@@ -228,26 +242,32 @@ class Surface2DImpl(
 
     companion object
     {
-        private fun createRenderTarget(antiAliasing: AntiAliasingType) = when (antiAliasing)
+        private fun createRenderTarget(antiAliasing: AntiAliasingType, hdrEnabled: Boolean) = when (antiAliasing)
         {
-            NONE -> OffScreenRenderTarget()
-            else -> MultisampledOffScreenRenderTarget(antiAliasing)
+            NONE -> OffScreenRenderTarget(hdrEnabled)
+            else -> MultisampledOffScreenRenderTarget(antiAliasing, hdrEnabled)
         }
 
-        fun create(name: String, zOrder: Int, initCapacity: Int, graphicsState: GraphicsState, camera: CameraEngineInterface, antiAliasing: AntiAliasingType = NONE): Surface2DImpl
-        {
-            val renderState = RenderState()
+        fun create(
+            name: String,
+            zOrder: Int,
+            initCapacity: Int,
+            textureArray: TextureArray,
+            camera: CameraInternal,
+            antiAliasing: AntiAliasingType = NONE,
+            hdrEnabled: Boolean = false
+        ): Surface2DImpl {
+            val renderState = RenderState(antiAliasing = antiAliasing, hdrEnabled = hdrEnabled)
             return Surface2DImpl(
                 name = name,
                 zOrder = zOrder,
                 camera = camera,
                 renderState = renderState,
-                antiAliasing = antiAliasing,
                 textRenderer = TextRenderer(),
                 uniColorLineRenderer = UniColorLineBatchRenderer(initCapacity, renderState),
                 quadRenderer = QuadBatchRenderer(initCapacity, renderState),
                 lineRenderer = LineBatchRenderer(initCapacity, renderState),
-                textureRenderer = TextureBatchRenderer(initCapacity, renderState, graphicsState)
+                textureRenderer = TextureBatchRenderer(initCapacity, renderState, textureArray)
             )
         }
     }

@@ -22,16 +22,16 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
-        graphicState.textureArray = TextureArray(1024, 1024, 100)
-
-        mainCamera = Camera.createOrthographic(viewPortWidth, viewPortHeight)
+        textureArray = TextureArray(1024, 1024, 100)
+        mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = Surface2DImpl.create(
             name = "main",
             zOrder = zOrder--,
             initCapacity = 5000,
-            graphicsState = graphicState,
+            textureArray = textureArray,
             camera = mainCamera,
-            antiAliasing = MSAA4
+            antiAliasing = MSAA4,
+            hdrEnabled = false
         )
         surfaces.add(mainSurface)
 
@@ -117,9 +117,10 @@ class RetainedModeGraphics : GraphicsEngineInterface
                 name = name,
                 zOrder = zOrder ?: this.zOrder--,
                 initCapacity = 5000,
-                graphicsState = graphicState,
-                camera = (camera ?: Camera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraEngineInterface,
-                antiAliasing = antiAliasing
+                textureArray = textureArray,
+                camera = (camera ?: DefaultCamera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraInternal,
+                antiAliasing = antiAliasing,
+                hdrEnabled = hdrEnabled
             ).also {
                 it.init(mainSurface.width, mainSurface.height, true)
                 surfaces.add(it)

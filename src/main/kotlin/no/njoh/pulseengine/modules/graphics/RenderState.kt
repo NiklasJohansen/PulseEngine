@@ -5,6 +5,12 @@ class RenderState
     var rgba = 0f
     var depth = 0f
 
+class RenderState(
+    var rgba: Float = 0f,
+    var depth: Float = 0f,
+    var hdrEnabled: Boolean = false,
+    var antiAliasing: AntiAliasingType = NONE
+) {
     init
     {
         setRGBA(1f, 1f, 1f, 1f)

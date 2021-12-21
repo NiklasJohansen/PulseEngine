@@ -7,7 +7,7 @@ import org.lwjgl.opengl.GL11.*
 class TextureBatchRenderer(
     private val initialCapacity: Int,
     private val renderState: RenderState,
-    private val graphicsState: GraphicsState
+    private val textureArray: TextureArray
 ) : BatchRenderer {
 
     private var vertexCount = 0
@@ -118,7 +118,7 @@ class TextureBatchRenderer(
         program.setUniform("view", camera.viewMatrix)
         program.setUniform("model", camera.modelMatrix)
 
-        graphicsState.textureArray.bind()
+        textureArray.bind()
 
         vbo.flush()
         ebo.flush()

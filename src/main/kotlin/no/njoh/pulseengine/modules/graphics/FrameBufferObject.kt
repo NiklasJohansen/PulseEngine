@@ -7,6 +7,7 @@ import org.lwjgl.opengl.ARBFramebufferObject.*
 import org.lwjgl.opengl.ARBTextureMultisample.GL_TEXTURE_2D_MULTISAMPLE
 import org.lwjgl.opengl.ARBTextureMultisample.glTexImage2DMultisample
 import org.lwjgl.opengl.GL11.*
+import org.lwjgl.opengl.GL30.GL_RGBA32F
 
 open class FrameBufferObject(
     private val frameBufferId: Int,
@@ -37,7 +38,7 @@ open class FrameBufferObject(
 
     companion object
     {
-        fun create(width: Int, height: Int, antiAliasing: AntiAliasingType = NONE): FrameBufferObject
+        fun create(width: Int, height: Int, antiAliasing: AntiAliasingType = NONE, hdr: Boolean = false): FrameBufferObject
         {
             // Generate frame buffer
             val frameBufferId = glGenFramebuffers()
@@ -49,13 +50,13 @@ open class FrameBufferObject(
             {
                 // Create multi sampled color and depth attachments
                 val samples = if (antiAliasing == MSAA_MAX) glGetInteger(GL_MAX_SAMPLES) else antiAliasing.samples
-                colorTextureId = createMultiSampledColorTextureAttachment(width, height, samples)
+                colorTextureId = createMultiSampledColorTextureAttachment(width, height, samples, hdr)
                 depthBufferId = createMultiSampledDepthBufferAttachment(width, height, samples)
             }
             else
             {
                 // Create color and depth attachments
-                colorTextureId = createColorTextureAttachment(width, height)
+                colorTextureId = createColorTextureAttachment(width, height, hdr)
                 depthBufferId = createDepthBufferAttachment(width, height)
             }
 
@@ -74,12 +75,13 @@ open class FrameBufferObject(
             return FrameBufferObject(frameBufferId, depthBufferId, texture)
         }
 
-        private fun createColorTextureAttachment(width: Int, height: Int): Int
+        private fun createColorTextureAttachment(width: Int, height: Int, hdr: Boolean): Int
         {
             val textureId = glGenTextures()
             val nullPixels: FloatArray? = null
+            val format = if (hdr) GL_RGBA32F else GL_RGBA
             glBindTexture(GL_TEXTURE_2D, textureId)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullPixels)
+            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullPixels)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureId, 0)
@@ -96,11 +98,12 @@ open class FrameBufferObject(
             return depthBufferId
         }
 
-        private fun createMultiSampledColorTextureAttachment(width: Int, height: Int, samples: Int): Int
+        private fun createMultiSampledColorTextureAttachment(width: Int, height: Int, samples: Int, hdr: Boolean): Int
         {
             val textureId = glGenTextures()
+            val format = if (hdr) GL_RGBA32F else GL_RGBA8
             glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureId)
-            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGBA8, width, height, true)
+            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, format, width, height, true)
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, textureId, 0)
             glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0)
             return textureId
