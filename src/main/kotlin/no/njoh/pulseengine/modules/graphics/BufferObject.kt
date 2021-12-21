@@ -3,7 +3,6 @@ package no.njoh.pulseengine.modules.graphics
 import no.njoh.pulseengine.util.Logger
 import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL15.*
-import org.lwjgl.system.MemoryUtil
 import java.lang.IllegalArgumentException
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
@@ -14,9 +13,9 @@ sealed class BufferObject(
     private val target: Int,
     private val usage: Int,
     private val blockBinding: Int?,
-    private var maxSize: Long
+    private var sizeInBytes: Long,
+    protected var byteBuffer: ByteBuffer
 ) {
-    protected var byteBuffer: ByteBuffer = MemoryUtil.memAlloc(maxSize.toInt())
     protected var size: Int = 0
     private var countToDraw = 0
 
@@ -36,16 +35,16 @@ sealed class BufferObject(
 
     fun growSize(factor: Float = 2f)
     {
-        changeSize((maxSize * factor).toLong())
+        changeSize((sizeInBytes * factor).toLong())
     }
 
-    private fun changeSize(size: Long)
+    private fun changeSize(newSizeInBytes: Long)
     {
-        Logger.debug("Changing buffer object capacity from $maxSize to: $size bytes (${"${size/1_000_000f}".format("%.2f")} MB)")
-        maxSize = size
+        Logger.debug("Changing buffer object capacity from $sizeInBytes to: $newSizeInBytes bytes (${"${newSizeInBytes/1_000_000f}".format("%.2f")} MB)")
+        sizeInBytes = newSizeInBytes
         glBindBuffer(target, id)
-        glBufferData(target, maxSize, usage)
-        byteBuffer = glMapBuffer(target, GL_WRITE_ONLY, maxSize, byteBuffer)!!
+        glBufferData(target, sizeInBytes, usage)
+        byteBuffer = glMapBuffer(target, GL_WRITE_ONLY, sizeInBytes, byteBuffer)!!
         glUnmapBuffer(target)
         setTypeBuffer()
     }
@@ -87,7 +86,6 @@ sealed class BufferObject(
 
     fun delete()
     {
-        MemoryUtil.memFree(byteBuffer)
         glDeleteBuffers(id)
     }
 
@@ -97,35 +95,43 @@ sealed class BufferObject(
 
     companion object
     {
-        inline fun <reified T: BufferObject> createAndBind(size: Long, usage: Int = GL_DYNAMIC_DRAW): T
-             = createAndBindBuffer(size, usage, GL_ARRAY_BUFFER, null)
+        inline fun <reified T: BufferObject> createAndBindArrayBuffer(sizeInBytes: Long, usage: Int = GL_DYNAMIC_DRAW): T =
+            createAndBindBuffer(sizeInBytes, usage, GL_ARRAY_BUFFER, null)
 
-        inline fun <reified T: BufferObject> createAndBindUniformBuffer(size: Long, blockBinding: Int, usage: Int = GL_DYNAMIC_DRAW): T =
-             createAndBindBuffer(size, usage, GL_UNIFORM_BUFFER, blockBinding)
+        inline fun <reified T: BufferObject> createAndBindUniformBuffer(sizeInBytes: Long, blockBinding: Int, usage: Int = GL_DYNAMIC_DRAW): T =
+             createAndBindBuffer(sizeInBytes, usage, GL_UNIFORM_BUFFER, blockBinding)
 
-        fun createAndBindElementBuffer(size: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject
-            = createAndBindBuffer(size, usage, GL_ELEMENT_ARRAY_BUFFER, null)
+        fun createAndBindElementBuffer(sizeInBytes: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject =
+            createAndBindBuffer(sizeInBytes, usage, GL_ELEMENT_ARRAY_BUFFER, null)
 
-        inline fun <reified T> createAndBindBuffer(size: Long, usage: Int, target: Int, blockBinding: Int?): T
+        inline fun <reified T> createAndBindBuffer(sizeInBytes: Long, usage: Int, target: Int, blockBinding: Int?): T
         {
             val id = glGenBuffers()
-
             glBindBuffer(target, id)
-            glBufferData(target, size, usage)
+            glBufferData(target, sizeInBytes, usage)
+            val byteBuffer = glMapBuffer(target, GL_WRITE_ONLY, sizeInBytes, null)!!
+            glUnmapBuffer(target)
 
             return when (T::class)
             {
-                FloatBufferObject::class -> FloatBufferObject(id, target, usage, blockBinding, size) as T
-                IntBufferObject::class -> IntBufferObject(id, target, usage, blockBinding, size) as T
-                ByteBufferObject::class -> ByteBufferObject(id, target, usage, blockBinding, size) as T
+                FloatBufferObject::class -> FloatBufferObject(id, target, usage, blockBinding, sizeInBytes, byteBuffer) as T
+                IntBufferObject::class -> IntBufferObject(id, target, usage, blockBinding, sizeInBytes, byteBuffer) as T
+                ByteBufferObject::class -> ByteBufferObject(id, target, usage, blockBinding, sizeInBytes, byteBuffer) as T
                 else -> throw IllegalArgumentException("type: ${T::class.simpleName} not supported")
             }
         }
     }
 }
 
-class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxSize: Long) : BufferObject(id, target, usage, blockBinding, maxSize)
-{
+class FloatBufferObject(
+    id: Int,
+    target: Int,
+    usage: Int,
+    blockBinding: Int?,
+    maxSize: Long,
+    byteBuffer: ByteBuffer
+) : BufferObject(id, target, usage, blockBinding, maxSize, byteBuffer) {
+
     private var floatBuffer: FloatBuffer = byteBuffer.asFloatBuffer()
 
     override fun hasCapacityFor (elements: Int): Boolean = floatBuffer.position() + elements <= floatBuffer.capacity()
@@ -228,6 +234,27 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
         return this
     }
 
+    fun put(v0: Float, v1: Float, v2: Float, v3: Float, v4: Float, v5: Float, v6: Float, v7: Float, v8: Float, v9: Float, v10: Float): FloatBufferObject
+    {
+        if (!hasCapacityFor(11))
+            growSize()
+
+        floatBuffer.put(v0)
+        floatBuffer.put(v1)
+        floatBuffer.put(v2)
+        floatBuffer.put(v3)
+        floatBuffer.put(v4)
+        floatBuffer.put(v5)
+        floatBuffer.put(v6)
+        floatBuffer.put(v7)
+        floatBuffer.put(v8)
+        floatBuffer.put(v9)
+        floatBuffer.put(v10)
+
+        size += 11
+        return this
+    }
+
     fun put(v0: Float, v1: Float, v2: Float, v3: Float, v4: Float, v5: Float, v6: Float, v7: Float, v8: Float, v9: Float, v10: Float, v11: Float): FloatBufferObject
     {
         if (!hasCapacityFor(12))
@@ -249,10 +276,41 @@ class FloatBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, ma
         size += 12
         return this
     }
+
+    fun put(v0: Float, v1: Float, v2: Float, v3: Float, v4: Float, v5: Float, v6: Float, v7: Float, v8: Float, v9: Float, v10: Float, v11: Float, v12: Float, v13: Float): FloatBufferObject
+    {
+        if (!hasCapacityFor(14))
+            growSize()
+
+        floatBuffer.put(v0)
+        floatBuffer.put(v1)
+        floatBuffer.put(v2)
+        floatBuffer.put(v3)
+        floatBuffer.put(v4)
+        floatBuffer.put(v5)
+        floatBuffer.put(v6)
+        floatBuffer.put(v7)
+        floatBuffer.put(v8)
+        floatBuffer.put(v9)
+        floatBuffer.put(v10)
+        floatBuffer.put(v11)
+        floatBuffer.put(v12)
+        floatBuffer.put(v13)
+
+        size += 14
+        return this
+    }
 }
 
-class IntBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxSize: Long) : BufferObject(id, target, usage, blockBinding, maxSize)
-{
+class IntBufferObject(
+    id: Int,
+    target: Int,
+    usage: Int,
+    blockBinding: Int?,
+    maxSize: Long,
+    byteBuffer: ByteBuffer
+) : BufferObject(id, target, usage, blockBinding, maxSize, byteBuffer) {
+
     private var intBuffer: IntBuffer = byteBuffer.asIntBuffer()
 
     override fun hasCapacityFor (elements: Int): Boolean = intBuffer.position() + elements < intBuffer.capacity()
@@ -303,7 +361,14 @@ class IntBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxS
     }
 }
 
-class ByteBufferObject(id: Int, target: Int, usage: Int, blockBinding: Int?, maxSize: Long) : BufferObject(id, target, usage, blockBinding, maxSize)
+class ByteBufferObject(
+    id: Int,
+    target: Int,
+    usage: Int,
+    blockBinding: Int?,
+    maxSize: Long,
+    byteBuffer: ByteBuffer
+) : BufferObject(id, target, usage, blockBinding, maxSize, byteBuffer)
 {
     override fun hasCapacityFor (elements: Int): Boolean = byteBuffer.position() + elements < byteBuffer.capacity()
 
