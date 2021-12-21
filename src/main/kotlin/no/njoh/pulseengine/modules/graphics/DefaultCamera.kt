@@ -1,62 +1,79 @@
 package no.njoh.pulseengine.modules.graphics
 
-import no.njoh.pulseengine.modules.graphics.Camera.*
-import no.njoh.pulseengine.modules.graphics.Camera.ProjectionType.*
+import no.njoh.pulseengine.modules.graphics.DefaultCamera.*
+import no.njoh.pulseengine.modules.graphics.DefaultCamera.ProjectionType.*
 import no.njoh.pulseengine.util.interpolateFrom
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
 
-abstract class CameraInterface
+abstract class Camera
 {
-    val modelMatrix: Matrix4f = Matrix4f()
-    val viewMatrix: Matrix4f = Matrix4f()
+    /** Camera matrices */
+    open val viewMatrix: Matrix4f = Matrix4f()
     open val projectionMatrix: Matrix4f = Matrix4f()
 
-    // Position
+    /** Position */
     var xPos: Float = 0f
     var yPos: Float = 0f
     var zPos: Float = 0f
 
-    // Rotation
+    /** Rotation */
     var xRot: Float = 0f
     var yRot: Float = 0f
     var zRot: Float = 0f
 
-    // Scale
+    /** Scale */
     var xScale: Float = 1f
     var yScale: Float = 1f
     var zScale: Float = 1f
 
-    // Origin
+    /** Origin from center */
     var xOrigin: Float = 0f
     var yOrigin: Float = 0f
     var zOrigin: Float = 0f
 
-    // Depth range
+    /** Depth range */
     var farPlane = 5f
     var nearPlane = -1f
 
-    // Screen positions in world
+    /** Screen positions in world space */
     val topLeftWorldPosition = Vector2f()
     val bottomRightWorldPosition = Vector2f()
 
+    /** Transforms a coordinate from screen space to world space */
     abstract fun screenPosToWorldPos(x: Float, y: Float): Vector3f
+
+    /** Transforms a coordinate from world space to screen space */
     abstract fun worldPosToScreenPos(x: Float, y: Float, z: Float = 0f): Vector2f
-    abstract fun updateProjection(width: Int, height: Int, type: ProjectionType? = null)
+
+    /** Returns true if a rectangle (in world space coordinates) intersects intersects the camera view rectangle */
     abstract fun isInView(x: Float, y: Float, width: Float, height: Float, padding: Float = 0f): Boolean
+
+    /** Updates the projection matrix */
+    abstract fun updateProjection(width: Int, height: Int, type: ProjectionType? = null)
 }
 
-abstract class CameraEngineInterface : CameraInterface()
+abstract class CameraInternal : Camera()
 {
-    abstract fun updateViewMatrix(surfaceWidth: Int, surfaceHeight: Int)
-    abstract fun updateTransform(deltaTime: Float)
+    /** Used to make sure a single Camera instance is not updated multiple times per frame */
+    var updateNumber: Int = 0
+
+    /** Called each physics step */
+    abstract fun updateLastState()
+
+    /** Called each frame */
+    abstract fun updateViewMatrix()
+
+    /** Called each frame */
+    abstract fun updateWorldPositions(screenWidth: Int, screenHeight: Int)
 }
 
-class Camera(
+class DefaultCamera(
     private var projectionType: ProjectionType
-) : CameraEngineInterface() {
+) : CameraInternal() {
+
     override var projectionMatrix = Matrix4f()
 
     private var xLastPos: Float = 0f
@@ -101,7 +118,7 @@ class Camera(
         y + height >= topLeftWorldPosition.y - padding &&
         y <= bottomRightWorldPosition.y + padding
 
-    override fun updateViewMatrix(surfaceWidth: Int, surfaceHeight: Int)
+    override fun updateViewMatrix()
     {
         val xPos = xPos.interpolateFrom(xLastPos)
         val yPos = yPos.interpolateFrom(yLastPos)
@@ -121,15 +138,17 @@ class Camera(
             .translate(xPos - xOrigin, yPos - yOrigin, zPos - zOrigin)
 
         viewMatrix.invert(invViewMatrix)
+    }
 
+    override fun updateWorldPositions(screenWidth: Int, screenHeight: Int)
+    {
         val topLeft = screenPosToWorldPos(0f, 0f)
         topLeftWorldPosition.set(topLeft.x, topLeft.y)
-
-        val bottomRight = screenPosToWorldPos(surfaceWidth.toFloat(), surfaceHeight.toFloat())
+        val bottomRight = screenPosToWorldPos(screenWidth.toFloat(), screenHeight.toFloat())
         bottomRightWorldPosition.set(bottomRight.x, bottomRight.y)
     }
 
-    override fun updateTransform(deltaTime: Float)
+    override fun updateLastState()
     {
         xLastPos = xPos
         yLastPos = yPos
@@ -144,8 +163,8 @@ class Camera(
 
     companion object
     {
-        fun createOrthographic(width: Int, height: Int): Camera =
-            Camera(ORTHOGRAPHIC)
+        fun createOrthographic(width: Int, height: Int): DefaultCamera =
+            DefaultCamera(ORTHOGRAPHIC)
                 .also { it.updateProjection(width, height) }
     }
 

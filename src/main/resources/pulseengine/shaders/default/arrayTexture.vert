@@ -12,7 +12,6 @@ out vec4 vertexColor;
 out vec2 textureCoord;
 out float textureIndex;
 
-uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 uniform bool isAlphaTex;
@@ -42,9 +41,7 @@ void main() {
 
     vec4 vertex = vec4(2 * offset, 0.0, 1.0) * rotateZ(radians(rotation)) + vec4(2 * position, 1.0);
 
-    mat4 mvp = projection * view * model;
-
-    gl_Position = mvp * vertex;
+    gl_Position = projection * view * vertex;
 }
 
 

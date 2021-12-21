@@ -7,6 +7,7 @@ import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.modules.graphics.renderers.*
+import no.njoh.pulseengine.util.forEachFast
 import org.lwjgl.opengl.GL11.*
 
 interface Surface
@@ -20,10 +21,9 @@ interface Surface
 
 interface Surface2D : Surface
 {
-    val camera: CameraInterface
+    val camera: Camera
     fun drawLinePoint(x: Float, y: Float)
     fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
-    fun drawSameColorLines(block: (draw: LineRendererInterface) -> Unit)
     fun drawQuad(x: Float, y: Float, width: Float, height: Float)
     fun drawQuadVertex(x: Float, y: Float)
     fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
@@ -40,14 +40,13 @@ interface Surface2D : Surface
     fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
     fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
     fun reloadPostProcessingShaders()
+    fun addAndInitializeRenderer(renderer: BatchRenderer): Surface2D
 }
 
-interface EngineSurface2D : Surface2D
+interface Surface2DInternal : Surface2D
 {
-    override val camera: CameraEngineInterface
-
+    override val camera: CameraInternal
     val isVisible: Boolean
-
     fun init(width: Int, height: Int, glContextRecreated: Boolean)
     fun render()
     fun cleanup()
@@ -56,15 +55,13 @@ interface EngineSurface2D : Surface2D
 class Surface2DImpl(
     override val name: String,
     override val zOrder: Int,
-    override val camera: CameraEngineInterface,
+    override val camera: CameraInternal,
     private val renderState: RenderState,
-    private var antiAliasing: AntiAliasingType,
     private val textRenderer: TextRenderer,
-    private val uniColorLineRenderer: UniColorLineBatchRenderer,
     private val quadRenderer: QuadBatchRenderer,
     private val lineRenderer: LineBatchRenderer,
     private val textureRenderer: TextureBatchRenderer
-): EngineSurface2D {
+): Surface2DInternal {
 
     override var width = 0
     override var height = 0
@@ -74,8 +71,7 @@ class Surface2DImpl(
     private val backgroundColor = Color(0.1f, 0.1f, 0.1f, 0f)
     private var blendFunction = BlendFunction.NORMAL
     private val postProcessingPipeline = PostProcessingPipeline()
-    private val renderers = listOf(
-        uniColorLineRenderer,
+    private val renderers = mutableListOf(
         lineRenderer,
         textureRenderer,
         quadRenderer
@@ -88,7 +84,7 @@ class Surface2DImpl(
 
         if (glContextRecreated)
         {
-            renderers.forEach { it.init() }
+            renderers.forEachFast { it.init() }
             postProcessingPipeline.init()
         }
 
@@ -99,7 +95,7 @@ class Surface2DImpl(
     {
         renderTarget.begin()
         setOpenGlState()
-        renderers.forEach { it.render(camera) }
+        renderers.forEachFast { it.render(this) }
         renderTarget.end()
         renderState.resetDepth(camera.nearPlane)
     }
@@ -121,15 +117,9 @@ class Surface2DImpl(
 
     override fun cleanup()
     {
-        renderers.forEach { it.cleanup() }
+        renderers.forEachFast { it.cleanUp() }
         renderTarget.cleanUp()
         postProcessingPipeline.cleanUp()
-    }
-
-    override fun drawSameColorLines(block: (draw: LineRendererInterface) -> Unit)
-    {
-        block(uniColorLineRenderer)
-        uniColorLineRenderer.setColor(renderState.rgba)
     }
 
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float) =
@@ -237,6 +227,13 @@ class Surface2DImpl(
         postProcessingPipeline.reloadShaders()
     }
 
+    override fun addAndInitializeRenderer(renderer: BatchRenderer): Surface2D
+    {
+        renderers.add(renderer)
+        renderer.init()
+        return this
+    }
+
     override fun getTexture(): Texture =
         postProcessingPipeline.process(renderTarget.getTexture())
 
@@ -264,7 +261,6 @@ class Surface2DImpl(
                 camera = camera,
                 renderState = renderState,
                 textRenderer = TextRenderer(),
-                uniColorLineRenderer = UniColorLineBatchRenderer(initCapacity, renderState),
                 quadRenderer = QuadBatchRenderer(initCapacity, renderState),
                 lineRenderer = LineBatchRenderer(initCapacity, renderState),
                 textureRenderer = TextureBatchRenderer(initCapacity, renderState, textureArray)

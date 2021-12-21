@@ -17,6 +17,6 @@ abstract class EntityRenderer : SceneSystem()
 
     data class RenderPass(
         val surfaceName: String,
-        val type: KClass<*>
+        val targetType: KClass<*>
     )
 }

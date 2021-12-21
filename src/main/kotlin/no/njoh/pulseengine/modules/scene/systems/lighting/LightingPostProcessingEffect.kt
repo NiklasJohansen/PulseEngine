@@ -8,7 +8,7 @@ import org.joml.Math
 import org.joml.Vector4f
 
 class LightingPostProcessingEffect (
-    private val camera: CameraInterface,
+    private val camera: Camera,
     private val normalSurface: Surface2D,
     private val lightOccluderSurface: Surface2D
 ): SinglePassEffect() {

@@ -19,7 +19,7 @@ open class EntityRenderSystem : EntityRenderer()
     {
         addRenderPass(RenderPass(
             surfaceName = engine.gfx.mainSurface.name,
-            type = SceneEntity::class
+            targetType = SceneEntity::class
         ))
     }
 
@@ -34,7 +34,7 @@ open class EntityRenderSystem : EntityRenderer()
         renderPasses.forEachFast { renderPass ->
             val task = createRenderTask(renderPass)
             engine.scene.forEachEntityTypeList { typeList ->
-                if (renderPass.type.isInstance(typeList[0]))
+                if (renderPass.targetType.isInstance(typeList[0]))
                 {
                     typeList.forEachFast { entity ->
                         val zOrder = entity.z.toInt()
@@ -55,10 +55,10 @@ open class EntityRenderSystem : EntityRenderer()
 
     private fun createRenderTask(renderPass: RenderPass): RenderTask = when
     {
-        taskPool.empty() -> RenderTask(renderPass.surfaceName, renderPass.type)
+        taskPool.empty() -> RenderTask(renderPass.surfaceName, renderPass.targetType)
         else -> taskPool.pop().apply {
             surfaceName = renderPass.surfaceName
-            type = renderPass.type
+            type = renderPass.targetType
         }
     }
 

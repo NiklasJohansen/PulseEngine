@@ -94,8 +94,8 @@ class PulseEngineImpl(
         asset.setOnAssetLoaded {
             when (it)
             {
-                is Texture -> gfx.initTexture(it)
-                is Font -> gfx.initTexture(it.charTexture)
+                is Texture -> gfx.uploadTexture(it)
+                is Font -> gfx.uploadTexture(it.charTexture)
             }
         }
 
@@ -182,7 +182,7 @@ class PulseEngineImpl(
         {
             audio.cleanSources()
             input.requestFocus(focusArea)
-            gfx.updateCamera(dt.toFloat())
+            gfx.updateCameras()
             scene.fixedUpdate()
             game.onFixedUpdate()
 

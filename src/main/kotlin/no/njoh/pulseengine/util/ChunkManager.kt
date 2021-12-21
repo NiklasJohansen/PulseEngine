@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.util
 
 import no.njoh.pulseengine.data.Array2D
-import no.njoh.pulseengine.modules.graphics.CameraInterface
+import no.njoh.pulseengine.modules.graphics.Camera
 import no.njoh.pulseengine.modules.graphics.Graphics
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import org.joml.Vector2f
@@ -55,7 +55,7 @@ class ChunkManager <T: Chunk> (
         loadedChunks = Array2D(width, height) { x, y -> onChunkLoadCallback.invoke(x + xOffsetIndex, y + yOffsetIndex) }
     }
 
-    fun update(camera: CameraInterface)
+    fun update(camera: Camera)
     {
         calculateArrayCoordinates(camera.topLeftWorldPosition, camera.bottomRightWorldPosition)
         calculateArrayOffset(camera.topLeftWorldPosition, camera.bottomRightWorldPosition)

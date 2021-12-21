@@ -8,13 +8,13 @@ class QuadBatchRenderer(
     private val gfxState: RenderState
 ) : BatchRenderer {
 
-    private var vertexCount = 0
-    private var singleVertexCount = 0
-
     private lateinit var program: ShaderProgram
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: FloatBufferObject
     private lateinit var ebo: IntBufferObject
+
+    private var vertexCount = 0
+    private var singleVertexCount = 0
 
     override fun init()
     {
@@ -27,11 +27,12 @@ class QuadBatchRenderer(
         if (!this::program.isInitialized)
         {
             val capacity = initialCapacity * layout.stride * 4L
-            vbo = BufferObject.createAndBind(capacity)
+            vbo = BufferObject.createAndBindArrayBuffer(capacity)
             ebo = BufferObject.createAndBindElementBuffer(capacity / 6)
-            program = ShaderProgram
-                .create("/pulseengine/shaders/default/default.vert", "/pulseengine/shaders/default/default.frag")
-                .bind()
+            program = ShaderProgram.create(
+                vertexShaderFileName = "/pulseengine/shaders/default/default.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/default/default.frag"
+            )
         }
 
         vbo.bind()
@@ -83,7 +84,7 @@ class QuadBatchRenderer(
         }
     }
 
-    override fun render(camera: CameraEngineInterface)
+    override fun render(surface: Surface2D)
     {
         if (vertexCount == 0)
             return
@@ -93,9 +94,8 @@ class QuadBatchRenderer(
         vbo.bind()
 
         program.bind()
-        program.setUniform("projection", camera.projectionMatrix)
-        program.setUniform("view", camera.viewMatrix)
-        program.setUniform("model", camera.modelMatrix)
+        program.setUniform("projection", surface.camera.projectionMatrix)
+        program.setUniform("view", surface.camera.viewMatrix)
 
         glBindTexture(GL_TEXTURE_2D, 0)
 
@@ -107,7 +107,7 @@ class QuadBatchRenderer(
         vao.release()
     }
 
-    override fun cleanup()
+    override fun cleanUp()
     {
         vbo.delete()
         vao.delete()

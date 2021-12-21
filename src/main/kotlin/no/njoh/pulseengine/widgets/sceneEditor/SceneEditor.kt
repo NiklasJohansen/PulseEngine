@@ -7,7 +7,7 @@ import no.njoh.pulseengine.data.*
 import no.njoh.pulseengine.data.CursorType.*
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
-import no.njoh.pulseengine.modules.graphics.CameraInterface
+import no.njoh.pulseengine.modules.graphics.Camera
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.UiUtil.findElementById
 import no.njoh.pulseengine.modules.graphics.ui.elements.InputField
@@ -56,7 +56,7 @@ class SceneEditor: Widget
 
     // Camera
     private val cameraController = Camera2DController(Mouse.MIDDLE)
-    private lateinit var activeCamera: CameraInterface
+    private lateinit var activeCamera: Camera
     private lateinit var storedCameraState: CameraState
 
     // Scene
@@ -1023,7 +1023,7 @@ data class CameraState(
     var yOrigin: Float,
     var zRot: Float
 ) {
-    fun saveFrom(camera: CameraInterface)
+    fun saveFrom(camera: Camera)
     {
         xPos = camera.xPos
         yPos = camera.yPos
@@ -1034,7 +1034,7 @@ data class CameraState(
         zRot = camera.zRot
     }
 
-    fun loadInto(camera: CameraInterface)
+    fun loadInto(camera: Camera)
     {
        camera.xPos = xPos
        camera.yPos = yPos
@@ -1058,7 +1058,7 @@ data class CameraState(
 
     companion object
     {
-        fun from(camera: CameraInterface) =
+        fun from(camera: Camera) =
             CameraState(camera.xPos, camera.yPos, camera.xScale, camera.yScale, camera.zRot, camera.xOrigin, camera.yOrigin)
     }
 }

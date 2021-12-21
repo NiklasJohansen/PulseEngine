@@ -1,9 +1,6 @@
 package no.njoh.pulseengine.modules.graphics
 
-class RenderState
-{
-    var rgba = 0f
-    var depth = 0f
+import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
 
 class RenderState(
     var rgba: Float = 0f,

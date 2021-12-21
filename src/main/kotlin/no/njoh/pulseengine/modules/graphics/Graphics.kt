@@ -5,7 +5,7 @@ import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
 
 interface Graphics
 {
-    val mainCamera: CameraInterface
+    val mainCamera: Camera
     val mainSurface: Surface2D
 
     fun createSurface(
@@ -23,19 +23,13 @@ interface Graphics
 
 interface GraphicsEngineInterface : Graphics
 {
-    override val mainCamera: CameraEngineInterface
+    override val mainCamera: CameraInternal
 
     fun init(viewPortWidth: Int, viewPortHeight: Int)
-    fun initTexture(texture: Texture)
+    fun uploadTexture(texture: Texture)
     fun cleanUp()
     fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
-    fun updateCamera(deltaTime: Float)
+    fun updateCameras()
     fun preRender()
     fun postRender()
-}
-
-interface LineRendererInterface
-{
-    fun linePoint(x0: Float, y0: Float)
-    fun line(x0: Float, y0: Float, x1: Float, y1: Float)
 }

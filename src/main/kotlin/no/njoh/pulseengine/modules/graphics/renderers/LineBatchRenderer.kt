@@ -22,10 +22,11 @@ class LineBatchRenderer(
 
         if (!this::program.isInitialized)
         {
-            vbo = BufferObject.createAndBind(initialCapacity * layout.stride * 2L)
-            program = ShaderProgram
-                .create("/pulseengine/shaders/default/line.vert", "/pulseengine/shaders/default/line.frag")
-                .bind()
+            vbo = BufferObject.createAndBindArrayBuffer(initialCapacity * layout.stride * 2L)
+            program = ShaderProgram.create(
+                vertexShaderFileName = "/pulseengine/shaders/default/line.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/default/line.frag"
+            )
         }
 
         vbo.bind()
@@ -48,14 +49,13 @@ class LineBatchRenderer(
         gfxState.increaseDepth()
     }
 
-    override fun render(camera: CameraEngineInterface)
+    override fun render(surface: Surface2D)
     {
         vao.bind()
         vbo.bind()
         program.bind()
-        program.setUniform("projection", camera.projectionMatrix)
-        program.setUniform("view", camera.viewMatrix)
-        program.setUniform("model", camera.modelMatrix)
+        program.setUniform("projection", surface.camera.projectionMatrix)
+        program.setUniform("view", surface.camera.viewMatrix)
 
         vbo.flush()
         vbo.draw(GL_LINES, 4)
@@ -63,7 +63,7 @@ class LineBatchRenderer(
         vao.release()
     }
 
-    override fun cleanup()
+    override fun cleanUp()
     {
         vbo.delete()
         vao.delete()

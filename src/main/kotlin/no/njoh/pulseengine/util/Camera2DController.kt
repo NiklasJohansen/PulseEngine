@@ -2,7 +2,7 @@ package no.njoh.pulseengine.util
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.Mouse
-import no.njoh.pulseengine.modules.graphics.CameraInterface
+import no.njoh.pulseengine.modules.graphics.Camera
 import kotlin.math.max
 import kotlin.math.min
 
@@ -16,7 +16,7 @@ class Camera2DController(
     private var xPosChangeRate = 0f
     private var yPosChangeRate = 0f
 
-    fun update(engine: PulseEngine, camera: CameraInterface? = null)
+    fun update(engine: PulseEngine, camera: Camera? = null)
     {
         val cam = camera ?: engine.gfx.mainCamera
 

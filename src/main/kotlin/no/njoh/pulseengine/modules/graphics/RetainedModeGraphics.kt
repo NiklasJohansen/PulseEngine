@@ -11,13 +11,12 @@ import org.lwjgl.opengl.GL11.*
 
 class RetainedModeGraphics : GraphicsEngineInterface
 {
-    private val surfaces = mutableListOf<EngineSurface2D>()
-    private val graphicState = GraphicsState()
-
-    override lateinit var mainCamera: CameraEngineInterface
-    override lateinit var mainSurface: EngineSurface2D
+    override lateinit var mainCamera: CameraInternal
+    override lateinit var mainSurface: Surface2DInternal
+    private lateinit var textureArray: TextureArray
     private lateinit var renderer: FrameTextureRenderer
 
+    private val surfaces = mutableListOf<Surface2DInternal>()
     private var zOrder = 0
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
@@ -41,7 +40,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
     override fun cleanUp()
     {
         Logger.info("Cleaning up graphics...")
-        graphicState.cleanup()
+        textureArray.cleanup()
         surfaces.forEachFast { it.cleanup() }
     }
 
@@ -62,36 +61,31 @@ class RetainedModeGraphics : GraphicsEngineInterface
            renderer.init()
         }
 
-        // Update projection of main camera
-        mainCamera.updateProjection(width, height)
-
         // Initialize surfaces
-        surfaces.forEachFast {
-            it.init(width, height, windowRecreated)
-            if (it.camera != mainCamera)
-                it.camera.updateProjection(width, height)
-        }
+        surfaces.forEachFast { it.init(width, height, windowRecreated) }
+
+        // Update camera projection
+        surfaces.forEachCamera { it.updateProjection(width, height) }
 
         // Set viewport size
         glViewport(0, 0, width, height)
     }
 
-    override fun initTexture(texture: Texture)
+    override fun uploadTexture(texture: Texture)
     {
-        graphicState.textureArray.upload(texture)
+        textureArray.upload(texture)
     }
 
-    override fun updateCamera(deltaTime: Float)
+    override fun updateCameras()
     {
-        surfaces.forEachFast {
-            it.camera.updateTransform(deltaTime)
-        }
+        surfaces.forEachCamera { it.updateLastState() }
     }
 
     override fun preRender()
     {
-        surfaces.forEachFast {
-            it.camera.updateViewMatrix(it.width, it.height)
+        surfaces.forEachCamera {
+            it.updateViewMatrix()
+            it.updateWorldPositions(mainSurface.width, mainSurface.height)
         }
     }
 
@@ -110,7 +104,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
         surfaces.forEachFiltered({ it.isVisible }) { renderer.render(it.getTexture()) }
     }
 
-    override fun createSurface(name: String, zOrder: Int?, camera: CameraInterface?, antiAliasing: AntiAliasingType): Surface2D =
+    override fun createSurface(name: String, zOrder: Int?, camera: Camera?, antiAliasing: AntiAliasingType, hdrEnabled: Boolean): Surface2D =
         surfaces
             .find { it.name == name }
             ?: Surface2DImpl.create(
@@ -146,11 +140,22 @@ class RetainedModeGraphics : GraphicsEngineInterface
                 surfaces.remove(it)
             } ?: run { Logger.error("No surface exists with name $name") }
     }
-}
 
-interface BatchRenderer
-{
-    fun init()
-    fun cleanup()
-    fun render(camera: CameraEngineInterface)
+    /**
+     * Iterates through each camera only once.
+     */
+    private inline fun List<Surface2DInternal>.forEachCamera(block: (CameraInternal) -> Unit)
+    {
+        val number = updateNumber++
+        this.forEachFiltered({ it.camera.updateNumber != number })
+        {
+            block(it.camera)
+            it.camera.updateNumber = number
+        }
+    }
+
+    companion object
+    {
+        private var updateNumber = 0
+    }
 }

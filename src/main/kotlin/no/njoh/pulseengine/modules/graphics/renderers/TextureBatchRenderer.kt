@@ -10,12 +10,12 @@ class TextureBatchRenderer(
     private val textureArray: TextureArray
 ) : BatchRenderer {
 
-    private var vertexCount = 0
-
     private lateinit var program: ShaderProgram
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: FloatBufferObject
     private lateinit var ebo: IntBufferObject
+
+    private var vertexCount = 0
 
     override fun init()
     {
@@ -32,9 +32,12 @@ class TextureBatchRenderer(
         if (!this::program.isInitialized)
         {
             val capacity = initialCapacity * layout.stride * 4L
-            vbo = BufferObject.createAndBind(capacity)
+            vbo = BufferObject.createAndBindArrayBuffer(capacity)
             ebo = BufferObject.createAndBindElementBuffer(capacity / 6)
-            program = ShaderProgram.create("/pulseengine/shaders/default/arrayTexture.vert", "/pulseengine/shaders/default/arrayTexture.frag").bind()
+            program = ShaderProgram.create(
+                vertexShaderFileName = "/pulseengine/shaders/default/arrayTexture.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/default/arrayTexture.frag"
+            )
         }
 
         vbo.bind()
@@ -105,7 +108,7 @@ class TextureBatchRenderer(
         renderState.increaseDepth()
     }
 
-    override fun render(camera: CameraEngineInterface)
+    override fun render(surface: Surface2D)
     {
         if (vertexCount == 0)
             return
@@ -114,9 +117,8 @@ class TextureBatchRenderer(
         vbo.bind()
         ebo.bind()
         program.bind()
-        program.setUniform("projection", camera.projectionMatrix)
-        program.setUniform("view", camera.viewMatrix)
-        program.setUniform("model", camera.modelMatrix)
+        program.setUniform("projection", surface.camera.projectionMatrix)
+        program.setUniform("view", surface.camera.viewMatrix)
 
         textureArray.bind()
 
@@ -124,11 +126,11 @@ class TextureBatchRenderer(
         ebo.flush()
         ebo.draw(GL_TRIANGLES, 1)
 
-        vertexCount = 0
         vao.release()
+        vertexCount = 0
     }
 
-    override fun cleanup()
+    override fun cleanUp()
     {
         vbo.delete()
         vao.delete()

@@ -9,9 +9,9 @@ import org.lwjgl.stb.STBTruetype.*
 
 class TextRenderer
 {
-    private val quad = STBTTAlignedQuad.malloc()
     private val xb = FloatArray(1)
     private val yb = FloatArray(1)
+    private val quad = STBTTAlignedQuad.malloc()
     private val advanceWidth = IntArray(1)
     private val leftSideBearing = IntArray(1)
 
