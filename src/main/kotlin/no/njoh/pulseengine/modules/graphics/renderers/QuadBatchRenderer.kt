@@ -31,7 +31,7 @@ class QuadBatchRenderer(
 
         if (!this::program.isInitialized)
         {
-            val capacity = initialCapacity * layout.stride * 4L
+            val capacity = initialCapacity * layout.strideInBytes * 4L
             vbo = BufferObject.createAndBindArrayBuffer(capacity)
             ebo = BufferObject.createAndBindElementBuffer(capacity / 6)
             program = ShaderProgram.create(
@@ -43,7 +43,7 @@ class QuadBatchRenderer(
         vbo.bind()
         ebo.bind()
         program.bind()
-        program.defineVertexAttributeArray(layout)
+        program.defineVertexAttributeLayout(layout)
         vao.release()
     }
 

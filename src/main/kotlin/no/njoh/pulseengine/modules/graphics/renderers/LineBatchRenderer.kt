@@ -26,7 +26,7 @@ class LineBatchRenderer(
 
         if (!this::program.isInitialized)
         {
-            vbo = BufferObject.createAndBindArrayBuffer(initialCapacity * layout.stride * 2L)
+            vbo = BufferObject.createAndBindArrayBuffer(initialCapacity * layout.strideInBytes * 2L)
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/line.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/line.frag"
@@ -35,7 +35,7 @@ class LineBatchRenderer(
 
         vbo.bind()
         program.bind()
-        program.defineVertexAttributeArray(layout)
+        program.defineVertexAttributeLayout(layout)
         vao.release()
     }
 

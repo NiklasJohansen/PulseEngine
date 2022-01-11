@@ -47,7 +47,7 @@ class TextureBatchRenderer(
         vbo.bind()
         ebo.bind()
         program.bind()
-        program.defineVertexAttributeArray(layout)
+        program.defineVertexAttributeLayout(layout)
         program.setUniform("textureArray", 0)
         vao.release()
     }

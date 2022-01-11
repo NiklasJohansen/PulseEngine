@@ -8,6 +8,7 @@ import org.joml.Vector4f
 import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL30.glBindFragDataLocation
+import org.lwjgl.opengl.GL33.glVertexAttribDivisor
 
 class ShaderProgram(val id: Int)
 {
@@ -69,20 +70,22 @@ class ShaderProgram(val id: Int)
         return color
     }
 
-    fun defineVertexAttributeArray(name: String, size: Int, type: Int, stride: Int, offset: Int, normalized: Boolean = false)
+    fun defineVertexAttributeLayout(name: String, size: Int, type: Int, stride: Int, offset: Int, divisor: Int = 0, normalized: Boolean = false)
     {
         val location = getAttributeLocation(name)
         glEnableVertexAttribArray(location)
         glVertexAttribPointer(location, size, type, normalized, stride, offset.toLong())
+        glVertexAttribDivisor(location, divisor)
     }
 
-    fun defineVertexAttributeArray(layout: VertexAttributeLayout)
+    fun defineVertexAttributeLayout(layout: VertexAttributeLayout)
     {
         var offset = 0L
         layout.attributes.forEach { attribute ->
             val location = getAttributeLocation(attribute.name)
             glEnableVertexAttribArray(location)
-            glVertexAttribPointer(location, attribute.count, attribute.type, attribute.normalized, layout.stride, offset)
+            glVertexAttribPointer(location, attribute.count, attribute.type, attribute.normalized, layout.strideInBytes.toInt(), offset)
+            glVertexAttribDivisor(location, attribute.divisor)
             offset += attribute.bytes
         }
     }

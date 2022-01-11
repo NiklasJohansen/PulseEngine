@@ -6,13 +6,13 @@ import java.lang.IllegalArgumentException
 class VertexAttributeLayout
 {
     val attributes = mutableListOf<Attribute>()
-    var stride = 0
+    var strideInBytes = 0L
 
-    fun withAttribute(name: String, count: Int, type: Int, normalized: Boolean = true): VertexAttributeLayout =
+    fun withAttribute(name: String, count: Int, type: Int, divisor: Int = 0, normalized: Boolean = false): VertexAttributeLayout =
         this.also {
             val size = count * sizeOf(type)
-            stride += size
-            attributes.add(Attribute(name, count,  type, size, normalized))
+            strideInBytes += size
+            attributes.add(Attribute(name, count, type, size, divisor, normalized))
         }
 
     private fun sizeOf(glType: Int): Int = when (glType)
@@ -29,6 +29,7 @@ class VertexAttributeLayout
         val count: Int,
         val type: Int,
         val bytes: Int,
+        val divisor: Int,
         val normalized: Boolean
     )
 }
