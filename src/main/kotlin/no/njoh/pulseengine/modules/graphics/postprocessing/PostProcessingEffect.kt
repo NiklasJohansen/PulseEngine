@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.graphics.postprocessing
 
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.graphics.FrameBufferObject
+import no.njoh.pulseengine.modules.graphics.objects.FrameBufferObject
 import no.njoh.pulseengine.modules.graphics.ShaderProgram
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
 import no.njoh.pulseengine.util.Logger
@@ -43,12 +43,12 @@ abstract class SinglePassEffect : PostProcessingEffect
     private fun updateFBO(texture: Texture)
     {
         if (!this::fbo.isInitialized)
-            fbo = FrameBufferObject.create(texture.width, texture.height)
+            fbo = FrameBufferObject.create(texture.width, texture.height, textureScale = 1f)
 
         if (fbo.texture.width != texture.width || fbo.texture.height != texture.height)
         {
             fbo.delete()
-            fbo = FrameBufferObject.create(texture.width, texture.height)
+            fbo = FrameBufferObject.create(texture.width, texture.height, textureScale = 1f)
         }
     }
 
@@ -113,7 +113,7 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
     }
 
     private fun createNewFBOList(amount: Int, width: Int, height: Int): List<FrameBufferObject> =
-        0.until(amount).map { FrameBufferObject.create(width, height) }
+        0.until(amount).map { FrameBufferObject.create(width, height, textureScale = 1f) }
 
     override fun reloadShaders()
     {

@@ -2,9 +2,12 @@ package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
+import no.njoh.pulseengine.modules.graphics.objects.FrameBufferObject
 
 interface RenderTarget
 {
+    var textureScale: Float
+    var hdrEnabled: Boolean
     fun init(width: Int, height: Int)
     fun begin()
     fun end()
@@ -13,7 +16,8 @@ interface RenderTarget
 }
 
 class OffScreenRenderTarget(
-    private val hdrEnabled: Boolean
+    override var textureScale: Float,
+    override var hdrEnabled: Boolean
 ) : RenderTarget {
     private lateinit var fbo: FrameBufferObject
 
@@ -22,7 +26,7 @@ class OffScreenRenderTarget(
         if (this::fbo.isInitialized)
             fbo.delete()
 
-        fbo = FrameBufferObject.create(width, height, NONE, hdrEnabled)
+        fbo = FrameBufferObject.create(width, height, textureScale, hdrEnabled, NONE)
     }
 
     override fun begin() = fbo.bind()
@@ -32,8 +36,9 @@ class OffScreenRenderTarget(
 }
 
 class MultisampledOffScreenRenderTarget(
-    private val antiAliasing: AntiAliasingType,
-    private val hdrEnabled: Boolean
+    override var textureScale: Float,
+    override var hdrEnabled: Boolean,
+    private val antiAliasing: AntiAliasingType
 ) : RenderTarget {
 
     private lateinit var fbo: FrameBufferObject
@@ -47,8 +52,8 @@ class MultisampledOffScreenRenderTarget(
         if (this::msFbo.isInitialized)
             msFbo.delete()
 
-        fbo = FrameBufferObject.create(width, height, NONE, hdrEnabled)
-        msFbo = FrameBufferObject.create(width, height, antiAliasing, hdrEnabled)
+        fbo = FrameBufferObject.create(width, height, textureScale, hdrEnabled, NONE)
+        msFbo = FrameBufferObject.create(width, height, textureScale, hdrEnabled, antiAliasing)
     }
 
     override fun begin() = msFbo.bind()

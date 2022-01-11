@@ -7,8 +7,10 @@ import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.modules.graphics.renderers.*
+import no.njoh.pulseengine.util.firstOrNullFast
 import no.njoh.pulseengine.util.forEachFast
 import org.lwjgl.opengl.GL11.*
+import kotlin.reflect.KClass
 
 interface Surface
 {
@@ -16,31 +18,42 @@ interface Surface
     val width: Int
     val height: Int
     val zOrder: Int
+    val textureScale: Float
     fun getTexture(): Texture
 }
 
 interface Surface2D : Surface
 {
     val camera: Camera
-    fun drawLinePoint(x: Float, y: Float)
+
+    // Drawing
     fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
+    fun drawLineVertex(x: Float, y: Float)
     fun drawQuad(x: Float, y: Float, width: Float, height: Float)
     fun drawQuadVertex(x: Float, y: Float)
     fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
     fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
     fun drawText(text: String, x: Float, y: Float, font: Font? = null, fontSize: Float = -1f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+
+    // Property setters
     fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float = 1f): Surface2D
     fun setDrawColor(color: Color): Surface2D
     fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface2D
     fun setBackgroundColor(color: Color): Surface2D
     fun setBlendFunction(func: BlendFunction): Surface2D
     fun setAntiAliasingType(antiAliasing: AntiAliasingType): Surface2D
-    fun enableHdr(enabled: Boolean): Surface2D
+    fun setHdrEnabled(enabled: Boolean): Surface2D
     fun setIsVisible(isVisible: Boolean): Surface2D
+    fun setTextureScale(scale: Float): Surface2D
+
+    // Post processing
     fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
     fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
     fun reloadPostProcessingShaders()
+
+    // Renderers
     fun addAndInitializeRenderer(renderer: BatchRenderer): Surface2D
+    fun <T: BatchRenderer> getRenderer(type: KClass<T>): T?
 }
 
 interface Surface2DInternal : Surface2D
@@ -66,8 +79,9 @@ class Surface2DImpl(
     override var width = 0
     override var height = 0
     override var isVisible = true
+    override var textureScale = 1f
 
-    private var renderTarget = createRenderTarget(renderState.antiAliasing, renderState.hdrEnabled)
+    private var renderTarget = createRenderTarget(textureScale, renderState)
     private val backgroundColor = Color(0.1f, 0.1f, 0.1f, 0f)
     private var blendFunction = BlendFunction.NORMAL
     private val postProcessingPipeline = PostProcessingPipeline()
@@ -113,6 +127,8 @@ class Surface2DImpl(
         glClearColor(backgroundColor.red, backgroundColor.green, backgroundColor.blue, backgroundColor.alpha)
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         glClearDepth(camera.farPlane.toDouble())
+
+        glViewport(0, 0, (width * textureScale).toInt(), (height * textureScale).toInt())
     }
 
     override fun cleanup()
@@ -125,8 +141,8 @@ class Surface2DImpl(
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float) =
         lineRenderer.line(x0, y0, x1, y1)
 
-    override fun drawLinePoint(x: Float, y: Float) =
-        lineRenderer.linePoint(x, y)
+    override fun drawLineVertex(x: Float, y: Float) =
+        lineRenderer.lineVertex(x, y)
 
     override fun drawQuad(x: Float, y: Float, width: Float, height: Float) =
         quadRenderer.quad(x, y, width, height)
@@ -185,19 +201,18 @@ class Surface2DImpl(
         {
             renderState.antiAliasing = antiAliasing
             renderTarget.cleanUp()
-            renderTarget = createRenderTarget(antiAliasing, renderState.hdrEnabled)
+            renderTarget = createRenderTarget(textureScale, renderState)
             renderTarget.init(width, height)
         }
         return this
     }
 
-    override fun enableHdr(enabled: Boolean): Surface2D
+    override fun setHdrEnabled(enabled: Boolean): Surface2D
     {
         if (enabled != renderState.hdrEnabled)
         {
             renderState.hdrEnabled = enabled
-            renderTarget.cleanUp()
-            renderTarget = createRenderTarget(renderState.antiAliasing, enabled)
+            renderTarget.hdrEnabled = enabled
             renderTarget.init(width, height)
         }
         return this
@@ -206,6 +221,17 @@ class Surface2DImpl(
     override fun setIsVisible(isVisible: Boolean): Surface2D
     {
         this.isVisible = isVisible
+        return this
+    }
+
+    override fun setTextureScale(scale: Float): Surface2D
+    {
+        if (scale != textureScale)
+        {
+            textureScale = scale
+            renderTarget.textureScale = scale
+            renderTarget.init(width, height)
+        }
         return this
     }
 
@@ -234,15 +260,19 @@ class Surface2DImpl(
         return this
     }
 
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : BatchRenderer> getRenderer(type: KClass<T>): T? =
+        renderers.firstOrNullFast { it::class == type } as? T
+
     override fun getTexture(): Texture =
         postProcessingPipeline.process(renderTarget.getTexture())
 
     companion object
     {
-        private fun createRenderTarget(antiAliasing: AntiAliasingType, hdrEnabled: Boolean) = when (antiAliasing)
+        private fun createRenderTarget(textureScale: Float, renderState: RenderState) = when (renderState.antiAliasing)
         {
-            NONE -> OffScreenRenderTarget(hdrEnabled)
-            else -> MultisampledOffScreenRenderTarget(antiAliasing, hdrEnabled)
+            NONE -> OffScreenRenderTarget(textureScale, renderState.hdrEnabled)
+            else -> MultisampledOffScreenRenderTarget(textureScale, renderState.hdrEnabled, renderState.antiAliasing)
         }
 
         fun create(
@@ -268,5 +298,3 @@ class Surface2DImpl(
         }
     }
 }
-
-

@@ -39,7 +39,7 @@ class LineBatchRenderer(
         vao.release()
     }
 
-    fun linePoint(x: Float, y: Float)
+    fun lineVertex(x: Float, y: Float)
     {
         vbo.fill(4)
         {

@@ -48,17 +48,17 @@ class RetainedModeGraphics : GraphicsEngineInterface
     {
         if (windowRecreated)
         {
-           GL.createCapabilities()
+            GL.createCapabilities()
 
-           // Create frameRenderer
-           if (!this::renderer.isInitialized)
+            // Create frameRenderer
+            if (!this::renderer.isInitialized)
                renderer = FrameTextureRenderer(ShaderProgram.create(
                    vertexShaderFileName = "/pulseengine/shaders/effects/texture.vert",
                    fragmentShaderFileName = "/pulseengine/shaders/effects/texture.frag"
                ))
 
-           // Initialize frameRenderer
-           renderer.init()
+            // Initialize frameRenderer
+            renderer.init()
         }
 
         // Initialize surfaces
@@ -91,6 +91,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun postRender()
     {
+        surfaces.sortByDescending { it.zOrder }
         surfaces.forEachFast { it.render() }
 
         // Prepare OpenGL for rendering FBO textures
@@ -99,8 +100,8 @@ class RetainedModeGraphics : GraphicsEngineInterface
         glClear(GL_COLOR_BUFFER_BIT)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glViewport(0, 0, mainSurface.width, mainSurface.height)
 
-        surfaces.sortByDescending { it.zOrder }
         surfaces.forEachFiltered({ it.isVisible }) { renderer.render(it.getTexture()) }
     }
 

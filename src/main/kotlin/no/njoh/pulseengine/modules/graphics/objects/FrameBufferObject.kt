@@ -1,6 +1,7 @@
-package no.njoh.pulseengine.modules.graphics
+package no.njoh.pulseengine.modules.graphics.objects
 
 import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.graphics.AntiAliasingType
 import no.njoh.pulseengine.modules.graphics.AntiAliasingType.MSAA_MAX
 import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
 import org.lwjgl.opengl.ARBFramebufferObject.*
@@ -38,26 +39,34 @@ open class FrameBufferObject(
 
     companion object
     {
-        fun create(width: Int, height: Int, antiAliasing: AntiAliasingType = NONE, hdr: Boolean = false): FrameBufferObject
+        fun create(
+            width: Int,
+            height: Int,
+            textureScale: Float,
+            hdr: Boolean = false,
+            antiAliasing: AntiAliasingType = NONE
+        ): FrameBufferObject
         {
-            // Generate frame buffer
+            // Generate and bind frame buffer
             val frameBufferId = glGenFramebuffers()
             glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
 
+            val texWidth = (width * textureScale).toInt()
+            val texHeight = (height * textureScale).toInt()
             var colorTextureId = 0
             var depthBufferId = 0
             if (antiAliasing != NONE)
             {
                 // Create multi sampled color and depth attachments
                 val samples = if (antiAliasing == MSAA_MAX) glGetInteger(GL_MAX_SAMPLES) else antiAliasing.samples
-                colorTextureId = createMultiSampledColorTextureAttachment(width, height, samples, hdr)
-                depthBufferId = createMultiSampledDepthBufferAttachment(width, height, samples)
+                colorTextureId = createMultiSampledColorTextureAttachment(texWidth, texHeight, hdr, samples)
+                depthBufferId = createMultiSampledDepthBufferAttachment(texWidth, texHeight, samples)
             }
             else
             {
                 // Create color and depth attachments
-                colorTextureId = createColorTextureAttachment(width, height, hdr)
-                depthBufferId = createDepthBufferAttachment(width, height)
+                colorTextureId = createColorTextureAttachment(texWidth, texHeight, hdr)
+                depthBufferId = createDepthBufferAttachment(texWidth, texHeight)
             }
 
             // Check if frame buffer is complete
@@ -69,7 +78,7 @@ open class FrameBufferObject(
 
             // Create texture asset
             val texture = Texture("", "")
-            texture.load(null, width, height, GL_RGBA8)
+            texture.load(null, texWidth, texHeight, GL_RGBA8)
             texture.finalize(colorTextureId)
 
             return FrameBufferObject(frameBufferId, depthBufferId, texture)
@@ -98,7 +107,7 @@ open class FrameBufferObject(
             return depthBufferId
         }
 
-        private fun createMultiSampledColorTextureAttachment(width: Int, height: Int, samples: Int, hdr: Boolean): Int
+        private fun createMultiSampledColorTextureAttachment(width: Int, height: Int, hdr: Boolean, samples: Int): Int
         {
             val textureId = glGenTextures()
             val format = if (hdr) GL_RGBA32F else GL_RGBA8
