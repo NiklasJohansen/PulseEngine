@@ -2,7 +2,9 @@ package no.njoh.pulseengine.modules.graphics.renderers
 
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.*
-import org.lwjgl.opengl.GL11.*
+import no.njoh.pulseengine.modules.graphics.objects.*
+import no.njoh.pulseengine.util.BufferExtensions.putAll
+import org.lwjgl.opengl.GL15.*
 
 class TextureBatchRenderer(
     private val initialCapacity: Int,
@@ -31,9 +33,11 @@ class TextureBatchRenderer(
 
         if (!this::program.isInitialized)
         {
-            val capacity = initialCapacity * layout.stride * 4L
-            vbo = BufferObject.createAndBindArrayBuffer(capacity)
-            ebo = BufferObject.createAndBindElementBuffer(capacity / 6)
+            val vboCapacity = initialCapacity * NUM_VERTICES * layout.strideInBytes
+            val eboCapacity = initialCapacity * NUM_INDICES * 4L
+            vbo = BufferObject.createAndBindArrayBuffer(vboCapacity)
+            ebo = BufferObject.createAndBindElementBuffer(eboCapacity)
+
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/arrayTexture.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/arrayTexture.frag"
@@ -54,27 +58,25 @@ class TextureBatchRenderer(
         val vMin = texture.vMin
         val uMax = texture.uMax
         val vMax = texture.vMax
-        val texIndex = texture.id.toFloat() + if (texture.format == GL_ALPHA) 0.5f else 0.0f
+        val texIndex = texture.id.toFloat()
         val xOffset = w * xOrigin
         val yOffset = h * yOrigin
         val rgba = renderState.rgba
         val depth = renderState.depth
 
-        vbo.put(x, y, depth, -xOffset, -yOffset,   rot, uMin, vMin, texIndex, rgba)
-        vbo.put(x, y, depth, -xOffset, h-yOffset,  rot, uMin, vMax, texIndex, rgba)
-        vbo.put(x, y, depth, w-xOffset, h-yOffset, rot, uMax, vMax, texIndex, rgba)
-        vbo.put(x, y, depth, w-xOffset, -yOffset,  rot, uMax, vMin, texIndex, rgba)
+        vbo.fill(40) {
+            putAll(x, y, depth, -xOffset, -yOffset, rot, uMin, vMin, texIndex, rgba)
+            putAll(x, y, depth, -xOffset, h-yOffset,  rot, uMin, vMax, texIndex, rgba)
+            putAll(x, y, depth, w-xOffset, h-yOffset, rot, uMax, vMax, texIndex, rgba)
+            putAll(x, y, depth, w-xOffset, -yOffset,  rot, uMax, vMin, texIndex, rgba)
+        }
 
-        ebo.put(
-            vertexCount + 0,
-            vertexCount + 1,
-            vertexCount + 2,
-            vertexCount + 2,
-            vertexCount + 3,
-            vertexCount + 0
-        )
+        val vc = vertexCount
+        ebo.fill(6) {
+            putAll(vc, vc + 1, vc + 2, vc + 2, vc + 3, vc)
+        }
 
-        vertexCount += 4
+        vertexCount += NUM_VERTICES
         renderState.increaseDepth()
     }
 
@@ -90,21 +92,19 @@ class TextureBatchRenderer(
         val rgba = renderState.rgba
         val depth = renderState.depth
 
-        vbo.put(x, y, depth, -xOffset, -yOffset,  rot, uMin, vMin, index, rgba)
-        vbo.put(x, y, depth, -xOffset, h-yOffset, rot, uMin, vMax, index, rgba)
-        vbo.put(x, y, depth, w-xOffset, h-yOffset, rot, uMax, vMax, index, rgba)
-        vbo.put(x, y, depth, w-xOffset, -yOffset, rot, uMax, vMin, index, rgba)
+        vbo.fill(40) {
+            putAll(x, y, depth, -xOffset, -yOffset, rot, uMin, vMin, index, rgba)
+            putAll(x, y, depth, -xOffset, h-yOffset, rot, uMin, vMax, index, rgba)
+            putAll(x, y, depth, w-xOffset, h-yOffset, rot, uMax, vMax, index, rgba)
+            putAll(x, y, depth, w-xOffset, -yOffset, rot, uMax, vMin, index, rgba)
+        }
 
-        ebo.put(
-            vertexCount + 0,
-            vertexCount + 1,
-            vertexCount + 2,
-            vertexCount + 2,
-            vertexCount + 3,
-            vertexCount + 0
-        )
+        val vc = vertexCount
+        ebo.fill(NUM_INDICES) {
+            putAll(vc, vc + 1, vc + 2, vc + 2, vc + 3, vc)
+        }
 
-        vertexCount += 4
+        vertexCount += NUM_VERTICES
         renderState.increaseDepth()
     }
 
@@ -122,9 +122,9 @@ class TextureBatchRenderer(
 
         textureArray.bind()
 
-        vbo.flush()
-        ebo.flush()
-        ebo.draw(GL_TRIANGLES, 1)
+        vbo.submit()
+        ebo.submit()
+        ebo.draw(GL_TRIANGLES, NUM_INDICES)
 
         vao.release()
         vertexCount = 0
@@ -136,5 +136,11 @@ class TextureBatchRenderer(
         vao.delete()
         ebo.delete()
         program.delete()
+    }
+
+    companion object
+    {
+        private const val NUM_VERTICES = 4
+        private const val NUM_INDICES = 6
     }
 }

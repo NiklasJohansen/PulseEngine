@@ -14,6 +14,6 @@ interface BatchRenderer
     /** Called every frame */
     fun render(surface: Surface2D)
 
-    /** Called once on when the [Surface2D] is destroyed */
+    /** Called once when the [Surface2D] is destroyed */
     fun cleanUp()
 }

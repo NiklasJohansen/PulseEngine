@@ -1,6 +1,10 @@
 package no.njoh.pulseengine.modules.graphics.renderers
 
 import no.njoh.pulseengine.modules.graphics.*
+import no.njoh.pulseengine.modules.graphics.objects.BufferObject
+import no.njoh.pulseengine.modules.graphics.objects.FloatBufferObject
+import no.njoh.pulseengine.modules.graphics.objects.VertexArrayObject
+import no.njoh.pulseengine.util.BufferExtensions.putAll
 import org.lwjgl.opengl.GL11.*
 
 class LineBatchRenderer(
@@ -37,7 +41,10 @@ class LineBatchRenderer(
 
     fun linePoint(x: Float, y: Float)
     {
-        vbo.put(x, y, gfxState.depth, gfxState.rgba)
+        vbo.fill(4)
+        {
+            putAll(x, y, gfxState.depth, gfxState.rgba)
+        }
         gfxState.increaseDepth()
     }
 
@@ -45,7 +52,11 @@ class LineBatchRenderer(
     {
         val depth = gfxState.depth
         val rgba = gfxState.rgba
-        vbo.put(x0, y0, depth, rgba, x1, y1, depth, rgba)
+        vbo.fill(8)
+        {
+            putAll(x0, y0, depth, rgba)
+            putAll(x1, y1, depth, rgba)
+        }
         gfxState.increaseDepth()
     }
 
@@ -57,7 +68,7 @@ class LineBatchRenderer(
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", surface.camera.viewMatrix)
 
-        vbo.flush()
+        vbo.submit()
         vbo.draw(GL_LINES, 4)
 
         vao.release()

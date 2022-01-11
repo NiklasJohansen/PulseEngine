@@ -1,6 +1,11 @@
 package no.njoh.pulseengine.modules.graphics.renderers
 
 import no.njoh.pulseengine.modules.graphics.*
+import no.njoh.pulseengine.modules.graphics.objects.BufferObject
+import no.njoh.pulseengine.modules.graphics.objects.FloatBufferObject
+import no.njoh.pulseengine.modules.graphics.objects.IntBufferObject
+import no.njoh.pulseengine.modules.graphics.objects.VertexArrayObject
+import no.njoh.pulseengine.util.BufferExtensions.putAll
 import org.lwjgl.opengl.GL11.*
 
 class QuadBatchRenderer(
@@ -47,17 +52,19 @@ class QuadBatchRenderer(
         val depth = gfxState.depth
         val rgba = gfxState.rgba
 
-        vbo.put(x, y, depth, rgba, x, y + height, depth, rgba)
-        vbo.put(x + width, y + height, depth, rgba, x + width, y, depth, rgba)
+        vbo.fill(16)
+        {
+            putAll(x, y, depth, rgba)
+            putAll(x, y + height, depth, rgba)
+            putAll(x + width, y + height, depth, rgba)
+            putAll(x + width, y, depth, rgba)
+        }
 
-        ebo.put(
-            vertexCount + 0,
-            vertexCount + 1,
-            vertexCount + 2,
-            vertexCount + 2,
-            vertexCount + 3,
-            vertexCount + 0
-        )
+        ebo.fill(6)
+        {
+            putAll(vertexCount + 0, vertexCount + 1, vertexCount + 2)
+            putAll(vertexCount + 2, vertexCount + 3, vertexCount + 0)
+        }
 
         vertexCount += 4
         gfxState.increaseDepth()
@@ -65,19 +72,20 @@ class QuadBatchRenderer(
 
     fun vertex(x: Float, y: Float)
     {
-        vbo.put(x, y, gfxState.depth, gfxState.rgba)
+        vbo.fill(4)
+        {
+            putAll(x, y, gfxState.depth, gfxState.rgba)
+        }
+
         singleVertexCount++
 
         if (singleVertexCount == 4)
         {
-            ebo.put(
-                vertexCount + 0,
-                vertexCount + 1,
-                vertexCount + 2,
-                vertexCount + 2,
-                vertexCount + 3,
-                vertexCount + 0
-            )
+            ebo.fill(6)
+            {
+                putAll(vertexCount + 0, vertexCount + 1, vertexCount + 2)
+                putAll(vertexCount + 2, vertexCount + 3, vertexCount + 0)
+            }
             singleVertexCount = 0
             vertexCount += 4
             gfxState.increaseDepth()
@@ -99,9 +107,9 @@ class QuadBatchRenderer(
 
         glBindTexture(GL_TEXTURE_2D, 0)
 
-        vbo.flush()
-        ebo.flush()
-        ebo.draw(GL_TRIANGLES, 1)
+        vbo.submit()
+        ebo.submit()
+        ebo.draw(GL_TRIANGLES, 6)
 
         vertexCount = 0
         vao.release()
