@@ -7,6 +7,8 @@ import org.lwjgl.opengl.ARBTextureStorage.glTexStorage3D
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL12.GL_CLAMP_TO_EDGE
 import org.lwjgl.opengl.GL12.glTexSubImage3D
+import org.lwjgl.opengl.GL13.GL_TEXTURE0
+import org.lwjgl.opengl.GL13.glActiveTexture
 
 class TextureArray(
     private val maxTextureWidth: Int,
@@ -51,7 +53,11 @@ class TextureArray(
         texture.finalize(index, 0.0f, 0.0f, u, v)
     }
 
-    fun bind() = glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
+    fun bind(textureUnit: Int = 0)
+    {
+        glActiveTexture(GL_TEXTURE0 + textureUnit)
+        glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
+    }
 
     fun cleanup() = glDeleteTextures(textureArrayId)
 }

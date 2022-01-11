@@ -1,12 +1,17 @@
-// GLSL 1.50 used with OpenGL 3.2
-#version 150 core
+#version 330 core
 
-in vec3 position;
-in vec2 offset;
+// Vertex attributes
+in vec2 vertexPos;
+
+// Instance attributes
+in vec3 worldPos;
+in vec2 size;
+in vec2 origin;
 in float rotation;
-in vec2 texCoord;
-in float texIndex;
+in vec2 uvMin;
+in vec2 uvMax;
 in uint color;
+in float texIndex;
 
 out vec4 vertexColor;
 out vec2 textureCoord;
@@ -14,7 +19,8 @@ out float textureIndex;
 
 uniform mat4 view;
 uniform mat4 projection;
-uniform bool isAlphaTex;
+
+uniform mat4 viewProjection;
 
 vec4 getColor(uint rgba) {
     uint r = ((rgba >> uint(24)) & uint(255));
@@ -23,7 +29,6 @@ vec4 getColor(uint rgba) {
     uint a = (rgba & uint(255));
     return vec4(r, g, b, a) / 255.0f;
 }
-
 
 mat4 rotateZ( in float angle ) {
     return mat4(
@@ -35,25 +40,14 @@ mat4 rotateZ( in float angle ) {
 }
 
 void main() {
-    vertexColor = getColor(color);
-    textureCoord = texCoord;
     textureIndex = texIndex;
+    vertexColor = getColor(color);
+    textureCoord = uvMin + (uvMax - uvMin) * vertexPos;
 
-    vec4 vertex = vec4(2 * offset, 0.0, 1.0) * rotateZ(radians(rotation)) + vec4(2 * position, 1.0);
+    vec4 vertex = vec4(worldPos, 1.0) + vec4(vertexPos * size - size * origin, 0, 0) * rotateZ(radians(rotation));
 
     gl_Position = projection * view * vertex;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 
