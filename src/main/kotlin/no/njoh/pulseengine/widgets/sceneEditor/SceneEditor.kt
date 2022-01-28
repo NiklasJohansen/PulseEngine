@@ -573,7 +573,7 @@ class SceneEditor: Widget
 
         val xDiff = engine.input.xWorldMouse - x
         val yDiff = engine.input.yWorldMouse - y
-        val mouseEntityAngle = atan2(yDiff, xDiff)
+        val mouseEntityAngle = -atan2(yDiff, xDiff)
         val angle = mouseEntityAngle - (this.rotation / 180f * PI.toFloat())
         val len = sqrt(xDiff * xDiff + yDiff * yDiff)
         val xMouse = x + cos(angle) * len
@@ -718,7 +718,7 @@ class SceneEditor: Widget
 
     private fun getIconAngle(startAngle: Float, resizeLeft: Boolean, resizeRight: Boolean, resizeTop: Boolean, resizeBottom: Boolean): Float
     {
-        var iconAngle = startAngle + when
+        var iconAngle = -startAngle - when
         {
             resizeTop && resizeRight -> 135
             resizeRight && resizeBottom -> 225
@@ -845,7 +845,7 @@ class SceneEditor: Widget
 
         if (rotation != 0f)
         {
-            val r = this.rotation / 180f * PI.toFloat()
+            val r = -this.rotation / 180f * PI.toFloat()
             val c = cos(r)
             val s = sin(r)
             val x0 = -w * c - h * s
@@ -925,7 +925,7 @@ class SceneEditor: Widget
         val h = abs(height) + GIZMO_PADDING * 2
         val xDiff = xWorld - x
         val yDiff = yWorld - y
-        val angle = MathUtil.atan2(yDiff, xDiff) - (this.rotation / 180f * PI.toFloat())
+        val angle = -MathUtil.atan2(yDiff, xDiff) - (this.rotation / 180f * PI.toFloat())
         val len = sqrt(xDiff * xDiff + yDiff * yDiff)
         val xWorldNew = x + cos(angle) * len
         val yWorldNew = y + sin(angle) * len

@@ -134,7 +134,7 @@ class DefaultCamera(
             .identity()
             .translate(xOrigin, yOrigin, zOrigin)
             .scale(xScale, yScale, zScale)
-            .rotateXYZ(xRot, yRot, zRot)
+            .rotateXYZ(xRot, yRot, -zRot)
             .translate(xPos - xOrigin, yPos - yOrigin, zPos - zOrigin)
 
         viewMatrix.invert(invViewMatrix)

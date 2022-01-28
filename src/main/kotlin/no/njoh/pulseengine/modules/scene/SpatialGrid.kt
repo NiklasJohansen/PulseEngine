@@ -245,7 +245,7 @@ class SpatialGrid (
 
     private fun insertRotated(entity: SceneEntity): Boolean
     {
-        val rot = entity.rotation / 180 * PI.toFloat()
+        val rot = -entity.rotation / 180 * PI.toFloat()
         val c = cos(rot)
         val s = sin(rot)
         val w = entity.width / 2f

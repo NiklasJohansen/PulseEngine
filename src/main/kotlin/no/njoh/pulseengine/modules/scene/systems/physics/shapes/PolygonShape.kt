@@ -87,7 +87,7 @@ abstract class PolygonShape : Shape()
         val xDelta = points[X] - xCenter
         val yDelta = points[Y] - yCenter
         angleLast = angle
-        angle = (atan2(yDelta, xDelta) / PI.toFloat() + 1.0f) * 180f - angleOffset
+        angle = (-atan2(yDelta, xDelta) / PI.toFloat() + 1.0f) * 180f - angleOffset
     }
 
     fun applyAcceleration(xAcc: Float, yAcc: Float)
@@ -100,6 +100,15 @@ abstract class PolygonShape : Shape()
             this[i + Y_ACC] += yAcc
         }
 
+        isSleeping = false
+        stepsAtRest = 0
+    }
+
+    fun applyAcceleration(pointIndex: Int, xAcc: Float, yAcc: Float)
+    {
+        val i = pointIndex * N_POINT_FIELDS
+        points[i + X_ACC] += xAcc
+        points[i + Y_ACC] += yAcc
         isSleeping = false
         stepsAtRest = 0
     }

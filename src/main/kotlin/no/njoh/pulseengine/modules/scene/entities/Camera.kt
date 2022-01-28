@@ -41,7 +41,7 @@ open class Camera : SceneEntity()
         surface.setDrawColor(0.01f, 0.01f, 0.01f, 1f)
         surface.drawTexture(Texture.BLANK, x, y, camSize, camSize, rotation, xOrigin = 0.5f, yOrigin = 0.5f)
 
-        val r = this.rotation / 180f * PI.toFloat()
+        val r = -this.rotation / 180f * PI.toFloat()
         val c = cos(r) * 0.5f
         val s = sin(r) * 0.5f
 

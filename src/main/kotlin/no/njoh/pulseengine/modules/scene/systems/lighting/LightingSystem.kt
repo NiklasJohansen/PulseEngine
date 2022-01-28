@@ -161,8 +161,8 @@ open class LightingSystem : SceneSystem()
                 val xScreenCenter = (xTopLeft + xBottomRight) * 0.5f
                 val yScreenCenter = (yTopLeft + yBottomRight) * 0.5f
                 val angle = PI.toFloat() + rotation.toRadians()
-                val xHalf = cos(angle) * size * 0.5f
-                val yHalf = sin(angle) * size * 0.5f
+                val xHalf = cos(-angle) * size * 0.5f
+                val yHalf = sin(-angle) * size * 0.5f
                 val x0 = x - xHalf
                 val y0 = y - yHalf
                 val x1 = x + xHalf

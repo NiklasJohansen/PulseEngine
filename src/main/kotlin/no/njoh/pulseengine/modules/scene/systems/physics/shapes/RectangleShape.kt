@@ -13,7 +13,7 @@ class RectangleShape : PolygonShape()
 
     override fun build(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
     {
-        val r = rot / 180f * PI.toFloat()
+        val r = -rot / 180f * PI.toFloat()
         val c = cos(r)
         val s = sin(r)
         val w = width * 0.5f

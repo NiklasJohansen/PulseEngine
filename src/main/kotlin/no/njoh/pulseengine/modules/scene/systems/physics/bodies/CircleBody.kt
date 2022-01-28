@@ -147,8 +147,8 @@ interface CircleBody : PhysicsBody
         else
             surface.setDrawColor(1f, 1f, 1f)
 
-        val xEnd = xCenter + cos(shape.rot) * radius
-        val yEnd = yCenter + sin(shape.rot) * radius
+        val xEnd = xCenter + cos(-shape.rot) * radius
+        val yEnd = yCenter + sin(-shape.rot) * radius
         surface.drawLine(xCenter, yCenter, xEnd, yEnd)
 
         val nPoints = 30
