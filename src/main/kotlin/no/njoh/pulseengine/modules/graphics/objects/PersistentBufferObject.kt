@@ -84,19 +84,19 @@ abstract class PersistentBufferObject(
 
     companion object
     {
-        inline fun <reified T: PersistentBufferObject> createAndBindArrayBuffer(sizeInBytes: Long, numBuffers: Int = 1): T =
-            createAndBindBuffer(sizeInBytes, GL_ARRAY_BUFFER, numBuffers, null)
+        inline fun <reified T: PersistentBufferObject> createArrayBuffer(sizeInBytes: Long, numBuffers: Int = 1): T =
+            createBuffer(sizeInBytes, GL_ARRAY_BUFFER, numBuffers, null)
 
-        inline fun <reified T: PersistentBufferObject> createAndBindUniformBuffer(sizeInBytes: Long, numBuffers: Int = 1, blockBinding: Int): T =
-            createAndBindBuffer(sizeInBytes, GL_UNIFORM_BUFFER, numBuffers, blockBinding)
+        inline fun <reified T: PersistentBufferObject> createUniformBuffer(sizeInBytes: Long, numBuffers: Int = 1, blockBinding: Int): T =
+            createBuffer(sizeInBytes, GL_UNIFORM_BUFFER, numBuffers, blockBinding)
 
-        inline fun <reified T: PersistentBufferObject> createAndBindShaderStorageBuffer(sizeInBytes: Long, numBuffers: Int = 1, blockBinding: Int): T =
-            createAndBindBuffer(sizeInBytes, GL_SHADER_STORAGE_BUFFER, numBuffers, blockBinding)
+        inline fun <reified T: PersistentBufferObject> createShaderStorageBuffer(sizeInBytes: Long, numBuffers: Int = 1, blockBinding: Int): T =
+            createBuffer(sizeInBytes, GL_SHADER_STORAGE_BUFFER, numBuffers, blockBinding)
 
-        fun createAndBindElementBuffer(sizeInBytes: Long, numBuffers: Int = 1): PersistentIntBufferObject =
-            createAndBindBuffer(sizeInBytes, GL_ELEMENT_ARRAY_BUFFER, numBuffers, null)
+        fun createElementBuffer(sizeInBytes: Long, numBuffers: Int = 1): PersistentIntBufferObject =
+            createBuffer(sizeInBytes, GL_ELEMENT_ARRAY_BUFFER, numBuffers, null)
 
-        inline fun <reified T: PersistentBufferObject> createAndBindBuffer(
+        inline fun <reified T: PersistentBufferObject> createBuffer(
             sizeInBytes: Long,
             target: Int,
             numBuffers: Int = 1,
@@ -108,6 +108,7 @@ abstract class PersistentBufferObject(
             glBindBuffer(target, id)
             glBufferStorage(target, bufferSize, flags)
             val persistentBuffer = glMapBufferRange(target, 0, bufferSize, flags)!!
+            glBindBuffer(target, 0)
 
             return when (T::class)
             {

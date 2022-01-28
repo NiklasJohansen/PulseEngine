@@ -48,10 +48,10 @@ class LightingPostProcessingEffect (
         program.assignUniformBlockBinding("EdgeBlock", 1)
 
         if (!this::lightUbo.isInitialized)
-            lightUbo = BufferObject.createAndBindShaderStorageBuffer(MAX_LIGHTS * LIGHT_BLOCK_SIZE, 0)
+            lightUbo = BufferObject.createShaderStorageBuffer(MAX_LIGHTS * LIGHT_BLOCK_SIZE, 0)
 
         if (!this::edgeUbo.isInitialized)
-            edgeUbo = BufferObject.createAndBindShaderStorageBuffer(MAX_EDGES * EDGE_BLOCK_SIZE, 1)
+            edgeUbo = BufferObject.createShaderStorageBuffer(MAX_EDGES * EDGE_BLOCK_SIZE, 1)
     }
 
     override fun cleanUp()

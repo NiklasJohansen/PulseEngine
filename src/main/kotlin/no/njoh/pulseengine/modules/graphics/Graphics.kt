@@ -21,7 +21,7 @@ interface Graphics
     fun getSurface(name: String): Surface2D?
     fun getSurfaceOrDefault(name: String): Surface2D
     fun getAllSurfaces(): List<Surface2D>
-    fun removeSurface(name: String)
+    fun deleteSurface(name: String)
 }
 
 interface GraphicsEngineInterface : Graphics

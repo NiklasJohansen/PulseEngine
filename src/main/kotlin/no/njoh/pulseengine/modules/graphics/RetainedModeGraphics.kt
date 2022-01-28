@@ -142,7 +142,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun getAllSurfaces() = surfaces
 
-    override fun removeSurface(name: String)
+    override fun deleteSurface(name: String)
     {
         surfaces
             .find { it.name == name }

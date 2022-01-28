@@ -32,8 +32,8 @@ class QuadBatchRenderer(
         if (!this::program.isInitialized)
         {
             val capacity = initialCapacity * layout.strideInBytes * 4L
-            vbo = BufferObject.createAndBindArrayBuffer(capacity)
-            ebo = BufferObject.createAndBindElementBuffer(capacity / 6)
+            vbo = BufferObject.createArrayBuffer(capacity)
+            ebo = BufferObject.createElementBuffer(capacity / 6)
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/default.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/default.frag"

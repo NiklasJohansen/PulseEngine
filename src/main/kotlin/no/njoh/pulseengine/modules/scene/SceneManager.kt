@@ -14,6 +14,7 @@ import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.ReflectionUtil
 import no.njoh.pulseengine.util.ReflectionUtil.getClassesFromFullyQualifiedClassNames
 import no.njoh.pulseengine.util.ReflectionUtil.getClassesOfSuperType
+import no.njoh.pulseengine.util.firstOrNullFast
 import no.njoh.pulseengine.util.forEachFast
 import kotlin.math.PI
 import kotlin.math.cos
@@ -44,7 +45,7 @@ abstract class SceneManager
         activeScene.systems.remove(system)
 
     inline fun <reified T> getSystemOfType(): T? =
-        activeScene.systems.firstOrNull { it is T } as? T?
+        activeScene.systems.firstOrNullFast { it is T } as? T?
 
     fun addEntity(entity: SceneEntity) =
         activeScene.insertEntity(entity)

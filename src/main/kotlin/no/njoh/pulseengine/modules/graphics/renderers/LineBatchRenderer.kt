@@ -26,7 +26,7 @@ class LineBatchRenderer(
 
         if (!this::program.isInitialized)
         {
-            vbo = BufferObject.createAndBindArrayBuffer(initialCapacity * layout.strideInBytes * 2L)
+            vbo = BufferObject.createArrayBuffer(initialCapacity * layout.strideInBytes * 2L)
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/line.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/line.frag"

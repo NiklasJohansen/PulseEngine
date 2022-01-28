@@ -230,8 +230,8 @@ open class LightingSystem : SceneSystem()
             removeRenderPass(normalRenderPass)
             removeRenderPass(occluderRenderPass)
         }
-        engine.gfx.removeSurface(normalRenderPass.surfaceName)
-        engine.gfx.removeSurface(occluderRenderPass.surfaceName)
+        engine.gfx.deleteSurface(normalRenderPass.surfaceName)
+        engine.gfx.deleteSurface(occluderRenderPass.surfaceName)
         engine.gfx.mainSurface.removePostProcessingEffect(lightingEffect)
         lightingEffect.cleanUp()
     }

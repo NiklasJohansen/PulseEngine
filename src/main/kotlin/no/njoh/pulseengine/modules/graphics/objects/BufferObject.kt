@@ -99,25 +99,26 @@ sealed class BufferObject(
 
     companion object
     {
-        inline fun <reified T: BufferObject> createAndBindArrayBuffer(sizeInBytes: Long, usage: Int = GL_DYNAMIC_DRAW): T =
-            createAndBindBuffer(sizeInBytes, usage, GL_ARRAY_BUFFER, null)
+        inline fun <reified T: BufferObject> createArrayBuffer(sizeInBytes: Long, usage: Int = GL_DYNAMIC_DRAW): T =
+            createBuffer(sizeInBytes, usage, GL_ARRAY_BUFFER, null)
 
-        inline fun <reified T: BufferObject> createAndBindShaderStorageBuffer(sizeInBytes: Long, blockBinding: Int, usage: Int = GL_DYNAMIC_DRAW): T =
-            createAndBindBuffer(sizeInBytes, usage, GL_SHADER_STORAGE_BUFFER, blockBinding)
+        inline fun <reified T: BufferObject> createShaderStorageBuffer(sizeInBytes: Long, blockBinding: Int, usage: Int = GL_DYNAMIC_DRAW): T =
+            createBuffer(sizeInBytes, usage, GL_SHADER_STORAGE_BUFFER, blockBinding)
 
-        inline fun <reified T: BufferObject> createAndBindUniformBuffer(sizeInBytes: Long, blockBinding: Int, usage: Int = GL_DYNAMIC_DRAW): T =
-             createAndBindBuffer(sizeInBytes, usage, GL_UNIFORM_BUFFER, blockBinding)
+        inline fun <reified T: BufferObject> createUniformBuffer(sizeInBytes: Long, blockBinding: Int, usage: Int = GL_DYNAMIC_DRAW): T =
+             createBuffer(sizeInBytes, usage, GL_UNIFORM_BUFFER, blockBinding)
 
-        fun createAndBindElementBuffer(sizeInBytes: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject =
-            createAndBindBuffer(sizeInBytes, usage, GL_ELEMENT_ARRAY_BUFFER, null)
+        fun createElementBuffer(sizeInBytes: Long, usage: Int = GL_DYNAMIC_DRAW): IntBufferObject =
+            createBuffer(sizeInBytes, usage, GL_ELEMENT_ARRAY_BUFFER, null)
 
-        inline fun <reified T> createAndBindBuffer(sizeInBytes: Long, usage: Int, target: Int, blockBinding: Int?): T
+        inline fun <reified T> createBuffer(sizeInBytes: Long, usage: Int, target: Int, blockBinding: Int?): T
         {
             val id = glGenBuffers()
             glBindBuffer(target, id)
             glBufferData(target, sizeInBytes, usage)
             val mappedBuffer = glMapBuffer(target, GL_WRITE_ONLY, sizeInBytes, null)!!
             glUnmapBuffer(target)
+            glBindBuffer(target, 0)
 
             return when (T::class)
             {
@@ -139,6 +140,7 @@ class FloatBufferObject(
 {
     private var mappedFloatBuffer: FloatBuffer = mappedBuffer.asFloatBuffer()
     private var bufferSize = mappedFloatBuffer.capacity()
+
     @PublishedApi
     internal var backingBuffer = memAllocFloat(bufferSize)
 
@@ -186,6 +188,7 @@ class IntBufferObject(
 {
     private var mappedIntBuffer: IntBuffer = mappedBuffer.asIntBuffer()
     private var bufferSize = mappedIntBuffer.capacity()
+
     @PublishedApi
     internal var backingBuffer = memAllocInt(bufferSize)
 

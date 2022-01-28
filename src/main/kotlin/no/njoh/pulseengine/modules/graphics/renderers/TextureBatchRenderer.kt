@@ -37,8 +37,8 @@ class TextureBatchRenderer(
 
         if (!this::program.isInitialized)
         {
-            instanceBuffer = BufferObject.createAndBindArrayBuffer(initialCapacity * instanceLayout.strideInBytes)
-            vertexBuffer = StaticBufferObject.createAndBindBuffer(floatArrayOf(
+            instanceBuffer = BufferObject.createArrayBuffer(initialCapacity * instanceLayout.strideInBytes)
+            vertexBuffer = StaticBufferObject.createBuffer(floatArrayOf(
                 0f, 0f, // Top-left vertex
                 1f, 0f, // Top-right vertex
                 0f, 1f, // Bottom-left vertex

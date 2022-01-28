@@ -20,7 +20,7 @@ class StaticBufferObject(
 
     companion object
     {
-        fun createAndBindBuffer(
+        fun createBuffer(
             data: FloatArray,
             target: Int = GL_ARRAY_BUFFER,
             blockBinding: Int? = null
@@ -28,6 +28,7 @@ class StaticBufferObject(
             val id = glGenBuffers()
             glBindBuffer(target, id)
             glBufferData(target, data, GL_STATIC_DRAW)
+            glBindBuffer(target, 0)
             return StaticBufferObject(id, target, blockBinding)
         }
     }

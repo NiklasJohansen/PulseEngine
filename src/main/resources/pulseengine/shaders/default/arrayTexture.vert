@@ -20,8 +20,6 @@ out float textureIndex;
 uniform mat4 view;
 uniform mat4 projection;
 
-uniform mat4 viewProjection;
-
 vec4 getColor(uint rgba) {
     uint r = ((rgba >> uint(24)) & uint(255));
     uint g = ((rgba >> uint(16)) & uint(255));
@@ -30,12 +28,12 @@ vec4 getColor(uint rgba) {
     return vec4(r, g, b, a) / 255.0f;
 }
 
-mat4 rotateZ( in float angle ) {
-    return mat4(
-        cos(angle),	-sin(angle), 0,	0,
-        sin(angle),	cos(angle),	0,	0,
-        0,	0,	1,	0,
-        0,	0,	0,	1
+mat2 rotationMatrix(float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return mat2(
+        c, s,
+        -s,	c
     );
 }
 
@@ -44,9 +42,10 @@ void main() {
     vertexColor = getColor(color);
     textureCoord = uvMin + (uvMax - uvMin) * vertexPos;
 
-    vec4 vertex = vec4(worldPos, 1.0) + vec4(vertexPos * size - size * origin, 0, 0) * rotateZ(radians(rotation));
+    vec2 offset = (vertexPos * size - size * origin) * rotationMatrix(radians(rotation));
+    vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);
 
-    gl_Position = projection * view * vertex;
+    gl_Position = projection * view * vertexPos;
 }
 
 
