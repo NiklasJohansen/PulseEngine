@@ -4,6 +4,7 @@ import no.njoh.pulseengine.util.Logger
 import org.lwjgl.opengl.ARBUniformBufferObject.GL_UNIFORM_BUFFER
 import org.lwjgl.opengl.ARBUniformBufferObject.glBindBufferBase
 import org.lwjgl.opengl.GL15.*
+import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BUFFER
 import org.lwjgl.system.MemoryUtil.*
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
@@ -100,6 +101,9 @@ sealed class BufferObject(
     {
         inline fun <reified T: BufferObject> createAndBindArrayBuffer(sizeInBytes: Long, usage: Int = GL_DYNAMIC_DRAW): T =
             createAndBindBuffer(sizeInBytes, usage, GL_ARRAY_BUFFER, null)
+
+        inline fun <reified T: BufferObject> createAndBindShaderStorageBuffer(sizeInBytes: Long, blockBinding: Int, usage: Int = GL_DYNAMIC_DRAW): T =
+            createAndBindBuffer(sizeInBytes, usage, GL_SHADER_STORAGE_BUFFER, blockBinding)
 
         inline fun <reified T: BufferObject> createAndBindUniformBuffer(sizeInBytes: Long, blockBinding: Int, usage: Int = GL_DYNAMIC_DRAW): T =
              createAndBindBuffer(sizeInBytes, usage, GL_UNIFORM_BUFFER, blockBinding)

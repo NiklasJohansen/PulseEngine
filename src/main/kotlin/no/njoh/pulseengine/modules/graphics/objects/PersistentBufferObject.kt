@@ -18,8 +18,8 @@ abstract class PersistentBufferObject(
     private val bufferSize: Int
 ) {
     var count = 0
+    var bufferIndex = 0
     private var countToDraw = 0
-    private var bufferIndex = 0
     private var bufferIndexToDraw = 0
     private val syncObjects = Array(numBuffers) { SyncObj() }
 
@@ -89,6 +89,9 @@ abstract class PersistentBufferObject(
 
         inline fun <reified T: PersistentBufferObject> createAndBindUniformBuffer(sizeInBytes: Long, numBuffers: Int = 1, blockBinding: Int): T =
             createAndBindBuffer(sizeInBytes, GL_UNIFORM_BUFFER, numBuffers, blockBinding)
+
+        inline fun <reified T: PersistentBufferObject> createAndBindShaderStorageBuffer(sizeInBytes: Long, numBuffers: Int = 1, blockBinding: Int): T =
+            createAndBindBuffer(sizeInBytes, GL_SHADER_STORAGE_BUFFER, numBuffers, blockBinding)
 
         fun createAndBindElementBuffer(sizeInBytes: Long, numBuffers: Int = 1): PersistentIntBufferObject =
             createAndBindBuffer(sizeInBytes, GL_ELEMENT_ARRAY_BUFFER, numBuffers, null)

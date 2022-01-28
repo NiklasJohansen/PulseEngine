@@ -3,7 +3,10 @@ package no.njoh.pulseengine.modules.scene.systems.lighting
 import no.njoh.pulseengine.data.Color
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.*
+import no.njoh.pulseengine.modules.graphics.objects.BufferObject
+import no.njoh.pulseengine.modules.graphics.objects.FloatBufferObject
 import no.njoh.pulseengine.modules.graphics.postprocessing.SinglePassEffect
+import no.njoh.pulseengine.util.BufferExtensions.putAll
 import org.joml.Math
 import org.joml.Vector4f
 
@@ -45,10 +48,10 @@ class LightingPostProcessingEffect (
         program.assignUniformBlockBinding("EdgeBlock", 1)
 
         if (!this::lightUbo.isInitialized)
-            lightUbo = BufferObject.createAndBindUniformBuffer(MAX_LIGHTS * LIGHT_BLOCK_SIZE, 0)
+            lightUbo = BufferObject.createAndBindShaderStorageBuffer(MAX_LIGHTS * LIGHT_BLOCK_SIZE, 0)
 
         if (!this::edgeUbo.isInitialized)
-            edgeUbo = BufferObject.createAndBindUniformBuffer(MAX_EDGES * EDGE_BLOCK_SIZE, 1)
+            edgeUbo = BufferObject.createAndBindShaderStorageBuffer(MAX_EDGES * EDGE_BLOCK_SIZE, 1)
     }
 
     override fun cleanUp()
@@ -61,11 +64,11 @@ class LightingPostProcessingEffect (
     override fun applyEffect(texture: Texture): Texture
     {
         lightUbo.bind()
-        lightUbo.flush()
+        lightUbo.submit()
         lightUbo.release()
 
         edgeUbo.bind()
-        edgeUbo.flush()
+        edgeUbo.submit()
         edgeUbo.release()
 
         fbo.bind()
@@ -110,7 +113,10 @@ class LightingPostProcessingEffect (
         val flags = lightType.flag or shadowType.flag
 
         pos0.set(x, y, 0f).mul(camera.viewMatrix)
-        lightUbo.put(pos0.x, pos0.y, z * scale, radius * scale, direction, coneAngle, size * scale, red, green, blue, intensity, Float.fromBits(flags))
+        lightUbo.fill(12)
+        {
+            putAll(pos0.x, pos0.y, z * scale, radius * scale, direction, coneAngle, size * scale, red, green, blue, intensity, Float.fromBits(flags))
+        }
         lights++
     }
 
@@ -118,7 +124,10 @@ class LightingPostProcessingEffect (
     {
         pos0.set(x0, y0, 0f).mul(camera.viewMatrix)
         pos1.set(x1, y1, 0f).mul(camera.viewMatrix)
-        edgeUbo.put(pos0.x, pos0.y, pos1.x, pos1.y)
+        lightUbo.fill(4)
+        {
+            putAll(pos0.x, pos0.y, pos1.x, pos1.y)
+        }
         edges++
     }
 }
