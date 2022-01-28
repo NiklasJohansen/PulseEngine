@@ -2,6 +2,8 @@ package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.AntiAliasingType.MSAA4
+import no.njoh.pulseengine.modules.graphics.TextureFilter.LINEAR
+import no.njoh.pulseengine.modules.graphics.TextureFormat.NORMAL
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.forEachFast
@@ -30,7 +32,8 @@ class RetainedModeGraphics : GraphicsEngineInterface
             textureArray = textureArray,
             camera = mainCamera,
             antiAliasing = MSAA4,
-            hdrEnabled = false
+            textureFormat = NORMAL,
+            textureFilter = LINEAR
         )
         surfaces.add(mainSurface)
 
@@ -105,21 +108,28 @@ class RetainedModeGraphics : GraphicsEngineInterface
         surfaces.forEachFiltered({ it.isVisible }) { renderer.render(it.getTexture()) }
     }
 
-    override fun createSurface(name: String, zOrder: Int?, camera: Camera?, antiAliasing: AntiAliasingType, hdrEnabled: Boolean): Surface2D =
-        surfaces
-            .find { it.name == name }
-            ?: Surface2DImpl.create(
-                name = name,
-                zOrder = zOrder ?: this.zOrder--,
-                initCapacity = 5000,
-                textureArray = textureArray,
-                camera = (camera ?: DefaultCamera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraInternal,
-                antiAliasing = antiAliasing,
-                hdrEnabled = hdrEnabled
-            ).also {
-                it.init(mainSurface.width, mainSurface.height, true)
-                surfaces.add(it)
-            }
+    override fun createSurface(
+        name: String,
+        zOrder: Int?,
+        camera: Camera?,
+        textureFormat: TextureFormat,
+        textureFilter: TextureFilter,
+        antiAliasing: AntiAliasingType
+    ): Surface2D = surfaces
+        .find { it.name == name }
+        ?: Surface2DImpl.create(
+            name = name,
+            zOrder = zOrder ?: this.zOrder--,
+            initCapacity = 5000,
+            textureArray = textureArray,
+            camera = (camera ?: DefaultCamera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraInternal,
+            textureFormat = textureFormat,
+            textureFilter = textureFilter,
+            antiAliasing = antiAliasing
+        ).also {
+            it.init(mainSurface.width, mainSurface.height, true)
+            surfaces.add(it)
+        }
 
     override fun getSurface(name: String): Surface2D? =
         surfaces.find { it.name == name }

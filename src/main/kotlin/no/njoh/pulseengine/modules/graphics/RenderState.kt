@@ -1,12 +1,11 @@
 package no.njoh.pulseengine.modules.graphics
 
-import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
-
 class RenderState(
+    var textureFormat: TextureFormat,
+    var textureFilter: TextureFilter,
+    var antiAliasing: AntiAliasingType,
     var rgba: Float = 0f,
-    var depth: Float = 0f,
-    var hdrEnabled: Boolean = false,
-    var antiAliasing: AntiAliasingType = NONE
+    var depth: Float = 0f
 ) {
     init
     {

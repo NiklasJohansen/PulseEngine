@@ -2,6 +2,8 @@ package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
+import no.njoh.pulseengine.modules.graphics.TextureFilter.LINEAR
+import no.njoh.pulseengine.modules.graphics.TextureFormat.NORMAL
 
 interface Graphics
 {
@@ -12,8 +14,9 @@ interface Graphics
         name: String,
         zOrder: Int? = null,
         camera: Camera? = null,
-        antiAliasing: AntiAliasingType = NONE,
-        hdrEnabled: Boolean = false
+        textureFormat: TextureFormat = NORMAL,
+        textureFilter: TextureFilter = LINEAR,
+        antiAliasing: AntiAliasingType = NONE
     ): Surface2D
     fun getSurface(name: String): Surface2D?
     fun getSurfaceOrDefault(name: String): Surface2D

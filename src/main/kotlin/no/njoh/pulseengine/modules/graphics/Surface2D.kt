@@ -4,6 +4,8 @@ import no.njoh.pulseengine.data.Color
 import no.njoh.pulseengine.data.assets.Font
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
+import no.njoh.pulseengine.modules.graphics.TextureFilter.LINEAR
+import no.njoh.pulseengine.modules.graphics.TextureFormat.NORMAL
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.modules.graphics.renderers.*
@@ -42,8 +44,9 @@ interface Surface2D : Surface
     fun setBackgroundColor(color: Color): Surface2D
     fun setBlendFunction(func: BlendFunction): Surface2D
     fun setAntiAliasingType(antiAliasing: AntiAliasingType): Surface2D
-    fun setHdrEnabled(enabled: Boolean): Surface2D
     fun setIsVisible(isVisible: Boolean): Surface2D
+    fun setTextureFormat(format: TextureFormat): Surface2D
+    fun setTextureFilter(filter: TextureFilter): Surface2D
     fun setTextureScale(scale: Float): Surface2D
 
     // Post processing
@@ -207,12 +210,23 @@ class Surface2DImpl(
         return this
     }
 
-    override fun setHdrEnabled(enabled: Boolean): Surface2D
+    override fun setTextureFormat(format: TextureFormat): Surface2D
     {
-        if (enabled != renderState.hdrEnabled)
+        if (format != renderState.textureFormat)
         {
-            renderState.hdrEnabled = enabled
-            renderTarget.hdrEnabled = enabled
+            renderState.textureFormat = format
+            renderTarget.textureFormat = format
+            renderTarget.init(width, height)
+        }
+        return this
+    }
+
+    override fun setTextureFilter(filter: TextureFilter): Surface2D
+    {
+        if (filter != renderState.textureFilter)
+        {
+            renderState.textureFilter = filter
+            renderTarget.textureFilter = filter
             renderTarget.init(width, height)
         }
         return this
@@ -269,10 +283,10 @@ class Surface2DImpl(
 
     companion object
     {
-        private fun createRenderTarget(textureScale: Float, renderState: RenderState) = when (renderState.antiAliasing)
+        private fun createRenderTarget(textureScale: Float, state: RenderState) = when (state.antiAliasing)
         {
-            NONE -> OffScreenRenderTarget(textureScale, renderState.hdrEnabled)
-            else -> MultisampledOffScreenRenderTarget(textureScale, renderState.hdrEnabled, renderState.antiAliasing)
+            NONE -> OffScreenRenderTarget(textureScale, state.textureFormat, state.textureFilter)
+            else -> MultisampledOffScreenRenderTarget(textureScale, state.textureFormat, state.textureFilter, state.antiAliasing)
         }
 
         fun create(
@@ -281,10 +295,11 @@ class Surface2DImpl(
             initCapacity: Int,
             textureArray: TextureArray,
             camera: CameraInternal,
-            antiAliasing: AntiAliasingType = NONE,
-            hdrEnabled: Boolean = false
+            textureFormat: TextureFormat = NORMAL,
+            textureFilter: TextureFilter = LINEAR,
+            antiAliasing: AntiAliasingType = NONE
         ): Surface2DImpl {
-            val renderState = RenderState(antiAliasing = antiAliasing, hdrEnabled = hdrEnabled)
+            val renderState = RenderState(textureFormat, textureFilter, antiAliasing)
             return Surface2DImpl(
                 name = name,
                 zOrder = zOrder,

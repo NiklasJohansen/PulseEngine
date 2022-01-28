@@ -3,11 +3,14 @@ package no.njoh.pulseengine.modules.graphics
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
 import no.njoh.pulseengine.modules.graphics.objects.FrameBufferObject
+import org.lwjgl.opengl.GL11.*
+import org.lwjgl.opengl.GL13.GL_MULTISAMPLE
 
 interface RenderTarget
 {
     var textureScale: Float
-    var hdrEnabled: Boolean
+    var textureFormat: TextureFormat
+    var textureFilter: TextureFilter
     fun init(width: Int, height: Int)
     fun begin()
     fun end()
@@ -17,7 +20,8 @@ interface RenderTarget
 
 class OffScreenRenderTarget(
     override var textureScale: Float,
-    override var hdrEnabled: Boolean
+    override var textureFormat: TextureFormat,
+    override var textureFilter: TextureFilter
 ) : RenderTarget {
     private lateinit var fbo: FrameBufferObject
 
@@ -26,7 +30,7 @@ class OffScreenRenderTarget(
         if (this::fbo.isInitialized)
             fbo.delete()
 
-        fbo = FrameBufferObject.create(width, height, textureScale, hdrEnabled, NONE)
+        fbo = FrameBufferObject.create(width, height, textureScale, textureFormat, textureFilter, NONE)
     }
 
     override fun begin() = fbo.bind()
@@ -37,7 +41,8 @@ class OffScreenRenderTarget(
 
 class MultisampledOffScreenRenderTarget(
     override var textureScale: Float,
-    override var hdrEnabled: Boolean,
+    override var textureFormat: TextureFormat,
+    override var textureFilter: TextureFilter,
     private val antiAliasing: AntiAliasingType
 ) : RenderTarget {
 
@@ -52,13 +57,21 @@ class MultisampledOffScreenRenderTarget(
         if (this::msFbo.isInitialized)
             msFbo.delete()
 
-        fbo = FrameBufferObject.create(width, height, textureScale, hdrEnabled, NONE)
-        msFbo = FrameBufferObject.create(width, height, textureScale, hdrEnabled, antiAliasing)
+        fbo = FrameBufferObject.create(width, height, textureScale, textureFormat, textureFilter, NONE)
+        msFbo = FrameBufferObject.create(width, height, textureScale, textureFormat, textureFilter, antiAliasing)
     }
 
-    override fun begin() = msFbo.bind()
+    override fun begin()
+    {
+        glEnable(GL_MULTISAMPLE)
+        msFbo.bind()
+    }
 
-    override fun end() = msFbo.release()
+    override fun end()
+    {
+        msFbo.release()
+        glDisable(GL_MULTISAMPLE)
+    }
 
     override fun getTexture(): Texture
     {
