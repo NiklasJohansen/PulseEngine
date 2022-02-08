@@ -41,7 +41,13 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
     internal var format: Int = 0
         private set
 
-    open fun finalize(textureId: Int, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
+    internal var isBindless = false
+        private set
+
+    internal var attachment: Int = -1
+        private set
+
+    open fun finalize(textureId: Int, isBindless: Boolean, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, attachment: Int = -1)
     {
         this.textureData = null
         this.id = textureId
@@ -49,6 +55,8 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
         this.vMin = vMin
         this.uMax = uMax
         this.vMax = vMax
+        this.attachment = attachment
+        this.textureData = null
     }
 
     override fun load()

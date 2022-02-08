@@ -2,7 +2,8 @@ package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.AntiAliasingType.MSAA4
-import no.njoh.pulseengine.modules.graphics.TextureFilter.LINEAR
+import no.njoh.pulseengine.modules.graphics.Attachment.*
+import no.njoh.pulseengine.modules.graphics.TextureFilter.BILINEAR_INTERPOLATION
 import no.njoh.pulseengine.modules.graphics.TextureFormat.NORMAL
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
 import no.njoh.pulseengine.util.Logger
@@ -33,7 +34,8 @@ class RetainedModeGraphics : GraphicsEngineInterface
             camera = mainCamera,
             antiAliasing = MSAA4,
             textureFormat = NORMAL,
-            textureFilter = LINEAR
+            textureFilter = BILINEAR_INTERPOLATION,
+            attachments = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER)
         )
         surfaces.add(mainSurface)
 
@@ -44,6 +46,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
     {
         Logger.info("Cleaning up graphics...")
         textureArray.cleanup()
+        renderer.cleanup()
         surfaces.forEachFast { it.cleanup() }
     }
 
@@ -86,7 +89,8 @@ class RetainedModeGraphics : GraphicsEngineInterface
 
     override fun preRender()
     {
-        surfaces.forEachCamera {
+        surfaces.forEachCamera()
+        {
             it.updateViewMatrix()
             it.updateWorldPositions(mainSurface.width, mainSurface.height)
         }
@@ -105,6 +109,7 @@ class RetainedModeGraphics : GraphicsEngineInterface
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glViewport(0, 0, mainSurface.width, mainSurface.height)
 
+        surfaces.forEachFast { it.finalizeTexture() }
         surfaces.forEachFiltered({ it.isVisible }) { renderer.render(it.getTexture()) }
     }
 
@@ -114,7 +119,8 @@ class RetainedModeGraphics : GraphicsEngineInterface
         camera: Camera?,
         textureFormat: TextureFormat,
         textureFilter: TextureFilter,
-        antiAliasing: AntiAliasingType
+        antiAliasing: AntiAliasingType,
+        attachments: List<Attachment>
     ): Surface2D = surfaces
         .find { it.name == name }
         ?: Surface2DImpl.create(
@@ -125,7 +131,8 @@ class RetainedModeGraphics : GraphicsEngineInterface
             camera = (camera ?: DefaultCamera.createOrthographic(mainSurface.width, mainSurface.height)) as CameraInternal,
             textureFormat = textureFormat,
             textureFilter = textureFilter,
-            antiAliasing = antiAliasing
+            antiAliasing = antiAliasing,
+            attachments = attachments
         ).also {
             it.init(mainSurface.width, mainSurface.height, true)
             surfaces.add(it)

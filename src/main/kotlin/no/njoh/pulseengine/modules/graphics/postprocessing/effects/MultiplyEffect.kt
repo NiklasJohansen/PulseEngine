@@ -22,6 +22,6 @@ class MultiplyEffect(
         renderer.render(texture, surface.getTexture())
         fbo.release()
 
-        return fbo.texture
+        return fbo.getTexture() ?: texture
     }
 }

@@ -40,13 +40,15 @@ class BlurEffect(
         renderers[0].render(texture)
         fbo[0].release()
 
+        val firstPassTexture = fbo[0].getTexture() ?: return texture
+
         fbo[1].bind()
         fbo[1].clear()
         programs[1].bind()
         programs[1].setUniform("radius", radius)
-        renderers[1].render(fbo[0].texture)
+        renderers[1].render(firstPassTexture)
         fbo[1].release()
 
-        return fbo[1].texture
+        return fbo[1].getTexture() ?: texture
     }
 }

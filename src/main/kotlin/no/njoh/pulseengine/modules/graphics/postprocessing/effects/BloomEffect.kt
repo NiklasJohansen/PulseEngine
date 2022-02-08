@@ -43,6 +43,6 @@ class BloomEffect(
         renderer.render(texture, blurredBrightPass)
         fbo.release()
 
-        return fbo.texture
+        return fbo.getTexture() ?: texture
     }
 }

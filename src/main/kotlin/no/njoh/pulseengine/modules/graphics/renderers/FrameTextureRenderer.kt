@@ -73,7 +73,7 @@ class FrameTextureRenderer(private val program: ShaderProgram)
         glActiveTexture(GL_TEXTURE0)
     }
 
-    fun cleanUp()
+    fun cleanup()
     {
         glDisableVertexAttribArray(0)
 

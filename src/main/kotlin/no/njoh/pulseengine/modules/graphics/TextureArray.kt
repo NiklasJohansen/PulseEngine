@@ -50,7 +50,7 @@ class TextureArray(
 
         val u = texture.width / maxTextureWidth.toFloat()
         val v = texture.height / maxTextureHeight.toFloat()
-        texture.finalize(index, 0.0f, 0.0f, u, v)
+        texture.finalize(textureId = index, isBindless = true, uMin = 0.0f, vMin = 0.0f, uMax = u, vMax = v)
     }
 
     fun bind(textureUnit: Int = 0)

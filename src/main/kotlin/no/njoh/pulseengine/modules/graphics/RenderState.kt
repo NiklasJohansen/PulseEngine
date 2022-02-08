@@ -4,9 +4,17 @@ class RenderState(
     var textureFormat: TextureFormat,
     var textureFilter: TextureFilter,
     var antiAliasing: AntiAliasingType,
+    val attachments: List<Attachment>,
     var rgba: Float = 0f,
     var depth: Float = 0f
 ) {
+    val hasDepthAttachment = attachments.any { it.hasDepth }
+    val textureAttachments = attachments
+        .filter { it.isDrawable }
+        .map { it.value }
+        .toTypedArray()
+        .toIntArray()
+
     init
     {
         setRGBA(1f, 1f, 1f, 1f)

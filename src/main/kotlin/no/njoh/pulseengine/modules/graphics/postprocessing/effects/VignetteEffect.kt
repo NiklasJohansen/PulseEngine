@@ -24,6 +24,6 @@ class VignetteEffect(
         renderer.render(texture)
         fbo.release()
 
-        return fbo.texture
+        return fbo.getTexture() ?: texture
     }
 }

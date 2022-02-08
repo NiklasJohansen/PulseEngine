@@ -1,12 +1,13 @@
 package no.njoh.pulseengine.modules.graphics.postprocessing
 
 import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.util.forEachFast
 
 class PostProcessingPipeline
 {
     private val effects = mutableListOf<PostProcessingEffect>()
 
-    fun init() = effects.forEach { it.init() }
+    fun init() = effects.forEachFast { it.init() }
 
     fun addEffect(effect: PostProcessingEffect) = effects.add(effect)
 
@@ -15,11 +16,13 @@ class PostProcessingPipeline
     fun process(texture: Texture): Texture
     {
         var latestTexture = texture
-        effects.forEach { latestTexture = it.process(latestTexture) }
+        effects.forEachFast { latestTexture = it.process(latestTexture) }
         return latestTexture
     }
 
-    fun reloadShaders() = effects.forEach { it.reloadShaders() }
+    fun getFinalTexture() = effects.lastOrNull()?.getTexture()
 
-    fun cleanUp() = effects.forEach { it.cleanUp() }
+    fun reloadShaders() = effects.forEachFast { it.reloadShaders() }
+
+    fun cleanUp() = effects.forEachFast { it.cleanUp() }
 }
