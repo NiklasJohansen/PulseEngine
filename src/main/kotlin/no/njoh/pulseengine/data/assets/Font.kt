@@ -121,7 +121,7 @@ class Font(
         val DEFAULT: Font = Font(
             fileName = "/pulseengine/assets/FiraSans-Regular.ttf",
             name = "default_font",
-            fontSizes = floatArrayOf(24f, 48f, 96f)
+            fontSizes = floatArrayOf(18f, 24f, 48f, 96f)
         )
     }
 }

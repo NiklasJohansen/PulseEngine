@@ -8,6 +8,7 @@ import no.njoh.pulseengine.data.CursorType.*
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.graphics.Camera
+import no.njoh.pulseengine.modules.graphics.Attachment
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.UiUtil.findElementById
 import no.njoh.pulseengine.modules.graphics.ui.elements.InputField
@@ -114,10 +115,10 @@ class SceneEditor: Widget
         lastSaveLoadDirectory = engine.data.saveDirectory
 
         // Create separate render surface for editor UI
-        engine.gfx.createSurface("sceneEditorForegroundSurface")
+        engine.gfx.createSurface("scene_editor_foreground", attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_TEXTURE))
 
         // Background surface for grid
-        engine.gfx.createSurface("sceneEditorBackgroundSurface", zOrder = 20, camera = activeCamera)
+        engine.gfx.createSurface("scene_editor_background", zOrder = 20, camera = activeCamera)
 
         // Register a console command to toggle editor visibility
         engine.console.registerCommand("showSceneEditor") {
@@ -138,7 +139,7 @@ class SceneEditor: Widget
         entityPropertiesUI.rowPadding = 0f
 
         systemPropertiesUI = RowPanel()
-        systemPropertiesUI.rowHeight = 38f
+        systemPropertiesUI.rowHeight = 34f
         systemPropertiesUI.rowPadding = 0f
 
         // Create content
@@ -302,7 +303,10 @@ class SceneEditor: Widget
         if (isMoving)
         {
             engine.input.setCursor(MOVE)
-            entitySelection.forEach { it.handleEntityMoving(engine) }
+            entitySelection.forEachFast { it.handleEntityMoving(engine) }
+
+            if (!isMoving)
+                entitySelection.forEachFast { it.onMovedScaledOrRotated(engine) }
         }
 
         if (rootUI.width.value.toInt() != engine.window.width || rootUI.height.value.toInt() != engine.window.height)
@@ -314,9 +318,9 @@ class SceneEditor: Widget
     override fun onRender(engine: PulseEngine)
     {
         if (showGrid)
-            renderGrid(engine.gfx.getSurfaceOrDefault("sceneEditorBackgroundSurface"))
+            renderGrid(engine.gfx.getSurfaceOrDefault("scene_editor_background"))
 
-        val foregroundSurface = engine.gfx.getSurfaceOrDefault("sceneEditorForegroundSurface")
+        val foregroundSurface = engine.gfx.getSurfaceOrDefault("scene_editor_foreground")
         renderEntityIconAndGizmo(foregroundSurface, engine)
         renderSelectionRectangle(foregroundSurface)
         rootUI.render(foregroundSurface)
@@ -325,7 +329,7 @@ class SceneEditor: Widget
     private fun renderEntityIconAndGizmo(surface: Surface2D, engine: PulseEngine)
     {
         val showResizeDots = (entitySelection.size == 1)
-        entitySelection.forEach { it.renderGizmo(surface, showResizeDots) }
+        entitySelection.forEachFast { it.renderGizmo(surface, showResizeDots) }
 
         engine.scene.forEachEntityTypeList { entities ->
             entities[0]::class.findAnnotation<EditorIcon>()?.let { annotation ->
@@ -421,7 +425,7 @@ class SceneEditor: Widget
         {
             if (entitySelection.isNotEmpty())
             {
-                entitySelection.forEach { it.set(DEAD) }
+                entitySelection.forEachFast { it.set(DEAD) }
                 entitySelection.clear()
                 isMoving = false
             }
@@ -532,7 +536,7 @@ class SceneEditor: Widget
         if (engine.input.wasClicked(Key.RIGHT)) xMove += 1
         if (xMove != 0f || yMouse != 0f)
         {
-            entitySelection.forEach {
+            entitySelection.forEachFast {
                 it.x += xMove
                 it.y += yMove
                 it.set(POSITION_UPDATED)
@@ -780,14 +784,14 @@ class SceneEditor: Widget
             .groupBy { it.findAnnotation<Property>()?.category ?: "" }
             .toList()
             .sortedBy { it.first }
-            .forEach { (category, props) ->
+            .forEachFast { (category, props) ->
                 props.sortedBy { it.findAnnotation<Property>()?.order ?: 0 }
                     .filterIsInstance<KMutableProperty<*>>()
                     .filter { EditorUtil.isPropertyEditable(it) }
                     .also {
                         if (it.isNotEmpty() && category.isNotEmpty())
                             entityPropertiesUI.addChildren(EditorUtil.createCategoryHeader(category))
-                    }.forEach { prop ->
+                    }.forEachFast { prop ->
                         val (propertyPanel, inputElement) = EditorUtil.createPropertyUI(entity, prop)
                         entityPropertiesUI.addChildren(propertyPanel)
                         entityPropertyUiRows[prop.name] = inputElement
@@ -999,7 +1003,6 @@ class SceneEditor: Widget
         isResizingVertically = false
         isResizingHorizontally = false
         entityPropertiesUI.clearChildren()
-        systemPropertiesUI.clearChildren()
         entityPropertyUiRows.clear()
         entitySelection.clear()
     }

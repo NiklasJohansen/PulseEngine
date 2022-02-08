@@ -52,7 +52,7 @@ abstract class UiElement(
     fun addChildren(vararg uiElements: UiElement)
     {
         children.addAll(uiElements)
-        children.forEach { it.parent = this }
+        children.forEachFast { it.parent = this }
         setLayoutDirty()
     }
 
@@ -149,7 +149,7 @@ abstract class UiElement(
             return
 
         onRender(surface)
-        children.forEach { it.render(surface) }
+        children.forEachFast { it.render(surface) }
 
         if (parent == null)
             renderPopup(surface)
@@ -213,7 +213,7 @@ abstract class UiElement(
             return
 
         popup?.update(engine)
-        children.forEach { it.updatePopup(engine) }
+        children.forEachFast { it.updatePopup(engine) }
     }
 
     private fun renderPopup(surface: Surface2D)
@@ -222,7 +222,7 @@ abstract class UiElement(
             return
 
         popup?.render(surface)
-        children.forEach { it.renderPopup(surface) }
+        children.forEachFast { it.renderPopup(surface) }
     }
 
     fun printStructure(indent: Int = 0)

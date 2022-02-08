@@ -504,8 +504,8 @@ class InputField (
         {
             val xArrow = x.value + width.value - numberStepperWidth / 2
             val yArrow = y.value + height.value / 2
-            drawArrow(xArrow, yArrow - 5f, 7f, 7f,surface, fontColor, -2.5f)
-            drawArrow(xArrow, yArrow + 5f, 7f, 7f, surface, fontColor, 2.5f)
+            drawArrow(xArrow, yArrow - 5f, 6f, 6f, surface, fontColor, -2.5f)
+            drawArrow(xArrow, yArrow + 5f, 6f, 6f, surface, fontColor, 2.5f)
         }
     }
 

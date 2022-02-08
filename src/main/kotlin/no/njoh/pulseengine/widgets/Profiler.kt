@@ -34,7 +34,7 @@ class Profiler : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface("engineApp", -100)
+        engine.gfx.createSurface("overlay", -100)
         engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "graph_font", floatArrayOf(TICK_MARK_FONT_SIZE, HEADER_FONT_SIZE, VALUE_FONT_SIZE))
         engine.console.registerCommand("showGraphs") {
             isRunning = !isRunning
@@ -120,9 +120,9 @@ class Profiler : Widget
             h *= scale
         }
 
-        val surface = engine.gfx.getSurfaceOrDefault("engineApp")
+        val surface = engine.gfx.getSurfaceOrDefault("overlay")
         val font = engine.asset.get<Font>("graph_font")
-        
+
         for (graph in graphs)
         {
             graph.render(surface, font, x, y, w, h)
@@ -155,10 +155,11 @@ class Profiler : Widget
         val unit: String,
         val source: () -> Float
     ) : Iterable<Float> {
-        private var data: FloatArray = FloatArray(WINDOWS_LENGTH * 10)
+        private var data: FloatArray = FloatArray(WINDOWS_LENGTH * 2)
         private var taleCursor: Int = 0
         private var headCursor: Int = 0
         private var latestValue: Float = 0f
+        private var averageValue: Float = 0f
         private val iterator = GraphDataIterator(data, taleCursor, headCursor)
 
         fun size(): Int =
@@ -176,6 +177,8 @@ class Profiler : Widget
 
             if (size() >= WINDOWS_LENGTH)
                 taleCursor = (taleCursor + 1) % data.size
+
+            averageValue = data.average().toFloat()
         }
 
         fun render(surface: Surface2D, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
@@ -251,8 +254,10 @@ class Profiler : Widget
                 i++
             }
 
-            val text = if (latestValue < 5) "%.2f".format(Locale.US, latestValue) else latestValue.toInt().toString()
-            surface.drawText(text, x + 5, y + 22f, font = font, fontSize = VALUE_FONT_SIZE, yOrigin = 0.5f)
+            val lastValueText = if (latestValue < 5) "%.2f".format(Locale.US, latestValue) else "(${latestValue.toInt()})"
+            val averageValueText = if (averageValue < 5) "(%.2f)".format(Locale.US, averageValue) else "(${averageValue.toInt()})"
+            surface.drawText(lastValueText, x + 5, y + 22f, font = font, fontSize = VALUE_FONT_SIZE, yOrigin = 0.5f)
+            surface.drawText(averageValueText, x + 5, y + 50f, font = font, fontSize = AVG_VALUE_FONT_SIZE, yOrigin = 0.5f)
         }
 
         override fun iterator(): Iterator<Float> =
@@ -288,5 +293,6 @@ class Profiler : Widget
         const val TICK_MARK_FONT_SIZE = 15f
         const val HEADER_FONT_SIZE = 24f
         const val VALUE_FONT_SIZE = 36f
+        const val AVG_VALUE_FONT_SIZE = 20f
     }
 }

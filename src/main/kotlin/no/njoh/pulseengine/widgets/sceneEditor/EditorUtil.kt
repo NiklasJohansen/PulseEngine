@@ -33,17 +33,17 @@ object EditorUtil
 {
     val style = EditorStyle().apply()
     {
-        colors["LABEL"] = Color(0.9436735f, 0.9595646f, 0.9714286f, 1.0f)
-        colors["BG_LIGHT"] = Color(0.06857083f, 0.12020138f, 0.17142856f, 0.98039216f)
-        colors["BG_DARK"] = Color(0.19515306f, 0.2608163f, 0.3642857f, 0.92156863f)
-        colors["STROKE"] = Color(0.2509804f, 0.40784314f, 0.58431375f, 1.0f)
-        colors["HEADER"] = Color(0.25101838f, 0.4111474f, 0.5857143f, 1.0f)
-        colors["HEADER_HOVER"] = Color(0.25744683f, 0.4315871f, 0.6214286f, 1.0f)
-        colors["BUTTON"] = Color(0.16760094f, 0.21887684f, 0.3214286f, 1.0f)
-        colors["BUTTON_HOVER"] = Color(0.26428387f, 0.39176375f, 0.5285714f, 1.0f)
+        colors["LABEL"] = Color(1.0f, 1.0f, 1.0f, 1.0f)
+        colors["BG_LIGHT"] = Color(0.036326528f, 0.048244897f, 0.057142854f, 0.80784315f)
+        colors["BG_DARK"] = Color(0.024897957f, 0.026741894f, 0.028571427f, 0.9490196f)
+        colors["STROKE"] = Color(0.03612247f, 0.038525835f, 0.04285717f, 1.0f)
+        colors["HEADER"] = Color(0.08892856f, 0.11766804f, 0.14999998f, 0.9490196f)
+        colors["HEADER_HOVER"] = Color(0.09918367f, 0.17537574f, 0.25714284f, 1.0f)
+        colors["BUTTON"] = Color(0.033418354f, 0.03418366f, 0.03571427f, 1.0f)
+        colors["BUTTON_HOVER"] = Color(0.047058824f, 0.050980393f, 0.050980393f, 1.0f)
         colors["BUTTON_EXIT"] = Color(0.7642857f, 0.3603061f, 0.3603061f, 0.69803923f)
-        colors["ITEM"] = Color(0.124080695f, 0.18301985f, 0.27142859f, 1.0f)
-        colors["ITEM_HOVER"] = Color(0.3053039f, 0.45996523f, 0.6285714f, 1.0f)
+        colors["ITEM"] = Color(0.048367348f, 0.06711405f, 0.08571428f, 1.0f)
+        colors["ITEM_HOVER"] = Color(0.10275511f, 0.11865307f, 0.13571429f, 1.0f)
     }
 
     /**
@@ -171,7 +171,7 @@ object EditorUtil
         items: List<T>,
         onItemToString: (T) -> String
     ): DropdownMenu<T> {
-        val fontSize = 20f
+        val fontSize = 18f
         val font = style.getFont()
         val showScrollbar = items.size > 8
         val scrollBarWidth = if (showScrollbar) 25f else 0f
@@ -363,6 +363,7 @@ object EditorUtil
     {
         val props = system::class.memberProperties
             .filter { it is KMutableProperty<*> && isPropertyEditable(it) }
+            .sortedBy { it.findAnnotation<Property>()?.order ?: 1000 }
             .map { prop ->
                 createPropertyUI(system, prop as KMutableProperty<*>).first.apply {
                     padding.left = 10f
@@ -379,7 +380,7 @@ object EditorUtil
         val label = Label(headerText).apply {
             focusable = false
             padding.left = 10f
-            fontSize = 22f
+            fontSize = 20f
             color = style.getColor("LABEL")
         }
 
@@ -392,7 +393,7 @@ object EditorUtil
             color = style.getColor("LABEL")
         }
 
-        val exitButton = Button(width = Size.absolute(20f)).apply {
+        val exitButton = Button(width = Size.absolute(15f)).apply {
             padding.setAll(5f)
             color = Color.BLANK
             hoverColor = style.getColor("BUTTON_EXIT")
@@ -502,7 +503,7 @@ object EditorUtil
             padding.bottom = 5f
             padding.right = 5f
             font = style.getFont()
-            fontSize = 20f
+            fontSize = 18f
             fontColor = style.getColor("LABEL")
             bgColor = style.getColor("BUTTON")
             bgColorHover = style.getColor("BUTTON_HOVER")
@@ -526,7 +527,7 @@ object EditorUtil
         val typeLabel = Label("Entity type", width = Size.relative(0.5f)).apply {
             padding.setAll(5f)
             padding.left = 10f
-            fontSize = 20f
+            fontSize = 18f
             font = style.getFont()
             color = style.getColor("LABEL")
         }
@@ -561,7 +562,7 @@ object EditorUtil
             }
             propType?.kotlin?.isSubclassOf(Boolean::class) == true ->
             {
-                createItemSelectionDropdownUI(prop.getter.call(obj), listOf(true, false), { it.toString() }).apply {
+                createItemSelectionDropdownUI(prop.getter.call(obj), listOf(true, false), { it.toString().capitalize() }).apply {
                     setOnItemChanged { it?.let { setProperty(obj, prop.name, it) } }
                 }
             }

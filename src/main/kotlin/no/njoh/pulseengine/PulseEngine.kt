@@ -199,11 +199,18 @@ class PulseEngineImpl(
     {
         data.measureRenderTimeAndUpdateInterpolationValue()
         {
+            // Get ready for rendering next frame
             gfx.preRender()
+
+            // Gather batch data to draw
             scene.render()
             game.onRender()
             widget.render(this)
+
+            // Perform GPU draw calls
             gfx.postRender()
+
+            // Swap front and back buffers
             window.swapBuffers()
             window.wasResized = false
         }

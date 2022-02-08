@@ -94,7 +94,7 @@ class SceneManagerImpl : SceneManagerEngineInterface() {
     override var state: SceneState = STOPPED
 
     private lateinit var engine: PulseEngine
-    private lateinit var fadeSurface: Surface2D
+    private lateinit var transitionSurface: Surface2D
 
     private var nextStagedScene: Scene? = null
     private var nextSceneFileName: String? = null
@@ -283,12 +283,12 @@ class SceneManagerImpl : SceneManagerEngineInterface() {
 
         if (transitionFade >= 0)
         {
-            if (!this::fadeSurface.isInitialized)
-                fadeSurface = engine.gfx.createSurface("sceneFadeSurface", zOrder = -99)
+            if (!this::transitionSurface.isInitialized)
+                transitionSurface = engine.gfx.createSurface("scene_transition", zOrder = -99)
 
             val fade = (cos(transitionFade * PI * 2f + PI).toFloat() + 1f) / 2f
-            fadeSurface.setDrawColor(0f, 0f, 0f, fade)
-            fadeSurface.drawQuad(0f, 0f, fadeSurface.width.toFloat(), fadeSurface.height.toFloat())
+            transitionSurface.setDrawColor(0f, 0f, 0f, fade)
+            transitionSurface.drawQuad(0f, 0f, transitionSurface.width.toFloat(), transitionSurface.height.toFloat())
         }
     }
 
