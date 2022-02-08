@@ -109,6 +109,12 @@ class DropdownMenu <T> (
             selectedItem = item
     }
 
+    fun clearItems()
+    {
+        rowPanel.clearChildren()
+        selectedItem = null
+    }
+
     override fun onMouseClicked(engine: PulseEngine)
     {
         super.onMouseClicked(engine)

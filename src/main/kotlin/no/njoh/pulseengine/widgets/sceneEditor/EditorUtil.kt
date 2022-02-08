@@ -8,6 +8,8 @@ import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Scrollable
 import no.njoh.pulseengine.modules.graphics.ui.Size
+import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.ABSOLUTE
+import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.AUTO
 import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.elements.*
 import no.njoh.pulseengine.modules.graphics.ui.elements.InputField.ContentType.*
@@ -15,6 +17,7 @@ import no.njoh.pulseengine.modules.graphics.ui.layout.*
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.forEachFast
 import java.lang.IllegalArgumentException
 import kotlin.math.min
 import kotlin.reflect.KClass
@@ -46,13 +49,13 @@ object EditorUtil
     /**
      * Creates a movable and resizable window panel.
      */
-    fun createWindowUI(title: String): WindowPanel
+    fun createWindowUI(title: String, x: Float = 0f, y: Float = 20f, width: Float = 300f, height: Float = 200f): WindowPanel
     {
         val windowPanel = WindowPanel(
-            x = Position.fixed(0f),
-            y = Position.fixed(20f),
-            width = Size.absolute(300f),
-            height = Size.absolute(200f)
+            x = Position.fixed(x),
+            y = Position.fixed(y),
+            width = Size.absolute(width),
+            height = Size.absolute(height)
         )
 
         val label = Label(title).apply {
@@ -246,6 +249,43 @@ object EditorUtil
         }
 
         return createScrollableSectionUI(tilePanel)
+    }
+
+    /**
+     * Creates a [Surface2D] viewport.
+     */
+    fun createViewportUI(engine: PulseEngine): VerticalPanel
+    {
+        val image = Image()
+        image.bgColor = Color(0f, 0f, 0f, 1f)
+        image.texture = engine.gfx.mainSurface.getTexture()
+
+        val surfaceSelector = createItemSelectionDropdownUI(
+            selectedItem = engine.gfx.mainSurface.name,
+            onItemToString = { it },
+            items = engine.gfx.getAllSurfaces().flatMap { it.getTextures().mapIndexed { i, tex -> "${it.name}  (${tex.name})  #$i" } }
+        ).apply {
+            width.updateType(AUTO)
+            height.updateType(ABSOLUTE)
+            height.value = 30f
+            padding.setAll(0f)
+            bgColor = image.bgColor
+            setOnItemChanged { surfaceName ->
+                val surface = surfaceName.substringBefore("  (")
+                val index = surfaceName.substringAfterLast("#").toIntOrNull() ?: 0
+                image.texture = engine.gfx.getSurface(surface)?.getTexture(index)
+            }
+            setOnClicked {
+                val selected = selectedItem
+                clearItems()
+                engine.gfx.getAllSurfaces().forEachFast { surface ->
+                    surface.getTextures().forEachIndexed { i, tex -> addItem("${surface.name}  (${tex.name})  #$i") }
+                }
+                selectedItem = selected
+            }
+        }
+
+        return VerticalPanel().apply { addChildren(surfaceSelector, image) }
     }
 
     /**

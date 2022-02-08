@@ -153,6 +153,7 @@ class SceneEditor: Widget
                 MenuBarItem("Entity properties") { createEntityPropertyWindow() },
                 MenuBarItem("Scene assets") { createAssetWindow(engine) },
                 MenuBarItem("Scene systems") { createSceneSystemsPropertyWindow(engine) },
+                MenuBarItem("Viewport") { createViewportWindow(engine) },
                 MenuBarItem("Grid") {
                     showGrid = !showGrid
                 },
@@ -221,6 +222,14 @@ class SceneEditor: Widget
             sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
             dockingUI.insertRight(sceneSystemWindow)
         }
+    }
+
+    private fun createViewportWindow(engine: PulseEngine)
+    {
+        val viewportUi = EditorUtil.createViewportUI(engine)
+        val viewportWindow = EditorUtil.createWindowUI("Viewport", 300f, 300f, 640f, 480f)
+        viewportWindow.body.addChildren(viewportUi)
+        dockingUI.addChildren(viewportWindow)
     }
 
     override fun onUpdate(engine: PulseEngine)
