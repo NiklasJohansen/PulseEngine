@@ -1,7 +1,5 @@
 package no.njoh.pulseengine.data.assets
 
-import no.njoh.pulseengine.data.assets.Texture
-
 class SpriteSheet(
     fileName: String,
     name: String,
@@ -14,9 +12,9 @@ class SpriteSheet(
     var size = 0
         private set
 
-    override fun finalize(textureId: Int, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
+    override fun finalize(textureId: Int, isBindless: Boolean, uMin: Float, vMin: Float, uMax: Float, vMax: Float, attachment: Int)
     {
-        super.finalize(textureId, uMin, vMin, uMax, vMax)
+        super.finalize(textureId, isBindless, uMin, vMin, uMax, vMax, attachment)
 
         val uCellSize = 1f / horizontalCells
         val vCellSize = 1f / verticalCells
@@ -35,7 +33,7 @@ class SpriteSheet(
             val vMaxCell = vMinCell + vCellSize * vTexSize
 
             texture.load(textureData, (width * uCellSize).toInt(), (height * vCellSize).toInt(), format)
-            texture.finalize(textureId, uMinCell, vMinCell, uMaxCell, vMaxCell)
+            texture.finalize(textureId, isBindless, uMinCell, vMinCell, uMaxCell, vMaxCell)
             texture
         }
     }

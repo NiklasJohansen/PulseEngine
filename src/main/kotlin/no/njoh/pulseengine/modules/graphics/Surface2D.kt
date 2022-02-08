@@ -82,7 +82,8 @@ class Surface2DImpl(
     private val textRenderer: TextRenderer,
     private val quadRenderer: QuadBatchRenderer,
     private val lineRenderer: LineBatchRenderer,
-    private val textureRenderer: TextureBatchRenderer
+    private val bindlessTextureRenderer: BindlessTextureRenderer,
+    private val textureRenderer: TextureRenderer
 ): Surface2DInternal {
 
     override var width = 0
@@ -96,6 +97,7 @@ class Surface2DImpl(
     private val postProcessingPipeline = PostProcessingPipeline()
     private val renderers = mutableListOf(
         lineRenderer,
+        bindlessTextureRenderer,
         textureRenderer,
         quadRenderer
     )
@@ -179,11 +181,21 @@ class Surface2DImpl(
     override fun drawQuadVertex(x: Float, y: Float) =
         quadRenderer.vertex(x, y)
 
-    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float) =
-        textureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float)
+    {
+        if (texture.isBindless)
+            bindlessTextureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin)
+        else
+            textureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin)
+    }
 
-    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float) =
-        textureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin, uMin, vMin, uMax, vMax)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
+    {
+        if (texture.isBindless)
+            bindlessTextureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin, uMin, vMin, uMax, vMax)
+        else
+            textureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin)
+    }
 
     override fun drawText(text: String, x: Float, y: Float, font: Font?, fontSize: Float, xOrigin: Float, yOrigin: Float) =
         textRenderer.draw(this, text, x, y, font ?: Font.DEFAULT, fontSize, xOrigin, yOrigin)
@@ -255,12 +267,6 @@ class Surface2DImpl(
             renderTarget.textureFilter = filter
             renderTarget.init(width, height)
         }
-        return this
-    }
-
-    override fun setIsVisible(isVisible: Boolean): Surface2D
-    {
-        this.isVisible = isVisible
         return this
     }
 
@@ -339,7 +345,7 @@ class Surface2DImpl(
                 quadRenderer = QuadBatchRenderer(initCapacity, renderState),
                 lineRenderer = LineBatchRenderer(initCapacity, renderState),
                 bindlessTextureRenderer = BindlessTextureRenderer(initCapacity, renderState, textureArray),
-                textureRenderer = TextureRenderer(renderState)
+                textureRenderer = TextureRenderer(initCapacity, renderState)
             )
         }
     }

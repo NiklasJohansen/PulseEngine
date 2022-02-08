@@ -49,8 +49,8 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
 
     open fun finalize(textureId: Int, isBindless: Boolean, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, attachment: Int = -1)
     {
-        this.textureData = null
         this.id = textureId
+        this.isBindless = isBindless
         this.uMin = uMin
         this.vMin = vMin
         this.uMax = uMax
@@ -95,8 +95,12 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
     {
         val SUPPORTED_FORMATS = listOf("png")
         val BLANK = Texture("", "BLANK").apply {
-            load(null, 1, 1, GL_RGBA)
-            finalize(-1, 0f, 0f, 1f, 1f)
+            load(textureData = null, width = 1, height = 1, format = GL_RGBA)
+            finalize(textureId = -1, isBindless = true, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
+        }
+        val BLANK_BINDABLE = Texture("", "BLANK_BINDABLE").apply {
+            load(textureData = null, width = 1, height = 1, format = GL_RGBA)
+            finalize(textureId = -1, isBindless = false, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
     }
 }

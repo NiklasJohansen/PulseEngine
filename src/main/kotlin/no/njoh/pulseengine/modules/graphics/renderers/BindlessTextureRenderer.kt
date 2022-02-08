@@ -6,7 +6,7 @@ import no.njoh.pulseengine.modules.graphics.objects.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL31.glDrawArraysInstanced
 
-class TextureBatchRenderer(
+class BindlessTextureRenderer(
     private val initialCapacity: Int,
     private val renderState: RenderState,
     private val textureArray: TextureArray

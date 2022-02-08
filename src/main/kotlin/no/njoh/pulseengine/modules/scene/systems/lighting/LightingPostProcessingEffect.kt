@@ -86,7 +86,7 @@ class LightingPostProcessingEffect (
         lights = 0
         edges = 0
 
-        return fbo.texture
+        return fbo.getTexture() ?: texture
     }
 
     fun addLight(
