@@ -28,7 +28,7 @@ abstract class Assets
     abstract fun loadBinary(fileName: String, assetName: String): Binary
 }
 
-abstract class AssetsEngineInterface : Assets()
+abstract class AssetsInternal : Assets()
 {
     abstract fun loadInitialAssets()
     abstract fun setOnAssetLoaded(callback: (Asset) -> Unit)
@@ -36,7 +36,7 @@ abstract class AssetsEngineInterface : Assets()
     abstract fun cleanUp()
 }
 
-class AssetsImpl : AssetsEngineInterface()
+open class AssetsImpl : AssetsInternal()
 {
     private val assets = mutableMapOf<String, Asset>()
     private var initialAssetsLoaded = false

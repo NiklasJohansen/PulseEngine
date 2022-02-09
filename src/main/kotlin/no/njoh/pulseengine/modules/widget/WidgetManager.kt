@@ -15,7 +15,7 @@ abstract class WidgetManager
     abstract fun terminate(widget: Widget)
 }
 
-abstract class WidgetManagerEngineInterface : WidgetManager()
+abstract class WidgetManagerInternal : WidgetManager()
 {
     abstract fun init(engine: PulseEngine)
     abstract fun update(engine: PulseEngine)
@@ -23,7 +23,7 @@ abstract class WidgetManagerEngineInterface : WidgetManager()
     abstract fun cleanUp(engine: PulseEngine)
 }
 
-class WidgetManagerImpl: WidgetManagerEngineInterface()
+open class WidgetManagerImpl: WidgetManagerInternal()
 {
     private var renderTimeMs = 0f
     private var updateTimeMs = 0f

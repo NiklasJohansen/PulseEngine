@@ -11,27 +11,29 @@ import org.lwjgl.system.MemoryUtil.NULL
 
 interface Window
 {
-    fun updateScreenMode(mode: ScreenMode)
-    fun close()
-    val screenMode: ScreenMode
+    var title: String
     val width: Int
     val height: Int
+    val screenMode: ScreenMode
     val wasResized: Boolean
-    var title: String
+
+    fun updateScreenMode(mode: ScreenMode)
+    fun close()
 }
 
-interface WindowEngineInterface : Window
+interface WindowInternal : Window
 {
+    override var wasResized: Boolean
+    val windowHandle: Long
+
     fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
     fun cleanUp()
     fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit)
     fun swapBuffers()
     fun isOpen(): Boolean
-    val windowHandle: Long
-    override var wasResized: Boolean
 }
 
-class WindowImpl : WindowEngineInterface
+open class WindowImpl : WindowInternal
 {
     // Exposed properties
     override var windowHandle : Long = NULL
@@ -66,6 +68,7 @@ class WindowImpl : WindowEngineInterface
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2)
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
+        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE)
         glfwWindowHint(GLFW_DEPTH_BITS,24)
 
         this.screenMode = screenMode

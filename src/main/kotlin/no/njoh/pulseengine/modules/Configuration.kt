@@ -24,16 +24,17 @@ interface Configuration
     fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T?
 }
 
-interface ConfigurationEngineInterface : Configuration
+interface ConfigurationInternal : Configuration
 {
     val windowWidth: Int
     val windowHeight: Int
     val screenMode: ScreenMode
+
     fun init()
     fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
 }
 
-class ConfigurationImpl : ConfigurationEngineInterface
+open class ConfigurationImpl : ConfigurationInternal
 {
     // Exposed properties
     override var creatorName: String    by StringConfig("PulseEngine")

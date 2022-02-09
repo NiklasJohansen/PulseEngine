@@ -17,12 +17,12 @@ interface Console
     fun getSuggestions(command: String): List<Command>
 }
 
-interface ConsoleEngineInterface : Console
+interface ConsoleInternal : Console
 {
     fun init(engine: PulseEngine)
 }
 
-class ConsoleImpl : ConsoleEngineInterface
+open class ConsoleImpl : ConsoleInternal
 {
     private val commandMap = ConcurrentHashMap<String, Command>()
     private val history = mutableListOf<ConsoleEntry>()

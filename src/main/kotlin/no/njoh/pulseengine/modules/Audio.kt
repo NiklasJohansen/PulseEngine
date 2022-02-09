@@ -38,7 +38,7 @@ interface Audio
     fun setOutputDevice(deviceName: String)
 }
 
-interface AudioEngineInterface : Audio
+interface AudioInternal : Audio
 {
     fun init()
     fun setOnOutputDeviceChanged(callback: () -> Unit)
@@ -46,7 +46,7 @@ interface AudioEngineInterface : Audio
     fun cleanUp()
 }
 
-class AudioImpl : AudioEngineInterface
+open class AudioImpl : AudioInternal
 {
     private var device: Long = NULL
     private var context: Long = NULL

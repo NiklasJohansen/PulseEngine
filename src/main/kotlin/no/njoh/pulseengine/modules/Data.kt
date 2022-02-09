@@ -46,13 +46,7 @@ abstract class Data
     internal abstract fun <T> loadObjectAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
 }
 
-abstract class DataEngineInterface : Data()
-{
-    abstract fun init(creatorName: String, gameName: String)
-    abstract fun updateSaveDirectory(creatorName: String, gameName: String)
-}
-
-class MutableDataContainer : DataEngineInterface()
+open class DataImpl : Data()
 {
     override var currentFps: Int = 0
     override var renderTimeMs: Float = 0f
@@ -74,7 +68,7 @@ class MutableDataContainer : DataEngineInterface()
     var fixedUpdateAccumulator = 0.0
     var fixedUpdateLastTime = 0.0
 
-    override fun init(creatorName: String, gameName: String)
+    fun init(creatorName: String, gameName: String)
     {
         updateSaveDirectory(creatorName, gameName)
     }
@@ -142,7 +136,7 @@ class MutableDataContainer : DataEngineInterface()
         }
     }
 
-    override fun updateSaveDirectory(creatorName: String, gameName: String) =
+    fun updateSaveDirectory(creatorName: String, gameName: String) =
         javax.swing.JFileChooser().fileSystemView.defaultDirectory
             .toString()
             .let {

@@ -36,7 +36,7 @@ interface Input
     fun setCursor(cursorType: CursorType)
 }
 
-interface InputEngineInterface : Input
+interface InputInternal : Input
 {
     override var xWorldMouse: Float
     override var yWorldMouse: Float
@@ -48,7 +48,7 @@ interface InputEngineInterface : Input
     fun loadCursors(loader: (String, String, Int, Int) -> Cursor)
 }
 
-class InputImpl : InputEngineInterface
+open class InputImpl : InputInternal
 {
     // Exposed properties
     override var xMouse = 0.0f
@@ -279,7 +279,7 @@ data class Gamepad(var id: Int)
     }
 }
 
-class IdleInput(private val activeInput: InputEngineInterface) : InputEngineInterface
+class IdleInput(private val activeInput: InputInternal) : InputInternal
 {
     override var xWorldMouse = 0f
     override var yWorldMouse = 0f

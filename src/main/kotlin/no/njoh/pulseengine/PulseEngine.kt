@@ -5,11 +5,12 @@ import no.njoh.pulseengine.data.assets.*
 import no.njoh.pulseengine.modules.*
 import no.njoh.pulseengine.modules.console.ConsoleImpl
 import no.njoh.pulseengine.modules.console.Console
+import no.njoh.pulseengine.modules.console.ConsoleInternal
 import no.njoh.pulseengine.modules.graphics.GraphicsInternal
 import no.njoh.pulseengine.modules.graphics.Graphics
 import no.njoh.pulseengine.modules.graphics.GraphicsImpl
 import no.njoh.pulseengine.modules.scene.SceneManager
-import no.njoh.pulseengine.modules.scene.SceneManagerEngineInterface
+import no.njoh.pulseengine.modules.scene.SceneManagerInternal
 import no.njoh.pulseengine.modules.scene.SceneManagerImpl
 import no.njoh.pulseengine.modules.widget.*
 import no.njoh.pulseengine.util.FpsLimiter
@@ -25,9 +26,9 @@ interface PulseEngine
     val audio: Audio
     val input: Input
     val asset: Assets
-    val scene: SceneManager
     val data: Data
     val console: Console
+    val scene: SceneManager
     val widget: WidgetManager
 
     companion object
@@ -40,16 +41,16 @@ interface PulseEngine
 }
 
 class PulseEngineImpl(
-    override val config: ConfigurationEngineInterface = ConfigurationImpl(),
-    override val window: WindowEngineInterface        = WindowImpl(),
-    override val gfx: GraphicsInternal                = GraphicsImpl(),
-    override val audio: AudioEngineInterface          = AudioImpl(),
-    override var input: InputEngineInterface          = InputImpl(),
-    override val asset: AssetsEngineInterface         = AssetsImpl(),
-    override val scene: SceneManagerEngineInterface   = SceneManagerImpl(),
-    override val data: MutableDataContainer           = MutableDataContainer(),
-    override val console: ConsoleImpl                 = ConsoleImpl(),
-    override val widget: WidgetManagerEngineInterface = WidgetManagerImpl()
+    override val config: ConfigurationInternal  = ConfigurationImpl(),
+    override val window: WindowInternal         = WindowImpl(),
+    override val gfx: GraphicsInternal          = GraphicsImpl(),
+    override val audio: AudioInternal           = AudioImpl(),
+    override var input: InputInternal           = InputImpl(),
+    override val asset: AssetsInternal          = AssetsImpl(),
+    override val data: DataImpl                 = DataImpl(),
+    override val console: ConsoleInternal       = ConsoleImpl(),
+    override val scene: SceneManagerInternal    = SceneManagerImpl(),
+    override val widget: WidgetManagerInternal  = WidgetManagerImpl()
 ) : PulseEngine {
 
     private val activeInput = input

@@ -7,7 +7,7 @@ import no.njoh.pulseengine.data.Subscription
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import no.njoh.pulseengine.modules.scene.SceneManagerEngineInterface
+import no.njoh.pulseengine.modules.scene.SceneManagerInternal
 import java.io.File
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.declaredMemberProperties
@@ -238,7 +238,7 @@ object CommandRegistry
         engine.console.registerCommand(
             "reloadEntityAndSystemTypes"
         ) {
-            (engine.scene as? SceneManagerEngineInterface)?.registerSystemsAndEntityClasses()
+            (engine.scene as? SceneManagerInternal)?.registerSystemsAndEntityClasses()
             CommandResult("Reloaded entity types", showCommand = false)
         }
 

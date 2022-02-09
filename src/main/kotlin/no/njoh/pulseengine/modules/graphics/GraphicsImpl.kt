@@ -14,7 +14,7 @@ import no.njoh.pulseengine.util.forEachFiltered
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
 
-class GraphicsImpl : GraphicsInternal
+open class GraphicsImpl : GraphicsInternal
 {
     override lateinit var mainCamera: CameraInternal
     override lateinit var mainSurface: Surface2DInternal
@@ -85,10 +85,8 @@ class GraphicsImpl : GraphicsInternal
     override fun deleteTexture(texture: Texture) =
         textureArray.delete(texture)
 
-    override fun updateCameras()
-    {
+    override fun updateCameras() =
         surfaces.forEachCamera { it.updateLastState() }
-    }
 
     override fun initFrame()
     {
@@ -124,13 +122,9 @@ class GraphicsImpl : GraphicsInternal
 
     override fun getAllSurfaces() = surfaces
 
-    override fun getSurface(name: String): Surface2D? = surfaceMap[name]
+    override fun getSurface(name: String) = surfaceMap[name]
 
-    override fun getSurfaceOrDefault(name: String): Surface2D =
-        surfaceMap[name] ?: run {
-            Logger.debug("No surface exists with name $name")
-            mainSurface
-        }
+    override fun getSurfaceOrDefault(name: String) = surfaceMap[name] ?: mainSurface
 
     override fun deleteSurface(name: String)
     {

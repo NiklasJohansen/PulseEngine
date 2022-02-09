@@ -78,7 +78,7 @@ abstract class SceneManager
         activeScene.entities.forEachFast { entities -> entities.forEachFast { block(it) } }
 }
 
-abstract class SceneManagerEngineInterface : SceneManager()
+abstract class SceneManagerInternal : SceneManager()
 {
     abstract fun init(engine: PulseEngine)
     abstract fun render()
@@ -88,7 +88,7 @@ abstract class SceneManagerEngineInterface : SceneManager()
     abstract fun registerSystemsAndEntityClasses()
 }
 
-class SceneManagerImpl : SceneManagerEngineInterface() {
+open class SceneManagerImpl : SceneManagerInternal() {
 
     override lateinit var activeScene: Scene
     override var state: SceneState = STOPPED
