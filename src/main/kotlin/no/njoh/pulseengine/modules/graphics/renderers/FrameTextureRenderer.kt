@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.graphics.renderers
 
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.graphics.ShaderProgram
+import no.njoh.pulseengine.modules.graphics.api.ShaderProgram
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL30.*
 
@@ -73,7 +73,7 @@ class FrameTextureRenderer(private val program: ShaderProgram)
         glActiveTexture(GL_TEXTURE0)
     }
 
-    fun cleanup()
+    fun cleanUp()
     {
         glDisableVertexAttribArray(0)
 

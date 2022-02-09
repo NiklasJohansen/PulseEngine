@@ -1,22 +1,21 @@
-package no.njoh.pulseengine.modules.graphics.objects
+package no.njoh.pulseengine.modules.graphics.api.objects
 
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.graphics.AntiAliasingType
-import no.njoh.pulseengine.modules.graphics.AntiAliasingType.MSAA_MAX
-import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
-import no.njoh.pulseengine.modules.graphics.Attachment
-import no.njoh.pulseengine.modules.graphics.TextureFilter
-import no.njoh.pulseengine.modules.graphics.TextureFilter.BILINEAR_INTERPOLATION
-import no.njoh.pulseengine.modules.graphics.TextureFormat
-import no.njoh.pulseengine.modules.graphics.TextureFormat.NORMAL
-import no.njoh.pulseengine.modules.graphics.Attachment.*
+import no.njoh.pulseengine.modules.graphics.api.AntiAliasing
+import no.njoh.pulseengine.modules.graphics.api.AntiAliasing.MSAA_MAX
+import no.njoh.pulseengine.modules.graphics.api.AntiAliasing.NONE
+import no.njoh.pulseengine.modules.graphics.api.Attachment
+import no.njoh.pulseengine.modules.graphics.api.TextureFilter
+import no.njoh.pulseengine.modules.graphics.api.TextureFilter.BILINEAR_INTERPOLATION
+import no.njoh.pulseengine.modules.graphics.api.TextureFormat
+import no.njoh.pulseengine.modules.graphics.api.TextureFormat.NORMAL
+import no.njoh.pulseengine.modules.graphics.api.Attachment.*
 import no.njoh.pulseengine.util.forEachFast
-import org.lwjgl.opengl.ARBFramebufferObject.*
-import org.lwjgl.opengl.ARBTextureMultisample.GL_TEXTURE_2D_MULTISAMPLE
-import org.lwjgl.opengl.ARBTextureMultisample.glTexImage2DMultisample
-import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL14.GL_DEPTH_COMPONENT24
 import org.lwjgl.opengl.GL20.glDrawBuffers
+import org.lwjgl.opengl.GL30.*
+import org.lwjgl.opengl.GL32.GL_TEXTURE_2D_MULTISAMPLE
+import org.lwjgl.opengl.GL32.glTexImage2DMultisample
 import kotlin.math.min
 
 open class FrameBufferObject(
@@ -31,7 +30,7 @@ open class FrameBufferObject(
     fun clear() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
     fun delete()
     {
-        textures.forEachFast { it.delete() }
+        textures.forEachFast { glDeleteTextures(it.id) }
         renderBufferIds.forEachFast { glDeleteRenderbuffers(it) }
         glDeleteFramebuffers(frameBufferId)
     }
@@ -71,7 +70,7 @@ open class FrameBufferObject(
             textureScale: Float = 1f,
             textureFormat: TextureFormat = NORMAL,
             textureFilter: TextureFilter = BILINEAR_INTERPOLATION,
-            antiAliasing: AntiAliasingType = NONE,
+            antiAliasing: AntiAliasing = NONE,
             attachments: List<Attachment> = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER)
         ): FrameBufferObject {
             // Generate and bind frame buffer

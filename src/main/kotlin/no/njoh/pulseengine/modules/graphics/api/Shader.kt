@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.graphics
+package no.njoh.pulseengine.modules.graphics.api
 
 import no.njoh.pulseengine.data.ShaderType
 import org.lwjgl.opengl.GL20.*

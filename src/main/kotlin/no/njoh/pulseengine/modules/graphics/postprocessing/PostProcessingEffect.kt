@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.modules.graphics.postprocessing
 
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.graphics.Attachment.COLOR_TEXTURE_0
-import no.njoh.pulseengine.modules.graphics.objects.FrameBufferObject
-import no.njoh.pulseengine.modules.graphics.ShaderProgram
+import no.njoh.pulseengine.modules.graphics.api.Attachment.COLOR_TEXTURE_0
+import no.njoh.pulseengine.modules.graphics.api.objects.FrameBufferObject
+import no.njoh.pulseengine.modules.graphics.api.ShaderProgram
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
 import no.njoh.pulseengine.util.Logger
 
@@ -63,7 +63,7 @@ abstract class SinglePassEffect : PostProcessingEffect
             .onFailure { Logger.error("Failed to reload shaders for post processing effect ${this::class.simpleName}, reason: ${it.message}") }
             .onSuccess {
                 if (this::program.isInitialized) program.delete()
-                if (this::renderer.isInitialized) renderer.cleanup()
+                if (this::renderer.isInitialized) renderer.cleanUp()
                 program = it
                 renderer = FrameTextureRenderer(program)
                 init()
@@ -73,7 +73,7 @@ abstract class SinglePassEffect : PostProcessingEffect
     override fun cleanUp()
     {
         if (this::program.isInitialized) program.delete()
-        if (this::renderer.isInitialized) renderer.cleanup()
+        if (this::renderer.isInitialized) renderer.cleanUp()
         if (this::fbo.isInitialized) fbo.delete()
     }
 }
@@ -128,7 +128,7 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
             .onFailure { Logger.error("Failed to reload shaders for post processing effect ${this::class.simpleName}, reason: ${it.message}") }
             .onSuccess { newPrograms ->
                 programs.forEach { it.delete() }
-                renderers.forEach { it.cleanup() }
+                renderers.forEach { it.cleanUp() }
                 programs.clear()
                 renderers.clear()
                 programs.addAll(newPrograms)
@@ -139,7 +139,7 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
     override fun cleanUp()
     {
         programs.forEach { it.delete() }
-        renderers.forEach { it.cleanup() }
+        renderers.forEach { it.cleanUp() }
         fbo.forEach { it.delete() }
     }
 }

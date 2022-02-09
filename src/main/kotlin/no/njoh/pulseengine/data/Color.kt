@@ -14,10 +14,18 @@ data class Color(
 
     fun setFrom(color: Color)
     {
-        red = color.red
-        green = color.green
-        blue = color.blue
-        alpha = color.alpha
+        this.red = color.red
+        this.green = color.green
+        this.blue = color.blue
+        this.alpha = color.alpha
+    }
+
+    fun setFrom(red: Float, green: Float, blue: Float, alpha: Float = 1f)
+    {
+        this.red = red
+        this.green = green
+        this.blue = blue
+        this.alpha = alpha
     }
 
     companion object

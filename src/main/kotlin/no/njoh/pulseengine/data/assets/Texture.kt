@@ -6,7 +6,6 @@ import no.njoh.pulseengine.util.loadStream
 import org.lwjgl.opengl.GL11.*
 import java.nio.ByteBuffer
 
-
 open class Texture(filename: String, override val name: String) : Asset(name, filename)
 {
     var width: Int = 0
@@ -85,11 +84,7 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
         this.format = format
     }
 
-    override fun delete()
-    {
-        glBindTexture(GL_TEXTURE_2D, 0)
-        glDeleteTextures(id)
-    }
+    override fun delete() { }
 
     companion object
     {

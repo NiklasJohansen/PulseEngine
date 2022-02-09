@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.graphics.objects
+package no.njoh.pulseengine.modules.graphics.api.objects
 
 import no.njoh.pulseengine.util.Logger
 import org.lwjgl.opengl.ARBUniformBufferObject.GL_UNIFORM_BUFFER

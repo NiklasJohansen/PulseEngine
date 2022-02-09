@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.graphics
+package no.njoh.pulseengine.modules.graphics.api
 
 import no.njoh.pulseengine.data.assets.Texture
 import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
@@ -53,11 +53,16 @@ class TextureArray(
         texture.finalize(textureId = index, isBindless = true, uMin = 0.0f, vMin = 0.0f, uMax = u, vMax = v)
     }
 
+    fun delete(texture: Texture)
+    {
+        glDeleteTextures(texture.id)
+    }
+
     fun bind(textureUnit: Int = 0)
     {
         glActiveTexture(GL_TEXTURE0 + textureUnit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
     }
 
-    fun cleanup() = glDeleteTextures(textureArrayId)
+    fun cleanUp() = glDeleteTextures(textureArrayId)
 }

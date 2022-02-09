@@ -5,9 +5,9 @@ import no.njoh.pulseengine.data.assets.*
 import no.njoh.pulseengine.modules.*
 import no.njoh.pulseengine.modules.console.ConsoleImpl
 import no.njoh.pulseengine.modules.console.Console
-import no.njoh.pulseengine.modules.graphics.GraphicsEngineInterface
+import no.njoh.pulseengine.modules.graphics.GraphicsInternal
 import no.njoh.pulseengine.modules.graphics.Graphics
-import no.njoh.pulseengine.modules.graphics.RetainedModeGraphics
+import no.njoh.pulseengine.modules.graphics.GraphicsImpl
 import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.SceneManagerEngineInterface
 import no.njoh.pulseengine.modules.scene.SceneManagerImpl
@@ -42,7 +42,7 @@ interface PulseEngine
 class PulseEngineImpl(
     override val config: ConfigurationEngineInterface = ConfigurationImpl(),
     override val window: WindowEngineInterface        = WindowImpl(),
-    override val gfx: GraphicsEngineInterface         = RetainedModeGraphics(),
+    override val gfx: GraphicsInternal                = GraphicsImpl(),
     override val audio: AudioEngineInterface          = AudioImpl(),
     override var input: InputEngineInterface          = InputImpl(),
     override val asset: AssetsEngineInterface         = AssetsImpl(),
@@ -58,6 +58,27 @@ class PulseEngineImpl(
     private lateinit var focusArea: FocusArea
 
     init { PulseEngine.GLOBAL_INSTANCE = this }
+
+    fun run(game: PulseEngineGame)
+    {
+        // Setup engine and game
+        preGameCreate()
+        game.onCreate()
+        postGameCreate()
+
+        // Run main game loop
+        while (window.isOpen())
+        {
+            update(game)
+            fixedUpdate(game)
+            render(game)
+            syncFps()
+        }
+
+        // Clean up game and engine
+        game.onDestroy()
+        destroy()
+    }
 
     private fun preGameCreate()
     {
@@ -99,6 +120,15 @@ class PulseEngineImpl(
             }
         }
 
+        // Notify gfx implementation about deleted textures
+        asset.setOnAssetRemoved {
+            when (it)
+            {
+                is Texture -> gfx.deleteTexture(it)
+                is Font -> gfx.deleteTexture(it.charTexture)
+            }
+        }
+
         // Update save directory based on creator and game name
         config.setOnChanged { property, value ->
             when (property.name)
@@ -129,27 +159,6 @@ class PulseEngineImpl(
 
         // Run startup script
         console.runScript("/startup.ps")
-    }
-
-    fun run(game: PulseEngineGame)
-    {
-        // Setup engine and game
-        preGameCreate()
-        game.onCreate()
-        postGameCreate()
-
-        // Run main game loop
-        while (window.isOpen())
-        {
-            update(game)
-            fixedUpdate(game)
-            render(game)
-            syncFps()
-        }
-
-        // Clean up game and engine
-        game.onDestroy()
-        destroy()
     }
 
     private fun update(game: PulseEngineGame)
@@ -200,7 +209,7 @@ class PulseEngineImpl(
         data.measureRenderTimeAndUpdateInterpolationValue()
         {
             // Get ready for rendering next frame
-            gfx.preRender()
+            gfx.initFrame()
 
             // Gather batch data to draw
             scene.render()
@@ -208,7 +217,7 @@ class PulseEngineImpl(
             widget.render(this)
 
             // Perform GPU draw calls
-            gfx.postRender()
+            gfx.drawFrame()
 
             // Swap front and back buffers
             window.swapBuffers()

@@ -2,13 +2,16 @@ package no.njoh.pulseengine.modules.graphics.renderers
 
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.*
-import no.njoh.pulseengine.modules.graphics.objects.*
+import no.njoh.pulseengine.modules.graphics.api.ShaderProgram
+import no.njoh.pulseengine.modules.graphics.api.TextureArray
+import no.njoh.pulseengine.modules.graphics.api.VertexAttributeLayout
+import no.njoh.pulseengine.modules.graphics.api.objects.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL31.glDrawArraysInstanced
 
 class BindlessTextureRenderer(
     private val initialCapacity: Int,
-    private val renderState: RenderState,
+    private val context: RenderContextInternal,
     private val textureArray: TextureArray
 ) : BatchRenderer {
 
@@ -64,7 +67,7 @@ class BindlessTextureRenderer(
         {
             put(x)
             put(y)
-            put(renderState.depth)
+            put(context.depth)
             put(w)
             put(h)
             put(xOrigin)
@@ -74,12 +77,12 @@ class BindlessTextureRenderer(
             put(texture.vMin)
             put(texture.uMax)
             put(texture.vMax)
-            put(renderState.rgba)
+            put(context.drawColor)
             put(texture.id.toFloat())
         }
 
         instanceCount++
-        renderState.increaseDepth()
+        context.increaseDepth()
     }
 
     fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
@@ -88,7 +91,7 @@ class BindlessTextureRenderer(
         {
             put(x)
             put(y)
-            put(renderState.depth)
+            put(context.depth)
             put(w)
             put(h)
             put(xOrigin)
@@ -98,12 +101,12 @@ class BindlessTextureRenderer(
             put(texture.vMax * vMin)
             put(texture.uMax * uMax)
             put(texture.vMax * vMax)
-            put(renderState.rgba)
+            put(context.drawColor)
             put(texture.id.toFloat())
         }
 
         instanceCount++
-        renderState.increaseDepth()
+        context.increaseDepth()
     }
 
     override fun render(surface: Surface2D)

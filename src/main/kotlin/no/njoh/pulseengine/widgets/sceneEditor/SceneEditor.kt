@@ -8,7 +8,7 @@ import no.njoh.pulseengine.data.CursorType.*
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.graphics.Camera
-import no.njoh.pulseengine.modules.graphics.Attachment
+import no.njoh.pulseengine.modules.graphics.api.Attachment
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.UiUtil.findElementById
 import no.njoh.pulseengine.modules.graphics.ui.elements.InputField

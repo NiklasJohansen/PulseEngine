@@ -2,13 +2,15 @@ package no.njoh.pulseengine.modules.graphics.renderers
 
 import no.njoh.pulseengine.data.assets.Texture
 import no.njoh.pulseengine.modules.graphics.*
-import no.njoh.pulseengine.modules.graphics.objects.*
+import no.njoh.pulseengine.modules.graphics.api.ShaderProgram
+import no.njoh.pulseengine.modules.graphics.api.VertexAttributeLayout
+import no.njoh.pulseengine.modules.graphics.api.objects.*
 import org.lwjgl.opengl.GL20.*
 import java.lang.Float.floatToRawIntBits
 
 class TextureRenderer(
     private val initialCapacity: Int,
-    private val renderState: RenderState
+    private val context: RenderContextInternal
 ) : BatchRenderer {
 
     private lateinit var vao: VertexArrayObject
@@ -55,17 +57,17 @@ class TextureRenderer(
         val base = count * stride
         data[base + 0] = x
         data[base + 1] = y
-        data[base + 2] = renderState.depth
+        data[base + 2] = context.depth
         data[base + 3] = w
         data[base + 4] = h
         data[base + 5] = rot
         data[base + 6] = xOrigin
         data[base + 7] = yOrigin
-        data[base + 8] = renderState.rgba
+        data[base + 8] = context.drawColor
         data[base + 9] = texture.id.toFloat()
 
         count++
-        renderState.increaseDepth()
+        context.increaseDepth()
     }
 
     override fun render(surface: Surface2D)

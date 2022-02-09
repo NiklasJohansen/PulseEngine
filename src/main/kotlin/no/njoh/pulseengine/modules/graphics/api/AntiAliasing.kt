@@ -1,6 +1,6 @@
-package no.njoh.pulseengine.modules.graphics
+package no.njoh.pulseengine.modules.graphics.api
 
-enum class AntiAliasingType(val samples: Int)
+enum class AntiAliasing(val samples: Int)
 {
     NONE(0),
     MSAA4(4),

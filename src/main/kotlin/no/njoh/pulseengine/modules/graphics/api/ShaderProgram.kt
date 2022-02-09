@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.graphics
+package no.njoh.pulseengine.modules.graphics.api
 
 import no.njoh.pulseengine.data.Color
 import no.njoh.pulseengine.data.ShaderType
@@ -7,7 +7,6 @@ import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL20.*
-import org.lwjgl.opengl.GL30.glBindFragDataLocation
 import org.lwjgl.opengl.GL33.glVertexAttribDivisor
 
 class ShaderProgram(val id: Int)
@@ -53,6 +52,12 @@ class ShaderProgram(val id: Int)
         return value
     }
 
+    fun setUniform(name: String, value: Boolean): Boolean
+    {
+        glUniform1i(getUniformLocation(name), if (value) 1 else 0)
+        return value
+    }
+
     fun setUniform(name: String, value: Float): Float
     {
         glUniform1f(getUniformLocation(name), value)
@@ -62,6 +67,11 @@ class ShaderProgram(val id: Int)
     fun setUniform(name: String, value1: Float, value2: Float)
     {
         glUniform2f(getUniformLocation(name), value1, value2)
+    }
+
+    fun setUniform(name: String, value1: Float, value2: Float, value3: Float)
+    {
+        glUniform3f(getUniformLocation(name), value1, value2, value3)
     }
 
     fun setUniform(name: String, color: Color): Color
@@ -115,7 +125,6 @@ class ShaderProgram(val id: Int)
             for (shader in shaders)
                 glAttachShader(programId, shader.id)
 
-            glBindFragDataLocation(programId, 0, "fragColor")
             glLinkProgram(programId)
 
             if (glGetProgrami(programId, GL_LINK_STATUS) != GL_TRUE)

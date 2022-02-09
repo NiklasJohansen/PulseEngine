@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.graphics
+package no.njoh.pulseengine.modules.graphics.api
 
 import org.lwjgl.opengl.GL11.GL_LINEAR
 import org.lwjgl.opengl.GL11.GL_NEAREST

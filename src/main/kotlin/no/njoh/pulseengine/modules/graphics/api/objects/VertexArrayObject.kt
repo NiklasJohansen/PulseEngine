@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.graphics.objects
+package no.njoh.pulseengine.modules.graphics.api.objects
 
 
 import org.lwjgl.opengl.GL30.*

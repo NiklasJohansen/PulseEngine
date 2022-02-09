@@ -1,8 +1,12 @@
 package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.graphics.AntiAliasingType.NONE
-import no.njoh.pulseengine.modules.graphics.objects.FrameBufferObject
+import no.njoh.pulseengine.modules.graphics.api.AntiAliasing
+import no.njoh.pulseengine.modules.graphics.api.AntiAliasing.NONE
+import no.njoh.pulseengine.modules.graphics.api.Attachment
+import no.njoh.pulseengine.modules.graphics.api.TextureFilter
+import no.njoh.pulseengine.modules.graphics.api.TextureFormat
+import no.njoh.pulseengine.modules.graphics.api.objects.FrameBufferObject
 
 interface RenderTarget
 {
@@ -10,6 +14,7 @@ interface RenderTarget
     var textureFormat: TextureFormat
     var textureFilter: TextureFilter
     var attachments: List<Attachment>
+
     fun init(width: Int, height: Int)
     fun begin()
     fun end()
@@ -45,7 +50,7 @@ class MultisampledOffScreenRenderTarget(
     override var textureScale: Float,
     override var textureFormat: TextureFormat,
     override var textureFilter: TextureFilter,
-    private val antiAliasing: AntiAliasingType,
+    private val antiAliasing: AntiAliasing,
     override var attachments: List<Attachment>
 ) : RenderTarget {
 
@@ -64,10 +69,8 @@ class MultisampledOffScreenRenderTarget(
         fbo = FrameBufferObject.create(width, height, textureScale, textureFormat, textureFilter, NONE, attachments)
     }
 
-    override fun begin()
-    {
+    override fun begin() =
         msFbo.bind()
-    }
 
     override fun end()
     {

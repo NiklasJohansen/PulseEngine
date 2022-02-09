@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.graphics
+package no.njoh.pulseengine.modules.graphics.api
 
 import org.lwjgl.opengl.GL11.GL_RGBA
 import org.lwjgl.opengl.GL30.GL_RGBA16F

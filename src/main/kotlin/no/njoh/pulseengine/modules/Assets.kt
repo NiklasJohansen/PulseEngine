@@ -4,6 +4,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.njoh.pulseengine.data.assets.*
 import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.util.forEachFast
 import no.njoh.pulseengine.util.forEachFiltered
 import no.njoh.pulseengine.util.loadFileNames
 import kotlin.reflect.KClass
@@ -31,6 +32,7 @@ abstract class AssetsEngineInterface : Assets()
 {
     abstract fun loadInitialAssets()
     abstract fun setOnAssetLoaded(callback: (Asset) -> Unit)
+    abstract fun setOnAssetRemoved(callback: (Asset) -> Unit)
     abstract fun cleanUp()
 }
 
@@ -38,7 +40,8 @@ class AssetsImpl : AssetsEngineInterface()
 {
     private val assets = mutableMapOf<String, Asset>()
     private var initialAssetsLoaded = false
-    private var onAssetLoadedCallback: (Asset) -> Unit = {}
+    private var onAssetLoadedCallbacks = mutableListOf<(Asset) -> Unit>()
+    private var onAssetRemovedCallbacks = mutableListOf<(Asset) -> Unit>()
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : Asset> get(assetName: String): T =
@@ -84,12 +87,14 @@ class AssetsImpl : AssetsEngineInterface()
     {
         val startTime = System.nanoTime()
         add(Font.DEFAULT)
-        runBlocking {
-            assets.values.forEach {
+        runBlocking()
+        {
+            assets.values.forEach()
+            {
                 launch { it.load() }
             }
         }
-        assets.values.forEach(onAssetLoadedCallback)
+        assets.values.forEach { asset -> onAssetLoadedCallbacks.forEachFast { it.invoke(asset)  } }
         initialAssetsLoaded = true
         Logger.debug("Loaded ${assets.size} assets in ${(System.nanoTime() - startTime) / 1_000_000} ms. [${assets.values.joinToString { it.name }}]")
     }
@@ -100,21 +105,30 @@ class AssetsImpl : AssetsEngineInterface()
             Logger.warn("Asset with name: ${asset.name} already exists and will be overridden")
 
         assets[asset.name] = asset
-        if (initialAssetsLoaded) {
+        if (initialAssetsLoaded)
+        {
             asset.load()
-            onAssetLoadedCallback.invoke(asset)
+            onAssetLoadedCallbacks.forEachFast { it.invoke(asset)  }
         }
         return asset
     }
 
     override fun setOnAssetLoaded(callback: (Asset) -> Unit)
     {
-        this.onAssetLoadedCallback = callback
+        onAssetLoadedCallbacks.add(callback)
+    }
+
+    override fun setOnAssetRemoved(callback: (Asset) -> Unit)
+    {
+       onAssetRemovedCallbacks.add(callback)
     }
 
     override fun cleanUp()
     {
         Logger.info("Cleaning up assets...")
-        assets.values.forEach { it.delete() }
+        assets.values.forEach { asset ->
+            asset.delete()
+            onAssetRemovedCallbacks.forEachFast { it.invoke(asset) }
+        }
     }
 }

@@ -1,8 +1,6 @@
-package no.njoh.pulseengine.modules.graphics.objects
+package no.njoh.pulseengine.modules.graphics.api.objects
 
 import no.njoh.pulseengine.util.Logger
-import org.lwjgl.opengl.ARBUniformBufferObject.GL_UNIFORM_BUFFER
-import org.lwjgl.opengl.ARBUniformBufferObject.glBindBufferBase
 import org.lwjgl.opengl.GL30.glMapBufferRange
 import org.lwjgl.opengl.GL44.*
 import org.lwjgl.system.MemoryUtil.*
@@ -196,3 +194,37 @@ class PersistentIntBufferObject(
     }
 }
 
+/**
+ * Used for placing fences on the GPU command buffer in order to synchronise buffer access.
+ */
+data class SyncObj(
+    private var sync: Long = -1
+) {
+    fun waitSync()
+    {
+        var waits = 0
+        while (sync != -1L)
+        {
+            val result = glClientWaitSync(sync, GL_SYNC_FLUSH_COMMANDS_BIT, 1)
+            if (result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED)
+            {
+                if (LOG_SYNC_WAITS && waits > 0)
+                    Logger.debug("Sync object: $sync waited $waits times")
+                return
+            }
+            waits++
+        }
+    }
+
+    fun lockSync()
+    {
+        if (sync != -1L)
+            glDeleteSync(sync)
+        sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0)
+    }
+
+    companion object
+    {
+        var LOG_SYNC_WAITS = false
+    }
+}

@@ -6,7 +6,7 @@ import no.njoh.pulseengine.data.Color
 import no.njoh.pulseengine.data.Shape
 import no.njoh.pulseengine.data.SwapList
 import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.graphics.AntiAliasingType
+import no.njoh.pulseengine.modules.graphics.api.AntiAliasing
 import no.njoh.pulseengine.modules.scene.SpatialGrid
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
@@ -29,7 +29,7 @@ open class LightingSystem : SceneSystem()
     var lightBleed = 0.97f
 
     @Property
-    var msaa = AntiAliasingType.NONE
+    var msaa = AntiAliasing.NONE
 
     @JsonIgnore
     private lateinit var lightingEffect: LightingPostProcessingEffect

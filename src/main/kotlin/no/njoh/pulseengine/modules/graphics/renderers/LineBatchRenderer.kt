@@ -1,15 +1,17 @@
 package no.njoh.pulseengine.modules.graphics.renderers
 
 import no.njoh.pulseengine.modules.graphics.*
-import no.njoh.pulseengine.modules.graphics.objects.BufferObject
-import no.njoh.pulseengine.modules.graphics.objects.FloatBufferObject
-import no.njoh.pulseengine.modules.graphics.objects.VertexArrayObject
+import no.njoh.pulseengine.modules.graphics.api.ShaderProgram
+import no.njoh.pulseengine.modules.graphics.api.VertexAttributeLayout
+import no.njoh.pulseengine.modules.graphics.api.objects.BufferObject
+import no.njoh.pulseengine.modules.graphics.api.objects.FloatBufferObject
+import no.njoh.pulseengine.modules.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.util.BufferExtensions.putAll
 import org.lwjgl.opengl.GL11.*
 
 class LineBatchRenderer(
     private val initialCapacity: Int,
-    private val gfxState: RenderState
+    private val context: RenderContextInternal
 ) : BatchRenderer {
 
     private lateinit var program: ShaderProgram
@@ -43,21 +45,21 @@ class LineBatchRenderer(
     {
         vbo.fill(4)
         {
-            putAll(x, y, gfxState.depth, gfxState.rgba)
+            putAll(x, y, context.depth, context.drawColor)
         }
-        gfxState.increaseDepth()
+        context.increaseDepth()
     }
 
     fun line(x0: Float, y0: Float, x1: Float, y1: Float)
     {
-        val depth = gfxState.depth
-        val rgba = gfxState.rgba
+        val depth = context.depth
+        val rgba = context.drawColor
         vbo.fill(8)
         {
             putAll(x0, y0, depth, rgba)
             putAll(x1, y1, depth, rgba)
         }
-        gfxState.increaseDepth()
+        context.increaseDepth()
     }
 
     override fun render(surface: Surface2D)
