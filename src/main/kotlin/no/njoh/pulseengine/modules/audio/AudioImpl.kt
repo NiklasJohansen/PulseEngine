@@ -1,55 +1,25 @@
-package no.njoh.pulseengine.modules
+package no.njoh.pulseengine.modules.audio
 
 import no.njoh.pulseengine.data.assets.Sound
 import no.njoh.pulseengine.util.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.*
+import org.lwjgl.openal.AL.createCapabilities
 import org.lwjgl.openal.AL10.*
-import org.lwjgl.openal.ALC10.alcGetError
-import org.lwjgl.openal.ALC10.alcGetString
-import org.lwjgl.openal.ALC11.*
-import org.lwjgl.openal.EXTThreadLocalContext.alcSetThreadContext
-import org.lwjgl.system.MemoryUtil.NULL
-import java.lang.Float.max
+import org.lwjgl.openal.ALC.createCapabilities
+import org.lwjgl.openal.ALC10.*
+import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
-
-interface Audio
-{
-    fun createSource(sound: Sound, volume: Float = 1.0f, looping: Boolean = false): Int
-    fun play(sourceId: Int)
-    fun pause(sourceId: Int)
-    fun stop(sourceId: Int)
-    fun stopAll()
-    fun isPlaying(sourceId: Int): Boolean
-    fun isPaused(sourceId: Int): Boolean
-    fun setVolume(sourceId: Int, volume: Float)
-    fun setPitch(sourceId: Int, pitch: Float)
-    fun setLooping(sourceId: Int, looping: Boolean)
-    fun setPosition(sourceId: Int, x: Float, y: Float, z: Float = -1.0f)
-
-    fun setListenerPosition(x: Float, y: Float, z: Float = -1.0f)
-    fun setListenerVelocity(x: Float, y: Float, z: Float = 0.0f)
-    fun setListenerOrientation(x: Float, y: Float, z: Float)
-
-    fun getSources(): List<Int>
-    fun getDefaultOutputDevice(): String
-    fun getOutputDevices(): List<String>
-    fun setOutputDevice(deviceName: String)
-}
-
-interface AudioInternal : Audio
-{
-    fun init()
-    fun setOnOutputDeviceChanged(callback: () -> Unit)
-    fun cleanSources()
-    fun cleanUp()
-}
+import org.lwjgl.openal.ALC11.*
+import org.lwjgl.openal.ALUtil.*
+import org.lwjgl.openal.EXTThreadLocalContext.alcSetThreadContext
+import org.lwjgl.openal.SOFTHRTF.*
 
 open class AudioImpl : AudioInternal
 {
-    private var device: Long = NULL
-    private var context: Long = NULL
+    private var device: Long = MemoryUtil.NULL
+    private var context: Long = MemoryUtil.NULL
     private val sources = mutableListOf<Int>()
     private var outputChangedCallback: () -> Unit = { }
 
@@ -63,32 +33,32 @@ open class AudioImpl : AudioInternal
 
     private fun setupDevice(device: Long)
     {
-        check(device != NULL) { "Failed to open the default output device" }
+        check(device != MemoryUtil.NULL) { "Failed to open the default output device" }
 
-        val deviceCaps = ALC.createCapabilities(device)
+        val deviceCaps = createCapabilities(device)
         check(deviceCaps.ALC_SOFT_HRTF) { "Error: ALC_SOFT_HRTF not supported" }
 
         context = alcCreateContext(device, null as IntBuffer?)
-        check(context != NULL) { "Failed to create an OpenAL context" }
+        check(context != MemoryUtil.NULL) { "Failed to create an OpenAL context" }
 
         alcSetThreadContext(context)
-        AL.createCapabilities(deviceCaps)
+        createCapabilities(deviceCaps)
 
-        val numHrtf = ALC10.alcGetInteger(device, SOFTHRTF.ALC_NUM_HRTF_SPECIFIERS_SOFT)
+        val numHrtf = alcGetInteger(device, ALC_NUM_HRTF_SPECIFIERS_SOFT)
         check(numHrtf != 0) { "No HRTFs found" }
 
-        val attributes = BufferUtils.createIntBuffer(10).put(SOFTHRTF.ALC_HRTF_SOFT).put(ALC10.ALC_TRUE)
+        val attributes = BufferUtils.createIntBuffer(10).put(ALC_HRTF_SOFT).put(ALC_TRUE)
         attributes.put(0)
         attributes.flip()
 
-        if (!SOFTHRTF.alcResetDeviceSOFT(device, attributes))
-            Logger.error("Failed to reset device: ${ alcGetString(device, alcGetError(device)) }")
+        if (!alcResetDeviceSOFT(device, attributes))
+            Logger.error("Failed to reset device: ${ALC10.alcGetString(device, alcGetError(device))}")
 
-        val hrtfState = ALC10.alcGetInteger(device, SOFTHRTF.ALC_HRTF_SOFT)
+        val hrtfState = alcGetInteger(device, ALC_HRTF_SOFT)
         if (hrtfState == 0)
             Logger.warn("HRTF not enabled")
         else
-            Logger.info("HRTF enabled, using ${ alcGetString(device, SOFTHRTF.ALC_HRTF_SPECIFIER_SOFT) }")
+            Logger.info("HRTF enabled, using ${ALC10.alcGetString(device, ALC_HRTF_SPECIFIER_SOFT)}")
 
         this.device = device
     }
@@ -121,7 +91,7 @@ open class AudioImpl : AudioInternal
 
     override fun isPaused(sourceId: Int): Boolean = alGetSourcei(sourceId, AL_SOURCE_STATE) == AL_PAUSED
 
-    override fun setVolume(sourceId: Int, volume: Float) = alSourcef(sourceId, AL_GAIN, max(0.0f, volume))
+    override fun setVolume(sourceId: Int, volume: Float) = alSourcef(sourceId, AL_GAIN, java.lang.Float.max(0.0f, volume))
 
     override fun setPitch(sourceId: Int, pitch: Float) = alSourcef(sourceId, AL_PITCH, pitch)
 
@@ -137,15 +107,15 @@ open class AudioImpl : AudioInternal
 
     override fun getSources(): List<Int> = sources
 
-    override fun getDefaultOutputDevice(): String = alcGetString(NULL, ALC_DEFAULT_DEVICE_SPECIFIER) ?: ""
+    override fun getDefaultOutputDevice(): String = alcGetString(MemoryUtil.NULL, ALC_DEFAULT_DEVICE_SPECIFIER) ?: ""
 
-    override fun getOutputDevices(): List<String> = ALUtil.getStringList(NULL, ALC_ALL_DEVICES_SPECIFIER) ?: emptyList()
+    override fun getOutputDevices(): List<String> = getStringList(MemoryUtil.NULL, ALC_ALL_DEVICES_SPECIFIER) ?: emptyList()
 
     override fun setOutputDevice(deviceName: String)
     {
         Logger.info("Setting output device: $deviceName")
         val device = alcOpenDevice(deviceName)
-        if (device == NULL)
+        if (device == MemoryUtil.NULL)
             Logger.error("Failed to set output device: $deviceName")
         else
         {
@@ -174,7 +144,7 @@ open class AudioImpl : AudioInternal
     override fun cleanUp()
     {
         sources.forEach { alDeleteSources(it) }
-        alcSetThreadContext(NULL)
+        alcSetThreadContext(MemoryUtil.NULL)
         alcDestroyContext(context)
         alcCloseDevice(device)
     }

@@ -1,43 +1,17 @@
-package no.njoh.pulseengine.modules
+package no.njoh.pulseengine.modules.window
 
 import no.njoh.pulseengine.data.ScreenMode
-import no.njoh.pulseengine.data.ScreenMode.FULLSCREEN
-import no.njoh.pulseengine.data.ScreenMode.WINDOWED
 import no.njoh.pulseengine.util.Logger
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWErrorCallback
 import org.lwjgl.glfw.GLFWWindowSizeCallback
-import org.lwjgl.system.MemoryUtil.NULL
-
-interface Window
-{
-    var title: String
-    val width: Int
-    val height: Int
-    val screenMode: ScreenMode
-    val wasResized: Boolean
-
-    fun updateScreenMode(mode: ScreenMode)
-    fun close()
-}
-
-interface WindowInternal : Window
-{
-    override var wasResized: Boolean
-    val windowHandle: Long
-
-    fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
-    fun cleanUp()
-    fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit)
-    fun swapBuffers()
-    fun isOpen(): Boolean
-}
+import org.lwjgl.system.MemoryUtil
 
 open class WindowImpl : WindowInternal
 {
     // Exposed properties
-    override var windowHandle : Long = NULL
-    override var screenMode: ScreenMode = WINDOWED
+    override var windowHandle : Long = MemoryUtil.NULL
+    override var screenMode: ScreenMode = ScreenMode.WINDOWED
     override var width: Int = 800
     override var height: Int = 600
     override var wasResized: Boolean = false
@@ -69,7 +43,7 @@ open class WindowImpl : WindowInternal
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE)
-        glfwWindowHint(GLFW_DEPTH_BITS,24)
+        glfwWindowHint(GLFW_DEPTH_BITS, 24)
 
         this.screenMode = screenMode
         this.windowedWidth = initWidth
@@ -77,8 +51,8 @@ open class WindowImpl : WindowInternal
         this.width = initWidth
         this.height = initHeight
 
-        var monitor = NULL
-        if (screenMode == FULLSCREEN)
+        var monitor = MemoryUtil.NULL
+        if (screenMode == ScreenMode.FULLSCREEN)
         {
             monitor = getWindowMonitor()
             val videoMode = glfwGetVideoMode(monitor)
@@ -87,17 +61,17 @@ open class WindowImpl : WindowInternal
         }
 
         val newWindowHandle = glfwCreateWindow(width, height, title, monitor, windowHandle)
-        if (newWindowHandle == NULL)
+        if (newWindowHandle == MemoryUtil.NULL)
             throw RuntimeException("Failed to create the GLFW windowHandle")
 
         // Destroy previous window if it existed
-        if (windowHandle != NULL)
+        if (windowHandle != MemoryUtil.NULL)
             glfwDestroyWindow(windowHandle)
 
         this.windowHandle = newWindowHandle
         this.title = gameName
 
-        if (screenMode == WINDOWED)
+        if (screenMode == ScreenMode.WINDOWED)
         {
             val mode = glfwGetVideoMode(getWindowMonitor())!!
             glfwSetWindowPos(windowHandle, (mode.width() - width) / 2, (mode.height() - height) / 2)
@@ -156,7 +130,7 @@ open class WindowImpl : WindowInternal
 
     private fun getWindowMonitor(): Long
     {
-        if (windowHandle == NULL)
+        if (windowHandle == MemoryUtil.NULL)
             return glfwGetPrimaryMonitor()
 
         val xWindow = IntArray(1)

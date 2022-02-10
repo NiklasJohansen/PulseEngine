@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules
+package no.njoh.pulseengine.modules.data
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -7,44 +7,12 @@ import de.undercouch.bson4jackson.BsonFactory
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.data.FileFormat
-import no.njoh.pulseengine.data.FileFormat.*
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.loadBytes
-import org.lwjgl.glfw.GLFW.glfwGetTime
-import java.io.*
+import org.lwjgl.glfw.GLFW
+import java.io.File
+import java.io.FileNotFoundException
 import kotlin.system.measureNanoTime
-
-abstract class Data
-{
-    abstract val currentFps: Int
-    abstract val renderTimeMs: Float
-    abstract val updateTimeMS: Float
-    abstract val fixedUpdateTimeMS: Float
-    abstract val fixedDeltaTime: Float
-    abstract val deltaTime: Float
-    abstract val interpolation: Float
-    abstract val totalMemory: Long
-    abstract val usedMemory: Long
-    abstract val metrics: Map<String, Metric>
-    abstract var saveDirectory: String
-
-    abstract fun addMetric(name: String, unit: String = "", source: () -> Float)
-    abstract fun exists(fileName: String): Boolean
-    abstract fun <T> saveObject(data: T, fileName: String, format: FileFormat = JSON): Boolean
-    abstract fun <T> saveObjectAsync(data: T, fileName: String, format: FileFormat = JSON, onComplete: (T) -> Unit = {})
-
-    inline fun <reified T> loadObject(fileName: String, fromClassPath: Boolean = false): T? =
-        loadObject(fileName, T::class.java, fromClassPath)
-
-    inline fun <reified T> loadObjectAsync(fileName: String, fromClassPath: Boolean = false, noinline onFail: () -> Unit = {}, noinline onComplete: (T) -> Unit) =
-        loadObjectAsync(fileName, T::class.java, fromClassPath, onFail, onComplete)
-
-    @PublishedApi
-    internal abstract fun <T> loadObject(fileName: String, type: Class<T>, fromClassPath: Boolean): T?
-
-    @PublishedApi
-    internal abstract fun <T> loadObjectAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
-}
 
 open class DataImpl : Data()
 {
@@ -146,13 +114,13 @@ open class DataImpl : Data()
 
     inline fun measureAndUpdateTimeStats(block: () -> Unit)
     {
-        val startTime = glfwGetTime()
+        val startTime = GLFW.glfwGetTime()
         deltaTime = (startTime - lastFrameTime).toFloat()
 
         block.invoke()
 
-        lastFrameTime = glfwGetTime()
-        updateTimeMS = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        lastFrameTime = GLFW.glfwGetTime()
+        updateTimeMS = ((GLFW.glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
     fun updateMemoryStats()
@@ -163,17 +131,17 @@ open class DataImpl : Data()
 
     inline fun measureRenderTimeAndUpdateInterpolationValue(block: () -> Unit)
     {
-        val startTime = glfwGetTime()
+        val startTime = GLFW.glfwGetTime()
         interpolation = fixedUpdateAccumulator.toFloat() / fixedDeltaTime
 
         block.invoke()
 
-        renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        renderTimeMs = ((GLFW.glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
     fun calculateFrameRate()
     {
-        val nowTime = glfwGetTime()
+        val nowTime = GLFW.glfwGetTime()
         fpsFilter[frameCounter] = 1.0f / (nowTime - fpsTimer).toFloat()
         frameCounter = (frameCounter + 1) % fpsFilter.size
         currentFps = fpsFilter.average().toInt()
@@ -183,12 +151,12 @@ open class DataImpl : Data()
     private fun getMapper(fileFormat: FileFormat) =
         when (fileFormat)
         {
-            JSON -> jsonMapper
-            BINARY -> bsonMapper
+            FileFormat.JSON -> jsonMapper
+            FileFormat.BINARY -> bsonMapper
         }
 
     private fun getFormat(byteArray: ByteArray) =
-        if (byteArray.firstOrNull() == '{'.toByte()) JSON else BINARY
+        if (byteArray.firstOrNull() == '{'.toByte()) FileFormat.JSON else FileFormat.BINARY
 
     private fun getFile(fileName: String): File =
         File(fileName)
@@ -213,9 +181,3 @@ open class DataImpl : Data()
         private const val MEGA_BYTE = 1048576L
     }
 }
-
-data class Metric(
-    val name: String,
-    val unit: String,
-    val source: () -> Float
-)

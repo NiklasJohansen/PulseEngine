@@ -3,16 +3,34 @@ package no.njoh.pulseengine
 import no.njoh.pulseengine.data.*
 import no.njoh.pulseengine.data.assets.*
 import no.njoh.pulseengine.modules.*
+import no.njoh.pulseengine.modules.asset.AssetManager
+import no.njoh.pulseengine.modules.asset.AssetManagerImpl
+import no.njoh.pulseengine.modules.asset.AssetManagerInternal
+import no.njoh.pulseengine.modules.audio.Audio
+import no.njoh.pulseengine.modules.audio.AudioImpl
+import no.njoh.pulseengine.modules.audio.AudioInternal
+import no.njoh.pulseengine.modules.config.Configuration
+import no.njoh.pulseengine.modules.config.ConfigurationImpl
+import no.njoh.pulseengine.modules.config.ConfigurationInternal
 import no.njoh.pulseengine.modules.console.ConsoleImpl
 import no.njoh.pulseengine.modules.console.Console
 import no.njoh.pulseengine.modules.console.ConsoleInternal
+import no.njoh.pulseengine.modules.data.Data
+import no.njoh.pulseengine.modules.data.DataImpl
 import no.njoh.pulseengine.modules.graphics.GraphicsInternal
 import no.njoh.pulseengine.modules.graphics.Graphics
 import no.njoh.pulseengine.modules.graphics.GraphicsImpl
+import no.njoh.pulseengine.modules.input.InputIdle
+import no.njoh.pulseengine.modules.input.Input
+import no.njoh.pulseengine.modules.input.InputImpl
+import no.njoh.pulseengine.modules.input.InputInternal
 import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.SceneManagerInternal
 import no.njoh.pulseengine.modules.scene.SceneManagerImpl
 import no.njoh.pulseengine.modules.widget.*
+import no.njoh.pulseengine.modules.window.Window
+import no.njoh.pulseengine.modules.window.WindowImpl
+import no.njoh.pulseengine.modules.window.WindowInternal
 import no.njoh.pulseengine.util.FpsLimiter
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import kotlin.reflect.KClass
@@ -25,7 +43,7 @@ interface PulseEngine
     val gfx: Graphics
     val audio: Audio
     val input: Input
-    val asset: Assets
+    val asset: AssetManager
     val data: Data
     val console: Console
     val scene: SceneManager
@@ -46,7 +64,7 @@ class PulseEngineImpl(
     override val gfx: GraphicsInternal          = GraphicsImpl(),
     override val audio: AudioInternal           = AudioImpl(),
     override var input: InputInternal           = InputImpl(),
-    override val asset: AssetsInternal          = AssetsImpl(),
+    override val asset: AssetManagerInternal    = AssetManagerImpl(),
     override val data: DataImpl                 = DataImpl(),
     override val console: ConsoleInternal       = ConsoleImpl(),
     override val scene: SceneManagerInternal    = SceneManagerImpl(),
@@ -54,7 +72,7 @@ class PulseEngineImpl(
 ) : PulseEngine {
 
     private val activeInput = input
-    private val idleInput = IdleInput(activeInput)
+    private val idleInput = InputIdle(activeInput)
     private val frameRateLimiter = FpsLimiter()
     private lateinit var focusArea: FocusArea
 

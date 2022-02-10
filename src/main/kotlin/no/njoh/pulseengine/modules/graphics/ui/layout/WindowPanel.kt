@@ -3,8 +3,8 @@ package no.njoh.pulseengine.modules.graphics.ui.layout
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.CursorType.*
 import no.njoh.pulseengine.data.Mouse
-import no.njoh.pulseengine.modules.Input
-import no.njoh.pulseengine.modules.Window
+import no.njoh.pulseengine.modules.input.Input
+import no.njoh.pulseengine.modules.window.Window
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
 import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.*
