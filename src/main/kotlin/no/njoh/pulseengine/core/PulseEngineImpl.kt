@@ -26,7 +26,7 @@ import no.njoh.pulseengine.core.widget.WidgetManagerImpl
 import no.njoh.pulseengine.core.widget.WidgetManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
-import org.lwjgl.glfw.GLFW
+import org.lwjgl.glfw.GLFW.*
 
 /**
  * Main [PulseEngine] implementation.
@@ -169,7 +169,7 @@ class PulseEngineImpl(
     private fun fixedUpdate(game: PulseEngineGame)
     {
         val dt = 1.0 / config.fixedTickRate.toDouble()
-        val time = GLFW.glfwGetTime()
+        val time = glfwGetTime()
         var frameTime = time - data.fixedUpdateLastTime
         if (frameTime > 0.25)
             frameTime = 0.25
@@ -193,7 +193,7 @@ class PulseEngineImpl(
         }
 
         if (updated)
-            data.fixedUpdateTimeMS = ((GLFW.glfwGetTime() - time) * 1000.0).toFloat()
+            data.fixedUpdateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
     }
 
     private fun render(game: PulseEngineGame)
