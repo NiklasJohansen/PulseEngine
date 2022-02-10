@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.audio
 
-import no.njoh.pulseengine.data.assets.Sound
+import no.njoh.pulseengine.modules.asset.types.Sound
 
 interface Audio
 {

@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems.lighting
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.rendering.CustomRenderPassTarget

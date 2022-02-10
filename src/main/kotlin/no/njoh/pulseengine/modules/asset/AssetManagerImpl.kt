@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.asset
 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import no.njoh.pulseengine.data.assets.*
+import no.njoh.pulseengine.modules.asset.types.*
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.forEachFast
 import no.njoh.pulseengine.util.forEachFiltered

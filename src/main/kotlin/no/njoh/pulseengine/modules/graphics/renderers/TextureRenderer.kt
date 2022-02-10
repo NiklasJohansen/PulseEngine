@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.renderers
 
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.*
 import no.njoh.pulseengine.modules.graphics.api.ShaderProgram
 import no.njoh.pulseengine.modules.graphics.api.VertexAttributeLayout

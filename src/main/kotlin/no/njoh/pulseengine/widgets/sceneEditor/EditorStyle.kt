@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.widgets.sceneEditor
 
 import no.njoh.pulseengine.data.Color
-import no.njoh.pulseengine.data.assets.Font
+import no.njoh.pulseengine.modules.asset.types.Font
 
 class EditorStyle
 {

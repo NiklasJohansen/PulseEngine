@@ -2,8 +2,8 @@ package no.njoh.pulseengine.modules.input
 
 import no.njoh.pulseengine.data.*
 import no.njoh.pulseengine.data.CursorType.*
-import no.njoh.pulseengine.data.assets.Cursor
-import no.njoh.pulseengine.data.assets.Cursor.Companion.createWithHandle
+import no.njoh.pulseengine.modules.asset.types.Cursor
+import no.njoh.pulseengine.modules.asset.types.Cursor.Companion.createWithHandle
 import no.njoh.pulseengine.util.Logger
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*

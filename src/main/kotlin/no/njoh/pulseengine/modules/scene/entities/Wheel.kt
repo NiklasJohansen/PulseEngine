@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.Key
 import no.njoh.pulseengine.data.SceneState
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.CircleShape

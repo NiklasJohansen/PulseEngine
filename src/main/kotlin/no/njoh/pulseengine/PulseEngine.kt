@@ -1,11 +1,14 @@
 package no.njoh.pulseengine
 
 import no.njoh.pulseengine.data.*
-import no.njoh.pulseengine.data.assets.*
 import no.njoh.pulseengine.modules.*
 import no.njoh.pulseengine.modules.asset.AssetManager
 import no.njoh.pulseengine.modules.asset.AssetManagerImpl
 import no.njoh.pulseengine.modules.asset.AssetManagerInternal
+import no.njoh.pulseengine.modules.asset.types.Font
+import no.njoh.pulseengine.modules.asset.types.Sound
+import no.njoh.pulseengine.modules.asset.types.Text
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.audio.Audio
 import no.njoh.pulseengine.modules.audio.AudioImpl
 import no.njoh.pulseengine.modules.audio.AudioInternal

@@ -1,8 +1,8 @@
 package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.Color
-import no.njoh.pulseengine.data.assets.Font
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.asset.types.Font
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.api.AntiAliasing
 import no.njoh.pulseengine.modules.graphics.api.AntiAliasing.NONE
 import no.njoh.pulseengine.modules.graphics.api.BlendFunction

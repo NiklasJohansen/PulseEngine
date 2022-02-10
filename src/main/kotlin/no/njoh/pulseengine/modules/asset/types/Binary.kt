@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.data.assets
+package no.njoh.pulseengine.modules.asset.types
 
 import no.njoh.pulseengine.util.Logger
 import no.njoh.pulseengine.util.loadBytes

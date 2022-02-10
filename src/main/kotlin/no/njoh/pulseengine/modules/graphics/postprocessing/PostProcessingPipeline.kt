@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.postprocessing
 
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.util.forEachFast
 
 class PostProcessingPipeline

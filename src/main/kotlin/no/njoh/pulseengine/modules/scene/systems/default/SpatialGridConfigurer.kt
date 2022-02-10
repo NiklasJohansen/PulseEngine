@@ -8,7 +8,7 @@ import no.njoh.pulseengine.widgets.sceneEditor.ValueRange
 @Name("Spatial Grid")
 class SpatialGridConfigurer : SceneSystem()
 {
-    @ValueRange(10f, 1_000f)
+    @ValueRange(50f, 1_000f)
     var cellSize = 350f
 
     @ValueRange(0f, 100_000f)

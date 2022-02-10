@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.api.objects
 
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.api.AntiAliasing
 import no.njoh.pulseengine.modules.graphics.api.AntiAliasing.MSAA_MAX
 import no.njoh.pulseengine.modules.graphics.api.AntiAliasing.NONE

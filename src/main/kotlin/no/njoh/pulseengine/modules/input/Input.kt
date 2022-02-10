@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.input
 import no.njoh.pulseengine.data.*
-import no.njoh.pulseengine.data.assets.Cursor
+import no.njoh.pulseengine.modules.asset.types.Cursor
 
 interface Input
 {

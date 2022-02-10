@@ -3,8 +3,8 @@ package no.njoh.pulseengine.widgets.sceneEditor
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.Color
-import no.njoh.pulseengine.data.assets.Font
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.asset.types.Font
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Scrollable
 import no.njoh.pulseengine.modules.graphics.ui.Size

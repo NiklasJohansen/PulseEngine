@@ -27,10 +27,13 @@ open class Lamp : SceneEntity(), LightSource
     @Property("Light", 4, 0f, 360f)
     override var coneAngle = 360f
 
-    @Property("Light", 5)
-    override var type = LightType.RADIAL
+    @Property("Light", 5, 0f, 1f)
+    override var spill: Float = 0.5f
 
     @Property("Light", 6)
+    override var type = LightType.RADIAL
+
+    @Property("Light", 7)
     override var shadowType = ShadowType.SOFT
 
     override fun onRender(engine: PulseEngine, surface: Surface2D) { }

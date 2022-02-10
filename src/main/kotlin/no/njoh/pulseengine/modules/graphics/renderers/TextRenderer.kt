@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.renderers
 
-import no.njoh.pulseengine.data.assets.Font
+import no.njoh.pulseengine.modules.asset.types.Font
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import org.lwjgl.stb.STBTTAlignedQuad
 import org.lwjgl.stb.STBTTFontinfo

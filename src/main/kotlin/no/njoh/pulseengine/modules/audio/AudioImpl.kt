@@ -1,13 +1,12 @@
 package no.njoh.pulseengine.modules.audio
 
-import no.njoh.pulseengine.data.assets.Sound
+import no.njoh.pulseengine.modules.asset.types.Sound
 import no.njoh.pulseengine.util.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.*
 import org.lwjgl.openal.AL.createCapabilities
 import org.lwjgl.openal.AL10.*
 import org.lwjgl.openal.ALC.createCapabilities
-import org.lwjgl.openal.ALC10.*
 import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
 import java.nio.IntBuffer

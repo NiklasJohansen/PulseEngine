@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.data.assets
+package no.njoh.pulseengine.modules.asset.types
 
 abstract class Asset(
     open val name: String,

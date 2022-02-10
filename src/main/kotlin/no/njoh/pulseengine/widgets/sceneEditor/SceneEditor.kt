@@ -5,7 +5,7 @@ import kotlinx.coroutines.launch
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.data.*
 import no.njoh.pulseengine.data.CursorType.*
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.graphics.Camera
 import no.njoh.pulseengine.modules.graphics.api.Attachment

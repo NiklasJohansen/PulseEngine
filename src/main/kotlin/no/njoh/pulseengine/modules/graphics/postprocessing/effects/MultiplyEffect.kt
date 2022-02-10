@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.postprocessing.effects
 
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.api.ShaderProgram
 import no.njoh.pulseengine.modules.graphics.Surface
 import no.njoh.pulseengine.modules.graphics.postprocessing.SinglePassEffect

@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.data.Color
-import no.njoh.pulseengine.data.assets.Texture
+import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.api.*
 import no.njoh.pulseengine.modules.graphics.api.AntiAliasing.NONE
 import no.njoh.pulseengine.modules.graphics.api.Attachment.COLOR_TEXTURE_0

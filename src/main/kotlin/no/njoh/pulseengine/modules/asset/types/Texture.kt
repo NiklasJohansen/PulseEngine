@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.data.assets
+package no.njoh.pulseengine.modules.asset.types
 
 import de.matthiasmann.twl.utils.PNGDecoder
 import no.njoh.pulseengine.util.Logger

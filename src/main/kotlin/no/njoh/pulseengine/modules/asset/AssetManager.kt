@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.asset
 
-import no.njoh.pulseengine.data.assets.*
+import no.njoh.pulseengine.modules.asset.types.*
 import kotlin.reflect.KClass
 
 abstract class AssetManager
