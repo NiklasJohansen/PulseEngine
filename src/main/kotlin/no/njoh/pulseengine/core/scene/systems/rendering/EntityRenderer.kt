@@ -1,0 +1,22 @@
+package no.njoh.pulseengine.core.scene.systems.rendering
+
+import com.fasterxml.jackson.annotation.JsonIgnore
+import no.njoh.pulseengine.core.scene.systems.SceneSystem
+import kotlin.reflect.KClass
+
+abstract class EntityRenderer : SceneSystem()
+{
+    @JsonIgnore
+    protected val renderPasses = mutableListOf<RenderPass>()
+
+    fun addRenderPass(renderPass: RenderPass) =
+        renderPasses.add(renderPass)
+
+    fun removeRenderPass(renderPass: RenderPass) =
+        renderPasses.remove(renderPass)
+
+    data class RenderPass(
+        val surfaceName: String,
+        val targetType: KClass<*>
+    )
+}
