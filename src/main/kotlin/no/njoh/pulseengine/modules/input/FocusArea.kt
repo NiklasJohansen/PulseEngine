@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.data
+package no.njoh.pulseengine.modules.input
 
 data class FocusArea(var x0: Float, var y0: Float, var x1: Float, var y1: Float)
 {

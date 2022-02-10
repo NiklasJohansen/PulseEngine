@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.util
+package no.njoh.pulseengine.modules.shared.utils
 
 import org.joml.Vector2f
 import kotlin.math.abs
@@ -143,13 +143,13 @@ object MathUtil
      */
     fun atan2(y: Float, x: Float): Float
     {
-        val ax = if (x >= 0.0) x else -x
-        val ay = if (y >= 0.0) y else -y
+        val ax = if (x >= 0.0) x else - x
+        val ay = if (y >= 0.0) y else - y
         val a = (if (ax < ay) ax else ay) / (if (ax > ay) ax else ay)
         val s = a * a
         var r = ((-0.0464964749f * s + 0.15931422f) * s - 0.327622764f) * s * a + a
         if (ay > ax) r = 1.57079637f - r
         if (x < 0.0) r = 3.14159274f - r
-        return if (y >= 0) r else -r
+        return if (y >= 0) r else - r
     }
 }

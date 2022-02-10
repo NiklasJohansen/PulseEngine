@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.audio
 
 import no.njoh.pulseengine.modules.asset.types.Sound
-import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.modules.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.*
 import org.lwjgl.openal.AL.createCapabilities

@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.graphics.postprocessing
 
 import no.njoh.pulseengine.modules.asset.types.Texture
-import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
 
 class PostProcessingPipeline
 {

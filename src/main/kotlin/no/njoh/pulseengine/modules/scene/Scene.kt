@@ -5,15 +5,15 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY
 import com.fasterxml.jackson.annotation.JsonIgnore
 import gnu.trove.map.hash.TLongObjectHashMap
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.FileFormat
-import no.njoh.pulseengine.data.FileFormat.*
-import no.njoh.pulseengine.data.SwapList
-import no.njoh.pulseengine.data.SwapList.Companion.swapListOf
+import no.njoh.pulseengine.modules.data.FileFormat
+import no.njoh.pulseengine.modules.data.FileFormat.*
+import no.njoh.pulseengine.modules.shared.primitives.SwapList
+import no.njoh.pulseengine.modules.shared.primitives.SwapList.Companion.swapListOf
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
-import no.njoh.pulseengine.util.forEachFast
-import no.njoh.pulseengine.util.forEachFiltered
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFiltered
 
 @JsonAutoDetect(fieldVisibility = ANY)
 open class Scene(

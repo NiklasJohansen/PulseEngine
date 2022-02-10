@@ -3,8 +3,7 @@ package no.njoh.pulseengine.modules.graphics.ui.layout
 import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
 import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.*
-import no.njoh.pulseengine.util.sumByFloat
-import no.njoh.pulseengine.util.sumIf
+import no.njoh.pulseengine.modules.shared.utils.Extensions.sumIf
 import kotlin.math.max
 
 class VerticalPanel(

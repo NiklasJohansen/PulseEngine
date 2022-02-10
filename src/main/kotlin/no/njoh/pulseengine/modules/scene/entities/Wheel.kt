@@ -2,15 +2,15 @@ package no.njoh.pulseengine.modules.scene.entities
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.Key
-import no.njoh.pulseengine.data.SceneState
+import no.njoh.pulseengine.modules.input.Key
+import no.njoh.pulseengine.modules.scene.SceneState
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.CircleShape
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.CircleBody
-import no.njoh.pulseengine.util.interpolateFrom
-import no.njoh.pulseengine.util.toDegrees
+import no.njoh.pulseengine.modules.shared.utils.Extensions.interpolateFrom
+import no.njoh.pulseengine.modules.shared.utils.Extensions.toDegrees
 import kotlin.math.abs
 import kotlin.math.sign
 

@@ -1,6 +1,5 @@
 package no.njoh.pulseengine.modules.graphics.api
 
-import no.njoh.pulseengine.data.ShaderType
 import org.lwjgl.opengl.GL20.*
 
 class Shader(val id: Int, val type: ShaderType)

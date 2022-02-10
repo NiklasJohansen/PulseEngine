@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.graphics.ui.layout
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.Color
+import no.njoh.pulseengine.modules.shared.primitives.Color
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position

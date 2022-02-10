@@ -1,8 +1,8 @@
 package no.njoh.pulseengine.modules.graphics.ui.elements
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.CursorType.*
-import no.njoh.pulseengine.data.Mouse
+import no.njoh.pulseengine.modules.input.CursorType.*
+import no.njoh.pulseengine.modules.input.Mouse
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.Position

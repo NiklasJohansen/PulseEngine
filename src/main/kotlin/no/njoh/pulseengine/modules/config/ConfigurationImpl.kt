@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.modules.config
 
-import no.njoh.pulseengine.data.ScreenMode
-import no.njoh.pulseengine.util.LogLevel
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.loadStream
+import no.njoh.pulseengine.modules.window.ScreenMode
+import no.njoh.pulseengine.modules.shared.utils.LogLevel
+import no.njoh.pulseengine.modules.shared.utils.Logger
+import no.njoh.pulseengine.modules.shared.utils.Extensions.loadStream
 import java.lang.Exception
 import java.util.*
 import kotlin.reflect.KClass

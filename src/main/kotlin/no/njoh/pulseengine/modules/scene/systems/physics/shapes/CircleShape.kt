@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
-import no.njoh.pulseengine.data.Shape
+import no.njoh.pulseengine.modules.shared.primitives.Shape
 import org.joml.Vector2f
 
 data class CircleShape(

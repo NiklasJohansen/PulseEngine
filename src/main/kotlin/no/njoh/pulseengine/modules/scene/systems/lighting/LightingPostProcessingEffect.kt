@@ -1,13 +1,13 @@
 package no.njoh.pulseengine.modules.scene.systems.lighting
 
-import no.njoh.pulseengine.data.Color
+import no.njoh.pulseengine.modules.shared.primitives.Color
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.*
 import no.njoh.pulseengine.modules.graphics.api.ShaderProgram
 import no.njoh.pulseengine.modules.graphics.api.objects.BufferObject
 import no.njoh.pulseengine.modules.graphics.api.objects.FloatBufferObject
 import no.njoh.pulseengine.modules.graphics.postprocessing.SinglePassEffect
-import no.njoh.pulseengine.util.BufferExtensions.putAll
+import no.njoh.pulseengine.modules.shared.utils.BufferExtensions.putAll
 import org.joml.Math
 import org.joml.Vector4f
 

@@ -7,7 +7,7 @@ import no.njoh.pulseengine.modules.graphics.api.objects.BufferObject
 import no.njoh.pulseengine.modules.graphics.api.objects.FloatBufferObject
 import no.njoh.pulseengine.modules.graphics.api.objects.IntBufferObject
 import no.njoh.pulseengine.modules.graphics.api.objects.VertexArrayObject
-import no.njoh.pulseengine.util.BufferExtensions.putAll
+import no.njoh.pulseengine.modules.shared.utils.BufferExtensions.putAll
 import org.lwjgl.opengl.GL11.*
 
 class QuadBatchRenderer(

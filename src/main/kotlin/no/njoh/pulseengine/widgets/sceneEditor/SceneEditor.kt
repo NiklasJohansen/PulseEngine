@@ -3,8 +3,7 @@ package no.njoh.pulseengine.widgets.sceneEditor
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.*
-import no.njoh.pulseengine.data.CursorType.*
+import no.njoh.pulseengine.modules.input.CursorType.*
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.graphics.Camera
@@ -16,7 +15,11 @@ import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.layout.RowPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.docking.DockingPanel
+import no.njoh.pulseengine.modules.input.FocusArea
+import no.njoh.pulseengine.modules.input.Key
+import no.njoh.pulseengine.modules.input.Mouse
 import no.njoh.pulseengine.modules.scene.Scene
+import no.njoh.pulseengine.modules.scene.SceneState
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
@@ -25,8 +28,9 @@ import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.modules.scene.systems.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.PhysicsBody
+import no.njoh.pulseengine.modules.shared.utils.*
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.widget.Widget
-import no.njoh.pulseengine.util.*
 import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.MenuBarButton
 import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.MenuBarItem
 import no.njoh.pulseengine.widgets.sceneEditor.EditorUtil.createMenuBarUI

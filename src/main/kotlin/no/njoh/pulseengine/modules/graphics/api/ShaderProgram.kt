@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.api
 
-import no.njoh.pulseengine.data.Color
-import no.njoh.pulseengine.data.ShaderType
+import no.njoh.pulseengine.modules.shared.primitives.Color
 import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.joml.Vector4f

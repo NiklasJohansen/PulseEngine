@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.modules.console
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.Key
-import no.njoh.pulseengine.data.ScreenMode.*
-import no.njoh.pulseengine.data.Subscription
+import no.njoh.pulseengine.modules.input.Key
+import no.njoh.pulseengine.modules.window.ScreenMode.*
+import no.njoh.pulseengine.modules.shared.primitives.Subscription
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

@@ -1,8 +1,8 @@
 package no.njoh.pulseengine.modules.asset.types
 
 import de.matthiasmann.twl.utils.PNGDecoder
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.loadStream
+import no.njoh.pulseengine.modules.shared.utils.Logger
+import no.njoh.pulseengine.modules.shared.utils.Extensions.loadStream
 import org.lwjgl.opengl.GL11.*
 import java.nio.ByteBuffer
 

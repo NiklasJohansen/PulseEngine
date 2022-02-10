@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.api.objects
 
-import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.modules.shared.utils.Logger
 import org.lwjgl.opengl.GL30.glMapBufferRange
 import org.lwjgl.opengl.GL44.*
 import org.lwjgl.system.MemoryUtil.*

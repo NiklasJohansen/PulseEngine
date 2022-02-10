@@ -6,9 +6,8 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import de.undercouch.bson4jackson.BsonFactory
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import no.njoh.pulseengine.data.FileFormat
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.loadBytes
+import no.njoh.pulseengine.modules.shared.utils.Logger
+import no.njoh.pulseengine.modules.shared.utils.Extensions.loadBytes
 import org.lwjgl.glfw.GLFW
 import java.io.File
 import java.io.FileNotFoundException

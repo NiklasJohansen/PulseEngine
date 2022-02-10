@@ -1,7 +1,5 @@
 package no.njoh.pulseengine.modules.window
 
-import no.njoh.pulseengine.data.ScreenMode
-
 interface Window
 {
     var title: String

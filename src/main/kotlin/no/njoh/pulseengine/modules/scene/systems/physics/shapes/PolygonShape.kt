@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.shapes
 
-import no.njoh.pulseengine.data.Shape
-import no.njoh.pulseengine.util.MathUtil.atan2
+import no.njoh.pulseengine.modules.shared.primitives.Shape
+import no.njoh.pulseengine.modules.shared.utils.MathUtil.atan2
 import org.joml.Vector2f
 import kotlin.math.PI
 import kotlin.math.sqrt

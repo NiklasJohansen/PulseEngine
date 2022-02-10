@@ -1,11 +1,11 @@
 package no.njoh.pulseengine.modules.graphics.ui
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.FocusArea
-import no.njoh.pulseengine.data.Mouse
+import no.njoh.pulseengine.modules.input.FocusArea
+import no.njoh.pulseengine.modules.input.Mouse
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.graphics.ui.elements.Label
-import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
 
 abstract class UiElement(
     val x: Position,

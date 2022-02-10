@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics
 
-import no.njoh.pulseengine.data.Color
+import no.njoh.pulseengine.modules.shared.primitives.Color
 import no.njoh.pulseengine.modules.asset.types.Font
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.api.AntiAliasing
@@ -11,8 +11,8 @@ import no.njoh.pulseengine.modules.graphics.api.TextureFormat
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.modules.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.modules.graphics.renderers.*
-import no.njoh.pulseengine.util.firstOrNullFast
-import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.firstOrNullFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
 import org.lwjgl.opengl.GL13.*
 import org.lwjgl.opengl.GL20.glDrawBuffers
 import java.lang.RuntimeException

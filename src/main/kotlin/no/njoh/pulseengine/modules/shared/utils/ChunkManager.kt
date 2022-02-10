@@ -1,6 +1,6 @@
-package no.njoh.pulseengine.util
+package no.njoh.pulseengine.modules.shared.utils
 
-import no.njoh.pulseengine.data.Array2D
+import no.njoh.pulseengine.modules.shared.primitives.Array2D
 import no.njoh.pulseengine.modules.graphics.Camera
 import no.njoh.pulseengine.modules.graphics.Graphics
 import no.njoh.pulseengine.modules.graphics.Surface2D

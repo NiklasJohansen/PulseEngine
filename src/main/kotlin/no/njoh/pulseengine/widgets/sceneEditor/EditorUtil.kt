@@ -2,7 +2,7 @@ package no.njoh.pulseengine.widgets.sceneEditor
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.Color
+import no.njoh.pulseengine.modules.shared.primitives.Color
 import no.njoh.pulseengine.modules.asset.types.Font
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.ui.Position
@@ -16,8 +16,8 @@ import no.njoh.pulseengine.modules.graphics.ui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.modules.graphics.ui.layout.*
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Logger
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
 import java.lang.IllegalArgumentException
 import kotlin.math.min
 import kotlin.reflect.KClass

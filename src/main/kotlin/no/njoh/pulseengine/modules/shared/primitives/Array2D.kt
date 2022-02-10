@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.data
+package no.njoh.pulseengine.modules.shared.primitives
 
 class Array2D <T> (
     val width: Int,
@@ -12,9 +12,14 @@ class Array2D <T> (
 
     @Suppress("UNCHECKED_CAST")
     operator fun get(index: Int): T = data[index] as T
+
     operator fun set(index: Int, value: T) { data[index] = value }
+
+    @Suppress("UNCHECKED_CAST")
     operator fun get(x: Int, y: Int): T = data[y * width + x] as T
+
     operator fun set(x: Int, y: Int, value: T) { data[y * width + x] = value }
+
     override fun iterator(): Iterator<T> = iterator.apply { index = 0 }
 
     inner class Array2DIterator(var index: Int = 0) : Iterator<T>

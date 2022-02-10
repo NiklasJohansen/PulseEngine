@@ -1,8 +1,8 @@
 package no.njoh.pulseengine.modules.widget
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.util.forEachFast
-import no.njoh.pulseengine.util.forEachFiltered
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFiltered
 
 open class WidgetManagerImpl: WidgetManagerInternal()
 {

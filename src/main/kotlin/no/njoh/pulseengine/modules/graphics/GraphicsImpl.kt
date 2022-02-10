@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics
 
-import no.njoh.pulseengine.data.Color
+import no.njoh.pulseengine.modules.shared.primitives.Color
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.api.AntiAliasing.MSAA4
 import no.njoh.pulseengine.modules.graphics.api.Attachment.*
@@ -8,9 +8,9 @@ import no.njoh.pulseengine.modules.graphics.api.TextureFilter.BILINEAR_INTERPOLA
 import no.njoh.pulseengine.modules.graphics.api.TextureFormat.NORMAL
 import no.njoh.pulseengine.modules.graphics.api.*
 import no.njoh.pulseengine.modules.graphics.renderers.*
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.forEachFast
-import no.njoh.pulseengine.util.forEachFiltered
+import no.njoh.pulseengine.modules.shared.utils.Logger
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFiltered
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
 

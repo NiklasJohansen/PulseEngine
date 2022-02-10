@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.asset.types
 
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.loadBytes
+import no.njoh.pulseengine.modules.shared.utils.Logger
+import no.njoh.pulseengine.modules.shared.utils.Extensions.loadBytes
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.stb.STBTTFontinfo

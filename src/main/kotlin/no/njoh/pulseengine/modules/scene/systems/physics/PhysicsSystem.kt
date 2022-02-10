@@ -2,28 +2,35 @@ package no.njoh.pulseengine.modules.scene.systems.physics
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.Mouse
-import no.njoh.pulseengine.data.SceneState.RUNNING
+import no.njoh.pulseengine.modules.input.Mouse
+import no.njoh.pulseengine.modules.scene.SceneState.RUNNING
 import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.modules.scene.systems.physics.bodies.PhysicsBody
-import no.njoh.pulseengine.util.forEachFast
-import no.njoh.pulseengine.widgets.sceneEditor.ValueRange
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.widgets.sceneEditor.Name
+import no.njoh.pulseengine.widgets.sceneEditor.Property
 
+@Name("2D Physics")
 class PhysicsSystem : SceneSystem()
 {
+    @Property(order = 1)
     var gravity = 1500f
-    var drawShapes = false
-    var mouseInteraction = false
 
-    @ValueRange(0f, 100_000_000f)
+    @Property(order = 2, min = 0f, max = 50f)
+    var physicsIterations = 4
+
+    @Property(order = 3, min = 0f, max = 100_000_000f)
     var worldWidth = 100_000
 
-    @ValueRange(0f, 100_000_000f)
+    @Property(order = 4, min = 0f, max = 100_000_000f)
     var worldHeight = 100_000
 
-    @ValueRange(0f, 50f)
-    var physicsIterations = 4
+    @Property(order = 5)
+    var mousePicking = false
+
+    @Property(order = 6)
+    var drawShapes = false
 
     @JsonIgnore
     private var pickedBody: PhysicsBody? = null
@@ -47,7 +54,7 @@ class PhysicsSystem : SceneSystem()
         for (i in 0 until totalIterations)
             engine.scene.forEachPhysicsEntity { it.iterateStep(engine, i, totalIterations, worldWidth, worldHeight) }
 
-        if (mouseInteraction)
+        if (mousePicking)
             pickBody(engine)
     }
 

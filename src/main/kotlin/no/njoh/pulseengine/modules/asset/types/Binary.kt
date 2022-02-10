@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.asset.types
 
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.loadBytes
+import no.njoh.pulseengine.modules.shared.utils.Logger
+import no.njoh.pulseengine.modules.shared.utils.Extensions.loadBytes
 
 class Binary(fileName: String, override val name: String) : Asset(name, fileName)
 {

@@ -2,11 +2,11 @@ package no.njoh.pulseengine.modules.scene.entities
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.SceneState
+import no.njoh.pulseengine.modules.scene.SceneState
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.util.toDegrees
-import no.njoh.pulseengine.util.toRadians
+import no.njoh.pulseengine.modules.shared.utils.Extensions.toDegrees
+import no.njoh.pulseengine.modules.shared.utils.Extensions.toRadians
 import kotlin.math.*
 
 open class Camera : SceneEntity()

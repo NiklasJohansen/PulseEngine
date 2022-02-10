@@ -1,10 +1,10 @@
-package no.njoh.pulseengine.util
+package no.njoh.pulseengine.modules.shared.utils
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.console.MessageType
-import no.njoh.pulseengine.util.LogLevel.*
-import no.njoh.pulseengine.util.LogTarget.CONSOLE
-import no.njoh.pulseengine.util.LogTarget.STDOUT
+import no.njoh.pulseengine.modules.shared.utils.LogLevel.*
+import no.njoh.pulseengine.modules.shared.utils.LogTarget.CONSOLE
+import no.njoh.pulseengine.modules.shared.utils.LogTarget.STDOUT
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
@@ -64,7 +64,7 @@ object Logger
             ERROR -> RED
             else -> RESET
         }
-        println("${levelColor}$levelText ${WHITE}[$time]$RESET  $text")
+        println("${levelColor}$levelText $WHITE[$time]$RESET  $text")
     }
 }
 

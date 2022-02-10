@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.config
 
-import no.njoh.pulseengine.data.ScreenMode
+import no.njoh.pulseengine.modules.window.ScreenMode
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 

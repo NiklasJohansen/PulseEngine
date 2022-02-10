@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.util
+package no.njoh.pulseengine.modules.shared.utils
 
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.util.nfd.NFDPathSet

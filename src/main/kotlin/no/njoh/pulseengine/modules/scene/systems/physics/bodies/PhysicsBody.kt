@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems.physics.bodies
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.Shape
+import no.njoh.pulseengine.modules.shared.primitives.Shape
 import no.njoh.pulseengine.modules.scene.systems.physics.BodyType
 import no.njoh.pulseengine.modules.scene.systems.physics.ContactResult
 import no.njoh.pulseengine.modules.scene.systems.physics.PhysicsEntity

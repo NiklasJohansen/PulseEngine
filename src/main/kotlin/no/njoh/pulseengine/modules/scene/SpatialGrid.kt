@@ -1,15 +1,15 @@
 package no.njoh.pulseengine.modules.scene
 
-import no.njoh.pulseengine.data.Array2D
+import no.njoh.pulseengine.modules.shared.primitives.Array2D
 import no.njoh.pulseengine.modules.graphics.Surface2D
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.DISCOVERABLE
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity.Companion.SIZE_UPDATED
-import no.njoh.pulseengine.data.SwapList
+import no.njoh.pulseengine.modules.shared.primitives.SwapList
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
-import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
 import kotlin.math.*
 
 class SpatialGrid (
@@ -128,14 +128,26 @@ class SpatialGrid (
 
     inline fun <reified T> queryType(x: Float, y: Float, width: Float, height: Float, queryId: Int, block: (T) -> Unit)
     {
-        val xCell = ((x - xOffset) / cellSize).toInt()
-        val yCell = ((y - yOffset) / cellSize).toInt()
-        val horizontalNeighbours = 1 + (width / 2f / cellSize).toInt()
-        val verticalNeighbours = 1 + (height / 2f / cellSize).toInt()
-        val xStart = (xCell - horizontalNeighbours).coerceAtLeast(0)
-        val yStart = (yCell - verticalNeighbours).coerceAtLeast(0)
-        val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
-        val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
+        val invCellSize = 1.0f / cellSize
+        val xCell = ((x - xOffset) * invCellSize).toInt()
+        val yCell = ((y - yOffset) * invCellSize).toInt()
+        val horizontalNeighbours = 1 + (width * 0.5f * invCellSize).toInt()
+        val verticalNeighbours = 1 + (height * 0.5f * invCellSize).toInt()
+//        val xStart = (xCell - horizontalNeighbours).coerceAtLeast(0)
+//        val yStart = (yCell - verticalNeighbours).coerceAtLeast(0)
+//        val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
+//        val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
+
+        var xStart = xCell - horizontalNeighbours
+        var yStart = yCell - verticalNeighbours
+        var xEnd = xStart + horizontalNeighbours * 2
+        var yEnd = yStart + verticalNeighbours * 2
+
+        if (xStart < 0) xStart = 0
+        if (yStart < 0) yStart = 0
+        if (xEnd > xCells - 1) xEnd = xCells - 1
+        if (yEnd > yCells - 1) yEnd = yCells - 1
+
         val array = array
         lastQueryId = queryId
 

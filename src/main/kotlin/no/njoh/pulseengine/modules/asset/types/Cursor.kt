@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.asset.types
 
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.loadStream
+import no.njoh.pulseengine.modules.shared.utils.Logger
+import no.njoh.pulseengine.modules.shared.utils.Extensions.loadStream
 import org.lwjgl.BufferUtils
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFW.glfwDestroyCursor

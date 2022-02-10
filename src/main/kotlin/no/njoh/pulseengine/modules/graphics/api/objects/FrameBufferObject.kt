@@ -10,7 +10,7 @@ import no.njoh.pulseengine.modules.graphics.api.TextureFilter.BILINEAR_INTERPOLA
 import no.njoh.pulseengine.modules.graphics.api.TextureFormat
 import no.njoh.pulseengine.modules.graphics.api.TextureFormat.NORMAL
 import no.njoh.pulseengine.modules.graphics.api.Attachment.*
-import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
 import org.lwjgl.opengl.GL14.GL_DEPTH_COMPONENT24
 import org.lwjgl.opengl.GL20.glDrawBuffers
 import org.lwjgl.opengl.GL30.*

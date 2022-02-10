@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.graphics.ui
 import no.njoh.pulseengine.modules.graphics.ui.Size.ValueType.ABSOLUTE
 import no.njoh.pulseengine.modules.graphics.ui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.graphics.ui.layout.VerticalPanel
-import no.njoh.pulseengine.util.sumByFloat
+import no.njoh.pulseengine.modules.shared.utils.Extensions.sumByFloat
 
 object UiUtil
 {

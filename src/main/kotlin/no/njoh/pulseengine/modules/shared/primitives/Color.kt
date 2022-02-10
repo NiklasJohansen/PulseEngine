@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.data
+package no.njoh.pulseengine.modules.shared.primitives
 
 data class Color(
     var red: Float,

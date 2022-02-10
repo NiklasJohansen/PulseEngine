@@ -1,7 +1,7 @@
-package no.njoh.pulseengine.util
+package no.njoh.pulseengine.modules.shared.utils
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.Mouse
+import no.njoh.pulseengine.modules.input.Mouse
 import no.njoh.pulseengine.modules.graphics.Camera
 import kotlin.math.max
 import kotlin.math.min

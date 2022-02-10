@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.scene.entities
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.SceneState
+import no.njoh.pulseengine.modules.scene.SceneState
 import no.njoh.pulseengine.modules.asset.types.Font
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.Surface2D

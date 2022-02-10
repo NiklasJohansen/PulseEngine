@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.scene.systems.rendering
 
 import no.njoh.pulseengine.PulseEngine
 import no.njoh.pulseengine.modules.scene.entities.SceneEntity
-import no.njoh.pulseengine.util.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.widgets.sceneEditor.Name
 import java.util.*
 import kotlin.collections.ArrayList

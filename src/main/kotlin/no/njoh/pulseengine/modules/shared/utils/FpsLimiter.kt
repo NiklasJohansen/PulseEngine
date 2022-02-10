@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.util
+package no.njoh.pulseengine.modules.shared.utils
 
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import java.lang.Long.max

@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.data
+package no.njoh.pulseengine.modules.input
 
 enum class Key(val code: Int)
 {
@@ -53,7 +53,7 @@ enum class Key(val code: Int)
     GRAVE_ACCENT(96),
     WORLD_1(161),
     WORLD_2(162),
-    
+
     // Function keys
     ESCAPE(256),
     ENTER(257),
@@ -190,28 +190,4 @@ enum class CursorType
     TOP_LEFT_RESIZE,
     TOP_RIGHT_RESIZE,
     ROTATE
-}
-
-enum class ScreenMode
-{
-    WINDOWED,
-    FULLSCREEN
-}
-
-enum class ShaderType
-{
-    VERTEX,
-    FRAGMENT
-}
-
-enum class FileFormat
-{
-    JSON,
-    BINARY
-}
-
-enum class SceneState {
-    STOPPED,
-    PAUSED,
-    RUNNING
 }

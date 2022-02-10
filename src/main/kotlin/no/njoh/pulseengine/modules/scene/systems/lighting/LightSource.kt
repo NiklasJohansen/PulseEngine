@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.scene.systems.lighting
 
-import no.njoh.pulseengine.data.Color
+import no.njoh.pulseengine.modules.shared.primitives.Color
 
 /**
  * Behaves like a light and is handled by the [LightingSystem].

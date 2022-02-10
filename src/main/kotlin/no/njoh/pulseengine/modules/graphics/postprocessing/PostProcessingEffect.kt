@@ -5,7 +5,7 @@ import no.njoh.pulseengine.modules.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.modules.graphics.api.objects.FrameBufferObject
 import no.njoh.pulseengine.modules.graphics.api.ShaderProgram
 import no.njoh.pulseengine.modules.graphics.renderers.FrameTextureRenderer
-import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.modules.shared.utils.Logger
 
 interface PostProcessingEffect
 {

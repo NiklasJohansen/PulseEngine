@@ -1,9 +1,5 @@
 package no.njoh.pulseengine.modules.input
 
-import no.njoh.pulseengine.data.CursorType
-import no.njoh.pulseengine.data.FocusArea
-import no.njoh.pulseengine.data.Key
-import no.njoh.pulseengine.data.Mouse
 import no.njoh.pulseengine.modules.asset.types.Cursor
 
 class InputIdle(private val activeInput: InputInternal) : InputInternal

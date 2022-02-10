@@ -3,10 +3,10 @@ package no.njoh.pulseengine.modules.asset
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.njoh.pulseengine.modules.asset.types.*
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.forEachFast
-import no.njoh.pulseengine.util.forEachFiltered
-import no.njoh.pulseengine.util.loadFileNames
+import no.njoh.pulseengine.modules.shared.utils.Logger
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.modules.shared.utils.Extensions.forEachFiltered
+import no.njoh.pulseengine.modules.shared.utils.Extensions.loadFileNames
 import kotlin.reflect.KClass
 
 open class AssetManagerImpl : AssetManagerInternal()

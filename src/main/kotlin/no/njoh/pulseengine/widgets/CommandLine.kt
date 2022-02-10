@@ -1,11 +1,13 @@
 package no.njoh.pulseengine.widgets
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.*
 import no.njoh.pulseengine.modules.asset.types.Font
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.console.CommandResult
 import no.njoh.pulseengine.modules.console.MessageType
+import no.njoh.pulseengine.modules.input.FocusArea
+import no.njoh.pulseengine.modules.input.Key
+import no.njoh.pulseengine.modules.input.Mouse
 import no.njoh.pulseengine.modules.widget.Widget
 import kotlin.math.max
 import kotlin.math.min

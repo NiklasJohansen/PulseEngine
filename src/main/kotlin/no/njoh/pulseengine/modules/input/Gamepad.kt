@@ -1,7 +1,5 @@
 package no.njoh.pulseengine.modules.input
 
-import no.njoh.pulseengine.data.Axis
-import no.njoh.pulseengine.data.Button
 import org.lwjgl.glfw.GLFW.glfwGetJoystickAxes
 import org.lwjgl.glfw.GLFW.glfwGetJoystickButtons
 import java.nio.ByteBuffer

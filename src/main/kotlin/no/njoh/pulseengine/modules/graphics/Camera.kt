@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.graphics
 
 import no.njoh.pulseengine.modules.graphics.DefaultCamera.*
 import no.njoh.pulseengine.modules.graphics.DefaultCamera.ProjectionType.*
-import no.njoh.pulseengine.util.interpolateFrom
+import no.njoh.pulseengine.modules.shared.utils.Extensions.interpolateFrom
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f

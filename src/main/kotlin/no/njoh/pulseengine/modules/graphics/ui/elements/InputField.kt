@@ -1,8 +1,7 @@
 package no.njoh.pulseengine.modules.graphics.ui.elements
 
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.*
-import no.njoh.pulseengine.data.CursorType.*
+import no.njoh.pulseengine.modules.input.CursorType.*
 import no.njoh.pulseengine.modules.asset.types.Font
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.input.Input
@@ -11,6 +10,9 @@ import no.njoh.pulseengine.modules.graphics.ui.Position
 import no.njoh.pulseengine.modules.graphics.ui.Size
 import no.njoh.pulseengine.modules.graphics.ui.UiElement
 import no.njoh.pulseengine.modules.graphics.ui.elements.InputField.ContentType.*
+import no.njoh.pulseengine.modules.input.Key
+import no.njoh.pulseengine.modules.input.Mouse
+import no.njoh.pulseengine.modules.shared.primitives.Color
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min

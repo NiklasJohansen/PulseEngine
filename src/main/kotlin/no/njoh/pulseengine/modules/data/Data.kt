@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.modules.data
 
-import no.njoh.pulseengine.data.FileFormat
-import no.njoh.pulseengine.data.FileFormat.JSON
+import no.njoh.pulseengine.modules.data.FileFormat.JSON
 
 abstract class Data
 {

@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.graphics.api.objects
 
-import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.modules.shared.utils.Logger
 import org.lwjgl.opengl.ARBUniformBufferObject.GL_UNIFORM_BUFFER
 import org.lwjgl.opengl.ARBUniformBufferObject.glBindBufferBase
 import org.lwjgl.opengl.GL15.*

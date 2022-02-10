@@ -9,12 +9,12 @@ import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Com
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.X_LAST
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.Y
 import no.njoh.pulseengine.modules.scene.systems.physics.shapes.PolygonShape.Companion.Y_LAST
-import no.njoh.pulseengine.util.Logger
-import no.njoh.pulseengine.util.MathUtil
-import no.njoh.pulseengine.util.MathUtil.getLineSegmentCircleIntersection
-import no.njoh.pulseengine.util.MathUtil.getLineSegmentIntersection
-import no.njoh.pulseengine.util.MathUtil.pointToLineDistanceSquared
-import no.njoh.pulseengine.util.MathUtil.pointToLineSegmentDistanceSquared
+import no.njoh.pulseengine.modules.shared.utils.Logger
+import no.njoh.pulseengine.modules.shared.utils.MathUtil
+import no.njoh.pulseengine.modules.shared.utils.MathUtil.getLineSegmentCircleIntersection
+import no.njoh.pulseengine.modules.shared.utils.MathUtil.getLineSegmentIntersection
+import no.njoh.pulseengine.modules.shared.utils.MathUtil.pointToLineDistanceSquared
+import no.njoh.pulseengine.modules.shared.utils.MathUtil.pointToLineSegmentDistanceSquared
 import org.joml.Vector2f
 import kotlin.math.*
 

@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.util
+package no.njoh.pulseengine.modules.shared.utils
 
 import java.lang.reflect.Modifier
 import java.net.URLClassLoader

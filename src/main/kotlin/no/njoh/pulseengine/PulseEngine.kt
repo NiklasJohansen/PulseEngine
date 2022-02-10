@@ -1,6 +1,5 @@
 package no.njoh.pulseengine
 
-import no.njoh.pulseengine.data.*
 import no.njoh.pulseengine.modules.*
 import no.njoh.pulseengine.modules.asset.AssetManager
 import no.njoh.pulseengine.modules.asset.AssetManagerImpl
@@ -23,10 +22,7 @@ import no.njoh.pulseengine.modules.data.DataImpl
 import no.njoh.pulseengine.modules.graphics.GraphicsInternal
 import no.njoh.pulseengine.modules.graphics.Graphics
 import no.njoh.pulseengine.modules.graphics.GraphicsImpl
-import no.njoh.pulseengine.modules.input.InputIdle
-import no.njoh.pulseengine.modules.input.Input
-import no.njoh.pulseengine.modules.input.InputImpl
-import no.njoh.pulseengine.modules.input.InputInternal
+import no.njoh.pulseengine.modules.input.*
 import no.njoh.pulseengine.modules.scene.SceneManager
 import no.njoh.pulseengine.modules.scene.SceneManagerInternal
 import no.njoh.pulseengine.modules.scene.SceneManagerImpl
@@ -34,7 +30,7 @@ import no.njoh.pulseengine.modules.widget.*
 import no.njoh.pulseengine.modules.window.Window
 import no.njoh.pulseengine.modules.window.WindowImpl
 import no.njoh.pulseengine.modules.window.WindowInternal
-import no.njoh.pulseengine.util.FpsLimiter
+import no.njoh.pulseengine.modules.shared.utils.FpsLimiter
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance

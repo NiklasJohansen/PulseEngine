@@ -2,9 +2,9 @@ package no.njoh.pulseengine.modules.scene.systems.lighting
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.Color
-import no.njoh.pulseengine.data.Shape
-import no.njoh.pulseengine.data.SwapList
+import no.njoh.pulseengine.modules.shared.primitives.Color
+import no.njoh.pulseengine.modules.shared.primitives.Shape
+import no.njoh.pulseengine.modules.shared.primitives.SwapList
 import no.njoh.pulseengine.modules.asset.types.Texture
 import no.njoh.pulseengine.modules.graphics.api.AntiAliasing
 import no.njoh.pulseengine.modules.scene.SpatialGrid
@@ -13,8 +13,8 @@ import no.njoh.pulseengine.modules.scene.systems.SceneSystem
 import no.njoh.pulseengine.modules.scene.systems.lighting.ShadowType.NONE
 import no.njoh.pulseengine.modules.scene.systems.rendering.EntityRenderer
 import no.njoh.pulseengine.modules.scene.systems.rendering.EntityRenderer.RenderPass
-import no.njoh.pulseengine.util.MathUtil
-import no.njoh.pulseengine.util.toRadians
+import no.njoh.pulseengine.modules.shared.utils.MathUtil
+import no.njoh.pulseengine.modules.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.widgets.sceneEditor.Name
 import no.njoh.pulseengine.widgets.sceneEditor.Property
 import kotlin.math.*

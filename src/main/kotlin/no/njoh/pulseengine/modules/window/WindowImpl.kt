@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.modules.window
 
-import no.njoh.pulseengine.data.ScreenMode
-import no.njoh.pulseengine.util.Logger
+import no.njoh.pulseengine.modules.shared.utils.Logger
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWErrorCallback
 import org.lwjgl.glfw.GLFWWindowSizeCallback
