@@ -9,9 +9,7 @@ import no.njoh.pulseengine.core.data.FileFormat
 import no.njoh.pulseengine.core.data.FileFormat.*
 import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.shared.primitives.SwapList.Companion.swapListOf
-import no.njoh.pulseengine.core.scene.entities.SceneEntity
-import no.njoh.pulseengine.core.scene.entities.SceneEntity.Companion.DEAD
-import no.njoh.pulseengine.core.scene.systems.SceneSystem
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 

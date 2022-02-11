@@ -1,11 +1,11 @@
 package no.njoh.pulseengine.core.scene
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.core.scene.entities.SceneEntity
-import no.njoh.pulseengine.core.scene.systems.SceneSystem
-import no.njoh.pulseengine.core.scene.systems.default.EntityUpdateSystem
-import no.njoh.pulseengine.core.scene.systems.rendering.EntityRenderSystem
+import no.njoh.pulseengine.core.scene.systems.EntityUpdater
+import no.njoh.pulseengine.core.scene.systems.EntityRendererImpl
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.getClassesFromFullyQualifiedClassNames
@@ -35,8 +35,8 @@ open class SceneManagerImpl : SceneManagerInternal() {
         this.engine = engine
         this.activeScene = Scene("default")
         this.activeScene.fileName = "default.scn"
-        addSystem(EntityUpdateSystem())
-        addSystem(EntityRenderSystem())
+        addSystem(EntityUpdater())
+        addSystem(EntityRendererImpl())
         registerSystemsAndEntityClasses()
     }
 
@@ -124,8 +124,8 @@ open class SceneManagerImpl : SceneManagerInternal() {
             .substringBefore(".")
         val scene = Scene(sceneName)
         scene.fileName = fileName
-        scene.systems.add(EntityUpdateSystem())
-        scene.systems.add(EntityRenderSystem())
+        scene.systems.add(EntityUpdater())
+        scene.systems.add(EntityRendererImpl())
         setActive(scene)
     }
 
@@ -220,23 +220,25 @@ open class SceneManagerImpl : SceneManagerInternal() {
 
     override fun registerSystemsAndEntityClasses()
     {
-        measureNanoTime {
-            SceneEntity.REGISTERED_TYPES.clear()
-            SceneSystem.REGISTERED_TYPES.clear()
+        GlobalScope.launch {
+            measureNanoTime {
+                SceneEntity.REGISTERED_TYPES.clear()
+                SceneSystem.REGISTERED_TYPES.clear()
 
-            val classes = ReflectionUtil.getFullyQualifiedClassNames()
-                .getClassesFromFullyQualifiedClassNames()
+                val classes = ReflectionUtil.getFullyQualifiedClassNames()
+                    .getClassesFromFullyQualifiedClassNames()
 
-            classes.getClassesOfSuperType(SceneEntity::class).forEach { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
-            classes.getClassesOfSuperType(SceneSystem::class).forEach { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
+                classes.getClassesOfSuperType(SceneEntity::class).forEach { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
+                classes.getClassesOfSuperType(SceneSystem::class).forEach { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
 
-            SceneEntity.REGISTERED_TYPES.remove(SceneEntity::class)
-            SceneSystem.REGISTERED_TYPES.remove(SceneSystem::class)
-        }.let {
-            val entityCount = SceneEntity.REGISTERED_TYPES.size
-            val systemCount = SceneSystem.REGISTERED_TYPES.size
-            Logger.debug("Registered $entityCount scene entity classes and $systemCount scene system classes " +
-                "in ${"%.3f".format(it / 1_000_000f)} ms. ")
+                SceneEntity.REGISTERED_TYPES.remove(SceneEntity::class)
+                SceneSystem.REGISTERED_TYPES.remove(SceneSystem::class)
+            }.let {
+                val entityCount = SceneEntity.REGISTERED_TYPES.size
+                val systemCount = SceneSystem.REGISTERED_TYPES.size
+                Logger.debug("Registered $entityCount scene entity classes and $systemCount scene system " +
+                    "classes in ${"%.3f".format(it / 1_000_000f)} ms. ")
+            }
         }
     }
 

@@ -2,13 +2,12 @@ package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.shared.primitives.Array2D
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.core.scene.entities.SceneEntity.Companion.DEAD
-import no.njoh.pulseengine.core.scene.entities.SceneEntity.Companion.DISCOVERABLE
-import no.njoh.pulseengine.core.scene.entities.SceneEntity.Companion.POSITION_UPDATED
-import no.njoh.pulseengine.core.scene.entities.SceneEntity.Companion.ROTATION_UPDATED
-import no.njoh.pulseengine.core.scene.entities.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DISCOVERABLE
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.shared.primitives.SwapList
-import no.njoh.pulseengine.core.scene.entities.SceneEntity
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import kotlin.math.*
 

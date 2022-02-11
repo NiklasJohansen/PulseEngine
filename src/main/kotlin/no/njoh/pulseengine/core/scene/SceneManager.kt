@@ -2,8 +2,6 @@ package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SpatialGrid.Companion.nextQueryId
-import no.njoh.pulseengine.core.scene.entities.SceneEntity
-import no.njoh.pulseengine.core.scene.systems.SceneSystem
 import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -75,4 +73,3 @@ abstract class SceneManagerInternal : SceneManager()
     abstract fun cleanUp()
     abstract fun registerSystemsAndEntityClasses()
 }
-
