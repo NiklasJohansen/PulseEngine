@@ -15,8 +15,8 @@ import no.njoh.pulseengine.core.scene.systems.EntityRenderer
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer.RenderPass
 import no.njoh.pulseengine.core.shared.utils.MathUtil
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
-import no.njoh.pulseengine.widgets.editor.Name
-import no.njoh.pulseengine.widgets.editor.Property
+import no.njoh.pulseengine.core.shared.annotations.Name
+import no.njoh.pulseengine.core.shared.annotations.Property
 import kotlin.math.*
 
 @Name("Lighting 2.0")

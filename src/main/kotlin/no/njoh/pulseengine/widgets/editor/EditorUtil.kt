@@ -16,6 +16,8 @@ import no.njoh.pulseengine.modules.gui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.modules.gui.layout.*
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
+import no.njoh.pulseengine.core.shared.annotations.Name
+import no.njoh.pulseengine.core.shared.annotations.Property
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import java.lang.IllegalArgumentException

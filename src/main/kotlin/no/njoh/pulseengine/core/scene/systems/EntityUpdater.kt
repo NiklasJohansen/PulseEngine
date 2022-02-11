@@ -4,13 +4,13 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.widgets.editor.Name
-import no.njoh.pulseengine.widgets.editor.ValueRange
+import no.njoh.pulseengine.core.shared.annotations.Name
+import no.njoh.pulseengine.core.shared.annotations.Property
 
 @Name("Entity Updater")
 open class EntityUpdater : SceneSystem()
 {
-    @ValueRange(1f, 100000f)
+    @Property(min = 1f, max = 100000f)
     var tickRate = -1
 
     override fun onCreate(engine: PulseEngine)

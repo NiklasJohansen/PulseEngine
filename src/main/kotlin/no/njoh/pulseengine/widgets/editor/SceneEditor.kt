@@ -26,6 +26,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.core.shared.annotations.Property
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.utils.*

@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.widgets.editor.Property
+import no.njoh.pulseengine.core.shared.annotations.Property
 import kotlin.reflect.KClass
 
 abstract class SceneEntity

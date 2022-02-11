@@ -8,8 +8,8 @@ import no.njoh.pulseengine.core.scene.SceneManager
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import no.njoh.pulseengine.widgets.editor.Name
-import no.njoh.pulseengine.widgets.editor.Property
+import no.njoh.pulseengine.core.shared.annotations.Name
+import no.njoh.pulseengine.core.shared.annotations.Property
 
 @Name("2D Physics")
 class PhysicsSystem : SceneSystem()

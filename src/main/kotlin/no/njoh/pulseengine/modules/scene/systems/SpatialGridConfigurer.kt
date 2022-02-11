@@ -2,25 +2,25 @@ package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.widgets.editor.Name
-import no.njoh.pulseengine.widgets.editor.ValueRange
+import no.njoh.pulseengine.core.shared.annotations.Name
+import no.njoh.pulseengine.core.shared.annotations.Property
 
 @Name("Spatial Grid")
 class SpatialGridConfigurer : SceneSystem()
 {
-    @ValueRange(50f, 1_000f)
+    @Property(min = 50f, max = 1_000f)
     var cellSize = 350f
 
-    @ValueRange(0f, 100_000f)
+    @Property(min = 0f, max = 100_000f)
     var minBorderSize = 3000
 
-    @ValueRange(0f, 100_000_000f)
+    @Property(min = 0f, max = 100_000_000f)
     var maxWidth = 100_000
 
-    @ValueRange(0f, 100_000_000f)
+    @Property(min = 0f, max = 100_000_000f)
     var maxHeight = 100_000
 
-    @ValueRange(0f, 1f)
+    @Property(min = 0f, max = 1f)
     var percentageToUpdatePerFrame = 0.2f
 
     var drawGrid = false

@@ -12,7 +12,7 @@ import no.njoh.pulseengine.modules.physics.shapes.CircleShape
 import no.njoh.pulseengine.modules.physics.bodies.CircleBody
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
-import no.njoh.pulseengine.widgets.editor.Property
+import no.njoh.pulseengine.core.shared.annotations.Property
 
 open class Ball : SceneEntity(), CircleBody, LightOccluder
 {

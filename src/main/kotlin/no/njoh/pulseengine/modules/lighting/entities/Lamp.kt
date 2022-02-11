@@ -8,7 +8,7 @@ import no.njoh.pulseengine.modules.lighting.LightSource
 import no.njoh.pulseengine.modules.lighting.LightType
 import no.njoh.pulseengine.modules.lighting.ShadowType
 import no.njoh.pulseengine.widgets.editor.EditorIcon
-import no.njoh.pulseengine.widgets.editor.Property
+import no.njoh.pulseengine.core.shared.annotations.Property
 
 @EditorIcon("icon_light_bulb")
 open class Lamp : SceneEntity(), LightSource

@@ -13,7 +13,7 @@ import no.njoh.pulseengine.modules.physics.bodies.PolygonBody
 import no.njoh.pulseengine.modules.physics.shapes.RectangleShape
 import no.njoh.pulseengine.core.shared.utils.Extensions.degreesBetween
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
-import no.njoh.pulseengine.widgets.editor.Property
+import no.njoh.pulseengine.core.shared.annotations.Property
 
 open class Box : SceneEntity(), PolygonBody, LightOccluder, NormalMapRenderPassTarget
 {

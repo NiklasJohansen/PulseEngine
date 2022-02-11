@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import no.njoh.pulseengine.widgets.editor.Name
+import no.njoh.pulseengine.core.shared.annotations.Name
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.reflect.KClass
