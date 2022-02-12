@@ -11,7 +11,7 @@ class RegularPolygonShape(edges: Int) : PolygonShape()
     override var points = FloatArray(N_POINT_FIELDS * edges)
     override var constraints = FloatArray(N_STICK_CONSTRAINT_FIELDS * nStickConstraints)
 
-    override fun build(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
+    override fun init(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
     {
         setPoints(x, y,  width * 0.5f, height * 0.5f)
         setConstraints()

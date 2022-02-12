@@ -468,7 +468,7 @@ object ContactSolver
 
         // Rotational velocity transformed from angle to world space
         val circumference = 2 * PI.toFloat() * radius
-        var rotVel = lastRotVel / (2f * PI.toFloat()) * circumference
+        var rotVel = -lastRotVel / (2f * PI.toFloat()) * circumference
 
         // Difference between rotational and tangential velocity
         val velDiff = (rotVel - tangentVel) * coefficientOfFriction
@@ -483,7 +483,7 @@ object ContactSolver
         yVel -= yNormal * impulse * ratio
 
         // Update rotational velocity
-        rotLast = rot - ((rotVel / circumference) * 2f * PI.toFloat())
+        rotLast = rot + ((rotVel / circumference) * 2f * PI.toFloat())
 
         // Correct circle position
         x += xNormal * depth * ratio
@@ -611,7 +611,7 @@ object ContactSolver
 
             // Rotational velocity transformed from angle to world space
             val circumference = 2 * PI.toFloat() * radius
-            var rotVel = circle.lastRotVel / (2f * PI.toFloat()) * circumference
+            var rotVel = -circle.lastRotVel / (2f * PI.toFloat()) * circumference
 
             // Signed length of perpendicular velocity
             val xEdgeDir = yNormal
@@ -645,7 +645,7 @@ object ContactSolver
             circle.yLast = circle.y - (yP - yN * coefficientOfRestitution)
 
             // Update rotational velocity
-            circle.rotLast = circle.rot - ((rotVel / circumference) * 2f * PI.toFloat())
+            circle.rotLast = circle.rot + ((rotVel / circumference) * 2f * PI.toFloat())
         }
 
         return result.set(

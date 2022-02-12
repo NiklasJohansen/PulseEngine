@@ -35,7 +35,7 @@ abstract class PolygonShape : Shape()
     // Mass of the whole shape
     var mass = 1f
 
-    abstract fun build(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
+    abstract fun init(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
 
     fun createPoint(i: Int, x: Float, y: Float)
     {

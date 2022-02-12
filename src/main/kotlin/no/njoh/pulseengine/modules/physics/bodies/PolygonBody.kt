@@ -32,7 +32,7 @@ interface PolygonBody : PhysicsBody
     {
         if (this is SceneEntity)
         {
-            shape.build(x, y, width, height, rotation, density)
+            shape.init(x, y, width, height, rotation, density)
         }
     }
 

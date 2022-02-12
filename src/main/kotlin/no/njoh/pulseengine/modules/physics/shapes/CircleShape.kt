@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.modules.physics.shapes
 
 import no.njoh.pulseengine.core.shared.primitives.Shape
+import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Vector2f
+import kotlin.math.PI
 
 data class CircleShape(
     var x: Float = 0f,
@@ -19,6 +21,23 @@ data class CircleShape(
     var stepsAtRest: Int = 0
 
 ) : Shape() {
+
+    fun init(x: Float, y: Float, radius: Float, rotation: Float, density: Float)
+    {
+        this.x = x
+        this.y = y
+        this.xLast = x
+        this.yLast = y
+        this.rot = rotation.toRadians()
+        this.rotLast = rotation.toRadians()
+        this.radius = radius
+        this.mass = density * PI.toFloat() * radius * radius
+    }
+
+    fun applyAngularAcceleration(acc: Float)
+    {
+        this.rotLast += acc
+    }
 
     override fun getPointCount() = 1
     override fun getRadius() = radius

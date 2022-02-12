@@ -37,6 +37,7 @@ abstract class SceneEntity
     @JsonIgnore
     var flags = DISCOVERABLE
 
+    open fun onCreate() { }
     open fun onStart(engine: PulseEngine) {  }
     open fun onUpdate(engine: PulseEngine) { }
     open fun onFixedUpdate(engine: PulseEngine) { }

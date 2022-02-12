@@ -37,6 +37,9 @@ open class Scene(
 
     internal var nextId = 0L
 
+    /** Call onCreate function on all loaded entities when scene is created */
+    init { entities.forEachFast { typeList -> typeList.forEachFast { it.onCreate() } } }
+
     fun insertEntity(entity: SceneEntity)
     {
         entity.id = nextId
@@ -49,6 +52,7 @@ open class Scene(
                 entities.add(list)
             }
         spatialGrid.insert(entity)
+        entity.onCreate()
         nextId++
     }
 

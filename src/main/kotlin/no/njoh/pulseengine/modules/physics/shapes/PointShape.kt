@@ -16,7 +16,7 @@ data class PointShape(
     var xLastActual: Float = 0f,
     var yLastActual: Float = 0f,
 
-    /** urrent velocity, calculated from last position and does not change while resolving collisions */
+    /** Current velocity, calculated from last position and does not change while resolving collisions */
     var xVel: Float = 0f,
     var yVel: Float = 0f,
 
@@ -27,6 +27,16 @@ data class PointShape(
     /** Mass */
     var mass: Float = 1f
 ) : Shape() {
+
+    fun init(x: Float, y: Float)
+    {
+        this.x = x
+        this.y = y
+        this.xLast = x
+        this.yLast = y
+        this.xLastActual = x
+        this.yLastActual = y
+    }
 
     override fun getPointCount() = 1
     override fun getRadius() = 1f

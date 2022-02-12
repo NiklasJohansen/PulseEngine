@@ -17,9 +17,7 @@ interface PointBody : PhysicsBody
     {
         if (this is SceneEntity)
         {
-            shape.x = x
-            shape.y = y
-            shape.mass = density
+            shape.init(x, y)
         }
     }
 

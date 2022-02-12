@@ -24,7 +24,7 @@ class ChamferedRectangleShape(
     override var points = FloatArray(N_POINT_FIELDS * nBoundaryPoints)
     override var constraints = FloatArray(nStickConstraints * N_STICK_CONSTRAINT_FIELDS)
 
-    override fun build(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
+    override fun init(x: Float, y: Float, width: Float, height: Float, rot: Float, density: Float)
     {
         val w = width / 2
         val h = height / 2

@@ -21,15 +21,7 @@ interface CircleBody : PhysicsBody
     {
         if (this is SceneEntity)
         {
-            val radius = max(this.width, this.height) * 0.5f
-            shape.x = x
-            shape.y = y
-            shape.xLast = x
-            shape.yLast = y
-            shape.rot = rotation / 180f * PI.toFloat()
-            shape.rotLast = shape.rot
-            shape.radius = radius
-            shape.mass = density * PI.toFloat() * radius * radius
+            shape.init(x, y, max(width, height) * 0.5f, rotation, density)
         }
     }
 

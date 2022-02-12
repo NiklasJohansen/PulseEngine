@@ -657,6 +657,7 @@ object EditorUtil
 
     fun isPropertyEditable(prop: KMutableProperty<*>) =
         prop.visibility != KVisibility.PRIVATE &&
+        prop.visibility != KVisibility.PROTECTED &&
         prop.javaField?.getAnnotation(JsonIgnore::class.java) == null
 
     fun KMutableProperty<*>.isPrimitiveValue() =
