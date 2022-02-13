@@ -21,12 +21,15 @@ import no.njoh.pulseengine.core.input.InputImpl
 import no.njoh.pulseengine.core.input.InputInternal
 import no.njoh.pulseengine.core.scene.SceneManagerImpl
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
+import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
 import no.njoh.pulseengine.core.shared.utils.FpsLimiter
+import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.widget.WidgetManagerImpl
 import no.njoh.pulseengine.core.widget.WidgetManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
 import org.lwjgl.glfw.GLFW.*
+import kotlin.math.min
 
 /**
  * Main [PulseEngine] implementation.
@@ -44,9 +47,10 @@ class PulseEngineImpl(
     override val widget: WidgetManagerInternal  = WidgetManagerImpl()
 ) : PulseEngine {
 
+    private val engineStartTime = System.nanoTime()
+    private val frameRateLimiter = FpsLimiter()
     private val activeInput = input
     private val idleInput = InputIdle(activeInput)
-    private val frameRateLimiter = FpsLimiter()
     private lateinit var focusArea: FocusArea
 
     init { PulseEngine.GLOBAL_INSTANCE = this }
@@ -55,7 +59,7 @@ class PulseEngineImpl(
     {
         // Setup engine and game
         initEngine()
-        game.onCreate()
+        initGame(game)
         postGameSetup()
 
         // Run main game loop
@@ -75,10 +79,11 @@ class PulseEngineImpl(
     private fun initEngine()
     {
         printLogo()
+        Logger.info("Initializing engine (${this::class.simpleName})")
 
         // Initialize engine components
         config.init()
-        data.init(config.creatorName, config.gameName)
+        data.init(config.gameName)
         window.init(config.windowWidth, config.windowHeight, config.screenMode, config.gameName)
         gfx.init(window.width, window.height)
         input.init(window.windowHandle)
@@ -141,6 +146,14 @@ class PulseEngineImpl(
         }
     }
 
+    private fun initGame(game: PulseEngineGame)
+    {
+        Logger.info("Initializing game (${game::class.simpleName})")
+        val startTime = System.nanoTime()
+        game.onCreate()
+        Logger.debug("Finished initializing game in: ${startTime.toNowFormatted()}")
+    }
+
     private fun postGameSetup()
     {
         // Load assets from disk
@@ -151,6 +164,9 @@ class PulseEngineImpl(
 
         // Run startup script
         console.runScript("/startup.ps")
+
+        // Log when finished
+        Logger.info("Finished initialization in ${engineStartTime.toNowFormatted()}")
     }
 
     private fun update(game: PulseEngineGame)
@@ -170,9 +186,7 @@ class PulseEngineImpl(
     {
         val dt = 1.0 / config.fixedTickRate.toDouble()
         val time = glfwGetTime()
-        var frameTime = time - data.fixedUpdateLastTime
-        if (frameTime > 0.25)
-            frameTime = 0.25
+        val frameTime = min(time - data.fixedUpdateLastTime, 0.25)
 
         data.fixedUpdateLastTime = time
         data.fixedUpdateAccumulator += frameTime
@@ -208,7 +222,7 @@ class PulseEngineImpl(
             game.onRender()
             widget.render(this)
 
-            // Perform GPU draw calls
+            // Perform draw calls and update back-buffer
             gfx.drawFrame()
 
             // Swap front and back buffers
@@ -236,21 +250,25 @@ class PulseEngineImpl(
         input.requestFocus(focusArea)
     }
 
-    private fun printLogo() =
-        Text("/pulseengine/assets/logo.txt", "logo")
-            .let {
-                it.load()
-                println("${it.text}\n")
-            }
-
     private fun destroy()
     {
         scene.cleanUp()
         widget.cleanUp(this)
         audio.cleanUp()
         asset.cleanUp()
-        input.cleanUp()
+        activeInput.cleanUp()
         gfx.cleanUp()
         window.cleanUp()
     }
+
+    private fun printLogo() = println("""
+        ______      _            _____            _
+        | ___ \    | |          |  ___|          (_)
+        | |_/ /   _| |___  ___  | |__ _ __   __ _ _ _ __   ___
+        |  __/ | | | / __|/ _ \ |  __| '_ \ / _` | | '_ \ / _ \
+        | |  | |_| | \__ \  __/ | |__| | | | (_| | | | | |  __/
+        \_|   \__,_|_|___/\___| \____/_| |_|\__, |_|_| |_|\___|
+                                             __/ |
+                                            |___/   
+        """.trimIndent())
 }

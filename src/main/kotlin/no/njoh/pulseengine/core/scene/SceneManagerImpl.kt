@@ -32,6 +32,8 @@ open class SceneManagerImpl : SceneManagerInternal() {
 
     override fun init(engine: PulseEngine)
     {
+        Logger.info("Initializing scene (${this::class.simpleName})")
+
         this.engine = engine
         this.activeScene = Scene("default")
         this.activeScene.fileName = "default.scn"
@@ -220,30 +222,29 @@ open class SceneManagerImpl : SceneManagerInternal() {
 
     override fun registerSystemsAndEntityClasses()
     {
-        GlobalScope.launch {
-            measureNanoTime {
-                SceneEntity.REGISTERED_TYPES.clear()
-                SceneSystem.REGISTERED_TYPES.clear()
+        measureNanoTime {
+            SceneEntity.REGISTERED_TYPES.clear()
+            SceneSystem.REGISTERED_TYPES.clear()
 
-                val classes = ReflectionUtil.getFullyQualifiedClassNames()
-                    .getClassesFromFullyQualifiedClassNames()
+            val classes = ReflectionUtil.getFullyQualifiedClassNames()
+                .getClassesFromFullyQualifiedClassNames()
 
-                classes.getClassesOfSuperType(SceneEntity::class).forEach { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
-                classes.getClassesOfSuperType(SceneSystem::class).forEach { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
+            classes.getClassesOfSuperType(SceneEntity::class).forEach { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
+            classes.getClassesOfSuperType(SceneSystem::class).forEach { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
 
-                SceneEntity.REGISTERED_TYPES.remove(SceneEntity::class)
-                SceneSystem.REGISTERED_TYPES.remove(SceneSystem::class)
-            }.let {
-                val entityCount = SceneEntity.REGISTERED_TYPES.size
-                val systemCount = SceneSystem.REGISTERED_TYPES.size
-                Logger.debug("Registered $entityCount scene entity classes and $systemCount scene system " +
-                    "classes in ${"%.3f".format(it / 1_000_000f)} ms. ")
-            }
+            SceneEntity.REGISTERED_TYPES.remove(SceneEntity::class)
+            SceneSystem.REGISTERED_TYPES.remove(SceneSystem::class)
+        }.let { nanoTime ->
+            val entityCount = SceneEntity.REGISTERED_TYPES.size
+            val systemCount = SceneSystem.REGISTERED_TYPES.size
+            Logger.debug("Registered $entityCount SceneEntity classes and $systemCount SceneSystem " +
+                "classes in ${"%.3f".format(nanoTime / 1_000_000f)} ms. ")
         }
     }
 
     override fun cleanUp()
     {
+        Logger.info("Cleaning up scene (${this::class.simpleName})")
         activeScene.stop(engine)
     }
 }

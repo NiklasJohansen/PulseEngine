@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import org.lwjgl.glfw.GLFW
+import org.lwjgl.glfw.GLFW.glfwGetTime
 import java.io.File
 import java.io.FileNotFoundException
 import kotlin.system.measureNanoTime
@@ -35,9 +36,10 @@ open class DataImpl : Data()
     var fixedUpdateAccumulator = 0.0
     var fixedUpdateLastTime = 0.0
 
-    fun init(creatorName: String, gameName: String)
+    fun init(gameName: String)
     {
-        updateSaveDirectory(creatorName, gameName)
+        Logger.info("Initializing data (${this::class.simpleName})")
+        updateSaveDirectory(gameName)
     }
 
     override fun addMetric(name: String, unit: String, source: () -> Float)
@@ -103,23 +105,20 @@ open class DataImpl : Data()
         }
     }
 
-    fun updateSaveDirectory(creatorName: String, gameName: String) =
-        javax.swing.JFileChooser().fileSystemView.defaultDirectory
-            .toString()
-            .let {
-                val file = File("$it/$creatorName/$gameName")
-                saveDirectory = file.absolutePath
-            }
+    fun updateSaveDirectory(gameName: String)
+    {
+        saveDirectory = File("$homeDir/$gameName").absolutePath
+    }
 
     inline fun measureAndUpdateTimeStats(block: () -> Unit)
     {
-        val startTime = GLFW.glfwGetTime()
+        val startTime = glfwGetTime()
         deltaTime = (startTime - lastFrameTime).toFloat()
 
         block.invoke()
 
-        lastFrameTime = GLFW.glfwGetTime()
-        updateTimeMS = ((GLFW.glfwGetTime() - startTime) * 1000.0).toFloat()
+        lastFrameTime = glfwGetTime()
+        updateTimeMS = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
     fun updateMemoryStats()
@@ -130,17 +129,17 @@ open class DataImpl : Data()
 
     inline fun measureRenderTimeAndUpdateInterpolationValue(block: () -> Unit)
     {
-        val startTime = GLFW.glfwGetTime()
+        val startTime = glfwGetTime()
         interpolation = fixedUpdateAccumulator.toFloat() / fixedDeltaTime
 
         block.invoke()
 
-        renderTimeMs = ((GLFW.glfwGetTime() - startTime) * 1000.0).toFloat()
+        renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
     fun calculateFrameRate()
     {
-        val nowTime = GLFW.glfwGetTime()
+        val nowTime = glfwGetTime()
         fpsFilter[frameCounter] = 1.0f / (nowTime - fpsTimer).toFloat()
         frameCounter = (frameCounter + 1) % fpsFilter.size
         currentFps = fpsFilter.average().toInt()
@@ -176,7 +175,8 @@ open class DataImpl : Data()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)
 
-        private val runtime = Runtime.getRuntime()
         private const val MEGA_BYTE = 1048576L
+        private val runtime = Runtime.getRuntime()
+        val homeDir = javax.swing.JFileChooser().fileSystemView.defaultDirectory.toString()
     }
 }

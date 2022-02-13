@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.console
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.shared.utils.Logger
 import java.util.concurrent.ConcurrentHashMap
 
 open class ConsoleImpl : ConsoleInternal
@@ -12,6 +13,8 @@ open class ConsoleImpl : ConsoleInternal
 
     override fun init(engine: PulseEngine)
     {
+        Logger.info("Initializing console (${this::class.simpleName})")
+
         // Register console commands and functions marked with @ConsoleTarget
         GlobalScope.launch { CommandRegistry.registerEngineCommands(engine) }
 

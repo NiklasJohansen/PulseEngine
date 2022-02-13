@@ -27,7 +27,7 @@ open class WindowImpl : WindowInternal
 
     override fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
     {
-        Logger.info("Initializing Window...")
+        Logger.info("Initializing window (${this::class.simpleName})")
 
         if (!glfwInit())
             throw IllegalStateException("Unable to initialize GLFW")
@@ -121,7 +121,7 @@ open class WindowImpl : WindowInternal
 
     override fun cleanUp()
     {
-        Logger.info("Cleaning up window...")
+        Logger.info("Cleaning up window (${this::class.simpleName})")
         glfwSetErrorCallback(null)
         glfwDestroyWindow(windowHandle)
         glfwTerminate()

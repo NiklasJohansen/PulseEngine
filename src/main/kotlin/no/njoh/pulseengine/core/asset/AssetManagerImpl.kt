@@ -98,7 +98,7 @@ open class AssetManagerImpl : AssetManagerInternal()
 
     override fun cleanUp()
     {
-        Logger.info("Cleaning up assets...")
+        Logger.info("Cleaning up assets (${this::class.simpleName})")
         assets.values.forEach { asset ->
             asset.delete()
             onAssetRemovedCallbacks.forEachFast { it.invoke(asset) }

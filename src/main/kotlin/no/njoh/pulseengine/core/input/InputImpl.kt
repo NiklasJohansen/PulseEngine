@@ -39,7 +39,8 @@ open class InputImpl : InputInternal
 
     override fun init(windowHandle: Long)
     {
-        Logger.info("Initializing input...")
+        Logger.info("Initializing input (${this::class.simpleName})")
+
         this.windowHandle = windowHandle
 
         glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
@@ -217,7 +218,7 @@ open class InputImpl : InputInternal
 
     override fun cleanUp()
     {
-        Logger.info("Cleaning up input...")
+        Logger.info("Cleaning up input (${this::class.simpleName})")
         glfwFreeCallbacks(windowHandle)
     }
 }

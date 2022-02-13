@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.window.ScreenMode
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadStream
+import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
 import java.lang.Exception
 import java.util.*
 import kotlin.reflect.KClass
@@ -11,8 +12,6 @@ import kotlin.reflect.KProperty
 
 open class ConfigurationImpl : ConfigurationInternal
 {
-    // Exposed properties
-    override var creatorName: String    by StringConfig("PulseEngine")
     override var gameName: String       by StringConfig("ExampleGame")
     override var fixedTickRate: Int     by IntConfig(60)
     override var targetFps: Int         by IntConfig(60)
@@ -20,13 +19,15 @@ open class ConfigurationImpl : ConfigurationInternal
     override var windowHeight: Int      by IntConfig(800)
     override var screenMode: ScreenMode by EnumConfig(ScreenMode.WINDOWED, { ScreenMode.valueOf(it.toUpperCase()) })
 
-    // Internal properties
     private val properties: Properties = Properties()
     private var onChangeCallback: (property: KProperty<*>, value: Any) -> Unit = { _, _ -> }
 
     override fun init()
     {
+        Logger.info("Initializing configuration (${this::class.simpleName})")
+        load("/pulseengine/config/engine_default.cfg")
         load("application.cfg")
+        setLogLevel()
     }
 
     override fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
@@ -37,18 +38,17 @@ open class ConfigurationImpl : ConfigurationInternal
     override fun load(fileName: String) =
         try
         {
-            fileName.loadStream()
-                ?.let {
-                    properties.load(it)
-                    applyConfigProperties()
-                    Logger.info("Configuration file: $fileName was loaded successfully")
-                } ?: Logger.warn("Configuration file: $fileName was not found")
+            val startTime = System.nanoTime()
+            fileName.loadStream()?.let {
+                properties.load(it)
+                Logger.debug("Loaded configuration file: $fileName in ${startTime.toNowFormatted()}")
+            } ?: Logger.warn("Configuration file: $fileName was not found")
         }
         catch (e: Exception) {
             Logger.error("Failed to load configuration: $fileName, reason: ${e.message}")
         }
 
-    private fun applyConfigProperties()
+    private fun setLogLevel()
     {
         getString("logLevel")?.let { Logger.logLevel = LogLevel.valueOf(it.toUpperCase()) }
     }
@@ -70,8 +70,7 @@ open class ConfigurationImpl : ConfigurationInternal
 
     override fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T? =
         try { java.lang.Enum.valueOf(type.java, properties[name].toString()) }
-        catch (e: Exception) { throw Exception("Failed to find or parse Boolean property: $name")
-        }
+        catch (e: Exception) { throw Exception("Failed to find or parse Boolean property: $name") }
 
     inner class StringConfig(private val initValue: String)
     {

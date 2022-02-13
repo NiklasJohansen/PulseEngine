@@ -27,6 +27,8 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
+        Logger.info("Initializing graphics (${this::class.simpleName})")
+
         textureArray = TextureArray(1024, 1024, 100)
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
@@ -73,7 +75,7 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun cleanUp()
     {
-        Logger.info("Cleaning up graphics...")
+        Logger.info("Cleaning up graphics (${this::class.simpleName})")
         textureArray.cleanUp()
         renderer.cleanUp()
         surfaces.forEachFast { it.cleanUp() }

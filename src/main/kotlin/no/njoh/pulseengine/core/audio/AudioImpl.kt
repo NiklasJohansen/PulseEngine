@@ -24,7 +24,7 @@ open class AudioImpl : AudioInternal
 
     override fun init()
     {
-        Logger.info("Initializing audio...")
+        Logger.info("Initializing audio (${this::class.simpleName})")
 
         // Use default output device
         setupDevice(alcOpenDevice(null as ByteBuffer?))
@@ -57,7 +57,7 @@ open class AudioImpl : AudioInternal
         if (hrtfState == 0)
             Logger.warn("HRTF not enabled")
         else
-            Logger.info("HRTF enabled, using ${ALC10.alcGetString(device, ALC_HRTF_SPECIFIER_SOFT)}")
+            Logger.debug("HRTF enabled, using ${ALC10.alcGetString(device, ALC_HRTF_SPECIFIER_SOFT)}")
 
         this.device = device
     }
@@ -142,6 +142,7 @@ open class AudioImpl : AudioInternal
 
     override fun cleanUp()
     {
+        Logger.info("Cleaning up audio (${this::class.simpleName})")
         sources.forEach { alDeleteSources(it) }
         alcSetThreadContext(MemoryUtil.NULL)
         alcDestroyContext(context)
