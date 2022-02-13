@@ -108,7 +108,7 @@ class SceneEditor: Widget
     override fun onCreate(engine: PulseEngine)
     {
         // Load editor config
-        engine.config.load("/pulseengine/config/editor_config.cfg")
+        engine.config.load("/pulseengine/config/editor_default.cfg")
 
         // Set editor data
         screenArea = FocusArea(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())

@@ -55,18 +55,19 @@ open class ConfigurationImpl : ConfigurationInternal
 
     override fun getString(name: String): String? =
         try { properties[name] as String? }
-        catch (e: Exception) { throw Exception("Failed to find or parse String property: $name")
-        }
+        catch (e: Exception) { throw Exception("Failed to find or parse String property: $name") }
 
     override fun getInt(name: String): Int? =
         try { properties[name]?.toString()?.toInt() }
-        catch (e: Exception) { throw Exception("Failed to find or parse Int property: $name")
-        }
+        catch (e: Exception) { throw Exception("Failed to find or parse Int property: $name") }
+
+    override fun getFloat(name: String): Float? =
+        try { properties[name]?.toString()?.toFloat() }
+        catch (e: Exception) { throw Exception("Failed to find or parse Float property: $name") }
 
     override fun getBool(name: String): Boolean? =
         try { properties[name]?.toString()?.toBoolean() }
-        catch (e: Exception) { throw Exception("Failed to find or parse Boolean property: $name")
-        }
+        catch (e: Exception) { throw Exception("Failed to find or parse Boolean property: $name") }
 
     override fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T? =
         try { java.lang.Enum.valueOf(type.java, properties[name].toString()) }
@@ -75,8 +76,7 @@ open class ConfigurationImpl : ConfigurationInternal
     inner class StringConfig(private val initValue: String)
     {
         operator fun getValue(thisRef: Any?, property: KProperty<*>): String =
-            properties.getProperty(property.name)
-                ?: initValue.also { setValue(thisRef, property, initValue) }
+            properties.getProperty(property.name) ?: initValue.also { setValue(thisRef, property, initValue) }
 
         operator fun setValue(thisRef: Any?, property: KProperty<*>, value: String)
         {
@@ -88,8 +88,7 @@ open class ConfigurationImpl : ConfigurationInternal
     inner class IntConfig(private val initValue: Int)
     {
         operator fun getValue(thisRef: Any?, property: KProperty<*>): Int =
-            properties.getProperty(property.name)?.toInt()
-                ?: initValue.also { setValue(thisRef, property, initValue) }
+            properties.getProperty(property.name)?.toInt() ?: initValue.also { setValue(thisRef, property, initValue) }
 
         operator fun setValue(thisRef: Any?, property: KProperty<*>, value: Int)
         {

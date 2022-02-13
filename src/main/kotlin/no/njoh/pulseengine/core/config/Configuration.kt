@@ -6,7 +6,6 @@ import kotlin.reflect.KProperty
 
 interface Configuration
 {
-    var creatorName: String
     var gameName: String
     var targetFps: Int
     var fixedTickRate: Int
@@ -14,6 +13,7 @@ interface Configuration
     fun load(fileName: String)
     fun getString(name: String): String?
     fun getInt(name: String): Int?
+    fun getFloat(name: String): Float?
     fun getBool(name: String): Boolean?
     fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T?
 }

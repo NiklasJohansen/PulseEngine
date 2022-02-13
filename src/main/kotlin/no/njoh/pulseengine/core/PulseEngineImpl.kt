@@ -130,8 +130,7 @@ class PulseEngineImpl(
         config.setOnChanged { property, value ->
             when (property.name)
             {
-                config::creatorName.name -> data.updateSaveDirectory(config.creatorName, config.gameName)
-                config::gameName.name -> data.updateSaveDirectory(config.creatorName, config.gameName)
+                config::gameName.name -> data.updateSaveDirectory(config.gameName)
             }
         }
 
