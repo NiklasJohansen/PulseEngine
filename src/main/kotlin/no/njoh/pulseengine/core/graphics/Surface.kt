@@ -3,11 +3,8 @@ package no.njoh.pulseengine.core.graphics
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing
+import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.AntiAliasing.NONE
-import no.njoh.pulseengine.core.graphics.api.BlendFunction
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.core.graphics.renderers.*
@@ -322,6 +319,7 @@ class Surface2DImpl(
 
     override fun reloadPostProcessingShaders()
     {
+        Shader.invalidateCache()
         postProcessingPipeline.reloadShaders()
     }
 

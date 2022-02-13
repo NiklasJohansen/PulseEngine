@@ -110,12 +110,9 @@ class ShaderProgram(val id: Int)
     {
         fun create(vertexShaderFileName: String, fragmentShaderFileName: String): ShaderProgram
         {
-            val vertexShader = Shader.load(vertexShaderFileName, ShaderType.VERTEX)
-            val fragmentShader = Shader.load(fragmentShaderFileName, ShaderType.FRAGMENT)
-            return create(vertexShader, fragmentShader).also {
-                vertexShader.delete()
-                fragmentShader.delete()
-            }
+            val vertexShader = Shader.getOrLoad(vertexShaderFileName, ShaderType.VERTEX)
+            val fragmentShader = Shader.getOrLoad(fragmentShaderFileName, ShaderType.FRAGMENT)
+            return create(vertexShader, fragmentShader)
         }
 
         fun create(vararg shaders: Shader): ShaderProgram
