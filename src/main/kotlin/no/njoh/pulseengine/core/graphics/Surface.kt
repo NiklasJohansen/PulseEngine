@@ -54,7 +54,6 @@ interface Surface2D : Surface
     // Post processing
     fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
     fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
-    fun reloadPostProcessingShaders()
 
     // Renderers
     fun addRenderer(renderer: BatchRenderer): Surface2D
@@ -315,12 +314,6 @@ class Surface2DImpl(
     {
         postProcessingPipeline.removeEffect(effect)
         return this
-    }
-
-    override fun reloadPostProcessingShaders()
-    {
-        Shader.invalidateCache()
-        postProcessingPipeline.reloadShaders()
     }
 
     override fun addRenderer(renderer: BatchRenderer): Surface2D

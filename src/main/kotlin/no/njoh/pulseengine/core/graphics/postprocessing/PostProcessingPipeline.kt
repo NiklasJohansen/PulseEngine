@@ -22,7 +22,5 @@ class PostProcessingPipeline
 
     fun getFinalTexture() = effects.lastOrNull()?.getTexture()
 
-    fun reloadShaders() = effects.forEachFast { it.reloadShaders() }
-
     fun cleanUp() = effects.forEachFast { it.cleanUp() }
 }

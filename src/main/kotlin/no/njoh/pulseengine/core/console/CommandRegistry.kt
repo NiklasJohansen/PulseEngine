@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.shared.primitives.Subscription
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
 import java.io.File
 import kotlin.reflect.KMutableProperty
@@ -245,10 +246,10 @@ object CommandRegistry
         ///////////////////////////////////////////// RELOAD POST PROCESSING SHADERS /////////////////////////////////////////////
 
         engine.console.registerCommand(
-            "reloadPostProcessingShaders"
+            "reloadShaders"
         ) {
-            engine.gfx.getAllSurfaces().forEach { it.reloadPostProcessingShaders() }
-            CommandResult("Reloaded post processing shaders for ${engine.gfx.getAllSurfaces().size} surfaces", showCommand = false)
+            ShaderProgram.reloadAll()
+            CommandResult("Reloaded all shaders", showCommand = false)
         }
     }
 }

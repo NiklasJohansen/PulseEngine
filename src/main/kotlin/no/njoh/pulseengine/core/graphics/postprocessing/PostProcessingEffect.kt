@@ -12,7 +12,6 @@ interface PostProcessingEffect
     fun init()
     fun process(texture: Texture): Texture
     fun getTexture(): Texture?
-    fun reloadShaders()
     fun cleanUp()
 }
 
@@ -55,19 +54,6 @@ abstract class SinglePassEffect : PostProcessingEffect
             fbo.delete()
             fbo = FrameBufferObject.create(texture.width, texture.height, attachments = listOf(COLOR_TEXTURE_0))
         }
-    }
-
-    override fun reloadShaders()
-    {
-        runCatching { loadShaderProgram() }
-            .onFailure { Logger.error("Failed to reload shaders for post processing effect ${this::class.simpleName}, reason: ${it.message}") }
-            .onSuccess {
-                if (this::program.isInitialized) program.delete()
-                if (this::renderer.isInitialized) renderer.cleanUp()
-                program = it
-                renderer = FrameTextureRenderer(program)
-                init()
-            }
     }
 
     override fun cleanUp()
@@ -121,20 +107,6 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
         0.until(amount).map { FrameBufferObject.create(width, height, attachments = listOf(COLOR_TEXTURE_0)) }
 
     override fun getTexture(): Texture? = fbo.lastOrNull()?.getTexture(0)
-
-    override fun reloadShaders()
-    {
-        runCatching { loadShaderPrograms() }
-            .onFailure { Logger.error("Failed to reload shaders for post processing effect ${this::class.simpleName}, reason: ${it.message}") }
-            .onSuccess { newPrograms ->
-                programs.forEach { it.delete() }
-                renderers.forEach { it.cleanUp() }
-                programs.clear()
-                renderers.clear()
-                programs.addAll(newPrograms)
-                init()
-            }
-    }
 
     override fun cleanUp()
     {

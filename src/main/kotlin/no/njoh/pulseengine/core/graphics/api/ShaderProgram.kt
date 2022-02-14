@@ -1,6 +1,10 @@
 package no.njoh.pulseengine.core.graphics.api
 
+import no.njoh.pulseengine.core.graphics.api.ShaderType.FRAGMENT
+import no.njoh.pulseengine.core.graphics.api.ShaderType.VERTEX
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.joml.Vector4f
@@ -8,8 +12,13 @@ import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL33.glVertexAttribDivisor
 
-class ShaderProgram(val id: Int)
-{
+class ShaderProgram(
+    id: Int,
+    private val shaders: MutableList<Shader>
+) {
+    var id = id
+        private set
+
     // Used for getting matrix data as array
     private val floatArray16 = FloatArray(16)
 
@@ -17,10 +26,26 @@ class ShaderProgram(val id: Int)
 
     fun unbind() = this.also { glUseProgram(0) }
 
+    fun relink()
+    {
+        val newProgram = create(*shaders.toTypedArray())
+        if (linkedSuccessfully(newProgram))
+        {
+            delete()
+            id = newProgram.id
+            shaders.clear()
+            shaders.addAll(newProgram.shaders)
+        }
+    }
+
     fun delete()
     {
-        unbind()
-        glDeleteProgram(id)
+        if (linkedSuccessfully(this))
+        {
+            unbind()
+            glDeleteProgram(id)
+            shaderPrograms.remove(this)
+        }
     }
 
     fun getAttributeLocation(name: String) = glGetAttribLocation(id, name)
@@ -108,14 +133,25 @@ class ShaderProgram(val id: Int)
 
     companion object
     {
+        private val shaderPrograms = mutableListOf<ShaderProgram>()
+        private val errProgram = create(Shader.errVertShader, Shader.errFragShader)
+
         fun create(vertexShaderFileName: String, fragmentShaderFileName: String): ShaderProgram
         {
-            val vertexShader = Shader.getOrLoad(vertexShaderFileName, ShaderType.VERTEX)
-            val fragmentShader = Shader.getOrLoad(fragmentShaderFileName, ShaderType.FRAGMENT)
-            return create(vertexShader, fragmentShader)
+            val vertexShader = Shader.getOrLoad(vertexShaderFileName, VERTEX)
+            val fragmentShader = Shader.getOrLoad(fragmentShaderFileName, FRAGMENT)
+            val program = create(vertexShader, fragmentShader)
+            shaderPrograms.add(program)
+            return program
         }
 
-        fun create(vararg shaders: Shader): ShaderProgram
+        fun reloadAll()
+        {
+            Shader.reloadCache()
+            shaderPrograms.forEachFast { it.relink() }
+        }
+
+        private fun create(vararg shaders: Shader): ShaderProgram
         {
             val programId = glCreateProgram()
             for (shader in shaders)
@@ -124,9 +160,16 @@ class ShaderProgram(val id: Int)
             glLinkProgram(programId)
 
             if (glGetProgrami(programId, GL_LINK_STATUS) != GL_TRUE)
-                throw RuntimeException(glGetProgramInfoLog(programId))
+            {
+                val msg = glGetProgramInfoLog(programId)
+                Logger.error("Failed to link shaders: ${shaders.joinToString { it.fileName }} \n$msg")
+                return errProgram
+            }
 
-            return ShaderProgram(programId)
+            return ShaderProgram(programId, shaders.toMutableList())
         }
+
+        private fun linkedSuccessfully(program: ShaderProgram) =
+            program.id != errProgram.id
     }
 }
