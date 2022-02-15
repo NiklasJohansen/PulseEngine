@@ -16,23 +16,28 @@ class ShaderProgram(
     id: Int,
     private val shaders: MutableList<Shader>
 ) {
+    /** Locally mutable program ID */
     var id = id
         private set
 
-    // Used for getting matrix data as array
+    /** Cache of uniform locations */
+    private var uniformLocations = mutableMapOf<String, Int>()
+
+    /** Used for getting matrix data as an array */
     private val floatArray16 = FloatArray(16)
 
     fun bind() = this.also { glUseProgram(id) }
 
     fun unbind() = this.also { glUseProgram(0) }
 
-    fun relink()
+    fun reload()
     {
         val newProgram = create(*shaders.toTypedArray())
         if (linkedSuccessfully(newProgram))
         {
             delete()
             id = newProgram.id
+            uniformLocations.clear()
             shaders.clear()
             shaders.addAll(newProgram.shaders)
         }
@@ -48,78 +53,60 @@ class ShaderProgram(
         }
     }
 
-    fun getAttributeLocation(name: String) = glGetAttribLocation(id, name)
+    fun attributeLocationOf(name: String): Int =
+        glGetAttribLocation(id, name)
 
-    fun getUniformLocation(name: String) = glGetUniformLocation(id, name)
+    fun uniformLocationOf(name: String): Int =
+        uniformLocations.getOrPut(name) { glGetUniformLocation(id, name) }
 
-    fun setUniform(name: String, vec3: Vector3f): Vector3f
+    fun setUniform(name: String, vec3: Vector3f) =
+        glUniform3f(uniformLocationOf(name), vec3[0], vec3[1], vec3[2])
+
+    fun setUniform(name: String, vec4: Vector4f) =
+        glUniform4f(uniformLocationOf(name), vec4[0], vec4[1], vec4[2], vec4[3])
+
+    fun setUniform(name: String, matrix: Matrix4f) =
+        glUniformMatrix4fv(uniformLocationOf(name), false, matrix.get(floatArray16))
+
+    fun setUniform(name: String, value: Int) =
+        glUniform1i(uniformLocationOf(name), value)
+
+    fun setUniform(name: String, value: Boolean) =
+        glUniform1i(uniformLocationOf(name), if (value) 1 else 0)
+
+    fun setUniform(name: String, value: Float) =
+        glUniform1f(uniformLocationOf(name), value)
+
+    fun setUniform(name: String, value1: Float, value2: Float) =
+        glUniform2f(uniformLocationOf(name), value1, value2)
+
+    fun setUniform(name: String, value1: Float, value2: Float, value3: Float) =
+        glUniform3f(uniformLocationOf(name), value1, value2, value3)
+
+    fun setUniform(name: String, color: Color) =
+        glUniform4f(uniformLocationOf(name), color.red, color.green, color.blue, color.alpha)
+
+    fun defineVertexAttributeLayout(name: String, count: Int, type: Int, stride: Int, offset: Long, divisor: Int = 0, normalized: Boolean = false)
     {
-        glUniform3f(getUniformLocation(name), vec3[0], vec3[1], vec3[2])
-        return vec3
-    }
-
-    fun setUniform(name: String, vec4: Vector4f): Vector4f
-    {
-        glUniform4f(getUniformLocation(name), vec4[0], vec4[1], vec4[2], vec4[3])
-        return vec4
-    }
-
-    fun setUniform(name: String, matrix: Matrix4f): Matrix4f
-    {
-        glUniformMatrix4fv(getUniformLocation(name), false, matrix.get(floatArray16))
-        return matrix
-    }
-
-    fun setUniform(name: String, value: Int): Int
-    {
-        glUniform1i(getUniformLocation(name), value)
-        return value
-    }
-
-    fun setUniform(name: String, value: Boolean): Boolean
-    {
-        glUniform1i(getUniformLocation(name), if (value) 1 else 0)
-        return value
-    }
-
-    fun setUniform(name: String, value: Float): Float
-    {
-        glUniform1f(getUniformLocation(name), value)
-        return value
-    }
-
-    fun setUniform(name: String, value1: Float, value2: Float)
-    {
-        glUniform2f(getUniformLocation(name), value1, value2)
-    }
-
-    fun setUniform(name: String, value1: Float, value2: Float, value3: Float)
-    {
-        glUniform3f(getUniformLocation(name), value1, value2, value3)
-    }
-
-    fun setUniform(name: String, color: Color): Color
-    {
-        glUniform4f(getUniformLocation(name), color.red, color.green, color.blue, color.alpha)
-        return color
-    }
-
-    fun defineVertexAttributeLayout(name: String, size: Int, type: Int, stride: Int, offset: Int, divisor: Int = 0, normalized: Boolean = false)
-    {
-        val location = getAttributeLocation(name)
+        val location = attributeLocationOf(name)
         glEnableVertexAttribArray(location)
-        glVertexAttribPointer(location, size, type, normalized, stride, offset.toLong())
+        glVertexAttribPointer(location, count, type, normalized, stride, offset)
         glVertexAttribDivisor(location, divisor)
     }
 
     fun defineVertexAttributeLayout(layout: VertexAttributeLayout)
     {
         var offset = 0L
-        layout.attributes.forEach { attribute ->
-            val location = getAttributeLocation(attribute.name)
-            glEnableVertexAttribArray(location)
-            glVertexAttribPointer(location, attribute.count, attribute.type, attribute.normalized, layout.strideInBytes.toInt(), offset)
-            glVertexAttribDivisor(location, attribute.divisor)
+        layout.attributes.forEachFast { attribute ->
+            defineVertexAttributeLayout(
+                name = attribute.name,
+                count = attribute.count,
+                type = attribute.type,
+                stride = layout.strideInBytes.toInt(),
+                offset = offset,
+                divisor = attribute.divisor,
+                normalized = attribute.normalized
+            )
             offset += attribute.bytes
         }
     }
@@ -148,7 +135,7 @@ class ShaderProgram(
         fun reloadAll()
         {
             Shader.reloadCache()
-            shaderPrograms.forEachFast { it.relink() }
+            shaderPrograms.forEachFast { it.reload() }
         }
 
         private fun create(vararg shaders: Shader): ShaderProgram

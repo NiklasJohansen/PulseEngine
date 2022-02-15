@@ -26,8 +26,8 @@ class FrameTextureRenderer(private val program: ShaderProgram)
         else glBindBuffer(GL_ARRAY_BUFFER, vboId)
 
         program.bind()
-        program.defineVertexAttributeLayout("position", 2, GL_FLOAT, 4 * FLOAT_BYTES, 0)
-        program.defineVertexAttributeLayout("texCoord", 2, GL_FLOAT, 4 * FLOAT_BYTES, 2 * FLOAT_BYTES)
+        program.defineVertexAttributeLayout("position", 2, GL_FLOAT, 4 * FLOAT_BYTES, 0L)
+        program.defineVertexAttributeLayout("texCoord", 2, GL_FLOAT, 4 * FLOAT_BYTES, 2L * FLOAT_BYTES)
 
         glBindVertexArray(0)
         glBindBuffer(GL_ARRAY_BUFFER, 0)

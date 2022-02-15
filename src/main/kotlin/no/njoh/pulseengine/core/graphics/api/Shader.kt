@@ -32,12 +32,15 @@ class Shader(
 
     companion object
     {
-        private val cache = mutableMapOf<String, Shader>()
+        // Default error shaders
         val errFragShader = load("/pulseengine/shaders/default/error.frag", FRAGMENT)
         val errVertShader = load("/pulseengine/shaders/default/error.vert", VERTEX)
 
+        // Cache of all loaded shaders
+        private val cache = mutableMapOf<String, Shader>()
+
         fun getOrLoad(fileName: String, type: ShaderType): Shader =
-            cache.computeIfAbsent(fileName) { load(it, type) }
+            cache.getOrPut(fileName) { load(fileName, type) }
 
         fun reloadCache() =
             cache.values.forEach { it.reload() }
