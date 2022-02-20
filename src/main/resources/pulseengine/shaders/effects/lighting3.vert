@@ -20,9 +20,9 @@ in int flags;
 in float edgeIndex;
 in float edgeCount;
 
-out vec2 lightPosition;
-out vec2 lightCoord;
-out vec2 lightCoordFixedRot;
+// Outputs to fragment shader
+out vec2 lightPos0;
+out vec2 lightPos1;
 out float lightDepth;
 out float lightRadius;
 out float lightDirectionAngle;
@@ -32,9 +32,10 @@ out vec4 lightColor;
 out float lightIntensity;
 out float lightSpill;
 flat out int lightFlags;
-out float lightEdgeIndex;
-out float lightEdgeCount;
+flat out int firstEdgeIndex;
+flat out int lastEdgeIndex;
 
+// Uniforms
 uniform mat4 view;
 uniform mat4 projection;
 uniform vec2 resolution;
@@ -46,10 +47,10 @@ vec4 getColor(uint rgba) {
     uint g = ((rgba >> uint(16)) & uint(255));
     uint b = ((rgba >> uint(8))  & uint(255));
     uint a = (rgba & uint(255));
-    return vec4(r, g, b, a) / 255.0f;
+    return vec4(r, g, b, a) / 254.0f;
 }
 
-mat2 rotateZ( in float angle ) {
+mat2 rotateZ(float angle) {
     float c = cos(angle);
     float s = sin(angle);
     return mat2(
@@ -59,64 +60,50 @@ mat2 rotateZ( in float angle ) {
 }
 
 void main() {
-    // Calculate offsets to compensate for jitter when textureScale is below 0
-    vec2 lightOnScreenPosOffset = -drawOffset * textureScale;
-    vec2 lightVertexPosOffset = drawOffset / (resolution / textureScale * vec2(-0.5, 0.5));
 
-    // Normalized vertex positions
-    vec2 vertex = vertexPos * 2.0 - 1.0;
-    vec2 rotatedVertex = vertex * rotateZ(directionAngle);
+    // Scale light radius and size to screen space
+    float m00 = view[0][0];
+    float m01 = view[0][1];
+    float m02 = view[0][2];
+    float scale = sqrt(m00 * m00 + m01 * m01 + m02 * m02);
+    lightRadius = radius * scale * textureScale;
+    lightSize = size * scale * textureScale;
 
-    // Coordinate on light quad (-1 to 1)
-    lightCoord = vertex;
-
-    // Cordinate on light quad (-1, 1), but fixed in relation to quads rotation
-    lightCoordFixedRot = rotatedVertex;
-
-    // Position of light in screen space (0 to width/height)
-    lightPosition = (view * vec4(position.xy, 0.0, 1.0) * textureScale).xy + lightOnScreenPosOffset;
-
-    // Other ligth properties
-    lightDepth = position.z;
-    lightRadius = radius;
+    // Ligth properties
+    lightDepth = -0.1 * position.z;
     lightDirectionAngle = directionAngle;
     lightConeAngle = coneAngle;
-    lightSize = size;
+
     lightColor = getColor(color);
     lightIntensity = intensity;
     lightSpill = spill;
     lightFlags = flags;
-    lightEdgeIndex = edgeIndex;
-    lightEdgeCount = edgeCount;
 
-    gl_Position = (projection * view * vec4(position.xy + (rotatedVertex) * radius, 0.0, 1.0)) + vec4(lightVertexPosOffset, 0f, 0f);
+    // Set the range of edges are relevant for this light
+    firstEdgeIndex = int(edgeIndex);
+    lastEdgeIndex = int(edgeIndex + edgeCount);
+
+    // Update radius for linear lights
+    vec2 radius = vec2(radius);
+    vec2 linearLightOffset = vec2(0.0);
+    if ((lightFlags & LINEAR_LIGHT_TYPE) != 0)
+    {
+        linearLightOffset = vec2(cos(-directionAngle), sin(-directionAngle)) * lightSize;
+        radius.x += size; // Increases size of quad from being square to being rectangular
+    }
+
+    // Calculate offsets to compensate for jitter when textureScale is below 0
+    vec2 lightOnScreenPosOffset = -drawOffset * textureScale;
+    vec4 lightVertexPosOffset = vec4(drawOffset / (resolution / textureScale * vec2(-0.5, 0.5)), 0.0, 0.0);
+
+    // Position of light in screen space (0 to width/height)
+    vec2 lightPos = (view * vec4(position.xy, 0.0, 1.0) * textureScale).xy + lightOnScreenPosOffset;
+    lightPos0 = lightPos - linearLightOffset;
+    lightPos1 = lightPos + linearLightOffset;
+
+    // Calculate scaled and rotated vertex position
+    vec2 vertex = (vertexPos * 2.0 - 1.0) * radius * rotateZ(directionAngle);
+
+    // Set final vertex position
+    gl_Position = (projection * view * vec4(position.xy + vertex, 0.0, 1.0)) + lightVertexPosOffset;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

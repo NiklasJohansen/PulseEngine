@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import org.lwjgl.opengl.GL13.glActiveTexture
 import org.lwjgl.opengl.GL30.GL_TEXTURE0
 import org.lwjgl.opengl.GL31.*
+import kotlin.math.max
 
 class LightRenderer(
     private val initialLightCapacity: Int = 100,
@@ -109,7 +110,7 @@ class LightRenderer(
             put(radius)
             put(direction)
             put(coneAngle)
-            put(sourceSize)
+            put(max(sourceSize, 0.01f))
             put(rgba)
             put(intensity)
             put(spill)

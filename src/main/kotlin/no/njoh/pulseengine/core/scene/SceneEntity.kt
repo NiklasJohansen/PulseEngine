@@ -20,7 +20,7 @@ abstract class SceneEntity
     open var y: Float = 0f
 
     @Property("Transform", 2)
-    open var z: Float = 0f
+    open var z: Float = -0.1f
 
     @Property("Transform", 3)
     open var width: Float = 0f

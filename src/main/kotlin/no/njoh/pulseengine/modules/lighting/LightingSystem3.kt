@@ -259,7 +259,7 @@ open class LightingSystem3 : SceneSystem()
                 lightRenderer.addLight(
                     x = light.x,
                     y = light.y,
-                    z = light.z - 0.15f, // Make lights with 0 z-value visible
+                    z = light.z,
                     radius = light.radius,
                     direction = PI.toFloat() + light.rotation.toRadians(),
                     coneAngle = 0.5f * light.coneAngle.toRadians(),
