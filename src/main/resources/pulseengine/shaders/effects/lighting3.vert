@@ -88,7 +88,7 @@ void main() {
     vec2 linearLightOffset = vec2(0.0);
     if ((lightFlags & LINEAR_LIGHT_TYPE) != 0)
     {
-        linearLightOffset = vec2(cos(-directionAngle), sin(-directionAngle)) * lightSize;
+        linearLightOffset = vec2(cos(-directionAngle), sin(-directionAngle)) * size;
         radius.x += size; // Increases size of quad from being square to being rectangular
     }
 
@@ -97,9 +97,8 @@ void main() {
     vec4 lightVertexPosOffset = vec4(drawOffset / (resolution / textureScale * vec2(-0.5, 0.5)), 0.0, 0.0);
 
     // Position of light in screen space (0 to width/height)
-    vec2 lightPos = (view * vec4(position.xy, 0.0, 1.0) * textureScale).xy + lightOnScreenPosOffset;
-    lightPos0 = lightPos - linearLightOffset;
-    lightPos1 = lightPos + linearLightOffset;
+    lightPos0 = (view * vec4(position.xy - linearLightOffset, 0.0, 1.0) * textureScale).xy + lightOnScreenPosOffset;
+    lightPos1 = (view * vec4(position.xy + linearLightOffset, 0.0, 1.0) * textureScale).xy + lightOnScreenPosOffset;
 
     // Calculate scaled and rotated vertex position
     vec2 vertex = (vertexPos * 2.0 - 1.0) * radius * rotateZ(directionAngle);
