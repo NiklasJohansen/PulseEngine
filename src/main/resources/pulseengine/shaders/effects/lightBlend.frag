@@ -13,9 +13,8 @@ uniform vec2 resolution;
 void main() {
     vec4 baseColor = texture(baseTex, textureCoord);
     vec4 lightColor = texture(lightText, textureCoord + samplingOffset);
-
-    vec3 intensity = ambientColor.rgb + lightColor.rgb * baseColor.a;
+    vec3 lighting = ambientColor.rgb + lightColor.rgb * baseColor.a;
     float alpha = (baseColor.a < 0.1) ? ambientColor.a : 1.0;
 
-    fragColor = vec4(baseColor.rgb * intensity, alpha);
+    fragColor = vec4(baseColor.rgb * lighting, alpha);
 }

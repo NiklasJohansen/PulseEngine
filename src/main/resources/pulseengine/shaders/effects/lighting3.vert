@@ -41,6 +41,7 @@ uniform mat4 projection;
 uniform vec2 resolution;
 uniform float textureScale;
 uniform vec2 drawOffset;
+uniform float zRotation;
 
 vec4 getColor(uint rgba) {
     uint r = ((rgba >> uint(24)) & uint(255));
@@ -71,7 +72,7 @@ void main() {
 
     // Ligth properties
     lightDepth = -0.1 * position.z;
-    lightDirectionAngle = directionAngle;
+    lightDirectionAngle = zRotation + directionAngle;
     lightConeAngle = coneAngle;
 
     lightColor = getColor(color);
@@ -79,7 +80,7 @@ void main() {
     lightSpill = spill;
     lightFlags = flags;
 
-    // Set the range of edges are relevant for this light
+    // Set the range of edges that are relevant for this light
     firstEdgeIndex = int(edgeIndex);
     lastEdgeIndex = int(edgeIndex + edgeCount);
 

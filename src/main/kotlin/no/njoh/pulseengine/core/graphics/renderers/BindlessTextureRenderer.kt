@@ -48,8 +48,8 @@ class BindlessTextureRenderer(
                 1f, 1f  // Bottom-right vertex
             ))
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/arrayTexture.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/arrayTexture.frag"
+                vertexShaderFileName = "/pulseengine/shaders/default/bindless_texture.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/default/bindless_texture.frag"
             )
         }
 

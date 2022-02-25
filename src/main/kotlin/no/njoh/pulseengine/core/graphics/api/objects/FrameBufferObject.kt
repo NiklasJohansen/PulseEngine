@@ -135,6 +135,8 @@ open class FrameBufferObject(
                 glTexImage2D(target, 0, format.value, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, null as FloatArray?)
             glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter.value)
             glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter.value)
+            glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+            glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
             glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.value, target, textureId, 0)
             glBindTexture(target, 0)
             return textureId
@@ -151,6 +153,8 @@ open class FrameBufferObject(
                 glTexImage2D(target, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0)
             glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+            glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, target, textureId, 0)
             glBindTexture(target, 0)
             return textureId
