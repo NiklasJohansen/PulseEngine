@@ -37,6 +37,7 @@ import no.njoh.pulseengine.widgets.editor.EditorUtil.MenuBarItem
 import no.njoh.pulseengine.widgets.editor.EditorUtil.createMenuBarUI
 import no.njoh.pulseengine.widgets.editor.EditorUtil.insertSceneSystemProperties
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isPrimitiveValue
+import org.joml.Vector3f
 import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
@@ -394,10 +395,8 @@ class SceneEditor: Widget
     {
         isRunning = false
         storedCameraState.saveFrom(activeCamera)
-        activeCamera.xScale = 1f
-        activeCamera.yScale = 1f
-        activeCamera.xPos = 0f
-        activeCamera.yPos = 0f
+        activeCamera.scale.set(0f)
+        activeCamera.position.set(0f)
 
         resetUI()
         engine.input.setCursor(ARROW)
@@ -558,8 +557,8 @@ class SceneEditor: Widget
             this.onMovedScaledOrRotated(engine)
         }
 
-        this.x += engine.input.xdMouse / activeCamera.xScale
-        this.y += engine.input.ydMouse / activeCamera.yScale
+        this.x += engine.input.xdMouse / activeCamera.scale.x
+        this.y += engine.input.ydMouse / activeCamera.scale.y
         this.set(POSITION_UPDATED)
 
         updatePropertiesPanel(::x.name, x)
@@ -842,8 +841,8 @@ class SceneEditor: Widget
             val pos = activeCamera.worldPosToScreenPos(xStartSelect, yStartSelect)
             val x = pos.x
             val y = pos.y
-            val w = (xEndSelect - xStartSelect) * activeCamera.xScale
-            val h = (yEndSelect - yStartSelect) * activeCamera.yScale
+            val w = (xEndSelect - xStartSelect) * activeCamera.scale.x
+            val h = (yEndSelect - yStartSelect) * activeCamera.scale.y
 
             surface.setDrawColor(1f, 1f, 1f, 0.8f)
             surface.drawLine(x, y, x + w, y)
@@ -856,8 +855,8 @@ class SceneEditor: Widget
     private fun SceneEntity.renderGizmo(surface: Surface2D, showResizeDots: Boolean)
     {
         val pos = activeCamera.worldPosToScreenPos(x, y)
-        val w = (width + GIZMO_PADDING * 2) * activeCamera.xScale / 2f
-        val h = (height + GIZMO_PADDING * 2) * activeCamera.yScale / 2f
+        val w = (width + GIZMO_PADDING * 2) * activeCamera.scale.x / 2f
+        val h = (height + GIZMO_PADDING * 2) * activeCamera.scale.y / 2f
         val size = 4f
         val halfSize = size / 2f
 
@@ -913,8 +912,8 @@ class SceneEditor: Widget
         val xEnd = (activeCamera.bottomRightWorldPosition.x.toInt() / cellSize + 1) * cellSize
         val yEnd = (activeCamera.bottomRightWorldPosition.y.toInt() / cellSize + 1) * cellSize
 
-        val middleLineSize = 2f / activeCamera.xScale
-        val color = (activeCamera.xScale + 0.2f).coerceIn(0.1f, 0.4f)
+        val middleLineSize = 2f / activeCamera.scale.x
+        val color = (activeCamera.scale.x + 0.2f).coerceIn(0.1f, 0.4f)
 
         surface.setDrawColor(1f, 1f, 1f, color + 0.1f)
         for (x in xStart until xEnd step cellSize)
@@ -1032,50 +1031,33 @@ class SceneEditor: Widget
 }
 
 data class CameraState(
-    var xPos: Float,
-    var yPos: Float,
-    var xScale: Float,
-    var yScale: Float,
-    var xOrigin: Float,
-    var yOrigin: Float,
-    var zRot: Float
+    val pos: Vector3f,
+    val rot: Vector3f,
+    val scale: Vector3f
 ) {
     fun saveFrom(camera: Camera)
     {
-        xPos = camera.xPos
-        yPos = camera.yPos
-        xScale = camera.xScale
-        yScale = camera.yScale
-        xOrigin = camera.xOrigin
-        yOrigin = camera.yOrigin
-        zRot = camera.zRot
+        pos.set(camera.position)
+        rot.set(camera.rotation)
+        scale.set(camera.scale)
     }
 
     fun loadInto(camera: Camera)
     {
-       camera.xPos = xPos
-       camera.yPos = yPos
-       camera.xScale = xScale
-       camera.yScale = yScale
-       camera.xOrigin = xOrigin
-       camera.yOrigin = yOrigin
-       camera.zRot = zRot
+        camera.position.set(pos)
+        camera.rotation.set(rot)
+        camera.scale.set(scale)
     }
 
     fun reset()
     {
-        xPos = 0f
-        yPos = 0f
-        xScale = 1f
-        yScale = 1f
-        xOrigin = 0f
-        yOrigin =  0f
-        zRot = 0f
+        pos.set(0f)
+        rot.set(0f)
+        scale.set(1f)
     }
 
     companion object
     {
-        fun from(camera: Camera) =
-            CameraState(camera.xPos, camera.yPos, camera.xScale, camera.yScale, camera.zRot, camera.xOrigin, camera.yOrigin)
+        fun from(camera: Camera) = CameraState(Vector3f(camera.position), Vector3f(camera.rotation), Vector3f(camera.scale))
     }
 }

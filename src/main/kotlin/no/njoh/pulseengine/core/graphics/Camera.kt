@@ -3,10 +3,7 @@ package no.njoh.pulseengine.core.graphics
 import no.njoh.pulseengine.core.graphics.DefaultCamera.*
 import no.njoh.pulseengine.core.graphics.DefaultCamera.ProjectionType.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
-import org.joml.Matrix4f
-import org.joml.Vector2f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import org.joml.*
 
 abstract class Camera
 {
@@ -14,25 +11,17 @@ abstract class Camera
     open val viewMatrix: Matrix4f = Matrix4f()
     open val projectionMatrix: Matrix4f = Matrix4f()
 
-    /** Position */
-    var xPos: Float = 0f
-    var yPos: Float = 0f
-    var zPos: Float = 0f
+    /** World position */
+    var position = Vector3f()
 
-    /** Rotation */
-    var xRot: Float = 0f
-    var yRot: Float = 0f
-    var zRot: Float = 0f
+    /** Rotation in radians */
+    var rotation = Vector3f()
 
-    /** Scale */
-    var xScale: Float = 1f
-    var yScale: Float = 1f
-    var zScale: Float = 1f
+    /** Scale - default value 1.0f */
+    var scale = Vector3f(1.0f)
 
-    /** Origin from center */
-    var xOrigin: Float = 0f
-    var yOrigin: Float = 0f
-    var zOrigin: Float = 0f
+    /** Origin in screen space coordinates. Determines the point of rotation. */
+    var origin = Vector3f()
 
     /** Depth range */
     var farPlane = 5f
@@ -60,6 +49,15 @@ abstract class CameraInternal : Camera()
     /** Used to make sure a single Camera instance is not updated multiple times per frame */
     var updateNumber: Int = 0
 
+    /** Last world position */
+    val positionLast = Vector3f()
+
+    /** Last rotation in radians */
+    val rotationLast = Vector3f()
+
+    /** Last scale - default value 1.0f */
+    val scaleLast = Vector3f(1.0f)
+
     /** Called each physics step */
     abstract fun updateLastState()
 
@@ -76,30 +74,23 @@ class DefaultCamera(
 
     override var projectionMatrix = Matrix4f()
 
-    private var xLastPos: Float = 0f
-    private var yLastPos: Float = 0f
-    private var zLastPos: Float = 0f
-    private var xLastRot: Float = 0f
-    private var yLastRot: Float = 0f
-    private var zLastRot: Float = 0f
-    private var xLastScale: Float = 1f
-    private var yLastScale: Float = 1f
-    private var zLastScale: Float = 1f
-
     private val invViewMatrix = Matrix4f()
-    private val positionVector = Vector4f()
+    private val returnVector = Vector4f()
     private val worldPositionVector = Vector3f()
     private val screenPositionVector = Vector2f()
+    private val iPos = Vector3f()
+    private val iRot = Vector3f()
+    private val iScale = Vector3f()
 
     override fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     {
-        val pos = positionVector.set(x, y, 0f, 1f).mul(invViewMatrix)
+        val pos = returnVector.set(x, y, 0f, 1f).mul(invViewMatrix)
         return worldPositionVector.set(pos.x, pos.y, pos.z)
     }
 
     override fun worldPosToScreenPos(x: Float, y: Float, z: Float): Vector2f
     {
-        val pos = positionVector.set(x, y, z, 1f).mul(viewMatrix)
+        val pos = returnVector.set(x, y, z, 1f).mul(viewMatrix)
         return screenPositionVector.set(pos.x, pos.y)
     }
 
@@ -120,22 +111,16 @@ class DefaultCamera(
 
     override fun updateViewMatrix()
     {
-        val xPos = xPos.interpolateFrom(xLastPos)
-        val yPos = yPos.interpolateFrom(yLastPos)
-        val zPos = zPos.interpolateFrom(zLastPos)
-        val xRot = xRot.interpolateFrom(xLastRot)
-        val yRot = yRot.interpolateFrom(yLastRot)
-        val zRot = zRot.interpolateFrom(zLastRot)
-        val xScale = xScale.interpolateFrom(xLastScale)
-        val yScale = yScale.interpolateFrom(yLastScale)
-        val zScale = zScale.interpolateFrom(zLastScale)
+        position.interpolateFrom(positionLast, destination = iPos)
+        rotation.interpolateFrom(rotationLast, destination = iRot)
+        scale.interpolateFrom(scaleLast, destination = iScale)
 
         viewMatrix
             .identity()
-            .translate(xOrigin, yOrigin, zOrigin)
-            .scale(xScale, yScale, zScale)
-            .rotateXYZ(xRot, yRot, -zRot)
-            .translate(xPos - xOrigin, yPos - yOrigin, zPos - zOrigin)
+            .translate(origin)
+            .scale(iScale)
+            .rotateXYZ(iRot.x, iRot.y, -iRot.z)
+            .translate(iPos.x - origin.x, iPos.y - origin.y, iPos.z - origin.z)
 
         viewMatrix.invert(invViewMatrix)
     }
@@ -150,15 +135,9 @@ class DefaultCamera(
 
     override fun updateLastState()
     {
-        xLastPos = xPos
-        yLastPos = yPos
-        zLastPos = zPos
-        xLastRot = xRot
-        yLastRot = yRot
-        zLastRot = zRot
-        xLastScale = xScale
-        yLastScale = yScale
-        zLastScale = zScale
+        positionLast.set(position)
+        rotationLast.set(rotation)
+        scaleLast.set(scale)
     }
 
     companion object

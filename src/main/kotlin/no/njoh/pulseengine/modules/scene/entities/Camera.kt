@@ -129,15 +129,14 @@ open class Camera : SceneEntity()
 
         val surfaceWidth = engine.gfx.mainSurface.width
         val surfaceHeight = engine.gfx.mainSurface.height
-        val scale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight)
+        val newScale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight)
         engine.gfx.mainCamera.apply {
-            xScale = scale
-            yScale = scale
-            zRot = -rotation / 180f * PI.toFloat()
-            xOrigin = surfaceWidth * 0.5f
-            yOrigin = surfaceHeight * 0.5f
-            xPos = surfaceWidth * 0.5f - x
-            yPos = surfaceHeight * 0.5f - y
+            scale.set(newScale)
+            rotation.z = -super.rotation / 180f * PI.toFloat()
+            origin.x = surfaceWidth * 0.5f
+            origin.y = surfaceHeight * 0.5f
+            position.x = surfaceWidth * 0.5f - x
+            position.y = surfaceHeight * 0.5f - y
         }
     }
 }

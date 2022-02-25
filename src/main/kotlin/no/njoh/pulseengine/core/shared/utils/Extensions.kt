@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.shared.utils
 
 import no.njoh.pulseengine.core.PulseEngine
+import org.joml.Vector2f
+import org.joml.Vector3f
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -10,22 +12,59 @@ import kotlin.math.PI
 
 object Extensions
 {
-    fun Float.interpolateFrom(lastState: Float): Float
-    {
-        val i = PulseEngine.GLOBAL_INSTANCE.data.interpolation
-        return this * i + lastState * (1f - i)
-    }
+    /**
+     * Linearly interpolates from the [last] value to [this] value.
+     */
+    fun Float.interpolateFrom(last: Float, t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation): Float =
+        this * t + last * (1f - t)
 
+    /**
+     * Linearly interpolates from the [last] value to [this] value.
+     */
+    fun Vector2f.interpolateFrom(
+        last: Vector2f,
+        dest: Vector2f = Vector2f(),
+        t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation
+    ): Vector2f = dest.set(
+        this.x * t + last.x * (1f - t),
+        this.y * t + last.y * (1f - t)
+    )
+
+    /**
+     * Linearly interpolates from the [last] value to [this] value.
+     */
+    fun Vector3f.interpolateFrom(
+        last: Vector3f,
+        destination: Vector3f = Vector3f(),
+        t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation
+    ): Vector3f = destination.set(
+        this.x * t + last.x * (1f - t),
+        this.y * t + last.y * (1f - t),
+        this.z * t + last.z * (1f - t)
+    )
+
+    /**
+     * Converts radians to degrees.
+     */
     fun Float.toDegrees() = this / PI.toFloat() * 180f
 
+    /**
+     * Converts degrees to radians.
+     */
     fun Float.toRadians() = this / 180f * PI.toFloat()
 
+    /**
+     * Calculates the degrees between [this] and [angle].
+     */
     fun Float.degreesBetween(angle: Float): Float
     {
         val delta = this - angle
         return delta + if (delta > 180) -360 else if (delta < -180) 360 else 0
     }
 
+    /**
+     * Fast iteration of a list without needing a new [Iterator] instance.
+     */
     inline fun <T> List<T>.forEachFiltered(predicate: (T) -> Boolean, action: (T) -> Unit)
     {
         var i = 0
@@ -36,20 +75,31 @@ object Extensions
         }
     }
 
-    inline fun <T> Iterable<T>.sumIf(predicate: (T) -> Boolean, selector: (T) -> Float): Float
+    /**
+     * Sums each value of a [List] if the value satisfies a certain [predicate].
+     */
+    inline fun <T> List<T>.sumIf(predicate: (T) -> Boolean, selector: (T) -> Float): Float
     {
         var sum = 0f
-        for (element in this)
+        var i = 0
+        while (i < size)
+        {
+            val element = this[i++]
             if (predicate(element))
                 sum += selector(element)
+        }
         return sum
     }
 
-    inline fun <T> Iterable<T>.sumByFloat(selector: (T) -> Float): Float
+    /**
+     * Sums each value of a [List].
+     */
+    inline fun <T> List<T>.sumByFloat(selector: (T) -> Float): Float
     {
         var sum = 0f
-        for (element in this)
-            sum += selector(element)
+        var i = 0
+        while (i < size)
+            sum += selector(this[i++])
         return sum
     }
 

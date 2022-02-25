@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
+import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import org.lwjgl.opengl.GL13.glActiveTexture
 import org.lwjgl.opengl.GL30.GL_TEXTURE0
 import org.lwjgl.opengl.GL31.*
@@ -141,6 +142,8 @@ class LightRenderer(
             return
         }
 
+        val cam = surface.camera as CameraInternal
+        val zRotCamera = cam.rotation.z.interpolateFrom(cam.rotationLast.z)
         val renderStartTime = System.nanoTime()
         val texScale = surface.context.textureScale
         val view = surface.camera.viewMatrix
@@ -150,13 +153,13 @@ class LightRenderer(
         val xEdgeDrawOffset = xDrawOffset * texScale
         val yEdgeDrawOffset = yDrawOffset * texScale
 
+        // Transform world coordinates of edges to screen space
         while (index < size)
         {
             val x0 = buffer[index]
             val y0 = buffer[index + 1]
             val x1 = buffer[index + 2]
             val y1 = buffer[index + 3]
-            // Transform world coordinates to screen space
             buffer.put(index + 0, (view.m00() * x0 + view.m10() * y0 + view.m30()) * texScale - xEdgeDrawOffset)
             buffer.put(index + 1, (view.m01() * x0 + view.m11() * y0 + view.m31()) * texScale - yEdgeDrawOffset)
             buffer.put(index + 2, (view.m00() * x1 + view.m10() * y1 + view.m30()) * texScale - xEdgeDrawOffset)
@@ -190,6 +193,7 @@ class LightRenderer(
             hasOccluderMap = 1f
         }
 
+        // Set up VAO, shader program and uniforms
         vao.bind()
         program.bind()
         program.setUniform("projection", surface.camera.projectionMatrix)
@@ -201,9 +205,12 @@ class LightRenderer(
         program.setUniform("drawOffset", xDrawOffset, yDrawOffset)
         program.setUniform("hasNormalMap", hasNormalMap)
         program.setUniform("hasOccluderMap", hasOccluderMap)
+        program.setUniform("zRotation", zRotCamera)
 
+        // Perform draw call
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, lights)
 
+        // Reset
         glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, 0)
         vao.release()

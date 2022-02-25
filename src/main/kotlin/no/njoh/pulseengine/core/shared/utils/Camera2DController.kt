@@ -20,33 +20,33 @@ class Camera2DController(
     {
         val cam = camera ?: engine.gfx.mainCamera
 
-        scaleChangeRate += engine.input.scroll * 0.01f * min(1f, cam.xScale)
+        scaleChangeRate += engine.input.scroll * 0.01f * min(1f, cam.scale.x)
 
         if (scaleChangeRate != 0f)
         {
-            val xScale = min(maxScale, max(minScale, cam.xScale + scaleChangeRate))
-            val yScale = min(maxScale, max(minScale, cam.yScale + scaleChangeRate))
-            val xScaleDiff = xScale - cam.xScale
-            val yScaleDiff = yScale - cam.yScale
+            val xScale = min(maxScale, max(minScale, cam.scale.x + scaleChangeRate))
+            val yScale = min(maxScale, max(minScale, cam.scale.y + scaleChangeRate))
+            val xScaleDiff = xScale - cam.scale.x
+            val yScaleDiff = yScale - cam.scale.y
             val xCenter = engine.window.width * 0.5f
             val yCenter = engine.window.height * 0.5f
 
-            cam.xScale = xScale
-            cam.yScale = yScale
-            cam.xOrigin = xCenter
-            cam.yOrigin = yCenter
-            cam.xPos -= (engine.input.xMouse - xCenter) * xScaleDiff / (xScale * xScale)
-            cam.yPos -= (engine.input.yMouse - yCenter) * yScaleDiff / (yScale * yScale)
+            cam.scale.x = xScale
+            cam.scale.y = yScale
+            cam.origin.x = xCenter
+            cam.origin.y = yCenter
+            cam.position.x -= (engine.input.xMouse - xCenter) * xScaleDiff / (xScale * xScale)
+            cam.position.y -= (engine.input.yMouse - yCenter) * yScaleDiff / (yScale * yScale)
         }
 
         if (engine.input.isPressed(dragMouseKey))
         {
-            xPosChangeRate += engine.input.xdMouse / cam.xScale * (1f - smoothing)
-            yPosChangeRate += engine.input.ydMouse / cam.yScale * (1f - smoothing)
+            xPosChangeRate += engine.input.xdMouse / cam.scale.x * (1f - smoothing)
+            yPosChangeRate += engine.input.ydMouse / cam.scale.y * (1f - smoothing)
         }
 
-        cam.xPos += xPosChangeRate
-        cam.yPos += yPosChangeRate
+        cam.position.x += xPosChangeRate
+        cam.position.y += yPosChangeRate
 
         xPosChangeRate *= smoothing
         yPosChangeRate *= smoothing
