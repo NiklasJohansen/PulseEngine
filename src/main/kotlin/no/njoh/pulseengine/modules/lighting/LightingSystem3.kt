@@ -65,7 +65,8 @@ open class LightingSystem3 : SceneSystem()
     @JsonIgnore
     private val occluderRenderPass = RenderPass(
         surfaceName = "lighting_occluder_map",
-        targetType = LightOccluder::class
+        targetType = LightOccluder::class,
+        drawCondition = { (it as? LightOccluder)?.castShadows ?: true }
     )
 
     private var xMin = 0f

@@ -12,20 +12,34 @@ import kotlin.collections.ArrayList
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 
+/**
+ * Base class for all entity renderers.
+ * Enables other systems to add render passes to be performed bye the renderer.
+ */
 abstract class EntityRenderer : SceneSystem()
 {
     @JsonIgnore
     protected val renderPasses = mutableListOf<RenderPass>()
 
+    /** Adds a [RenderPass] to the [EntityRenderer] */
     fun addRenderPass(renderPass: RenderPass) =
         renderPasses.add(renderPass)
 
+    /** Removes a [RenderPass] from the [EntityRenderer] */
     fun removeRenderPass(renderPass: RenderPass) =
         renderPasses.remove(renderPass)
 
+    /**
+     * Represents a single render pass.
+     *
+     * @param surfaceName The name of the surface to draw the entities to.
+     * @param targetType The type of entities to draw
+     * @param drawCondition A per-entity condition that determines if an entity will be rendered.
+     */
     data class RenderPass(
         val surfaceName: String,
-        val targetType: KClass<*>
+        val targetType: KClass<*>,
+        val drawCondition: ((Any) -> Boolean)? = null
     )
 }
 
@@ -61,18 +75,22 @@ open class EntityRendererImpl : EntityRenderer()
     {
         renderPasses.forEachFast { renderPass ->
             val task = createRenderTask(renderPass)
+            val condition = renderPass.drawCondition
             engine.scene.forEachEntityTypeList { typeList ->
                 if (renderPass.targetType.isInstance(typeList[0]))
                 {
                     typeList.forEachFast { entity ->
-                        val zOrder = entity.z.toInt()
-                        var layer = task.layers[zOrder]
-                        if (layer == null)
+                        if (condition == null || condition(entity))
                         {
-                            layer = Layer()
-                            task.layers[zOrder] = layer
+                            val zOrder = entity.z.toInt()
+                            var layer = task.layers[zOrder]
+                            if (layer == null)
+                            {
+                                layer = Layer()
+                                task.layers[zOrder] = layer
+                            }
+                            layer.entities.add(entity)
                         }
-                        layer.entities.add(entity)
                     }
                 }
             }
