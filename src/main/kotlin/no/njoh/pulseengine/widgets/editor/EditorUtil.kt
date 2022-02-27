@@ -222,7 +222,7 @@ object EditorUtil
     ): Pair<Float, Float> {
         val padding = 5f
         val height = padding + min(items.size, maxItemCount) * rowHeight
-        val width = 4 * padding + (items.map { font.getWidth(it, fontSize) }.max() ?: 100f) + scrollBarWidth
+        val width = 4 * padding + (items.maxOfOrNull { font.getWidth(it, fontSize) } ?: 100f) + scrollBarWidth
         return Pair(width, height)
     }
 

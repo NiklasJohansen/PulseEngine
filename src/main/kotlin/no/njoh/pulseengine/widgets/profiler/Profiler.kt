@@ -190,8 +190,8 @@ class Profiler : Widget
             surface.setDrawColor(1f,1f,1f,0.95f)
             surface.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 
-            val min = this.min() ?: 0f
-            val max = this.max() ?: 0f
+            val min = this.minOrNull() ?: 0f
+            val max = this.maxOrNull() ?: 0f
             val valueRange = (max - min)
             val nTicks = 4
             val tickLength = 8

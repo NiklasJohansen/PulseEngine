@@ -26,7 +26,8 @@ object UiUtil
     fun UiElement.getRequiredVerticalSpace(): Float = when(this)
     {
         is VerticalPanel -> children.sumByFloat { it.getRequiredVerticalSpace() }
-        is HorizontalPanel -> children.map { it.getRequiredVerticalSpace() }.max() ?: minHeight
+        is HorizontalPanel -> children.maxOfOrNull { it.getRequiredVerticalSpace() } ?: minHeight
+        is HorizontalPanel -> children.maxOfOrNull { it.getRequiredVerticalSpace() } ?: minHeight
         else -> when (height.type)
         {
             ABSOLUTE -> height.value
@@ -40,7 +41,7 @@ object UiUtil
     fun UiElement.getRequiredHorizontalSpace(): Float = when(this)
     {
         is HorizontalPanel -> children.sumByFloat { it.getRequiredHorizontalSpace() }
-        is VerticalPanel -> children.map { it.getRequiredHorizontalSpace() }.max() ?: minWidth
+        is VerticalPanel -> children.maxOfOrNull { it.getRequiredHorizontalSpace() } ?: minWidth
         else -> when (width.type)
         {
             ABSOLUTE -> width.value

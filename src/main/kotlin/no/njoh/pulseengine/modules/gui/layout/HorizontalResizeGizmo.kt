@@ -87,7 +87,7 @@ class HorizontalResizeGizmo(
     private fun UiElement.actualMinWidth(): Float = when (this)
     {
         is HorizontalPanel -> children.sumByFloat { it.getRequiredHorizontalSpace() }
-        is VerticalPanel -> children.map { it.getRequiredHorizontalSpace() }.max() ?: minWidth
+        is VerticalPanel -> children.maxOfOrNull { it.getRequiredHorizontalSpace() } ?: minWidth
         else -> minWidth
     }
 

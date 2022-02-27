@@ -308,14 +308,14 @@ class DockingPanel(
     {
         if (this is VerticalPanel)
         {
-            this.minWidth = this.children.map { it.minWidth + it.padding.left + it.padding.right }.max() ?: this.minWidth
+            this.minWidth = this.children.maxOfOrNull { it.minWidth + it.padding.left + it.padding.right } ?: this.minWidth
             this.minHeight = this.children.sumByFloat { it.minHeight + it.padding.top + it.padding.bottom }
             this.parent?.setMinSizeFromChildren()
         }
         else if (this is HorizontalPanel)
         {
             this.minWidth = this.children.sumByFloat { it.minWidth + it.padding.left + it.padding.right }
-            this.minHeight = this.children.map { it.minHeight + it.padding.top + it.padding.bottom }.max() ?: this.minHeight
+            this.minHeight = this.children.maxOfOrNull { it.minHeight + it.padding.top + it.padding.bottom } ?: this.minHeight
             this.parent?.setMinSizeFromChildren()
         }
     }

@@ -87,7 +87,7 @@ class VerticalResizeGizmo(
     private fun UiElement.actualMinHeight(): Float = when (this)
     {
         is VerticalPanel -> children.sumByFloat { it.getRequiredVerticalSpace() }
-        is HorizontalPanel -> children.map { it.getRequiredVerticalSpace() }.max() ?: minHeight
+        is HorizontalPanel -> children.maxOfOrNull { it.getRequiredVerticalSpace() } ?: minHeight
         else -> minHeight
     }
 
