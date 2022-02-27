@@ -1,12 +1,12 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing.MSAA_MAX
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing.NONE
+import no.njoh.pulseengine.core.graphics.api.Multisampling
+import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA_MAX
+import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.BILINEAR_INTERPOLATION
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.NORMAL
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
@@ -69,15 +69,15 @@ open class FrameBufferObject(
             height: Int,
             textureScale: Float = 1f,
             textureFormat: TextureFormat = NORMAL,
-            textureFilter: TextureFilter = BILINEAR_INTERPOLATION,
-            antiAliasing: AntiAliasing = NONE,
+            textureFilter: TextureFilter = LINEAR,
+            multisampling: Multisampling = NONE,
             attachments: List<Attachment> = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER)
         ): FrameBufferObject {
             // Generate and bind frame buffer
             val frameBufferId = glGenFramebuffers()
             glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
 
-            val samples = if (antiAliasing == MSAA_MAX) glGetInteger(GL_MAX_SAMPLES) else antiAliasing.samples
+            val samples = if (multisampling == MSAA_MAX) glGetInteger(GL_MAX_SAMPLES) else multisampling.samples
             val texWidth = (width * textureScale).toInt()
             val texHeight = (height * textureScale).toInt()
             val textures = mutableListOf<Texture>()

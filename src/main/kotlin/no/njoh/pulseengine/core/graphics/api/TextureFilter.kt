@@ -8,6 +8,9 @@ import org.lwjgl.opengl.GL11.GL_NEAREST
  */
 enum class TextureFilter(val value: Int)
 {
-    BILINEAR_INTERPOLATION(GL_LINEAR),
-    NEAREST_NEIGHBOUR(GL_NEAREST)
+    /** Bilinear interpolation */
+    LINEAR(GL_LINEAR),
+
+    /** Nearest neighbour */
+    NEAREST(GL_NEAREST)
 }

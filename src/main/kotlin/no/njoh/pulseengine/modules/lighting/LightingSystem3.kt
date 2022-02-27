@@ -8,9 +8,7 @@ import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.BILINEAR_INTERPOLATION
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.HDR_16
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing
+import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
@@ -36,13 +34,13 @@ open class LightingSystem3 : SceneSystem()
     var textureScale: Float = 1f
 
     @Property(order = 3)
-    var textureFilter: TextureFilter = BILINEAR_INTERPOLATION
+    var textureFilter = TextureFilter.LINEAR
 
     @Property(order = 4)
     var textureFormat: TextureFormat = HDR_16
 
     @Property(order = 5)
-    var antiAliasing = AntiAliasing.NONE
+    var multisampling = Multisampling.NONE
 
     @Property(order = 6)
     var useNormals = true
@@ -93,7 +91,7 @@ open class LightingSystem3 : SceneSystem()
             textureFormat = textureFormat,
             textureFilter = textureFilter,
             textureScale = textureScale,
-            antiAliasing = antiAliasing,
+            multisampling = multisampling,
             blendFunction = ADDITIVE,
             attachments = listOf(COLOR_TEXTURE_0)
         ).addRenderer(lightRenderer)
@@ -131,7 +129,6 @@ open class LightingSystem3 : SceneSystem()
                 camera = engine.gfx.mainCamera,
                 zOrder = lightSurface.context.zOrder + 1, // Render normal map before lightmap
                 backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
-                textureFilter = BILINEAR_INTERPOLATION,
                 isVisible = false
             )
         }
@@ -174,7 +171,7 @@ open class LightingSystem3 : SceneSystem()
         lightRenderer.ambientColor = ambientColor
 
         // Set light surface properties
-        lightSurface.setAntiAliasingType(antiAliasing)
+        lightSurface.setMultisampling(multisampling)
         lightSurface.setTextureScale(textureScale)
         lightSurface.setTextureFilter(textureFilter)
         lightSurface.setTextureFormat(textureFormat)

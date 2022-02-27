@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Shape
 import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing
+import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.scene.SpatialGrid
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
@@ -29,7 +29,7 @@ open class LightingSystem : SceneSystem()
     var lightBleed = 0.97f
 
     @Property
-    var msaa = AntiAliasing.NONE
+    var msaa = Multisampling.NONE
 
     @JsonIgnore
     private lateinit var lightingEffect: LightingPostProcessingEffect
@@ -50,7 +50,7 @@ open class LightingSystem : SceneSystem()
     override fun onCreate(engine: PulseEngine)
     {
         val normalMapSurface = engine.gfx
-            .createSurface(normalRenderPass.surfaceName, camera = engine.gfx.mainCamera, antiAliasing = msaa)
+            .createSurface(normalRenderPass.surfaceName, camera = engine.gfx.mainCamera, multisampling = msaa)
             .setBackgroundColor(0.5f, 0.5f, 1.0f, 1f)
             .setIsVisible(false)
 
@@ -83,7 +83,7 @@ open class LightingSystem : SceneSystem()
     {
         lightingEffect.ambientColor = ambientColor
         lightingEffect.lightBleed = lightBleed
-        engine.gfx.getSurface(normalRenderPass.surfaceName)?.setAntiAliasingType(msaa)
+        engine.gfx.getSurface(normalRenderPass.surfaceName)?.setMultisampling(msaa)
     }
 
     override fun onRender(engine: PulseEngine)

@@ -1,8 +1,8 @@
 package no.njoh.pulseengine.core.graphics
 
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing.NONE
+import no.njoh.pulseengine.core.graphics.api.Multisampling
+import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
@@ -50,7 +50,7 @@ class MultisampledOffScreenRenderTarget(
     override var textureScale: Float,
     override var textureFormat: TextureFormat,
     override var textureFilter: TextureFilter,
-    private val antiAliasing: AntiAliasing,
+    private val multisampling: Multisampling,
     override var attachments: List<Attachment>
 ) : RenderTarget {
 
@@ -65,7 +65,7 @@ class MultisampledOffScreenRenderTarget(
         if (this::msFbo.isInitialized)
             msFbo.delete()
 
-        msFbo = FrameBufferObject.create(width, height, textureScale, textureFormat, textureFilter, antiAliasing, attachments)
+        msFbo = FrameBufferObject.create(width, height, textureScale, textureFormat, textureFilter, multisampling, attachments)
         fbo = FrameBufferObject.create(width, height, textureScale, textureFormat, textureFilter, NONE, attachments)
     }
 

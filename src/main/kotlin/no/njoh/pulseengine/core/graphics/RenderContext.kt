@@ -11,7 +11,7 @@ interface RenderContext
     val textureScale: Float
     val textureFormat: TextureFormat
     val textureFilter: TextureFilter
-    val antiAliasing: AntiAliasing
+    val multisampling: Multisampling
     val blendFunction: BlendFunction
     val attachments: List<Attachment>
     val backgroundColor: Color
@@ -25,7 +25,7 @@ class RenderContextInternal(
     override var textureScale: Float,
     override var textureFormat: TextureFormat,
     override var textureFilter: TextureFilter,
-    override var antiAliasing: AntiAliasing,
+    override var multisampling: Multisampling,
     override var blendFunction: BlendFunction,
     override val attachments: List<Attachment>,
     override val backgroundColor: Color,

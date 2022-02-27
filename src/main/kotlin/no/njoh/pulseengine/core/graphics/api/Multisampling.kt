@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api
 
-enum class AntiAliasing(val samples: Int)
+enum class Multisampling(val samples: Int)
 {
     NONE(0),
     MSAA4(4),

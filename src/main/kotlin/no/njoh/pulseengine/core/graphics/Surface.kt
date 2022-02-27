@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing.NONE
+import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.core.graphics.renderers.*
@@ -45,7 +45,7 @@ interface Surface2D : Surface
     fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface2D
     fun setBackgroundColor(color: Color): Surface2D
     fun setBlendFunction(func: BlendFunction): Surface2D
-    fun setAntiAliasingType(antiAliasing: AntiAliasing): Surface2D
+    fun setMultisampling(multisampling: Multisampling): Surface2D
     fun setIsVisible(isVisible: Boolean): Surface2D
     fun setTextureFormat(format: TextureFormat): Surface2D
     fun setTextureFilter(filter: TextureFilter): Surface2D
@@ -148,10 +148,10 @@ class Surface2DImpl(
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
     }
 
-    private fun createRenderTarget(context: RenderContext) = when (context.antiAliasing)
+    private fun createRenderTarget(context: RenderContext) = when (context.multisampling)
     {
         NONE -> OffScreenRenderTarget(context.textureScale, context.textureFormat, context.textureFilter, context.attachments)
-        else -> MultisampledOffScreenRenderTarget(context.textureScale, context.textureFormat, context.textureFilter, context.antiAliasing, context.attachments)
+        else -> MultisampledOffScreenRenderTarget(context.textureScale, context.textureFormat, context.textureFilter, context.multisampling, context.attachments)
     }
 
     override fun runPostProcessingPipeline()
@@ -258,11 +258,11 @@ class Surface2DImpl(
         return this
     }
 
-    override fun setAntiAliasingType(antiAliasing: AntiAliasing): Surface2D
+    override fun setMultisampling(multisampling: Multisampling): Surface2D
     {
-        if (antiAliasing != context.antiAliasing)
+        if (multisampling != context.multisampling)
         {
-            context.antiAliasing = antiAliasing
+            context.multisampling = multisampling
             renderTarget.cleanUp()
             renderTarget = createRenderTarget(context)
             renderTarget.init(width, height)

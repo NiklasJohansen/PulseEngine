@@ -2,9 +2,9 @@ package no.njoh.pulseengine.core.graphics
 
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing.MSAA4
+import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.BILINEAR_INTERPOLATION
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.NORMAL
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.renderers.*
@@ -36,9 +36,9 @@ open class GraphicsImpl : GraphicsInternal
             width = viewPortWidth,
             height = viewPortHeight,
             camera = mainCamera,
-            antiAliasing = MSAA4,
+            multisampling = MSAA4,
             textureFormat = NORMAL,
-            textureFilter = BILINEAR_INTERPOLATION,
+            textureFilter = LINEAR,
             attachments = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
             initializeSurface = false // Will be initialized in next step
         )
@@ -147,7 +147,7 @@ open class GraphicsImpl : GraphicsInternal
         textureScale: Float,
         textureFormat: TextureFormat,
         textureFilter: TextureFilter,
-        antiAliasing: AntiAliasing,
+        multisampling: Multisampling,
         blendFunction: BlendFunction,
         attachments: List<Attachment>,
         backgroundColor: Color,
@@ -166,7 +166,7 @@ open class GraphicsImpl : GraphicsInternal
             textureScale = textureScale,
             textureFormat = textureFormat,
             textureFilter = textureFilter,
-            antiAliasing = antiAliasing,
+            multisampling = multisampling,
             blendFunction = blendFunction,
             attachments = attachments,
             backgroundColor = backgroundColor

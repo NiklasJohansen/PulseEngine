@@ -3,10 +3,10 @@ package no.njoh.pulseengine.core.graphics
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
-import no.njoh.pulseengine.core.graphics.api.AntiAliasing.NONE
+import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_STENCIL_BUFFER
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.BILINEAR_INTERPOLATION
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.NORMAL
 
 interface Graphics
@@ -27,8 +27,8 @@ interface Graphics
         isVisible: Boolean = true,
         textureScale: Float = 1f,
         textureFormat: TextureFormat = NORMAL,
-        textureFilter: TextureFilter = BILINEAR_INTERPOLATION,
-        antiAliasing: AntiAliasing = NONE,
+        textureFilter: TextureFilter = LINEAR,
+        multisampling: Multisampling = NONE,
         blendFunction: BlendFunction = BlendFunction.NORMAL,
         attachments: List<Attachment> = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
         backgroundColor: Color = Color(0.1f, 0.1f, 0.1f, 0f),
