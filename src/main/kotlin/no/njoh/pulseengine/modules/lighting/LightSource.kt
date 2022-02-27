@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 
 /**
  * Defines the properties of a light source.
- * Handled by the [LightingSystem3]
+ * Handled by the [LightingSystem]
  */
 interface LightSource
 {

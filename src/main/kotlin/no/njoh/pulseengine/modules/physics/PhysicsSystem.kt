@@ -11,7 +11,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Property
 
-@Name("2D Physics")
+@Name("Physics 2D")
 class PhysicsSystem : SceneSystem()
 {
     @Property(order = 1)
