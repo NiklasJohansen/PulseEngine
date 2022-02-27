@@ -65,8 +65,8 @@ class LightRenderer(
                 1f, 1f  // Bottom-right vertex
             ))
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/effects/lighting3.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/effects/lighting3.frag"
+                vertexShaderFileName = "/pulseengine/shaders/effects/light.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/effects/light.frag"
             )
         }
 

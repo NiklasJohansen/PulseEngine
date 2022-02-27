@@ -74,7 +74,6 @@ void main() {
     lightDepth = -0.1 * position.z;
     lightDirectionAngle = zRotation + directionAngle;
     lightConeAngle = coneAngle;
-
     lightColor = getColor(color);
     lightIntensity = intensity;
     lightSpill = spill;

@@ -10,8 +10,6 @@
 in vec2 lightPos0;
 in vec2 lightPos1;
 in float lightDepth;
-
-in vec2 texCoordRotLocked;
 in float lightRadius;
 in float lightDirectionAngle;
 in float lightConeAngle;
@@ -366,12 +364,12 @@ void main()
 
     // Calculate texure sample coordinate (offset compensates for jitter when texture scale is below 0)
     vec2 offset = vec2(drawOffset.x, -drawOffset.y) * textureScale;
-    vec2 sampleCoord = (gl_FragCoord.xy + offset) / resolution;
+    vec2 texSampleCoord = (gl_FragCoord.xy + offset) / resolution;
 
     // Sample occluder map to determine spill light
     if (hasOccluderMap > 0)
     {
-        vec4 occluder = texture(occluderMap, sampleCoord);
+        vec4 occluder = texture(occluderMap, texSampleCoord);
         if (occluder.a > 0.0)
         {
             shadow *= 1.0 - lightSpill;
@@ -382,7 +380,7 @@ void main()
     // Fetch surface normal
     vec3 surfaceNormal = vec3(0.0, 0.0, 1.0);
     if (hasNormalMap > 0)
-        surfaceNormal = texture(normalMap, sampleCoord).xyz * 2.0 - 1.0;
+        surfaceNormal = texture(normalMap, texSampleCoord).xyz * 2.0 - 1.0;
 
     // Calculate lambertian based on surace normal and light direction
     float lambertian = max(0.0, dot(surfaceNormal, lightDir));

@@ -15,10 +15,13 @@ class LightBlendEffect(
     var xSamplingOffset = 0f
     var ySamplingOffset = 0f
 
+    /** Enables FXAA anti aliasing when sampling the light map */
+    var enableFxaa = true
+
     override fun loadShaderProgram(): ShaderProgram =
         ShaderProgram.create(
-            vertexShaderFileName = "/pulseengine/shaders/effects/lightBlend.vert",
-            fragmentShaderFileName = "/pulseengine/shaders/effects/lightBlend.frag"
+            vertexShaderFileName = "/pulseengine/shaders/effects/lighting_blend.vert",
+            fragmentShaderFileName = "/pulseengine/shaders/effects/lighting_blend.frag"
         )
 
     override fun applyEffect(texture: Texture): Texture
@@ -29,6 +32,7 @@ class LightBlendEffect(
         program.setUniform("ambientColor", ambientColor)
         program.setUniform("samplingOffset", xSamplingOffset, ySamplingOffset)
         program.setUniform("resolution", texture.width.toFloat(), texture.height.toFloat())
+        program.setUniform("enableFxaa", enableFxaa)
         renderer.render(texture, lightMapSurface.getTexture(0))
         fbo.release()
 

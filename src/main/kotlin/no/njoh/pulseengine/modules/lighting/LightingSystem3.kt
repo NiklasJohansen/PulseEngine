@@ -37,21 +37,24 @@ open class LightingSystem3 : SceneSystem()
     var textureFilter = TextureFilter.LINEAR
 
     @Property(order = 4)
-    var textureFormat: TextureFormat = HDR_16
+    var textureFormat = TextureFormat.HDR_16
 
     @Property(order = 5)
     var multisampling = Multisampling.NONE
 
     @Property(order = 6)
-    var useNormals = true
+    var enableFXAA = true
 
     @Property(order = 7)
-    var lightSpill = true
+    var useNormalMap = true
 
     @Property(order = 8)
-    var correctOffset = false
+    var enableLightSpill = true
 
     @Property(order = 9)
+    var correctOffset = false
+
+    @Property(order = 10)
     var drawOutlines = false
 
     @JsonIgnore
@@ -101,8 +104,8 @@ open class LightingSystem3 : SceneSystem()
         engine.gfx.mainSurface.addPostProcessingEffect(lightBlendEffect)
 
         // Configure maps
-        configureNormalMap(engine, isEnabled = useNormals)
-        configureOccluderMap(engine, isEnabled = lightSpill)
+        configureNormalMap(engine, isEnabled = useNormalMap)
+        configureOccluderMap(engine, isEnabled = enableLightSpill)
 
         // Load icon if not already loaded
         val iconName = "icon_light_bulb"
@@ -167,6 +170,9 @@ open class LightingSystem3 : SceneSystem()
 
     override fun onUpdate(engine: PulseEngine)
     {
+        // Set light post-processing effect properties
+        lightBlendEffect.enableFxaa = enableFXAA
+
         // Set light renderer properties
         lightRenderer.ambientColor = ambientColor
 
@@ -177,8 +183,8 @@ open class LightingSystem3 : SceneSystem()
         lightSurface.setTextureFormat(textureFormat)
 
         // Update normal and occluder map configurations
-        configureNormalMap(engine, isEnabled = useNormals)
-        configureOccluderMap(engine, isEnabled = lightSpill)
+        configureNormalMap(engine, isEnabled = useNormalMap)
+        configureOccluderMap(engine, isEnabled = enableLightSpill)
     }
 
     override fun onRender(engine: PulseEngine)
