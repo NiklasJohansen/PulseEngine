@@ -20,6 +20,7 @@ class Scrollbar(
     var sliderColor = Color(1f, 1f, 1f)
     var sliderColorHover = Color(1f, 1f, 1f)
     var bgColor = Color(1f, 1f, 1f, 0f)
+    var cornerRadius = 0f
     var sliderLengthFraction = 0.1f
     var sliderPadding = 0f
     var sliderFraction = 0f
@@ -111,11 +112,11 @@ class Scrollbar(
     override fun onRender(surface: Surface2D)
     {
         surface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue, bgColor.alpha)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
 
         val sliderColor = if (isMouseOverSlider || sliderGrabbed) sliderColorHover else sliderColor
         surface.setDrawColor(sliderColor.red, sliderColor.green, sliderColor.blue, sliderColor.alpha)
-        surface.drawTexture(Texture.BLANK, xSlider, ySlider, sliderWidth, sliderHeight)
+        surface.drawTexture(Texture.BLANK, xSlider, ySlider, sliderWidth, sliderHeight, cornerRadius = cornerRadius)
     }
 
     override fun updateChildLayout()

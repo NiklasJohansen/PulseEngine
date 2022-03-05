@@ -1,21 +1,25 @@
 #version 330 core
 
 // Vertex attributes
-in vec2 vertexPos;
+in vec2 vertexPos; // In range (0-1)
 
 // Instance attributes
 in vec3 worldPos;
 in vec2 size;
 in vec2 origin;
 in float rotation;
+in float cornerRadius;
 in vec2 uvMin;
 in vec2 uvMax;
 in uint color;
 in float texIndex;
 
 out vec4 vertexColor;
+out vec2 textureArrayCoord;
 out vec2 textureCoord;
 out float textureIndex;
+out float quadCornerRadius;
+out vec2 quadSize;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -38,9 +42,12 @@ mat2 rotationMatrix(float angle) {
 }
 
 void main() {
-    textureIndex = texIndex;
     vertexColor = getColor(color);
-    textureCoord = uvMin + (uvMax - uvMin) * vertexPos;
+    textureArrayCoord = uvMin + (uvMax - uvMin) * vertexPos;
+    textureCoord = vertexPos;
+    textureIndex = texIndex;
+    quadCornerRadius = cornerRadius;
+    quadSize = size;
 
     vec2 offset = (vertexPos * size - size * origin) * rotationMatrix(radians(rotation));
     vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);

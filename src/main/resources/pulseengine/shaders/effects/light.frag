@@ -81,9 +81,9 @@ vec3 getLineSegmentIntersection(vec2 p0, vec2 p1, vec2 p2, vec2 p3)
     vec2 vec10 = p1 - p0;
     vec2 vec32 = p3 - p2;
     vec2 vec02 = p0 - p2;
-    float d = (-vec32.x * vec10.y + vec10.x * vec32.y);
-    float s = (-vec10.y * vec02.x + vec10.x * vec02.y) / d;
-    float t = (vec32.x * vec02.y - vec32.y * vec02.x) / d;
+    float d = 1.0 / (-vec32.x * vec10.y + vec10.x * vec32.y);
+    float s = (-vec10.y * vec02.x + vec10.x * vec02.y) * d;
+    float t = (vec32.x * vec02.y - vec32.y * vec02.x) * d;
     return (s < 0.0 || s > 1.0 || t < 0.0 || t > 1.0) ? vec3(0.0) : vec3(p0 + t * vec10, 1.0);
 }
 
@@ -102,9 +102,9 @@ bool hasIntersection(vec2 p0, vec2 p1, vec2 p2, vec2 p3)
     float s1_y = p1.y - p0.y;
     float s2_x = p3.x - p2.x;
     float s2_y = p3.y - p2.y;
-    float d = (-s2_x * s1_y + s1_x * s2_y);
-    float s = (-s1_y * (p0.x - p2.x) + s1_x * (p0.y - p2.y)) / d;
-    float t = ( s2_x * (p0.y - p2.y) - s2_y * (p0.x - p2.x)) / d;
+    float d = 1.0 / (-s2_x * s1_y + s1_x * s2_y);
+    float s = (-s1_y * (p0.x - p2.x) + s1_x * (p0.y - p2.y)) * d;
+    float t = ( s2_x * (p0.y - p2.y) - s2_y * (p0.x - p2.x)) * d;
     return s >= 0.0 && s <= 1.0 && t >= 0.0 && t <= 1.0;
 }
 

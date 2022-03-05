@@ -154,7 +154,7 @@ class DropdownMenu <T> (
     {
         val bgColor = if (mouseInsideArea) bgHoverColor else bgColor
         surface.setDrawColor(bgColor)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
 
         if (showArrow && width.value - menuLabel.textWidth > 35f)
         {

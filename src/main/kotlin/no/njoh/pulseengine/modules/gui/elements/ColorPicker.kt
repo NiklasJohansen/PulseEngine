@@ -21,6 +21,7 @@ class ColorPicker(
     height: Size = Size.auto()
 ) : UiElement(x, y, width, height) {
     var bgColor = Color.BLANK
+    var cornerRadius = 0f
 
     val colorEditor: WindowPanel
     val hexInput: InputField
@@ -112,6 +113,7 @@ class ColorPicker(
         hexInput = InputField(outputColor.toHexString()).apply {
             contentType = InputField.ContentType.HEX_COLOR
             bgColor = Color.BLANK
+            cornerRadius = cornerRadius
         }
 
         colorPreviewButton = Button(
@@ -130,6 +132,8 @@ class ColorPicker(
 
         val hPanelButton = HorizontalPanel().apply {
             addChildren(hexInput, colorPreviewButton)
+            bgColor = bgColor
+            cornerRadius = cornerRadius
         }
 
         addChildren(hPanelButton)
@@ -254,13 +258,12 @@ class ColorPicker(
     override fun onRender(surface: Surface2D)
     {
         surface.setDrawColor(bgColor)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
     }
 
     private fun UiElement.hasFocus(engine: PulseEngine): Boolean =
         if (engine.input.hasFocus(this.area)) true
         else popup?.hasFocus(engine) ?: false || children.any { it.hasFocus(engine) }
-
 
     private fun String.toColor() =
         java.awt.Color.decode(this).let { Color(it.red, it.green, it.blue, it.alpha) }

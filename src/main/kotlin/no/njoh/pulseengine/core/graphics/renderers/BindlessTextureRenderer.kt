@@ -33,6 +33,7 @@ class BindlessTextureRenderer(
             .withAttribute("size", 2, GL_FLOAT, 1)
             .withAttribute("origin", 2, GL_FLOAT, 1)
             .withAttribute("rotation", 1, GL_FLOAT, 1)
+            .withAttribute("cornerRadius", 1, GL_FLOAT, 1)
             .withAttribute("uvMin", 2, GL_FLOAT, 1)
             .withAttribute("uvMax", 2, GL_FLOAT, 1)
             .withAttribute("color", 1, GL_FLOAT, 1)
@@ -61,9 +62,9 @@ class BindlessTextureRenderer(
         vao.release()
     }
 
-    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float)
+    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
     {
-        instanceBuffer.fill(14)
+        instanceBuffer.fill(15)
         {
             put(x)
             put(y)
@@ -73,6 +74,7 @@ class BindlessTextureRenderer(
             put(xOrigin)
             put(yOrigin)
             put(rot)
+            put(cornerRadius)
             put(texture.uMin)
             put(texture.vMin)
             put(texture.uMax)
@@ -85,9 +87,9 @@ class BindlessTextureRenderer(
         context.increaseDepth()
     }
 
-    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
+    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
-        instanceBuffer.fill(14)
+        instanceBuffer.fill(15)
         {
             put(x)
             put(y)
@@ -97,6 +99,7 @@ class BindlessTextureRenderer(
             put(xOrigin)
             put(yOrigin)
             put(rot)
+            put(cornerRadius)
             put(texture.uMax * uMin)
             put(texture.vMax * vMin)
             put(texture.uMax * uMax)

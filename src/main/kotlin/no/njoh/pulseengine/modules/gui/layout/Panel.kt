@@ -18,6 +18,7 @@ open class Panel(
     var color = Color(1f, 1f, 1f, 0f)
     var strokeColor: Color? = null
     var texture: Texture? = null
+    var cornerRadius = 0f
 
     override fun onUpdate(engine: PulseEngine) { }
 
@@ -26,7 +27,7 @@ open class Panel(
         if (color.alpha != 0f)
         {
             surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
-            surface.drawTexture(texture ?: Texture.BLANK, x.value, y.value, width.value, height.value)
+            surface.drawTexture(texture ?: Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
         }
 
         if (strokeColor != null && strokeColor!!.alpha != 0f)

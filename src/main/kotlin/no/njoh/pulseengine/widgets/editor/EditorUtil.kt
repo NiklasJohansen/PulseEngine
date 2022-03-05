@@ -159,6 +159,7 @@ object EditorUtil
             scrollbar.sliderColor = style.getColor("BUTTON")
             scrollbar.sliderColorHover = style.getColor("BUTTON_HOVER")
             scrollbar.hidden = !showScrollbar
+            scrollbar.cornerRadius = 8f
             setOnItemToString { it.labelText }
             menuBarButton.items.forEach { addItem(it) }
             setOnItemChanged { it.onClick() }
@@ -193,6 +194,7 @@ object EditorUtil
             menuLabel.fontSize = fontSize
             menuLabel.color = style.getColor("LABEL")
             menuLabel.padding.left = 10f
+            cornerRadius = 8f
             bgColor = style.getColor("BUTTON")
             bgHoverColor = style.getColor("BUTTON_HOVER")
             itemBgColor = Color.BLANK
@@ -203,6 +205,7 @@ object EditorUtil
             scrollbar.sliderColor = style.getColor("BUTTON")
             scrollbar.sliderColorHover = style.getColor("BUTTON_HOVER")
             scrollbar.hidden = !showScrollbar
+            scrollbar.cornerRadius = 8f
             setOnItemToString(onItemToString)
             this.selectedItem = selectedItem
             items.forEach(this::addItem)
@@ -244,6 +247,7 @@ object EditorUtil
                 bgColor = style.getColor("ITEM")
                 bgHoverColor = style.getColor("ITEM_HOVER")
                 textureScale = 0.9f
+                cornerRadius = 20f
                 texture = tex
                 setOnClicked { onAssetClicked(tex) }
             }
@@ -324,13 +328,14 @@ object EditorUtil
             padding.setAll(5f)
             bgColor = style.getColor("HEADER")
             hoverColor = style.getColor("BUTTON_HOVER")
+            cornerRadius = 40f
         }
 
         return HorizontalPanel().apply {
             color = style.getColor("BG_DARK")
             addChildren(
                 VerticalPanel().apply {
-                    addChildren(propertiesRowPanel, buttonUI)// addSystemButton)
+                    addChildren(propertiesRowPanel, buttonUI)
                 },
                 createScrollbarUI(propertiesRowPanel)
             )
@@ -455,6 +460,7 @@ object EditorUtil
             bgColor = style.getColor("ITEM")
             sliderColor = style.getColor("BUTTON")
             sliderColorHover = style.getColor("BUTTON_HOVER")
+            cornerRadius = 8f
             padding.top = 5f
             padding.bottom = 5f
             padding.right = 5f
@@ -469,10 +475,13 @@ object EditorUtil
     private fun createColorPickerUI(color: Color) =
         ColorPicker(color).apply {
             padding.setAll(5f)
+            cornerRadius = 8f
             bgColor = style.getColor("BUTTON")
             hexInput.fontSize = 20f
             hexInput.fontColor = style.getColor("LABEL")
             hexInput.bgColorHover = style.getColor("BUTTON_HOVER")
+            hexInput.strokeColor = Color.BLANK
+            hexInput.cornerRadius = cornerRadius
             colorEditor.color = style.getColor("BG_LIGHT")
             colorEditor.strokeColor = style.getColor("STROKE")
             saturationBrightnessPicker.strokeColor = style.getColor("HEADER")
@@ -504,11 +513,13 @@ object EditorUtil
             padding.top = 5f
             padding.bottom = 5f
             padding.right = 5f
+            cornerRadius = 8f
             font = style.getFont()
             fontSize = 18f
             fontColor = style.getColor("LABEL")
             bgColor = style.getColor("BUTTON")
             bgColorHover = style.getColor("BUTTON_HOVER")
+            strokeColor = Color.BLANK
             contentType = type
 
             if (type == FLOAT || type == INTEGER)
@@ -595,6 +606,7 @@ object EditorUtil
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
+            cornerRadius = 12f
             color = style.getColor("ITEM")
             addChildren(label, propUi)
         }

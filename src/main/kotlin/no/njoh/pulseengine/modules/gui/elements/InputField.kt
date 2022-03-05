@@ -39,6 +39,7 @@ class InputField (
     var font = Font.DEFAULT
     var fontSize = 24f
     var leftTextPadding = 10
+    var cornerRadius = 0f
     var contentType = TEXT
     var numberStepperWidth = 30
     var numberMinVal = Float.NEGATIVE_INFINITY
@@ -453,9 +454,9 @@ class InputField (
 
         // Draw input box rectangle
         surface.setDrawColor(if (mouseInsideArea && !hasFocus) bgColorHover else bgColor)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
 
-        if (hasFocus)
+        if (hasFocus && strokeColor.alpha > 0f)
         {
             surface.setDrawColor(strokeColor)
             surface.drawLine(x.value, y.value, x.value + width.value, y.value)
@@ -467,7 +468,7 @@ class InputField (
         if (!isValid)
         {
             surface.setDrawColor(invalidTextColor)
-            surface.drawTexture(Texture.BLANK, x.value, y.value + height.value - 1, width.value, 2f)
+            surface.drawTexture(Texture.BLANK, x.value + cornerRadius, y.value + height.value - 2, width.value - cornerRadius * 2, 2f)
         }
 
         // Draw selection rectangle
