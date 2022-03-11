@@ -54,21 +54,3 @@ void main() {
 
     gl_Position = projection * view * vertexPos;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

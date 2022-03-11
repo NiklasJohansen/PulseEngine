@@ -1,9 +1,8 @@
 package no.njoh.pulseengine.core.scene
 
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.scene.SceneState.*
 import no.njoh.pulseengine.core.scene.systems.EntityUpdater
 import no.njoh.pulseengine.core.scene.systems.EntityRendererImpl
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -17,7 +16,7 @@ import kotlin.system.measureNanoTime
 open class SceneManagerImpl : SceneManagerInternal() {
 
     override lateinit var activeScene: Scene
-    override var state: SceneState = SceneState.STOPPED
+    override var state: SceneState = STOPPED
 
     private lateinit var engine: PulseEngine
     private lateinit var transitionSurface: Surface2D
@@ -46,13 +45,13 @@ open class SceneManagerImpl : SceneManagerInternal() {
     {
         when (state)
         {
-            SceneState.STOPPED ->
+            STOPPED ->
             {
-                state = SceneState.RUNNING
+                state = RUNNING
                 activeScene.start(engine)
             }
-            SceneState.PAUSED -> state = SceneState.RUNNING
-            SceneState.RUNNING -> { }
+            PAUSED -> state = RUNNING
+            RUNNING -> { }
         }
     }
 
@@ -60,18 +59,18 @@ open class SceneManagerImpl : SceneManagerInternal() {
     {
         when (state)
         {
-            SceneState.PAUSED, SceneState.RUNNING ->
+            PAUSED, RUNNING ->
             {
-                state = SceneState.STOPPED
+                state = STOPPED
                 activeScene.stop(engine)
             }
-            SceneState.STOPPED -> { }
+            STOPPED -> { }
         }
     }
 
     override fun pause()
     {
-        state = SceneState.PAUSED
+        state = PAUSED
     }
 
     override fun loadAndSetActive(fileName: String, fromClassPath: Boolean)
@@ -101,7 +100,7 @@ open class SceneManagerImpl : SceneManagerInternal() {
     {
         if (scene != activeScene)
         {
-            if (state != SceneState.STOPPED)
+            if (state != STOPPED)
                 activeScene.stop(engine)
 
             activeScene.destroy(engine)
@@ -113,7 +112,7 @@ open class SceneManagerImpl : SceneManagerInternal() {
             scene.systems.removeIf { it == null }
             activeScene = scene
 
-            if (state != SceneState.STOPPED)
+            if (state != STOPPED)
                 activeScene.start(engine)
         }
     }

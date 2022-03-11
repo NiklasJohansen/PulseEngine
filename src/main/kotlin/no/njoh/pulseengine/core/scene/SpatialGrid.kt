@@ -132,10 +132,6 @@ class SpatialGrid (
         val yCell = ((y - yOffset) * invCellSize).toInt()
         val horizontalNeighbours = 1 + (width * 0.5f * invCellSize).toInt()
         val verticalNeighbours = 1 + (height * 0.5f * invCellSize).toInt()
-//        val xStart = (xCell - horizontalNeighbours).coerceAtLeast(0)
-//        val yStart = (yCell - verticalNeighbours).coerceAtLeast(0)
-//        val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
-//        val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
 
         var xStart = xCell - horizontalNeighbours
         var yStart = yCell - verticalNeighbours

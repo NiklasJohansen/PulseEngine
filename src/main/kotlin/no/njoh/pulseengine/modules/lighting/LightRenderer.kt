@@ -185,7 +185,7 @@ class LightRenderer(
             hasNormalMap = 1f
         }
 
-        // Bind normal map texture if available
+        // Bind occluder map texture if available
         var hasOccluderMap = 0f
         occluderMapSurface?.let {
             glActiveTexture(GL_TEXTURE1)
