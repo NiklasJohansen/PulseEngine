@@ -553,6 +553,7 @@ object EditorUtil
             padding.right = 5f
             padding.top = 5f
             color = style.getColor("ITEM")
+            cornerRadius = 12f
             addChildren(typeLabel, Panel(), typeDropdown)
         }
     }
