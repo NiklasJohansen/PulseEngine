@@ -1,7 +1,7 @@
 import org.gradle.internal.os.OperatingSystem
 
 group = "no.njoh"
-version = "0.5.0-SNAPSHOT"
+version = "0.6.0"
 
 val lwjglVersion = "3.2.3"
 val kotlinVersion = "1.6.10"
