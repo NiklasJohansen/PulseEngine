@@ -1,12 +1,13 @@
 package no.njoh.pulseengine.modules.scene.entities
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.SceneState
-import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.graphics.Surface2D
-import no.njoh.pulseengine.util.toDegrees
-import no.njoh.pulseengine.util.toRadians
+import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.scene.SceneState
+import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
+import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import kotlin.math.*
 
 open class Camera : SceneEntity()
@@ -41,7 +42,7 @@ open class Camera : SceneEntity()
         surface.setDrawColor(0.01f, 0.01f, 0.01f, 1f)
         surface.drawTexture(Texture.BLANK, x, y, camSize, camSize, rotation, xOrigin = 0.5f, yOrigin = 0.5f)
 
-        val r = this.rotation / 180f * PI.toFloat()
+        val r = -this.rotation / 180f * PI.toFloat()
         val c = cos(r) * 0.5f
         val s = sin(r) * 0.5f
 
@@ -128,15 +129,14 @@ open class Camera : SceneEntity()
 
         val surfaceWidth = engine.gfx.mainSurface.width
         val surfaceHeight = engine.gfx.mainSurface.height
-        val scale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight)
+        val newScale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight)
         engine.gfx.mainCamera.apply {
-            xScale = scale
-            yScale = scale
-            zRot = -rotation / 180f * PI.toFloat()
-            xOrigin = surfaceWidth * 0.5f
-            yOrigin = surfaceHeight * 0.5f
-            xPos = surfaceWidth * 0.5f - x
-            yPos = surfaceHeight * 0.5f - y
+            scale.set(newScale)
+            rotation.z = -super.rotation / 180f * PI.toFloat()
+            origin.x = surfaceWidth * 0.5f
+            origin.y = surfaceHeight * 0.5f
+            position.x = surfaceWidth * 0.5f - x
+            position.y = surfaceHeight * 0.5f - y
         }
     }
 }

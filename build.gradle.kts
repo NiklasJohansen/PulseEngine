@@ -4,7 +4,7 @@ group = "no.njoh"
 version = "0.5.0-SNAPSHOT"
 
 val lwjglVersion = "3.2.3"
-val kotlinVersion = "1.3.72"
+val kotlinVersion = "1.6.10"
 
 var lwjglNatives = when (OperatingSystem.current()) {
     OperatingSystem.WINDOWS -> if (System.getProperty("os.arch").contains("64")) "natives-windows" else "natives-windows-x86"
@@ -23,7 +23,7 @@ println("OS: $lwjglNatives")
 plugins {
     java
     `maven-publish`
-    kotlin("jvm") version "1.3.72"
+    kotlin("jvm") version "1.6.10"
 }
 
 repositories {
@@ -31,15 +31,13 @@ repositories {
 }
 
 dependencies {
-    implementation(platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
-    implementation("org.l33tlabs.twl:pngdecoder:1.0")
-    implementation("org.joml:joml:1.9.22")
-    implementation("net.sf.trove4j:trove4j:3.0.3")
+    // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}")
     implementation("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.4")
-    implementation("de.undercouch:bson4jackson:2.9.2")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.10")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
+
+    // LWJGL
+    implementation(platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
     implementation("org.lwjgl", "lwjgl")
     implementation("org.lwjgl", "lwjgl-glfw")
     implementation("org.lwjgl", "lwjgl-jemalloc")
@@ -54,6 +52,13 @@ dependencies {
     runtimeOnly("org.lwjgl", "lwjgl-opengl", classifier = lwjglNatives)
     runtimeOnly("org.lwjgl", "lwjgl-stb", classifier = lwjglNatives)
     runtimeOnly("org.lwjgl", "lwjgl-nfd", classifier = lwjglNatives)
+
+    // Other
+    implementation("org.l33tlabs.twl:pngdecoder:1.0")
+    implementation("org.joml:joml:1.9.22")
+    implementation("net.sf.trove4j:trove4j:3.0.3")
+    implementation("de.undercouch:bson4jackson:2.13.0")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.0")
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).all {

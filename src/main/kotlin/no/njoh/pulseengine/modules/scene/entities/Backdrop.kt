@@ -1,12 +1,15 @@
 package no.njoh.pulseengine.modules.scene.entities
 
-import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.assets.Texture
-import no.njoh.pulseengine.modules.graphics.Surface2D
+import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.modules.lighting.NormalMapRenderPassTarget
 
-open class Backdrop : SceneEntity()
+open class Backdrop : SceneEntity(), NormalMapRenderPassTarget
 {
     var textureName: String = "ball"
+    override var normalMapName = ""
 
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {

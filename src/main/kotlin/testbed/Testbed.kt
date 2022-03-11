@@ -1,11 +1,11 @@
 package testbed
 
-import no.njoh.pulseengine.PulseEngine
-import no.njoh.pulseengine.data.SceneState.STOPPED
-import no.njoh.pulseengine.modules.PulseEngineGame
-import no.njoh.pulseengine.widgets.CommandLine
-import no.njoh.pulseengine.widgets.Profiler
-import no.njoh.pulseengine.widgets.sceneEditor.SceneEditor
+import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.scene.SceneState.STOPPED
+import no.njoh.pulseengine.core.PulseEngineGame
+import no.njoh.pulseengine.widgets.cli.CommandLine
+import no.njoh.pulseengine.widgets.profiler.Profiler
+import no.njoh.pulseengine.widgets.editor.SceneEditor
 
 fun main() = PulseEngine.run(Testbed::class)
 
@@ -17,7 +17,7 @@ class Testbed : PulseEngineGame()
         engine.config.creatorName = "PulseEngine"
         engine.config.gameName = "Testbed"
         engine.config.targetFps = 120
-        engine.widget.add(CommandLine(), Profiler(), SceneEditor())
+        engine.widget.add(SceneEditor(), CommandLine(), Profiler())
         engine.console.runScript("testbed/startup.ps")
         engine.asset.loadAllTextures("testbed/images")
         engine.scene.reload()
