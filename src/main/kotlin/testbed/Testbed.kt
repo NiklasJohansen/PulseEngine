@@ -14,7 +14,6 @@ class Testbed : PulseEngineGame()
     override fun onCreate()
     {
         engine.window.title = "Pulse Engine - Testbed"
-        engine.config.creatorName = "PulseEngine"
         engine.config.gameName = "Testbed"
         engine.config.targetFps = 120
         engine.widget.add(SceneEditor(), CommandLine(), Profiler())
@@ -32,7 +31,7 @@ class Testbed : PulseEngineGame()
     override fun onRender()
     {
         engine.gfx.mainSurface.drawText(
-            text = "TESTBED",
+            text = "PulseEngine 0.6.0 - Testbed",
             x = engine.window.width / 2f,
             y = engine.window.height / 2f,
             xOrigin = 0.5f,

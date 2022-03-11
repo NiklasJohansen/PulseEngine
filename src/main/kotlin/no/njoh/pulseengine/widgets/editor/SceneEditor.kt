@@ -395,8 +395,9 @@ class SceneEditor: Widget
     {
         isRunning = false
         storedCameraState.saveFrom(activeCamera)
-        activeCamera.scale.set(0f)
+        activeCamera.scale.set(1f)
         activeCamera.position.set(0f)
+        activeCamera.rotation.set(0f)
 
         resetUI()
         engine.input.setCursor(ARROW)
