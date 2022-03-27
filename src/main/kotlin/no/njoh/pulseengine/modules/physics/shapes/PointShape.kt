@@ -40,7 +40,7 @@ data class PointShape(
 
     override fun getPointCount() = 1
     override fun getRadius() = 1f
-    override fun getPoint(index: Int): Vector2f? = reusableVector.set(x, y)
+    override fun getPoint(index: Int): Vector2f = reusableVector.set(x, y)
     override fun setPoint(index: Int, x: Float, y: Float)
     {
         this.x = x

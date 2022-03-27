@@ -16,8 +16,9 @@ abstract class Shape
 
     /**
      * Returns the coordinates of a specific shape point.
+     * Index higher than the last point index wraps over to zero.
      */
-    abstract fun getPoint(index: Int): Vector2f?
+    abstract fun getPoint(index: Int): Vector2f
 
     /**
      * Sets the position of a specific shape point.

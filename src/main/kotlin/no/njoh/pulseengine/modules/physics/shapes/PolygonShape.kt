@@ -184,9 +184,14 @@ abstract class PolygonShape : Shape()
 
     override fun getRadius(): Float? = null
 
-    override fun getPoint(index: Int): Vector2f? =
-        if (index < 0 || index * N_POINT_FIELDS >= points.size) null
-        else reusableVector.set(points[index * N_POINT_FIELDS + X], points[index * N_POINT_FIELDS + Y])
+    override fun getPoint(index: Int): Vector2f
+    {
+        val pointCount = getPointCount()
+        return reusableVector.set(
+            points[(index % pointCount) * N_POINT_FIELDS + X],
+            points[(index % pointCount) * N_POINT_FIELDS + Y]
+        )
+    }
 
     override fun setPoint(index: Int, x: Float, y: Float)
     {

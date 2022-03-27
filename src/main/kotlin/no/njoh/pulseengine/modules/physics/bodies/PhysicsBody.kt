@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules.physics.bodies
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.shared.primitives.Physical
 import no.njoh.pulseengine.core.shared.primitives.Shape
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.ContactResult
@@ -12,10 +13,10 @@ import no.njoh.pulseengine.modules.physics.PhysicsEntity
  * @see CircleBody
  * @see PointBody
  */
-interface PhysicsBody : PhysicsEntity
+interface PhysicsBody : PhysicsEntity, Physical
 {
-    /** Contains data about the shape of the body */
-    val shape: Shape
+    /** Contains data about the physical shape of the body. */
+    override val shape: Shape
 
     /** Determines how the body is affected by the physics system. */
     var bodyType: BodyType
