@@ -11,15 +11,15 @@ import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.getClassesFromFullyQ
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.getClassesOfSuperType
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.system.measureNanoTime
 
-open class SceneManagerImpl : SceneManagerInternal() {
-
+open class SceneManagerImpl : SceneManagerInternal()
+{
     override lateinit var activeScene: Scene
     override var state: SceneState = STOPPED
 
     private lateinit var engine: PulseEngine
-    private lateinit var transitionSurface: Surface2D
 
     private var nextStagedScene: Scene? = null
     private var nextSceneFileName: String? = null
@@ -73,6 +73,11 @@ open class SceneManagerImpl : SceneManagerInternal() {
         state = PAUSED
     }
 
+    override fun continueScene()
+    {
+        state = RUNNING
+    }
+
     override fun loadAndSetActive(fileName: String, fromClassPath: Boolean)
     {
         if (fileName.isNotBlank())
@@ -98,14 +103,14 @@ open class SceneManagerImpl : SceneManagerInternal() {
 
     override fun setActive(scene: Scene)
     {
-        if (scene != activeScene)
+        if (scene !== activeScene)
         {
             if (state != STOPPED)
                 activeScene.stop(engine)
 
             activeScene.destroy(engine)
 
-            if (scene.entities != activeScene.entities)
+            if (scene.entities !== activeScene.entities)
                 activeScene.clearAll()
 
             // Missing system implementations gets deserialized to null and should be removed
@@ -144,21 +149,17 @@ open class SceneManagerImpl : SceneManagerInternal() {
         else Logger.error("Cannot save scene: ${activeScene.name} - fileName is not set!")
     }
 
-    override fun saveAs(fileName: String, async: Boolean)
+    override fun saveAs(fileName: String, async: Boolean, updateActiveScene: Boolean)
     {
         activeScene.optimizeCollections()
-        activeScene.fileName = fileName
+
+        if (updateActiveScene)
+            activeScene.fileName = fileName
 
         if (async)
-            engine.data.saveObjectAsync(activeScene, activeScene.fileName, activeScene.fileFormat)
+            engine.data.saveObjectAsync(activeScene, fileName, activeScene.fileFormat)
         else
-            engine.data.saveObject(activeScene, activeScene.fileName, activeScene.fileFormat)
-    }
-
-    override fun saveIf(async: Boolean, predicate: (SceneManager) -> Boolean)
-    {
-        if (predicate(this))
-            save(async)
+            engine.data.saveObject(activeScene, fileName, activeScene.fileFormat)
     }
 
     override fun reload(fromClassPath: Boolean)
@@ -196,9 +197,10 @@ open class SceneManagerImpl : SceneManagerInternal() {
     {
         if (transitionFade > 0)
         {
-            transitionFade -= (1000f / fadeTimeMs / 2f) * engine.data.fixedDeltaTime
+            transitionFade -= (1000f / fadeTimeMs * 0.5f) * engine.data.fixedDeltaTime
+            // Don't go past 0.5 before scene is loaded
             if (loadingScene)
-                transitionFade = transitionFade.coerceAtLeast(0.5f)
+                transitionFade = max(transitionFade, 0.5f)
         }
 
         activeScene.fixedUpdate(engine)
@@ -210,12 +212,12 @@ open class SceneManagerImpl : SceneManagerInternal() {
 
         if (transitionFade >= 0)
         {
-            if (!this::transitionSurface.isInitialized)
-                transitionSurface = engine.gfx.createSurface("scene_transition", zOrder = -99)
-
             val fade = (cos(transitionFade * PI * 2f + PI).toFloat() + 1f) / 2f
-            transitionSurface.setDrawColor(0f, 0f, 0f, fade)
-            transitionSurface.drawQuad(0f, 0f, transitionSurface.width.toFloat(), transitionSurface.height.toFloat())
+            val surface = engine.gfx.getSurface("scene_transition")
+                ?: engine.gfx.createSurface("scene_transition", zOrder = -99)
+
+            surface.setDrawColor(0f, 0f, 0f, fade)
+            surface.drawQuad(0f, 0f, surface.width.toFloat(), surface.height.toFloat())
         }
     }
 

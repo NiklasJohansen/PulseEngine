@@ -33,7 +33,7 @@ open class Scene(
 
     @JsonIgnore
     @PublishedApi
-    internal val spatialGrid = SpatialGrid(entities, 350f, 3000, 100_000, 100_000, 0.2f)
+    internal val spatialGrid = SpatialGrid(entities)
 
     internal var nextId = 0L
 
@@ -58,7 +58,8 @@ open class Scene(
 
     internal fun start(engine: PulseEngine)
     {
-        systems.forEachFiltered({ it.enabled }) {
+        systems.forEachFiltered({ it.enabled })
+        {
             if (!it.initialized)
                 it.init(engine)
             it.onStart(engine)
@@ -106,8 +107,8 @@ open class Scene(
 
     internal fun render(engine: PulseEngine)
     {
-        spatialGrid.render(engine.gfx.mainSurface)
         systems.forEachFiltered({ it.enabled && it.initialized }) { it.onRender(engine) }
+        spatialGrid.render(engine)
     }
 
     internal fun destroy(engine: PulseEngine)

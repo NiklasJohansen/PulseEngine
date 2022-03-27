@@ -64,7 +64,7 @@ abstract class SceneEntity
 
     companion object
     {
-        const val DEAD              = 1  // Is the entity alive
+        const val DEAD              = 1  // Is the entity dead
         const val POSITION_UPDATED  = 2  // Was position of entity updated
         const val ROTATION_UPDATED  = 4  // Was rotation of entity updated
         const val SIZE_UPDATED      = 8  // Was size of entity updated

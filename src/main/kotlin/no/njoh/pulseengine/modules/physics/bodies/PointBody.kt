@@ -58,7 +58,7 @@ interface PointBody : PhysicsBody
         val xMax = x + xVel
         val yMax = y + yVel
 
-        engine.scene.forEachNearbyEntity(x, y, xVel * 2, yVel * 2)
+        engine.scene.forEachEntityNearby(x, y, xVel * 2, yVel * 2)
         {
             if (it !== this &&
                 it is PhysicsBody &&

@@ -250,7 +250,7 @@ open class LightingSystem : SceneSystem()
                 val edgeIndex = edgeCount
                 if (light.shadowType != NONE)
                 {
-                    engine.scene.forEachNearbyEntityOfType<LightOccluder>(light.x, light.y, size, size)
+                    engine.scene.forEachEntityOfTypeNearby<LightOccluder>(light.x, light.y, size, size)
                     {
                         if (it.castShadows)
                         {

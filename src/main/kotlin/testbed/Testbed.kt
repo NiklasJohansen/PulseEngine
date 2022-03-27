@@ -41,6 +41,7 @@ class Testbed : PulseEngineGame()
 
     override fun onDestroy()
     {
-        engine.scene.saveIf { it.state == STOPPED }
+        if (engine.scene.state == STOPPED)
+            engine.scene.save()
     }
 }

@@ -121,7 +121,7 @@ class SceneEditor: Widget
         lastSaveLoadDirectory = engine.data.saveDirectory
 
         // Create separate render surface for editor UI
-        engine.gfx.createSurface("scene_editor_foreground", attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_TEXTURE))
+        engine.gfx.createSurface("scene_editor_foreground", zOrder = -90, attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_TEXTURE))
 
         // Background surface for grid
         engine.gfx.createSurface("scene_editor_background", zOrder = 20, camera = activeCamera)
@@ -253,7 +253,7 @@ class SceneEditor: Widget
         }
 
         sceneFileToSaveAs?.let {
-            engine.scene.saveAs(fileName = it)
+            engine.scene.saveAs(fileName = it, updateActiveScene = true)
             setWindowTitleFromSceneName(engine)
             sceneFileToSaveAs = null
         }
@@ -473,7 +473,7 @@ class SceneEditor: Widget
             {
                 var zMin = Float.MAX_VALUE
                 var closestEntity: SceneEntity? = null
-                engine.scene.forEachNearbyEntity(xMouse, yMouse, 100f, 100f) {
+                engine.scene.forEachEntityNearby(xMouse, yMouse, 100f, 100f) {
                     if (it.z <= zMin && it.isInside(xMouse, yMouse))
                     {
                         zMin = it.z
