@@ -11,6 +11,8 @@ open class Backdrop : SceneEntity(), NormalMapRenderPassTarget
     var textureName: String = "ball"
     override var normalMapName = ""
 
+    init { setNot(DISCOVERABLE) }
+
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         surface.setDrawColor(1f, 1f, 1f)

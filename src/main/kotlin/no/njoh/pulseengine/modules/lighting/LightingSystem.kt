@@ -22,6 +22,7 @@ import no.njoh.pulseengine.core.shared.utils.MathUtil
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Property
+import no.njoh.pulseengine.modules.lighting.LightType.*
 import kotlin.math.*
 
 @Name("Lighting 2D")
@@ -55,7 +56,7 @@ open class LightingSystem : SceneSystem()
     var correctOffset = true
 
     @Property(order = 10)
-    var drawOutlines = false
+    var drawDebug = false
 
     @JsonIgnore
     private val normalMapRenderPass = RenderPass(
@@ -99,7 +100,7 @@ open class LightingSystem : SceneSystem()
             attachments = listOf(COLOR_TEXTURE_0)
         ).addRenderer(lightRenderer)
 
-        // Add lighting as a post processing effect to main surface
+        // Add lighting as a post-processing effect to main surface
         lightBlendEffect = LightBlendEffect(lightSurface, ambientColor)
         engine.gfx.mainSurface.addPostProcessingEffect(lightBlendEffect)
 
@@ -122,8 +123,7 @@ open class LightingSystem : SceneSystem()
 
     private fun configureNormalMap(engine: PulseEngine, isEnabled: Boolean)
     {
-        val currentNormalMapSurface = lightRenderer.normalMapSurface
-        if (isEnabled && currentNormalMapSurface == null)
+        if (isEnabled && lightRenderer.normalMapSurface == null)
         {
             Logger.debug("Enabling normal maps for lighting")
             engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(normalMapRenderPass)
@@ -135,19 +135,18 @@ open class LightingSystem : SceneSystem()
                 isVisible = false
             )
         }
-        else if (!isEnabled && currentNormalMapSurface != null)
+        else if (!isEnabled && lightRenderer.normalMapSurface != null)
         {
             Logger.debug("Disabling normal maps for lighting")
             engine.scene.getSystemOfType<EntityRenderer>()?.removeRenderPass(normalMapRenderPass)
-            engine.gfx.deleteSurface(currentNormalMapSurface.name)
+            engine.gfx.deleteSurface(lightRenderer.normalMapSurface!!.name)
             lightRenderer.normalMapSurface = null
         }
     }
 
     private fun configureOccluderMap(engine: PulseEngine, isEnabled: Boolean)
     {
-        val currentOccluderMapSurface = lightRenderer.occluderMapSurface
-        if (isEnabled && currentOccluderMapSurface == null)
+        if (isEnabled && lightRenderer.occluderMapSurface == null)
         {
             Logger.debug("Enabling occluder map for lighting")
             engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(occluderRenderPass)
@@ -159,11 +158,11 @@ open class LightingSystem : SceneSystem()
                 isVisible = false
             )
         }
-        else if (!isEnabled && currentOccluderMapSurface != null)
+        else if (!isEnabled && lightRenderer.occluderMapSurface != null)
         {
             Logger.debug("Disabling occluder map for lighting")
             engine.scene.getSystemOfType<EntityRenderer>()?.removeRenderPass(occluderRenderPass)
-            engine.gfx.deleteSurface(currentOccluderMapSurface.name)
+            engine.gfx.deleteSurface(lightRenderer.occluderMapSurface!!.name)
             lightRenderer.occluderMapSurface = null
         }
     }
@@ -246,12 +245,16 @@ open class LightingSystem : SceneSystem()
             val light = entity as LightSource
             if (light.intensity != 0f && isInsideBoundingRectangle(light))
             {
-                val size = light.radius * 1.7f
                 val edgeIndex = edgeCount
                 if (light.shadowType != NONE)
                 {
-                    engine.scene.forEachEntityOfTypeNearby<LightOccluder>(light.x, light.y, size, size)
-                    {
+                    engine.scene.forEachEntityNearbyOfType<LightOccluder>(
+                        x = light.x,
+                        y = light.y,
+                        width = light.radius * 1.7f + if (light.type == LINEAR) light.size * 2 else 0f,
+                        height = light.radius * 1.7f,
+                        rotation = light.rotation
+                    ) {
                         if (it.castShadows)
                         {
                             addOccluderEdges(it.shape)
@@ -260,12 +263,13 @@ open class LightingSystem : SceneSystem()
                     }
                 }
 
+                lightCount++
                 lightRenderer.addLight(
                     x = light.x,
                     y = light.y,
                     z = light.z,
                     radius = light.radius,
-                    direction = PI.toFloat() + light.rotation.toRadians(),
+                    direction = light.rotation.toRadians(),
                     coneAngle = 0.5f * light.coneAngle.toRadians(),
                     sourceSize = light.size,
                     intensity = light.intensity,
@@ -278,10 +282,9 @@ open class LightingSystem : SceneSystem()
                     edgeIndex = edgeIndex,
                     edgeCount = edgeCount - edgeIndex
                 )
-                lightCount++
 
-                if (drawOutlines)
-                    drawLightOutline(light)
+                if (drawDebug)
+                    drawDebugOutline(light)
             }
         }
     }
@@ -289,13 +292,13 @@ open class LightingSystem : SceneSystem()
     private fun isInsideBoundingRectangle(light: LightSource) =
         when (light.type)
         {
-            LightType.RADIAL ->
+            RADIAL ->
             {
                 val xDelta = light.x - max(xMin, min(light.x, xMax))
                 val yDelta = light.y - max(yMin, min(light.y, yMax))
                 (xDelta * xDelta + yDelta * yDelta) < (light.radius * light.radius)
             }
-            LightType.LINEAR ->
+            LINEAR ->
             {
                 val xScreenCenter = (xMin + xMax) * 0.5f
                 val yScreenCenter = (yMin + yMax) * 0.5f
@@ -321,38 +324,37 @@ open class LightingSystem : SceneSystem()
         val pointCount = shape.getPointCount()
         if (pointCount == 1)
         {
-            shape.getRadius()?.let { radius ->
-                val points = ceil(2f * radius / 100f).toInt().coerceAtLeast(10)
-                val center = shape.getPoint(0) ?: return
-                var xLast = center.x + radius
-                var yLast = center.y
-                for (i in 1 until points + 1)
-                {
-                    val angle = i / points.toFloat() * 2 * PI
-                    val x = center.x + cos(angle).toFloat() * radius
-                    val y = center.y + sin(angle).toFloat() * radius
-                    addEdge(xLast, yLast, x, y)
-                    xLast = x
-                    yLast = y
-                }
+            val radius = shape.getRadius() ?: return
+            val points = max(7, min(15, ceil(2f * radius / 20f).toInt()))
+            val center = shape.getPoint(0)
+            var xLast = center.x + radius
+            var yLast = center.y
+            for (i in 1 until points + 1)
+            {
+                val angle = i / points.toFloat() * 2 * PI
+                val x = center.x + cos(angle).toFloat() * radius
+                val y = center.y + sin(angle).toFloat() * radius
+                addEdge(xLast, yLast, x, y)
+                xLast = x
+                yLast = y
             }
         }
         else if (pointCount == 2)
         {
-            var p = shape.getPoint(0) ?: return
+            var p = shape.getPoint(0)
             val x0 = p.x
             val y0 = p.y
-            p = shape.getPoint(1) ?: return
+            p = shape.getPoint(1)
             addEdge(x0, y0, p.x, p.y)
         }
         else
         {
-            val lastPoint = shape.getPoint(pointCount - 1) ?: return
+            val lastPoint = shape.getPoint(pointCount - 1)
             var xLast = lastPoint.x
             var yLast = lastPoint.y
             for (i in 0 until pointCount)
             {
-                val point = shape.getPoint(i) ?: break
+                val point = shape.getPoint(i)
                 addEdge(xLast, yLast, point.x, point.y)
                 xLast = point.x
                 yLast = point.y
@@ -365,28 +367,43 @@ open class LightingSystem : SceneSystem()
         lightRenderer.addEdge(x0, y0, x1, y1)
         edgeCount++
 
-        if (drawOutlines)
+        if (drawDebug)
         {
-            lightSurface.setDrawColor(1f, 0f, 0f)
+            lightSurface.setDrawColor(1f, 0f, 0f, 0.2f)
             lightSurface.drawLine(x0, y0, x1, y1)
         }
     }
 
-    private fun drawLightOutline(light: LightSource)
+    private fun drawDebugOutline(light: LightSource)
     {
-        val nPoints = ceil(2f * light.radius / 10f).toInt().coerceAtLeast(10)
-        var xLast = light.x + light.radius
-        var yLast = light.y
-        lightSurface.setDrawColor(1f, 1f, 0f)
+        lightSurface.setDrawColor(light.color.red, light.color.green, light.color.blue, 0.3f)
+
+        // Draw outline
+        val size = if (light.type == LINEAR) light.size else 0f
+        val rotation = -light.rotation.toRadians()
+        val xOffset = size * cos(rotation)
+        val yOffset = size * sin(rotation)
+        var xLast = light.x + cos(0f + rotation) * light.radius + xOffset
+        var yLast = light.y + sin(0f + rotation) * light.radius + yOffset
+        val pi = PI.toFloat()
+        val nPoints = max(10, ceil(2f * light.radius / 10f).toInt())
         for (i in 1 until nPoints + 1)
         {
-            val angle = i / nPoints.toFloat() * 2 * PI
-            val x = light.x + cos(angle).toFloat() * light.radius
-            val y = light.y + sin(angle).toFloat() * light.radius
+            val angle = i / nPoints.toFloat() * 2f * pi
+            val dir = if (angle > pi * 0.5 && angle < pi * 1.5) -1 else 1
+            val x = light.x + light.radius * cos(rotation - angle) + xOffset * dir
+            val y = light.y + light.radius * sin(rotation - angle) + yOffset * dir
             lightSurface.drawLine(x, y, xLast, yLast)
             xLast = x
             yLast = y
         }
+
+        // Draw fill
+        val width = light.radius * 2 + if (light.type == LINEAR) light.size * 2 else 0f
+        val height = light.radius * 2
+        val cornerRadius = min(width, height)
+        lightSurface.setDrawColor(light.color.red, light.color.green, light.color.blue, 0.02f)
+        lightSurface.drawTexture(Texture.BLANK, light.x, light.y, width, height, light.rotation, 0.5f, 0.5f, cornerRadius = cornerRadius)
     }
 
     override fun onDestroy(engine: PulseEngine)

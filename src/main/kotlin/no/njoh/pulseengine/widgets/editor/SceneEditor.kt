@@ -473,7 +473,8 @@ class SceneEditor: Widget
             {
                 var zMin = Float.MAX_VALUE
                 var closestEntity: SceneEntity? = null
-                engine.scene.forEachEntityNearby(xMouse, yMouse, 100f, 100f) {
+                engine.scene.forEachEntity()
+                {
                     if (it.z <= zMin && it.isInside(xMouse, yMouse))
                     {
                         zMin = it.z
