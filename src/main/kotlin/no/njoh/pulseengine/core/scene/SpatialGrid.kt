@@ -14,7 +14,6 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.GridUtil
 import no.njoh.pulseengine.core.shared.utils.MathUtil
-
 import kotlin.math.*
 
 class SpatialGrid (
@@ -103,58 +102,56 @@ class SpatialGrid (
         }
     }
 
-    inline fun <reified T> queryArea(x: Float, y: Float, width: Float, height: Float, queryId: Int, block: (T) -> Unit)
+    inline fun <reified T> queryArea(x: Float, y: Float, width: Float, height: Float, rotation: Float = 0f, queryId: Int, action: (T) -> Unit)
+    {
+        val angleRad = -rotation.toRadians()
+        val rayLength = width
+        val rayWidth = height
+        val xDelta = cos(angleRad) * rayLength * 0.5f
+        val yDelta = sin(angleRad) * rayLength * 0.5f
+        val x0 = x - xOffset - xDelta
+        val y0 = y - yOffset - yDelta
+        val x1 = x - xOffset + xDelta
+        val y1 = y - yOffset + yDelta
+        lastQueryId = queryId
+
+        GridUtil.forEachCellAlongLineInsideGrid(x0, y0, x1, y1, rayWidth, xCells, yCells, cellSize) { xCell, yCell ->
+            forEachEntityInCellOfType(xCell, yCell, queryId, action)
+        }
+    }
+
+    inline fun <reified T> queryAxisAlignedArea(x: Float, y: Float, width: Float, height: Float, queryId: Int, action: (T) -> Unit)
     {
         val xCell = ((x - xOffset) * invCellSize).toInt()
         val yCell = ((y - yOffset) * invCellSize).toInt()
         val horizontalNeighbours = 1 + (width * 0.5f * invCellSize).toInt()
         val verticalNeighbours = 1 + (height * 0.5f * invCellSize).toInt()
-        val xStartCell = (xCell - horizontalNeighbours).coerceAtLeast(0)
-        val yStartCell = (yCell - verticalNeighbours).coerceAtLeast(0)
-        val xEndCell = (xStartCell + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
-        val yEndCell = (yStartCell + verticalNeighbours * 2).coerceAtMost(yCells - 1)
-        val nodes = cells
+        val xStartCell = max(0, (xCell - horizontalNeighbours))
+        val yStartCell = max(0, (yCell - verticalNeighbours))
+        val xEndCell = min(xCells - 1, (xStartCell + horizontalNeighbours * 2))
+        val yEndCell = min(yCells - 1, (yStartCell + verticalNeighbours * 2))
         lastQueryId = queryId
 
         for (yi in yStartCell .. yEndCell)
         {
             for (xi in xStartCell .. xEndCell)
             {
-                var node = nodes[xi, yi]
-                while (node != null)
-                {
-                    val entity = node.entity
-                    if (entity.isNot(DEAD) && entity.getQueryId() != queryId && entity is T)
-                    {
-                        block(entity as T)
-                        entity.setQueryId(queryId)
-                    }
-                    node = node.next
-                }
+                forEachEntityInCellOfType(xi, yi, queryId, action)
             }
         }
     }
 
-    inline fun queryRay(x: Float, y: Float, angle: Float, rayLength: Float, rayWidth: Float, queryId: Int, block: (SceneEntity) -> Unit)
+    inline fun <reified T> queryRay(x: Float, y: Float, angle: Float, rayLength: Float, rayWidth: Float, queryId: Int, action: (T) -> Unit)
     {
         val angleRad = -angle.toRadians()
         val x0 = x - xOffset
         val y0 = y - yOffset
         val x1 = x0 + cos(angleRad) * rayLength
         val y1 = y0 + sin(angleRad) * rayLength
-        val nodes = cells
-        GridUtil.forEachCellAlongLine(x0, y0, x1, y1, rayWidth, xCells, yCells, cellSize) { xCell, yCell ->
-            var node = nodes[xCell, yCell]
-            while (node != null)
-            {
-                val entity = node.entity
-                if (entity.isNot(DEAD) && entity.getQueryId() != queryId)
-                {
-                    block(entity)
-                    entity.setQueryId(queryId)
-                }
-                node = node.next
-            }
+        lastQueryId = queryId
+
+        GridUtil.forEachCellAlongLineInsideGrid(x0, y0, x1, y1, rayWidth, xCells, yCells, cellSize) { xCell, yCell ->
+            forEachEntityInCellOfType(xCell, yCell, queryId, action)
         }
     }
 
@@ -165,12 +162,12 @@ class SpatialGrid (
         val yEnd = y + sin(angleRad) * rayLength
         var xHit = 0f
         var yHit = 0f
-        GridUtil.forEachCellAlongLine(
-            x - xOffset, y - yOffset, xEnd - xOffset, yEnd - yOffset, xCells, yCells, cellSize
+        GridUtil.forEachCellAlongLineInsideGrid(
+            x - xOffset, y - yOffset, xEnd - xOffset, yEnd - yOffset, cellSize, xCells, yCells
         ) { xCell, yCell ->
-            var node = cells[xCell, yCell]
             var closestEntity: T? = null
             var minDist = Float.MAX_VALUE
+            var node = cells[xCell, yCell]
             while (node != null)
             {
                 val entity = node.entity
@@ -179,9 +176,7 @@ class SpatialGrid (
                     val hitPoint = when (entity)
                     {
                         is Physical -> MathUtil.getLineShapeIntersection(x, y, xEnd, yEnd, entity.shape)
-                        else -> MathUtil.getLineRectIntersection(
-                            x, y, xEnd, yEnd, entity.x, entity.y, entity.width, entity.height, entity.rotation.toRadians()
-                        )
+                        else -> MathUtil.getLineRectIntersection(x, y, xEnd, yEnd, entity.x, entity.y, entity.width, entity.height, entity.rotation.toRadians())
                     }
 
                     if (hitPoint != null && hitPoint.z < minDist)
@@ -206,6 +201,21 @@ class SpatialGrid (
         return null
     }
 
+    @PublishedApi
+    internal inline fun <reified T> forEachEntityInCellOfType(xCell: Int, yCell: Int, queryId: Int, action: (T) -> Unit)
+    {
+        var node = cells[xCell, yCell]
+        while (node != null)
+        {
+            val entity = node.entity
+            if (entity.isNot(DEAD) && entity.getQueryId() != queryId && entity is T)
+            {
+                action(entity as T)
+                entity.setQueryId(queryId)
+            }
+            node = node.next
+        }
+    }
 
     fun update()
     {
@@ -439,7 +449,7 @@ class SpatialGrid (
         var parentNode: Node? = null
         var inserted = false
 
-        GridUtil.forEachCellAlongLine(xStart, yStart, xEnd, yEnd, thickness, xCells, yCells, cellSize, breakOnOutOfBounds = true) { xCell, yCell ->
+        GridUtil.forEachCellAlongLineInsideGrid(xStart, yStart, xEnd, yEnd, thickness, xCells, yCells, cellSize, breakOnOutOfBounds = true) { xCell, yCell ->
             val insertedNode = createAndInsertNode(xCell, yCell, entity)
             if (xCell == xParentCell && yCell == yParentCell)
                 parentNode = insertedNode

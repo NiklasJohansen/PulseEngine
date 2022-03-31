@@ -86,7 +86,7 @@ class PhysicsSystem : SceneSystem()
         val minDist = 40f * 40f
         val xMouse = engine.input.xWorldMouse
         val yMouse = engine.input.yWorldMouse
-        engine.scene.forEachEntityOfTypeNearby<PhysicsBody>(xMouse, yMouse, 500f, 500f)
+        engine.scene.forEachEntityNearbyOfType<PhysicsBody>(xMouse, yMouse, 500f, 500f)
         {
             for (i in 0 until it.shape.getPointCount())
             {

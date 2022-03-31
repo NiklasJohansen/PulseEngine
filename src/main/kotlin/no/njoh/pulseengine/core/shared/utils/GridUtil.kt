@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.shared.utils
 
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sqrt
 
 object GridUtil
@@ -9,7 +11,7 @@ object GridUtil
     @PublishedApi internal val pos = FloatArray(8)
 
     /**
-     * Calls the [func] function for each cell coordinate in the rectangular area defined by
+     * Calls the [action] function for each cell coordinate in the rectangular area defined by
      * [xStart], [yStart], [xEnd], [yEnd] and [thickness]. Iteration starts from the cell closest
      * to the start point and goes towards the end point.
      *
@@ -21,10 +23,10 @@ object GridUtil
      * @param gridWidth The number of horizontal cells in the grid
      * @param gridHeight The number of vertical cells in the grid
      * @param cellSize The size of each grid cell
-     * @param breakOnOutOfBounds When true, [func] will never be called if parts of the line is outside the grid
-     * @param func The lambda function to call for each cell. Stops searching if the lambda returns false.
+     * @param breakOnOutOfBounds When true, [action] will never be called if parts of the line is outside the grid
+     * @param action The lambda function to call for each cell. Stops searching if the lambda returns false.
      */
-    inline fun forEachCellAlongLine(
+    inline fun forEachCellAlongLineInsideGrid(
         xStart: Float,
         yStart: Float,
         xEnd: Float,
@@ -34,7 +36,7 @@ object GridUtil
         gridHeight: Int,
         cellSize: Float,
         breakOnOutOfBounds: Boolean = false,
-        func: (x: Int, y: Int) -> Unit
+        action: (x: Int, y: Int) -> Unit
     ) {
         val xDiff = xEnd - xStart
         val yDiff = yEnd - yStart
@@ -67,13 +69,20 @@ object GridUtil
             val y0 = pos[i + 1]
             val x1 = pos[(i + 2) % 8]
             val y1 = pos[(i + 3) % 8]
+            var insideGrid = true
 
             // Find cells along each edge and update horizontal range values
-            val insideGrid = forEachCellAlongLine(x0, y0, x1, y1, gridWidth, gridHeight, cellSize) { x: Int, y: Int ->
-                if (x < range[y * 2]) range[y * 2] = x
-                if (x > range[y * 2 + 1]) range[y * 2 + 1] = x
-                if (y < yMin) yMin = y
-                if (y > yMax) yMax = y
+            forEachCellAlongLine(x0, y0, x1, y1, cellSize) { x: Int, y: Int ->
+                if (y >= 0 && y < gridHeight)
+                {
+                    if (x < range[y * 2]) range[y * 2] = max(x, 0)
+                    if (x > range[y * 2 + 1]) range[y * 2 + 1] = min(x, gridWidth - 1 )
+                    if (y < yMin) yMin = y
+                    if (y > yMax) yMax = y
+                    if (x < 0 || x >= gridWidth)
+                        insideGrid = false
+                }
+                else insideGrid = false
             }
 
             // Reset horizontal range values and return if line is out of bounds
@@ -100,7 +109,7 @@ object GridUtil
 
             // Iterate through each cell in the row
             for (x in xMin .. xMax)
-               func(if (xDiff > 0) x else (xMax - (x - xMin)), y0) // Reverse x direction if ray points left
+               action(if (xDiff > 0) x else (xMax - (x - xMin)), y0) // Reverse x direction if ray points left
 
             // Reset horizontal range values
             range[y0 * 2] = Int.MAX_VALUE
@@ -109,8 +118,59 @@ object GridUtil
     }
 
     /**
-     * Calls the [func] function for each cell coordinate along the line defined
-     * by [xStart], [yStart], [xEnd] and [yEnd].
+     * Calls the [action] function for each cell coordinate along the line defined by [xStart], [yStart], [xEnd]
+     * and [yEnd].
+     *
+     * @param xStart The x position of the lines start coordinate
+     * @param yStart The y position of the lines start coordinate
+     * @param xEnd The x position of the lines end coordinate
+     * @param yEnd The x position of the lines end coordinate
+     * @param cellSize The size of each grid cell
+     * @param action The lambda function to call for each cell. Stops searching if the lambda returns false.
+     */
+    inline fun forEachCellAlongLine(
+        xStart: Float,
+        yStart: Float,
+        xEnd: Float,
+        yEnd: Float,
+        cellSize: Float,
+        action: (x: Int, y: Int) -> Unit
+    ) {
+        val xDelta = xEnd - xStart
+        val yDelta = yEnd - yStart
+        val xStepSize = cellSize / abs(xDelta)
+        val yStepSize = cellSize / abs(yDelta)
+        var xCell = (xStart / cellSize).toInt()
+        var yCell = (yStart / cellSize).toInt()
+
+        // Set start condition and step direction
+        var xDistance = ((if (xDelta < 0) xCell else xCell + 1) * cellSize - xStart) / xDelta
+        var yDistance = ((if (yDelta < 0) yCell else yCell + 1) * cellSize - yStart) / yDelta
+        val xStep = if (xDelta < 0) -1 else 1
+        val yStep = if (yDelta < 0) -1 else 1
+
+        // Call [func] for the starting cell
+        action(xCell, yCell)
+
+        while (xDistance <= 1f || yDistance <= 1f)
+        {
+            if (xDistance < yDistance)
+            {
+                xCell += xStep
+                xDistance += xStepSize
+            }
+            else
+            {
+                yCell += yStep
+                yDistance += yStepSize
+            }
+            action(xCell, yCell)
+        }
+    }
+
+    /**
+     * Calls the [action] function for each cell coordinate along the line defined by [xStart], [yStart], [xEnd]
+     * and [yEnd]. Will not call [action] with coordinates outside the grid dimensions.
      *
      * @param xStart The x position of the lines start coordinate
      * @param yStart The y position of the lines start coordinate
@@ -119,19 +179,18 @@ object GridUtil
      * @param gridWith The number of horizontal cells in the grid
      * @param gridHeight The number of vertical cells in the grid
      * @param cellSize The size of each grid cell
-     * @param func The lambda function to call for each cell. Stops searching if the lambda returns false.
-     * @return true if the whole line is inside the grid
+     * @param action The lambda function to call for each cell. Stops searching if the lambda returns false.
      */
-    inline fun forEachCellAlongLine(
+    inline fun forEachCellAlongLineInsideGrid(
         xStart: Float,
         yStart: Float,
         xEnd: Float,
         yEnd: Float,
+        cellSize: Float,
         gridWith: Int,
         gridHeight: Int,
-        cellSize: Float,
-        func: (x: Int, y: Int) -> Unit
-    ): Boolean {
+        action: (x: Int, y: Int) -> Unit
+    ) {
         val xDelta = xEnd - xStart
         val yDelta = yEnd - yStart
         val xStepSize = cellSize / abs(xDelta)
@@ -146,9 +205,8 @@ object GridUtil
         val yStep = if (yDelta < 0) -1 else 1
 
         // Call function for first cell if it is inside the grid
-        var insideGrid = xCell >= 0 && xCell < gridWith && yCell >= 0 && yCell < gridHeight
-        if (insideGrid)
-            func(xCell, yCell)
+        if (xCell >= 0 && xCell < gridWith && yCell >= 0 && yCell < gridHeight)
+            action(xCell, yCell)
 
         while (xDistance <= 1f || yDistance <= 1f)
         {
@@ -164,11 +222,7 @@ object GridUtil
             }
 
             if (xCell >= 0 && xCell < gridWith && yCell >= 0 && yCell < gridHeight)
-                func(xCell, yCell)
-            else
-                insideGrid = false
+                action(xCell, yCell)
         }
-
-        return insideGrid
     }
 }
