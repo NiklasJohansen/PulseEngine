@@ -108,12 +108,7 @@ open class LightingSystem : SceneSystem()
         configureNormalMap(engine, isEnabled = useNormalMap)
         configureOccluderMap(engine, isEnabled = enableLightSpill)
 
-        // Load icon if not already loaded
-        val iconName = "icon_light_bulb"
-        val icon = engine.asset.getSafe<Texture>(iconName)
-        if (icon == null)
-            engine.asset.loadTexture("/pulseengine/icons/icon_light_bulb.png", iconName)
-
+        // Add metrics
         engine.data.addMetric("Lights", "") { lightCount.toFloat() }
         engine.data.addMetric("Shadow casters", "") { shadowCasterCount.toFloat() }
         engine.data.addMetric("Edges", "") { edgeCount.toFloat() }

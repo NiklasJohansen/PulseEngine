@@ -25,6 +25,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.shared.annotations.Property
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
@@ -101,6 +102,7 @@ class SceneEditor: Widget
     private var yStartSelect = 0f
     private var xEndSelect = 0f
     private var yEndSelect = 0f
+    private var prevSelectedEntityId: Long? = null
 
     // Loading and saving
     private var shouldPersistEditorLayout = false
@@ -125,6 +127,9 @@ class SceneEditor: Widget
 
         // Background surface for grid
         engine.gfx.createSurface("scene_editor_background", zOrder = 20, camera = activeCamera)
+
+        // Load editor icons
+        engine.asset.loadAllTextures("/pulseengine/icons")
 
         // Register a console command to toggle editor visibility
         engine.console.registerCommand("showSceneEditor") {
@@ -398,6 +403,7 @@ class SceneEditor: Widget
         activeCamera.scale.set(1f)
         activeCamera.position.set(0f)
         activeCamera.rotation.set(0f)
+        prevSelectedEntityId = entitySelection.firstOrNull()?.id
 
         resetUI()
         engine.input.setCursor(ARROW)
@@ -431,7 +437,7 @@ class SceneEditor: Widget
             if (entitySelection.isNotEmpty())
             {
                 entitySelection.forEachFast { it.set(DEAD) }
-                entitySelection.clear()
+                clearEntitySelection()
                 isMoving = false
             }
         }
@@ -449,10 +455,8 @@ class SceneEditor: Widget
                     selectSingleEntity(copies.first())
                 else
                 {
-                    entitySelection.clear()
-                    entityPropertyUiRows.clear()
-                    entityPropertiesUI.clearChildren()
-                    entitySelection.addAll(copies)
+                    clearEntitySelection()
+                    copies.forEachFast { addEntityToSelection(it) }
                 }
                 val scene = engine.scene.activeScene
                 copies.forEachFast { scene.insertEntity(it) }
@@ -484,10 +488,7 @@ class SceneEditor: Widget
 
                 closestEntity?.let { entity ->
                     if (entity !in entitySelection)
-                    {
-                        entitySelection.clear()
                         selectSingleEntity(entity)
-                    }
                     isMoving = true
                 }
             }
@@ -517,18 +518,18 @@ class SceneEditor: Widget
             val width  = abs(xEndSelect - xStartSelect)
             val height  = abs(yEndSelect - yStartSelect)
             val selectedEntity = entitySelection.firstOrNull()
-
+            entitySelection.forEachFast { it.setNot(SELECTED) }
             entitySelection.clear()
 
             engine.scene.forEachEntity()
             {
                 if (it.isOverlapping(xStart, yStart, width, height))
-                    entitySelection.add(it)
+                    addEntityToSelection(it)
             }
 
             if (entitySelection.size == 1)
             {
-                if (entitySelection.first() != selectedEntity)
+                if (entitySelection.first() !== selectedEntity)
                     selectSingleEntity(entitySelection.first())
             }
             else entityPropertiesUI.clearChildren()
@@ -778,10 +779,8 @@ class SceneEditor: Widget
 
     private fun selectSingleEntity(entity: SceneEntity)
     {
-        entitySelection.clear()
-        entitySelection.add(entity)
-        entityPropertiesUI.clearChildren()
-        entityPropertyUiRows.clear()
+        clearEntitySelection()
+        addEntityToSelection(entity)
 
         val entityTypePropUI = EditorUtil.createEntityTypePropertyUI(entity) { changeToType = it }
         entityPropertiesUI.addChildren(entityTypePropUI)
@@ -984,9 +983,25 @@ class SceneEditor: Widget
         return copy
     }
 
+    private fun clearEntitySelection()
+    {
+        entitySelection.forEachFast { it.setNot(SELECTED) }
+        entitySelection.clear()
+        entityPropertiesUI.clearChildren()
+        entityPropertyUiRows.clear()
+    }
+
+    private fun addEntityToSelection(entity: SceneEntity)
+    {
+        entitySelection.add(entity)
+        entity.set(SELECTED)
+    }
+
     private fun initializeEntities(engine: PulseEngine)
     {
         engine.scene.forEachEntity {
+            if (prevSelectedEntityId != null && prevSelectedEntityId == it.id)
+                selectSingleEntity(it)
             if (it is PhysicsEntity)
                 it.init(engine)
         }
@@ -1008,9 +1023,7 @@ class SceneEditor: Widget
         isRotating = false
         isResizingVertically = false
         isResizingHorizontally = false
-        entityPropertiesUI.clearChildren()
-        entityPropertyUiRows.clear()
-        entitySelection.clear()
+        clearEntitySelection()
     }
 
     private fun setWindowTitleFromSceneName(engine: PulseEngine)

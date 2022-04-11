@@ -69,6 +69,7 @@ abstract class SceneEntity
         const val ROTATION_UPDATED  = 4  // Was rotation of entity updated
         const val SIZE_UPDATED      = 8  // Was size of entity updated
         const val DISCOVERABLE      = 16 // Can it be discovered by other entities
+        const val SELECTED          = 32 // Is the entity selected by e.g. the Editor
 
         val REGISTERED_TYPES = mutableSetOf<KClass<out SceneEntity>>()
     }

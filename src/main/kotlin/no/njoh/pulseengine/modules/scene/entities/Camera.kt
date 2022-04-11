@@ -8,8 +8,10 @@ import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
+import no.njoh.pulseengine.widgets.editor.EditorIcon
 import kotlin.math.*
 
+@EditorIcon("icon_camera")
 open class Camera : SceneEntity()
 {
     var viewPortWidth = 1000f
@@ -39,12 +41,13 @@ open class Camera : SceneEntity()
         width = camSize
         height = camSize
 
-        surface.setDrawColor(0.01f, 0.01f, 0.01f, 1f)
-        surface.drawTexture(Texture.BLANK, x, y, camSize, camSize, rotation, xOrigin = 0.5f, yOrigin = 0.5f)
+        if (!isSet(SELECTED))
+            return
 
         val r = -this.rotation / 180f * PI.toFloat()
         val c = cos(r) * 0.5f
         val s = sin(r) * 0.5f
+        val opacity = 0.8f
 
         // Outer rectangle points
         val x0 = -viewPortWidth * c - viewPortHeight * s
@@ -58,32 +61,29 @@ open class Camera : SceneEntity()
         val x3 =  width * c - height * s
         val y3 =  width * s + height * c
 
-        surface.setDrawColor(1f, 1f, 1f, 1f)
-        surface.drawText("CAMERA", x, y, xOrigin = 0.5f, yOrigin = 0.5f)
-
         // Top
-        surface.setDrawColor(1f, 1f, 1f, 0.5f * 0.75f)
+        surface.setDrawColor(0f, 0f, 0f, 0.5f * opacity)
         surface.drawQuadVertex(x - x1, y - y1) // Left top
         surface.drawQuadVertex(x - x0, y - y0) // Right top
         surface.drawQuadVertex(x - x2, y - y2) // Right bottom
         surface.drawQuadVertex(x - x3, y - y3) // Left bottom
 
         // Right
-        surface.setDrawColor(1f, 1f, 1f, 0.3f * 0.75f)
+        surface.setDrawColor(0f, 0f, 0f, 0.3f * opacity)
         surface.drawQuadVertex(x - x2, y - y2) // Left top
         surface.drawQuadVertex(x - x0, y - y0) // Right top
         surface.drawQuadVertex(x + x1, y + y1) // Right bottom
         surface.drawQuadVertex(x + x3, y + y3) // Left bottom
 
         // Bottom
-        surface.setDrawColor(1f, 1f, 1f, 0.25f * 0.75f)
+        surface.setDrawColor(0f, 0f, 0f, 0.25f * opacity)
         surface.drawQuadVertex(x + x2, y + y2) // Left top
         surface.drawQuadVertex(x + x3, y + y3) // Right top
         surface.drawQuadVertex(x + x1, y + y1) // Right bottom
         surface.drawQuadVertex(x + x0, y + y0) // Left bottom
 
         // Left
-        surface.setDrawColor(1f, 1f, 1f, 0.4f * 0.75f)
+        surface.setDrawColor(0f, 0f, 0f, 0.4f * opacity)
         surface.drawQuadVertex(x - x1, y - y1) // Left top
         surface.drawQuadVertex(x - x3, y - y3) // Right top
         surface.drawQuadVertex(x + x2, y + y2) // Right bottom

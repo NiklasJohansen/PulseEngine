@@ -51,10 +51,12 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun loadAllTextures(directory: String) =
         directory
             .loadFileNames()
-            .forEachFiltered(
-                { fileName -> Texture.SUPPORTED_FORMATS.any { fileName.endsWith(it) } },
-                { fileName -> loadTexture(fileName, fileName.substringAfterLast("/").substringBeforeLast(".")) }
-            )
+            .filter { fileName -> Texture.SUPPORTED_FORMATS.any { fileName.endsWith(it) } }
+            .forEachFast { fileName ->
+                val assetName = fileName.substringAfterLast("/").substringBeforeLast(".")
+                if (assets.none { it.value.name == assetName })
+                    loadTexture(fileName, assetName)
+            }
 
     override fun loadInitialAssets()
     {
