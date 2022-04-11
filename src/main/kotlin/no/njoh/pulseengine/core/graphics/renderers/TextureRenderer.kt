@@ -45,7 +45,7 @@ class TextureRenderer(
 
         program.bind()
         vertexBuffer.bind()
-        program.defineVertexAttributeLayout(vertexLayout)
+        program.setVertexAttributeLayout(vertexLayout)
         vao.release()
     }
 

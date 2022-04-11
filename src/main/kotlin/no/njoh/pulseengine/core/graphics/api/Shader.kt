@@ -42,14 +42,7 @@ class Shader(
         fun getOrLoad(fileName: String, type: ShaderType): Shader =
             cache.getOrPut(fileName) { load(fileName, type) }
 
-        fun reloadCache() =
-            cache.values.forEach { it.reload() }
-
-        fun clearCache()
-        {
-            cache.values.forEach { it.delete() }
-            cache.clear()
-        }
+        fun reloadCache() = cache.values.forEach { it.reload() }
 
         private fun load(fileName: String, type: ShaderType) : Shader
         {

@@ -73,9 +73,9 @@ class LightRenderer(
         program.bind()
         edgeBuffer.bind()
         vertexBuffer.bind()
-        program.defineVertexAttributeLayout(vertexLayout)
+        program.setVertexAttributeLayout(vertexLayout)
         lightBuffer.bind()
-        program.defineVertexAttributeLayout(instanceLayout)
+        program.setVertexAttributeLayout(instanceLayout)
         vao.release()
     }
 

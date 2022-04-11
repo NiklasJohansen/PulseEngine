@@ -1,4 +1,5 @@
 #version 150 core
+#define EDGE_SOFTNESS 0.01
 
 in vec4 vertexColor;
 in vec2 texStart;
@@ -19,12 +20,9 @@ void main() {
 
     if (texIndex >= 0)
     {
-        vec2 tc = texStart + texSize * (texTiling == 1.0 ? texCoord : fract(texCoord * texTiling));
-        textureColor = texture(textureArray, vec3(tc, floor(texIndex)));
+        vec2 sampleCoord = texStart + texSize * (texTiling == 1.0 ? texCoord : fract(texCoord * texTiling));
+        textureColor = texture(textureArray, vec3(sampleCoord, floor(texIndex)));
     }
-
-    if (textureColor.a < 0.4)
-        discard;
 
     if (quadCornerRadius > 0.0)
     {
@@ -32,8 +30,11 @@ void main() {
         float border = clamp(quadCornerRadius, 0.0, 0.5 * min(quadSize.x, quadSize.y));
         vec2 corner = clamp(pos, vec2(border), quadSize - border);
         float distFromCorner = length(pos - corner) - border;
-        textureColor.a *= 1.0f - smoothstep(0.0, 1.0, distFromCorner);
+        textureColor.a *= 1.0f - smoothstep(0.0, EDGE_SOFTNESS, distFromCorner);
     }
+
+    if (textureColor.a < 0.4)
+        discard;
 
     fragColor = vertexColor * textureColor;
 }

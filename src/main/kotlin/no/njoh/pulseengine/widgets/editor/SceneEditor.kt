@@ -141,7 +141,7 @@ class SceneEditor: Widget
     {
         // Properties
         entityPropertiesUI = RowPanel()
-        entityPropertiesUI.rowHeight = 38f
+        entityPropertiesUI.rowHeight = 34f
         entityPropertiesUI.rowPadding = 0f
 
         systemPropertiesUI = RowPanel()

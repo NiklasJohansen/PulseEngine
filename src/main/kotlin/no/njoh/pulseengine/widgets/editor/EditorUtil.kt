@@ -333,6 +333,7 @@ object EditorUtil
 
         return HorizontalPanel().apply {
             color = style.getColor("BG_DARK")
+            cornerRadius = 4f
             addChildren(
                 VerticalPanel().apply {
                     addChildren(propertiesRowPanel, buttonUI)
@@ -396,13 +397,14 @@ object EditorUtil
             fontSize = 20f
             centerVertically = true
             centerHorizontally = true
-            padding.top = -2f
+            padding.top = -3f
             color = style.getColor("LABEL")
         }
 
         val exitButton = Button(width = Size.absolute(15f)).apply {
             padding.setAll(5f)
             color = Color.BLANK
+            cornerRadius = 7.5f
             hoverColor = style.getColor("BUTTON_EXIT")
             addChildren(xLabel)
         }
@@ -421,6 +423,7 @@ object EditorUtil
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
+            cornerRadius = 12f
             color = style.getColor("HEADER")
             activeColor = style.getColor("HEADER")
             hoverColor = style.getColor("HEADER_HOVER")
@@ -620,6 +623,7 @@ object EditorUtil
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
+            cornerRadius = 12f
             color = style.getColor("HEADER")
             addChildren(
                 Label(label, width = Size.relative(0.5f)).apply {

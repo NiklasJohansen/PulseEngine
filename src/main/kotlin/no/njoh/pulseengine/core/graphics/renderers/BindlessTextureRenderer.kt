@@ -50,16 +50,16 @@ class BindlessTextureRenderer(
                 1f, 1f  // Bottom-right vertex
             ))
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/bindless_texture.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/bindless_texture.frag"
+                vertexShaderFileName = "/pulseengine/shaders/default/texture_bindless.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/default/texture_bindless.frag"
             )
         }
 
         program.bind()
         vertexBuffer.bind()
-        program.defineVertexAttributeLayout(vertexLayout)
+        program.setVertexAttributeLayout(vertexLayout)
         instanceBuffer.bind()
-        program.defineVertexAttributeLayout(instanceLayout)
+        program.setVertexAttributeLayout(instanceLayout)
         vao.release()
     }
 

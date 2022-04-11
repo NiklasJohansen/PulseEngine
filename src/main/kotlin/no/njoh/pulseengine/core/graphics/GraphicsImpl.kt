@@ -55,8 +55,8 @@ open class GraphicsImpl : GraphicsInternal
             // Create frameRenderer
             if (!this::renderer.isInitialized)
                renderer = FrameTextureRenderer(ShaderProgram.create(
-                   vertexShaderFileName = "/pulseengine/shaders/effects/texture.vert",
-                   fragmentShaderFileName = "/pulseengine/shaders/effects/texture.frag"
+                   vertexShaderFileName = "/pulseengine/shaders/default/surface.vert",
+                   fragmentShaderFileName = "/pulseengine/shaders/default/surface.frag"
                ))
 
             // Initialize frameRenderer
