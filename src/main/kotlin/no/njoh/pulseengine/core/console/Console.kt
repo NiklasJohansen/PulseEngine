@@ -6,6 +6,7 @@ interface Console
 {
     fun log(text: String, type: MessageType = MessageType.INFO)
     fun run(commandString: String, showCommand: Boolean = true): List<CommandResult>
+    fun runLater(commandString: String, showCommand: Boolean = true)
     fun runScript(filename: String)
     fun registerCommand(template: String, description: String = "", isAlias: Boolean = false, block: CommandArguments.() -> CommandResult)
     fun getHistory(index: Int, type: MessageType): ConsoleEntry?
@@ -17,6 +18,7 @@ interface Console
 interface ConsoleInternal : Console
 {
     fun init(engine: PulseEngine)
+    fun update()
 }
 
 data class Command(

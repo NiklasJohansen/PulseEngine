@@ -7,8 +7,13 @@ import no.njoh.pulseengine.core.shared.primitives.Subscription
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import no.njoh.pulseengine.core.console.MessageType.WARN
+import no.njoh.pulseengine.core.graphics.api.Shader
+import no.njoh.pulseengine.core.graphics.api.Shader.Companion.getShaderFromAbsolutePath
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
+import no.njoh.pulseengine.core.shared.utils.FileWatcher
+import no.njoh.pulseengine.core.shared.utils.Logger
 import java.io.File
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.declaredMemberProperties
@@ -243,13 +248,46 @@ object CommandRegistry
             CommandResult("Reloaded entity types", showCommand = false)
         }
 
-        ///////////////////////////////////////////// RELOAD POST PROCESSING SHADERS /////////////////////////////////////////////
+        ///////////////////////////////////////////// RELOAD SHADERS /////////////////////////////////////////////
 
         engine.console.registerCommand(
-            "reloadShaders"
+            "reloadAllShaders"
         ) {
+            Logger.debug("\nReloading all shaders...")
+            Shader.reloadAll()
             ShaderProgram.reloadAll()
             CommandResult("Reloaded all shaders", showCommand = false)
+        }
+
+        engine.console.registerCommand(
+            "reloadShader {fileName:String}"
+        ) {
+            val fileName = getString("fileName")
+            val shader = getShaderFromAbsolutePath(fileName)
+            if (shader != null)
+            {
+                val success = shader.reload(fileName)
+                if (success)
+                    ShaderProgram.reloadAll()
+                CommandResult("Reloaded shader: $fileName", showCommand = false)
+            }
+            else CommandResult("Found no shader with filename: $fileName", showCommand = false, type = WARN)
+        }
+
+        ///////////////////////////////////////////// WATCH FILE CHANGES /////////////////////////////////////////////
+
+        engine.console.registerCommand(
+            "watchFileChange {path:String} {triggerCommand:String} {interval:Int?} {fileTypes:String?} {maxDepth:Int?}"
+        ) {
+            val path = getString("path")
+            val command = getString("triggerCommand")
+            val interval = getOptionalInt("interval") ?: 10
+            val fileTypes = getOptionalString("fileTypes")?.split(";") ?: emptyList()
+            val maxDepth = getOptionalInt("maxDepth") ?: 5
+            FileWatcher.setOnFileChanged(path, fileTypes, maxDepth, interval) { fileName ->
+                engine.console.runLater("$command \"$fileName\"", showCommand = true)
+            }
+            CommandResult("Watching for file changes every $interval seconds in $path", showCommand = false)
         }
     }
 }

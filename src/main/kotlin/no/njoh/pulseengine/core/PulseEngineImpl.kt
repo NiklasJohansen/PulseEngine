@@ -22,6 +22,7 @@ import no.njoh.pulseengine.core.input.InputInternal
 import no.njoh.pulseengine.core.scene.SceneManagerImpl
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
+import no.njoh.pulseengine.core.shared.utils.FileWatcher
 import no.njoh.pulseengine.core.shared.utils.FpsLimiter
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.widget.WidgetManagerImpl
@@ -174,6 +175,7 @@ class PulseEngineImpl(
         data.measureAndUpdateTimeStats()
         {
             updateInput()
+            console.update()
             game.onUpdate()
             scene.update()
             widget.update(this)
@@ -251,6 +253,7 @@ class PulseEngineImpl(
 
     private fun destroy()
     {
+        FileWatcher.shutdown()
         scene.cleanUp()
         widget.cleanUp(this)
         audio.cleanUp()

@@ -5,10 +5,12 @@ import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.utils.Logger
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
 
 open class ConsoleImpl : ConsoleInternal
 {
     private val commandMap = ConcurrentHashMap<String, Command>()
+    private val commandJobs = ConcurrentLinkedQueue<CommandJob>()
     private val history = mutableListOf<ConsoleEntry>()
 
     override fun init(engine: PulseEngine)
@@ -41,6 +43,15 @@ open class ConsoleImpl : ConsoleInternal
 
                 CommandResult(commandsString + aliasesString)
             }
+        }
+    }
+
+    override fun update()
+    {
+        while (commandJobs.isNotEmpty())
+        {
+            val job = commandJobs.poll()
+            run(job.command, job.showCommand)
         }
     }
 
@@ -78,6 +89,11 @@ open class ConsoleImpl : ConsoleInternal
 
                 return@map result
             }
+    }
+
+    override fun runLater(commandString: String, showCommand: Boolean)
+    {
+        commandJobs.add(CommandJob(commandString, showCommand))
     }
 
     override fun runScript(filename: String)
@@ -264,4 +280,9 @@ open class ConsoleImpl : ConsoleInternal
             this.substring(1, this.lastIndex).replace("'","\"")
         else
             this
+
+    data class CommandJob(
+        val command: String,
+        val showCommand: Boolean
+    )
 }

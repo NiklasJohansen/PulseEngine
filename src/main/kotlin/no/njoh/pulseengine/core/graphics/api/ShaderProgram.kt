@@ -126,8 +126,6 @@ class ShaderProgram(
 
         fun reloadAll()
         {
-            Logger.debug("\nReloading shaders...")
-            Shader.reloadCache()
             shaderPrograms.toList().forEachFast { it.reload() }
         }
 
