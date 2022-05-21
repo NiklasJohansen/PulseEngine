@@ -24,6 +24,7 @@ plugins {
     java
     `maven-publish`
     kotlin("jvm") version "1.6.10"
+    id("me.champeau.jmh") version "0.6.6"
 }
 
 repositories {
@@ -59,6 +60,12 @@ dependencies {
     implementation("net.sf.trove4j:trove4j:3.0.3")
     implementation("de.undercouch:bson4jackson:2.13.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.0")
+
+    // Java Microbenchmark Harness
+    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.34")
+    jmh("org.openjdk.jmh:jmh-core:1.34")
+    jmh("org.openjdk.jmh:jmh-generator-annprocess:1.34")
+    jmh("com.github.biboudis:jmh-profilers:0.1.4")
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).all {
@@ -69,12 +76,14 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).all {
 
 val sourcesJar by tasks.creating(Jar::class) {
     group = JavaBasePlugin.DOCUMENTATION_GROUP
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
     archiveClassifier.set("sources")
     exclude("*.png", "*.jpg", "*.ttf", "*.ogg", "*.txt")
     from(sourceSets.main.get().allSource)
 }
 
 val jar by tasks.getting(Jar::class) {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
     manifest {
         attributes["Main-Class"] = "testbed.TestbedKt"
     }
@@ -94,4 +103,11 @@ publishing {
             url = uri("$buildDir/repository")
         }
     }
+}
+
+jmh {
+    duplicateClassesStrategy.set(DuplicatesStrategy.INCLUDE)
+    warmupIterations.set(2)
+    iterations.set(2)
+    fork.set(2)
 }
