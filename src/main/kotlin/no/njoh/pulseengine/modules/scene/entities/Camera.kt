@@ -3,7 +3,6 @@ package no.njoh.pulseengine.modules.scene.entities
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
-import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
@@ -19,11 +18,13 @@ open class Camera : SceneEntity()
     var targetEntityId = -1L
     var trackRotation = false
     var smoothing = 0.1f
+    var targetZoom = 1f
 
     @JsonIgnore private var initalized = false
     @JsonIgnore private var lastWidth = 0f
     @JsonIgnore private var lastHeight = 0f
     @JsonIgnore private var camSize = 100f
+    @JsonIgnore private var zoom = targetZoom
 
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
@@ -113,12 +114,15 @@ open class Camera : SceneEntity()
                 y = it.y
                 if (trackRotation)
                     rotation = it.rotation
+                zoom = targetZoom
                 initalized = true
             }
             else
             {
                 x += (it.x - x) * smoothing
                 y += (it.y - y) * smoothing
+                zoom += (targetZoom - zoom) * smoothing
+
                 if (trackRotation)
                 {
                     val diff = (it.rotation - rotation).toRadians()
@@ -129,7 +133,7 @@ open class Camera : SceneEntity()
 
         val surfaceWidth = engine.gfx.mainSurface.width
         val surfaceHeight = engine.gfx.mainSurface.height
-        val newScale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight)
+        val newScale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight) * zoom
         engine.gfx.mainCamera.apply {
             scale.set(newScale)
             rotation.z = -super.rotation / 180f * PI.toFloat()

@@ -47,8 +47,9 @@ open class Ball : SceneEntity(), CircleBody
         val x = if (xInterpolated.isNaN()) x else xInterpolated
         val y = if (yInterpolated.isNaN()) y else yInterpolated
         val r = if (rotInterpolated.isNaN()) rotation else rotInterpolated
+        val size = max(width, height)
 
         surface.setDrawColor(1f, 1f, 1f)
-        surface.drawTexture(Texture.BLANK, x, y, width, height, r, 0.5f, 0.5f)
+        surface.drawTexture(Texture.BLANK, x, y, size, size, r, 0.5f, 0.5f, cornerRadius = size * 0.5f)
     }
 }
