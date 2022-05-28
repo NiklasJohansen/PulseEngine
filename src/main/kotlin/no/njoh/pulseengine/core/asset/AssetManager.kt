@@ -11,6 +11,11 @@ abstract class AssetManager
     abstract fun <T : Asset> add(asset: T): T
 
     /**
+     * Removes the [Asset] with given [assetName] and calls its delete function.
+     */
+    abstract fun delete(assetName: String)
+
+    /**
      * Returns the [Asset] with name [assetName] and type [T] or null if not found.
      */
     inline fun <reified T : Asset> getOrNull(assetName: String): T? = getOrNull(assetName, T::class)

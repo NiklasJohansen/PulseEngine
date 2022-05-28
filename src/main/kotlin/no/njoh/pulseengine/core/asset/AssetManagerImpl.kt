@@ -1,11 +1,13 @@
 package no.njoh.pulseengine.core.asset
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadFileNames
+import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
 import kotlin.reflect.KClass
 import kotlin.reflect.safeCast
 
@@ -58,7 +60,7 @@ open class AssetManagerImpl : AssetManagerInternal()
     {
         val startTime = System.nanoTime()
         add(Font.DEFAULT)
-        runBlocking()
+        runBlocking(Dispatchers.IO)
         {
             assets.values.forEach()
             {
@@ -67,21 +69,31 @@ open class AssetManagerImpl : AssetManagerInternal()
         }
         assets.values.forEach { asset -> onAssetLoadedCallbacks.forEachFast { it.invoke(asset)  } }
         initialAssetsLoaded = true
-        Logger.debug("Loaded ${assets.size} assets in ${(System.nanoTime() - startTime) / 1_000_000} ms. [${assets.values.joinToString { it.name }}]")
+        Logger.debug("Loaded ${assets.size} assets in ${startTime.toNowFormatted()}. [${assets.values.joinToString { it.name }}]")
     }
 
     override fun <T: Asset> add(asset: T): T
     {
-        if (assets.containsKey(asset.name))
-            Logger.warn("Asset with name: ${asset.name} already exists and will be overridden")
+        val existingAsset = assets[asset.name]
+        if (existingAsset != null)
+        {
+            Logger.warn("Asset with name: ${existingAsset.name} already exists and will be deleted and overridden")
+            existingAsset.delete()
+        }
 
-        assets[asset.name] = asset
         if (initialAssetsLoaded)
         {
             asset.load()
             onAssetLoadedCallbacks.forEachFast { it.invoke(asset)  }
         }
+
+        assets[asset.name] = asset
         return asset
+    }
+
+    override fun delete(assetName: String)
+    {
+        assets.remove(assetName)?.delete()
     }
 
     override fun setOnAssetLoaded(callback: (Asset) -> Unit)
