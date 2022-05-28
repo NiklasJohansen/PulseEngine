@@ -5,9 +5,9 @@ import kotlinx.coroutines.runBlocking
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadFileNames
 import kotlin.reflect.KClass
+import kotlin.reflect.safeCast
 
 open class AssetManagerImpl : AssetManagerInternal()
 {
@@ -17,15 +17,11 @@ open class AssetManagerImpl : AssetManagerInternal()
     private var onAssetRemovedCallbacks = mutableListOf<(Asset) -> Unit>()
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T : Asset> get(assetName: String): T =
-        assets[assetName]?.let { it as T } ?: throw IllegalArgumentException("No asset loaded with name: $assetName")
+    override fun <T : Asset> getOrNull(assetName: String, type: KClass<T>): T? =
+        assets[assetName]?.let { type.safeCast(it) }
 
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : Asset> getSafe(assetName: String, type: KClass<T>): T? =
-        assets[assetName]?.takeIf { it::class == type }?.let { it as T }
-
-    override fun <T : Asset> getAll(type: Class<T>): List<T> =
-        assets.values.filterIsInstance(type)
+    override fun <T : Asset> getAllOfType(type: KClass<T>): List<T> =
+        assets.values.filterIsInstance(type.java)
 
     override fun loadTexture(fileName: String, assetName: String): Texture =
         Texture(fileName, assetName).also { add(it)  }

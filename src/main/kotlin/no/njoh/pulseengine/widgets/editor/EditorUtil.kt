@@ -240,7 +240,7 @@ object EditorUtil
             tilePadding = 5f
         }
 
-        val textureAssets = engine.asset.getAll(Texture::class.java)
+        val textureAssets = engine.asset.getAllOfType<Texture>()
         for (tex in textureAssets)
         {
             val tile = Button().apply {

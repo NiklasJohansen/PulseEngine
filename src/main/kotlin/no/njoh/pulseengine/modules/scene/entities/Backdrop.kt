@@ -21,12 +21,12 @@ open class Backdrop : SceneEntity(), NormalMapRenderPassTarget
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         surface.setDrawColor(color)
-        surface.drawTexture(engine.asset.getSafe(textureName) ?: Texture.BLANK, x, y, width, height, rotation, 0.5f, 0.5f, uTiling = xTiling, vTiling = yTiling)
+        surface.drawTexture(engine.asset.getOrNull(textureName) ?: Texture.BLANK, x, y, width, height, rotation, 0.5f, 0.5f, uTiling = xTiling, vTiling = yTiling)
     }
 
     override fun renderCustomPass(engine: PulseEngine, surface: Surface2D)
     {
-        val normalMap = engine.asset.getSafe<Texture>(normalMapName)
+        val normalMap = engine.asset.getOrNull<Texture>(normalMapName)
         val dir = if (normalMap != null) 1.0f else 0.5f
         surface.setDrawColor(dir, dir, 1f)
         surface.drawTexture(normalMap ?: Texture.BLANK, x, y, width, height, rotation, 0.5f, 0.5f, uTiling = xTiling, vTiling = yTiling)

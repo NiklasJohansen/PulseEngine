@@ -344,7 +344,7 @@ class SceneEditor: Widget
 
         engine.scene.forEachEntityTypeList { entities ->
             entities[0]::class.findAnnotation<EditorIcon>()?.let { annotation ->
-                engine.asset.getSafe<Texture>(annotation.textureAssetName)?.let { texture ->
+                engine.asset.getOrNull<Texture>(annotation.textureAssetName)?.let { texture ->
                     val width = annotation.width
                     val height = annotation.height
                     surface.setDrawColor(1f, 1f, 1f)

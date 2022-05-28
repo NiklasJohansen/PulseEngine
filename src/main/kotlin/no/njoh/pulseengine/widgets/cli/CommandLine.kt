@@ -313,7 +313,7 @@ class CommandLine : Widget
 
     override fun onRender(engine: PulseEngine)
     {
-        val cliFont = engine.asset.get<Font>("cli_font")
+        val cliFont = engine.asset.getOrNull("cli_font") ?: Font.DEFAULT
         val height = engine.window.height * heightFraction
         val width = engine.window.width * widthFraction
         val availableWidth = width - TEXT_PADDING_X - INPUT_BOX_PADDING
