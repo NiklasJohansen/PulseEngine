@@ -160,6 +160,14 @@ abstract class SceneManager
         activeScene.spatialGrid.queryAxisAlignedArea(x, y, width, height, queryId, action)
 
     /**
+     * Calls the [action] lambda for each [SceneEntity] of type [T] nearby the given area.
+     * @param x The center x-coordinate of the area
+     * @param y The center y-coordinate of the area
+     */
+    inline fun <reified T> forEachEntityNearbyOfType(x: Float, y: Float, width: Float, height: Float, queryId: Int = nextQueryId(), action: (T) -> Unit) =
+        activeScene.spatialGrid.queryAxisAlignedArea(x, y, width, height, queryId, action)
+
+    /**
      * Calls the [action] lambda for each [SceneEntity] nearby the given rotated area.
      * @param x The center x-coordinate of the area
      * @param y The center y-coordinate of the area
