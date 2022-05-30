@@ -28,7 +28,6 @@ class SwapList<T>(
 
     fun keep(item: T)
     {
-        items[keepIndex] = null
         itemsToKeep[keepIndex++] = item
     }
 
@@ -37,6 +36,7 @@ class SwapList<T>(
         val temp = items
         items = itemsToKeep
         itemsToKeep = temp
+        itemsToKeep.fill(null, 0, size)
         size = keepIndex
         keepIndex = 0
     }
@@ -54,8 +54,10 @@ class SwapList<T>(
     fun first(): T? =
         if (size > 0) items[0] as T else null
 
+    @JsonIgnore
     fun isNotEmpty() = size != 0
 
+    @JsonIgnore
     fun isEmpty() = size == 0
 
     fun clear()
