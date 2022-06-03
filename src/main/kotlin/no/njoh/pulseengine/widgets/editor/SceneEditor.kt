@@ -28,6 +28,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.shared.annotations.Property
+import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.utils.*
@@ -123,10 +124,19 @@ class SceneEditor: Widget
         lastSaveLoadDirectory = engine.data.saveDirectory
 
         // Create separate render surface for editor UI
-        engine.gfx.createSurface("scene_editor_foreground", zOrder = -90, attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_TEXTURE))
+        engine.gfx.createSurface(
+            name = "scene_editor_foreground",
+            zOrder = -90,
+            attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_TEXTURE)
+        )
 
         // Background surface for grid
-        engine.gfx.createSurface("scene_editor_background", zOrder = 20, camera = activeCamera)
+        engine.gfx.createSurface(
+            name = "scene_editor_background",
+            zOrder = 20,
+            camera = activeCamera,
+            backgroundColor = Color(0.043f, 0.047f, 0.054f, 0f)
+        )
 
         // Load editor icons
         engine.asset.loadAllTextures("/pulseengine/icons")

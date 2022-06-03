@@ -39,6 +39,7 @@ open class GraphicsImpl : GraphicsInternal
             multisampling = MSAA4,
             textureFormat = NORMAL,
             textureFilter = LINEAR,
+            backgroundColor = defaultClearColor.copy(),
             attachments = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
             initializeSurface = false // Will be initialized in next step
         )
@@ -108,9 +109,10 @@ open class GraphicsImpl : GraphicsInternal
         surfaces.forEachFast { it.renderToOffScreenTarget() }
 
         // Set OpenGL state for rendering offscreen target textures
-        glDisable(GL_DEPTH_TEST)
-        glClearColor(0.043f, 0.047f, 0.054f, 0f)
+        val c = surfaces.firstOrNull()?.context?.backgroundColor ?: defaultClearColor // Clear back-buffer with color of first surface
+        glClearColor(c.red, c.green, c.blue, c.alpha)
         glClear(GL_COLOR_BUFFER_BIT)
+        glDisable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glViewport(0, 0, mainSurface.width, mainSurface.height)
@@ -207,5 +209,6 @@ open class GraphicsImpl : GraphicsInternal
     companion object
     {
         private var updateNumber = 0
+        private var defaultClearColor = Color(0.043f, 0.047f, 0.054f, 0f)
     }
 }
