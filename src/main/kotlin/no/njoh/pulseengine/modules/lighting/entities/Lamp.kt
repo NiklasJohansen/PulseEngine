@@ -46,9 +46,9 @@ open class Lamp : SceneEntity(), LightSource
     @Property("Light", 7)
     override var shadowType = ShadowType.SOFT
 
-    private var initLength   = -1f // Length from light position to center of target entity
-    private var initAngle    = -1f // Angle between light position and center of target entity
-    private var initRotation = -1f // Difference in rotation between light and target entity
+    protected var initLength   = -1f // Length from light position to center of target entity
+    protected var initAngle    = -1f // Angle between light position and center of target entity
+    protected var initRotation = -1f // Difference in rotation between light and target entity
 
     override fun onStart(engine: PulseEngine)
     {
