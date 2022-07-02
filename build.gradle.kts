@@ -62,8 +62,8 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.3")
 
     // Java Microbenchmark Harness
-    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.34")
-    jmh("org.openjdk.jmh:jmh-core:1.34")
+    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.35")
+    jmh("org.openjdk.jmh:jmh-core:1.35")
     jmh("org.openjdk.jmh:jmh-generator-annprocess:1.34")
     jmh("com.github.biboudis:jmh-profilers:0.1.4")
 }
