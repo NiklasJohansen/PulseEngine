@@ -93,5 +93,14 @@ publishing {
         maven {
             url = uri("$buildDir/repository")
         }
+
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/NiklasJohansen/PulseEngine")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
     }
 }
