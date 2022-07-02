@@ -1,30 +1,28 @@
-import org.gradle.internal.os.OperatingSystem
-
-group = "no.njoh"
-version = "0.7.0-SNAPSHOT"
-
-val lwjglVersion = "3.2.3"
-val kotlinVersion = "1.6.10"
-
-var lwjglNatives = when (OperatingSystem.current()) {
-    OperatingSystem.WINDOWS -> if (System.getProperty("os.arch").contains("64")) "natives-windows" else "natives-windows-x86"
-    OperatingSystem.MAC_OS  -> "natives-macos"
-    OperatingSystem.LINUX   -> System.getProperty("os.arch").let {
-        if (it.startsWith("arm") || it.startsWith("aarch64"))
-            "natives-linux-${if (it.contains("64") || it.startsWith("armv8")) "arm64" else "arm32"}"
-        else
-            "natives-linux"
-    }
-    else -> throw Error("Unrecognized operating system")
-}
-
-println("OS: $lwjglNatives")
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     java
     `maven-publish`
     kotlin("jvm") version "1.6.10"
     id("me.champeau.jmh") version "0.6.6"
+}
+
+val version: String by project
+val group: String by project
+val artifact: String by project
+val lwjglVersion: String by project
+val kotlinVersion: String by project
+val mainClass: String by project
+
+enum class Platform(val classifier: String) {
+    LINUX("natives-linux"),
+    LINUX_ARM64("natives-linux-arm64"),
+    LINUX_ARM32("natives-linux-arm32"),
+    MACOS("natives-macos"),
+    MACOS_ARM64("natives-macos-arm64"),
+    WINDOWS("natives-windows"),
+    WINDOWS_X86("natives-windows-x86"),
+    WINDOWS_ARM64("natives-windows-arm64");
 }
 
 repositories {
@@ -35,7 +33,7 @@ dependencies {
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}")
     implementation("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.2")
 
     // LWJGL
     implementation(platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
@@ -46,32 +44,28 @@ dependencies {
     implementation("org.lwjgl", "lwjgl-opengl")
     implementation("org.lwjgl", "lwjgl-stb")
     implementation("org.lwjgl", "lwjgl-nfd")
-    runtimeOnly("org.lwjgl", "lwjgl", classifier = lwjglNatives)
-    runtimeOnly("org.lwjgl", "lwjgl-glfw", classifier = lwjglNatives)
-    runtimeOnly("org.lwjgl", "lwjgl-jemalloc", classifier = lwjglNatives)
-    runtimeOnly("org.lwjgl", "lwjgl-openal", classifier = lwjglNatives)
-    runtimeOnly("org.lwjgl", "lwjgl-opengl", classifier = lwjglNatives)
-    runtimeOnly("org.lwjgl", "lwjgl-stb", classifier = lwjglNatives)
-    runtimeOnly("org.lwjgl", "lwjgl-nfd", classifier = lwjglNatives)
+    Platform.values().forEach { platform ->
+        runtimeOnly("org.lwjgl", "lwjgl", classifier = platform.classifier)
+        runtimeOnly("org.lwjgl", "lwjgl-glfw", classifier = platform.classifier)
+        runtimeOnly("org.lwjgl", "lwjgl-jemalloc", classifier = platform.classifier)
+        runtimeOnly("org.lwjgl", "lwjgl-openal", classifier = platform.classifier)
+        runtimeOnly("org.lwjgl", "lwjgl-opengl", classifier = platform.classifier)
+        runtimeOnly("org.lwjgl", "lwjgl-stb", classifier = platform.classifier)
+        runtimeOnly("org.lwjgl", "lwjgl-nfd", classifier = platform.classifier)
+    }
 
     // Other
     implementation("org.l33tlabs.twl:pngdecoder:1.0")
-    implementation("org.joml:joml:1.9.22")
+    implementation("org.joml:joml:1.10.4")
     implementation("net.sf.trove4j:trove4j:3.0.3")
-    implementation("de.undercouch:bson4jackson:2.13.0")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.0")
+    implementation("de.undercouch:bson4jackson:2.13.1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.3")
 
     // Java Microbenchmark Harness
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.34")
     jmh("org.openjdk.jmh:jmh-core:1.34")
     jmh("org.openjdk.jmh:jmh-generator-annprocess:1.34")
     jmh("com.github.biboudis:jmh-profilers:0.1.4")
-}
-
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).all {
-    kotlinOptions {
-        freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
-    }
 }
 
 val sourcesJar by tasks.creating(Jar::class) {
@@ -85,10 +79,17 @@ val sourcesJar by tasks.creating(Jar::class) {
 val jar by tasks.getting(Jar::class) {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     manifest {
-        attributes["Main-Class"] = "testbed.TestbedKt"
+        attributes["Main-Class"] = mainClass
     }
     exclude("**/*.kotlin_module", "**/*.kotlin_metadata")
     from({ configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) } })
+}
+
+// Disable null checks at runtime
+tasks.withType(KotlinCompile::class).all {
+    kotlinOptions {
+        freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
+    }
 }
 
 publishing {
@@ -98,10 +99,21 @@ publishing {
             artifact(sourcesJar)
         }
     }
+
     repositories {
         maven {
-            url = uri("$buildDir/repository")
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/NiklasJohansen/PulseEngine")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
         }
+
+        // Local repo
+        // maven {
+        //     url = uri("$buildDir/repository")
+        // }
     }
 }
 
