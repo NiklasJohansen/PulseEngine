@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.widgets.editor
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
@@ -34,11 +35,9 @@ import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.utils.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.widget.Widget
-import no.njoh.pulseengine.widgets.editor.EditorUtil.MenuBarButton
-import no.njoh.pulseengine.widgets.editor.EditorUtil.MenuBarItem
-import no.njoh.pulseengine.widgets.editor.EditorUtil.createMenuBarUI
-import no.njoh.pulseengine.widgets.editor.EditorUtil.insertSceneSystemProperties
+import no.njoh.pulseengine.modules.gui.elements.Button
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isPrimitiveValue
+import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.widgets.editor.EditorUtil.setProperty
 import org.joml.Vector3f
 import kotlin.math.*
@@ -50,8 +49,9 @@ import kotlin.reflect.full.instanceParameter
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
 
-class SceneEditor: Widget
-{
+class SceneEditor(
+    val uiFactory: UiElementFactory = UiElementFactory()
+): Widget {
     override var isRunning = false
 
     // UI
@@ -165,7 +165,7 @@ class SceneEditor: Widget
         systemPropertiesUI.rowPadding = 0f
 
         // Create content
-        val menuBar = createMenuBarUI(
+        val menuBar = uiFactory.createMenuBarUI(
             MenuBarButton("File", listOf(
                 MenuBarItem("New...") { onNewScene(engine) },
                 MenuBarItem("Open...") { onLoad(engine) },
@@ -218,8 +218,8 @@ class SceneEditor: Widget
     {
         if (dockingUI.findElementById("Entity Properties") == null)
         {
-            val entityPropertyWindow = EditorUtil.createWindowUI("Entity Properties")
-            val propertyPanel = EditorUtil.createScrollableSectionUI(entityPropertiesUI)
+            val entityPropertyWindow = uiFactory.createWindowUI("Entity Properties")
+            val propertyPanel = uiFactory.createScrollableSectionUI(entityPropertiesUI)
             entityPropertyWindow.body.addChildren(propertyPanel)
             dockingUI.insertLeft(entityPropertyWindow)
         }
@@ -229,8 +229,8 @@ class SceneEditor: Widget
     {
         if (dockingUI.findElementById("Scene Assets") == null)
         {
-            val assetWindow = EditorUtil.createWindowUI("Scene Assets")
-            val assetPanel = EditorUtil.createAssetPanelUI(engine) { createDragAndDropEntity(engine, it) }
+            val assetWindow = uiFactory.createWindowUI("Scene Assets")
+            val assetPanel = uiFactory.createAssetPanelUI(engine) { createDragAndDropEntity(engine, it) }
             assetWindow.body.addChildren(assetPanel)
             dockingUI.insertBottom(assetWindow)
         }
@@ -240,8 +240,9 @@ class SceneEditor: Widget
     {
         if (dockingUI.findElementById("Scene Systems") == null)
         {
-            val sceneSystemPropertiesUi = EditorUtil.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
-            val sceneSystemWindow = EditorUtil.createWindowUI("Scene Systems")
+            updateSceneSystemProperties(engine)
+            val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
+            val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems")
             sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
             dockingUI.insertRight(sceneSystemWindow)
         }
@@ -249,26 +250,29 @@ class SceneEditor: Widget
 
     private fun createViewportWindow(engine: PulseEngine)
     {
-        val viewportUi = EditorUtil.createViewportUI(engine)
-        val viewportWindow = EditorUtil.createWindowUI("Viewport", 300f, 300f, 640f, 480f)
+        val viewportUi = uiFactory.createViewportUI(engine)
+        val viewportWindow = uiFactory.createWindowUI("Viewport", 300f, 300f, 640f, 480f)
         viewportWindow.body.addChildren(viewportUi)
         dockingUI.addChildren(viewportWindow)
     }
 
     override fun onUpdate(engine: PulseEngine)
     {
-        sceneFileToLoad?.let {
+        sceneFileToLoad?.let()
+        {
             engine.scene.loadAndSetActive(it)
             sceneFileToLoad = null
         }
 
-        sceneFileToCreate?.let {
+        sceneFileToCreate?.let()
+        {
             engine.scene.createEmptyAndSetActive(it)
             engine.scene.save()
             sceneFileToCreate = null
         }
 
-        sceneFileToSaveAs?.let {
+        sceneFileToSaveAs?.let()
+        {
             engine.scene.saveAs(fileName = it, updateActiveScene = true)
             setWindowTitleFromSceneName(engine)
             sceneFileToSaveAs = null
@@ -283,7 +287,7 @@ class SceneEditor: Widget
         if (engine.scene.activeScene.hashCode() != lastSceneHashCode)
         {
             resetUI()
-            systemPropertiesUI.insertSceneSystemProperties(engine)
+            updateSceneSystemProperties(engine)
             setWindowTitleFromSceneName(engine)
             initializeEntities(engine)
             lastSceneHashCode = engine.scene.activeScene.hashCode()
@@ -373,7 +377,8 @@ class SceneEditor: Widget
         if (engine.scene.state == SceneState.RUNNING)
             engine.scene.stop()
 
-        GlobalScope.launch {
+        GlobalScope.launch(context = Dispatchers.IO)
+        {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
                 sceneFileToSaveAs = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
             }
@@ -385,7 +390,8 @@ class SceneEditor: Widget
         if (engine.scene.state != SceneState.RUNNING)
             engine.scene.save()
 
-        GlobalScope.launch {
+        GlobalScope.launch(context = Dispatchers.IO)
+        {
             FileChooser.showFileSelectionDialog("scn", engine.data.saveDirectory) { filePath ->
                 sceneFileToLoad = filePath
             }
@@ -400,7 +406,8 @@ class SceneEditor: Widget
             engine.scene.save()
         }
 
-        GlobalScope.launch {
+        GlobalScope.launch(context = Dispatchers.IO)
+        {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
                 sceneFileToCreate = filePath
             }
@@ -575,8 +582,8 @@ class SceneEditor: Widget
         this.y += engine.input.ydMouse / activeCamera.scale.y
         this.set(POSITION_UPDATED)
 
-        updatePropertiesPanel(::x.name, x)
-        updatePropertiesPanel(::y.name, y)
+        updateEntityPropertiesPanel(::x.name, x)
+        updateEntityPropertiesPanel(::y.name, y)
     }
 
     private fun SceneEntity.handleEntityDragAndDrop(engine: PulseEngine)
@@ -592,7 +599,7 @@ class SceneEditor: Widget
         {
             dragAndDropEntity = null
             engine.scene.activeScene.insertEntity(this)
-            updatePropertiesPanel("id", this.id)
+            updateEntityPropertiesPanel("id", this.id)
             this.onMovedScaledOrRotated(engine)
         }
     }
@@ -739,9 +746,9 @@ class SceneEditor: Widget
 
         if (isRotating || isResizingHorizontally || isResizingVertically)
         {
-            updatePropertiesPanel(::rotation.name, rotation)
-            updatePropertiesPanel(::width.name, width)
-            updatePropertiesPanel(::height.name, height)
+            updateEntityPropertiesPanel(::rotation.name, rotation)
+            updateEntityPropertiesPanel(::width.name, width)
+            updateEntityPropertiesPanel(::height.name, height)
             set(SIZE_UPDATED)
             set(ROTATION_UPDATED)
         }
@@ -793,7 +800,7 @@ class SceneEditor: Widget
         clearEntitySelection()
         addEntityToSelection(entity)
 
-        val entityTypePropUI = EditorUtil.createEntityTypePropertyUI(entity) { changeToType = it }
+        val entityTypePropUI = uiFactory.createEntityTypePropertyUI(entity) { changeToType = it }
         entityPropertiesUI.addChildren(entityTypePropUI)
 
         entity::class.memberProperties
@@ -803,12 +810,12 @@ class SceneEditor: Widget
             .forEachFast { (category, props) ->
                 props.sortedBy { it.findAnnotation<Property>()?.order ?: 0 }
                     .filterIsInstance<KMutableProperty<*>>()
-                    .filter { EditorUtil.isPropertyEditable(it) }
+                    .filter { it.isEditable() }
                     .also {
                         if (it.isNotEmpty() && category.isNotEmpty())
-                            entityPropertiesUI.addChildren(EditorUtil.createCategoryHeader(category))
+                            entityPropertiesUI.addChildren(uiFactory.createCategoryHeader(category))
                     }.forEachFast { prop ->
-                        val (propertyPanel, inputElement) = EditorUtil.createPropertyUI(entity, prop)
+                        val (propertyPanel, inputElement) = uiFactory.createPropertyUI(entity, prop)
                         entityPropertiesUI.addChildren(propertyPanel)
                         entityPropertyUiRows[prop.name] = inputElement
                     }
@@ -826,7 +833,7 @@ class SceneEditor: Widget
 
             oldEntity::class.memberProperties.forEach { prop ->
                 if (prop.visibility == KVisibility.PUBLIC)
-                    prop.getter.call(oldEntity)?.let { value -> newEntity.setProperty(prop.name, value) }
+                    newEntity.setProperty(prop.name, value = prop.getter.call(oldEntity))
             }
 
             oldEntity.set(DEAD)
@@ -836,11 +843,28 @@ class SceneEditor: Widget
         catch (e: Exception) { Logger.error("Failed to change entity type, reason: ${e.message}") }
     }
 
-    private fun updatePropertiesPanel(propName: String, value: Any)
+    private fun updateEntityPropertiesPanel(propName: String, value: Any)
     {
-        entityPropertyUiRows[propName]?.let {
-            if (it is InputField)
-                it.text = value.toString()
+        (entityPropertyUiRows[propName] as? InputField)?.text = value.toString()
+    }
+
+    private fun updateSceneSystemProperties(engine: PulseEngine)
+    {
+        val hiddenSystems = systemPropertiesUI.children
+            .filterIsInstance<Button>()
+            .filter { it.state }
+            .mapNotNull { it.id }
+
+        systemPropertiesUI.clearChildren()
+        for (system in engine.scene.activeScene.systems)
+        {
+            val isHidden = system::class.simpleName in hiddenSystems
+            val props = uiFactory.createSystemProperties(system, isHidden, onClose = { props ->
+                system.onDestroy(engine)
+                engine.scene.removeSystem(system)
+                systemPropertiesUI.removeChildren(*props.toTypedArray())
+            })
+            systemPropertiesUI.addChildren(*props.toTypedArray())
         }
     }
 
@@ -1008,7 +1032,8 @@ class SceneEditor: Widget
 
     private fun initializeEntities(engine: PulseEngine)
     {
-        engine.scene.forEachEntity {
+        engine.scene.forEachEntity()
+        {
             if (prevSelectedEntityId != null && prevSelectedEntityId == it.id)
                 selectSingleEntity(it)
             if (it is PhysicsEntity)
