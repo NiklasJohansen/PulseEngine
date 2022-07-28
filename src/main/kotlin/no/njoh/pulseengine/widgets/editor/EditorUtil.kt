@@ -48,6 +48,39 @@ object EditorUtil
         colors["ITEM_HOVER"] = Color(0.10275511f, 0.11865307f, 0.13571429f, 1.0f)
     }
 
+    /** Property UI creation functions for specific class types. */
+    val propertyUiFactories = mutableMapOf(
+        // Create dropdown with all enum types
+        Enum::class to { obj: Any, prop: KMutableProperty<*> ->
+            createItemSelectionDropdownUI(
+                selectedItem = prop.getter.call(obj),
+                items = prop.javaField?.type?.enumConstants?.toList() ?: emptyList(),
+                onItemToString = { it.toString() }
+            ).apply {
+                setOnItemChanged { value -> value?.let { obj.setProperty(prop.name, value) } }
+            }
+        },
+
+        // Create dropdown with TRUE/FALSE types for booleans
+        Boolean::class to { obj: Any, prop: KMutableProperty<*> ->
+            createItemSelectionDropdownUI(
+                selectedItem = prop.getter.call(obj),
+                items = listOf(true, false),
+                onItemToString = { it.toString().capitalize() }
+            ).apply {
+                setOnItemChanged { value -> value?.let { obj.setProperty(prop.name, value) } }
+            }
+        },
+
+        // Create color picker for Color class
+        Color::class to { obj: Any, prop: KMutableProperty<*> ->
+            createColorPickerUI(color = prop.getter.call(obj) as Color)
+        },
+
+        // Use default factory for strings (factory functions returning null will use default property UI)
+        String::class to { _: Any, _: KMutableProperty<*> -> null }
+    )
+
     /**
      * Creates a movable and resizable window panel.
      */
@@ -567,38 +600,14 @@ object EditorUtil
      */
     fun createPropertyUI(obj: Any, prop: KMutableProperty<*>): Pair<HorizontalPanel, UiElement>
     {
-        val propType = prop.javaField?.type
-        val propUi: UiElement = when
-        {
-            propType?.kotlin?.isSubclassOf(Enum::class) == true ->
-            {
-                val items = propType.enumConstants?.toList() ?: emptyList()
-                createItemSelectionDropdownUI(prop.getter.call(obj), items, { it.toString() }).apply {
-                    setOnItemChanged { it?.let { setProperty(obj, prop.name, it) } }
-                }
+        val propUiKey = propertyUiFactories.keys.firstOrNull { prop.javaField?.type?.kotlin?.isSubclassOf(it) == true }
+        val propUi = propertyUiFactories[propUiKey]?.invoke(obj, prop)
+            ?: createInputFieldUI(value = prop.getter.call(obj), prop).apply { // Default UI when no factory exist
+                setOnTextChanged { if (it.isValid) obj.setProperty(prop, it.text) }
+                editable = prop.name != "id"
             }
-            propType?.kotlin?.isSubclassOf(Boolean::class) == true ->
-            {
-                createItemSelectionDropdownUI(prop.getter.call(obj), listOf(true, false), { it.toString().capitalize() }).apply {
-                    setOnItemChanged { it?.let { setProperty(obj, prop.name, it) } }
-                }
-            }
-            propType?.kotlin?.isSubclassOf(Color::class) == true ->
-            {
-                val color = prop.getter.call(obj) as Color
-                createColorPickerUI(color)
-            }
-            else ->
-            {
-                val value = prop.getter.call(obj)
-                createInputFieldUI(value, prop).apply {
-                    setOnTextChanged { if (it.isValid) setProperty(obj, prop, it.text) }
-                    editable = prop.name != "id"
-                }
-            }
-        }
 
-        val label = Label(prop.name.capitalize(), width = Size.relative(0.5f)).apply {
+        val label = Label(text = prop.name.capitalize(), width = Size.relative(0.5f)).apply {
             padding.setAll(5f)
             padding.left = 10f
             fontSize = 20f
@@ -640,7 +649,7 @@ object EditorUtil
      * Parses the given string value into a the class type given by the [KMutableProperty].
      * Sets the named property of the obj to the parsed value.
      */
-    private fun setProperty(obj: Any, property: KMutableProperty<*>, value: String) =
+    private fun Any.setProperty(property: KMutableProperty<*>, value: String) =
         try
         {
             when (property.javaField?.type)
@@ -652,7 +661,7 @@ object EditorUtil
                 Long::class.java    -> value.toLongOrNull()
                 Boolean::class.java -> value.toBoolean()
                 else                -> null
-            }?.let { property.setter.call(obj, it) }
+            }?.let { property.setter.call(this, it) }
         }
         catch (e: Exception)
         {
@@ -662,12 +671,12 @@ object EditorUtil
     /**
      * Sets the named property of the object to the given value.
      */
-    fun setProperty(obj: Any, name: String, value: Any)
+    fun Any.setProperty(name: String, value: Any)
     {
-        val prop = obj::class.memberProperties.find { it.name == name }
+        val prop = this::class.memberProperties.find { it.name == name }
         if (prop != null && prop is KMutableProperty<*>)
         {
-            try { prop.setter.call(obj, value) }
+            try { prop.setter.call(this, value) }
             catch (e: Exception) { Logger.error("Failed to set property with name: $name, reason: ${e.message}") }
         }
     }

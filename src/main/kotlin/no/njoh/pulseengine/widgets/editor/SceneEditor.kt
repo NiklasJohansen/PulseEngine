@@ -39,6 +39,7 @@ import no.njoh.pulseengine.widgets.editor.EditorUtil.MenuBarItem
 import no.njoh.pulseengine.widgets.editor.EditorUtil.createMenuBarUI
 import no.njoh.pulseengine.widgets.editor.EditorUtil.insertSceneSystemProperties
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isPrimitiveValue
+import no.njoh.pulseengine.widgets.editor.EditorUtil.setProperty
 import org.joml.Vector3f
 import kotlin.math.*
 import kotlin.reflect.KClass
@@ -776,13 +777,13 @@ class SceneEditor: Widget
             .find { it.memberProperties.any { prop -> prop.name == "textureName" } }
             ?: REGISTERED_TYPES.firstOrNull()
 
-        type?.let { type ->
-            val entity = type.constructors.first().call()
+        type?.let { t ->
+            val entity = t.constructors.first().call()
             entity.x = engine.input.xWorldMouse
             entity.y = engine.input.yWorldMouse
             entity.width = texture.width.toFloat()
             entity.height = texture.height.toFloat()
-            EditorUtil.setProperty(entity, "textureName", texture.name)
+            entity.setProperty("textureName", texture.name)
             dragAndDropEntity = entity
         }
     }
@@ -825,7 +826,7 @@ class SceneEditor: Widget
 
             oldEntity::class.memberProperties.forEach { prop ->
                 if (prop.visibility == KVisibility.PUBLIC)
-                    prop.getter.call(oldEntity)?.let { value -> EditorUtil.setProperty(newEntity, prop.name, value) }
+                    prop.getter.call(oldEntity)?.let { value -> newEntity.setProperty(prop.name, value) }
             }
 
             oldEntity.set(DEAD)
@@ -968,7 +969,7 @@ class SceneEditor: Widget
 
     private fun SceneEntity.createCopy(): SceneEntity
     {
-        val copy = this::class.constructors.first().call()
+        val entityCopy = this::class.constructors.first().call()
         for (prop in this::class.members)
         {
             if (prop is KMutableProperty<*> && prop.visibility == KVisibility.PUBLIC)
@@ -980,17 +981,15 @@ class SceneEditor: Widget
                         val copyFunc = propValue::class.memberFunctions.first { it.name == "copy" }
                         val instanceParam = copyFunc.instanceParameter!!
                         copyFunc.callBy(mapOf(instanceParam to propValue))?.let {
-                            EditorUtil.setProperty(copy, prop.name, it)
+                            entityCopy.setProperty(prop.name, it)
                         }
                     }
                     else if (prop.isPrimitiveValue())
-                    {
-                        EditorUtil.setProperty(copy, prop.name, propValue)
-                    }
+                        entityCopy.setProperty(prop.name, propValue)
                 }
             }
         }
-        return copy
+        return entityCopy
     }
 
     private fun clearEntitySelection()
