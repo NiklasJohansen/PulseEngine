@@ -1,12 +1,14 @@
 package no.njoh.pulseengine.core.shared.utils
 
+import no.njoh.pulseengine.core.shared.primitives.Shape
 import org.joml.Vector2f
-import kotlin.math.abs
-import kotlin.math.sqrt
+import org.joml.Vector3f
+import kotlin.math.*
 
 object MathUtil
 {
-    private val reusableVector = Vector2f(0f, 0f)
+    private val reusableVector2f = Vector2f(0f, 0f)
+    private val reusableVector3f = Vector3f(0f, 0f, 0f)
 
     /**
      * https://stackoverflow.com/questions/30559799/function-for-finding-the-distance-between-a-point-and-an-edge-in-java/38290399
@@ -72,9 +74,9 @@ object MathUtil
 
         return when
         {
-            param < 0f -> reusableVector.set(x0, y0)
-            param > 1f -> reusableVector.set(x1, y1)
-            else -> reusableVector.set(x0 + param * xLineVec, y0 + param * yLineVec)
+            param < 0f -> reusableVector2f.set(x0, y0)
+            param > 1f -> reusableVector2f.set(x1, y1)
+            else -> reusableVector2f.set(x0 + param * xLineVec, y0 + param * yLineVec)
         }
     }
 
@@ -90,16 +92,10 @@ object MathUtil
         val s1y = y1 - y0
         val s2x = x3 - x2
         val s2y = y3 - y2
-
-        val s = (-s1y * (x0 - x2) + s1x * (y0 - y2)) / (-s2x * s1y + s1x * s2y)
-        if (s < 0 || s > 1)
-            return null
-
-        val t = (s2x * (y0 - y2) - s2y * (x0 - x2)) / (-s2x * s1y + s1x * s2y)
-        if (t < 0 || t > 1)
-            return null
-
-        return reusableVector.set(x0 + t * s1x, y0 + t * s1y)
+        val d = -s2x * s1y + s1x * s2y
+        val s = (-s1y * (x0 - x2) + s1x * (y0 - y2)) / d
+        val t = (s2x * (y0 - y2) - s2y * (x0 - x2)) / d
+        return if (s < 0 || s > 1 || t < 0 || t > 1) null else reusableVector2f.set(x0 + t * s1x, y0 + t * s1y)
     }
 
     /**
@@ -112,30 +108,126 @@ object MathUtil
         val lineLength = sqrt(xLineVec * xLineVec + yLineVec * yLineVec)
         val triangleArea2 = abs(xLineVec * (y - y0) - yLineVec * (x - x0)) // Triangle area times 2
         val triangleHeight = triangleArea2 / lineLength
+        if (triangleHeight >= radius)
+            return null
 
-        if (triangleHeight < radius)
+        // Compute the line direction
+        val xLineDir = xLineVec / lineLength
+        val yLineDir = yLineVec / lineLength
+
+        // Distance along the line to the closest point of (x, y)
+        val t = xLineDir * (x - x0) + yLineDir * (y - y0)
+
+        // Compute intersection point distance from t
+        val dt = sqrt(radius * radius - triangleHeight * triangleHeight)
+
+        // Limit intersection point to line segment
+        if (t - dt < 0 || t - dt > lineLength)
+            return null
+
+        // Compute first intersection point
+        return reusableVector2f.set(x0 + xLineDir * (t - dt), y0 + yLineDir * (t - dt))
+    }
+
+    /**
+     * Returns the first intersection point between the line and rectangle, as well as the squared distance
+     * between the first line point and the intersection point. Returns null if noe intersection was found.
+     */
+    fun getLineRectIntersection(
+        x0: Float, y0: Float, x1: Float, y1: Float,
+        xRect: Float, yRect: Float, width: Float, height: Float, rot: Float
+    ): Vector3f? {
+        val c = cos(-rot)
+        val s = sin(-rot)
+        val w = width * 0.5f
+        val h = height * 0.5f
+        val xd0 = -w * c - h * s
+        val yd1 = -w * s + h * c
+        val xd2 = w * c - h * s
+        val yd2 = w * s + h * c
+        var xHit = 0f
+        var yHit = 0f
+        var minDist = Float.MAX_VALUE
+
+        getLineSegmentIntersection(x0, y0, x1, y1, xRect + xd0, yRect + yd1, xRect + xd2, yRect + yd2)?.let()
         {
-            // Compute the line direction
-            val xLineDir = xLineVec / lineLength
-            val yLineDir = yLineVec / lineLength
-
-            // Distance along the line to the closest point of (x, y)
-            val t = xLineDir * (x - x0) + yLineDir * (y - y0)
-
-            // Compute intersection point distance from t
-            val dt = sqrt(radius * radius - triangleHeight * triangleHeight)
-
-            // Limit intersection point to line segment
-            if (t - dt < 0 || t - dt > lineLength)
-                return null
-
-            // Compute first intersection point
-            reusableVector.x = x0 + xLineDir * (t - dt)
-            reusableVector.y = y0 + yLineDir * (t - dt)
-            return reusableVector
+            val dist = (it.x - x0) * (it.x - x0) + (it.y - y0) * (it.y - y0)
+            if (dist < minDist) { minDist = dist; xHit = it.x; yHit = it.y }
         }
 
-        return null
+        getLineSegmentIntersection(x0, y0, x1, y1, xRect + xd2, yRect + yd2, xRect - xd0, yRect - yd1)?.let()
+        {
+            val dist = (it.x - x0) * (it.x - x0) + (it.y - y0) * (it.y - y0)
+            if (dist < minDist) { minDist = dist; xHit = it.x; yHit = it.y }
+        }
+
+        getLineSegmentIntersection(x0, y0, x1, y1, xRect - xd0, yRect - yd1, xRect - xd2, yRect - yd2)?.let()
+        {
+            val dist = (it.x - x0) * (it.x - x0) + (it.y - y0) * (it.y - y0)
+            if (dist < minDist) { minDist = dist; xHit = it.x; yHit = it.y }
+        }
+
+        getLineSegmentIntersection(x0, y0, x1, y1, xRect - xd2, yRect - yd2, xRect + xd0, yRect + yd1)?.let()
+        {
+            val dist = (it.x - x0) * (it.x - x0) + (it.y - y0) * (it.y - y0)
+            if (dist < minDist) { minDist = dist; xHit = it.x; yHit = it.y }
+        }
+
+        return if (minDist != Float.MAX_VALUE) reusableVector3f.set(xHit, yHit, minDist) else null
+    }
+
+    /**
+     * Returns the first intersection point between the line and the [Shape], as well as the squared distance
+     * between the first line point and the intersection point. Returns null if noe intersection was found.
+     */
+    fun getLineShapeIntersection(x0: Float, y0: Float, x1: Float, y1: Float, shape: Shape): Vector3f?
+    {
+        val nPoints = shape.getPointCount()
+        if (nPoints == 1) // Point/circle shape
+        {
+            val radius = shape.getRadius() ?: 0f
+            val center = shape.getPoint(0)
+            val p = getLineSegmentCircleIntersection(center.x, center.y, radius, x0, y0, x1, y1)
+            if (p != null) return reusableVector3f.set(p.x, p.y, (p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0))
+        }
+        else if (nPoints == 2) // Line shape
+        {
+            val p0 = shape.getPoint(0)
+            val p0x = p0.x
+            val p0y = p0.y
+            val p1 = shape.getPoint(1)
+            val p = getLineSegmentIntersection(x0, y0, x1, y1, p0x, p0y, p1.x, p1.y)
+            if (p != null) return reusableVector3f.set(p.x, p.y, (p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0))
+        }
+        else // Polygon shape
+        {
+            val lastPoint = shape.getPoint(nPoints - 1)
+            var xLast = lastPoint.x
+            var yLast = lastPoint.y
+            var xClosest = 0f
+            var yClosest = 0f
+            var minDist = Float.MAX_VALUE
+            for (i in 0 until nPoints)
+            {
+                val point = shape.getPoint(i)
+                val p = getLineSegmentIntersection(x0, y0, x1, y1, xLast, yLast, point.x, point.y)
+                if (p != null)
+                {
+                    val squaredDist = (p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)
+                    if (squaredDist < minDist)
+                    {
+                        minDist = squaredDist
+                        xClosest = p.x
+                        yClosest = p.y
+                    }
+                }
+                xLast = point.x
+                yLast = point.y
+            }
+            if (minDist != Float.MAX_VALUE) return reusableVector3f.set(xClosest, yClosest, minDist)
+        }
+
+        return null // No intersection
     }
 
     /**

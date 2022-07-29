@@ -36,7 +36,7 @@ interface Surface2D : Surface
     fun drawQuad(x: Float, y: Float, width: Float, height: Float)
     fun drawQuadVertex(x: Float, y: Float)
     fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f)
-    fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
+    fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, uTiling: Float = 1f, vTiling: Float = 1f)
     fun drawText(text: String, x: Float, y: Float, font: Font? = null, fontSize: Float = -1f, xOrigin: Float = 0f, yOrigin: Float = 0f)
 
     // Property setters
@@ -190,10 +190,10 @@ class Surface2DImpl(
             textureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin)
     }
 
-    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, uTiling: Float, vTiling: Float)
     {
         if (texture.isBindless)
-            bindlessTextureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax)
+            bindlessTextureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, uTiling, vTiling)
         else
             textureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin)
     }

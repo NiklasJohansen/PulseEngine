@@ -8,20 +8,14 @@ uniform sampler2D tex;
 uniform vec2 resolution;
 uniform float strength;
 
-vec4 applyVignette(vec4 color)
-{
-    vec2 uv = gl_FragCoord.xy / resolution.xy;
+void main() {
+    vec4 texColor = texture(tex, textureCoord);
 
+    vec2 uv = gl_FragCoord.xy / resolution.xy;
     uv *= 1.0 - uv.yx;
 
     float vig = uv.x * uv.y * 15.0;
-
     vig = pow(vig, 0.25 * strength);
 
-    return color * vig;
-}
-
-void main() {
-    vec4 textureColor = texture(tex, textureCoord);
-    fragColor = applyVignette(textureColor);
+    fragColor = vec4(texColor.rgb * vig, texColor.a);
 }

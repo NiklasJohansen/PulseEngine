@@ -37,15 +37,15 @@ class QuadBatchRenderer(
             vbo = BufferObject.createArrayBuffer(capacity)
             ebo = BufferObject.createElementBuffer(capacity / 6)
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/default.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/default.frag"
+                vertexShaderFileName = "/pulseengine/shaders/default/quad.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/default/quad.frag"
             )
         }
 
         vbo.bind()
         ebo.bind()
         program.bind()
-        program.defineVertexAttributeLayout(layout)
+        program.setVertexAttributeLayout(layout)
         vao.release()
     }
 

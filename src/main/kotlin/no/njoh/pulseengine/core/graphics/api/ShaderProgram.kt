@@ -37,9 +37,10 @@ class ShaderProgram(
         {
             delete()
             id = newProgram.id
-            uniformLocations.clear()
             shaders.clear()
             shaders.addAll(newProgram.shaders)
+            shaderPrograms.add(this)
+            uniformLocations.clear()
         }
     }
 
@@ -86,7 +87,7 @@ class ShaderProgram(
     fun setUniform(name: String, color: Color) =
         glUniform4f(uniformLocationOf(name), color.red, color.green, color.blue, color.alpha)
 
-    fun defineVertexAttributeLayout(name: String, count: Int, type: Int, stride: Int, offset: Long, divisor: Int = 0, normalized: Boolean = false)
+    fun setVertexAttributeLayout(name: String, count: Int, type: Int, stride: Int, offset: Long, divisor: Int = 0, normalized: Boolean = false)
     {
         val location = attributeLocationOf(name)
         glEnableVertexAttribArray(location)
@@ -94,11 +95,11 @@ class ShaderProgram(
         glVertexAttribDivisor(location, divisor)
     }
 
-    fun defineVertexAttributeLayout(layout: VertexAttributeLayout)
+    fun setVertexAttributeLayout(layout: VertexAttributeLayout)
     {
         var offset = 0L
         layout.attributes.forEachFast { attribute ->
-            defineVertexAttributeLayout(
+            setVertexAttributeLayout(
                 name = attribute.name,
                 count = attribute.count,
                 type = attribute.type,
@@ -123,19 +124,19 @@ class ShaderProgram(
         private val shaderPrograms = mutableListOf<ShaderProgram>()
         private val errProgram = create(Shader.errVertShader, Shader.errFragShader)
 
+        fun reloadAll()
+        {
+            shaderPrograms.toList().forEachFast { it.reload() }
+        }
+
         fun create(vertexShaderFileName: String, fragmentShaderFileName: String): ShaderProgram
         {
             val vertexShader = Shader.getOrLoad(vertexShaderFileName, VERTEX)
             val fragmentShader = Shader.getOrLoad(fragmentShaderFileName, FRAGMENT)
             val program = create(vertexShader, fragmentShader)
-            shaderPrograms.add(program)
+            if (linkedSuccessfully(program))
+                shaderPrograms.add(program)
             return program
-        }
-
-        fun reloadAll()
-        {
-            Shader.reloadCache()
-            shaderPrograms.forEachFast { it.reload() }
         }
 
         private fun create(vararg shaders: Shader): ShaderProgram
@@ -148,8 +149,7 @@ class ShaderProgram(
 
             if (glGetProgrami(programId, GL_LINK_STATUS) != GL_TRUE)
             {
-                val msg = glGetProgramInfoLog(programId)
-                Logger.error("Failed to link shaders: ${shaders.joinToString { it.fileName }} \n$msg")
+                Logger.error("Failed to link shaders: ${shaders.joinToString { it.fileName }} \n${glGetProgramInfoLog(programId)}")
                 return errProgram
             }
 

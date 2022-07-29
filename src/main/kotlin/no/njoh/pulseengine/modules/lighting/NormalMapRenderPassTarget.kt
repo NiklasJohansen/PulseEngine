@@ -14,7 +14,7 @@ interface NormalMapRenderPassTarget : CustomRenderPassTarget
     {
         if (this is SceneEntity)
         {
-            val normalMap = engine.asset.getSafe<Texture>(normalMapName)
+            val normalMap = engine.asset.getOrNull<Texture>(normalMapName)
             val dir = if (normalMap != null) 1.0f else 0.5f
             surface.setDrawColor(dir, dir, 1f)
             surface.drawTexture(normalMap ?: Texture.BLANK, x, y, width, height, rotation, 0.5f, 0.5f)

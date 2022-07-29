@@ -8,21 +8,25 @@ import no.njoh.pulseengine.core.shared.annotations.Property
 @Name("Spatial Grid")
 class SpatialGridConfigurer : SceneSystem()
 {
-    @Property(min = 50f, max = 1_000f)
+    @Property(order = 0, min = 50f, max = 1_000f)
     var cellSize = 350f
 
-    @Property(min = 0f, max = 100_000f)
-    var minBorderSize = 3000
-
-    @Property(min = 0f, max = 100_000_000f)
+    @Property(order = 1, min = 0f, max = 100_000_000f)
     var maxWidth = 100_000
 
-    @Property(min = 0f, max = 100_000_000f)
+    @Property(order = 2, min = 0f, max = 100_000_000f)
     var maxHeight = 100_000
 
-    @Property(min = 0f, max = 1f)
+    @Property(order = 3, min = 0f, max = 100_000f)
+    var borderSize = 3000
+
+    @Property(order = 4, min = 0f, max = 1f)
     var percentageToUpdatePerFrame = 0.2f
 
+    @Property(order = 5, min = 0f, max = 1f)
+    var percentagePositionChangeBeforeUpdate = 0.2f
+
+    @Property(order = 6, min = 0f, max = 1f)
     var drawGrid = false
 
     override fun onUpdate(engine: PulseEngine)
@@ -30,19 +34,19 @@ class SpatialGridConfigurer : SceneSystem()
         val spatialGrid = engine.scene.activeScene.spatialGrid
 
         if (cellSize != spatialGrid.cellSize ||
-            minBorderSize != spatialGrid.minBorderSize ||
             maxWidth != spatialGrid.maxWidth ||
             maxHeight != spatialGrid.maxHeight ||
-            percentageToUpdatePerFrame != spatialGrid.percentageToUpdatePerFrame ||
-            drawGrid != spatialGrid.drawGrid
+            borderSize != spatialGrid.borderSize
         ) {
-            spatialGrid.cellSize = cellSize
-            spatialGrid.minBorderSize = minBorderSize
+            spatialGrid.setCellSize(cellSize)
             spatialGrid.maxWidth = maxWidth
             spatialGrid.maxHeight = maxHeight
-            spatialGrid.percentageToUpdatePerFrame = percentageToUpdatePerFrame
-            spatialGrid.drawGrid = drawGrid
+            spatialGrid.borderSize = borderSize
             spatialGrid.recalculate()
         }
+
+        spatialGrid.percentageOfCellsToUpdatePerFrame = percentageToUpdatePerFrame
+        spatialGrid.percentagePositionChangeBeforeUpdate = percentagePositionChangeBeforeUpdate
+        spatialGrid.drawGrid = drawGrid
     }
 }

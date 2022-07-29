@@ -81,7 +81,7 @@ interface CircleBody : PhysicsBody
         val xMax = shape.x + radius
         val yMax = shape.y + radius
 
-        engine.scene.forEachNearbyEntity(shape.x, shape.y, radius * 2f, radius * 2f)
+        engine.scene.forEachEntityNearby(shape.x, shape.y, radius * 2f, radius * 2f)
         {
             if (it !== this &&
                 it is PhysicsBody &&

@@ -4,7 +4,6 @@ import no.njoh.pulseengine.core.asset.AssetManagerImpl
 import no.njoh.pulseengine.core.asset.AssetManagerInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Sound
-import no.njoh.pulseengine.core.asset.types.Text
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.audio.AudioImpl
 import no.njoh.pulseengine.core.audio.AudioInternal
@@ -21,7 +20,9 @@ import no.njoh.pulseengine.core.input.InputImpl
 import no.njoh.pulseengine.core.input.InputInternal
 import no.njoh.pulseengine.core.scene.SceneManagerImpl
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
+import no.njoh.pulseengine.core.shared.utils.FileWatcher
 import no.njoh.pulseengine.core.shared.utils.FpsLimiter
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.widget.WidgetManagerImpl
@@ -105,7 +106,7 @@ class PulseEngineImpl(
 
         // Reload sound buffers to new OpenAL context
         audio.setOnOutputDeviceChanged {
-            asset.getAll(Sound::class.java).forEach { it.reloadBuffer() }
+            asset.getAllOfType<Sound>().forEachFast { it.reloadBuffer() }
         }
 
         // Notify gfx implementation about loaded textures
@@ -174,6 +175,7 @@ class PulseEngineImpl(
         data.measureAndUpdateTimeStats()
         {
             updateInput()
+            console.update()
             game.onUpdate()
             scene.update()
             widget.update(this)
@@ -251,6 +253,7 @@ class PulseEngineImpl(
 
     private fun destroy()
     {
+        FileWatcher.shutdown()
         scene.cleanUp()
         widget.cleanUp(this)
         audio.cleanUp()

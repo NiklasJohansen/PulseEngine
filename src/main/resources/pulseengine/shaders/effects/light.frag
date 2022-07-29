@@ -222,7 +222,7 @@ float getShadowCoverage(Mask mask)
     return float(bitCount(mask.m0) + bitCount(mask.m1) + bitCount(mask.m2) + bitCount(mask.m3)) / MASK_RES;
 }
 
-////////////////////////////////////////// LINEAR SHADOW //////////////////////////////////////////
+////////////////////////////////////////// LINEAR SOFT SHADOW //////////////////////////////////////////
 
 float calcluateLinearSoftShadow(vec2 pixelPos, vec2 light0, vec2 light1)
 {
@@ -251,6 +251,22 @@ float calcluateLinearSoftShadow(vec2 pixelPos, vec2 light0, vec2 light1)
     }
 
     return (shadowMask == fullMask) ? 1.0 : getShadowCoverage(shadowMask);
+}
+
+////////////////////////////////////////// LINEAR HARD SHADOW //////////////////////////////////////////
+
+float calcluateLinearHardShadow(vec2 pixelPos, vec2 light0, vec2 light1)
+{
+    vec2 closestLightPoint = closestPointOnLineSegment(pixelPos, light0, light1);
+
+    for (int i = firstEdgeIndex; i < lastEdgeIndex; i++)
+    {
+        Edge edge = edges[i];
+        if (hasIntersection(pixelPos, closestLightPoint, edge.point0, edge.point1))
+            return 1.0;
+    }
+
+    return 0.0;
 }
 
 ////////////////////////////////////////// RADIAL SOFT SHADOWS //////////////////////////////////////////
@@ -301,7 +317,14 @@ float calculateShadow(vec2 pixelPos)
     }
     else if ((lightFlags & LIGHT_TYPE_LINEAR) != 0)
     {
-        return calcluateLinearSoftShadow(pixelPos, lightPos0, lightPos1);
+        if ((lightFlags & SHADOW_TYPE_SOFT) != 0)
+        {
+            return calcluateLinearSoftShadow(pixelPos, lightPos0, lightPos1);
+        }
+        else
+        {
+            return calcluateLinearHardShadow(pixelPos, lightPos0, lightPos1);
+        }
     }
 
     return 0.0;
@@ -359,7 +382,7 @@ void main()
     // Direction from pixel postion to light
     vec3 lightDir = getDirectionToLight(pixelPos);
 
-    // Calculate shadow
+    // Calculate shadow (0 = no shadow, 1 = full shadow)
     float shadow = calculateShadow(pixelPos);
 
     // Calculate texure sample coordinate (offset compensates for jitter when texture scale is below 0)

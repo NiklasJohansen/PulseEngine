@@ -4,24 +4,31 @@ import no.njoh.pulseengine.core.graphics.api.ShaderType.FRAGMENT
 import no.njoh.pulseengine.core.graphics.api.ShaderType.VERTEX
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL20.*
+import java.io.File
 import java.io.FileNotFoundException
 
 class Shader(
     id: Int,
+    fileName: String,
     val type: ShaderType,
-    val fileName: String
 ) {
     var id = id
         private set
 
-    fun reload()
+    var fileName = fileName
+        private set
+
+    fun reload(newFileName: String = fileName): Boolean
     {
-        val newShader = load(fileName, type)
-        if (loadedSuccessfully(newShader))
+        val newShader = load(newFileName, type)
+        return if (loadedSuccessfully(newShader))
         {
             glDeleteShader(id)
             id = newShader.id
+            fileName = newShader.fileName
+            true
         }
+        else false
     }
 
     fun delete()
@@ -42,31 +49,32 @@ class Shader(
         fun getOrLoad(fileName: String, type: ShaderType): Shader =
             cache.getOrPut(fileName) { load(fileName, type) }
 
-        fun reloadCache() =
-            cache.values.forEach { it.reload() }
+        fun getShaderFromAbsolutePath(path: String) =
+            cache.firstNotNullOfOrNull { if (path.endsWith(it.key)) it.value else null }
 
-        fun clearCache()
-        {
-            cache.values.forEach { it.delete() }
-            cache.clear()
-        }
+        fun reloadAll() = cache.values.forEach { it.reload() }
 
         private fun load(fileName: String, type: ShaderType) : Shader
         {
             try
             {
-                val source = Shader::class.java.getResource(fileName)
-                    ?: throw FileNotFoundException("could not locate file")
+                val file = File(fileName)
+                val source = when
+                {
+                    file.isFile && file.isAbsolute -> file.readText()
+                    else -> Shader::class.java.getResource(fileName)?.readText()
+                        ?: throw FileNotFoundException("could not locate shader file")
+                }
 
                 val id = glCreateShader(type.value)
-                glShaderSource(id, source.readText())
+                glShaderSource(id, source)
                 glCompileShader(id)
 
                 if (glGetShaderi(id, GL_COMPILE_STATUS) != GL_TRUE)
                     throw RuntimeException("\n" + glGetShaderInfoLog(id))
 
                 Logger.debug("Loaded shader: $fileName")
-                return Shader(id, type, fileName)
+                return Shader(id, fileName, type)
             }
             catch (e: Exception)
             {
@@ -76,7 +84,7 @@ class Shader(
                     FRAGMENT -> errFragShader
                     VERTEX -> errVertShader
                 }
-                return Shader(errorShader.id, type, fileName)
+                return Shader(errorShader.id, fileName, type)
             }
         }
 

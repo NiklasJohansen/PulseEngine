@@ -13,7 +13,7 @@ class Testbed : PulseEngineGame()
 {
     override fun onCreate()
     {
-        engine.window.title = "Pulse Engine - Testbed"
+        engine.window.title = "Pulse Engine 0.7.0 - Testbed"
         engine.config.gameName = "Testbed"
         engine.config.targetFps = 120
         engine.widget.add(SceneEditor(), CommandLine(), Profiler())
@@ -23,15 +23,12 @@ class Testbed : PulseEngineGame()
         engine.scene.start()
     }
 
-    override fun onUpdate()
-    {
-
-    }
+    override fun onUpdate() { }
 
     override fun onRender()
     {
         engine.gfx.mainSurface.drawText(
-            text = "PulseEngine 0.6.0 - Testbed",
+            text = "PulseEngine 0.7.0 - Testbed",
             x = engine.window.width / 2f,
             y = engine.window.height / 2f,
             xOrigin = 0.5f,
@@ -41,6 +38,7 @@ class Testbed : PulseEngineGame()
 
     override fun onDestroy()
     {
-        engine.scene.saveIf { it.state == STOPPED }
+        if (engine.scene.state == STOPPED)
+            engine.scene.save()
     }
 }

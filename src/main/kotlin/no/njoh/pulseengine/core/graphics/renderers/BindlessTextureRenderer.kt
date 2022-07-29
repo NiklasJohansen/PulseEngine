@@ -36,8 +36,9 @@ class BindlessTextureRenderer(
             .withAttribute("cornerRadius", 1, GL_FLOAT, 1)
             .withAttribute("uvMin", 2, GL_FLOAT, 1)
             .withAttribute("uvMax", 2, GL_FLOAT, 1)
+            .withAttribute("tiling", 2, GL_FLOAT, 1)
             .withAttribute("color", 1, GL_FLOAT, 1)
-            .withAttribute("texIndex", 1, GL_FLOAT, 1)
+            .withAttribute("textureIndex", 1, GL_FLOAT, 1)
 
         if (!this::program.isInitialized)
         {
@@ -49,22 +50,22 @@ class BindlessTextureRenderer(
                 1f, 1f  // Bottom-right vertex
             ))
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/bindless_texture.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/bindless_texture.frag"
+                vertexShaderFileName = "/pulseengine/shaders/default/texture_bindless.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/default/texture_bindless.frag"
             )
         }
 
         program.bind()
         vertexBuffer.bind()
-        program.defineVertexAttributeLayout(vertexLayout)
+        program.setVertexAttributeLayout(vertexLayout)
         instanceBuffer.bind()
-        program.defineVertexAttributeLayout(instanceLayout)
+        program.setVertexAttributeLayout(instanceLayout)
         vao.release()
     }
 
     fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
     {
-        instanceBuffer.fill(15)
+        instanceBuffer.fill(17)
         {
             put(x)
             put(y)
@@ -79,6 +80,8 @@ class BindlessTextureRenderer(
             put(texture.vMin)
             put(texture.uMax)
             put(texture.vMax)
+            put(1f) // U-tiling
+            put(1f) // V-tiling
             put(context.drawColor)
             put(texture.id.toFloat())
         }
@@ -87,9 +90,24 @@ class BindlessTextureRenderer(
         context.increaseDepth()
     }
 
-    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
-    {
-        instanceBuffer.fill(15)
+    fun drawTexture(
+        texture: Texture,
+        x: Float,
+        y: Float,
+        w: Float,
+        h: Float,
+        rot: Float,
+        xOrigin: Float,
+        yOrigin: Float,
+        cornerRadius: Float,
+        uMin: Float,
+        vMin: Float,
+        uMax: Float,
+        vMax: Float,
+        uTiling: Float,
+        vTiling: Float
+    ) {
+        instanceBuffer.fill(17)
         {
             put(x)
             put(y)
@@ -104,6 +122,8 @@ class BindlessTextureRenderer(
             put(texture.vMax * vMin)
             put(texture.uMax * uMax)
             put(texture.vMax * vMax)
+            put(uTiling)
+            put(vTiling)
             put(context.drawColor)
             put(texture.id.toFloat())
         }

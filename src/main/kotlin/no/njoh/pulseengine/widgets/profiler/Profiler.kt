@@ -121,7 +121,7 @@ class Profiler : Widget
         }
 
         val surface = engine.gfx.getSurfaceOrDefault("overlay")
-        val font = engine.asset.get<Font>("graph_font")
+        val font = engine.asset.getOrNull("graph_font") ?: Font.DEFAULT
 
         for (graph in graphs)
         {

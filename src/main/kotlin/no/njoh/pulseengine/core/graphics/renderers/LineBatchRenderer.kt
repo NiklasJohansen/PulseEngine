@@ -37,7 +37,7 @@ class LineBatchRenderer(
 
         vbo.bind()
         program.bind()
-        program.defineVertexAttributeLayout(layout)
+        program.setVertexAttributeLayout(layout)
         vao.release()
     }
 

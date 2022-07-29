@@ -1,29 +1,39 @@
 package no.njoh.pulseengine.core.scene
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Array2D
-import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DISCOVERABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.core.shared.primitives.HitResult
+import no.njoh.pulseengine.core.shared.primitives.Physical
 import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
+import no.njoh.pulseengine.core.shared.utils.GridUtil
+import no.njoh.pulseengine.core.shared.utils.MathUtil
 import kotlin.math.*
 
 class SpatialGrid (
-    private val entities : List<SwapList<SceneEntity>>,
-    var cellSize: Float,
-    var minBorderSize: Int = 3000,
-    var maxWidth: Int = 100_000,
-    var maxHeight: Int = 100_000,
-    var percentageToUpdatePerFrame: Float = 1f
+    private val entities : List<SwapList<SceneEntity>>
 ) {
+    var maxWidth = 100_000
+    var maxHeight = 100_000
+    var borderSize = 3000
+    var percentageOfCellsToUpdatePerFrame = 0.2f // Updates 20% of the cells per frame
+    var percentagePositionChangeBeforeUpdate = 0.3f // Requires entities to move at least 30% of cellSize before being updated
+    var drawGrid = false
+    var cellSize = 350f
+        private set
+
     @PublishedApi internal var xOffset = 0f
     @PublishedApi internal var yOffset = 0f
     @PublishedApi internal var xCells = 0
     @PublishedApi internal var yCells = 0
-    @PublishedApi internal lateinit var array: Array2D<Node?>
+    @PublishedApi internal var invCellSize = 1f / cellSize
+    @PublishedApi internal lateinit var cells: Array2D<Node?>
 
     private var width = 0
     private var height = 0
@@ -31,13 +41,11 @@ class SpatialGrid (
     private var xMax = 0f
     private var yMin = 0f
     private var yMax = 0f
-
     private var needToRecalculate = false
-    private var currentNodeIndex = 0
-    private val cornerPositions = FloatArray(8)
+    private var currentCellIndex = 0
     private val emptyClusterArray = emptyArray<Node?>()
+    private val clusterNodes = mutableListOf<Node>()
     private lateinit var scanRanges: IntArray
-    var drawGrid = false
 
     init { recalculate() }
 
@@ -51,7 +59,7 @@ class SpatialGrid (
 
         entities.forEachFast { entities ->
             entities.forEachFast { entity ->
-                if (entity.isNot(DEAD))
+                if (entity.isSet(DISCOVERABLE) && entity.isNot(DEAD))
                 {
                     val r = 0.5f * if (entity.width > entity.height) entity.width else entity.height
                     if (entity.x + r > xMax) xMax = entity.x + r
@@ -76,326 +84,137 @@ class SpatialGrid (
         yMin = max(yMin, maxHeight * -0.5f)
         yMax = min(yMax, maxHeight * 0.5f)
 
-        val xCenter = (xMin + xMax) / 2
-        val yCenter = (yMin + yMax) / 2
+        val xCenter = (xMin + xMax) * 0.5f
+        val yCenter = (yMin + yMax) * 0.5f
 
-        width = ((xMax - xMin) + minBorderSize).toInt()
-        height = ((yMax - yMin) + minBorderSize).toInt()
-        xOffset = xCenter - width / 2f
-        yOffset = yCenter - height / 2f
-        xCells = (width / cellSize).toInt()
-        yCells = (height / cellSize).toInt()
-        array = Array2D(xCells, yCells) { x, y -> null }
+        width = ((xMax - xMin) + borderSize).toInt()
+        height = ((yMax - yMin) + borderSize).toInt()
+        xOffset = xCenter - width * 0.5f
+        yOffset = yCenter - height * 0.5f
+        xCells = (width * invCellSize).toInt()
+        yCells = (height * invCellSize).toInt()
+        cells = Array2D(xCells, yCells)
         scanRanges = IntArray(2 * yCells) { if (it % 2 == 0) xCells else 0 }
+        currentCellIndex = 0
 
         entities.forEachFast { entities ->
             entities.forEachFast { insert(it) }
         }
     }
 
-    inline fun query(x: Float, y: Float, width: Float, height: Float, queryId: Int, block: (SceneEntity) -> Unit)
+    inline fun <reified T> queryArea(x: Float, y: Float, width: Float, height: Float, rotation: Float = 0f, queryId: Int, action: (T) -> Unit)
     {
-        val xCell = ((x - xOffset) / cellSize).toInt()
-        val yCell = ((y - yOffset) / cellSize).toInt()
-        val horizontalNeighbours = 1 + (width / 2f / cellSize).toInt()
-        val verticalNeighbours = 1 + (height / 2f / cellSize).toInt()
-        val xStart = (xCell - horizontalNeighbours).coerceAtLeast(0)
-        val yStart = (yCell - verticalNeighbours).coerceAtLeast(0)
-        val xEnd = (xStart + horizontalNeighbours * 2).coerceAtMost(xCells - 1)
-        val yEnd = (yStart + verticalNeighbours * 2).coerceAtMost(yCells - 1)
-        val array = array
+        val angleRad = -rotation.toRadians()
+        val rayLength = width
+        val rayWidth = height
+        val xDelta = cos(angleRad) * rayLength * 0.5f
+        val yDelta = sin(angleRad) * rayLength * 0.5f
+        val x0 = x - xOffset - xDelta
+        val y0 = y - yOffset - yDelta
+        val x1 = x - xOffset + xDelta
+        val y1 = y - yOffset + yDelta
         lastQueryId = queryId
 
-        for (yi in yStart .. yEnd)
-        {
-            for (xi in xStart .. xEnd)
-            {
-                var node = array[xi, yi]
-                while (node != null)
-                {
-                    val entity = node.entity
-                    if (entity.isNot(DEAD) && entity.getQueryId() != queryId)
-                    {
-                        block(entity)
-                        entity.setQueryId(queryId)
-                    }
-                    node = node.next
-                }
-            }
+        GridUtil.forEachCellAlongLineInsideGrid(x0, y0, x1, y1, rayWidth, xCells, yCells, cellSize) { xCell, yCell ->
+            forEachEntityInCellOfType(xCell, yCell, queryId, action)
         }
     }
 
-    inline fun <reified T> queryType(x: Float, y: Float, width: Float, height: Float, queryId: Int, block: (T) -> Unit)
+    inline fun <reified T> queryAxisAlignedArea(x: Float, y: Float, width: Float, height: Float, queryId: Int, action: (T) -> Unit)
     {
-        val invCellSize = 1.0f / cellSize
         val xCell = ((x - xOffset) * invCellSize).toInt()
         val yCell = ((y - yOffset) * invCellSize).toInt()
         val horizontalNeighbours = 1 + (width * 0.5f * invCellSize).toInt()
         val verticalNeighbours = 1 + (height * 0.5f * invCellSize).toInt()
-
-        var xStart = xCell - horizontalNeighbours
-        var yStart = yCell - verticalNeighbours
-        var xEnd = xStart + horizontalNeighbours * 2
-        var yEnd = yStart + verticalNeighbours * 2
-
-        if (xStart < 0) xStart = 0
-        if (yStart < 0) yStart = 0
-        if (xEnd > xCells - 1) xEnd = xCells - 1
-        if (yEnd > yCells - 1) yEnd = yCells - 1
-
-        val array = array
+        val xStartCell = max(0, (xCell - horizontalNeighbours))
+        val yStartCell = max(0, (yCell - verticalNeighbours))
+        val xEndCell = min(xCells - 1, (xStartCell + horizontalNeighbours * 2))
+        val yEndCell = min(yCells - 1, (yStartCell + verticalNeighbours * 2))
         lastQueryId = queryId
 
-        for (yi in yStart .. yEnd)
+        for (yi in yStartCell .. yEndCell)
         {
-            for (xi in xStart .. xEnd)
+            for (xi in xStartCell .. xEndCell)
             {
-                var node = array[xi, yi]
-                while (node != null)
+                forEachEntityInCellOfType(xi, yi, queryId, action)
+            }
+        }
+    }
+
+    inline fun <reified T> queryRay(x: Float, y: Float, angle: Float, rayLength: Float, rayWidth: Float, queryId: Int, action: (T) -> Unit)
+    {
+        val angleRad = -angle.toRadians()
+        val x0 = x - xOffset
+        val y0 = y - yOffset
+        val x1 = x0 + cos(angleRad) * rayLength
+        val y1 = y0 + sin(angleRad) * rayLength
+        lastQueryId = queryId
+
+        GridUtil.forEachCellAlongLineInsideGrid(x0, y0, x1, y1, rayWidth, xCells, yCells, cellSize) { xCell, yCell ->
+            forEachEntityInCellOfType(xCell, yCell, queryId, action)
+        }
+    }
+
+    inline fun <reified T> queryFirstAlongRay(x: Float, y: Float, angle: Float, rayLength: Float): HitResult<T>?
+    {
+        val angleRad = -angle.toRadians()
+        val xEnd = x + cos(angleRad) * rayLength
+        val yEnd = y + sin(angleRad) * rayLength
+        var xHit = 0f
+        var yHit = 0f
+        GridUtil.forEachCellAlongLineInsideGrid(
+            x - xOffset, y - yOffset, xEnd - xOffset, yEnd - yOffset, cellSize, xCells, yCells
+        ) { xCell, yCell ->
+            var closestEntity: T? = null
+            var minDist = Float.MAX_VALUE
+            var node = cells[xCell, yCell]
+            while (node != null)
+            {
+                val entity = node.entity
+                if (entity.isNot(DEAD) && entity is T)
                 {
-                    val entity = node.entity
-                    if (entity.isNot(DEAD) && entity.getQueryId() != queryId && entity is T)
+                    val hitPoint = when (entity)
                     {
-                        block(entity as T)
-                        entity.setQueryId(queryId)
+                        is Physical -> MathUtil.getLineShapeIntersection(x, y, xEnd, yEnd, entity.shape)
+                        else -> MathUtil.getLineRectIntersection(x, y, xEnd, yEnd, entity.x, entity.y, entity.width, entity.height, entity.rotation.toRadians())
                     }
-                    node = node.next
+
+                    if (hitPoint != null && hitPoint.z < minDist)
+                    {
+                        closestEntity = entity
+                        xHit = hitPoint.x
+                        yHit = hitPoint.y
+                        minDist = hitPoint.z
+                    }
                 }
+                node = node.next
+            }
+
+            if (closestEntity != null &&
+                ((xHit - xOffset) * invCellSize).toInt() == xCell && // Requires the hit point to be inside the current cell
+                ((yHit - yOffset) * invCellSize).toInt() == yCell
+            ) {
+                return HitResult(closestEntity, xHit, yHit, sqrt(minDist))
             }
         }
+
+        return null
     }
 
     @PublishedApi
-    internal inline fun SceneEntity.getQueryId(): Int = (flags ushr 24)
-
-    @PublishedApi
-    internal inline fun SceneEntity.setQueryId(id: Int)
+    internal inline fun <reified T> forEachEntityInCellOfType(xCell: Int, yCell: Int, queryId: Int, action: (T) -> Unit)
     {
-        flags = (flags and 16777215) or (id shl 24) // Clear last 8 bits and set queryId
-    }
-
-    fun insert(entity: SceneEntity): Boolean
-    {
-        if (entity.isSet(DEAD))
-            return false
-
-        if ((entity.x <= xMin && xMin == maxWidth * -0.5f) ||
-            (entity.x >= xMax && xMax == maxWidth * 0.5f) ||
-            (entity.y <= yMin && yMin == maxHeight * -0.5f) ||
-            (entity.y >= yMax && yMax == maxHeight * 0.5f)
-        ) {
-            entity.set(DEAD)
-            needToRecalculate = true
-            return false
-        }
-
-        val inserted = when
+        var node = cells[xCell, yCell]
+        while (node != null)
         {
-            entity.isNot(DISCOVERABLE) -> true
-            abs(entity.width) + abs(entity.height) < cellSize * 0.5 -> insertPoint(entity)
-            entity.rotation == 0.0f -> insertAxisAligned(entity)
-            else -> insertRotated(entity)
-        }
-
-        if (!inserted)
-            needToRecalculate = true
-
-        return inserted
-    }
-
-
-    private fun insertPoint(entity: SceneEntity): Boolean
-    {
-        val x = ((entity.x - xOffset)  / cellSize).toInt()
-        val y = ((entity.y - yOffset)  / cellSize).toInt()
-
-        if (x < 0 || y < 0 || x >= xCells || y >= yCells)
-            return false
-
-        insert(x, y, entity).cluster = emptyClusterArray
-        return true
-    }
-
-    private fun insertAxisAligned(entity: SceneEntity): Boolean
-    {
-        val halfWidth = abs(entity.width) / 2f
-        val halfHeight = abs(entity.height) / 2f
-        val left = ((entity.x - halfWidth - xOffset)  / cellSize).toInt()
-        val right = ((entity.x + halfWidth - xOffset)  / cellSize).toInt()
-        val top = ((entity.y - halfHeight - yOffset)  / cellSize).toInt()
-        val bottom = ((entity.y + halfHeight - yOffset) / cellSize).toInt()
-
-        if (left < 0 || top < 0 || right >= xCells || bottom >= yCells)
-            return false
-
-        val xCell = ((entity.x - xOffset) / cellSize).toInt()
-        val yCell = ((entity.y - yOffset) / cellSize).toInt()
-        val maxSize = (bottom - top + 1) * (right - left + 1) - 1
-        val cluster = Array<Node?>(maxSize) { null }
-        var mainCell: Node? = null
-        var count = 0
-
-        for (y in top .. bottom)
-        {
-            for (x in left .. right)
+            val entity = node.entity
+            if (entity.isNot(DEAD) && entity.getQueryId() != queryId && entity is T)
             {
-                if (x == xCell && y == yCell)
-                    mainCell = insert(x, y, entity)
-                else
-                    cluster[count++] = insert(x, y, entity)
+                action(entity as T)
+                entity.setQueryId(queryId)
             }
+            node = node.next
         }
-
-        mainCell?.cluster = cluster
-        return true
-    }
-
-    private fun insertRotated(entity: SceneEntity): Boolean
-    {
-        val rot = -entity.rotation / 180 * PI.toFloat()
-        val c = cos(rot)
-        val s = sin(rot)
-        val w = entity.width / 2f
-        val h = entity.height / 2f
-        val x = entity.x
-        val y = entity.y
-        val x0 = -w * c - h * s
-        val y0 = -w * s + h * c
-        val x1 = w * c - h * s
-        val y1 = w * s + h * c
-
-        cornerPositions[0] = x + x0 - xOffset
-        cornerPositions[1] = y + y0 - yOffset
-        cornerPositions[2] = x + x1 - xOffset
-        cornerPositions[3] = y + y1 - yOffset
-        cornerPositions[4] = x - x0 - xOffset
-        cornerPositions[5] = y - y0 - yOffset
-        cornerPositions[6] = x - x1 - xOffset
-        cornerPositions[7] = y - y1 - yOffset
-
-        var yMin = yCells
-        var yMax = 0
-        var i = 0
-        while (i < 4)
-        {
-            val xCorner0 = cornerPositions[(i * 2 + 0)]
-            val yCorner0 = cornerPositions[(i * 2 + 1)]
-            val xCorner1 = cornerPositions[(i * 2 + 2) % 8]
-            val yCorner1 = cornerPositions[(i * 2 + 3) % 8]
-
-            var xCell = floor(xCorner0 / cellSize).toInt()
-            var yCell = floor(yCorner0 / cellSize).toInt()
-            if (yCell < 0 || yCell >= yCells)
-                return false
-
-            scanRanges[yCell * 2] = min(scanRanges[yCell * 2], xCell)
-            scanRanges[yCell * 2 + 1] = max(scanRanges[yCell * 2 + 1], xCell)
-            yMin = min(yMin, yCell)
-            yMax = max(yMax, yCell)
-
-            val xCornerDelta = xCorner1 - xCorner0
-            val yCornerDelta = yCorner1 - yCorner0
-            val dsx = if (xCornerDelta != 0f) cellSize / abs(xCornerDelta) else 0f
-            val dsy = if (yCornerDelta != 0f) cellSize / abs(yCornerDelta) else 0f
-            var sx = 10f
-            var sy = 10f
-
-            if (xCornerDelta < 0) sx = (cellSize * xCell - xCorner0) / xCornerDelta
-            if (xCornerDelta > 0) sx = (cellSize * (xCell + 1) - xCorner0) / xCornerDelta
-            if (yCornerDelta < 0) sy = (cellSize * yCell - yCorner0) / yCornerDelta
-            if (yCornerDelta > 0) sy = (cellSize * (yCell + 1) - yCorner0) / yCornerDelta
-
-            while (sx <= 1 || sy <= 1)
-            {
-                if (sx < sy)
-                {
-                    sx += dsx
-                    if (xCornerDelta > 0) xCell++ else xCell--
-                }
-                else
-                {
-                    sy += dsy
-                    if (yCornerDelta > 0) yCell++ else yCell--
-                }
-
-                if (yCell < 0 || yCell >= yCells)
-                    return false
-
-                scanRanges[yCell * 2] = min(scanRanges[yCell * 2], xCell)
-                scanRanges[yCell * 2 + 1] = max(scanRanges[yCell * 2 + 1], xCell)
-                yMin = min(yMin, yCell)
-                yMax = max(yMax, yCell)
-            }
-
-            i++
-        }
-
-        val xParent = ((entity.x - xOffset) / cellSize).toInt()
-        val yParent = ((entity.y - yOffset) / cellSize).toInt()
-
-        var maxSize = 0
-        for (yi in yMin .. yMax)
-            maxSize += scanRanges[yi * 2 + 1] - scanRanges[yi * 2] + 1
-
-        val cluster = Array<Node?>(maxSize - 1) { null }
-        var mainCell: Node? = null
-        var count = 0
-
-        for (yi in yMin .. yMax)
-        {
-            val xMin = scanRanges[yi * 2]
-            val xMax = scanRanges[yi * 2 + 1]
-
-            // clear scan ranges
-            scanRanges[yi * 2] = xCells
-            scanRanges[yi * 2 + 1] = 0
-
-            if (xMin < 0 || xMin >= xCells || xMax < 0 || xMax >= xCells)
-                return false
-
-            for (xi in xMin .. xMax)
-            {
-                if (xi == xParent && yi == yParent)
-                    mainCell = insert(xi, yi, entity)
-                else
-                    cluster[count++] = insert(xi, yi, entity)
-            }
-        }
-
-        mainCell?.cluster = cluster
-        return true
-    }
-
-    private fun insert(xCell: Int, yCell: Int, entity: SceneEntity): Node
-    {
-        val node = Node(entity, xCell, yCell)
-        val first = array[xCell, yCell]
-        first?.prev = node
-        node.next = first
-        node.prev = null
-        array[xCell, yCell] = node
-        return node
-    }
-
-    private fun remove(node: Node)
-    {
-        if (node.prev == null)
-        {
-            val first = array[node.xCell, node.yCell]
-            if (first == node)
-            {
-                first.next?.prev = null
-                array[node.xCell, node.yCell] = first.next
-            }
-            else println("Entity not first in current cell.. should not happen")
-        }
-        else
-        {
-            node.prev?.next = node.next
-            node.next?.prev = node.prev
-        }
-
-        node.cluster?.forEach { if (it != null) remove(it) }
     }
 
     fun update()
@@ -403,21 +222,23 @@ class SpatialGrid (
         if (needToRecalculate)
             recalculate()
 
-        val nodesToUpdate = (array.size * percentageToUpdatePerFrame).toInt()
-        val start = currentNodeIndex
-        var end = start + nodesToUpdate
-        currentNodeIndex = end
+        val nodes = cells
+        val cellSize = cellSize
+        val minPosChangeBeforeUpdate = cellSize * percentagePositionChangeBeforeUpdate
+        val numberOfCellsToUpdate = (nodes.size * percentageOfCellsToUpdatePerFrame).toInt()
+        val startIndex = currentCellIndex
+        var endIndex = startIndex + numberOfCellsToUpdate
+        currentCellIndex = endIndex
 
-        if (end >= array.size)
+        if (endIndex >= nodes.size)
         {
-            currentNodeIndex = 0
-            end = array.size
+            currentCellIndex = 0
+            endIndex = nodes.size
         }
 
-        val invCellSize = 1.0f / cellSize
-        for (i in start until end)
+        for (i in startIndex until endIndex)
         {
-            var node = array[i]
+            var node = nodes[i]
             while (node != null)
             {
                 if (node.cluster != null) // this node is the cluster parent
@@ -425,17 +246,18 @@ class SpatialGrid (
                     val entity = node.entity
                     if (entity.isSet(DEAD))
                     {
-                        remove(node)
+                        removeNode(node)
                     }
                     else if (entity.isAnySet(POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED))
                     {
-                        val xEntity = ((entity.x - xOffset) * invCellSize).toInt()
-                        val yEntity = ((entity.y - yOffset) * invCellSize).toInt()
-
-                        if (node.xCell != xEntity || node.yCell != yEntity || entity.isSet(SIZE_UPDATED) ||
-                            (node.cluster!!.isNotEmpty() && entity.isSet(ROTATION_UPDATED)))
-                        {
-                            remove(node)
+                        val xDelta = abs(node.xPos - entity.x)
+                        val yDelta = abs(node.yPos - entity.y)
+                        if (xDelta > minPosChangeBeforeUpdate ||
+                            yDelta > minPosChangeBeforeUpdate ||
+                            entity.isSet(SIZE_UPDATED) ||
+                            (entity.isSet(ROTATION_UPDATED) && node.cluster!!.isNotEmpty())
+                        ) {
+                            removeNode(node)
                             insert(entity)
                             entity.setNot(POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED)
                         }
@@ -446,23 +268,28 @@ class SpatialGrid (
         }
     }
 
-    fun render(surface: Surface2D)
+    fun render(engine: PulseEngine)
     {
         if (!drawGrid)
             return
 
         val width = xCells * cellSize
         val height = yCells * cellSize
+        val surface = engine.gfx.getSurface("spatial_grid") ?: engine.gfx.createSurface(
+            name = "spatial_grid",
+            camera = engine.gfx.mainCamera,
+            zOrder = engine.gfx.mainSurface.context.zOrder - 1
+        )
 
         // Background rectangle
-        surface.setDrawColor(1f, 1f, 1f, 0.3f)
+        surface.setDrawColor(1f, 1f, 1f, 0.1f)
         surface.drawQuad(xOffset, yOffset, width, height)
 
         for (y in 0 until yCells)
         {
             for (x in 0 until xCells)
             {
-                var node = array[x, y]
+                var node = cells[x, y]
                 if (node != null)
                 {
                     var count = 0
@@ -480,11 +307,11 @@ class SpatialGrid (
                     surface.drawText(count.toString(), xPos + 10f, yPos + 10f, fontSize = 30f)
 
                     // Cell quad
-                    surface.setDrawColor(1f, 1f, 1f, 0.3f)
+                    surface.setDrawColor(1f, 1f, 1f, 0.2f)
                     surface.drawQuad(xPos, yPos, cellSize, cellSize)
 
                     // Cell stroke
-                    surface.setDrawColor(1f, 1f, 1f, 0.7f)
+                    surface.setDrawColor(1f, 1f, 1f, 0.5f)
                     surface.drawLine(xPos, yPos, xPos + cellSize, yPos)
                     surface.drawLine(xPos, yPos + cellSize, xPos + cellSize, yPos + cellSize)
                     surface.drawLine(xPos, yPos, xPos, yPos + cellSize)
@@ -504,24 +331,194 @@ class SpatialGrid (
     fun clear()
     {
         var i = 0
-        while (i < array.size)
+        while (i < cells.size)
         {
-            var node = array[i]
+            var node = cells[i]
             while (node != null)
             {
-                node.cluster = null
+                val next = node.next
+                node.next = null
                 node.prev = null
-                node = node.next
-                node?.next = null
+                node.cluster = null
+                node = next
             }
-            array[i++] = null
+            cells[i++] = null
         }
+    }
+
+    fun setCellSize(cellSize: Float)
+    {
+        if (this.cellSize == cellSize || cellSize == 0f)
+            return
+
+        this.cellSize = cellSize
+        this.invCellSize = 1f / cellSize
+        this.needToRecalculate = true
+    }
+
+    fun insert(entity: SceneEntity)
+    {
+        if (entity.isNot(DISCOVERABLE) || entity.isSet(DEAD))
+            return
+
+        // Check if is entity outside of max area
+        if ((entity.x <= xMin && xMin == maxWidth * -0.5f) ||
+            (entity.x >= xMax && xMax == maxWidth * 0.5f) ||
+            (entity.y <= yMin && yMin == maxHeight * -0.5f) ||
+            (entity.y >= yMax && yMax == maxHeight * 0.5f)
+        ) {
+            entity.setNot(DISCOVERABLE)
+            needToRecalculate = true
+            return
+        }
+
+        val wasInserted = when
+        {
+            max(abs(entity.width), abs(entity.height)) < cellSize * 0.1 -> insertPoint(entity)
+            entity.rotation == 0.0f -> insertAxisAligned(entity)
+            else -> insertRotated(entity)
+        }
+
+        if (!wasInserted)
+            needToRecalculate = true
+    }
+
+    private fun insertPoint(entity: SceneEntity): Boolean
+    {
+        val xCell = ((entity.x - xOffset) * invCellSize).toInt()
+        val yCell = ((entity.y - yOffset) * invCellSize).toInt()
+
+        if (xCell < 0 || yCell < 0 || xCell >= xCells || yCell >= yCells)
+            return false
+
+        createAndInsertNode(xCell, yCell, entity).cluster = emptyClusterArray
+        return true
+    }
+
+    private fun insertAxisAligned(entity: SceneEntity): Boolean
+    {
+        val halfWidth = abs(entity.width) * 0.5f
+        val halfHeight = abs(entity.height) * 0.5f
+        val x = entity.x - xOffset
+        val y = entity.y - yOffset
+        val leftCell = ((x - halfWidth) * invCellSize).toInt()
+        val rightCell = ((x + halfWidth) * invCellSize).toInt()
+        val topCell = ((y - halfHeight) * invCellSize).toInt()
+        val bottomCell = ((y + halfHeight) * invCellSize).toInt()
+
+        if (leftCell < 0 || topCell < 0 || rightCell >= xCells || bottomCell >= yCells)
+            return false
+
+        val xParentCell = (x * invCellSize).toInt()
+        val yParentCell = (y * invCellSize).toInt()
+        val maxSize = (bottomCell - topCell + 1) * (rightCell - leftCell + 1) - 1
+        val cluster = Array<Node?>(maxSize) { null }
+        var parentNode: Node? = null
+        var count = 0
+
+        for (yCell in topCell .. bottomCell)
+        {
+            for (xCell in leftCell .. rightCell)
+            {
+                if (xCell == xParentCell && yCell == yParentCell)
+                    parentNode = createAndInsertNode(xCell, yCell, entity)
+                else
+                    cluster[count++] = createAndInsertNode(xCell, yCell, entity)
+            }
+        }
+
+        parentNode?.cluster = cluster
+        return true
+    }
+
+    private fun insertRotated(entity: SceneEntity): Boolean
+    {
+        val angle = -entity.rotation.toRadians()
+        val halfLength = entity.width * 0.5f
+        val thickness = entity.height
+        val xDelta = cos(angle) * halfLength
+        val yDelta = sin(angle) * halfLength
+        val x = entity.x - xOffset
+        val y = entity.y - yOffset
+        val xStart = x - xDelta
+        val yStart = y - yDelta
+        val xEnd = x + xDelta
+        val yEnd = y + yDelta
+        val xParentCell = (x * invCellSize).toInt()
+        val yParentCell = (y * invCellSize).toInt()
+        var parentNode: Node? = null
+        var inserted = false
+
+        GridUtil.forEachCellAlongLineInsideGrid(xStart, yStart, xEnd, yEnd, thickness, xCells, yCells, cellSize, breakOnOutOfBounds = true) { xCell, yCell ->
+            val insertedNode = createAndInsertNode(xCell, yCell, entity)
+            if (xCell == xParentCell && yCell == yParentCell)
+                parentNode = insertedNode
+            else
+                clusterNodes.add(insertedNode)
+            inserted = true
+        }
+
+        if (!inserted)
+            return false // No entity was inserted, need recalculation
+
+        if (clusterNodes.isEmpty())
+            parentNode?.cluster = emptyClusterArray
+        else
+        {
+            parentNode?.cluster = Array(clusterNodes.size) { i -> clusterNodes[i] }
+            clusterNodes.clear()
+        }
+
+        return true // Entity successfully inserted
+    }
+
+    private fun createAndInsertNode(xCell: Int, yCell: Int, entity: SceneEntity): Node
+    {
+        val node = Node(entity, xCell, yCell, entity.x, entity.y)
+        val first = cells[xCell, yCell]
+        first?.prev = node
+        node.next = first
+        node.prev = null
+        cells[xCell, yCell] = node
+        return node
+    }
+
+    private fun removeNode(node: Node)
+    {
+        if (node.prev == null)
+        {
+            val first = cells[node.xCell, node.yCell]
+            if (first == node)
+            {
+                first.next?.prev = null
+                cells[node.xCell, node.yCell] = first.next
+            }
+            else println("Entity not first in current cell.. should not happen")
+        }
+        else
+        {
+            node.prev?.next = node.next
+            node.next?.prev = node.prev
+        }
+
+        node.cluster?.forEachFast { if (it != null) removeNode(it) }
+    }
+
+    @PublishedApi
+    internal inline fun SceneEntity.getQueryId(): Int = (flags ushr 24)
+
+    @PublishedApi
+    internal inline fun SceneEntity.setQueryId(id: Int)
+    {
+        flags = (flags and 16777215) or (id shl 24) // Clear last 8 bits and set queryId
     }
 
     data class Node(
         val entity: SceneEntity,
         val xCell: Int,
         val yCell: Int,
+        val xPos: Float,
+        val yPos: Float,
         var prev: Node? = null,
         var next: Node? = null,
         var cluster: Array<Node?>? = null

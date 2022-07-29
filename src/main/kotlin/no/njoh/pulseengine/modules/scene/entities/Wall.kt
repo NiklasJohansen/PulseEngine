@@ -25,6 +25,6 @@ class Wall : Box(), LightOccluder, NormalMapRenderPassTarget
         val r = if (rotInterpolated.isNaN()) rotation else rotInterpolated
 
         surface.setDrawColor(1f, 1f, 1f)
-        surface.drawTexture(engine.asset.getSafe(textureName) ?: Texture.BLANK, x, y, width, height, r, xOrigin = 0.5f, yOrigin = 0.5f)
+        surface.drawTexture(engine.asset.getOrNull(textureName) ?: Texture.BLANK, x, y, width, height, r, xOrigin = 0.5f, yOrigin = 0.5f)
     }
 }

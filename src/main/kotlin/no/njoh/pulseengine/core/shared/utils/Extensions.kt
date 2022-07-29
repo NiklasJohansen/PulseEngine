@@ -113,6 +113,15 @@ object Extensions
     }
 
     /**
+     * Fast iteration of [Array].
+     */
+    inline fun <T> Array<T>.forEachFast(block: (T) -> Unit)
+    {
+        var i = 0
+        while (i < size) block(this[i++])
+    }
+
+    /**
      * Fast and reversed iteration of constant lookup lists.
      */
     inline fun <T> List<T>.forEachReversed(block: (T) -> Unit)
@@ -149,7 +158,7 @@ object Extensions
     {
         val start = System.nanoTime()
         block()
-        return (System.nanoTime() - start) / 1_000_00f
+        return (System.nanoTime() - start) / 1_000_000f
     }
 
     /**

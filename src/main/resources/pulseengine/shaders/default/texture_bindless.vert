@@ -11,15 +11,18 @@ in float rotation;
 in float cornerRadius;
 in vec2 uvMin;
 in vec2 uvMax;
+in vec2 tiling;
 in uint color;
-in float texIndex;
+in float textureIndex;
 
 out vec4 vertexColor;
-out vec2 textureArrayCoord;
-out vec2 textureCoord;
-out float textureIndex;
-out float quadCornerRadius;
+out vec2 texStart;
+out vec2 texSize;
+out vec2 texCoord;
+out vec2 texTiling;
+out float texIndex;
 out vec2 quadSize;
+out float quadCornerRadius;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -32,7 +35,7 @@ vec4 getColor(uint rgba) {
     return vec4(r, g, b, a) / 255.0f;
 }
 
-mat2 rotationMatrix(float angle) {
+mat2 rotate(float angle) {
     float c = cos(angle);
     float s = sin(angle);
     return mat2(
@@ -43,13 +46,15 @@ mat2 rotationMatrix(float angle) {
 
 void main() {
     vertexColor = getColor(color);
-    textureArrayCoord = uvMin + (uvMax - uvMin) * vertexPos;
-    textureCoord = vertexPos;
-    textureIndex = texIndex;
-    quadCornerRadius = cornerRadius;
+    texStart = uvMin;
+    texSize = uvMax - uvMin;
+    texCoord = vertexPos;
+    texTiling = tiling;
+    texIndex = textureIndex;
     quadSize = size;
+    quadCornerRadius = cornerRadius;
 
-    vec2 offset = (vertexPos * size - size * origin) * rotationMatrix(radians(rotation));
+    vec2 offset = (vertexPos * size - size * origin) * rotate(radians(rotation));
     vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);
 
     gl_Position = projection * view * vertexPos;

@@ -135,7 +135,7 @@ interface PolygonBody : PhysicsBody
         val yMin = shape.yMin
         val yMax = shape.yMax
 
-        engine.scene.forEachNearbyEntity(shape.xCenter, shape.yCenter, xMax - xMin, yMax - yMin)
+        engine.scene.forEachEntityNearby(shape.xCenter, shape.yCenter, xMax - xMin, yMax - yMin)
         {
             if (it !== this &&
                 it is PhysicsBody &&

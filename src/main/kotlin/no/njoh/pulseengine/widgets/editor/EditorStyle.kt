@@ -11,6 +11,21 @@ class EditorStyle
     fun getColor(name: String) = colors[name] ?: DEFAULT_COLOR
     fun getFont(name: String = "") = fonts[name] ?: Font.DEFAULT
 
+    init // Set default colors
+    {
+        colors["LABEL"] = Color(1.0f, 1.0f, 1.0f, 1.0f)
+        colors["BG_LIGHT"] = Color(0.036326528f, 0.048244897f, 0.057142854f, 0.80784315f)
+        colors["BG_DARK"] = Color(0.024897957f, 0.026741894f, 0.028571427f, 0.9490196f)
+        colors["STROKE"] = Color(0.03612247f, 0.038525835f, 0.04285717f, 1.0f)
+        colors["HEADER"] = Color(0.08892856f, 0.11766804f, 0.14999998f, 0.9490196f)
+        colors["HEADER_HOVER"] = Color(0.09918367f, 0.17537574f, 0.25714284f, 1.0f)
+        colors["BUTTON"] = Color(0.033418354f, 0.03418366f, 0.03571427f, 1.0f)
+        colors["BUTTON_HOVER"] = Color(0.047058824f, 0.050980393f, 0.050980393f, 1.0f)
+        colors["BUTTON_EXIT"] = Color(0.7642857f, 0.3603061f, 0.3603061f, 0.69803923f)
+        colors["ITEM"] = Color(0.048367348f, 0.06711405f, 0.08571428f, 1.0f)
+        colors["ITEM_HOVER"] = Color(0.10275511f, 0.11865307f, 0.13571429f, 1.0f)
+    }
+
     companion object
     {
         private var DEFAULT_COLOR = Color(1f, 1f, 1f)
