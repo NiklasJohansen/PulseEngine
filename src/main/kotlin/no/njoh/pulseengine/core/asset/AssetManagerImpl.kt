@@ -64,9 +64,12 @@ open class AssetManagerImpl : AssetManagerInternal()
         {
             assets.values.forEach()
             {
-                launch { it.load() }
+                if (it !is Sound)
+                    launch { it.load() }
             }
         }
+        // Sound assets need to be loaded in main thread
+        assets.values.filterIsInstance<Sound>().forEachFast { it.load() }
         assets.values.forEach { asset -> onAssetLoadedCallbacks.forEachFast { it.invoke(asset)  } }
         initialAssetsLoaded = true
         Logger.debug("Loaded ${assets.size} assets in ${startTime.toNowFormatted()}. [${assets.values.joinToString { it.name }}]")
