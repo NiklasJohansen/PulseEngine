@@ -18,7 +18,7 @@ open class GraphicsImpl : GraphicsInternal
 {
     override lateinit var mainCamera: CameraInternal
     override lateinit var mainSurface: Surface2DInternal
-    private lateinit var textureArray: TextureArray
+    override lateinit var textureArray: TextureArray
     private lateinit var renderer: FrameTextureRenderer
 
     private val surfaces = mutableListOf<Surface2DInternal>()

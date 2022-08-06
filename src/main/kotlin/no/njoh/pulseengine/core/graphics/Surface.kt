@@ -51,7 +51,7 @@ interface Surface2D : Surface
     fun setTextureFilter(filter: TextureFilter): Surface2D
     fun setTextureScale(scale: Float): Surface2D
 
-    // Post processing
+    // Post-processing
     fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
     fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
 

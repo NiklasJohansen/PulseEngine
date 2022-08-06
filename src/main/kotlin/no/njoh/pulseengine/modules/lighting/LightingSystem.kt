@@ -61,7 +61,7 @@ open class LightingSystem : SceneSystem()
     @JsonIgnore
     private val normalMapRenderPass = RenderPass(
         surfaceName = "lighting_normal_map",
-        targetType = NormalMapRenderPassTarget::class
+        targetType = NormalMapped::class
     )
 
     @JsonIgnore
@@ -122,13 +122,17 @@ open class LightingSystem : SceneSystem()
         {
             Logger.debug("Enabling normal maps for lighting")
             engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(normalMapRenderPass)
-            lightRenderer.normalMapSurface = engine.gfx.createSurface(
+            val normalMapSurface = engine.gfx.createSurface(
                 name = normalMapRenderPass.surfaceName,
                 camera = engine.gfx.mainCamera,
                 zOrder = lightSurface.context.zOrder + 1, // Render normal map before lightmap
                 backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
                 isVisible = false
             )
+            val renderContext = (normalMapSurface as Surface2DInternal).context
+            val textureArray = (engine.gfx as GraphicsInternal).textureArray
+            normalMapSurface.addRenderer(NormalMapRenderer(1000, renderContext, textureArray))
+            lightRenderer.normalMapSurface = normalMapSurface
         }
         else if (!isEnabled && lightRenderer.normalMapSurface != null)
         {

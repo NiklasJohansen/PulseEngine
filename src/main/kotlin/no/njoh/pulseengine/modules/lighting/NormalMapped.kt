@@ -6,18 +6,24 @@ import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.systems.CustomRenderPassTarget
 
-interface NormalMapRenderPassTarget : CustomRenderPassTarget
+/**
+ * Rendered by the [LightingSystem] to a normal map [Surface2D].
+ */
+interface NormalMapped : CustomRenderPassTarget
 {
+    /** Name of the normal map [Texture] asset. */
     var normalMapName: String
+
+    /** The intensity/scale of the normals in the map. */
+    var normalMapIntensity: Float
 
     override fun renderCustomPass(engine: PulseEngine, surface: Surface2D)
     {
-        if (this is SceneEntity)
+        if (this is SceneEntity && normalMapName.isNotBlank())
         {
             val normalMap = engine.asset.getOrNull<Texture>(normalMapName)
-            val dir = if (normalMap != null) 1.0f else 0.5f
-            surface.setDrawColor(dir, dir, 1f)
-            surface.drawTexture(normalMap ?: Texture.BLANK, x, y, width, height, rotation, 0.5f, 0.5f)
+            val renderer = surface.getRenderer(NormalMapRenderer::class)
+            renderer?.drawNormalMap(normalMap, x, y, width, height, rotation, 0.5f, 0.5f, normalScale = normalMapIntensity)
         }
     }
 }

@@ -39,6 +39,7 @@ interface Graphics
 interface GraphicsInternal : Graphics
 {
     override val mainCamera: CameraInternal
+    val textureArray: TextureArray
 
     fun init(viewPortWidth: Int, viewPortHeight: Int)
     fun uploadTexture(texture: Texture)

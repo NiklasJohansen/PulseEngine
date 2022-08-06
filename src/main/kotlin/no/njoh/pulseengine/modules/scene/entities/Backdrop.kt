@@ -4,17 +4,19 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.shared.annotations.Property
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.modules.lighting.NormalMapRenderPassTarget
+import no.njoh.pulseengine.modules.lighting.NormalMapped
 
-open class Backdrop : SceneEntity(), NormalMapRenderPassTarget
+open class Backdrop : SceneEntity(), NormalMapped
 {
     var color = Color(1f, 1f, 1f)
     var textureName: String = ""
     var xTiling = 1f
     var yTiling = 1f
 
-    override var normalMapName = ""
+    @Property("Lighting", order = 1) override var normalMapName: String = ""
+    @Property("Lighting", order = 2) override var normalMapIntensity = 1f
 
     init { setNot(DISCOVERABLE) }
 
