@@ -7,7 +7,7 @@ in float texAngleRad;
 in vec2 texTiling;
 in float texIndex;
 in vec2 quadSize;
-in float scale;
+in vec2 scale;
 
 out vec4 fragColor;
 

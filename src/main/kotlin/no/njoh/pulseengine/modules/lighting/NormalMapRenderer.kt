@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureArray
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
+import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL31.glDrawArraysInstanced
 
@@ -38,7 +39,7 @@ class NormalMapRenderer(
             .withAttribute("uvMax", 2, GL_FLOAT, 1)
             .withAttribute("tiling", 2, GL_FLOAT, 1)
             .withAttribute("textureIndex", 1, GL_FLOAT, 1)
-            .withAttribute("normalScale", 1, GL_FLOAT, 1)
+            .withAttribute("normalScale", 2, GL_FLOAT, 1)
 
         if (!this::program.isInitialized)
         {
@@ -63,9 +64,21 @@ class NormalMapRenderer(
         vao.release()
     }
 
-    fun drawNormalMap(texture: Texture?, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, uTiling: Float = 1f, vTiling: Float = 1f, normalScale: Float = 1f)
-    {
-        instanceBuffer.fill(15)
+    fun drawNormalMap(
+        texture: Texture?,
+        x: Float,
+        y: Float,
+        w: Float,
+        h: Float,
+        rot: Float,
+        xOrigin: Float,
+        yOrigin: Float,
+        uTiling: Float = 1f,
+        vTiling: Float = 1f,
+        normalScale: Float = 1f,
+        orientation: Orientation = NORMAL
+    ) {
+        instanceBuffer.fill(16)
         {
             put(x)
             put(y)
@@ -82,7 +95,8 @@ class NormalMapRenderer(
             put(uTiling)
             put(vTiling)
             put(texture?.id?.toFloat() ?: -1f)
-            put(normalScale)
+            put(normalScale * orientation.xDir)
+            put(normalScale * orientation.yDir)
         }
 
         instanceCount++
@@ -124,5 +138,13 @@ class NormalMapRenderer(
         instanceBuffer.delete()
         program.delete()
         vao.delete()
+    }
+
+    enum class Orientation(val xDir: Float, val yDir: Float)
+    {
+        NORMAL(1f, 1f),
+        INVERT_X(-1f, 1f),
+        INVERT_Y(1f, -1f),
+        INVERT_XY(-1f, -1f)
     }
 }

@@ -5,9 +5,10 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.systems.CustomRenderPassTarget
+import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
 
 /**
- * Rendered by the [LightingSystem] to a normal map [Surface2D].
+ * Rendered by the [LightingSystem] to a separate normal map [Surface2D] for deferred lighting calculations.
  */
 interface NormalMapped : CustomRenderPassTarget
 {
@@ -17,13 +18,25 @@ interface NormalMapped : CustomRenderPassTarget
     /** The intensity/scale of the normals in the map. */
     var normalMapIntensity: Float
 
+    /** The orientation of the normals in the map. */
+    var normalMapOrientation: Orientation
+
     override fun renderCustomPass(engine: PulseEngine, surface: Surface2D)
     {
         if (this is SceneEntity && normalMapName.isNotBlank())
         {
-            val normalMap = engine.asset.getOrNull<Texture>(normalMapName)
-            val renderer = surface.getRenderer(NormalMapRenderer::class)
-            renderer?.drawNormalMap(normalMap, x, y, width, height, rotation, 0.5f, 0.5f, normalScale = normalMapIntensity)
+            surface.getRenderer(NormalMapRenderer::class)?.drawNormalMap(
+                texture = engine.asset.getOrNull(normalMapName),
+                x = x,
+                y = y,
+                w = width,
+                h = height,
+                rot = rotation,
+                xOrigin = 0.5f,
+                yOrigin = 0.5f,
+                normalScale = normalMapIntensity,
+                orientation = normalMapOrientation
+            )
         }
     }
 }

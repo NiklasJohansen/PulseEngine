@@ -12,7 +12,7 @@ in vec2 uvMin;
 in vec2 uvMax;
 in vec2 tiling;
 in float textureIndex;
-in float normalScale;
+in vec2 normalScale;
 
 out vec2 texStart;
 out vec2 texSize;
@@ -21,7 +21,7 @@ out float texAngleRad;
 out vec2 texTiling;
 out float texIndex;
 out vec2 quadSize;
-out float scale;
+out vec2 scale;
 
 uniform mat4 view;
 uniform mat4 projection;
