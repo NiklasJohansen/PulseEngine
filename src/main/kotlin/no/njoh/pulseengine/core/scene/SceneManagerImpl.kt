@@ -210,7 +210,7 @@ open class SceneManagerImpl : SceneManagerInternal()
     {
         activeScene.render(engine)
 
-        if (transitionFade >= 0)
+        if (transitionFade > 0f)
         {
             val fade = (cos(transitionFade * PI * 2f + PI).toFloat() + 1f) / 2f
             val surface = engine.gfx.getSurface("scene_transition")

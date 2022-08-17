@@ -1,8 +1,11 @@
 package no.njoh.pulseengine.widgets.editor
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
 import kotlin.reflect.KMutableProperty
+import kotlin.reflect.KProperty
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
@@ -69,4 +72,9 @@ object EditorUtil
         try { prop.setter.call(this, value) }
         catch (e: Exception) { Logger.error("Failed to set property with name: $name, reason: ${e.message}") }
     }
+
+    /**
+     * Returns the [ScnProp] annotations from the property if available, else null.
+     */
+    fun Any.getPropInfo(prop: KProperty<*>): ScnProp? = this::class.findPropertyAnnotation<ScnProp>(prop.name)
 }

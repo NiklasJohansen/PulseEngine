@@ -5,31 +5,31 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.core.shared.annotations.Property
+import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import kotlin.reflect.KClass
 
 abstract class SceneEntity
 {
-    @Property("", -1)
+    @ScnProp(i = -1, editable = false)
     var id = -1L // Id gets assigned when entity is added to the scene
 
-    @Property("Transform", 0)
+    @ScnProp("Transform", 0)
     open var x: Float = 0f
 
-    @Property("Transform", 1)
+    @ScnProp("Transform", 1)
     open var y: Float = 0f
 
-    @Property("Transform", 2)
+    @ScnProp("Transform", 2)
     open var z: Float = -0.1f
 
-    @Property("Transform", 3)
+    @ScnProp("Transform", 3)
     open var width: Float = 0f
 
-    @Property("Transform", 4)
+    @ScnProp("Transform", 4)
     open var height: Float = 0f
 
-    @Property("Transform", 5)
-    var rotation: Float = 0f
+    @ScnProp("Transform", 5)
+    open var rotation: Float = 0f
 
     @JsonIgnore
     val typeName = this::class.simpleName ?: ""

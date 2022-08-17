@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
-import no.njoh.pulseengine.core.shared.annotations.Property
+import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.core.shared.utils.Extensions.degreesBetween
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.shapes.CircleShape
@@ -22,15 +22,15 @@ open class Wheel : SceneEntity(), CircleBody
     @JsonIgnore
     override val shape = CircleShape()
 
-    @Property("Physics", 0) override var bodyType = BodyType.DYNAMIC
-    @Property("Physics", 1) override var layerMask = 1
-    @Property("Physics", 2) override var collisionMask = 1
-    @Property("Physics", 3) override var restitution = 0.5f
-    @Property("Physics", 4) override var density = 1f
-    @Property("Physics", 5) override var friction = 0.4f
-    @Property("Physics", 6) override var drag = 0.01f
-    @Property("Physics", 7) var acceleration = 1f
-    @Property("Physics", 8) var maxAngularVelocity = 0.3f
+    override var bodyType = BodyType.DYNAMIC
+    override var layerMask = 1
+    override var collisionMask = 1
+    override var restitution = 0.5f
+    override var density = 1f
+    override var friction = 0.4f
+    override var drag = 0.01f
+    @ScnProp("Physics", 7) var acceleration = 1f
+    @ScnProp("Physics", 8) var maxAngularVelocity = 0.3f
 
     @JsonIgnore protected var xInterpolated = NaN
     @JsonIgnore protected var yInterpolated = NaN

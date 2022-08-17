@@ -6,7 +6,6 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
-import no.njoh.pulseengine.core.shared.annotations.Property
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.gui.Position
@@ -15,6 +14,7 @@ import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.UiElement
 import no.njoh.pulseengine.modules.gui.elements.*
 import no.njoh.pulseengine.modules.gui.layout.*
+import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.widgets.editor.EditorUtil.setProperty
 import java.lang.IllegalArgumentException
@@ -393,8 +393,8 @@ open class UiElementFactory(
         }
 
         val props = system::class.memberProperties
-            .filter { it is KMutableProperty<*> && it.isEditable() }
-            .sortedBy { it.findAnnotation<Property>()?.order ?: 1000 }
+            .filter { it is KMutableProperty<*> && it.isEditable() && system.getPropInfo(it)?.hidden != true }
+            .sortedBy { system.getPropInfo(it)?.i ?: 1000 }
             .map { prop ->
                 val (panel, _) = createPropertyUI(system, prop as KMutableProperty<*>)
                 panel.apply {
@@ -472,7 +472,7 @@ open class UiElementFactory(
     /**
      * Creates a new [InputField] UI element.
      */
-    open fun createInputFieldUI(value: Any?, prop: KMutableProperty<*>): InputField
+    open fun createInputFieldUI(obj: Any, prop: KMutableProperty<*>): InputField
     {
         val type = when (prop.javaField?.type)
         {
@@ -483,7 +483,7 @@ open class UiElementFactory(
         }
 
         return InputField(
-            defaultText = value?.toString() ?: "",
+            defaultText = prop.getter.call(obj)?.toString() ?: "",
             width = Size.relative(0.5f)
         ).apply {
             padding.top = 5f
@@ -500,7 +500,8 @@ open class UiElementFactory(
 
             if (type == InputField.ContentType.FLOAT || type == InputField.ContentType.INTEGER)
             {
-                prop.findAnnotation<Property>()?.let {
+                obj.getPropInfo(prop)?.let()
+                {
                     numberMinVal = it.min
                     numberMaxVal = it.max
                 }
@@ -542,9 +543,9 @@ open class UiElementFactory(
     {
         val propUiKey = propertyUiFactories.keys.firstOrNull { prop.javaField?.type?.kotlin?.isSubclassOf(it) == true }
         val propUi = propertyUiFactories[propUiKey]?.invoke(obj, prop)
-            ?: createInputFieldUI(value = prop.getter.call(obj), prop).apply { // Default UI when no factory exist
+            ?: createInputFieldUI(obj, prop).apply { // Default UI when no factory exist
                 setOnTextChanged { if (it.isValid) obj.setProperty(prop, it.text) }
-                editable = prop.name != "id"
+                editable = obj.getPropInfo(prop)?.editable ?: true
             }
 
         val label = Label(text = prop.name.capitalize(), width = Size.relative(0.5f)).apply {

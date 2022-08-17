@@ -28,7 +28,6 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
-import no.njoh.pulseengine.core.shared.annotations.Property
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
@@ -36,6 +35,7 @@ import no.njoh.pulseengine.core.shared.utils.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.widget.Widget
 import no.njoh.pulseengine.modules.gui.elements.Button
+import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isPrimitiveValue
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.widgets.editor.EditorUtil.setProperty
@@ -804,11 +804,12 @@ class SceneEditor(
         entityPropertiesUI.addChildren(entityTypePropUI)
 
         entity::class.memberProperties
-            .groupBy { it.findAnnotation<Property>()?.category ?: "" }
+            .filter { entity.getPropInfo(it)?.hidden != true }
+            .groupBy { entity.getPropInfo(it)?.group ?: "" }
             .toList()
             .sortedBy { it.first }
             .forEachFast { (category, props) ->
-                props.sortedBy { it.findAnnotation<Property>()?.order ?: 0 }
+                props.sortedBy { entity.getPropInfo(it)?.i ?: 0 }
                     .filterIsInstance<KMutableProperty<*>>()
                     .filter { it.isEditable() }
                     .also {

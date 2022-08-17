@@ -21,42 +21,23 @@ import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.MathUtil
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.annotations.Name
-import no.njoh.pulseengine.core.shared.annotations.Property
+import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.modules.lighting.LightType.*
 import kotlin.math.*
 
 @Name("Lighting 2D")
 open class LightingSystem : SceneSystem()
 {
-    @Property(order = 1)
-    var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
-
-    @Property(order = 2, min = 0.1f, max = 5.0f)
-    var textureScale: Float = 1f
-
-    @Property(order = 3)
-    var textureFilter = TextureFilter.LINEAR
-
-    @Property(order = 4)
-    var textureFormat = TextureFormat.HDR_16
-
-    @Property(order = 5)
-    var multisampling = Multisampling.NONE
-
-    @Property(order = 6)
-    var enableFXAA = true
-
-    @Property(order = 7)
-    var useNormalMap = false
-
-    @Property(order = 8)
-    var enableLightSpill = true
-
-    @Property(order = 9)
-    var correctOffset = true
-
-    @Property(order = 10)
-    var drawDebug = false
+    @ScnProp(i = 1) var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
+    @ScnProp(i = 2, min = 0.1f, max = 5.0f) var textureScale: Float = 1f
+    @ScnProp(i = 3) var textureFilter = TextureFilter.LINEAR
+    @ScnProp(i = 4) var textureFormat = TextureFormat.HDR_16
+    @ScnProp(i = 5) var multisampling = Multisampling.NONE
+    @ScnProp(i = 6) var enableFXAA = true
+    @ScnProp(i = 7) var useNormalMap = false
+    @ScnProp(i = 8) var enableLightSpill = true
+    @ScnProp(i = 9) var correctOffset = true
+    @ScnProp(i = 10) var drawDebug = false
 
     @JsonIgnore
     private val normalMapRenderPass = RenderPass(
