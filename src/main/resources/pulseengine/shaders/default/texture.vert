@@ -6,8 +6,7 @@ in vec2 texCoord;
 out vec2 textureCoord;
 out vec4 vertexColor;
 
-uniform mat4 view;
-uniform mat4 projection;
+uniform mat4 viewProjection;
 uniform vec3 position;
 uniform vec2 size;
 uniform vec2 origin;
@@ -38,5 +37,5 @@ void main() {
     vec2 offset = (vertexPos * size - size * origin) * rotationMatrix(rotation);
     vec4 vertexPos = vec4(position, 1.0) + vec4(offset, 0.0, 0.0);
 
-    gl_Position = projection * view * vertexPos;
+    gl_Position = viewProjection * vertexPos;
 }

@@ -6,20 +6,19 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureArray
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
+import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
-import org.lwjgl.opengl.GL31.glDrawArraysInstanced
 
 class BindlessTextureRenderer(
     private val initialCapacity: Int,
     private val context: RenderContextInternal,
     private val textureArray: TextureArray
-) : BatchRenderer {
+) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
     private lateinit var program: ShaderProgram
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: FloatBufferObject
-    private var instanceCount = 0
 
     override fun init()
     {
@@ -86,7 +85,7 @@ class BindlessTextureRenderer(
             put(texture.id.toFloat())
         }
 
-        instanceCount++
+        increaseBatchSize()
         context.increaseDepth()
     }
 
@@ -128,19 +127,19 @@ class BindlessTextureRenderer(
             put(texture.id.toFloat())
         }
 
-        instanceCount++
+        increaseBatchSize()
         context.increaseDepth()
     }
 
-    override fun render(surface: Surface2D)
+    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
     {
-        if (instanceCount == 0)
-            return
-
         // Submit per-instance data to GPU
-        instanceBuffer.bind()
-        instanceBuffer.submit()
-        instanceBuffer.release()
+        if (startIndex == 0)
+        {
+            instanceBuffer.bind()
+            instanceBuffer.submit()
+            instanceBuffer.release()
+        }
 
         // Bind VAO with buffers and attribute layout
         vao.bind()
@@ -150,15 +149,13 @@ class BindlessTextureRenderer(
 
         // Bind shader program and set uniforms
         program.bind()
-        program.setUniform("projection", surface.camera.projectionMatrix)
-        program.setUniform("view", surface.camera.viewMatrix)
+        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
 
         // Draw all instances
-        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, instanceCount)
+        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
 
         // Release VAO and reset count
         vao.release()
-        instanceCount = 0
     }
 
     override fun cleanUp()

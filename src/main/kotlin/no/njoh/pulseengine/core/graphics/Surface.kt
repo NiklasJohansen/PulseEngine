@@ -3,6 +3,8 @@ package no.njoh.pulseengine.core.graphics
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.StencilState.Action.CLEAR
+import no.njoh.pulseengine.core.graphics.StencilState.Action.SET
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
@@ -10,8 +12,7 @@ import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import org.lwjgl.opengl.GL13.*
-import org.lwjgl.opengl.GL20.glDrawBuffers
+import no.njoh.pulseengine.core.shared.utils.Logger
 import java.lang.RuntimeException
 import kotlin.reflect.KClass
 
@@ -25,50 +26,61 @@ interface Surface
     fun getTextures(): List<Texture>
 }
 
-interface Surface2D : Surface
+abstract class Surface2D : Surface
 {
-    val camera: Camera
-    val context: RenderContext
+    abstract val camera: Camera
+    abstract val context: RenderContext
 
     // Drawing
-    fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
-    fun drawLineVertex(x: Float, y: Float)
-    fun drawQuad(x: Float, y: Float, width: Float, height: Float)
-    fun drawQuadVertex(x: Float, y: Float)
-    fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f)
-    fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, uTiling: Float = 1f, vTiling: Float = 1f)
-    fun drawText(text: String, x: Float, y: Float, font: Font? = null, fontSize: Float = -1f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+    abstract fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
+    abstract fun drawLineVertex(x: Float, y: Float)
+    abstract fun drawQuad(x: Float, y: Float, width: Float, height: Float)
+    abstract fun drawQuadVertex(x: Float, y: Float)
+    abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f)
+    abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, uTiling: Float = 1f, vTiling: Float = 1f)
+    abstract fun drawText(text: String, x: Float, y: Float, font: Font? = null, fontSize: Float = -1f, xOrigin: Float = 0f, yOrigin: Float = 0f)
 
     // Property setters
-    fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float = 1f): Surface2D
-    fun setDrawColor(color: Color): Surface2D
-    fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface2D
-    fun setBackgroundColor(color: Color): Surface2D
-    fun setBlendFunction(func: BlendFunction): Surface2D
-    fun setMultisampling(multisampling: Multisampling): Surface2D
-    fun setIsVisible(isVisible: Boolean): Surface2D
-    fun setTextureFormat(format: TextureFormat): Surface2D
-    fun setTextureFilter(filter: TextureFilter): Surface2D
-    fun setTextureScale(scale: Float): Surface2D
+    abstract fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float = 1f): Surface2D
+    abstract fun setDrawColor(color: Color): Surface2D
+    abstract fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface2D
+    abstract fun setBackgroundColor(color: Color): Surface2D
+    abstract fun setBlendFunction(func: BlendFunction): Surface2D
+    abstract fun setMultisampling(multisampling: Multisampling): Surface2D
+    abstract fun setIsVisible(isVisible: Boolean): Surface2D
+    abstract fun setTextureFormat(format: TextureFormat): Surface2D
+    abstract fun setTextureFilter(filter: TextureFilter): Surface2D
+    abstract fun setTextureScale(scale: Float): Surface2D
 
     // Post-processing
-    fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
-    fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
+    abstract fun addPostProcessingEffect(effect: PostProcessingEffect): Surface2D
+    abstract fun removePostProcessingEffect(effect: PostProcessingEffect): Surface2D
 
-    // Renderers
-    fun addRenderer(renderer: BatchRenderer): Surface2D
-    fun <T: BatchRenderer> getRenderer(type: KClass<T>): T?
+    // Renderers and render state
+    abstract fun setRenderState(state: RenderState)
+    abstract fun addRenderer(renderer: BatchRenderer): Surface2D
+    abstract fun getRenderers(): List<BatchRenderer>
+    abstract fun <T: BatchRenderer> getRenderer(type: KClass<T>): T?
+
+    // Clipping/stencil masking
+    inline fun drawWithin(x: Float, y: Float, width: Float, height: Float, drawFunc: () -> Unit)
+    {
+        setRenderState(StencilState(x, y, width, height, action = SET))
+        drawFunc()
+        setRenderState(StencilState(x, y, width, height, action = CLEAR))
+    }
 }
 
-interface Surface2DInternal : Surface2D
+abstract class Surface2DInternal : Surface2D()
 {
-    override val camera: CameraInternal
-    override val context: RenderContextInternal
+    abstract override val camera: CameraInternal
+    abstract override val context: RenderContextInternal
 
-    fun init(width: Int, height: Int, glContextRecreated: Boolean)
-    fun renderToOffScreenTarget()
-    fun runPostProcessingPipeline()
-    fun cleanUp()
+    abstract fun init(width: Int, height: Int, glContextRecreated: Boolean)
+    abstract fun initFrame()
+    abstract fun renderToOffScreenTarget()
+    abstract fun runPostProcessingPipeline()
+    abstract fun cleanUp()
 }
 
 class Surface2DImpl(
@@ -79,18 +91,26 @@ class Surface2DImpl(
     private val quadRenderer: QuadBatchRenderer,
     private val lineRenderer: LineBatchRenderer,
     private val bindlessTextureRenderer: BindlessTextureRenderer,
-    private val textureRenderer: TextureRenderer
-): Surface2DInternal {
+    private val textureRenderer: TextureRenderer,
+    private val stencilRenderer: StencilRenderer,
+): Surface2DInternal() {
 
     override var width = 0
     override var height = 0
     private var renderTarget = createRenderTarget(context)
     private val postProcessingPipeline = PostProcessingPipeline()
-    private val renderers = mutableListOf(lineRenderer, bindlessTextureRenderer, textureRenderer, quadRenderer)
+    private var renderStates = Array<RenderState?>(BatchRenderer.MAX_BATCH_COUNT) { null }
+    private var batchCount = 0
+    private val renderers = mutableListOf(
+        lineRenderer,
+        bindlessTextureRenderer,
+        textureRenderer,
+        quadRenderer,
+        stencilRenderer
+    )
 
-    //////////////////////////////////////
-    ////////////// INTERNAL //////////////
-    //////////////////////////////////////
+    // Internal functions
+    //--------------------------------------------------------------------------------------------
 
     override fun init(width: Int, height: Int, glContextRecreated: Boolean)
     {
@@ -106,52 +126,29 @@ class Surface2DImpl(
         renderTarget.init(width, height)
     }
 
+    override fun initFrame()
+    {
+        batchCount = 0
+        renderers.forEachFast { it.initBatch() }
+        setRenderState(BaseState)
+    }
+
     override fun renderToOffScreenTarget()
     {
         renderTarget.begin()
-        setOpenGlState()
-        renderers.forEachFast { it.render(this) }
+
+        for (batchNum in 0 until batchCount)
+        {
+            // Apply render state for current batch if set, then remove it
+            renderStates[batchNum]?.apply(this)
+            renderStates[batchNum] = null
+
+            // Render current batch
+            renderers.forEachFast { it.renderBatch(this, batchNum) }
+        }
+
         renderTarget.end()
         context.resetDepth(camera.nearPlane)
-    }
-
-    private fun setOpenGlState()
-    {
-        // Set depth state
-        if (context.hasDepthAttachment)
-        {
-            glEnable(GL_DEPTH_TEST)
-            glDepthMask(true)
-            glDepthFunc(GL_LEQUAL)
-            glDepthRange(camera.nearPlane.toDouble(), camera.farPlane.toDouble())
-            glClearDepth(camera.farPlane.toDouble())
-        }
-        else glDisable(GL_DEPTH_TEST)
-
-        // Set blending options
-        if (context.blendFunction != BlendFunction.NONE)
-        {
-            glEnable(GL_BLEND)
-            glBlendFunc(context.blendFunction.src, context.blendFunction.dest)
-        }
-        else glDisable(GL_BLEND)
-
-        // Set which attachments from the fragment shader data will be written to
-        glDrawBuffers(context.textureAttachments)
-
-        // Set viewport size
-        glViewport(0, 0, (width * context.textureScale).toInt(), (height * context.textureScale).toInt())
-
-        // Set color and clear surface
-        val c = context.backgroundColor
-        glClearColor(c.red, c.green, c.blue, c.alpha)
-        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-    }
-
-    private fun createRenderTarget(context: RenderContext) = when (context.multisampling)
-    {
-        NONE -> OffScreenRenderTarget(context.textureScale, context.textureFormat, context.textureFilter, context.attachments)
-        else -> MultisampledOffScreenRenderTarget(context.textureScale, context.textureFormat, context.textureFilter, context.multisampling, context.attachments)
     }
 
     override fun runPostProcessingPipeline()
@@ -166,9 +163,8 @@ class Surface2DImpl(
         postProcessingPipeline.cleanUp()
     }
 
-    //////////////////////////////////////////////////////
-    ////////////// PUBLIC DRAWING FUNCTIONS //////////////
-    //////////////////////////////////////////////////////
+    // Exposed draw functions
+    //------------------------------------------------------------------------------------------------
 
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float) =
         lineRenderer.line(x0, y0, x1, y1)
@@ -201,9 +197,8 @@ class Surface2DImpl(
     override fun drawText(text: String, x: Float, y: Float, font: Font?, fontSize: Float, xOrigin: Float, yOrigin: Float) =
         textRenderer.draw(this, text, x, y, font ?: Font.DEFAULT, fontSize, xOrigin, yOrigin)
 
-    ////////////////////////////////////////////
-    ////////////// PUBLIC GETTERS //////////////
-    ////////////////////////////////////////////
+    // Exposed getters
+    //------------------------------------------------------------------------------------------------
 
     override fun getTexture(index: Int): Texture =
         postProcessingPipeline.getFinalTexture()
@@ -218,9 +213,13 @@ class Surface2DImpl(
     override fun <T : BatchRenderer> getRenderer(type: KClass<T>): T? =
         renderers.firstOrNullFast { it::class == type } as? T
 
-    ////////////////////////////////////////////
-    ////////////// PUBLIC SETTERS //////////////
-    ////////////////////////////////////////////
+    override fun getRenderers(): List<BatchRenderer>
+    {
+        return renderers
+    }
+
+    // Exposed setters
+    //------------------------------------------------------------------------------------------------
 
     override fun setIsVisible(isVisible: Boolean): Surface2D
     {
@@ -270,6 +269,12 @@ class Surface2DImpl(
         return this
     }
 
+    private fun createRenderTarget(context: RenderContext) = when (context.multisampling)
+    {
+        NONE -> OffScreenRenderTarget(context.textureScale, context.textureFormat, context.textureFilter, context.attachments)
+        else -> MultisampledOffScreenRenderTarget(context.textureScale, context.textureFormat, context.textureFilter, context.multisampling, context.attachments)
+    }
+
     override fun setTextureFormat(format: TextureFormat): Surface2D
     {
         if (format != context.textureFormat)
@@ -314,6 +319,18 @@ class Surface2DImpl(
     {
         postProcessingPipeline.removeEffect(effect)
         return this
+    }
+
+    override fun setRenderState(state: RenderState)
+    {
+        if (batchCount == BatchRenderer.MAX_BATCH_COUNT)
+        {
+            Logger.error("Reached max batch count of ${BatchRenderer.MAX_BATCH_COUNT}")
+            return
+        }
+        renderers.forEachFast { it.setBatchNumber(batchCount) }
+        renderStates[batchCount] = state
+        batchCount++
     }
 
     override fun addRenderer(renderer: BatchRenderer): Surface2D

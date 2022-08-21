@@ -15,7 +15,7 @@ class NormalMapRenderer(
     private val initialCapacity: Int,
     private val context: RenderContextInternal,
     private val textureArray: TextureArray
-) : BatchRenderer {
+) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
     private lateinit var program: ShaderProgram
@@ -103,7 +103,7 @@ class NormalMapRenderer(
         context.increaseDepth()
     }
 
-    override fun render(surface: Surface2D)
+    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
     {
         if (instanceCount == 0)
             return

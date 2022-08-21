@@ -5,8 +5,7 @@ in uint color;
 
 out vec4 vertexColor;
 
-uniform mat4 view;
-uniform mat4 projection;
+uniform mat4 viewProjection;
 
 vec4 getColor(uint rgba) {
     float r = ((rgba >> uint(24)) & uint(255));
@@ -18,7 +17,7 @@ vec4 getColor(uint rgba) {
 
 void main() {
     vertexColor = getColor(color);
-    gl_Position = projection * view * vec4(position, 1.0);
+    gl_Position = viewProjection * vec4(position, 1.0);
 }
 
 

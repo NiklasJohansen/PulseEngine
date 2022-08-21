@@ -24,8 +24,7 @@ out float texIndex;
 out vec2 quadSize;
 out float quadCornerRadius;
 
-uniform mat4 view;
-uniform mat4 projection;
+uniform mat4 viewProjection;
 
 vec4 getColor(uint rgba) {
     uint r = ((rgba >> uint(24)) & uint(255));
@@ -57,5 +56,5 @@ void main() {
     vec2 offset = (vertexPos * size - size * origin) * rotate(radians(rotation));
     vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);
 
-    gl_Position = projection * view * vertexPos;
+    gl_Position = viewProjection * vertexPos;
 }
