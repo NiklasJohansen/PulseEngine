@@ -7,9 +7,11 @@ class EditorStyle
 {
     val colors = mutableMapOf<String, Color>()
     val fonts = mutableMapOf<String, Font>()
+    val sizes = mutableMapOf<String, Float>()
 
     fun getColor(name: String) = colors[name] ?: DEFAULT_COLOR
     fun getFont(name: String = "") = fonts[name] ?: Font.DEFAULT
+    fun getSize(name: String = "") = sizes[name] ?: 0f
 
     init // Set default colors
     {
@@ -24,6 +26,10 @@ class EditorStyle
         colors["BUTTON_EXIT"] = Color(0.7642857f, 0.3603061f, 0.3603061f, 0.69803923f)
         colors["ITEM"] = Color(0.048367348f, 0.06711405f, 0.08571428f, 1.0f)
         colors["ITEM_HOVER"] = Color(0.10275511f, 0.11865307f, 0.13571429f, 1.0f)
+
+        sizes["PROP_ROW_HEIGHT"] = 30f
+        sizes["PROP_HEADER_ROW_HEIGHT"] = 30f
+        sizes["DROPDOWN_ROW_HEIGHT"] = 25f
     }
 
     companion object

@@ -38,6 +38,8 @@ class DropdownMenu <T> (
     var closeOnItemSelect = true
     var showArrow = true
     var useSelectedItemAsMenuLabel = true
+    var rowHeight = 30f
+    var rowPadding = 5f
 
     private var onItemToString: (T) -> String = { it.toString() }
     private var onItemChanged: (T) -> Unit = { }
@@ -93,7 +95,7 @@ class DropdownMenu <T> (
         label.color = menuLabel.color
         label.fontSize = menuLabel.fontSize
 
-        val button = Button()
+        val button = Button(height = Size.absolute(rowHeight))
         button.color = itemBgColor
         button.hoverColor = itemBgHoverColor
         button.addChildren(label)
@@ -103,6 +105,7 @@ class DropdownMenu <T> (
                 dropdown.hidden = true
         }
 
+        rowPanel.children.lastOrNull()?.padding?.bottom = rowPadding
         rowPanel.addChildren(button)
 
         if (selectedItem == null)

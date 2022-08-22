@@ -128,7 +128,7 @@ class SceneEditor(
         engine.gfx.createSurface(
             name = "scene_editor_foreground",
             zOrder = -90,
-            attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_TEXTURE)
+            attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_STENCIL_BUFFER)
         )
 
         // Background surface for grid
@@ -157,12 +157,7 @@ class SceneEditor(
     {
         // Properties
         entityPropertiesUI = RowPanel()
-        entityPropertiesUI.rowHeight = 34f
-        entityPropertiesUI.rowPadding = 0f
-
         systemPropertiesUI = RowPanel()
-        systemPropertiesUI.rowHeight = 34f
-        systemPropertiesUI.rowPadding = 0f
 
         // Create content
         val menuBar = uiFactory.createMenuBarUI(
@@ -803,24 +798,32 @@ class SceneEditor(
         val entityTypePropUI = uiFactory.createEntityTypePropertyUI(entity) { changeToType = it }
         entityPropertiesUI.addChildren(entityTypePropUI)
 
-        entity::class.memberProperties
+        val propertyGroups = entity::class.memberProperties
             .filter { entity.getPropInfo(it)?.hidden != true }
             .groupBy { entity.getPropInfo(it)?.group ?: "" }
             .toList()
             .sortedBy { it.first }
-            .forEachFast { (category, props) ->
-                props.sortedBy { entity.getPropInfo(it)?.i ?: 0 }
-                    .filterIsInstance<KMutableProperty<*>>()
-                    .filter { it.isEditable() }
-                    .also {
-                        if (it.isNotEmpty() && category.isNotEmpty())
-                            entityPropertiesUI.addChildren(uiFactory.createCategoryHeader(category))
-                    }.forEachFast { prop ->
-                        val (propertyPanel, inputElement) = uiFactory.createPropertyUI(entity, prop)
-                        entityPropertiesUI.addChildren(propertyPanel)
-                        entityPropertyUiRows[prop.name] = inputElement
-                    }
+
+        for ((group, props) in propertyGroups)
+        {
+            val properties = props
+                .sortedBy { entity.getPropInfo(it)?.i ?: 0 }
+                .filterIsInstance<KMutableProperty<*>>()
+                .filter { it.isEditable() }
+
+            if (properties.isNotEmpty() && group.isNotEmpty())
+                entityPropertiesUI.addChildren(uiFactory.createCategoryHeader(group))
+
+            for (prop in properties)
+            {
+                val (propertyPanel, inputElement) = uiFactory.createPropertyUI(entity, prop)
+                entityPropertiesUI.addChildren(propertyPanel)
+                entityPropertyUiRows[prop.name] = inputElement
             }
+        }
+
+        // Add bottom padding to the last property row
+        entityPropertiesUI.children.lastOrNull()?.let { it.padding.bottom = it.padding.top }
     }
 
     private fun handleEntityTypeChanged(scene: Scene, type: KClass<out SceneEntity>)

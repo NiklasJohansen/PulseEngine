@@ -13,19 +13,44 @@ abstract class UiElement(
     val width: Size,
     val height: Size
 ) {
+    /** An ID for the UI element. */
     var id: String? = null
+
+    /** A reference to the parent element containing this one. */
     var parent: UiElement? = null
         private set
+
+    /** The list of children this UiElement contains. */
     val children = mutableListOf<UiElement>()
-    val padding: Padding = Padding()
+
+    /** Reference to a UiElement that will be updated and drawn after the main draw/update pass. */
     var popup: UiElement? = null
+
+    /** The padding added to the outside of each side.*/
+    val padding = Padding()
+
+    /** The area to capture input focus. */
     val area = FocusArea(0f, 0f, 0f, 0f)
 
-    var minWidth = 0f
-    var minHeight = 0f
-    var maxWidth = 10000f
-    var maxHeight = 10000f
-    var focusable = true
+    /** The minimum width this element can have. */
+    open var minWidth = 0f
+
+    /** The minimum height this element can have. */
+    open var minHeight = 0f
+
+    /** The maximum width this element can have. */
+    open var maxWidth = 10000f
+
+    /** The minimum heihgt this element can have. */
+    open var maxHeight = 10000f
+
+    /** True if this element should capture input focus. */
+    open var focusable = true
+
+    /** True if the content of this element should not be rendered outside the bounds of this element. */
+    open var renderOnlyInside = false
+
+    /** True if this element should not be visible in the UI graph. */
     var hidden = false
         set (isHidden)
         {
@@ -34,11 +59,13 @@ abstract class UiElement(
             field = isHidden
         }
 
-    private var preventRender = false
-    private var created = false
-    private var dirtyLayout = false
+    /** True if the mouse is currently inside the bounds of the element. */
     var mouseInsideArea = false
         private set
+
+    private var created = false
+    private var preventRender = false
+    private var dirtyLayout = false
 
     init
     {
@@ -97,43 +124,41 @@ abstract class UiElement(
 
     fun update(engine: PulseEngine)
     {
+        // Call onCreate only once
         if (!created)
         {
             created = true
             onCreate(engine)
         }
 
+        // Update independent of visibility
         onVisibilityIndependentUpdate(engine)
 
+        // Do not update element if it is not visible
         if (!isVisible())
             return
 
-        if (focusable)
-        {
-            engine.input.requestFocus(area)
+        // Update mouse related state
+        updateMouseInputState(engine)
 
-            val insideArea = area.isInside(engine.input.xMouse, engine.input.yMouse)
-            if (insideArea && engine.input.wasClicked(Mouse.LEFT))
-                onMouseClicked(engine)
-
-            if (mouseInsideArea != insideArea)
-            {
-                if (insideArea) onMouseEnter(engine) else onMouseLeave(engine)
-                mouseInsideArea = insideArea
-            }
-        }
-
+        // Update this element
         onUpdate(engine)
 
-        children.forEachFast { child ->
-            child.update(engine)
-            if (child.dirtyLayout || child.popup?.dirtyLayout == true)
+        // Update all children elements and take note if their layout is dirty
+        children.forEachFast()
+        {
+            it.update(engine)
+            if (it.dirtyLayout || it.popup?.dirtyLayout == true)
                 setLayoutDirty()
         }
 
+        // Check if this is the root node
         if (parent == null)
         {
+            // Update the popups after the all children of the root node has been updated
             updatePopup(engine)
+
+            // Update the layout if it's dirty
             if (dirtyLayout || engine.window.wasResized)
             {
                 alignWithin(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
@@ -148,9 +173,21 @@ abstract class UiElement(
         if (!isVisible())
             return
 
-        onRender(surface)
-        children.forEachFast { it.render(surface) }
+        if (renderOnlyInside)
+        {
+            surface.drawWithin(x.value, y.value, width.value, height.value)
+            {
+                onRender(surface)
+                children.forEachFast { it.render(surface) }
+            }
+        }
+        else
+        {
+            onRender(surface)
+            children.forEachFast { it.render(surface) }
+        }
 
+        // Start rendering the popups from the root node
         if (parent == null)
             renderPopup(surface)
     }
@@ -177,21 +214,46 @@ abstract class UiElement(
 
     open fun updateChildLayout()
     {
-        for (child in children)
+        children.forEachFast()
         {
-            child.alignWithin(x.value, y.value, width.value, height.value)
-            child.updateLayout()
-            child.setLayoutClean()
+            it.alignWithin(x.value, y.value, width.value, height.value)
+            it.updateLayout()
+            it.setLayoutClean()
         }
     }
 
     open fun updatePopupLayout()
     {
-        popup?.let { popup ->
-            popup.alignWithin(x.value, y.value, width.value, height.value)
-            popup.updateLayout()
-            popup.setLayoutClean()
+        popup?.let()
+        {
+            it.alignWithin(x.value, y.value, width.value, height.value)
+            it.updateLayout()
+            it.setLayoutClean()
         }
+    }
+
+    private fun updateMouseInputState(engine: PulseEngine)
+    {
+        val isNotOutsideParent = parent?.mouseInsideArea != false || parent?.popup === this
+        val insideArea = area.isInside(engine.input.xMouse, engine.input.yMouse) && isNotOutsideParent
+        val mouseInsideStateChanged = (mouseInsideArea != insideArea)
+        mouseInsideArea = insideArea
+
+        // Do not request focus or update mouse callbacks if the element is not focusable
+        if (!focusable)
+            return
+
+        // Request input focus for this area
+        engine.input.requestFocus(area)
+
+        // Update callbacks on state change
+        if (mouseInsideStateChanged)
+        {
+            if (insideArea) onMouseEnter(engine) else onMouseLeave(engine)
+        }
+
+        if (insideArea && engine.input.wasClicked(Mouse.LEFT))
+            onMouseClicked(engine)
     }
 
     private fun alignWithin(xPos: Float, yPos: Float, availableWidth: Float, availableHeight: Float)

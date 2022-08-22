@@ -156,14 +156,13 @@ open class UiElementFactory(
             bgHoverColor = style.getColor("BUTTON_HOVER")
             itemBgColor = Color.BLANK
             itemBgHoverColor = style.getColor("BUTTON_HOVER")
+            rowHeight = style.getSize("DROPDOWN_ROW_HEIGHT")
             menuLabel.text = menuBarButton.labelText
             menuLabel.fontSize = fontSize
             menuLabel.font = font
             menuLabel.padding.top = 7f
             menuLabel.centerHorizontally = true
             menuLabel.font = style.getFont()
-            rowPanel.rowHeight = 25f
-            rowPanel.rowPadding = 5f
             dropdown.color = style.getColor("BG_LIGHT")
             dropdown.strokeColor = style.getColor("STROKE")
             dropdown.minHeight = 0f
@@ -202,8 +201,7 @@ open class UiElementFactory(
             padding.top = 5f
             padding.bottom = 5f
             padding.right = 5f
-            rowPanel.rowPadding = 5f
-            rowPanel.rowHeight = 30f
+            rowHeight = style.getSize("DROPDOWN_ROW_HEIGHT")
             menuLabel.font = font
             menuLabel.fontSize = fontSize
             menuLabel.color = style.getColor("LABEL")
@@ -378,7 +376,9 @@ open class UiElementFactory(
             addChildren(exitButton)
         }
 
-        val headerButton = Button().apply {
+        val headerButton = Button(
+            height = Size.absolute(style.getSize("PROP_HEADER_ROW_HEIGHT"))
+        ).apply {
             id = system::class.simpleName
             toggleButton = true
             state = isHidden
@@ -525,7 +525,9 @@ open class UiElementFactory(
         val typeDropdown = createItemSelectionDropdownUI(entity::class, SceneEntity.REGISTERED_TYPES.toList()) { it.simpleName ?: "NO NAME" }
         typeDropdown.setOnItemChanged(onItemChange)
 
-        return HorizontalPanel().apply {
+        return HorizontalPanel(
+            height = Size.absolute(style.getSize("PROP_ROW_HEIGHT"))
+        ).apply {
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
@@ -556,7 +558,9 @@ open class UiElementFactory(
             color = style.getColor("LABEL")
         }
 
-        val hPanel = HorizontalPanel().apply {
+        val hPanel = HorizontalPanel(
+            height = Size.absolute(style.getSize("PROP_ROW_HEIGHT"))
+        ).apply {
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
@@ -569,7 +573,9 @@ open class UiElementFactory(
     }
 
     open fun createCategoryHeader(label: String) =
-        HorizontalPanel().apply {
+        HorizontalPanel(
+            height = Size.absolute(style.getSize("PROP_HEADER_ROW_HEIGHT"))
+        ).apply {
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
