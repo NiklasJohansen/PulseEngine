@@ -16,11 +16,12 @@ class Camera2DController(
     private var xPosChangeRate = 0f
     private var yPosChangeRate = 0f
 
-    fun update(engine: PulseEngine, camera: Camera? = null)
+    fun update(engine: PulseEngine, camera: Camera? = null, enableScrolling: Boolean = true)
     {
         val cam = camera ?: engine.gfx.mainCamera
 
-        scaleChangeRate += engine.input.scroll * 0.01f * min(1f, cam.scale.x)
+        if (enableScrolling)
+            scaleChangeRate += engine.input.scroll * 0.01f * min(1f, cam.scale.x)
 
         if (scaleChangeRate != 0f)
         {

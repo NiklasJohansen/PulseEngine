@@ -10,6 +10,7 @@ import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.Scrollable
 import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.modules.gui.UiUtil.firstElementOrNull
 import kotlin.math.max
 
 class Scrollbar(
@@ -38,13 +39,12 @@ class Scrollbar(
 
     override fun onVisibilityIndependentUpdate(engine: PulseEngine)
     {
-        boundScrollable?.let { scrollable ->
-            val shouldHide = scrollable.getUsedSpaceFraction() < 1f
-            if (scrollable.hideScrollbarOnEnoughSpaceAvailable && shouldHide == isVisible())
-            {
-                preventRender(shouldHide)
-                setLayoutDirty()
-            }
+        val scrollable = boundScrollable ?: return
+        val shouldHide = scrollable.getUsedSpaceFraction() < 1f
+        if (scrollable.hideScrollbarOnEnoughSpaceAvailable && shouldHide == isVisible())
+        {
+            preventRender(shouldHide)
+            setLayoutDirty()
         }
     }
 
@@ -52,10 +52,19 @@ class Scrollbar(
     {
         val xMouse = engine.input.xMouse
         val yMouse = engine.input.yMouse
+        var scroll = 0
 
         isVerticalSlider = height.value >= width.value
         isMouseOverSlider = (xMouse >= xSlider && xMouse < xSlider + sliderWidth && yMouse >= ySlider && yMouse < ySlider + sliderHeight)
-        boundScrollable?.let { sliderLengthFraction = (1f / max(0.0000001f, it.getUsedSpaceFraction())).coerceIn(0.2f, 1f)  }
+        boundScrollable?.let()
+        {
+            sliderLengthFraction = (1f / max(0.0000001f, it.getUsedSpaceFraction())).coerceIn(0.2f, 1f)
+
+            // Get scroll amount when the bound scrollable has hover focus
+            val mouseScroll = engine.input.scroll
+            if (mouseScroll != 0 && it.hasHoverFocus(engine))
+                scroll = mouseScroll
+        }
 
         if (engine.input.isPressed(Mouse.LEFT))
         {
@@ -74,7 +83,7 @@ class Scrollbar(
             xSlider = x.value + sliderPadding
             ySlider = y.value + sliderPadding + sliderFraction * sliderTravelDist
 
-            updateSliderFraction(engine.input.ydMouse, engine.input.scroll, sliderTravelDist)
+            updateSliderFraction(engine.input.ydMouse, scroll, sliderTravelDist)
         }
         else
         {
@@ -86,7 +95,7 @@ class Scrollbar(
             ySlider = y.value + sliderPadding
             xSlider = x.value + sliderPadding + sliderFraction * sliderTravelDist
 
-            updateSliderFraction(engine.input.ydMouse, engine.input.scroll, sliderTravelDist)
+            updateSliderFraction(engine.input.ydMouse, scroll, sliderTravelDist)
         }
 
         if (isMouseOverSlider)
@@ -97,7 +106,7 @@ class Scrollbar(
     {
         if (sliderTravelDist > 0f)
         {
-            val scrollChange = -scroll * (sliderTravelDist * 0.2f)
+            val scrollChange = -scroll * (sliderTravelDist * sliderLengthFraction * 0.2f)
             val fractionChange = (mouseChange + scrollChange) / sliderTravelDist
 
             if (fractionChange != 0f && (sliderGrabbed || scroll != 0))
@@ -139,4 +148,7 @@ class Scrollbar(
     {
         boundScrollable = scrollable
     }
+
+    private fun Scrollable.hasHoverFocus(engine: PulseEngine): Boolean =
+        this is UiElement && this.firstElementOrNull { engine.input.hasHoverFocus(it.area) } != null
 }

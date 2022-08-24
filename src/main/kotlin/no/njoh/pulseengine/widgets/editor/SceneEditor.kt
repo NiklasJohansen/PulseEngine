@@ -291,7 +291,7 @@ class SceneEditor(
         if (engine.scene.state == SceneState.STOPPED)
         {
             engine.input.setCursor(ARROW)
-            cameraController.update(engine, activeCamera)
+            cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(screenArea))
         }
 
         if (engine.input.wasClicked(Key.F10))

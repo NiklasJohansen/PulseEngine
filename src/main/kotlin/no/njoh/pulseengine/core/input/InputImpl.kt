@@ -4,6 +4,8 @@ import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Cursor
 import no.njoh.pulseengine.core.asset.types.Cursor.Companion.createWithHandle
 import no.njoh.pulseengine.core.shared.primitives.Subscription
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.lastOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*
@@ -32,6 +34,7 @@ open class InputImpl : InputInternal
     private var focusStack = mutableListOf<FocusArea>()
     private var currentFocusArea: FocusArea? = null
     private var previousFocusArea: FocusArea? = null
+    private var hoverFocusArea: FocusArea? = null
 
     private var cursors = mutableMapOf<CursorType, Cursor>()
     private var selectedCursor = ARROW
@@ -51,7 +54,7 @@ open class InputImpl : InputInternal
                 {
                     Key.values()
                         .find { it.code == key }
-                        ?.let { keyEnum -> onKeyPressedCallbacks.forEach { it.invoke(keyEnum) } }
+                        ?.let { keyEnum -> onKeyPressedCallbacks.forEachFast { it.invoke(keyEnum) } }
                 }
             }
         }
@@ -65,6 +68,7 @@ open class InputImpl : InputInternal
             yMouseLast = yMouse
             xMouse = xPos.toFloat()
             yMouse = yPos.toFloat()
+            hoverFocusArea = focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }
         }
 
         glfwSetScrollCallback(windowHandle) { window, xoffset, yoffset ->
@@ -74,11 +78,7 @@ open class InputImpl : InputInternal
         glfwSetMouseButtonCallback(windowHandle) { window, button, action, mods ->
             clicked[button] = if (action == GLFW_PRESS) 1 else -1
             if (action == GLFW_PRESS && focusStack.isNotEmpty())
-            {
-                focusStack
-                    .lastOrNull { it.isInside(xMouse, yMouse) }
-                    ?.let { acquireFocus(it) }
-            }
+                focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }?.let { acquireFocus(it) }
         }
 
         glfwSetJoystickCallback { jid: Int, event: Int ->
@@ -177,6 +177,9 @@ open class InputImpl : InputInternal
     override fun hasFocus(focusArea: FocusArea): Boolean =
          focusArea == currentFocusArea
 
+    override fun hasHoverFocus(focusArea: FocusArea): Boolean =
+        focusArea == hoverFocusArea
+
     override fun setCursor(cursorType: CursorType)
     {
         selectedCursor = cursorType
@@ -195,7 +198,7 @@ open class InputImpl : InputInternal
         textInput = ""
         clicked.fill(0)
         glfwPollEvents()
-        gamepads.forEach { it.updateState() }
+        gamepads.forEachFast { it.updateState() }
         if (focusStack.size == 1)
             currentFocusArea = focusStack.first()
         focusStack.clear()

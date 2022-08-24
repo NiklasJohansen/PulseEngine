@@ -27,6 +27,7 @@ interface Input
     fun acquireFocus(focusArea: FocusArea)
     fun releaseFocus(focusArea: FocusArea)
     fun hasFocus(focusArea: FocusArea): Boolean
+    fun hasHoverFocus(focusArea: FocusArea): Boolean
     fun setCursor(cursorType: CursorType)
 }
 

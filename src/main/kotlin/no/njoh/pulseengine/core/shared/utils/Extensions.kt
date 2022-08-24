@@ -146,6 +146,21 @@ object Extensions
     }
 
     /**
+     * Returns the last element matching the given predicate.
+     */
+    inline fun <T> List<T>.lastOrNullFast(predicate: (T) -> Boolean): T?
+    {
+        var i = lastIndex
+        while (i >= 0)
+        {
+            val element = this[i--]
+            if (predicate(element))
+                return element
+        }
+        return null
+    }
+
+    /**
      * Prints the time in milliseconds from 'this' to now.
      * @receiver Start time in nanoseconds.
      */

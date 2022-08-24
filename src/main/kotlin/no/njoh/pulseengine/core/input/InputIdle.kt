@@ -10,7 +10,7 @@ class InputIdle(private val activeInput: InputInternal) : InputInternal
     override val yMouse get() = activeInput.yMouse
     override val xdMouse get() = activeInput.xdMouse
     override val ydMouse get() = activeInput.ydMouse
-    override val scroll = 0
+    override val scroll get() = activeInput.scroll
     override val textInput: String = ""
     override val gamepads = activeInput.gamepads
     override fun init(windowHandle: Long) {}
@@ -31,5 +31,6 @@ class InputIdle(private val activeInput: InputInternal) : InputInternal
     override fun acquireFocus(focusArea: FocusArea) = activeInput.acquireFocus(focusArea)
     override fun releaseFocus(focusArea: FocusArea) = activeInput.releaseFocus(focusArea)
     override fun hasFocus(focusArea: FocusArea): Boolean = activeInput.hasFocus(focusArea)
+    override fun hasHoverFocus(focusArea: FocusArea): Boolean = activeInput.hasHoverFocus(focusArea)
     override fun setCursor(cursorType: CursorType) = activeInput.setCursor(cursorType)
 }

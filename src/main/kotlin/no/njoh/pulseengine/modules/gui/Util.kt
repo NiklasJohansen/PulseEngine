@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.gui
 
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.gui.Size.ValueType.ABSOLUTE
 import no.njoh.pulseengine.modules.gui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.gui.layout.VerticalPanel
@@ -14,8 +15,21 @@ object UiUtil
     {
         if (this.id == id)
             return this
-        else for (child in this.children)
-            child.findElementById(id)?.let { return it }
+
+        children.forEachFast { child -> child.findElementById(id)?.let { return it } }
+
+        return null
+    }
+
+    /**
+     * Returns the first [UiElement] satisfying the given [predicate] among its children or it self, else null.
+     */
+    fun UiElement.firstElementOrNull(predicate: (UiElement) -> Boolean): UiElement?
+    {
+        if (predicate(this))
+            return this
+
+        children.forEachFast { child -> child.firstElementOrNull(predicate)?.let { return it } }
 
         return null
     }
