@@ -76,51 +76,8 @@ abstract class UiElement(
         padding.setOnUpdated(::setLayoutDirty)
     }
 
-    fun addChildren(vararg uiElements: UiElement)
-    {
-        children.addAll(uiElements)
-        children.forEachFast { it.parent = this }
-        setLayoutDirty()
-    }
-
-    fun insertChild(element: UiElement, index: Int)
-    {
-        children.add(index, element)
-        element.parent = this
-        setLayoutDirty()
-    }
-
-    fun replaceChild(oldElement: UiElement, newElement: UiElement)
-    {
-        val index = children.indexOf(oldElement)
-        if (index != -1)
-            children[index] = newElement
-        else
-            children.add(newElement)
-        newElement.parent = this
-        setLayoutDirty()
-    }
-
-    fun removeChildren(vararg uiElements: UiElement)
-    {
-        children.removeAll(uiElements)
-        setLayoutDirty()
-    }
-
-    fun clearChildren()
-    {
-        if (children.isNotEmpty())
-        {
-            children.clear()
-            setLayoutDirty()
-        }
-    }
-
-    fun addPopup(popup: UiElement)
-    {
-        popup.parent = this
-        this.popup = popup
-    }
+    // Updating the UI element
+    // ---------------------------------------------------------------------------------------------------------
 
     fun update(engine: PulseEngine)
     {
@@ -168,38 +125,37 @@ abstract class UiElement(
         }
     }
 
-    open fun render(surface: Surface2D)
+    private fun updateMouseInputState(engine: PulseEngine)
+    {
+        val isNotOutsideParent = parent?.mouseInsideArea != false || parent?.popup === this
+        val insideArea = area.isInside(engine.input.xMouse, engine.input.yMouse) && isNotOutsideParent
+        val mouseInsideStateChanged = (mouseInsideArea != insideArea)
+        mouseInsideArea = insideArea
+
+        // Do not request focus or update mouse callbacks if the element is not focusable
+        if (!focusable)
+            return
+
+        // Request input focus for this area
+        engine.input.requestFocus(area)
+
+        // Update callbacks on state change
+        if (mouseInsideStateChanged)
+        {
+            if (insideArea) onMouseEnter(engine) else onMouseLeave(engine)
+        }
+
+        if (insideArea && engine.input.wasClicked(Mouse.LEFT))
+            onMouseClicked(engine)
+    }
+
+    private fun updatePopup(engine: PulseEngine)
     {
         if (!isVisible())
             return
 
-        if (renderOnlyInside)
-        {
-            surface.drawWithin(x.value, y.value, width.value, height.value)
-            {
-                onRender(surface)
-                children.forEachFast { it.render(surface) }
-            }
-        }
-        else
-        {
-            onRender(surface)
-            children.forEachFast { it.render(surface) }
-        }
-
-        // Start rendering the popups from the root node
-        if (parent == null)
-            renderPopup(surface)
-    }
-
-    fun setLayoutDirty()
-    {
-        dirtyLayout = true
-    }
-
-    fun setLayoutClean()
-    {
-        dirtyLayout = false
+        popup?.update(engine)
+        children.forEachFast { it.updatePopup(engine) }
     }
 
     fun updateLayout()
@@ -232,30 +188,6 @@ abstract class UiElement(
         }
     }
 
-    private fun updateMouseInputState(engine: PulseEngine)
-    {
-        val isNotOutsideParent = parent?.mouseInsideArea != false || parent?.popup === this
-        val insideArea = area.isInside(engine.input.xMouse, engine.input.yMouse) && isNotOutsideParent
-        val mouseInsideStateChanged = (mouseInsideArea != insideArea)
-        mouseInsideArea = insideArea
-
-        // Do not request focus or update mouse callbacks if the element is not focusable
-        if (!focusable)
-            return
-
-        // Request input focus for this area
-        engine.input.requestFocus(area)
-
-        // Update callbacks on state change
-        if (mouseInsideStateChanged)
-        {
-            if (insideArea) onMouseEnter(engine) else onMouseLeave(engine)
-        }
-
-        if (insideArea && engine.input.wasClicked(Mouse.LEFT))
-            onMouseClicked(engine)
-    }
-
     private fun alignWithin(xPos: Float, yPos: Float, availableWidth: Float, availableHeight: Float)
     {
         val newWidth = width.calculate(availableWidth - (padding.left + padding.right)).coerceIn(minWidth, maxWidth)
@@ -269,22 +201,47 @@ abstract class UiElement(
         y.setQuiet(yNew)
     }
 
-    private fun updatePopup(engine: PulseEngine)
+    // Rendering the UI element
+    // ---------------------------------------------------------------------------------------------------------
+
+    open fun render(engine: PulseEngine, surface: Surface2D)
     {
         if (!isVisible())
             return
 
-        popup?.update(engine)
-        children.forEachFast { it.updatePopup(engine) }
+        if (renderOnlyInside)
+        {
+            surface.drawWithin(x.value, y.value, width.value, height.value)
+            {
+                onRender(engine, surface)
+                children.forEachFast { it.render(engine, surface) }
+            }
+        }
+        else
+        {
+            onRender(engine, surface)
+            children.forEachFast { it.render(engine, surface) }
+        }
+
+        // Start rendering the popups from the root node
+        if (parent == null)
+            renderPopup(engine, surface)
     }
 
-    private fun renderPopup(surface: Surface2D)
+    private fun renderPopup(engine: PulseEngine, surface: Surface2D)
     {
         if (!isVisible())
             return
 
-        popup?.render(surface)
-        children.forEachFast { it.renderPopup(surface) }
+        popup?.render(engine, surface)
+        children.forEachFast { it.renderPopup(engine, surface) }
+    }
+
+    fun isVisible() = !hidden && !preventRender
+
+    fun preventRender(state: Boolean)
+    {
+        preventRender = state
     }
 
     fun printStructure(indent: Int = 0)
@@ -297,12 +254,70 @@ abstract class UiElement(
             child.printStructure(indent + 2)
     }
 
-    fun isVisible() = !hidden && !preventRender
+    // Children operations
+    // ---------------------------------------------------------------------------------------------------------
 
-    fun preventRender(state: Boolean)
+    fun addChildren(vararg uiElements: UiElement)
     {
-        preventRender = state
+        children.addAll(uiElements)
+        children.forEachFast { it.parent = this }
+        setLayoutDirty()
     }
+
+    fun insertChild(element: UiElement, index: Int)
+    {
+        children.add(index, element)
+        element.parent = this
+        setLayoutDirty()
+    }
+
+    fun replaceChild(oldElement: UiElement, newElement: UiElement)
+    {
+        val index = children.indexOf(oldElement)
+        if (index != -1)
+            children[index] = newElement
+        else
+            children.add(newElement)
+        newElement.parent = this
+        setLayoutDirty()
+    }
+
+    fun removeChildren(vararg uiElements: UiElement)
+    {
+        children.removeAll(uiElements)
+        setLayoutDirty()
+    }
+
+    fun clearChildren()
+    {
+        if (children.isNotEmpty())
+        {
+            children.clear()
+            setLayoutDirty()
+        }
+    }
+
+    fun addPopup(popup: UiElement)
+    {
+        popup.parent = this
+        this.popup = popup
+    }
+
+    // Setters
+    // ---------------------------------------------------------------------------------------------------------
+
+    fun setLayoutDirty()
+    {
+        dirtyLayout = true
+    }
+
+    fun setLayoutClean()
+    {
+        dirtyLayout = false
+    }
+
+    // Abstract and open functions implemented by concrete UI sub-classes
+    // ---------------------------------------------------------------------------------------------------------
 
     open fun onCreate(engine: PulseEngine) { }
     open fun onMouseEnter(engine: PulseEngine) { }
@@ -311,5 +326,5 @@ abstract class UiElement(
     open fun onVisibilityIndependentUpdate(engine: PulseEngine) { }
 
     protected abstract fun onUpdate(engine: PulseEngine)
-    protected abstract fun onRender(surface: Surface2D)
+    protected abstract fun onRender(engine: PulseEngine, surface: Surface2D)
 }

@@ -35,7 +35,7 @@ class Profiler : Widget
     override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface("overlay", zOrder = -100)
-        engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "graph_font", floatArrayOf(TICK_MARK_FONT_SIZE, HEADER_FONT_SIZE, VALUE_FONT_SIZE))
+        engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "graph_font")
         engine.console.registerCommand("showGraphs") {
             isRunning = !isRunning
             CommandResult("", showCommand = false)

@@ -65,6 +65,6 @@ class Label(
             font = font,
             fontSize = fontSize,
             xOrigin = if (centerHorizontally) 0.5f else 0f,
-            yOrigin = if (centerVertically) 0.6f else 0f)
+            yOrigin = if (centerVertically) 0.5f else 0f)
     }
 }

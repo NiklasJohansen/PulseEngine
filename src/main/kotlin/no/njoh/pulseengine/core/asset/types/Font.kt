@@ -14,7 +14,7 @@ import java.nio.ByteBuffer
 class Font(
     fileName: String,
     override val name: String,
-    val fontSizes: FloatArray
+    val fontSize: Float
 ) : Asset(name, fileName) {
 
     lateinit var charTexture: Texture
@@ -36,24 +36,18 @@ class Font(
         }
 
         STBTTPackContext.malloc().use { packContext ->
-            val charData = STBTTPackedchar.malloc(fontSizes.size * TOTAL_CHAR_COUNT)
+            val charData = STBTTPackedchar.malloc(TOTAL_CHAR_COUNT)
             val ttf = BufferUtils.createByteBuffer(fontData.size).put(fontData).flip() as ByteBuffer
             val alphaMask = BufferUtils.createByteBuffer(BITMAP_W * BITMAP_H)
             val info = STBTTFontinfo.create()
             if (!stbtt_InitFont(info, ttf))
                 throw IllegalStateException("Failed to initialize font information.");
 
-            stbtt_PackBegin(packContext, alphaMask, BITMAP_W, BITMAP_H, 0, 1, MemoryUtil.NULL)
-            fontSizes.sort()
-            for (i in fontSizes.indices)
-            {
-                val p = i * TOTAL_CHAR_COUNT + FIRST_CHAR
-                charData.limit(p + CHAR_COUNT)
-                charData.position(p)
-                stbtt_PackSetOversampling(packContext, 2, 2)
-                stbtt_PackFontRange(packContext, ttf, 0, fontSizes[i], FIRST_CHAR, charData)
-            }
-
+            stbtt_PackBegin(packContext, alphaMask, BITMAP_W, BITMAP_H, 0, 5, MemoryUtil.NULL)
+            charData.limit(FIRST_CHAR + CHAR_COUNT)
+            charData.position(FIRST_CHAR)
+            stbtt_PackSetOversampling(packContext, 2, 2)
+            stbtt_PackFontRange(packContext, ttf, 0, fontSize, FIRST_CHAR, charData)
             charData.clear()
             stbtt_PackEnd(packContext)
 
@@ -80,7 +74,7 @@ class Font(
         charData.free()
     }
 
-    fun getWidth(text: String, fontSize: Float = fontSizes[0]): Float
+    fun getWidth(text: String, fontSize: Float = this.fontSize): Float
     {
         if (text == textWidthString && fontSize == textWidthFontSize)
             return textWidthLength
@@ -99,7 +93,7 @@ class Font(
         return textWidthLength
     }
 
-    fun getCharacterWidths(text: String, fontSize: Float = fontSizes[0]): FloatArray
+    fun getCharacterWidths(text: String, fontSize: Float = this.fontSize): FloatArray
     {
         val scale = stbtt_ScaleForPixelHeight(info, fontSize)
         val widths = FloatArray(text.length)
@@ -121,7 +115,7 @@ class Font(
         val DEFAULT: Font = Font(
             fileName = "/pulseengine/assets/FiraSans-Regular.ttf",
             name = "default_font",
-            fontSizes = floatArrayOf(18f, 24f, 48f, 96f)
+            fontSize = 80f
         )
     }
 }

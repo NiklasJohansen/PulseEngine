@@ -29,7 +29,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         Logger.info("Initializing graphics (${this::class.simpleName})")
 
-        textureArray = TextureArray(1024, 1024, 100)
+        textureArray = TextureArray(1024, 1024, 100, mipMapLevels = 5)
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",
@@ -179,7 +179,7 @@ open class GraphicsImpl : GraphicsInternal
             name = name,
             camera = newCamera,
             context = context,
-            textRenderer = TextRenderer(),
+            textRenderer = TextRenderer(initialCapacity, context, textureArray),
             quadRenderer = QuadBatchRenderer(initialCapacity, context),
             lineRenderer = LineBatchRenderer(initialCapacity, context),
             bindlessTextureRenderer = BindlessTextureRenderer(initialCapacity, context, textureArray),

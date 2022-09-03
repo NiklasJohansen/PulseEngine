@@ -501,7 +501,7 @@ class InputField (
 
         // Draw input text
         surface.setDrawColor(fontColor)
-        surface.drawText(text, x.value + leftTextPadding, y.value + height.value / 2f, font, fontSize, yOrigin = 0.6f)
+        surface.drawText(text, x.value + leftTextPadding, y.value + height.value / 2f, font, fontSize, yOrigin = 0.5f)
 
         if ((contentType == INTEGER || contentType == FLOAT) && width.value > 50f && editable)
         {
