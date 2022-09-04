@@ -54,7 +54,7 @@ class ResizeBarGizmo(
         fade = (fade + (if (mouseInside || resizing) 0.08f else -0.08f)).coerceIn(0f, 1f)
     }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         if (fade > 0f)
         {

@@ -8,13 +8,16 @@ class EditorStyle
     val colors = mutableMapOf<String, Color>()
     val fonts = mutableMapOf<String, Font>()
     val sizes = mutableMapOf<String, Float>()
+    val icons = mutableMapOf<String, Char>()
 
     fun getColor(name: String) = colors[name] ?: DEFAULT_COLOR
     fun getFont(name: String = "") = fonts[name] ?: Font.DEFAULT
     fun getSize(name: String = "") = sizes[name] ?: 0f
+    fun getIconChar(name: String?) = icons[name] ?: DEFAULT_ICON_CHAR
 
-    init // Set default colors
+    init
     {
+        // Set default colors
         colors["LABEL"] = Color(1.0f, 1.0f, 1.0f, 1.0f)
         colors["BG_LIGHT"] = Color(0.036326528f, 0.048244897f, 0.057142854f, 0.80784315f)
         colors["BG_DARK"] = Color(0.024897957f, 0.026741894f, 0.028571427f, 0.9490196f)
@@ -27,13 +30,30 @@ class EditorStyle
         colors["ITEM"] = Color(0.048367348f, 0.06711405f, 0.08571428f, 1.0f)
         colors["ITEM_HOVER"] = Color(0.10275511f, 0.11865307f, 0.13571429f, 1.0f)
 
+        // Set default sizes
         sizes["PROP_ROW_HEIGHT"] = 30f
         sizes["PROP_HEADER_ROW_HEIGHT"] = 30f
         sizes["DROPDOWN_ROW_HEIGHT"] = 25f
+
+        // Set default icons
+        icons["CUBE"] = 'a'
+        icons["LIGHT_BULB"] = 'b'
+        icons["COG"] = 'c'
+        icons["MONITOR"] = 'd'
+        icons["CROSS"] = 'e'
+        icons["GEARS"] = 'j'
+        icons["SHAPES"] = 'i'
+        icons["IMAGE"] = 'f'
     }
 
     companion object
     {
         private var DEFAULT_COLOR = Color(1f, 1f, 1f)
+        private var DEFAULT_ICON_CHAR = 'a'
+    }
+
+    object Icons
+    {
+        var FONT_NAME = "icon_font"
     }
 }

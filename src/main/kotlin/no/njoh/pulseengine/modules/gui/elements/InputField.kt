@@ -74,6 +74,7 @@ class InputField (
 
     private var requestFocusRelease = false
     private var hasFocus = false
+    private var isMouseOver = false
     private var lastHasFocus = false
     private var lastText = text
 
@@ -94,6 +95,7 @@ class InputField (
     override fun onUpdate(engine: PulseEngine)
     {
         hasFocus = engine.input.hasFocus(area) && editable
+        isMouseOver = engine.input.hasHoverFocus(area) && mouseInsideArea
 
         if (hasFocus != lastHasFocus)
         {
@@ -432,7 +434,7 @@ class InputField (
         }
     }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         val charsPerLine = getNumberOfChars(width.value - leftTextPadding)
         var text = inputText.toString()
@@ -453,7 +455,7 @@ class InputField (
         text = text.substring(max(inputTextOffset, 0), min(inputTextOffset + charsPerLine, text.length))
 
         // Draw input box rectangle
-        surface.setDrawColor(if (mouseInsideArea && !hasFocus) bgColorHover else bgColor)
+        surface.setDrawColor(if (isMouseOver && !hasFocus) bgColorHover else bgColor)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
 
         if (hasFocus && strokeColor.alpha > 0f)

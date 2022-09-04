@@ -255,7 +255,7 @@ class ColorPicker(
         colorEditor.padding.top = if (isOnBottomSide) -colorEditor.height.value else height.value
     }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         surface.setDrawColor(bgColor)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
@@ -334,7 +334,7 @@ class ColorPicker(
             hueColor.blue = color.blue / 255f
         }
 
-        override fun onRender(surface: Surface2D)
+        override fun onRender(engine: PulseEngine, surface: Surface2D)
         {
             val xOffset = 5f
             val xBox = x.value + xOffset
@@ -446,7 +446,7 @@ class ColorPicker(
             outputColor.blue = ((1 - saturation) + saturation * hueColor.blue) * (luminance)
         }
 
-        override fun onRender(surface: Surface2D)
+        override fun onRender(engine: PulseEngine, surface: Surface2D)
         {
             surface.setDrawColor(Color(1f, 1f, 1f)) // White
             surface.drawQuadVertex(x.value, y.value)

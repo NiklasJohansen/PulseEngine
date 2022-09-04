@@ -8,6 +8,7 @@ import no.njoh.pulseengine.core.window.Window
 import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.Size.ValueType.*
+import kotlin.math.abs
 import kotlin.math.max
 
 open class WindowPanel(
@@ -59,7 +60,7 @@ open class WindowPanel(
         val allowResize = parent !is VerticalPanel && parent !is HorizontalPanel && resizable
         val isInsideArea = area.isInside(input.xMouse, input.yMouse)
         val isInsideHeader = header.area.isInside(input.xMouse, input.yMouse)
-        val isMouseMoving = input.xdMouse != 0f || input.ydMouse != 0f
+        val isMouseMoving = abs(input.xdMouse) > 1f || abs(input.ydMouse) > 1f
         val isInsideTopResizeArea = allowResize && isInsideArea && (input.yMouse < area.y0 + resizeMargin)
         val isInsideBottomResizeArea = allowResize && isInsideArea && (input.yMouse > area.y1 - resizeMargin)
         val isInsideLeftResizeArea = allowResize && isInsideArea && (input.xMouse < area.x0 + resizeMargin)

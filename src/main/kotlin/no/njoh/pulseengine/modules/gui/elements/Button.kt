@@ -30,6 +30,7 @@ open class Button(
     var cornerRadius = 0f
 
     private var onClickedCallback: (Button) -> Unit = { }
+    private var isMouseOver = false
 
     override fun onMouseLeave(engine: PulseEngine)
     {
@@ -46,7 +47,9 @@ open class Button(
 
     override fun onUpdate(engine: PulseEngine)
     {
-        if (mouseInsideArea)
+        isMouseOver = engine.input.hasHoverFocus(area) && mouseInsideArea
+
+        if (isMouseOver)
         {
             engine.input.setCursor(CursorType.HAND)
         }
@@ -57,10 +60,10 @@ open class Button(
         this.onClickedCallback = callback
     }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
-        val color = if (toggleButton && state) activeColor else if (mouseInsideArea) hoverColor else color
-        val bgColor = if (mouseInsideArea) bgHoverColor else bgColor
+        val color = if (toggleButton && state) activeColor else if (isMouseOver) hoverColor else color
+        val bgColor = if (isMouseOver) bgHoverColor else bgColor
 
         surface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue, bgColor.alpha)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)

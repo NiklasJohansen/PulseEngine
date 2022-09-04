@@ -47,7 +47,7 @@ class DockingPanel(
         addChildren(viewPort)
     }
 
-    override fun onRender(surface: Surface2D) { }
+    override fun onRender(engine: PulseEngine, surface: Surface2D) { }
 
     override fun onUpdate(engine: PulseEngine)
     {

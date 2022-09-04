@@ -6,12 +6,14 @@ import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
 import no.njoh.pulseengine.core.scene.SceneManager
 import no.njoh.pulseengine.core.scene.SceneSystem
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
 
-@Name("Physics 2D")
+@Name("Physics")
+@Icon("SHAPES")
 class PhysicsSystem : SceneSystem()
 {
     @ScnProp(i = 1)

@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -68,7 +69,7 @@ open class UiElementFactory(
     /**
      * Creates a movable and resizable window panel.
      */
-    open fun createWindowUI(title: String, x: Float = 0f, y: Float = 20f, width: Float = 300f, height: Float = 200f): WindowPanel
+    open fun createWindowUI(title: String, iconName: String = "", x: Float = 0f, y: Float = 20f, width: Float = 300f, height: Float = 200f): WindowPanel
     {
         val windowPanel = WindowPanel(
             x = Position.fixed(x),
@@ -76,6 +77,15 @@ open class UiElementFactory(
             width = Size.absolute(width),
             height = Size.absolute(height)
         )
+
+        val icon = Icon(width = Size.absolute(15f)).apply {
+            padding.left = 10f
+            iconSize = 18f
+            iconFontName = EditorStyle.Icons.FONT_NAME
+            iconCharacter = style.getIconChar(iconName).toString()
+            color = style.getColor("LABEL")
+            focusable = false
+        }
 
         val label = Label(title).apply {
             padding.left = 10f
@@ -85,27 +95,28 @@ open class UiElementFactory(
             focusable = false
         }
 
-        val xLabel = Label("x").apply {
+        val crossIcon = Icon(width = Size.absolute(15f)).apply {
             focusable = false
-            fontSize = 20f
-            padding.top = -3f
-            padding.left = 6f
+            iconFontName = EditorStyle.Icons.FONT_NAME
+            iconCharacter = style.getIconChar("CROSS").toString()
             color = style.getColor("LABEL")
+            padding.top = 2f
         }
 
         val exitButton = Button(width = Size.absolute(20f), height = Size.absolute(20f)).apply {
             padding.top = 5f
             padding.right = 5f
+            cornerRadius = 4f
             color = Color.BLANK
             hoverColor = style.getColor("BUTTON_EXIT")
             setOnClicked { windowPanel.parent?.removeChildren(windowPanel) }
-            addChildren(xLabel)
+            addChildren(crossIcon)
         }
 
         val headerPanel = HorizontalPanel(height = Size.absolute(30f)).apply {
             color = style.getColor("HEADER")
             focusable = false
-            addChildren(label, exitButton)
+            addChildren(icon, label, exitButton)
         }
 
         windowPanel.color = style.getColor("BG_LIGHT")
@@ -160,8 +171,8 @@ open class UiElementFactory(
             menuLabel.text = menuBarButton.labelText
             menuLabel.fontSize = fontSize
             menuLabel.font = font
-            menuLabel.padding.top = 7f
             menuLabel.centerHorizontally = true
+            menuLabel.centerVertically = true
             menuLabel.font = style.getFont()
             dropdown.color = style.getColor("BG_LIGHT")
             dropdown.strokeColor = style.getColor("STROKE")
@@ -211,8 +222,9 @@ open class UiElementFactory(
             bgHoverColor = style.getColor("BUTTON_HOVER")
             itemBgColor = Color.BLANK
             itemBgHoverColor = style.getColor("BUTTON_HOVER")
-            dropdown.color = style.getColor("BG_DARK") // BG_LIGHT
-            dropdown.strokeColor = style.getColor("STROKE")
+            dropdown.color = style.getColor("BG_DARK")
+            dropdown.strokeColor = Color.BLANK
+            dropdown.cornerRadius = 5f
             scrollbar.bgColor = style.getColor("ITEM")
             scrollbar.sliderColor = style.getColor("BUTTON")
             scrollbar.sliderColorHover = style.getColor("BUTTON_HOVER")
@@ -315,8 +327,8 @@ open class UiElementFactory(
             height.setQuiet(Size.absolute(40f))
             dropdown.resizable = true
             menuLabel.fontSize = 40f
-            menuLabel.padding.left = 6f
-            menuLabel.padding.top = 6f
+            menuLabel.padding.top = 4f
+            menuLabel.padding.right = 2f
             padding.setAll(5f)
             bgColor = style.getColor("HEADER")
             hoverColor = style.getColor("BUTTON_HOVER")
@@ -340,40 +352,44 @@ open class UiElementFactory(
      */
     open fun createSystemProperties(system: SceneSystem, isHidden: Boolean, onClose: (props: List<UiElement>) -> Unit): List<UiElement>
     {
+        val icon = system::class.findAnnotation<Icon>()
+        val headerIcon = Icon(width = Size.absolute(30f))
+        headerIcon.iconFontName = icon?.iconFontName ?: EditorStyle.Icons.FONT_NAME
+        headerIcon.iconCharacter = style.getIconChar(icon?.iconName ?: "COG").toString()
+        headerIcon.iconSize = 15f
+
         val headerText = system::class.findAnnotation<Name>()?.name
             ?: (system::class.java.simpleName ?: "")
                 .split("(?=[A-Z])".toRegex())
                 .joinToString(" ")
+                .trim()
 
         val headerLabel = Label(headerText).apply {
             focusable = false
-            padding.left = 10f
             fontSize = 20f
             color = style.getColor("LABEL")
         }
 
-        val xLabel = Label("x").apply {
+        val crossIcon = Icon(width = Size.absolute(15f)).apply {
             focusable = false
-            fontSize = 20f
-            centerVertically = true
-            centerHorizontally = true
-            padding.top = -3f
+            iconFontName = EditorStyle.Icons.FONT_NAME
+            iconCharacter = style.getIconChar("CROSS").toString()
             color = style.getColor("LABEL")
+            padding.top = 3f
         }
 
-        val exitButton = Button(width = Size.absolute(15f)).apply {
+        val exitButton = Button(width = Size.absolute(20f)).apply {
             padding.setAll(5f)
             color = Color.BLANK
             cornerRadius = 7.5f
             hoverColor = style.getColor("BUTTON_EXIT")
-            addChildren(xLabel)
+            addChildren(crossIcon)
         }
 
         val headerPanel = HorizontalPanel().apply {
             focusable = false
             color = Color.BLANK
-            addChildren(headerLabel)
-            addChildren(exitButton)
+            addChildren(headerIcon, headerLabel, exitButton)
         }
 
         val headerButton = Button(
@@ -522,7 +538,12 @@ open class UiElementFactory(
             color = style.getColor("LABEL")
         }
 
-        val typeDropdown = createItemSelectionDropdownUI(entity::class, SceneEntity.REGISTERED_TYPES.toList()) { it.simpleName ?: "NO NAME" }
+        val typeDropdown = createItemSelectionDropdownUI(
+            selectedItem = entity::class,
+            items = SceneEntity.REGISTERED_TYPES.sortedBy { it.simpleName }.toList(),
+            onItemToString = { it.simpleName ?: "NO NAME" }
+        )
+
         typeDropdown.setOnItemChanged(onItemChange)
 
         return HorizontalPanel(

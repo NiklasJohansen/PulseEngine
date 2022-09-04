@@ -32,7 +32,7 @@ class DockingButtons : UiElement(Position.auto(), Position.auto(), Size.auto(), 
         updateEdgeButtons(engine, x.value, y.value, width.value, height.value)
     }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         targetPanel?.let {
             renderPanelButtons(surface, it.x.value, it.y.value, it.width.value, it.height.value)

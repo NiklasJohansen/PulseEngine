@@ -118,7 +118,7 @@ class Scrollbar(
         }
     }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         surface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue, bgColor.alpha)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)

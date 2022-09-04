@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.graphics.Camera
 import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.modules.gui.UiUtil.findElementById
 import no.njoh.pulseengine.modules.gui.elements.InputField
 import no.njoh.pulseengine.modules.gui.UiElement
@@ -65,7 +66,7 @@ class SceneEditor(
     private var showGrid = true
 
     // Camera
-    private val cameraController = Camera2DController(Mouse.MIDDLE)
+    private val cameraController = Camera2DController(Mouse.MIDDLE, smoothing = 0.75f)
     private lateinit var activeCamera: Camera
     private lateinit var storedCameraState: CameraState
 
@@ -128,7 +129,8 @@ class SceneEditor(
         engine.gfx.createSurface(
             name = "scene_editor_foreground",
             zOrder = -90,
-            attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_STENCIL_BUFFER)
+            attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_STENCIL_BUFFER),
+            multisampling = Multisampling.MSAA16
         )
 
         // Background surface for grid
@@ -141,9 +143,11 @@ class SceneEditor(
 
         // Load editor icons
         engine.asset.loadAllTextures("/pulseengine/icons")
+        engine.asset.loadFont("/pulseengine/assets/editor_icons.ttf", EditorStyle.Icons.FONT_NAME)
 
         // Register a console command to toggle editor visibility
-        engine.console.registerCommand("showSceneEditor") {
+        engine.console.registerCommand("showSceneEditor")
+        {
             isRunning = !isRunning
             if (!isRunning) play(engine) else stop(engine)
             CommandResult("", showCommand = false)
@@ -169,6 +173,7 @@ class SceneEditor(
             )),
             MenuBarButton("View", listOf(
                 MenuBarItem("Entity properties") { createEntityPropertyWindow() },
+                MenuBarItem("Scene graph") { createSceneGraphWindow() },
                 MenuBarItem("Scene assets") { createAssetWindow(engine) },
                 MenuBarItem("Scene systems") { createSceneSystemsPropertyWindow(engine) },
                 MenuBarItem("Viewport") { createViewportWindow(engine) },
@@ -211,12 +216,21 @@ class SceneEditor(
 
     private fun createEntityPropertyWindow()
     {
-        if (dockingUI.findElementById("Entity Properties") == null)
+        if (dockingUI.findElementById("Entity properties") == null)
         {
-            val entityPropertyWindow = uiFactory.createWindowUI("Entity Properties")
+            val entityPropertyWindow = uiFactory.createWindowUI("Entity properties", "CUBE")
             val propertyPanel = uiFactory.createScrollableSectionUI(entityPropertiesUI)
             entityPropertyWindow.body.addChildren(propertyPanel)
             dockingUI.insertLeft(entityPropertyWindow)
+        }
+    }
+
+    private fun createSceneGraphWindow()
+    {
+        if (dockingUI.findElementById("Scene Graph") == null)
+        {
+            val window = uiFactory.createWindowUI("Scene Graph")
+            dockingUI.insertLeft(window)
         }
     }
 
@@ -224,7 +238,7 @@ class SceneEditor(
     {
         if (dockingUI.findElementById("Scene Assets") == null)
         {
-            val assetWindow = uiFactory.createWindowUI("Scene Assets")
+            val assetWindow = uiFactory.createWindowUI("Scene Assets", "IMAGE")
             val assetPanel = uiFactory.createAssetPanelUI(engine) { createDragAndDropEntity(engine, it) }
             assetWindow.body.addChildren(assetPanel)
             dockingUI.insertBottom(assetWindow)
@@ -237,7 +251,7 @@ class SceneEditor(
         {
             updateSceneSystemProperties(engine)
             val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
-            val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems")
+            val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems", "GEARS")
             sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
             dockingUI.insertRight(sceneSystemWindow)
         }
@@ -246,7 +260,7 @@ class SceneEditor(
     private fun createViewportWindow(engine: PulseEngine)
     {
         val viewportUi = uiFactory.createViewportUI(engine)
-        val viewportWindow = uiFactory.createWindowUI("Viewport", 300f, 300f, 640f, 480f)
+        val viewportWindow = uiFactory.createWindowUI("Viewport", "MONITOR",300f, 300f, 640f, 480f)
         viewportWindow.body.addChildren(viewportUi)
         dockingUI.addChildren(viewportWindow)
     }
@@ -344,7 +358,7 @@ class SceneEditor(
         val foregroundSurface = engine.gfx.getSurfaceOrDefault("scene_editor_foreground")
         renderEntityIconAndGizmo(foregroundSurface, engine)
         renderSelectionRectangle(foregroundSurface)
-        rootUI.render(foregroundSurface)
+        rootUI.render(engine, foregroundSurface)
     }
 
     private fun renderEntityIconAndGizmo(surface: Surface2D, engine: PulseEngine)

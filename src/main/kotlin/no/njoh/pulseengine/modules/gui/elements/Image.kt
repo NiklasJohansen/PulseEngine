@@ -22,7 +22,7 @@ open class Image(
 
     override fun onUpdate(engine: PulseEngine) { }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         val texture = texture ?: return
         var texWidth = width.value

@@ -43,12 +43,12 @@ class DropdownMenu <T> (
 
     private var onItemToString: (T) -> String = { it.toString() }
     private var onItemChanged: (T) -> Unit = { }
+    private var isMouseOver = false
 
     init
     {
-        menuLabel = Label("")
+        menuLabel = Label("", x = Position.center(), y = Position.center())
         menuLabel.focusable = false
-        menuLabel.padding.setAll(5f)
         menuLabel.color = Color(1f, 1f, 1f)
 
         rowPanel = RowPanel()
@@ -80,6 +80,8 @@ class DropdownMenu <T> (
         super.onUpdate(engine)
         if (dropdown.isVisible() && !hasFocus(engine))
             dropdown.hidden = true
+
+        isMouseOver = engine.input.hasHoverFocus(area) && mouseInsideArea
     }
 
     private fun UiElement.hasFocus(engine: PulseEngine): Boolean =
@@ -153,9 +155,9 @@ class DropdownMenu <T> (
         this.onItemChanged = callback
     }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
-        val bgColor = if (mouseInsideArea) bgHoverColor else bgColor
+        val bgColor = if (isMouseOver) bgHoverColor else bgColor
         surface.setDrawColor(bgColor)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
 

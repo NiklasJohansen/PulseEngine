@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.annotations.Name
 import java.util.*
@@ -52,6 +53,7 @@ interface CustomRenderPassTarget
 }
 
 @Name("Entity Renderer")
+@Icon("MONITOR")
 open class EntityRendererImpl : EntityRenderer()
 {
     private val renderQueue = mutableListOf<RenderTask>()

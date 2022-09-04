@@ -92,5 +92,5 @@ class HorizontalResizeGizmo(
     }
 
     override fun onUpdate(engine: PulseEngine) { }
-    override fun onRender(surface: Surface2D) { }
+    override fun onRender(engine: PulseEngine, surface: Surface2D) { }
 }
