@@ -1,21 +1,26 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.asset.types.Font
+import no.njoh.pulseengine.core.asset.types.Font.*
+import no.njoh.pulseengine.core.asset.types.Font.Companion.MAX_CHAR_COUNT
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.*
+import no.njoh.pulseengine.core.graphics.RenderContextInternal
+import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureArray
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
-import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.api.objects.BufferObject
+import no.njoh.pulseengine.core.graphics.api.objects.FloatBufferObject
+import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
+import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Math.PI
 import org.joml.Math.cos
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
-import org.lwjgl.opengl.GL20.*
+import org.lwjgl.opengl.GL20.GL_FLOAT
+import org.lwjgl.opengl.GL20.GL_TRIANGLE_STRIP
 import org.lwjgl.stb.STBTTAlignedQuad
-import org.lwjgl.stb.STBTruetype
-import org.lwjgl.stb.STBTruetype.stbtt_GetCodepointHMetrics
-import org.lwjgl.stb.STBTruetype.stbtt_ScaleForPixelHeight
+import org.lwjgl.stb.STBTruetype.*
 import kotlin.math.max
 import kotlin.math.sin
 
@@ -82,18 +87,19 @@ class TextRenderer(
         val width = font.charTexture.width
         val height = font.charTexture.height
         val charData = font.charData
-        charData.position(0)
-        xb[0] = -getLeftSideBaring(text, font, fontSize) // Compensate for space before first character
+        xb[0] = -getLeftSideBearing(text, font, fontSize) // Compensate for space before first character
         yb[0] = 0f
 
         var i = 0
-        for (character in text)
+        var charIndex = 0
+        while (charIndex < text.length)
         {
-            var charCode = character.code
-            if (charCode < 0 || charCode >= Font.TOTAL_CHAR_COUNT)
-                charCode = ' '.code // Use space character for unrecognized codes
+            val cp = CodePoint.of(text, charIndex)
+            var charCode = cp.code - 32
+            if (charCode >= MAX_CHAR_COUNT)
+                charCode = ' '.code
 
-            STBTruetype.stbtt_GetPackedQuad(charData, width, height, charCode, xb, yb, quad, false)
+            stbtt_GetBakedQuad(charData, width, height, charCode, xb, yb, quad, false)
             val x0 = quad.x0() * scale
             val y0 = quad.y0() * scale
             val x1 = quad.x1() * scale
@@ -106,7 +112,9 @@ class TextRenderer(
             glyphData[V_MIN(i)] = quad.t0()
             glyphData[U_MAX(i)] = quad.s1()
             glyphData[V_MAX(i)] = quad.t1()
+
             i += GLYPH_STRIDE
+            charIndex += cp.advanceCount
         }
 
         // Find distance between start of first character and end of last
@@ -179,7 +187,7 @@ class TextRenderer(
                 put(context.depth)
                 put(glyphData[W(i)])
                 put(glyphData[H(i)])
-                put(angle) // Rotation
+                put(angle)
                 put(fontTex.uMax * glyphData[U_MIN(i)])
                 put(fontTex.vMax * glyphData[V_MIN(i)])
                 put(fontTex.uMax * glyphData[U_MAX(i)])
@@ -220,13 +228,13 @@ class TextRenderer(
 
     private val advanceWidth = IntArray(1)
     private val leftSideBearing = IntArray(1)
-    private fun getLeftSideBaring(text: String, font: Font, fontSize: Float): Float
+    private fun getLeftSideBearing(text: String, font: Font, fontSize: Float): Float
     {
         stbtt_GetCodepointHMetrics(font.info, text[0].code, advanceWidth, leftSideBearing)
         return leftSideBearing[0] * stbtt_ScaleForPixelHeight(font.info, fontSize)
     }
 
-    @Suppress("NOTHING_TO_INLINE")
+    @Suppress("NOTHING_TO_INLINE", "FunctionName")
     companion object
     {
         private const val GLYPH_STRIDE = 8
