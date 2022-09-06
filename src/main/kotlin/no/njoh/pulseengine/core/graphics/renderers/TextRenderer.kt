@@ -95,25 +95,24 @@ class TextRenderer(
         while (charIndex < text.length)
         {
             val cp = CodePoint.of(text, charIndex)
-            var charCode = cp.code - 32
-            if (charCode >= MAX_CHAR_COUNT)
-                charCode = ' '.code
-
-            stbtt_GetBakedQuad(charData, width, height, charCode, xb, yb, quad, false)
-            val x0 = quad.x0() * scale
-            val y0 = quad.y0() * scale
-            val x1 = quad.x1() * scale
-            val y1 = quad.y1() * scale
-            glyphData[X(i)] = x0
-            glyphData[Y(i)] = y0
-            glyphData[W(i)] = x1 - x0
-            glyphData[H(i)] = y1 - y0
-            glyphData[U_MIN(i)] = quad.s0()
-            glyphData[V_MIN(i)] = quad.t0()
-            glyphData[U_MAX(i)] = quad.s1()
-            glyphData[V_MAX(i)] = quad.t1()
-
-            i += GLYPH_STRIDE
+            val charCode = cp.code - 32
+            if (charCode >= 0 && charCode < MAX_CHAR_COUNT)
+            {
+                stbtt_GetBakedQuad(charData, width, height, charCode, xb, yb, quad, false)
+                val x0 = quad.x0() * scale
+                val y0 = quad.y0() * scale
+                val x1 = quad.x1() * scale
+                val y1 = quad.y1() * scale
+                glyphData[X(i)] = x0
+                glyphData[Y(i)] = y0
+                glyphData[W(i)] = x1 - x0
+                glyphData[H(i)] = y1 - y0
+                glyphData[U_MIN(i)] = quad.s0()
+                glyphData[V_MIN(i)] = quad.t0()
+                glyphData[U_MAX(i)] = quad.s1()
+                glyphData[V_MAX(i)] = quad.t1()
+                i += GLYPH_STRIDE
+            }
             charIndex += cp.advanceCount
         }
 
