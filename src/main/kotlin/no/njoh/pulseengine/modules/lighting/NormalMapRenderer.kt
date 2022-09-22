@@ -8,8 +8,8 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation.*
+import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
-import org.lwjgl.opengl.GL31.glDrawArraysInstanced
 
 class NormalMapRenderer(
     private val initialCapacity: Int,
@@ -99,14 +99,19 @@ class NormalMapRenderer(
             put(normalScale * orientation.yDir)
         }
 
-        instanceCount++
+        increaseBatchSize()
         context.increaseDepth()
     }
 
     override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
     {
-        if (instanceCount == 0)
-            return
+        // Submit per-instance data to GPU
+        if (startIndex == 0)
+        {
+            instanceBuffer.bind()
+            instanceBuffer.submit()
+            instanceBuffer.release()
+        }
 
         // Submit per-instance data to GPU
         instanceBuffer.bind()
@@ -125,11 +130,10 @@ class NormalMapRenderer(
         program.setUniform("view", surface.camera.viewMatrix)
 
         // Draw all instances
-        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, instanceCount)
+        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
 
         // Release VAO and reset count
         vao.release()
-        instanceCount = 0
     }
 
     override fun cleanUp()
