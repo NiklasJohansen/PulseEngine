@@ -78,7 +78,7 @@ class NormalMapRenderer(
         normalScale: Float = 1f,
         orientation: Orientation = NORMAL
     ) {
-        instanceBuffer.fill(16)
+        instanceBuffer.fill(17)
         {
             put(x)
             put(y)
