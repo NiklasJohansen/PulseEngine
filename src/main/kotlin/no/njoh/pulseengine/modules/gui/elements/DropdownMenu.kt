@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.modules.gui.Position
+import no.njoh.pulseengine.modules.gui.ScrollDirection.VERTICAL
 import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.UiElement
 import no.njoh.pulseengine.modules.gui.layout.HorizontalPanel
@@ -59,7 +60,7 @@ class DropdownMenu <T> (
         scrollbar.padding.bottom = 5f
         scrollbar.padding.right = 5f
         scrollbar.sliderPadding = 3f
-        scrollbar.bind(rowPanel)
+        scrollbar.bind(rowPanel, direction = VERTICAL)
 
         val hPanel = HorizontalPanel()
         hPanel.addChildren(rowPanel, scrollbar)

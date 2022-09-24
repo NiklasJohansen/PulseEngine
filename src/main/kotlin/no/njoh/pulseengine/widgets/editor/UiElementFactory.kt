@@ -9,10 +9,8 @@ import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Scrollable
-import no.njoh.pulseengine.modules.gui.Size
-import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.modules.gui.*
+import no.njoh.pulseengine.modules.gui.ScrollDirection.*
 import no.njoh.pulseengine.modules.gui.elements.*
 import no.njoh.pulseengine.modules.gui.layout.*
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
@@ -342,7 +340,7 @@ open class UiElementFactory(
                 VerticalPanel().apply {
                     addChildren(propertiesRowPanel, buttonUI)
                 },
-                createScrollbarUI(propertiesRowPanel)
+                createScrollbarUI(propertiesRowPanel, VERTICAL)
             )
         }
     }
@@ -429,24 +427,40 @@ open class UiElementFactory(
     }
 
     /**
-     * Creates a UI panel with a horizontally aligned scrollbar.
+     * Creates a UI panel with a horizontally and/or vertically aligned scrollbar.
      */
-    open fun createScrollableSectionUI(panel: UiElement): HorizontalPanel
+    open fun createScrollableSectionUI(scrollablePanel: UiElement): Panel
     {
-        if (panel !is Scrollable)
-            throw IllegalArgumentException("${panel::class.simpleName} is not Scrollable")
+        if (scrollablePanel !is Scrollable)
+            throw IllegalArgumentException("${scrollablePanel::class.simpleName} is not Scrollable")
 
-        return HorizontalPanel().apply {
-            color = style.getColor("BG_DARK")
-            addChildren(panel, createScrollbarUI(panel))
+        var outerPanel: Panel? = null
+        if (scrollablePanel is VerticallyScrollable)
+        {
+            outerPanel = HorizontalPanel()
+            outerPanel.addChildren(scrollablePanel, createScrollbarUI(scrollablePanel, direction = VERTICAL))
         }
+
+        if (scrollablePanel is HorizontallyScrollable)
+        {
+            val scrollBar = createScrollbarUI(scrollablePanel, direction = HORIZONTAL)
+            val body = outerPanel ?: scrollablePanel
+            outerPanel = VerticalPanel()
+            outerPanel.addChildren(body, scrollBar)
+        }
+
+        outerPanel!!.color = style.getColor("BG_DARK")
+        return outerPanel
     }
 
     /**
      * Creates a default [Scrollbar] UI element.
      */
-    open fun createScrollbarUI(scrollBinding: Scrollable): Scrollbar =
-        Scrollbar(width = Size.absolute(15f)).apply {
+    open fun createScrollbarUI(scrollBinding: Scrollable, direction: ScrollDirection): Scrollbar
+    {
+        val width = if (direction == VERTICAL) Size.absolute(15f) else Size.auto()
+        val height = if (direction == HORIZONTAL) Size.absolute(15f) else Size.auto()
+        return Scrollbar(width, height).apply {
             bgColor = style.getColor("ITEM")
             sliderColor = style.getColor("BUTTON")
             sliderColorHover = style.getColor("BUTTON_HOVER")
@@ -455,8 +469,9 @@ open class UiElementFactory(
             padding.bottom = 5f
             padding.right = 5f
             sliderPadding = 3f
-            bind(scrollBinding)
+            bind(scrollBinding, direction)
         }
+    }
 
     /**
      * Creates a new [ColorPicker] UI element.
@@ -533,7 +548,7 @@ open class UiElementFactory(
         val typeLabel = Label("Entity type", width = Size.relative(0.5f)).apply {
             padding.setAll(5f)
             padding.left = 10f
-            fontSize = 18f
+            fontSize = 20f
             font = style.getFont()
             color = style.getColor("LABEL")
         }
@@ -614,7 +629,7 @@ open class UiElementFactory(
         }
 
     /**
-     * Determines the dropdown menu size based on the its content.
+     * Determines the dropdown menu size based on its content.
      */
     private fun getDropDownDimensions(
         font: Font,

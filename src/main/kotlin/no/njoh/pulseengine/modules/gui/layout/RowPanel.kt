@@ -1,9 +1,8 @@
 package no.njoh.pulseengine.modules.gui.layout
 
 import no.njoh.pulseengine.core.shared.utils.Extensions.sumIf
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Scrollable
-import no.njoh.pulseengine.modules.gui.Size
+import no.njoh.pulseengine.modules.gui.*
+import no.njoh.pulseengine.modules.gui.ScrollbarVisibility.*
 import kotlin.math.max
 
 class RowPanel (
@@ -11,11 +10,11 @@ class RowPanel (
     y: Position = Position.auto(),
     width: Size = Size.auto(),
     height: Size = Size.auto()
-) : Panel(x, y, width, height), Scrollable {
+) : Panel(x, y, width, height), VerticallyScrollable {
 
     override var renderOnlyInside = true
-    override var scrollFraction = 0f
-    override var hideScrollbarOnEnoughSpaceAvailable = true
+    override var verticalScrollbarVisibility = ONLY_VISIBLE_WHEN_NEEDED
+    var scrollFraction = 0f
 
     override fun updateChildLayout()
     {
@@ -43,13 +42,13 @@ class RowPanel (
         }
     }
 
-    override fun setScroll(fraction: Float)
+    override fun setVerticalScroll(fraction: Float)
     {
         this.scrollFraction = fraction
         this.setLayoutDirty()
     }
 
-    override fun getUsedSpaceFraction(): Float
+    override fun getVerticallyUsedSpaceFraction(): Float
     {
         val availableSpace = max(1f, height.value)
         return calculateUsedSpace() / availableSpace

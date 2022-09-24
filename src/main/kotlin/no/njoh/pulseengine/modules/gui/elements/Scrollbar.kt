@@ -6,10 +6,10 @@ import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Scrollable
-import no.njoh.pulseengine.modules.gui.Size
-import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.modules.gui.*
+import no.njoh.pulseengine.modules.gui.ScrollDirection.*
+import no.njoh.pulseengine.modules.gui.ScrollbarVisibility.ALWAYS_VISIBLE
+import no.njoh.pulseengine.modules.gui.ScrollbarVisibility.HIDDEN
 import no.njoh.pulseengine.modules.gui.UiUtil.firstElementOrNull
 import kotlin.math.max
 
@@ -18,6 +18,7 @@ class Scrollbar(
     height: Size = Size.auto()
 ) : UiElement(Position.auto(), Position.auto(), width, height) {
 
+    var scrollDirection = VERTICAL
     var sliderColor = Color(1f, 1f, 1f)
     var sliderColorHover = Color(1f, 1f, 1f)
     var bgColor = Color(1f, 1f, 1f, 0f)
@@ -29,7 +30,6 @@ class Scrollbar(
 
     private var boundScrollable: Scrollable? = null
     private var onScrollCallback: (Float) -> Unit = { }
-    private var isVerticalSlider = false
     private var isMouseOverSlider = false
     private var sliderGrabbed = false
     private var sliderHeight = 0f
@@ -39,9 +39,12 @@ class Scrollbar(
 
     override fun onVisibilityIndependentUpdate(engine: PulseEngine)
     {
-        val scrollable = boundScrollable ?: return
-        val shouldHide = scrollable.getUsedSpaceFraction() < 1f
-        if (scrollable.hideScrollbarOnEnoughSpaceAvailable && shouldHide == isVisible())
+        if (boundScrollable == null)
+            return
+
+        val visibility = boundScrollable.getVisibility()
+        val shouldHide = boundScrollable.getUsedSpaceFraction() < 1f || visibility == HIDDEN
+        if (visibility != ALWAYS_VISIBLE && shouldHide == isVisible())
         {
             preventRender(shouldHide)
             setLayoutDirty()
@@ -50,22 +53,23 @@ class Scrollbar(
 
     override fun onUpdate(engine: PulseEngine)
     {
+        if (boundScrollable == null)
+            return
+
         val xMouse = engine.input.xMouse
         val yMouse = engine.input.yMouse
-        var scroll = 0
+        var xScroll = 0
+        var yScroll = 0
 
-        isVerticalSlider = height.value >= width.value
-        isMouseOverSlider = (xMouse >= xSlider && xMouse < xSlider + sliderWidth && yMouse >= ySlider && yMouse < ySlider + sliderHeight)
-        boundScrollable?.let()
+        // Get scroll amount when the bound scrollable has hover focus
+        if (boundScrollable?.hasHoverFocus(engine) == true)
         {
-            sliderLengthFraction = (1f / max(0.0000001f, it.getUsedSpaceFraction())).coerceIn(0.2f, 1f)
-
-            // Get scroll amount when the bound scrollable has hover focus
-            val mouseScroll = engine.input.scroll
-            if (mouseScroll != 0 && it.hasHoverFocus(engine))
-                scroll = mouseScroll
+            xScroll = engine.input.xScroll
+            yScroll = engine.input.yScroll
         }
 
+        // Check if mouse is grabbing slider
+        isMouseOverSlider = (xMouse >= xSlider && xMouse < xSlider + sliderWidth && yMouse >= ySlider && yMouse < ySlider + sliderHeight)
         if (engine.input.isPressed(Mouse.LEFT))
         {
             if (isMouseOverSlider)
@@ -73,7 +77,10 @@ class Scrollbar(
         }
         else sliderGrabbed = false
 
-        if (isVerticalSlider)
+        // Update length of slider based
+        sliderLengthFraction = (1f / max(0.0000001f, boundScrollable.getUsedSpaceFraction())).coerceIn(0.2f, 1f)
+
+        if (scrollDirection == VERTICAL)
         {
             sliderHeight = height.value * sliderLengthFraction - 2f * sliderPadding
             sliderWidth = width.value - 2f * sliderPadding
@@ -83,9 +90,9 @@ class Scrollbar(
             xSlider = x.value + sliderPadding
             ySlider = y.value + sliderPadding + sliderFraction * sliderTravelDist
 
-            updateSliderFraction(engine.input.ydMouse, scroll, sliderTravelDist)
+            updateSliderFraction(engine.input.ydMouse, yScroll, sliderTravelDist)
         }
-        else
+        else if (scrollDirection == HORIZONTAL)
         {
             sliderHeight = height.value - 2f * sliderPadding
             sliderWidth = width.value * sliderLengthFraction - 2f * sliderPadding
@@ -95,7 +102,7 @@ class Scrollbar(
             ySlider = y.value + sliderPadding
             xSlider = x.value + sliderPadding + sliderFraction * sliderTravelDist
 
-            updateSliderFraction(engine.input.ydMouse, scroll, sliderTravelDist)
+            updateSliderFraction(engine.input.xdMouse, xScroll, sliderTravelDist)
         }
 
         if (isMouseOverSlider)
@@ -113,7 +120,7 @@ class Scrollbar(
             {
                 sliderFraction = (sliderFraction + fractionChange).coerceIn(0f, 1f)
                 onScrollCallback(sliderFraction)
-                boundScrollable?.setScroll(sliderFraction)
+                boundScrollable.setScrollFraction(sliderFraction)
             }
         }
     }
@@ -139,14 +146,28 @@ class Scrollbar(
         super.updateChildLayout()
     }
 
-    fun setOnScroll(callback: (Float) -> Unit)
+    fun bind(scrollable: Scrollable, direction: ScrollDirection)
     {
-        this.onScrollCallback = callback
+        scrollDirection = direction
+        boundScrollable = scrollable
     }
 
-    fun bind(scrollable: Scrollable)
+    private fun Scrollable?.getUsedSpaceFraction() = when (scrollDirection)
     {
-        boundScrollable = scrollable
+        VERTICAL -> (this as? VerticallyScrollable)?.getVerticallyUsedSpaceFraction() ?: 0f
+        HORIZONTAL -> (this as? HorizontallyScrollable)?.getHorizontallyUsedSpaceFraction() ?: 0f
+    }
+
+    private fun Scrollable?.setScrollFraction(fraction: Float) = when (scrollDirection)
+    {
+        VERTICAL -> (this as? VerticallyScrollable)?.setVerticalScroll(fraction)
+        HORIZONTAL -> (this as? HorizontallyScrollable)?.setHorizontalScroll(fraction)
+    }
+
+    private fun Scrollable?.getVisibility() = when (scrollDirection)
+    {
+        VERTICAL -> (this as? VerticallyScrollable)?.verticalScrollbarVisibility ?: HIDDEN
+        HORIZONTAL -> (this as? HorizontallyScrollable)?.horizontalScrollbarVisibility ?: HIDDEN
     }
 
     private fun Scrollable.hasHoverFocus(engine: PulseEngine): Boolean =

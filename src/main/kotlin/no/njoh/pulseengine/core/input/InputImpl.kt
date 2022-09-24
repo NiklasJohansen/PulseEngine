@@ -17,7 +17,8 @@ open class InputImpl : InputInternal
     override var yMouse = 0.0f
     override var xWorldMouse = 0f
     override var yWorldMouse = 0f
-    override var scroll = 0
+    override var xScroll = 0
+    override var yScroll = 0
     override var gamepads = mutableListOf<Gamepad>()
     override var textInput: String = ""
     override val xdMouse: Float
@@ -72,7 +73,10 @@ open class InputImpl : InputInternal
         }
 
         glfwSetScrollCallback(windowHandle) { window, xoffset, yoffset ->
-            scroll = yoffset.toInt()
+            if (isPressed(Key.LEFT_SHIFT))
+                xScroll = yoffset.toInt()
+            else
+                yScroll = yoffset.toInt()
         }
 
         glfwSetMouseButtonCallback(windowHandle) { window, button, action, mods ->
@@ -194,7 +198,8 @@ open class InputImpl : InputInternal
     {
         xMouseLast = xMouse
         yMouseLast = yMouse
-        scroll = 0
+        xScroll = 0
+        yScroll = 0
         textInput = ""
         clicked.fill(0)
         glfwPollEvents()

@@ -10,7 +10,8 @@ interface Input
     val yWorldMouse: Float
     val xdMouse: Float
     val ydMouse: Float
-    val scroll: Int
+    val xScroll: Int
+    val yScroll: Int
     val textInput: String
     val gamepads: List<Gamepad>
 

@@ -10,7 +10,8 @@ class InputIdle(private val activeInput: InputInternal) : InputInternal
     override val yMouse get() = activeInput.yMouse
     override val xdMouse get() = activeInput.xdMouse
     override val ydMouse get() = activeInput.ydMouse
-    override val scroll get() = activeInput.scroll
+    override val xScroll get() = activeInput.xScroll
+    override val yScroll get() = activeInput.yScroll
     override val textInput: String = ""
     override val gamepads = activeInput.gamepads
     override fun init(windowHandle: Long) {}

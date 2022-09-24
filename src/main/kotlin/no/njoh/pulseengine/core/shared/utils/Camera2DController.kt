@@ -21,7 +21,7 @@ class Camera2DController(
         val cam = camera ?: engine.gfx.mainCamera
 
         if (enableScrolling)
-            scaleChangeRate += engine.input.scroll * 0.01f * min(1f, cam.scale.x)
+            scaleChangeRate += engine.input.yScroll * 0.01f * min(1f, cam.scale.x)
 
         if (scaleChangeRate != 0f)
         {
