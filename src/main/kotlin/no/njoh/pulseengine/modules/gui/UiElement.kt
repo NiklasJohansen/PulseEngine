@@ -132,6 +132,12 @@ abstract class UiElement(
         val mouseInsideStateChanged = (mouseInsideArea != insideArea)
         mouseInsideArea = insideArea
 
+        // Handle mouse scroll
+        val xScroll = engine.input.xScroll
+        val yScroll = engine.input.yScroll
+        if ((xScroll != 0 || yScroll != 0) && engine.input.hasHoverFocus(area))
+            handleScrollEvent(xScroll, yScroll)
+
         // Do not request focus or update mouse callbacks if the element is not focusable
         if (!focusable)
             return
@@ -147,6 +153,16 @@ abstract class UiElement(
 
         if (insideArea && engine.input.wasClicked(Mouse.LEFT))
             onMouseClicked(engine)
+    }
+
+    private fun handleScrollEvent(xScroll: Int, yScroll: Int)
+    {
+        if (this is Scrollable)
+        {
+            onScroll(xScroll, yScroll)
+            setLayoutDirty()
+        }
+        else parent?.handleScrollEvent(xScroll, yScroll)
     }
 
     private fun updatePopup(engine: PulseEngine)

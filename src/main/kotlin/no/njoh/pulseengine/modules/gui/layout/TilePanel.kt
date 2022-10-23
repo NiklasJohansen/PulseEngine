@@ -21,6 +21,7 @@ class TilePanel(
     private var currentPaddingSize = 0f
     private var scrollFraction = 0f
     override var verticalScrollbarVisibility = ONLY_VISIBLE_WHEN_NEEDED
+    override var yScroll = 0
 
     override fun updateChildLayout()
     {
