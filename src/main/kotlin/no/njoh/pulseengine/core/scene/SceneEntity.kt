@@ -10,8 +10,11 @@ import kotlin.reflect.KClass
 
 abstract class SceneEntity
 {
-    @ScnProp(i = -1, editable = false)
-    var id = -1L // Id gets assigned when entity is added to the scene
+    @ScnProp(i = -2, editable = false)
+    var id = -1L // ID gets assigned when entity is added to the scene
+
+    @ScnProp(i = -1)
+    open var name: String? = null
 
     @ScnProp("Transform", 0)
     open var x: Float = 0f
@@ -31,11 +34,11 @@ abstract class SceneEntity
     @ScnProp("Transform", 5)
     open var rotation: Float = 0f
 
-    @JsonIgnore
-    val typeName = this::class.simpleName ?: ""
+    @ScnProp(hidden = true)
+    var flags = DISCOVERABLE or EDITABLE
 
     @JsonIgnore
-    var flags = DISCOVERABLE
+    val typeName = this::class.simpleName ?: ""
 
     open fun onCreate() { }
     open fun onStart(engine: PulseEngine) {  }
@@ -64,12 +67,14 @@ abstract class SceneEntity
 
     companion object
     {
-        const val DEAD              = 1  // Is the entity dead
-        const val POSITION_UPDATED  = 2  // Was position of entity updated
-        const val ROTATION_UPDATED  = 4  // Was rotation of entity updated
-        const val SIZE_UPDATED      = 8  // Was size of entity updated
-        const val DISCOVERABLE      = 16 // Can it be discovered by other entities
-        const val SELECTED          = 32 // Is the entity selected by e.g. the Editor
+        const val DEAD              = 1   // Is the entity dead
+        const val POSITION_UPDATED  = 2   // Was position of entity updated
+        const val ROTATION_UPDATED  = 4   // Was rotation of entity updated
+        const val SIZE_UPDATED      = 8   // Was size of entity updated
+        const val DISCOVERABLE      = 16  // Can it be discovered by other entities
+        const val SELECTED          = 32  // Is the entity selected by e.g. the Editor
+        const val EDITABLE          = 64  // Is the entity editable by e.g. the Editor
+        const val HIDDEN            = 128 // Is the entity hidden and not visible while rendering
 
         val REGISTERED_TYPES = mutableSetOf<KClass<out SceneEntity>>()
     }

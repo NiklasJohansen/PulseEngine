@@ -24,6 +24,8 @@ import no.njoh.pulseengine.core.scene.Scene
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
@@ -364,7 +366,11 @@ class SceneEditor(
     private fun renderEntityIconAndGizmo(surface: Surface2D, engine: PulseEngine)
     {
         val showResizeDots = (entitySelection.size == 1)
-        entitySelection.forEachFast { it.renderGizmo(surface, showResizeDots) }
+        entitySelection.forEachFast()
+        {
+            if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
+                it.renderGizmo(surface, showResizeDots)
+        }
 
         engine.scene.forEachEntityTypeList { entities ->
             entities[0]::class.findAnnotation<EditorIcon>()?.let { annotation ->
@@ -372,9 +378,13 @@ class SceneEditor(
                     val width = annotation.width
                     val height = annotation.height
                     surface.setDrawColor(1f, 1f, 1f)
-                    entities.forEachFast { entity ->
-                        val pos = engine.gfx.mainCamera.worldPosToScreenPos(entity.x, entity.y)
-                        surface.drawTexture(texture, pos.x, pos.y, width, height, 0f, 0.5f, 0.5f)
+                    entities.forEachFast()
+                    {
+                        if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
+                        {
+                            val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
+                            surface.drawTexture(texture, pos.x, pos.y, width, height, 0f, 0.5f, 0.5f)
+                        }
                     }
                 }
             }
@@ -506,7 +516,7 @@ class SceneEditor(
                 var closestEntity: SceneEntity? = null
                 engine.scene.forEachEntity()
                 {
-                    if (it.z <= zMin && it.isInside(xMouse, yMouse))
+                    if (it.z <= zMin && it.isInside(xMouse, yMouse) && it.isSet(EDITABLE) && it.isNot(HIDDEN))
                     {
                         zMin = it.z
                         closestEntity = it
@@ -550,7 +560,7 @@ class SceneEditor(
 
             engine.scene.forEachEntity()
             {
-                if (it.isOverlapping(xStart, yStart, width, height))
+                if (it.isSet(EDITABLE) && it.isNot(HIDDEN) && it.isOverlapping(xStart, yStart, width, height))
                     addEntityToSelection(it)
             }
 

@@ -13,6 +13,7 @@ import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.lighting.ShadowType.NONE
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer
@@ -224,8 +225,9 @@ open class LightingSystem : SceneSystem()
     private fun addLightsSources(lightSources: SwapList<SceneEntity>, engine: PulseEngine)
     {
         lightSources.forEachFast { entity ->
+            val isHidden = entity.isSet(HIDDEN)
             val light = entity as LightSource
-            if (light.intensity != 0f && isInsideBoundingRectangle(light))
+            if (!isHidden && light.intensity != 0f && isInsideBoundingRectangle(light))
             {
                 val edgeIndex = edgeCount
                 if (light.shadowType != NONE)
@@ -237,7 +239,7 @@ open class LightingSystem : SceneSystem()
                         height = light.radius * 1.7f,
                         rotation = light.rotation
                     ) {
-                        if (it.castShadows)
+                        if (it.castShadows && (it as SceneEntity).isNot(HIDDEN))
                         {
                             addOccluderEdges(it.shape)
                             shadowCasterCount++

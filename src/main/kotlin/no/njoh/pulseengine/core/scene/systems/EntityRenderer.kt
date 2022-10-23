@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -121,10 +122,19 @@ open class EntityRendererImpl : EntityRenderer()
                     if (layer.entities.isNotEmpty())
                     {
                         if (isCustomRenderTarget)
-                            layer.entities.forEachFast { (it as CustomRenderPassTarget).renderCustomPass(engine, surface) }
+                        {
+                            layer.entities.forEachFast()
+                            {
+                                if (it.isNot(HIDDEN)) (it as CustomRenderPassTarget).renderCustomPass(engine, surface)
+                            }
+                        }
                         else
-                            layer.entities.forEachFast { it.onRender(engine, surface) }
-
+                        {
+                            layer.entities.forEachFast()
+                            {
+                                if (it.isNot(HIDDEN)) it.onRender(engine, surface)
+                            }
+                        }
                         layer.entities.clear()
                         layer.emptyFrames = 0
                     }
