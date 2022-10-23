@@ -162,10 +162,32 @@ abstract class UiElement(
     {
         width.setQuiet(width.value.coerceIn(minWidth, maxWidth))
         height.setQuiet(height.value.coerceIn(minHeight, maxHeight))
-        area.update(x.value, y.value, x.value + width.value, y.value + height.value)
-
+        updateFocusArea()
         updateChildLayout()
         updatePopupLayout()
+    }
+
+    private fun updateFocusArea()
+    {
+        var x0 = x.value
+        var y0 = y.value
+        var x1 = x.value + width.value
+        var y1 = y.value + height.value
+
+        val p = parent
+        if (p != null && this !== p.popup) // Popups are not constrained to the parent area
+        {
+            val xMin = p.area.x0
+            val yMin = p.area.y0
+            val xMax = p.area.x1
+            val yMax = p.area.y1
+            x0 = x0.coerceIn(xMin, xMax)
+            y0 = y0.coerceIn(yMin, yMax)
+            x1 = x1.coerceIn(xMin, xMax)
+            y1 = y1.coerceIn(yMin, yMax)
+        }
+
+        area.update(x0, y0, x1, y1)
     }
 
     open fun updateChildLayout()

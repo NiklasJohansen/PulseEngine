@@ -4,10 +4,12 @@ import no.njoh.pulseengine.core.asset.types.Cursor
 
 class InputIdle(private val activeInput: InputInternal) : InputInternal
 {
-    override var xWorldMouse = 0f
-    override var yWorldMouse = 0f
     override val xMouse get() = activeInput.xMouse
     override val yMouse get() = activeInput.yMouse
+    override var xWorldMouse = 0f
+        get() = activeInput.xWorldMouse
+    override var yWorldMouse = 0f
+        get() = activeInput.yWorldMouse
     override val xdMouse get() = activeInput.xdMouse
     override val ydMouse get() = activeInput.ydMouse
     override val xScroll get() = activeInput.xScroll

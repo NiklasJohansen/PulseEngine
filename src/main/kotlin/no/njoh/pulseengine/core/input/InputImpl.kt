@@ -30,6 +30,7 @@ open class InputImpl : InputInternal
     private var yMouseLast = 0.0f
     private var windowHandle: Long = -1
     private val clicked = ByteArray(Key.LAST.code + 1)
+    private val pressed = ByteArray(Key.LAST.code + 1)
     private val onKeyPressedCallbacks = mutableListOf<(Key) -> Unit>()
     private var onFocusChangedCallback: (Boolean) -> Unit = {}
     private var focusStack = mutableListOf<FocusArea>()
@@ -40,6 +41,7 @@ open class InputImpl : InputInternal
     private var cursors = mutableMapOf<CursorType, Cursor>()
     private var selectedCursor = ARROW
     private var activeCursor = ARROW
+    private var currentFrame = 0
 
     override fun init(windowHandle: Long)
     {
@@ -51,6 +53,7 @@ open class InputImpl : InputInternal
             if (key >= 0)
             {
                 clicked[key] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
+                pressed[key] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else 0
                 if (action == GLFW_PRESS && onKeyPressedCallbacks.isNotEmpty())
                 {
                     Key.values()
@@ -69,7 +72,6 @@ open class InputImpl : InputInternal
             yMouseLast = yMouse
             xMouse = xPos.toFloat()
             yMouse = yPos.toFloat()
-            hoverFocusArea = focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }
         }
 
         glfwSetScrollCallback(windowHandle) { window, xoffset, yoffset ->
@@ -81,6 +83,7 @@ open class InputImpl : InputInternal
 
         glfwSetMouseButtonCallback(windowHandle) { window, button, action, mods ->
             clicked[button] = if (action == GLFW_PRESS) 1 else -1
+            pressed[button] = if (action == GLFW_PRESS) 1 else 0
             if (action == GLFW_PRESS && focusStack.isNotEmpty())
                 focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }?.let { acquireFocus(it) }
         }
@@ -122,9 +125,9 @@ open class InputImpl : InputInternal
         }
     }
 
-    override fun isPressed(btn: Mouse): Boolean = glfwGetMouseButton(windowHandle, btn.code) == 1
+    override fun isPressed(btn: Mouse): Boolean = pressed[btn.code] > 0
 
-    override fun isPressed(key: Key): Boolean = glfwGetKey(windowHandle, key.code) == 1
+    override fun isPressed(key: Key): Boolean = pressed[key.code] > 0
 
     override fun wasClicked(key: Key): Boolean = clicked[key.code] > 0
 
@@ -163,15 +166,18 @@ open class InputImpl : InputInternal
 
     override fun requestFocus(focusArea: FocusArea)
     {
-        if (focusArea !in focusStack)
+        if (focusArea.frame != currentFrame)
+        {
             focusStack.add(focusArea)
+            focusArea.frame = currentFrame
+        }
 
         onFocusChangedCallback.invoke(hasFocus(focusArea))
     }
 
     override fun releaseFocus(focusArea: FocusArea)
     {
-        if (currentFocusArea == focusArea)
+        if (currentFocusArea === focusArea)
         {
             currentFocusArea = previousFocusArea
             previousFocusArea = focusStack.firstOrNull()
@@ -179,10 +185,10 @@ open class InputImpl : InputInternal
     }
 
     override fun hasFocus(focusArea: FocusArea): Boolean =
-         focusArea == currentFocusArea
+         focusArea === currentFocusArea
 
     override fun hasHoverFocus(focusArea: FocusArea): Boolean =
-        focusArea == hoverFocusArea
+        focusArea === hoverFocusArea
 
     override fun setCursor(cursorType: CursorType)
     {
@@ -206,7 +212,9 @@ open class InputImpl : InputInternal
         gamepads.forEachFast { it.updateState() }
         if (focusStack.size == 1)
             currentFocusArea = focusStack.first()
+        hoverFocusArea = focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }
         focusStack.clear()
+        currentFrame++
         updateSelectedCursor()
     }
 
