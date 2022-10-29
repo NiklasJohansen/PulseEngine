@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.annotations.Name
 import java.util.*
@@ -54,7 +54,7 @@ interface CustomRenderPassTarget
 }
 
 @Name("Entity Renderer")
-@Icon("MONITOR")
+@ScnIcon("MONITOR")
 open class EntityRendererImpl : EntityRenderer()
 {
     private val renderQueue = mutableListOf<RenderTask>()
@@ -83,7 +83,7 @@ open class EntityRendererImpl : EntityRenderer()
                 if (renderPass.targetType.isInstance(typeList[0]))
                 {
                     typeList.forEachFast { entity ->
-                        if (condition == null || condition(entity))
+                        if (entity.isNot(HIDDEN) && (condition == null || condition(entity)))
                         {
                             val zOrder = entity.z.toInt()
                             var layer = task.layers[zOrder]
@@ -122,19 +122,9 @@ open class EntityRendererImpl : EntityRenderer()
                     if (layer.entities.isNotEmpty())
                     {
                         if (isCustomRenderTarget)
-                        {
-                            layer.entities.forEachFast()
-                            {
-                                if (it.isNot(HIDDEN)) (it as CustomRenderPassTarget).renderCustomPass(engine, surface)
-                            }
-                        }
+                            layer.entities.forEachFast { (it as CustomRenderPassTarget).renderCustomPass(engine, surface) }
                         else
-                        {
-                            layer.entities.forEachFast()
-                            {
-                                if (it.isNot(HIDDEN)) it.onRender(engine, surface)
-                            }
-                        }
+                            layer.entities.forEachFast {it.onRender(engine, surface) }
                         layer.entities.clear()
                         layer.emptyFrames = 0
                     }
