@@ -5,18 +5,18 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.modules.lighting.LightSource
 import no.njoh.pulseengine.modules.lighting.LightType
 import no.njoh.pulseengine.modules.lighting.ShadowType
-import no.njoh.pulseengine.widgets.editor.EditorIcon
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.MathUtil
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-@EditorIcon("icon_light_bulb")
+@ScnIcon("LIGHT_BULB", size = 24f, showInViewport = true)
 open class Lamp : SceneEntity(), LightSource
 {
     @ScnProp("Pin to entity", 0)

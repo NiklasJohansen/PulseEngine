@@ -18,7 +18,7 @@ import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.lighting.ShadowType.NONE
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer.RenderPass
-import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.MathUtil
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
@@ -28,7 +28,7 @@ import no.njoh.pulseengine.modules.lighting.LightType.*
 import kotlin.math.*
 
 @Name("Lighting")
-@Icon("LIGHT_BULB")
+@ScnIcon("LIGHT_BULB")
 open class LightingSystem : SceneSystem()
 {
     @ScnProp(i = 1) var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)

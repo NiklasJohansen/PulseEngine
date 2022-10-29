@@ -179,8 +179,7 @@ object Extensions
     /**
      * Class path resources (inside jar or at build dir) needs a leading forward slash
      */
-    fun String.toClassPath(): String =
-        this.takeIf { it.startsWith("/") } ?: "/$this"
+    fun String.toClassPath(): String = this.takeIf { it.startsWith("/") } ?: "/$this"
 
     /**
      * Loads the file as a [InputStream] from class path
@@ -191,22 +190,20 @@ object Extensions
     /**
      * Loads the file as a [ByteArray] from class path
      */
-    fun String.loadBytes(): ByteArray? =
-        Extensions::class.java.getResource(this.toClassPath())?.readBytes()
+    fun String.loadBytes(): ByteArray? = Extensions::class.java.getResource(this.toClassPath())?.readBytes()
 
     /**
      * Loads the text content from the given file in class path
      */
-    fun String.loadText(): String? =
-        Extensions::class.java.getResource(this.toClassPath())?.readText()
+    fun String.loadText(): String? = Extensions::class.java.getResource(this.toClassPath())?.readText()
 
     /**
      * Loads all file names in the given directory
      */
     fun String.loadFileNames(): List<String>
     {
-        val uri = Extensions::class.java.getResource(this.toClassPath()).toURI()
-        return if (uri.scheme == "jar")
+        val uri = Extensions::class.java.getResource(this.toClassPath())?.toURI()
+        return if (uri?.scheme == "jar")
         {
             val fileSystem =
                 try { FileSystems.getFileSystem(uri) }

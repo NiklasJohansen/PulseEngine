@@ -5,7 +5,9 @@ import kotlin.annotation.AnnotationTarget.*
 
 @Target(CLASS)
 @Retention(RUNTIME)
-annotation class Icon(
-    val iconName: String = "default",
-    val iconFontName: String = "icon_font"
+annotation class ScnIcon(
+    val iconName: String,
+    val size: Float = 64f,
+    val textureAssetName: String = "",
+    val showInViewport: Boolean = false
 )

@@ -31,6 +31,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
@@ -143,9 +144,8 @@ class SceneEditor(
             backgroundColor = Color(0.043f, 0.047f, 0.054f, 0f)
         )
 
-        // Load editor icons
-        engine.asset.loadAllTextures("/pulseengine/icons")
-        engine.asset.loadFont("/pulseengine/assets/editor_icons.ttf", EditorStyle.Icons.FONT_NAME)
+        // Load editor icon font
+        engine.asset.loadFont("/pulseengine/assets/editor_icons.ttf", uiFactory.style.iconFontName)
 
         // Register a console command to toggle editor visibility
         engine.console.registerCommand("showSceneEditor")
@@ -373,17 +373,23 @@ class SceneEditor(
         }
 
         engine.scene.forEachEntityTypeList { entities ->
-            entities[0]::class.findAnnotation<EditorIcon>()?.let { annotation ->
-                engine.asset.getOrNull<Texture>(annotation.textureAssetName)?.let { texture ->
-                    val width = annotation.width
-                    val height = annotation.height
-                    surface.setDrawColor(1f, 1f, 1f)
+            entities[0]::class.findAnnotation<ScnIcon>()?.let { annotation ->
+                val size = annotation.size
+                val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
+                val font = engine.asset.getOrNull<Font>(uiFactory.style.iconFontName)
+                val iconChar = uiFactory.style.icons[annotation.iconName]
+                if (texture != null || (font != null && iconChar != null))
+                {
+                    surface.setDrawColor(Color.WHITE)
                     entities.forEachFast()
                     {
                         if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
                         {
                             val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
-                            surface.drawTexture(texture, pos.x, pos.y, width, height, 0f, 0.5f, 0.5f)
+                            if (texture != null)
+                                surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
+                            else if (iconChar != null)
+                                surface.drawText(iconChar, pos.x, pos.y, font, size, xOrigin = 0.5f, yOrigin = 0.5f)
                         }
                     }
                 }

@@ -8,12 +8,13 @@ class EditorStyle
     val colors = mutableMapOf<String, Color>()
     val fonts = mutableMapOf<String, Font>()
     val sizes = mutableMapOf<String, Float>()
-    val icons = mutableMapOf<String, Char>()
+    val icons = mutableMapOf<String, String>()
+    val iconFontName = "icon_font"
 
     fun getColor(name: String) = colors[name] ?: DEFAULT_COLOR
     fun getFont(name: String = "") = fonts[name] ?: Font.DEFAULT
     fun getSize(name: String = "") = sizes[name] ?: 0f
-    fun getIconChar(name: String?) = icons[name] ?: DEFAULT_ICON_CHAR
+    fun getIcon(name: String?) = icons[name] ?: DEFAULT_ICON
 
     init
     {
@@ -36,24 +37,26 @@ class EditorStyle
         sizes["DROPDOWN_ROW_HEIGHT"] = 25f
 
         // Set default icons
-        icons["CUBE"] = 'a'
-        icons["LIGHT_BULB"] = 'b'
-        icons["COG"] = 'c'
-        icons["MONITOR"] = 'd'
-        icons["CROSS"] = 'e'
-        icons["GEARS"] = 'j'
-        icons["SHAPES"] = 'i'
-        icons["IMAGE"] = 'f'
+        icons["CUBE"] = "a"
+        icons["LIGHT_BULB"] = "b"
+        icons["COG"] = "c"
+        icons["MONITOR"] = "d"
+        icons["CROSS"] = "e"
+        icons["GEARS"] = "j"
+        icons["SHAPES"] = "i"
+        icons["IMAGE"] = "f"
+        icons["LIST"] = "p"
+        icons["NESTED_LIST"] = "q"
+        icons["EDIT"] = "s"
+        icons["EDIT_DISABLED"] = "t"
+        icons["VISIBLE"] = "u"
+        icons["HIDDEN"] = "v"
+        icons["CAMERA"] = "w"
     }
 
     companion object
     {
         private var DEFAULT_COLOR = Color(1f, 1f, 1f)
-        private var DEFAULT_ICON_CHAR = 'a'
-    }
-
-    object Icons
-    {
-        var FONT_NAME = "icon_font"
+        private var DEFAULT_ICON = "a"
     }
 }

@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -79,8 +79,8 @@ open class UiElementFactory(
         val icon = Icon(width = Size.absolute(15f)).apply {
             padding.left = 10f
             iconSize = 18f
-            iconFontName = EditorStyle.Icons.FONT_NAME
-            iconCharacter = style.getIconChar(iconName).toString()
+            iconFontName = style.iconFontName
+            iconCharacter = style.getIcon(iconName)
             color = style.getColor("LABEL")
             focusable = false
         }
@@ -94,9 +94,8 @@ open class UiElementFactory(
         }
 
         val crossIcon = Icon(width = Size.absolute(15f)).apply {
-            focusable = false
-            iconFontName = EditorStyle.Icons.FONT_NAME
-            iconCharacter = style.getIconChar("CROSS").toString()
+            iconFontName = style.iconFontName
+            iconCharacter = style.getIcon("CROSS")
             color = style.getColor("LABEL")
             padding.top = 2f
         }
@@ -350,10 +349,10 @@ open class UiElementFactory(
      */
     open fun createSystemProperties(system: SceneSystem, isHidden: Boolean, onClose: (props: List<UiElement>) -> Unit): List<UiElement>
     {
-        val icon = system::class.findAnnotation<Icon>()
+        val icon = system::class.findAnnotation<ScnIcon>()
         val headerIcon = Icon(width = Size.absolute(30f))
-        headerIcon.iconFontName = icon?.iconFontName ?: EditorStyle.Icons.FONT_NAME
-        headerIcon.iconCharacter = style.getIconChar(icon?.iconName ?: "COG").toString()
+        headerIcon.iconFontName = style.iconFontName
+        headerIcon.iconCharacter = style.getIcon(icon?.iconName ?: "COG")
         headerIcon.iconSize = 15f
 
         val headerText = system::class.findAnnotation<Name>()?.name
@@ -369,9 +368,8 @@ open class UiElementFactory(
         }
 
         val crossIcon = Icon(width = Size.absolute(15f)).apply {
-            focusable = false
-            iconFontName = EditorStyle.Icons.FONT_NAME
-            iconCharacter = style.getIconChar("CROSS").toString()
+            iconFontName = style.iconFontName
+            iconCharacter = style.getIcon("CROSS")
             color = style.getColor("LABEL")
             padding.top = 3f
         }
