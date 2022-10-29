@@ -186,26 +186,26 @@ object Extensions
      * Loads the file as a [InputStream] from class path
      */
     fun String.loadStream(): InputStream? =
-        javaClass.getResourceAsStream(this.toClassPath())
+        Extensions::class.java.getResourceAsStream(this.toClassPath())
 
     /**
      * Loads the file as a [ByteArray] from class path
      */
     fun String.loadBytes(): ByteArray? =
-        javaClass.getResource(this.toClassPath())?.readBytes()
+        Extensions::class.java.getResource(this.toClassPath())?.readBytes()
 
     /**
      * Loads the text content from the given file in class path
      */
     fun String.loadText(): String? =
-        javaClass.getResource(this.toClassPath())?.readText()
+        Extensions::class.java.getResource(this.toClassPath())?.readText()
 
     /**
      * Loads all file names in the given directory
      */
     fun String.loadFileNames(): List<String>
     {
-        val uri = javaClass.getResource(this.toClassPath()).toURI()
+        val uri = Extensions::class.java.getResource(this.toClassPath()).toURI()
         return if (uri.scheme == "jar")
         {
             val fileSystem =

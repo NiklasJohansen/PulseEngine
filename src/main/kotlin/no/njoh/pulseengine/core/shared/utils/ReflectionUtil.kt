@@ -1,8 +1,9 @@
 package no.njoh.pulseengine.core.shared.utils
 
+import java.io.File
+import java.lang.management.ManagementFactory
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
-import java.net.URLClassLoader
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
@@ -20,9 +21,10 @@ object ReflectionUtil
 
     fun getFullyQualifiedClassNames(maxSearchDepth: Int = 10): List<String>
     {
-        // Get paths from classloader - necessary for when the application is run in IDE
-        val paths = (ClassLoader.getSystemClassLoader() as URLClassLoader).urLs
-            .mapNotNull { if (it.file.endsWith("/")) Paths.get(it.toURI()) else null }
+        // Get paths from classpath - necessary for when the application is run in IDE
+        val paths = ManagementFactory.getRuntimeMXBean().classPath
+            .split(File.pathSeparator)
+            .mapNotNull { if (!it.endsWith(".jar")) Paths.get(it) else null }
             .toMutableList()
 
         // Get paths from inside JAR file - used when application is run from a JAR or imported as a library
