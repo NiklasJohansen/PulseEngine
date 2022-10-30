@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
@@ -39,6 +40,7 @@ import no.njoh.pulseengine.core.shared.utils.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.widget.Widget
 import no.njoh.pulseengine.modules.gui.elements.Button
+import no.njoh.pulseengine.modules.gui.layout.WindowPanel
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isPrimitiveValue
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
@@ -67,6 +69,7 @@ class SceneEditor(
     private lateinit var dragAndDropArea: FocusArea
     private var entityPropertyUiRows = mutableMapOf<String, UiElement>()
     private var showGrid = true
+    private var outliner: Outliner? = null
 
     // Camera
     private val cameraController = Camera2DController(Mouse.MIDDLE, smoothing = 0.75f)
@@ -175,8 +178,8 @@ class SceneEditor(
             )),
             MenuBarButton("View", listOf(
                 MenuBarItem("Entity properties") { createEntityPropertyWindow() },
-                MenuBarItem("Scene graph") { createSceneGraphWindow() },
-                MenuBarItem("Scene assets") { createAssetWindow(engine) },
+                MenuBarItem("Outliner") { createOutlinerWindow(engine) },
+                MenuBarItem("Assets") { createAssetWindow(engine) },
                 MenuBarItem("Scene systems") { createSceneSystemsPropertyWindow(engine) },
                 MenuBarItem("Viewport") { createViewportWindow(engine) },
                 MenuBarItem("Grid") {
@@ -210,6 +213,7 @@ class SceneEditor(
         createEntityPropertyWindow()
         createSceneSystemsPropertyWindow(engine)
         createAssetWindow(engine)
+        createOutlinerWindow(engine)
 
         // Load previous layout from file
         if (shouldPersistEditorLayout)
@@ -218,45 +222,70 @@ class SceneEditor(
 
     private fun createEntityPropertyWindow()
     {
-        if (dockingUI.findElementById("Entity properties") == null)
-        {
-            val entityPropertyWindow = uiFactory.createWindowUI("Entity properties", "CUBE")
-            val propertyPanel = uiFactory.createScrollableSectionUI(entityPropertiesUI)
-            entityPropertyWindow.body.addChildren(propertyPanel)
-            dockingUI.insertLeft(entityPropertyWindow)
-        }
+        if (dockingUI.findElementById("Entity Properties") != null)
+            return // Already exists
+
+        val entityPropertyWindow = uiFactory.createWindowUI("Entity Properties", "CUBE")
+        val propertyPanel = uiFactory.createScrollableSectionUI(entityPropertiesUI)
+        entityPropertyWindow.body.addChildren(propertyPanel)
+        dockingUI.insertLeft(entityPropertyWindow)
     }
 
-    private fun createSceneGraphWindow()
+    private fun createOutlinerWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElementById("Scene Graph") == null)
-        {
-            val window = uiFactory.createWindowUI("Scene Graph")
+        if (dockingUI.findElementById("Outliner") != null)
+            return // Already exists
+
+        outliner = Outliner.build(
+            engine = engine,
+            uiElementFactory = uiFactory,
+            onEntitiesSelected = {
+                entitySelection.clear()
+                entityPropertiesUI.clearChildren()
+                entityPropertyUiRows.clear()
+                engine.scene.forEachEntity()
+                {
+                    if (it.isSet(SELECTED or EDITABLE) && it.isNot(HIDDEN))
+                        addEntityToSelection(it)
+                }
+                if (entitySelection.size == 1)
+                    selectSingleEntity(entitySelection.first())
+            }
+        )
+        outliner!!.reloadEntitiesFromActiveScene()
+
+        val window = uiFactory.createWindowUI(title = "Outliner", iconName = "LIST", onClosed = { outliner = null })
+        window.body.addChildren(outliner!!.ui)
+
+        // Insert window into existing Entity Properties if available
+        val propWindow = dockingUI.findElementById("Entity Properties")
+        if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
+            dockingUI.insertInsideBottom(target = propWindow as WindowPanel, window)
+        else
             dockingUI.insertLeft(window)
-        }
     }
 
     private fun createAssetWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElementById("Scene Assets") == null)
-        {
-            val assetWindow = uiFactory.createWindowUI("Scene Assets", "IMAGE")
-            val assetPanel = uiFactory.createAssetPanelUI(engine) { createDragAndDropEntity(engine, it) }
-            assetWindow.body.addChildren(assetPanel)
-            dockingUI.insertBottom(assetWindow)
-        }
+        if (dockingUI.findElementById("Assets") != null)
+            return // Already exists
+
+        val assetWindow = uiFactory.createWindowUI("Assets", "IMAGE")
+        val assetPanel = uiFactory.createAssetPanelUI(engine) { createDragAndDropEntity(engine, it) }
+        assetWindow.body.addChildren(assetPanel)
+        dockingUI.insertBottom(assetWindow)
     }
 
     private fun createSceneSystemsPropertyWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElementById("Scene Systems") == null)
-        {
-            updateSceneSystemProperties(engine)
-            val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
-            val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems", "GEARS")
-            sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
-            dockingUI.insertRight(sceneSystemWindow)
-        }
+        if (dockingUI.findElementById("Scene Systems") != null)
+            return // Already exists
+
+        updateSceneSystemProperties(engine)
+        val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
+        val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems", "GEARS")
+        sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
+        dockingUI.insertRight(sceneSystemWindow)
     }
 
     private fun createViewportWindow(engine: PulseEngine)
@@ -301,6 +330,7 @@ class SceneEditor(
             updateSceneSystemProperties(engine)
             setWindowTitleFromSceneName(engine)
             initializeEntities(engine)
+            outliner?.reloadEntitiesFromActiveScene()
             lastSceneHashCode = engine.scene.activeScene.hashCode()
         }
 
@@ -324,7 +354,8 @@ class SceneEditor(
             }
         }
 
-        changeToType?.let {
+        changeToType?.let()
+        {
             handleEntityTypeChanged(engine.scene.activeScene, it)
             changeToType = null
         }
@@ -480,6 +511,7 @@ class SceneEditor(
             if (entitySelection.isNotEmpty())
             {
                 entitySelection.forEachFast { it.set(DEAD) }
+                outliner?.removeEntities(entitySelection)
                 clearEntitySelection()
                 isMoving = false
             }
@@ -493,19 +525,16 @@ class SceneEditor(
             if (isMoving && !isCopying)
             {
                 val copies = entitySelection.map { it.createCopy() }
-
-                if (copies.size == 1)
-                    selectSingleEntity(copies.first())
-                else
+                copies.forEachFast()
                 {
-                    clearEntitySelection()
-                    copies.forEachFast { addEntityToSelection(it) }
+                    engine.scene.addEntity(it)
+                    it.setNot(SELECTED)
                 }
-                val scene = engine.scene.activeScene
-                copies.forEachFast { scene.insertEntity(it) }
+                outliner?.addEntities(copies)
                 isCopying = true
             }
-        } else isCopying = false
+        }
+        else isCopying = false
     }
 
     private fun handleEntitySelection(engine: PulseEngine)
@@ -529,9 +558,10 @@ class SceneEditor(
                     }
                 }
 
-                closestEntity?.let { entity ->
-                    if (entity !in entitySelection)
-                        selectSingleEntity(entity)
+                closestEntity?.let()
+                {
+                    if (it !in entitySelection)
+                        selectSingleEntity(it)
                     isMoving = true
                 }
             }
@@ -561,6 +591,7 @@ class SceneEditor(
             val width  = abs(xEndSelect - xStartSelect)
             val height  = abs(yEndSelect - yStartSelect)
             val selectedEntity = entitySelection.firstOrNull()
+            val prevEntityCount = entitySelection.size
             entitySelection.forEachFast { it.setNot(SELECTED) }
             entitySelection.clear()
 
@@ -575,7 +606,12 @@ class SceneEditor(
                 if (entitySelection.first() !== selectedEntity)
                     selectSingleEntity(entitySelection.first())
             }
-            else entityPropertiesUI.clearChildren()
+            else
+            {
+                entityPropertiesUI.clearChildren()
+                if (entitySelection.size != prevEntityCount)
+                    outliner?.selectEntities(entitySelection)
+            }
         }
 
         var xMove = 0f
@@ -586,7 +622,8 @@ class SceneEditor(
         if (engine.input.wasClicked(Key.RIGHT)) xMove += 1
         if (xMove != 0f || yMouse != 0f)
         {
-            entitySelection.forEachFast {
+            entitySelection.forEachFast()
+            {
                 it.x += xMove
                 it.y += yMove
                 it.set(POSITION_UPDATED)
@@ -625,6 +662,7 @@ class SceneEditor(
             dragAndDropEntity = null
             engine.scene.activeScene.insertEntity(this)
             updateEntityPropertiesPanel("id", this.id)
+            outliner?.addEntities(listOf(this))
             this.onMovedScaledOrRotated(engine)
         }
     }
@@ -824,6 +862,7 @@ class SceneEditor(
     {
         clearEntitySelection()
         addEntityToSelection(entity)
+        outliner?.selectEntities(entitySelection)
 
         val entityTypePropUI = uiFactory.createEntityTypePropertyUI(entity) { changeToType = it }
         entityPropertiesUI.addChildren(entityTypePropUI)
@@ -844,9 +883,14 @@ class SceneEditor(
             if (properties.isNotEmpty() && group.isNotEmpty())
                 entityPropertiesUI.addChildren(uiFactory.createCategoryHeader(group))
 
+            val onChanged = { propName: String, _: Any? ->
+                outliner?.updateEntityProperty(entity, propName);
+                Unit
+            }
+
             for (prop in properties)
             {
-                val (propertyPanel, inputElement) = uiFactory.createPropertyUI(entity, prop)
+                val (propertyPanel, inputElement) = uiFactory.createPropertyUI(entity, prop, onChanged)
                 entityPropertiesUI.addChildren(propertyPanel)
                 entityPropertyUiRows[prop.name] = inputElement
             }
@@ -872,6 +916,8 @@ class SceneEditor(
 
             oldEntity.set(DEAD)
             scene.insertEntity(newEntity)
+            outliner?.removeEntities(listOf(oldEntity))
+            outliner?.addEntities(listOf(newEntity))
             selectSingleEntity(newEntity)
         }
         catch (e: Exception) { Logger.error("Failed to change entity type, reason: ${e.message}") }
@@ -884,16 +930,16 @@ class SceneEditor(
 
     private fun updateSceneSystemProperties(engine: PulseEngine)
     {
-        val hiddenSystems = systemPropertiesUI.children
+        val openSystems = systemPropertiesUI.children
             .filterIsInstance<Button>()
-            .filter { it.state }
+            .filter { !it.isPressed }
             .mapNotNull { it.id }
 
         systemPropertiesUI.clearChildren()
         for (system in engine.scene.activeScene.systems)
         {
-            val isHidden = system::class.simpleName in hiddenSystems
-            val props = uiFactory.createSystemProperties(system, isHidden, onClose = { props ->
+            val isHidden = system::class.simpleName !in openSystems
+            val props = uiFactory.createSystemProperties(system, isHidden = isHidden, onClose = { props ->
                 system.onDestroy(engine)
                 engine.scene.removeSystem(system)
                 systemPropertiesUI.removeChildren(*props.toTypedArray())

@@ -29,14 +29,15 @@ class InputField (
     enum class ContentType  { TEXT, INTEGER, FLOAT, BOOLEAN, HEX_COLOR }
 
     var editable = true
-    var bgColor = Color(1f, 1f, 1f, 0f)
-    var bgColorHover = Color(1f, 1f, 1f, 0f)
+    var bgColor = Color.WHITE
+    var bgColorHover = Color.BLANK
     var strokeColor = Color(0.4f, 0.4f, 0.4f, 1f)
-    var fontColor = Color(1f, 1f, 1f, 1f)
+    var textColor = Color.WHITE
+    var placeHolderTextColor = Color(0.7f, 0.7f, 0.7f, 1f)
     var selectionColor = Color(0.2f, 0.4f, 1f, 0.9f)
     var invalidTextColor = Color(227, 108, 60)
-
     var font = Font.DEFAULT
+
     var fontSize = 24f
     var leftTextPadding = 10
     var cornerRadius = 0f
@@ -47,6 +48,7 @@ class InputField (
     var isValid = true
         private set
 
+    var placeHolderText = ""
     var text: String
         get() = inputText.toString()
         set(value)
@@ -437,7 +439,8 @@ class InputField (
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         val charsPerLine = getNumberOfChars(width.value - leftTextPadding)
-        var text = inputText.toString()
+        val hasText = inputText.isNotEmpty()
+        var text = if (hasText) inputText.toString() else placeHolderText
         var inputCursor = inputCursor
         var inputTextOffset = inputTextOffset
         var selectCursor = selectCursor
@@ -497,20 +500,20 @@ class InputField (
             val yCursorCenter = y.value + height.value / 2f
             val cursorHeight = fontSize / 2.5f
 
-            surface.setDrawColor(fontColor)
+            surface.setDrawColor(textColor)
             surface.drawLine(xCursor, yCursorCenter - cursorHeight, xCursor, yCursorCenter + cursorHeight)
         }
 
         // Draw input text
-        surface.setDrawColor(fontColor)
+        surface.setDrawColor(if (hasText) textColor else placeHolderTextColor)
         surface.drawText(text, x.value + leftTextPadding, y.value + height.value / 2f, font, fontSize, yOrigin = 0.5f)
 
         if ((contentType == INTEGER || contentType == FLOAT) && width.value > 50f && editable)
         {
             val xArrow = x.value + width.value - numberStepperWidth / 2
             val yArrow = y.value + height.value / 2
-            drawArrow(xArrow, yArrow - 5f, 6f, 6f, surface, fontColor, -2.5f)
-            drawArrow(xArrow, yArrow + 5f, 6f, 6f, surface, fontColor, 2.5f)
+            drawArrow(xArrow, yArrow - 5f, 6f, 6f, surface, textColor, -2.5f)
+            drawArrow(xArrow, yArrow + 5f, 6f, 6f, surface, textColor, 2.5f)
         }
     }
 

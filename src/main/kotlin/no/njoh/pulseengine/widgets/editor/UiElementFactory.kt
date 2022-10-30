@@ -36,39 +36,58 @@ open class UiElementFactory(
     val propertyUiFactories = mutableMapOf(
         Enum::class to ::createEnumPropertyUi,
         Boolean::class to ::createBooleanPropertyUi,
-        Color::class to { obj, prop -> createColorPickerUI(color = prop.getter.call(obj) as Color) },
-        String::class to { _: Any, _: KMutableProperty<*> -> null } // Factory functions returning null will use default InputField UI
+        Color::class to { obj, prop, onChanged -> createColorPickerUI(color = prop.getter.call(obj) as Color) },
+        String::class to { _, _, _ -> null } // Factory functions returning null will use default InputField UI
     )
 
     /**
      * Creates a [DropdownMenu] containing all the enum constants.
      */
-    open fun createEnumPropertyUi(obj: Any, prop: KMutableProperty<*>) =
-        createItemSelectionDropdownUI(
-            selectedItem = prop.getter.call(obj),
-            items = prop.javaField?.type?.enumConstants?.toList() ?: emptyList(),
-            onItemToString = { it.toString() }
-        ).apply {
-            setOnItemChanged { value -> obj.setProperty(prop.name, value) }
+    open fun createEnumPropertyUi(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, value: Any?) -> Unit
+    ) = createItemSelectionDropdownUI(
+        selectedItem = prop.getter.call(obj),
+        items = prop.javaField?.type?.enumConstants?.toList() ?: emptyList(),
+        onItemToString = { it.toString() }
+    ).apply {
+        setOnItemChanged { value ->
+            obj.setProperty(prop.name, value)
+            onChanged(prop.name, value)
         }
+    }
 
     /**
      * Creates a [DropdownMenu] containing TRUE and FALSE.
      */
-    open fun createBooleanPropertyUi(obj: Any, prop: KMutableProperty<*>) =
-        createItemSelectionDropdownUI(
-            selectedItem = prop.getter.call(obj),
-            items = listOf(true, false),
-            onItemToString = { it.toString().capitalize() }
-        ).apply {
-            setOnItemChanged { value -> obj.setProperty(prop.name, value) }
+    open fun createBooleanPropertyUi(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, value: Any?) -> Unit
+    ) = createItemSelectionDropdownUI(
+        selectedItem = prop.getter.call(obj),
+        items = listOf(true, false),
+        onItemToString = { it.toString().capitalize() }
+    ).apply {
+        setOnItemChanged { value ->
+            obj.setProperty(prop.name, value)
+            onChanged(prop.name, value)
         }
+    }
 
     /**
      * Creates a movable and resizable window panel.
      */
-    open fun createWindowUI(title: String, iconName: String = "", x: Float = 0f, y: Float = 20f, width: Float = 300f, height: Float = 200f): WindowPanel
-    {
+    open fun createWindowUI(
+        title: String,
+        iconName: String = "",
+        x: Float = 0f,
+        y: Float = 20f,
+        width: Float = 300f,
+        height: Float = 200f,
+        onClosed: () -> Unit = { }
+    ): WindowPanel {
         val windowPanel = WindowPanel(
             x = Position.fixed(x),
             y = Position.fixed(y),
@@ -82,15 +101,13 @@ open class UiElementFactory(
             iconFontName = style.iconFontName
             iconCharacter = style.getIcon(iconName)
             color = style.getColor("LABEL")
-            focusable = false
         }
 
         val label = Label(title).apply {
             padding.left = 10f
-            fontSize = 22f
+            fontSize = 20f
             font = style.getFont()
             color = style.getColor("LABEL")
-            focusable = false
         }
 
         val crossIcon = Icon(width = Size.absolute(15f)).apply {
@@ -106,7 +123,10 @@ open class UiElementFactory(
             cornerRadius = 4f
             color = Color.BLANK
             hoverColor = style.getColor("BUTTON_EXIT")
-            setOnClicked { windowPanel.parent?.removeChildren(windowPanel) }
+            setOnClicked {
+                windowPanel.parent?.removeChildren(windowPanel)
+                onClosed()
+            }
             addChildren(crossIcon)
         }
 
@@ -234,7 +254,7 @@ open class UiElementFactory(
     }
 
     /**
-     * Creates an panel containing all loaded texture assets.
+     * Creates a panel containing all loaded texture assets.
      */
     open fun createAssetPanelUI(engine: PulseEngine, onAssetClicked: (Texture) -> Unit): UiElement
     {
@@ -250,6 +270,8 @@ open class UiElementFactory(
             val tile = Button().apply {
                 bgColor = style.getColor("ITEM")
                 bgHoverColor = style.getColor("ITEM_HOVER")
+                color = Color.WHITE
+                hoverColor = Color.WHITE
                 textureScale = 0.9f
                 cornerRadius = 20f
                 texture = tex
@@ -267,7 +289,7 @@ open class UiElementFactory(
     open fun createViewportUI(engine: PulseEngine): VerticalPanel
     {
         val image = Image()
-        image.bgColor = Color(0f, 0f, 0f, 1f)
+        image.bgColor = Color.BLACK
         image.texture = engine.gfx.mainSurface.getTexture()
 
         val surfaceSelector = createItemSelectionDropdownUI(
@@ -362,7 +384,6 @@ open class UiElementFactory(
                 .trim()
 
         val headerLabel = Label(headerText).apply {
-            focusable = false
             fontSize = 20f
             color = style.getColor("LABEL")
         }
@@ -393,7 +414,7 @@ open class UiElementFactory(
         ).apply {
             id = system::class.simpleName
             toggleButton = true
-            state = isHidden
+            isPressed = isHidden
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
@@ -404,11 +425,12 @@ open class UiElementFactory(
             addChildren(headerPanel)
         }
 
+        val nopCallback = { _: String, _: Any? -> }
         val props = system::class.memberProperties
             .filter { it is KMutableProperty<*> && it.isEditable() && system.getPropInfo(it)?.hidden != true }
             .sortedBy { system.getPropInfo(it)?.i ?: 1000 }
             .map { prop ->
-                val (panel, _) = createPropertyUI(system, prop as KMutableProperty<*>)
+                val (panel, _) = createPropertyUI(system, prop as KMutableProperty<*>, nopCallback)
                 panel.apply {
                     padding.left = 10f
                     padding.right = 10f
@@ -418,7 +440,7 @@ open class UiElementFactory(
 
         val uiElements = listOf(headerButton).plus(props)
 
-        headerButton.setOnClicked { btn -> props.forEach { it.hidden = btn.state } }
+        headerButton.setOnClicked { btn -> props.forEach { it.hidden = btn.isPressed } }
         exitButton.setOnClicked { onClose(uiElements) }
 
         return uiElements
@@ -456,17 +478,18 @@ open class UiElementFactory(
      */
     open fun createScrollbarUI(scrollBinding: Scrollable, direction: ScrollDirection): Scrollbar
     {
-        val width = if (direction == VERTICAL) Size.absolute(15f) else Size.auto()
-        val height = if (direction == HORIZONTAL) Size.absolute(15f) else Size.auto()
+        val width = if (direction == VERTICAL) Size.absolute(10f) else Size.auto()
+        val height = if (direction == HORIZONTAL) Size.absolute(10f) else Size.auto()
         return Scrollbar(width, height).apply {
             bgColor = style.getColor("ITEM")
             sliderColor = style.getColor("BUTTON")
             sliderColorHover = style.getColor("BUTTON_HOVER")
-            cornerRadius = 8f
-            padding.top = 5f
-            padding.bottom = 5f
-            padding.right = 5f
-            sliderPadding = 3f
+            cornerRadius = 5f
+            padding.top = 2f
+            padding.bottom = 2f
+            padding.right = 2f
+            padding.left = 2f
+            sliderPadding = 1.5f
             bind(scrollBinding, direction)
         }
     }
@@ -480,7 +503,7 @@ open class UiElementFactory(
             cornerRadius = 8f
             bgColor = style.getColor("BUTTON")
             hexInput.fontSize = 20f
-            hexInput.fontColor = style.getColor("LABEL")
+            hexInput.textColor = style.getColor("LABEL")
             hexInput.bgColorHover = style.getColor("BUTTON_HOVER")
             hexInput.strokeColor = Color.BLANK
             hexInput.cornerRadius = cornerRadius
@@ -492,7 +515,7 @@ open class UiElementFactory(
             rgbaSection.color = style.getColor("ITEM")
             listOf(redInput, greenInput, blueInput, alphaInput).forEach {
                 it.fontSize = 20f
-                it.fontColor = style.getColor("LABEL")
+                it.textColor = style.getColor("LABEL")
                 it.bgColor = style.getColor("BUTTON")
                 it.bgColorHover = style.getColor("BUTTON_HOVER")
             }
@@ -521,7 +544,7 @@ open class UiElementFactory(
             cornerRadius = 8f
             font = style.getFont()
             fontSize = 18f
-            fontColor = style.getColor("LABEL")
+            textColor = style.getColor("LABEL")
             bgColor = style.getColor("BUTTON")
             bgColorHover = style.getColor("BUTTON_HOVER")
             strokeColor = Color.BLANK
@@ -575,12 +598,21 @@ open class UiElementFactory(
      * Creates a property row UI element for the given object.
      * Returns the main UI panel and the input UiElement
      */
-    open fun createPropertyUI(obj: Any, prop: KMutableProperty<*>): Pair<HorizontalPanel, UiElement>
-    {
+    open fun createPropertyUI(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, value: Any?) -> Unit
+    ): Pair<HorizontalPanel, UiElement> {
         val propUiKey = propertyUiFactories.keys.firstOrNull { prop.javaField?.type?.kotlin?.isSubclassOf(it) == true }
-        val propUi = propertyUiFactories[propUiKey]?.invoke(obj, prop)
+        val propUi = propertyUiFactories[propUiKey]?.invoke(obj, prop, onChanged)
             ?: createInputFieldUI(obj, prop).apply { // Default UI when no factory exist
-                setOnTextChanged { if (it.isValid) obj.setProperty(prop, it.text) }
+                setOnTextChanged {
+                    if (it.isValid)
+                    {
+                        obj.setProperty(prop, it.text)
+                        onChanged(prop.name, it.text)
+                    }
+                }
                 editable = obj.getPropInfo(prop)?.editable ?: true
             }
 

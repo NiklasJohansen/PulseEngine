@@ -20,6 +20,7 @@ class EditorStyle
     {
         // Set default colors
         colors["LABEL"] = Color(1.0f, 1.0f, 1.0f, 1.0f)
+        colors["LABEL_DARK"] = Color(0.5f, 0.5f, 0.5f, 1.0f)
         colors["BG_LIGHT"] = Color(0.036326528f, 0.048244897f, 0.057142854f, 0.80784315f)
         colors["BG_DARK"] = Color(0.024897957f, 0.026741894f, 0.028571427f, 0.9490196f)
         colors["STROKE"] = Color(0.03612247f, 0.038525835f, 0.04285717f, 1.0f)

@@ -17,7 +17,9 @@ class Label(
     height: Size = Size.auto()
 ) : UiElement(x, y, width, height) {
 
-    var color = Color(1f, 1f, 1f)
+    init { focusable = false }
+
+    var color = Color.WHITE
     var font = Font.DEFAULT
     var fontSize = 24f
     var centerHorizontally = false
@@ -25,32 +27,61 @@ class Label(
     var text = text
         set (value)
         {
-            setLayoutDirty()
             field = value
+            setLayoutDirty()
         }
 
     private var croppedText = text
+    private var lastText = text
+    private var lastFontSize = fontSize
+    private var lastWidth = width.value
+    private var charWidths = FloatArray(0)
     var textWidth: Float = 0f
         private set
 
-    init { this.text = text }
+    override fun onCreate(engine: PulseEngine)
+    {
+        updateTextWidths()
+    }
 
     override fun updateChildLayout()
     {
         super.updateChildLayout()
-        val charWidths = font.getCharacterWidths(text, fontSize)
-        var currentTextWidth = 0f
-        for (i in text.indices)
+
+        val wasTextWidthUpdate = updateTextWidths()
+
+        if (wasTextWidthUpdate || width.value != lastWidth)
         {
-            currentTextWidth += charWidths[i]
-            if (currentTextWidth > width.value)
+            var currentTextWidth = 0f
+            var currentText = text
+            var i = 0
+            while (i < text.length)
             {
-                croppedText = text.substring(0, max(0, i - 2)) + "..."
-                return
+                currentTextWidth += charWidths[i]
+                if (currentTextWidth > width.value)
+                {
+                    currentText = text.substring(0, max(0, i - 2)) + "..."
+                    break
+                }
+                i++
             }
+
+            croppedText = currentText
+            lastWidth = width.value
         }
-        croppedText = text
-        textWidth = charWidths.sum()
+    }
+
+    private fun updateTextWidths(): Boolean
+    {
+        return if (text != lastText || fontSize != lastFontSize)
+        {
+            charWidths = font.getCharacterWidths(text, fontSize, useCache = true)
+            textWidth = charWidths.sum()
+            lastText = text
+            lastFontSize = fontSize
+            true
+        }
+        else false
     }
 
     override fun onUpdate(engine: PulseEngine) { }

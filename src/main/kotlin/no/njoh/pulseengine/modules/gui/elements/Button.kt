@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules.gui.elements
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -18,14 +19,16 @@ open class Button(
 ) : UiElement(x, y, width, height) {
 
     var toggleButton = false
-    var state = false
-
-    var bgColor = Color(1f, 1f, 1f, 0f)
-    var bgHoverColor = Color(1f, 1f, 1f, 0f)
-    var color = Color(1f, 1f, 1f)
-    var hoverColor = Color(1f, 1f, 1f)
-    var activeColor = Color(1f, 1f, 1f)
+    var isPressed = false
+    var bgColor = Color.BLANK
+    var bgHoverColor = Color.BLANK
+    var color = Color.BLANK
+    var hoverColor = Color.BLANK
+    var activeColor = Color.BLANK
     var texture: Texture? = null
+    var iconCharacter: String? = null
+    var iconFontName: String? = null
+    var iconSize = 15f
     var textureScale = 1f
     var cornerRadius = 0f
 
@@ -40,7 +43,7 @@ open class Button(
     override fun onMouseClicked(engine: PulseEngine)
     {
         if (toggleButton)
-            state = !state
+            isPressed = !isPressed
 
         onClickedCallback(this)
     }
@@ -62,13 +65,32 @@ open class Button(
 
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
-        val color = if (toggleButton && state) activeColor else if (isMouseOver) hoverColor else color
+        val color = if (toggleButton && isPressed) activeColor else if (isMouseOver) hoverColor else color
         val bgColor = if (isMouseOver) bgHoverColor else bgColor
 
-        surface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue, bgColor.alpha)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
+        if (bgColor.alpha != 0f)
+        {
+            surface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue, bgColor.alpha)
+            surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
+        }
 
-        texture?.let { tex ->
+        if (iconFontName != null && iconCharacter != null)
+        {
+            val iconFont = engine.asset.getOrNull<Font>(iconFontName!!) ?: return
+            surface.setDrawColor(color)
+            surface.drawText(
+                text = iconCharacter!!,
+                x = x.value + width.value * 0.5f,
+                y = y.value + height.value * 0.5f,
+                font = iconFont,
+                fontSize = iconSize,
+                xOrigin = 0.5f,
+                yOrigin = 0.5f
+            )
+        }
+        else if (texture != null)
+        {
+            val tex = texture!!
             var texWidth = width.value
             var texHeight = height.value
             val xCenter = x.value + width.value / 2f
@@ -84,7 +106,9 @@ open class Button(
 
             surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
             surface.drawTexture(tex, xCenter, yCenter, texWidth, texHeight, 0f, 0.5f, 0.5f, cornerRadius)
-        } ?: run {
+        }
+        else
+        {
             surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
             surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
         }

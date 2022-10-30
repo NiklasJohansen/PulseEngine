@@ -161,6 +161,21 @@ object Extensions
     }
 
     /**
+     * Maps a list of type [T] to a map of type [R].
+     */
+    inline fun <T, R> List<T>.mapToSet(transform: (T) -> R): Set<R>
+    {
+        val destination = HashSet<R>()
+        var i = 0
+        while (i < size)
+        {
+            val element = this[i++]
+            destination.add(transform(element))
+        }
+        return destination
+    }
+
+    /**
      * Prints the time in milliseconds from 'this' to now.
      * @receiver Start time in nanoseconds.
      */
@@ -184,8 +199,7 @@ object Extensions
     /**
      * Loads the file as a [InputStream] from class path
      */
-    fun String.loadStream(): InputStream? =
-        Extensions::class.java.getResourceAsStream(this.toClassPath())
+    fun String.loadStream(): InputStream? = Extensions::class.java.getResourceAsStream(this.toClassPath())
 
     /**
      * Loads the file as a [ByteArray] from class path

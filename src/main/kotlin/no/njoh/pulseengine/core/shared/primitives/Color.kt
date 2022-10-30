@@ -31,5 +31,7 @@ data class Color(
     companion object
     {
         val BLANK = Color(0f, 0f, 0f, 0f)
+        val BLACK = Color(0f, 0f, 0f, 1f)
+        val WHITE = Color(1f, 1f, 1f, 1f)
     }
 }

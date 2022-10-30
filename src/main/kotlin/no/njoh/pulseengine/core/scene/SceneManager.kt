@@ -134,6 +134,11 @@ abstract class SceneManager
         (activeScene.entityTypeMap[T::class.simpleName] as? SwapList<T>?)?.takeIf { it.isNotEmpty() }
 
     /**
+     * Returns all [SceneEntity]s in type separated lists.
+     */
+    fun getAllEntitiesByType(): List<SwapList<SceneEntity>> = activeScene.entities
+
+    /**
      * Calls the [action] lambda for each [SceneEntity] in the [Scene].
      */
     inline fun forEachEntity(action: (SceneEntity) -> Unit) =

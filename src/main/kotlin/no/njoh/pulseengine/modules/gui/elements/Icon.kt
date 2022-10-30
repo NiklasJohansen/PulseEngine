@@ -15,7 +15,9 @@ open class Icon(
     height: Size = Size.auto()
 ) : UiElement(x, y, width, height) {
 
-    var color = Color(1f, 1f, 1f)
+    init { focusable = false }
+
+    var color = Color.WHITE
     var iconFontName = ""
     var iconCharacter = ""
     var iconSize = 15f

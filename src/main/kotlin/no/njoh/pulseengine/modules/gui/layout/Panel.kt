@@ -15,8 +15,12 @@ open class Panel(
     height: Size = Size.auto()
 ) : UiElement(x, y, width, height) {
 
-    var color = Color(1f, 1f, 1f, 0f)
+    var color = Color.BLANK
     var strokeColor: Color? = null
+    var strokeTop = true
+    var strokeBottom = true
+    var strokeLeft = true
+    var strokeRight = true
     var texture: Texture? = null
     var cornerRadius = 0f
 
@@ -33,10 +37,14 @@ open class Panel(
         if (strokeColor != null && strokeColor!!.alpha != 0f)
         {
             surface.setDrawColor(strokeColor!!)
-            surface.drawLine(x.value, y.value, x.value + width.value, y.value)
-            surface.drawLine(x.value, y.value, x.value, y.value + height.value)
-            surface.drawLine(x.value + width.value, y.value, x.value + width.value, y.value + height.value)
-            surface.drawLine(x.value, y.value + height.value, x.value + width.value, y.value + height.value)
+            if (strokeTop)
+                surface.drawLine(x.value, y.value, x.value + width.value, y.value)
+            if (strokeLeft)
+                surface.drawLine(x.value, y.value, x.value, y.value + height.value)
+            if (strokeRight)
+                surface.drawLine(x.value + width.value, y.value, x.value + width.value, y.value + height.value)
+            if (strokeBottom)
+                surface.drawLine(x.value, y.value + height.value, x.value + width.value, y.value + height.value)
         }
     }
 }

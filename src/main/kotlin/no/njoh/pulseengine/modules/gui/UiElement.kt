@@ -218,12 +218,10 @@ abstract class UiElement(
 
     open fun updatePopupLayout()
     {
-        popup?.let()
-        {
-            it.alignWithin(x.value, y.value, width.value, height.value)
-            it.updateLayout()
-            it.setLayoutClean()
-        }
+        val popup = popup ?: return
+        popup.alignWithin(x.value, y.value, width.value, height.value)
+        popup.updateLayout()
+        popup.setLayoutClean()
     }
 
     private fun alignWithin(xPos: Float, yPos: Float, availableWidth: Float, availableHeight: Float)
@@ -298,7 +296,14 @@ abstract class UiElement(
     fun addChildren(vararg uiElements: UiElement)
     {
         children.addAll(uiElements)
-        children.forEachFast { it.parent = this }
+        uiElements.forEachFast { it.parent = this }
+        setLayoutDirty()
+    }
+
+    fun addChildren(uiElements: List<UiElement>)
+    {
+        children.addAll(uiElements)
+        uiElements.forEachFast { it.parent = this }
         setLayoutDirty()
     }
 
@@ -321,6 +326,12 @@ abstract class UiElement(
     }
 
     fun removeChildren(vararg uiElements: UiElement)
+    {
+        children.removeAll(uiElements)
+        setLayoutDirty()
+    }
+
+    fun removeChildren(uiElements: List<UiElement>)
     {
         children.removeAll(uiElements)
         setLayoutDirty()
