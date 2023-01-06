@@ -37,7 +37,6 @@ class InputField (
     var selectionColor = Color(0.2f, 0.4f, 1f, 0.9f)
     var invalidTextColor = Color(227, 108, 60)
     var font = Font.DEFAULT
-
     var fontSize = 24f
     var leftTextPadding = 10
     var cornerRadius = 0f
@@ -45,8 +44,6 @@ class InputField (
     var numberStepperWidth = 30
     var numberMinVal = Float.NEGATIVE_INFINITY
     var numberMaxVal = Float.POSITIVE_INFINITY
-    var isValid = true
-        private set
 
     var placeHolderText = ""
     var text: String
@@ -78,7 +75,6 @@ class InputField (
     private var hasFocus = false
     private var isMouseOver = false
     private var lastHasFocus = false
-    private var lastText = text
 
     private val hexColorRegex = "#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})".toRegex()
 
@@ -88,6 +84,13 @@ class InputField (
     private var onValidTextChanged: (InputField) -> Unit = { }
     private var onGetHistory: (Int) -> String? = { _ -> null }
     private var onGetSuggestion: (String) -> List<String> = { _ -> emptyList() }
+
+    var lastText = text
+        private set
+    var lastValidText = text
+        private set
+    var isValid = true
+        private set
 
     override fun onMouseLeave(engine: PulseEngine)
     {
@@ -156,7 +159,10 @@ class InputField (
         {
             isValid = validateContent()
             if (isValid)
+            {
                 onValidTextChanged(this)
+                lastValidText = text
+            }
             onTextChanged(this)
             lastText = text
         }

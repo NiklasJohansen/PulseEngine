@@ -28,10 +28,11 @@ class DropdownMenu <T> (
     var selectedItem: T? = null
         set (value)
         {
-            field = value
             if (useSelectedItemAsMenuLabel)
                 menuLabel.text = value?.let { onItemToString(it) } ?: ""
-            value?.let { onItemChanged(it) }
+            if (field != null && value != null)
+                onItemChanged(field, value)
+            field = value
         }
 
     var itemBgColor = Color(0.5f, 0.5f, 0.5f)
@@ -43,7 +44,7 @@ class DropdownMenu <T> (
     var rowPadding = 5f
 
     private var onItemToString: (T) -> String = { it.toString() }
-    private var onItemChanged: (T) -> Unit = { }
+    private var onItemChanged: (lastItem: T?, newItem: T) -> Unit = { _, _ -> }
     private var isMouseOver = false
 
     init
@@ -55,11 +56,11 @@ class DropdownMenu <T> (
         rowPanel = RowPanel()
         rowPanel.padding.setAll(5f)
 
-        scrollbar = Scrollbar(width = Size.absolute(15f))
-        scrollbar.padding.top = 5f
-        scrollbar.padding.bottom = 5f
-        scrollbar.padding.right = 5f
-        scrollbar.sliderPadding = 3f
+        scrollbar = Scrollbar(width = Size.absolute(10f))
+        scrollbar.padding.top = 2f
+        scrollbar.padding.bottom = 2f
+        scrollbar.padding.right = 2f
+        scrollbar.sliderPadding = 1.5f
         scrollbar.bind(rowPanel, direction = VERTICAL)
 
         val hPanel = HorizontalPanel()
@@ -151,7 +152,7 @@ class DropdownMenu <T> (
         this.onItemToString = callback
     }
 
-    fun setOnItemChanged(callback: (T) -> Unit)
+    fun setOnItemChanged(callback: (lastValue: T?, newValue: T) -> Unit)
     {
         this.onItemChanged = callback
     }

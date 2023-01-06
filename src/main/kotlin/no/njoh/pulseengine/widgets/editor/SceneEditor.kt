@@ -21,12 +21,12 @@ import no.njoh.pulseengine.modules.gui.layout.docking.DockingPanel
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.Mouse
-import no.njoh.pulseengine.core.scene.Scene
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
@@ -50,10 +50,7 @@ import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KVisibility
-import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.instanceParameter
-import kotlin.reflect.full.memberFunctions
-import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.*
 
 class SceneEditor(
     val uiFactory: UiElementFactory = UiElementFactory()
@@ -80,7 +77,6 @@ class SceneEditor(
     private var lastSceneHashCode = -1
     private val entitySelection = mutableListOf<SceneEntity>()
     private var dragAndDropEntity: SceneEntity? = null
-    private var changeToType: KClass<out SceneEntity>? = null
     private var sceneFileToLoad: String? = null
     private var sceneFileToCreate: String? = null
     private var sceneFileToSaveAs: String? = null
@@ -249,8 +245,9 @@ class SceneEditor(
                         addEntityToSelection(it)
                 }
                 if (entitySelection.size == 1)
-                    selectSingleEntity(entitySelection.first())
-            }
+                    selectSingleEntity(engine, entitySelection.first())
+            },
+            onEntityCreated = { type -> createNewEntity(engine, type) }
         )
         outliner!!.reloadEntitiesFromActiveScene()
 
@@ -354,12 +351,6 @@ class SceneEditor(
             }
         }
 
-        changeToType?.let()
-        {
-            handleEntityTypeChanged(engine.scene.activeScene, it)
-            changeToType = null
-        }
-
         if (entitySelection.size == 1)
             entitySelection.first().handleEntityTransformation(engine)
 
@@ -405,22 +396,25 @@ class SceneEditor(
 
         engine.scene.forEachEntityTypeList { entities ->
             entities[0]::class.findAnnotation<ScnIcon>()?.let { annotation ->
-                val size = annotation.size
-                val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
-                val font = engine.asset.getOrNull<Font>(uiFactory.style.iconFontName)
-                val iconChar = uiFactory.style.icons[annotation.iconName]
-                if (texture != null || (font != null && iconChar != null))
+                if (annotation.showInViewport)
                 {
-                    surface.setDrawColor(Color.WHITE)
-                    entities.forEachFast()
+                    val size = annotation.size
+                    val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
+                    val font = engine.asset.getOrNull<Font>(uiFactory.style.iconFontName)
+                    val iconChar = uiFactory.style.icons[annotation.iconName]
+                    if (texture != null || (font != null && iconChar != null))
                     {
-                        if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
+                        surface.setDrawColor(Color.WHITE)
+                        entities.forEachFast()
                         {
-                            val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
-                            if (texture != null)
-                                surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
-                            else if (iconChar != null)
-                                surface.drawText(iconChar, pos.x, pos.y, font, size, xOrigin = 0.5f, yOrigin = 0.5f)
+                            if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
+                            {
+                                val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
+                                if (texture != null)
+                                    surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
+                                else if (iconChar != null)
+                                    surface.drawText(iconChar, pos.x, pos.y, font, size, xOrigin = 0.5f, yOrigin = 0.5f)
+                            }
                         }
                     }
                 }
@@ -510,12 +504,18 @@ class SceneEditor(
         {
             if (entitySelection.isNotEmpty())
             {
-                entitySelection.forEachFast { it.set(DEAD) }
+                entitySelection.forEachFast { it.setDead(engine) }
                 outliner?.removeEntities(entitySelection)
-                clearEntitySelection()
                 isMoving = false
+                clearEntitySelection()
             }
         }
+    }
+
+    private fun SceneEntity.setDead(engine: PulseEngine)
+    {
+        this.set(DEAD)
+        this.childIds?.forEachFast { engine.scene.getEntity(it)?.setDead(engine) }
     }
 
     private fun handleEntityCopying(engine: PulseEngine)
@@ -561,7 +561,7 @@ class SceneEditor(
                 closestEntity?.let()
                 {
                     if (it !in entitySelection)
-                        selectSingleEntity(it)
+                        selectSingleEntity(engine, it)
                     isMoving = true
                 }
             }
@@ -604,7 +604,7 @@ class SceneEditor(
             if (entitySelection.size == 1)
             {
                 if (entitySelection.first() !== selectedEntity)
-                    selectSingleEntity(entitySelection.first())
+                    selectSingleEntity(engine, entitySelection.first())
             }
             else
             {
@@ -651,7 +651,7 @@ class SceneEditor(
     private fun SceneEntity.handleEntityDragAndDrop(engine: PulseEngine)
     {
         if (this !in entitySelection)
-            selectSingleEntity(this)
+            selectSingleEntity(engine, this)
 
         engine.input.acquireFocus(dragAndDropArea)
         this.x = engine.input.xWorldMouse
@@ -858,14 +858,27 @@ class SceneEditor(
         }
     }
 
-    private fun selectSingleEntity(entity: SceneEntity)
+    private fun createNewEntity(engine: PulseEngine, type: KClass<out SceneEntity>)
+    {
+        val entity = type.createInstance()
+        val spawnPos = activeCamera.screenPosToWorldPos(engine.window.width * 0.5f, engine.window.height * 0.5f)
+        entity.x = spawnPos.x
+        entity.y = spawnPos.y
+        entity.width = 512f
+        entity.height = 512f
+        entity.setProperty("textureName", "crate")
+        engine.scene.addEntity(entity)
+        outliner?.addEntities(listOf(entity))
+        selectSingleEntity(engine, entity)
+    }
+
+    private fun selectSingleEntity(engine: PulseEngine, entity: SceneEntity)
     {
         clearEntitySelection()
         addEntityToSelection(entity)
         outliner?.selectEntities(entitySelection)
 
-        val entityTypePropUI = uiFactory.createEntityTypePropertyUI(entity) { changeToType = it }
-        entityPropertiesUI.addChildren(entityTypePropUI)
+        entityPropertiesUI.addChildren(uiFactory.createEntityHeader(entity))
 
         val propertyGroups = entity::class.memberProperties
             .filter { entity.getPropInfo(it)?.hidden != true }
@@ -883,8 +896,20 @@ class SceneEditor(
             if (properties.isNotEmpty() && group.isNotEmpty())
                 entityPropertiesUI.addChildren(uiFactory.createCategoryHeader(group))
 
-            val onChanged = { propName: String, _: Any? ->
-                outliner?.updateEntityProperty(entity, propName);
+            val onChanged = { propName: String, lastValue: Any?, newValue: Any? ->
+                if (propName == SceneEntity::parentId.name)
+                {
+                    val newParentId = entity.parentId
+                    val lastParentId = (lastValue as? String)?.toLongOrNull() ?: INVALID_ID
+                    if (entity.parentId == 36971L)
+                        println(entity.parentId)
+
+                    engine.scene.getEntity(lastParentId)?.removeChild(entity)
+                    engine.scene.getEntity(newParentId)?.addChild(entity)
+                    outliner?.removeEntities(listOf(entity))
+                    outliner?.addEntities(listOf(entity))
+                }
+                outliner?.updateEntityProperty(entity, propName)
                 Unit
             }
 
@@ -898,29 +923,6 @@ class SceneEditor(
 
         // Add bottom padding to the last property row
         entityPropertiesUI.children.lastOrNull()?.let { it.padding.bottom = it.padding.top }
-    }
-
-    private fun handleEntityTypeChanged(scene: Scene, type: KClass<out SceneEntity>)
-    {
-        if (entitySelection.size != 1) return
-
-        try
-        {
-            val oldEntity = entitySelection.first()
-            val newEntity = type.constructors.first().call()
-
-            oldEntity::class.memberProperties.forEach { prop ->
-                if (prop.visibility == KVisibility.PUBLIC)
-                    newEntity.setProperty(prop.name, value = prop.getter.call(oldEntity))
-            }
-
-            oldEntity.set(DEAD)
-            scene.insertEntity(newEntity)
-            outliner?.removeEntities(listOf(oldEntity))
-            outliner?.addEntities(listOf(newEntity))
-            selectSingleEntity(newEntity)
-        }
-        catch (e: Exception) { Logger.error("Failed to change entity type, reason: ${e.message}") }
     }
 
     private fun updateEntityPropertiesPanel(propName: String, value: Any)
@@ -1115,7 +1117,7 @@ class SceneEditor(
         engine.scene.forEachEntity()
         {
             if (prevSelectedEntityId != null && prevSelectedEntityId == it.id)
-                selectSingleEntity(it)
+                selectSingleEntity(engine, it)
             if (it is PhysicsEntity)
                 it.init(engine)
         }
@@ -1130,7 +1132,6 @@ class SceneEditor(
     private fun resetUI()
     {
         dragAndDropEntity = null
-        changeToType = null
         isMoving = false
         isSelecting = false
         isCopying = false

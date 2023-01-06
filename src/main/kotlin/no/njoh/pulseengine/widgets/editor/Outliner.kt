@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -19,6 +20,9 @@ import no.njoh.pulseengine.modules.gui.elements.Label
 import no.njoh.pulseengine.modules.gui.layout.*
 import kotlin.reflect.full.findAnnotation
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.modules.gui.ScrollbarVisibility.ALWAYS_VISIBLE
+import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
+import kotlin.reflect.KClass
 
 data class Outliner(
     val ui: Panel,
@@ -26,7 +30,7 @@ data class Outliner(
     private val onEntitiesRemoved: (entities: List<SceneEntity>) -> Unit,
     private val onEntitiesAdded: (entities: List<SceneEntity>) -> Unit,
     private val onEntityPropertyChanged: (entity: SceneEntity, propName: String) -> Unit,
-    private val onReload: () -> Unit,
+    private val onReload: () -> Unit
 ){
     fun selectEntities(entities: List<SceneEntity>) = onEntitiesSelected(entities)
     fun removeEntities(entities: List<SceneEntity>) = onEntitiesRemoved(entities)
@@ -39,12 +43,16 @@ data class Outliner(
         fun build(
             engine: PulseEngine,
             uiElementFactory: UiElementFactory,
-            onEntitiesSelected: () -> Unit
+            onEntitiesSelected: () -> Unit,
+            onEntityCreated: (KClass<out SceneEntity>) -> Unit
         ): Outliner {
 
             // ---------------------------------- Entity rows ----------------------------------
 
-            val rowPanel = RowPanel(width = Size.auto(), height = Size.auto())
+            val rowPanel = RowPanel(width = Size.auto(), height = Size.auto()).apply()
+            {
+                verticalScrollbarVisibility = ALWAYS_VISIBLE
+            }
 
             // ---------------------------------- Header panel ----------------------------------
 
@@ -101,11 +109,24 @@ data class Outliner(
                         strokeBottom = false
                         addChildren(editDisabledButton)
                     },
-                    Label(text = "Entity").apply()
+                    Label(text = "Name").apply()
                     {
                         padding.left = 10f
                         fontSize = 18f
                         color = style.getColor("LABEL")
+                    },
+                    Panel(width = Size.absolute(120f + 14f)).apply()
+                    {
+                        strokeColor = style.getColor("STROKE")
+                        strokeTop = false
+                        strokeBottom = false
+                        strokeRight = false
+                        addChildren(Label(text = "Type").apply()
+                        {
+                            padding.left = 10f
+                            fontSize = 18f
+                            color = style.getColor("LABEL")
+                        })
                     }
                 )
             }
@@ -127,12 +148,33 @@ data class Outliner(
                     val text = inputField.text
                     rowPanel.children.forEachFast()
                     {
-                        it.hidden = text.isNotBlank() && engine.getEntity(it.id)?.matches(text) != true
+                        it.hidden = text.isNotBlank() && engine.getEntity(it.id)?.matches(engine, text) != true
                     }
                 }
             }
 
-            val searchPanel = Panel(height = Size.absolute(30f)).apply()
+            val menuItems = SceneEntity.REGISTERED_TYPES
+                .map { it.getName() to it }
+                .sortedBy { it.first }
+                .map { (name, type) -> MenuBarItem(name) { onEntityCreated(type) } }
+
+            val button = MenuBarButton(labelText = "+", items = menuItems)
+            val showScrollBar = menuItems.size > 8
+            val buttonUI = uiElementFactory.createMenuBarButtonUI(button, 18f, showScrollBar).apply {
+                width.setQuiet(Size.absolute(20f))
+                dropdown.resizable = true
+                dropdown.color = style.getColor("BUTTON")
+                menuLabel.fontSize = 32f
+                menuLabel.padding.top = 4f
+                padding.top = 5f
+                padding.bottom = 5f
+                padding.right = 5f
+                bgColor = style.getColor("HEADER")
+                hoverColor = style.getColor("BUTTON_HOVER")
+                cornerRadius = 8f
+            }
+
+            val searchPanel = HorizontalPanel(height = Size.absolute(30f)).apply()
             {
                 color = style.getColor("HEADER")
                 strokeColor = style.getColor("STROKE")
@@ -140,7 +182,7 @@ data class Outliner(
                 strokeTop = false
                 strokeLeft = false
                 strokeRight = false
-                addChildren(searchInputField)
+                addChildren(searchInputField, buttonUI)
             }
 
             // ---------------------------------- Outliner with event handlers ----------------------------------
@@ -155,57 +197,106 @@ data class Outliner(
                     rowPanel.children.forEachFast { (it as Button).isPressed = (it.id in selectedIds) }
                 },
                 onEntitiesRemoved = { entities ->
-                    val removedIds = entities.mapToSet { it.id.toString() }
-                    val rowsToRemove = rowPanel.children.filter { it.id in removedIds }
+                    val idsToRemove = mutableSetOf<String>()
+                    entities.forEachFast { it.sourceIdsToRemove(engine, idsToRemove) }
+                    val rowsToRemove = rowPanel.children.filter { it.id in idsToRemove }
                     rowPanel.removeChildren(rowsToRemove)
                 },
                 onEntitiesAdded = { entities ->
-                    val newRows = entities.map { createRowForEntity(it, engine, style, rowPanel.children, onEntitiesSelected) }
-                    rowPanel.addChildren(newRows)
+                    val searchText = searchInputField.text.trim()
+                    val ids = mutableSetOf<Long>()
+                    for (entity in entities)
+                    {
+                        var indent = 0f
+                        var index = rowPanel.children.size
+                        if (entity.parentId != INVALID_ID)
+                        {
+                            val parentId = entity.parentId.toString()
+                            val parentIndex = rowPanel.children.indexOfFirst { it.id == parentId }
+                            if (parentIndex >= 0)
+                            {
+                                indent = rowPanel.children[parentIndex].getIcon().padding.left - 2f + 15f
+                                index = parentIndex + 1
+                            }
+                        }
+                        rowPanel.addRowsForEntity(entity, engine, style, indent, ids, searchText, onEntitiesSelected, index)
+                    }
                 },
                 onEntityPropertyChanged = { entity, propName ->
                     val entityId = entity.id.toString()
                     if (propName == "name")
-                        rowPanel.children.find { it.id == entityId }?.getRowLabel()?.text = entity.createLabelText()
+                        rowPanel.children.find { it.id == entityId }?.getNameLabel()?.text = entity.createLabelText()
                 },
                 onReload = {
-                    val newRows = createRowsFromActiveScene(engine, style, searchInputField, onEntitiesSelected)
                     rowPanel.clearChildren()
-                    rowPanel.addChildren(newRows)
+                    rowPanel.addRowsFromActiveScene(engine, style, searchInputField, onEntitiesSelected)
                 }
             )
         }
 
-        private fun createRowsFromActiveScene(
+        private fun SceneEntity.sourceIdsToRemove(engine: PulseEngine, ids: MutableSet<String>)
+        {
+            val id = this.id.toString()
+            if (!ids.contains(id))
+            {
+                ids.add(id)
+                this.childIds?.forEachFast { engine.scene.getEntity(it)?.sourceIdsToRemove(engine, ids) }
+            }
+        }
+
+        private fun RowPanel.addRowsFromActiveScene(
             engine: PulseEngine,
             style: EditorStyle,
             searchInputField: InputField,
             onEntitiesSelected: () -> Unit
-        ): List<UiElement> {
+        ) {
             val searchText = searchInputField.text.trim()
-            val rows = mutableListOf<UiElement>()
-            for (typeList in engine.scene.getAllEntitiesByType())
+            val ids = mutableSetOf<Long>()
+            var index = 0
+            engine.scene.forEachEntityTypeList { list -> list.forEachFast()
             {
-                for (entity in typeList)
+                if (it.parentId == INVALID_ID) // Top level entity
                 {
-                    if (entity.isSet(DEAD))
-                        continue
-
-                    val row = createRowForEntity(entity, engine, style, rows, onEntitiesSelected)
-                    if (searchText.isNotBlank() && !entity.matches(searchText))
-                        row.hidden = true
-                    rows.add(row)
+                    index += this.addRowsForEntity(it, engine, style, 0f, ids, searchText, onEntitiesSelected, index)
                 }
-            }
-            rows.sortBy { it.id?.toLongOrNull() ?: 0 }
-            return rows
+            }}
         }
 
-        private fun createRowForEntity(
+        private fun RowPanel.addRowsForEntity(
             entity: SceneEntity,
             engine: PulseEngine,
             style: EditorStyle,
-            existingRows: List<UiElement>,
+            indent: Float,
+            addedIds: MutableSet<Long>,
+            searchText: String,
+            onEntitiesSelected: () -> Unit, // Called when entities are selected in the outliner
+            index: Int
+        ): Int {
+            if (entity.isSet(DEAD) || addedIds.contains(entity.id))
+                return 0
+
+            var rowsAdded = 1
+            val row = createRowUi(entity, engine, style, indent, this.children, onEntitiesSelected)
+            row.hidden = searchText.isNotBlank() && !entity.matches(engine, searchText)
+            this.insertChild(row, index)
+            addedIds.add(entity.id)
+
+            entity.childIds?.forEachFast()
+            {
+                engine.scene.getEntity(it)?.let { entity ->
+                    rowsAdded += this.addRowsForEntity(entity, engine, style, indent + 15f, addedIds, searchText, onEntitiesSelected, index + rowsAdded)
+                }
+            }
+
+            return rowsAdded
+        }
+
+        private fun createRowUi(
+            entity: SceneEntity,
+            engine: PulseEngine,
+            style: EditorStyle,
+            indent: Float,
+            rows: List<UiElement>,
             onEntitiesSelected: () -> Unit // Called when entities are selected in the outliner
         ): UiElement {
             val entityId = entity.id
@@ -218,7 +309,12 @@ data class Outliner(
                 bgHoverColor = style.getColor("BUTTON_HOVER")
                 activeColor = style.getColor("LABEL")
                 hoverColor = style.getColor("LABEL_DARK")
-                setOnClicked { btn -> engine.withEntity(entityId) { if (btn.isPressed) it.set(HIDDEN) else it.setNot(HIDDEN) } }
+                setOnClicked { btn ->
+                    rows.forEachChildOf(entityId.toString(), includeParent = true) { row ->
+                        engine.withEntity(row.id) { if (btn.isPressed) it.set(HIDDEN) else it.setNot(HIDDEN) }
+                        row.getVisibilityButton().isPressed = btn.isPressed
+                    }
+                }
             }
 
             val editDisabledButton = Button(width = Size.absolute(25f)).apply()
@@ -230,22 +326,34 @@ data class Outliner(
                 bgHoverColor = style.getColor("BUTTON_HOVER")
                 activeColor = style.getColor("LABEL")
                 hoverColor = style.getColor("LABEL_DARK")
-                setOnClicked { btn -> engine.withEntity(entityId) { if (btn.isPressed) it.setNot(EDITABLE) else it.set(EDITABLE) } }
+                setOnClicked { btn ->
+                    rows.forEachChildOf(entityId.toString(), includeParent = true) { row ->
+                        engine.withEntity(row.id) { if (btn.isPressed) it.setNot(EDITABLE) else it.set(EDITABLE) }
+                        row.getEditDisabledButton().isPressed = btn.isPressed
+                    }
+                }
             }
 
             val annotation = entity::class.findAnnotation<ScnIcon>()
             val icon = Icon(width = Size.absolute(25f)).apply()
             {
-                padding.left = 2f
+                padding.left = 2f + indent
                 iconSize = 15f
                 iconFontName = style.iconFontName
                 iconCharacter = style.getIcon(annotation?.iconName ?: "CUBE")
                 color = style.getColor("LABEL")
             }
 
-            val entityLabel = Label(entity.createLabelText()).apply()
+            val nameLabel = Label(entity.createLabelText()).apply()
             {
                 padding.left = 4f
+                fontSize = 18f
+                color = style.getColor("LABEL")
+            }
+
+            val typeLabel = Label("  " + entity.typeName, width = Size.absolute(120f)).apply()
+            {
+                padding.left = 0f
                 fontSize = 18f
                 color = style.getColor("LABEL")
             }
@@ -258,7 +366,7 @@ data class Outliner(
                 {
                     // Select multiple when shift is pressed
                     var select = false
-                    existingRows.forEachFast()
+                    rows.forEachFast()
                     {
                         if (!it.hidden)
                         {
@@ -276,7 +384,7 @@ data class Outliner(
                 else if (!engine.input.isPressed(Key.LEFT_CONTROL))
                 {
                     // Deselect previously selected rows when left CTRL is not pressed
-                    existingRows.forEachFast()
+                    rows.forEachFast()
                     {
                         val button = it as Button
                         if (button.isPressed)
@@ -300,13 +408,13 @@ data class Outliner(
                 id = entityId.toString()
                 toggleButton = true
                 isPressed = entity.isSet(SELECTED)
-                bgColor = if (existingRows.size % 2 == 0) style.getColor( "BUTTON") else Color.BLANK
+                bgColor = if (rows.size % 2 == 0) style.getColor( "BUTTON") else Color.BLANK
                 bgHoverColor = style.getColor("BUTTON_HOVER")
                 activeColor = style.getColor("ITEM_HOVER")
                 padding.bottom = 1f
                 setOnClicked(onSelectedCallback)
                 addChildren(
-                    HorizontalPanel().apply { addChildren(visibilityButton, editDisabledButton, icon, entityLabel) }
+                    HorizontalPanel().apply { addChildren(visibilityButton, editDisabledButton, icon, nameLabel, typeLabel) }
                 )
             }
         }
@@ -315,14 +423,17 @@ data class Outliner(
 
         private fun UiElement.getEditDisabledButton() = this.children[0].children[1] as Button
 
-        private fun UiElement.getRowLabel() = this.children[0].children[3] as Label
+        private fun UiElement.getIcon() = this.children[0].children[2] as Icon
 
-        private fun SceneEntity.createLabelText() = typeName + (name?.let { "  [$it]" } ?: "")
+        private fun UiElement.getNameLabel() = this.children[0].children[3] as Label
 
-        private fun SceneEntity.matches(searchString: String): Boolean =
+        private fun SceneEntity.createLabelText() = (name?.takeIf { it.isNotEmpty() } ?: typeName)
+
+        private fun SceneEntity.matches(engine: PulseEngine, searchString: String): Boolean =
             typeName.contains(searchString, ignoreCase = true) ||
             name?.contains(searchString, ignoreCase = true) == true ||
-            id.toString().contains(searchString)
+            id.toString().contains(searchString) ||
+            childIds?.any { engine.scene.getEntity(it)?.matches(engine, searchString) == true } == true
 
         private fun PulseEngine.getEntity(id: String?) =
             id?.toLongOrNull()?.let { this.scene.getEntity(it) }
@@ -332,6 +443,25 @@ data class Outliner(
 
         private inline fun PulseEngine.withEntity(id: Long, action: (SceneEntity) -> Unit) =
             this.scene.getEntity(id)?.let(action)
+
+        private inline fun List<UiElement>.forEachChildOf(id: String, includeParent: Boolean = false, action: (UiElement) -> Unit)
+        {
+            var indent = -1f
+            for (row in this)
+            {
+                if (indent == -1f && row.id == id)
+                {
+                    indent = row.getIcon().padding.left
+                    if (includeParent)
+                        action(row)
+                }
+                else if (indent != -1f)
+                {
+                    if (row.getIcon().padding.left <= indent) return
+                    action(row)
+                }
+            }
+        }
 
         // Stores the ID of the last selected row
         private var lastSelectedId = ""
