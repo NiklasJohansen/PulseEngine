@@ -35,7 +35,7 @@ class EditorStyle
         // Set default sizes
         sizes["PROP_ROW_HEIGHT"] = 30f
         sizes["PROP_HEADER_ROW_HEIGHT"] = 30f
-        sizes["DROPDOWN_ROW_HEIGHT"] = 25f
+        sizes["DROPDOWN_ROW_HEIGHT"] = 20f
 
         // Set default icons
         icons["CUBE"] = "a"
@@ -53,6 +53,7 @@ class EditorStyle
         icons["VISIBLE"] = "u"
         icons["HIDDEN"] = "v"
         icons["CAMERA"] = "w"
+        icons["FOLDER"] = "x"
     }
 
     companion object

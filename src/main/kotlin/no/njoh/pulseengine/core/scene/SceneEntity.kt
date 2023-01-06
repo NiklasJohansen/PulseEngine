@@ -6,12 +6,19 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.utils.Extensions.minus
 import kotlin.reflect.KClass
 
 abstract class SceneEntity
 {
-    @ScnProp(i = -2, editable = false)
-    var id = -1L // ID gets assigned when entity is added to the scene
+    @ScnProp(i = -3, editable = false)
+    var id = INVALID_ID // ID gets assigned when entity is added to the scene
+
+    @ScnProp(i = -2)
+    var parentId = INVALID_ID
+
+    @ScnProp(hidden = true)
+    var childIds: LongArray? = null
 
     @ScnProp(i = -1)
     open var name: String? = null
@@ -65,8 +72,24 @@ abstract class SceneEntity
     fun isAnySet(flag: Int) = flags and flag != 0
     fun isNot(flag: Int) = flags and flag == 0
 
+    fun addChild(childEntity: SceneEntity)
+    {
+        childEntity.parentId = this.id
+        childIds = childIds?.plus(childEntity.id) ?: longArrayOf(childEntity.id)
+    }
+
+    fun removeChild(childEntity: SceneEntity)
+    {
+        childEntity.parentId = INVALID_ID
+        childIds = childIds?.minus(childEntity.id)
+    }
+
     companion object
     {
+        // An ID pointing to no entity
+        const val INVALID_ID = -1L
+
+        // Flags
         const val DEAD              = 1   // Is the entity dead
         const val POSITION_UPDATED  = 2   // Was position of entity updated
         const val ROTATION_UPDATED  = 4   // Was rotation of entity updated

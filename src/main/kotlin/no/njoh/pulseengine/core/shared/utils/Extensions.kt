@@ -122,6 +122,15 @@ object Extensions
     }
 
     /**
+     * Fast iteration of [LongArray].
+     */
+    inline fun LongArray.forEachFast(block: (Long) -> Unit)
+    {
+        var i = 0
+        while (i < size) block(this[i++])
+    }
+
+    /**
      * Fast and reversed iteration of constant lookup lists.
      */
     inline fun <T> List<T>.forEachReversed(block: (T) -> Unit)
@@ -173,6 +182,27 @@ object Extensions
             destination.add(transform(element))
         }
         return destination
+    }
+
+    /**
+     * Returns a new [LongArray] with the first occurrence of [value] removed.
+     * Returns null if the result is empty.
+     */
+    fun LongArray.minus(value: Long): LongArray?
+    {
+        if (size == 0 || (size == 1 && this[0] == value))
+            return null
+
+        var i = 0
+        var j = 0
+        val array = LongArray(size - 1)
+        while (i < array.size && j < size)
+        {
+            val v = this[j++]
+            if (v == value) continue
+            array[i++] = v
+        }
+        return array
     }
 
     /**

@@ -6,7 +6,6 @@ import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
-import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.modules.lighting.LightSource
 import no.njoh.pulseengine.modules.lighting.LightType
 import no.njoh.pulseengine.modules.lighting.ShadowType
@@ -19,8 +18,7 @@ import kotlin.math.sqrt
 @ScnIcon("LIGHT_BULB", size = 24f, showInViewport = true)
 open class Lamp : SceneEntity(), LightSource
 {
-    @ScnProp("Pin to entity", 0)
-    var targetEntityId: Long = -1L
+    var trackParent = true
 
     override var color: Color = Color(1f, 0.92f, 0.75f)
     override var intensity = 4f
@@ -37,12 +35,15 @@ open class Lamp : SceneEntity(), LightSource
 
     override fun onStart(engine: PulseEngine)
     {
-        val target = engine.scene.getEntity(targetEntityId) ?: return
-        val xDelta = x - target.x
-        val yDelta = y - target.y
-        initLength = sqrt(xDelta * xDelta + yDelta * yDelta)
-        initAngle = MathUtil.atan2(yDelta / initLength, xDelta / initLength) + target.rotation.toRadians()
-        initRotation = rotation - target.rotation
+        if (trackParent)
+        {
+            val target = engine.scene.getEntity(parentId) ?: return
+            val xDelta = x - target.x
+            val yDelta = y - target.y
+            initLength = sqrt(xDelta * xDelta + yDelta * yDelta)
+            initAngle = MathUtil.atan2(yDelta / initLength, xDelta / initLength) + target.rotation.toRadians()
+            initRotation = rotation - target.rotation
+        }
     }
 
     override fun onFixedUpdate(engine: PulseEngine)
@@ -50,11 +51,14 @@ open class Lamp : SceneEntity(), LightSource
         if (engine.scene.state != RUNNING)
             return
 
-        val target = engine.scene.getEntity(targetEntityId) ?: return
-        val angle = initAngle - target.rotation.toRadians()
-        x = target.x + cos(angle) * initLength
-        y = target.y + sin(angle) * initLength
-        rotation = target.rotation + initRotation
+        if (trackParent)
+        {
+            val target = engine.scene.getEntity(parentId) ?: return
+            val angle = initAngle - target.rotation.toRadians()
+            x = target.x + cos(angle) * initLength
+            y = target.y + sin(angle) * initLength
+            rotation = target.rotation + initRotation
+        }
     }
 
     override fun onRender(engine: PulseEngine, surface: Surface2D) { }

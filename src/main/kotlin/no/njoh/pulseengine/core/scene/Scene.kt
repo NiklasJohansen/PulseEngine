@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.data.FileFormat.*
 import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.shared.primitives.SwapList.Companion.swapListOf
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 
@@ -52,6 +53,8 @@ open class Scene(
                 entities.add(list)
             }
         spatialGrid.insert(entity)
+        if (entity.parentId != INVALID_ID)
+            entityIdMap[entity.parentId]?.addChild(entity)
         entity.onCreate()
         nextId++
     }
@@ -91,9 +94,11 @@ open class Scene(
             engine.scene.forEachEntityTypeList { typeList ->
                 typeList.forEachFast { entity ->
                     if (entity.isSet(DEAD))
+                    {
+                        entityIdMap[entity.parentId]?.removeChild(entity)
                         entityIdMap.remove(entity.id)
-                    else
-                        typeList.keep(entity)
+                    }
+                    else typeList.keep(entity)
                 }
                 typeList.swap()
             }

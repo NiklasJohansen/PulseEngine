@@ -43,9 +43,15 @@ open class EntityUpdater : SceneSystem()
 
                 // Handles the deletion of dead entities in the same update pass
                 if (entity.isNot(SceneEntity.DEAD))
+                {
+                    // Keep this entity for the next frame
                     typeList.keep(entity)
+                }
                 else
+                {
+                    engine.scene.activeScene.entityIdMap[entity.parentId]?.removeChild(entity)
                     engine.scene.activeScene.entityIdMap.remove(entity.id)
+                }
             }
             typeList.swap()
         }
