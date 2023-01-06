@@ -485,10 +485,10 @@ class SpatialGrid (
 
     private fun removeNode(node: Node)
     {
-        if (node.prev == null)
+        if (node.prev === null)
         {
             val first = cells[node.xCell, node.yCell]
-            if (first == node)
+            if (first === node)
             {
                 first.next?.prev = null
                 cells[node.xCell, node.yCell] = first.next
