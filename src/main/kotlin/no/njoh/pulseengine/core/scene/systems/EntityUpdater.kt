@@ -6,6 +6,8 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.scene.interfaces.Initiable
+import no.njoh.pulseengine.core.scene.interfaces.Updatable
 
 @Name("Entity Updater")
 open class EntityUpdater : SceneSystem()
@@ -24,13 +26,13 @@ open class EntityUpdater : SceneSystem()
         if (tickRate != engine.config.fixedTickRate)
             engine.config.fixedTickRate = tickRate
 
-        engine.scene.forEachEntity { it.onStart(engine) }
+        engine.scene.forEachEntityOfType<Initiable> { it.onStart(engine) }
     }
 
     override fun onFixedUpdate(engine: PulseEngine)
     {
         if (engine.scene.state == SceneState.RUNNING)
-            engine.scene.forEachEntity { it.onFixedUpdate(engine) }
+            engine.scene.forEachEntityOfType<Updatable> { it.onFixedUpdate(engine) }
     }
 
     override fun onUpdate(engine: PulseEngine)
@@ -38,7 +40,7 @@ open class EntityUpdater : SceneSystem()
         val sceneState = engine.scene.state
         engine.scene.forEachEntityTypeList { typeList ->
             typeList.forEachFast { entity ->
-                if (sceneState == SceneState.RUNNING)
+                if (sceneState == SceneState.RUNNING && entity is Updatable)
                     entity.onUpdate(engine)
 
                 // Handles the deletion of dead entities in the same update pass

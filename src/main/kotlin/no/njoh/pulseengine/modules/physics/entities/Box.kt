@@ -4,14 +4,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.bodies.PolygonBody
 import no.njoh.pulseengine.modules.physics.shapes.RectangleShape
 import no.njoh.pulseengine.core.shared.utils.Extensions.degreesBetween
 import kotlin.Float.Companion.NaN
 
-open class Box : SceneEntity(), PolygonBody
+open class Box : StandardSceneEntity(), PolygonBody
 {
     @JsonIgnore
     override var shape = RectangleShape()

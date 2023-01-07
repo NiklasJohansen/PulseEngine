@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.modules.physics.ContactSolver
 import no.njoh.pulseengine.modules.physics.BodyType.*
 import no.njoh.pulseengine.modules.physics.ContactResult
@@ -19,7 +20,7 @@ interface CircleBody : PhysicsBody
 
     override fun init(engine: PulseEngine)
     {
-        if (this is SceneEntity)
+        if (this is Spatial)
         {
             shape.init(x, y, max(width, height) * 0.5f, rotation, density)
         }
@@ -161,7 +162,7 @@ interface CircleBody : PhysicsBody
 
     fun onBodyUpdated()
     {
-        if (this is SceneEntity)
+        if (this is SceneEntity && this is Spatial)
         {
             x = shape.x
             y = shape.y

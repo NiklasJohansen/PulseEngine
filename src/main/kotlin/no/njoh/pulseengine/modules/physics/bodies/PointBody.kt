@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.modules.physics.*
 import no.njoh.pulseengine.modules.physics.BodyType.STATIC
 import no.njoh.pulseengine.modules.physics.shapes.PointShape
@@ -15,7 +16,7 @@ interface PointBody : PhysicsBody
 
     override fun init(engine: PulseEngine)
     {
-        if (this is SceneEntity)
+        if (this is Spatial)
         {
             shape.init(x, y)
         }
@@ -89,7 +90,7 @@ interface PointBody : PhysicsBody
 
     fun onBodyUpdated()
     {
-        if (this is SceneEntity)
+        if (this is SceneEntity && this is Spatial)
         {
             x = shape.x
             y = shape.y

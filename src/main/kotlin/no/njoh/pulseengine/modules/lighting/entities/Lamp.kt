@@ -3,8 +3,9 @@ package no.njoh.pulseengine.modules.lighting.entities
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
+import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.modules.lighting.LightSource
 import no.njoh.pulseengine.modules.lighting.LightType
@@ -16,7 +17,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 @ScnIcon("LIGHT_BULB", size = 24f, showInViewport = true)
-open class Lamp : SceneEntity(), LightSource
+open class Lamp : StandardSceneEntity(), LightSource
 {
     var trackParent = true
 
@@ -37,7 +38,7 @@ open class Lamp : SceneEntity(), LightSource
     {
         if (trackParent)
         {
-            val target = engine.scene.getEntity(parentId) ?: return
+            val target = engine.scene.getEntityOfType<Spatial>(parentId) ?: return
             val xDelta = x - target.x
             val yDelta = y - target.y
             initLength = sqrt(xDelta * xDelta + yDelta * yDelta)
@@ -53,7 +54,7 @@ open class Lamp : SceneEntity(), LightSource
 
         if (trackParent)
         {
-            val target = engine.scene.getEntity(parentId) ?: return
+            val target = engine.scene.getEntityOfType<Spatial>(parentId) ?: return
             val angle = initAngle - target.rotation.toRadians()
             x = target.x + cos(angle) * initLength
             y = target.y + sin(angle) * initLength

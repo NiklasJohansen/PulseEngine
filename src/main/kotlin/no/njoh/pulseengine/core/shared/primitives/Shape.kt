@@ -15,13 +15,13 @@ abstract class Shape
     abstract fun getRadius(): Float?
 
     /**
-     * Returns the coordinates of a specific shape point.
+     * Returns the coordinates of a specific shape point in world space.
      * Index higher than the last point index wraps over to zero.
      */
     abstract fun getPoint(index: Int): Vector2f
 
     /**
-     * Sets the position of a specific shape point.
+     * Sets the position of a specific shape point in world space.
      */
     abstract fun setPoint(index: Int, x: Float, y: Float)
 }

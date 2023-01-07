@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.lighting
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.scene.systems.CustomRenderPassTarget
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
@@ -23,7 +24,7 @@ interface NormalMapped : CustomRenderPassTarget
 
     override fun renderCustomPass(engine: PulseEngine, surface: Surface2D)
     {
-        if (this is SceneEntity && normalMapName.isNotBlank())
+        if (this is SceneEntity && this is Spatial && normalMapName.isNotBlank())
         {
             surface.getRenderer(NormalMapRenderer::class)?.drawNormalMap(
                 texture = engine.asset.getOrNull(normalMapName),

@@ -1,14 +1,13 @@
 package no.njoh.pulseengine.core.scene
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.asset.types.Font
-import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.core.shared.utils.Extensions.minus
 import kotlin.reflect.KClass
 
+/**
+ * Base class for all implementations of a scene entity.
+ */
 abstract class SceneEntity
 {
     @ScnProp(i = -3, editable = false)
@@ -20,51 +19,11 @@ abstract class SceneEntity
     @ScnProp(hidden = true)
     var childIds: LongArray? = null
 
-    @ScnProp(i = -1)
-    open var name: String? = null
-
-    @ScnProp("Transform", 0)
-    open var x: Float = 0f
-
-    @ScnProp("Transform", 1)
-    open var y: Float = 0f
-
-    @ScnProp("Transform", 2)
-    open var z: Float = -0.1f
-
-    @ScnProp("Transform", 3)
-    open var width: Float = 0f
-
-    @ScnProp("Transform", 4)
-    open var height: Float = 0f
-
-    @ScnProp("Transform", 5)
-    open var rotation: Float = 0f
-
     @ScnProp(hidden = true)
     var flags = DISCOVERABLE or EDITABLE
 
     @JsonIgnore
     val typeName = this::class.simpleName ?: ""
-
-    open fun onCreate() { }
-    open fun onStart(engine: PulseEngine) {  }
-    open fun onUpdate(engine: PulseEngine) { }
-    open fun onFixedUpdate(engine: PulseEngine) { }
-    open fun onRender(engine: PulseEngine, surface: Surface2D)
-    {
-        if (engine.scene.state == SceneState.STOPPED)
-        {
-            surface.setDrawColor(1f, 1f, 1f, 0.5f)
-            surface.drawTexture(Texture.BLANK, x, y, width, height, rotation, 0.5f, 0.5f)
-            surface.setDrawColor(1f, 1f, 1f, 1f)
-            var text = typeName
-            val width = Font.DEFAULT.getWidth(typeName)
-            if (width > this.width)
-                text = text.substring(0, ((text.length / (width / this.width)).toInt().coerceIn(0, text.length)))
-            surface.drawText(text, x, y, xOrigin = 0.5f, yOrigin = 0.5f)
-        }
-    }
 
     fun set(flag: Int) { flags = flags or flag }
     fun setNot(flag: Int) { flags = flags and flag.inv() }
@@ -72,16 +31,16 @@ abstract class SceneEntity
     fun isAnySet(flag: Int) = flags and flag != 0
     fun isNot(flag: Int) = flags and flag == 0
 
-    fun addChild(childEntity: SceneEntity)
+    fun addChild(child: SceneEntity)
     {
-        childEntity.parentId = this.id
-        childIds = childIds?.plus(childEntity.id) ?: longArrayOf(childEntity.id)
+        child.parentId = this.id
+        childIds = childIds?.plus(child.id) ?: longArrayOf(child.id)
     }
 
-    fun removeChild(childEntity: SceneEntity)
+    fun removeChild(child: SceneEntity)
     {
-        childEntity.parentId = INVALID_ID
-        childIds = childIds?.minus(childEntity.id)
+        child.parentId = INVALID_ID
+        childIds = childIds?.minus(child.id)
     }
 
     companion object

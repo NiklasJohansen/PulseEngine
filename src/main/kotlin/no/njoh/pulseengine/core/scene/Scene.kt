@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.shared.primitives.SwapList.Companion.swapListOf
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
+import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 
@@ -38,8 +39,8 @@ open class Scene(
 
     internal var nextId = 0L
 
-    /** Call onCreate function on all loaded entities when scene is created */
-    init { entities.forEachFast { typeList -> typeList.forEachFast { it.onCreate() } } }
+    /** Call onCreate function on all [Initiable] entities when scene is created */
+    init { entities.onCreate() }
 
     fun insertEntity(entity: SceneEntity)
     {
@@ -55,7 +56,8 @@ open class Scene(
         spatialGrid.insert(entity)
         if (entity.parentId != INVALID_ID)
             entityIdMap[entity.parentId]?.addChild(entity)
-        entity.onCreate()
+        if (entity is Initiable)
+            entity.onCreate()
         nextId++
     }
 
@@ -147,6 +149,14 @@ open class Scene(
         TLongObjectHashMap<SceneEntity>().also { map ->
             entities.forEachFast { typeList -> typeList.forEachFast { map.put(it.id, it) } }
         }
+
+    private fun MutableList<SwapList<SceneEntity>>.onCreate()
+    {
+        this.forEachFast()
+        {
+            if (it.firstOrNull() is Initiable) it.forEachFast { entity -> (entity as Initiable).onCreate() }
+        }
+    }
 }
 
 @Target(AnnotationTarget.CLASS)

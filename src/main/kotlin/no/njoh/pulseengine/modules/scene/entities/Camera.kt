@@ -4,14 +4,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import kotlin.math.*
 
 @ScnIcon("CAMERA", size = 24f, showInViewport = true)
-open class Camera : SceneEntity()
+open class Camera : StandardSceneEntity()
 {
     var viewPortWidth = 1000f
     var viewPortHeight = 800f
@@ -107,7 +107,7 @@ open class Camera : SceneEntity()
 
     override fun onFixedUpdate(engine: PulseEngine)
     {
-        engine.scene.getEntity(targetEntityId)?.let { trackEntity(it) }
+        engine.scene.getEntityOfType<Spatial>(targetEntityId)?.let { trackEntity(it) }
 
         val surfaceWidth = engine.gfx.mainSurface.width
         val surfaceHeight = engine.gfx.mainSurface.height
@@ -123,7 +123,7 @@ open class Camera : SceneEntity()
         }
     }
 
-    private fun trackEntity(entity: SceneEntity)
+    private fun trackEntity(entity: Spatial)
     {
         if (!initalized)
         {

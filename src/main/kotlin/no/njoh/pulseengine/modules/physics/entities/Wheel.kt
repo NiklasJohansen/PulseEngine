@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.core.shared.utils.Extensions.degreesBetween
 import no.njoh.pulseengine.modules.physics.BodyType
@@ -17,7 +17,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sign
 
-open class Wheel : SceneEntity(), CircleBody
+open class Wheel : StandardSceneEntity(), CircleBody
 {
     @JsonIgnore
     override val shape = CircleShape()

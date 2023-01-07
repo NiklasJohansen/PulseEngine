@@ -147,8 +147,8 @@ abstract class SceneManager
     /**
      * Calls the [action] lambda for each [SceneEntity] of type [T].
      */
-    inline fun <reified T: SceneEntity> forEachEntityOfType(action: (T) -> Unit) =
-        activeScene.entityTypeMap[T::class.simpleName]?.forEachFast { action(it as T) }
+    inline fun <reified T> forEachEntityOfType(action: (T) -> Unit) =
+        activeScene.entities.forEachFast { list -> if (list.firstOrNull() is T) list.forEachFast { action(it as T) } }
 
     /**
      * Calls the [action] lambda for each list of [SceneEntity]s with the same type.

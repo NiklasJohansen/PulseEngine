@@ -3,13 +3,13 @@ package no.njoh.pulseengine.modules.physics.entities
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import kotlin.math.sqrt
 
-open class Spring : SceneEntity(), PhysicsEntity
+open class Spring : StandardSceneEntity(), PhysicsEntity
 {
     var bodyRef0 = 0L
     var bodyRef1 = 0L

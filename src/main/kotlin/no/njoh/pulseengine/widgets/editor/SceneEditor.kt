@@ -32,6 +32,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
@@ -396,7 +397,7 @@ class SceneEditor(
 
         engine.scene.forEachEntityTypeList { entities ->
             entities[0]::class.findAnnotation<ScnIcon>()?.let { annotation ->
-                if (annotation.showInViewport)
+                if (annotation.showInViewport && entities[0] is Spatial)
                 {
                     val size = annotation.size
                     val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
@@ -409,6 +410,7 @@ class SceneEditor(
                         {
                             if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
                             {
+                                it as Spatial
                                 val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
                                 if (texture != null)
                                     surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
@@ -551,7 +553,7 @@ class SceneEditor(
                 var closestEntity: SceneEntity? = null
                 engine.scene.forEachEntity()
                 {
-                    if (it.z <= zMin && it.isInside(xMouse, yMouse) && it.isSet(EDITABLE) && it.isNot(HIDDEN))
+                    if (it is Spatial && it.z <= zMin && it.isInside(xMouse, yMouse) && it.isSet(EDITABLE) && it.isNot(HIDDEN))
                     {
                         zMin = it.z
                         closestEntity = it
@@ -597,7 +599,7 @@ class SceneEditor(
 
             engine.scene.forEachEntity()
             {
-                if (it.isSet(EDITABLE) && it.isNot(HIDDEN) && it.isOverlapping(xStart, yStart, width, height))
+                if (it.isSet(EDITABLE) && it.isNot(HIDDEN) && it is Spatial && it.isOverlapping(xStart, yStart, width, height))
                     addEntityToSelection(it)
             }
 
@@ -624,15 +626,20 @@ class SceneEditor(
         {
             entitySelection.forEachFast()
             {
-                it.x += xMove
-                it.y += yMove
-                it.set(POSITION_UPDATED)
+                if (it is Spatial)
+                {
+                    it.x += xMove
+                    it.y += yMove
+                    it.set(POSITION_UPDATED)
+                }
             }
         }
     }
 
     private fun SceneEntity.handleEntityMoving(engine: PulseEngine)
     {
+        if (this !is Spatial) return
+
         if (isMoving && !engine.input.isPressed(Mouse.LEFT))
         {
             engine.input.setCursor(ARROW)
@@ -650,6 +657,8 @@ class SceneEditor(
 
     private fun SceneEntity.handleEntityDragAndDrop(engine: PulseEngine)
     {
+        if (this !is Spatial) return
+
         if (this !in entitySelection)
             selectSingleEntity(engine, this)
 
@@ -669,6 +678,8 @@ class SceneEditor(
 
     private fun SceneEntity.handleEntityTransformation(engine: PulseEngine)
     {
+        if (this !is Spatial) return
+
         val border = min(abs(width), abs(height)) * 0.1f
         val rotateArea = min(abs(width), abs(height)) * 0.2f
 
@@ -849,6 +860,8 @@ class SceneEditor(
 
         type?.let { t ->
             val entity = t.constructors.first().call()
+            if (entity !is Spatial)
+                return
             entity.x = engine.input.xWorldMouse
             entity.y = engine.input.yWorldMouse
             entity.width = texture.width.toFloat()
@@ -861,11 +874,14 @@ class SceneEditor(
     private fun createNewEntity(engine: PulseEngine, type: KClass<out SceneEntity>)
     {
         val entity = type.createInstance()
-        val spawnPos = activeCamera.screenPosToWorldPos(engine.window.width * 0.5f, engine.window.height * 0.5f)
-        entity.x = spawnPos.x
-        entity.y = spawnPos.y
-        entity.width = 512f
-        entity.height = 512f
+        if (entity is Spatial)
+        {
+            val spawnPos = activeCamera.screenPosToWorldPos(engine.window.width * 0.5f, engine.window.height * 0.5f)
+            entity.x = spawnPos.x
+            entity.y = spawnPos.y
+            entity.width = 512f
+            entity.height = 512f
+        }
         entity.setProperty("textureName", "crate")
         engine.scene.addEntity(entity)
         outliner?.addEntities(listOf(entity))
@@ -972,6 +988,8 @@ class SceneEditor(
 
     private fun SceneEntity.renderGizmo(surface: Surface2D, showResizeDots: Boolean)
     {
+        if (this !is Spatial) return
+
         val pos = activeCamera.worldPosToScreenPos(x, y)
         val w = (width + GIZMO_PADDING * 2) * activeCamera.scale.x / 2f
         val h = (height + GIZMO_PADDING * 2) * activeCamera.scale.y / 2f
@@ -1054,7 +1072,7 @@ class SceneEditor(
 
     ////////////////////////////// UTILS //////////////////////////////
 
-    private fun SceneEntity.isInside(xWorld: Float, yWorld: Float): Boolean
+    private fun Spatial.isInside(xWorld: Float, yWorld: Float): Boolean
     {
         val w = abs(width) + GIZMO_PADDING * 2
         val h = abs(height) + GIZMO_PADDING * 2
@@ -1068,7 +1086,7 @@ class SceneEditor(
         return xWorldNew > x - w / 2f && xWorldNew < x + w / 2 && yWorldNew > y - h / 2f && yWorldNew < y + h / 2f
     }
 
-    private fun SceneEntity.isOverlapping(xWorld: Float, yWorld: Float, width: Float, height: Float): Boolean
+    private fun Spatial.isOverlapping(xWorld: Float, yWorld: Float, width: Float, height: Float): Boolean
     {
         return this.x > xWorld && this.x < xWorld + width && this.y > yWorld && this.y < yWorld + height
     }

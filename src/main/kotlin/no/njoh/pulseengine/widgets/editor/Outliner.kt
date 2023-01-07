@@ -2,6 +2,7 @@ package no.njoh.pulseengine.widgets.editor
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.Key
+import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
@@ -253,13 +254,13 @@ data class Outliner(
             val searchText = searchInputField.text.trim()
             val ids = mutableSetOf<Long>()
             var index = 0
-            engine.scene.forEachEntityTypeList { list -> list.forEachFast()
+            engine.scene.forEachEntity()
             {
                 if (it.parentId == INVALID_ID) // Top level entity
                 {
                     index += this.addRowsForEntity(it, engine, style, 0f, ids, searchText, onEntitiesSelected, index)
                 }
-            }}
+            }
         }
 
         private fun RowPanel.addRowsForEntity(
@@ -427,11 +428,11 @@ data class Outliner(
 
         private fun UiElement.getNameLabel() = this.children[0].children[3] as Label
 
-        private fun SceneEntity.createLabelText() = (name?.takeIf { it.isNotEmpty() } ?: typeName)
+        private fun SceneEntity.createLabelText() = ((this as? Named)?.name?.takeIf { it.isNotEmpty() } ?: typeName)
 
         private fun SceneEntity.matches(engine: PulseEngine, searchString: String): Boolean =
             typeName.contains(searchString, ignoreCase = true) ||
-            name?.contains(searchString, ignoreCase = true) == true ||
+            (this is Named && name?.contains(searchString, ignoreCase = true) == true) ||
             id.toString().contains(searchString) ||
             childIds?.any { engine.scene.getEntity(it)?.matches(engine, searchString) == true } == true
 
