@@ -3,7 +3,6 @@ package no.njoh.pulseengine.core.console
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.window.ScreenMode.*
-import no.njoh.pulseengine.core.shared.primitives.Subscription
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

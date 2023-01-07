@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.input
 import no.njoh.pulseengine.core.asset.types.Cursor
-import no.njoh.pulseengine.core.shared.primitives.Subscription
+import no.njoh.pulseengine.core.console.Subscription
 
 interface Input
 {

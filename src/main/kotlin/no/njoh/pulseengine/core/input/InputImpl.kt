@@ -3,7 +3,7 @@ package no.njoh.pulseengine.core.input
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Cursor
 import no.njoh.pulseengine.core.asset.types.Cursor.Companion.createWithHandle
-import no.njoh.pulseengine.core.shared.primitives.Subscription
+import no.njoh.pulseengine.core.console.Subscription
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.lastOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Logger
