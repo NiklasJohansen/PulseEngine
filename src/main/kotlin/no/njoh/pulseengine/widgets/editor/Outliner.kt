@@ -233,8 +233,13 @@ data class Outliner(
                 onReload = {
                     rowPanel.clearChildren()
                     rowPanel.addRowsFromActiveScene(engine, style, searchInputField, onEntitiesSelected)
-                    closedParents.forEach { id -> rowPanel.children.forEachChildOf(id.toString()) { it.hidden = true } }
-                    closedParents.clear()
+                    closedParents.forEach { id ->
+                        rowPanel.children.forEachChildOf(id.toString())
+                        {
+                            it.hidden = true
+                            it.getCollapseButton()?.isPressed = true
+                        }
+                    }
                 }
             )
         }
@@ -356,7 +361,26 @@ data class Outliner(
                     activeHoverColor = style.getColor("LABEL_DARK")
                     hoverColor = style.getColor("LABEL_DARK")
                     setOnClicked { btn ->
-                        rows.forEachChildOf(entityId.toString(), includeParent = false) { it.hidden = btn.isPressed }
+                        rows.forEachChildOf(entityId.toString(), includeParent = false) {
+                            it.getCollapseButton()?.isPressed = true // Set collapse button to closed for all children
+                            if (btn.isPressed) // Parent being closed
+                            {
+                                it.hidden = true
+                            }
+                            else // Parent being opened
+                            {
+                                // Show only the first layer
+                                if (it.getRowIndentation() <= indent + CHILD_INDENTATION)
+                                {
+                                    it.hidden = false
+                                    // If it is a parent, add it to the closedParents list
+                                    if (it.getCollapseButton() != null)
+                                        it.id?.toLongOrNull()?.let { id -> closedParents.add(id) }
+                                }
+                                else it.hidden = true
+                            }
+                        }
+
                         if (btn.isPressed) closedParents.add(entityId) else closedParents.remove(entityId)
                     }
                 }
@@ -457,6 +481,8 @@ data class Outliner(
         private fun UiElement.getVisibilityButton() = this.children[0].children[0] as Button
 
         private fun UiElement.getEditDisabledButton() = this.children[0].children[1] as Button
+
+        private fun UiElement.getCollapseButton() = this.children[0].children[2] as? Button
 
         private fun UiElement.getRowIndentation() = this.children[0].children[2].padding.left
 
