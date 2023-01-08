@@ -917,8 +917,6 @@ class SceneEditor(
                 {
                     val newParentId = entity.parentId
                     val lastParentId = (lastValue as? String)?.toLongOrNull() ?: INVALID_ID
-                    if (entity.parentId == 36971L)
-                        println(entity.parentId)
 
                     engine.scene.getEntity(lastParentId)?.removeChild(entity)
                     engine.scene.getEntity(newParentId)?.addChild(entity)

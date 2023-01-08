@@ -32,7 +32,7 @@ data class Outliner(
     private val onEntitiesAdded: (entities: List<SceneEntity>) -> Unit,
     private val onEntityPropertyChanged: (entity: SceneEntity, propName: String) -> Unit,
     private val onReload: () -> Unit
-){
+) {
     fun selectEntities(entities: List<SceneEntity>) = onEntitiesSelected(entities)
     fun removeEntities(entities: List<SceneEntity>) = onEntitiesRemoved(entities)
     fun addEntities(entities: List<SceneEntity>) = onEntitiesAdded(entities)
@@ -110,7 +110,7 @@ data class Outliner(
                         strokeBottom = false
                         addChildren(editDisabledButton)
                     },
-                    Label(text = "Name").apply()
+                    Label(text = "Entity").apply()
                     {
                         padding.left = 10f
                         fontSize = 18f
@@ -208,19 +208,21 @@ data class Outliner(
                     val ids = mutableSetOf<Long>()
                     for (entity in entities)
                     {
-                        var indent = 0f
-                        var index = rowPanel.children.size
-                        if (entity.parentId != INVALID_ID)
+                        val parentEntity = if (entity.parentId != INVALID_ID) engine.scene.getEntity(entity.parentId) else null
+                        if (parentEntity != null)
                         {
                             val parentId = entity.parentId.toString()
                             val parentIndex = rowPanel.children.indexOfFirst { it.id == parentId }
                             if (parentIndex >= 0)
                             {
-                                indent = rowPanel.children[parentIndex].getIcon().padding.left - 2f + 15f
-                                index = parentIndex + 1
+                                // Remove and reinsert parent
+                                val parentRow = rowPanel.children[parentIndex]
+                                rowPanel.removeChildren(rowPanel.getChildrenOf(parentRow))
+                                rowPanel.removeChildren(parentRow)
+                                rowPanel.addRowsForEntity(parentEntity, engine, style, parentRow.getRowIndentation(), ids, searchText, onEntitiesSelected, parentIndex)
                             }
                         }
-                        rowPanel.addRowsForEntity(entity, engine, style, indent, ids, searchText, onEntitiesSelected, index)
+                        else rowPanel.addRowsForEntity(entity, engine, style, indent = 0f, ids, searchText, onEntitiesSelected, index = rowPanel.children.size)
                     }
                 },
                 onEntityPropertyChanged = { entity, propName ->
@@ -231,6 +233,8 @@ data class Outliner(
                 onReload = {
                     rowPanel.clearChildren()
                     rowPanel.addRowsFromActiveScene(engine, style, searchInputField, onEntitiesSelected)
+                    closedParents.forEach { id -> rowPanel.children.forEachChildOf(id.toString()) { it.hidden = true } }
+                    closedParents.clear()
                 }
             )
         }
@@ -278,14 +282,14 @@ data class Outliner(
 
             var rowsAdded = 1
             val row = createRowUi(entity, engine, style, indent, this.children, onEntitiesSelected)
-            row.hidden = searchText.isNotBlank() && !entity.matches(engine, searchText)
+            row.hidden = (searchText.isNotBlank() && !entity.matches(engine, searchText)) || entity.parentId in closedParents
             this.insertChild(row, index)
             addedIds.add(entity.id)
 
             entity.childIds?.forEachFast()
             {
                 engine.scene.getEntity(it)?.let { entity ->
-                    rowsAdded += this.addRowsForEntity(entity, engine, style, indent + 15f, addedIds, searchText, onEntitiesSelected, index + rowsAdded)
+                    rowsAdded += this.addRowsForEntity(entity, engine, style, indent + CHILD_INDENTATION, addedIds, searchText, onEntitiesSelected, index + rowsAdded)
                 }
             }
 
@@ -335,10 +339,40 @@ data class Outliner(
                 }
             }
 
+            val closeParentButton = if (entity.childIds?.isNotEmpty() == true)
+            {
+                Button(width = Size.absolute(10f)).apply()
+                {
+                    padding.left = indent
+                    isPressed = entityId in closedParents
+                    toggleButton = true
+                    iconFontName = style.iconFontName
+                    iconSize = 15f
+                    iconCharacter = style.getIcon("ARROW_DOWN")
+                    xOrigin = 0.25f
+                    pressedIconCharacter = style.getIcon("ARROW_RIGHT")
+                    color = style.getColor("LABEL")
+                    activeColor = style.getColor("LABEL")
+                    activeHoverColor = style.getColor("LABEL_DARK")
+                    hoverColor = style.getColor("LABEL_DARK")
+                    setOnClicked { btn ->
+                        rows.forEachChildOf(entityId.toString(), includeParent = false) { it.hidden = btn.isPressed }
+                        if (btn.isPressed) closedParents.add(entityId) else closedParents.remove(entityId)
+                    }
+                }
+            }
+            else // When entity has no children use basic panel instead of button
+            {
+                Panel(width = Size.absolute(10f)).apply()
+                {
+                    padding.left = indent
+                    focusable = false
+                }
+            }
+
             val annotation = entity::class.findAnnotation<ScnIcon>()
             val icon = Icon(width = Size.absolute(25f)).apply()
             {
-                padding.left = 2f + indent
                 iconSize = 15f
                 iconFontName = style.iconFontName
                 iconCharacter = style.getIcon(annotation?.iconName ?: "CUBE")
@@ -415,7 +449,7 @@ data class Outliner(
                 padding.bottom = 1f
                 setOnClicked(onSelectedCallback)
                 addChildren(
-                    HorizontalPanel().apply { addChildren(visibilityButton, editDisabledButton, icon, nameLabel, typeLabel) }
+                    HorizontalPanel().apply { addChildren(visibilityButton, editDisabledButton, closeParentButton, icon, nameLabel, typeLabel) }
                 )
             }
         }
@@ -424,15 +458,15 @@ data class Outliner(
 
         private fun UiElement.getEditDisabledButton() = this.children[0].children[1] as Button
 
-        private fun UiElement.getIcon() = this.children[0].children[2] as Icon
+        private fun UiElement.getRowIndentation() = this.children[0].children[2].padding.left
 
-        private fun UiElement.getNameLabel() = this.children[0].children[3] as Label
+        private fun UiElement.getNameLabel() = this.children[0].children[4] as Label
 
         private fun SceneEntity.createLabelText() = ((this as? Named)?.name?.takeIf { it.isNotEmpty() } ?: typeName)
 
         private fun SceneEntity.matches(engine: PulseEngine, searchString: String): Boolean =
             typeName.contains(searchString, ignoreCase = true) ||
-            (this is Named && name?.contains(searchString, ignoreCase = true) == true) ||
+            (this is Named && name.contains(searchString, ignoreCase = true)) ||
             id.toString().contains(searchString) ||
             childIds?.any { engine.scene.getEntity(it)?.matches(engine, searchString) == true } == true
 
@@ -447,24 +481,41 @@ data class Outliner(
 
         private inline fun List<UiElement>.forEachChildOf(id: String, includeParent: Boolean = false, action: (UiElement) -> Unit)
         {
-            var indent = -1f
+            var parentIndent = -1f
             for (row in this)
             {
-                if (indent == -1f && row.id == id)
+                if (parentIndent == -1f && row.id == id)
                 {
-                    indent = row.getIcon().padding.left
+                    parentIndent = row.getRowIndentation()
                     if (includeParent)
                         action(row)
                 }
-                else if (indent != -1f)
+                else if (parentIndent != -1f)
                 {
-                    if (row.getIcon().padding.left <= indent) return
+                    if (row.getRowIndentation() <= parentIndent) return
                     action(row)
                 }
             }
         }
 
+        private fun RowPanel.getChildrenOf(parent: UiElement): List<UiElement> {
+            var i = children.indexOfFirst { it.id == parent.id } + 1
+            if (i == 0) return emptyList() // Did not find parent, return
+            val parentIndentation = parent.getRowIndentation()
+            val children = mutableListOf<UiElement>()
+            while (i < this.children.size)
+            {
+                val child = this.children[i++]
+                if (child.getRowIndentation() <= parentIndentation)
+                    break
+                children.add(child)
+            }
+            return children
+        }
+
         // Stores the ID of the last selected row
         private var lastSelectedId = ""
+        private val closedParents = mutableSetOf<Long>()
+        private const val CHILD_INDENTATION = 15f
     }
 }

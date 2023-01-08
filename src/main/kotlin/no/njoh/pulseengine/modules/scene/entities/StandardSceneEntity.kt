@@ -16,7 +16,7 @@ import kotlin.math.max
 abstract class StandardSceneEntity : SceneEntity(), Initiable, Updatable, Renderable, Spatial, Named
 {
     @ScnProp(i = -1)
-    override var name: String = ""
+    override var name = ""
 
     @ScnProp("Transform", 0)
     override var x = 0f

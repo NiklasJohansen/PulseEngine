@@ -134,7 +134,7 @@ open class EntityRendererImpl : EntityRenderer()
     }
 
     /**
-     * Represents a single render pass of a collection of layers to a certain [Surface]
+     * Represents a single render pass of a collection of layers to a certain [Surface].
      */
     private data class RenderTask(
         var surfaceName: String,
@@ -143,7 +143,7 @@ open class EntityRendererImpl : EntityRenderer()
     )
 
     /**
-     * Represents a collection of layers at a certain Z-depth.
+     * Represents a collection of entities at a certain Z-depth.
      */
     private data class Layer(
         val entities: ArrayList<Renderable> = ArrayList(),

@@ -79,7 +79,7 @@ class InputField (
     private val hexColorRegex = "#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})".toRegex()
 
     private var onFocusLost: (InputField) -> Unit = {  }
-    private var onEnterPressed: () -> Unit = { unfocus() }
+    private var onEnterPressed: (InputField) -> Unit = { unfocus() }
     private var onTextChanged: (InputField) -> Unit = { }
     private var onValidTextChanged: (InputField) -> Unit = { }
     private var onGetHistory: (Int) -> String? = { _ -> null }
@@ -413,10 +413,10 @@ class InputField (
         ///////////////////////////////// ENTER pressed /////////////////////////////////
 
         if (input.wasClicked(Key.ENTER))
-            onEnterPressed()
+            onEnterPressed(this)
 
         if (input.wasClicked(Key.TAB))
-            onEnterPressed()
+            onEnterPressed(this)
     }
 
     private fun validateContent() = when (contentType)
@@ -571,7 +571,7 @@ class InputField (
         onValidTextChanged = callback
     }
 
-    fun setOnEnterPressed(callback: () -> Unit)
+    fun setOnEnterPressed(callback: (InputField) -> Unit)
     {
         onEnterPressed = callback
     }

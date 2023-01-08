@@ -54,6 +54,8 @@ class EditorStyle
         icons["HIDDEN"] = "v"
         icons["CAMERA"] = "w"
         icons["FOLDER"] = "x"
+        icons["ARROW_DOWN"] = "1"
+        icons["ARROW_RIGHT"] = "2"
     }
 
     companion object
