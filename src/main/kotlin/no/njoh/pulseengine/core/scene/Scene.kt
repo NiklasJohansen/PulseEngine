@@ -42,7 +42,7 @@ open class Scene(
     /** Call onCreate function on all [Initiable] entities when scene is created */
     init { entities.onCreate() }
 
-    fun insertEntity(entity: SceneEntity)
+    fun insertEntity(entity: SceneEntity): Long
     {
         entity.id = nextId
         entityIdMap.put(nextId, entity)
@@ -59,6 +59,7 @@ open class Scene(
         if (entity is Initiable)
             entity.onCreate()
         nextId++
+        return entity.id
     }
 
     internal fun start(engine: PulseEngine)

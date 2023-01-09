@@ -33,6 +33,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
+import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
@@ -45,7 +46,9 @@ import no.njoh.pulseengine.modules.gui.layout.WindowPanel
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isPrimitiveValue
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
-import no.njoh.pulseengine.widgets.editor.EditorUtil.setProperty
+import no.njoh.pulseengine.widgets.editor.EditorUtil.isPrimitiveArray
+import no.njoh.pulseengine.widgets.editor.EditorUtil.setArrayProperty
+import no.njoh.pulseengine.widgets.editor.EditorUtil.setPrimitiveProperty
 import org.joml.Vector3f
 import kotlin.math.*
 import kotlin.reflect.KClass
@@ -526,13 +529,54 @@ class SceneEditor(
         {
             if (isMoving && !isCopying)
             {
-                val copies = entitySelection.map { it.createCopy() }
-                copies.forEachFast()
+                val copies = entitySelection.map { it.createCopy() }.toMutableList()
+                val insertedCopies = mutableListOf<SceneEntity>()
+                val idMapping = mutableMapOf<Long, Long>()
+
+                // Insert copied entities in order of parents before children
+                while (copies.isNotEmpty())
                 {
-                    engine.scene.addEntity(it)
-                    it.setNot(SELECTED)
+                    val copiesLeft = copies.size
+                    for (copy in copies)
+                    {
+                        if (copies.none { it.id == copy.parentId })
+                        {
+                            copy.childIds = null
+                            copy.parentId = idMapping[copy.parentId] ?: copy.parentId
+                            copy.setNot(SELECTED)
+                            val lastId = copy.id
+                            val newId = engine.scene.addEntity(copy)
+                            idMapping[lastId] = newId
+                            copies.remove(copy)
+                            insertedCopies.add(copy)
+                            break
+                        }
+                    }
+
+                    if (copiesLeft == copies.size)
+                    {
+                        Logger.error("Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}")
+                        return
+                    }
                 }
-                outliner?.addEntities(copies)
+
+                // Handle fields annotated with EntityRef
+                for (entity in insertedCopies)
+                {
+                    for (prop in entity::class.memberProperties)
+                    {
+                        if (prop is KMutableProperty<*> && prop.name != "parent" && prop.name != "childIds" && prop.hasAnnotation<EntityRef>())
+                        {
+                            val ref = prop.getter.call(entity)
+                            if (ref is Long)
+                                idMapping[ref]?.let { newRef -> prop.setter.call(entity, newRef) }
+                            else if (ref is LongArray && ref.isNotEmpty())
+                                prop.setter.call(entity, LongArray(ref.size) { idMapping[ref[it]] ?: ref[it] })
+                        }
+                    }
+                }
+
+                outliner?.addEntities(insertedCopies)
                 isCopying = true
             }
         }
@@ -866,7 +910,7 @@ class SceneEditor(
             entity.y = engine.input.yWorldMouse
             entity.width = texture.width.toFloat()
             entity.height = texture.height.toFloat()
-            entity.setProperty("textureName", texture.name)
+            entity.setPrimitiveProperty("textureName", texture.name)
             dragAndDropEntity = entity
         }
     }
@@ -882,7 +926,7 @@ class SceneEditor(
             entity.width = 512f
             entity.height = 512f
         }
-        entity.setProperty("textureName", "crate")
+        entity.setPrimitiveProperty("textureName", "crate")
         engine.scene.addEntity(entity)
         outliner?.addEntities(listOf(entity))
         selectSingleEntity(engine, entity)
@@ -1103,11 +1147,17 @@ class SceneEditor(
                         val copyFunc = propValue::class.memberFunctions.first { it.name == "copy" }
                         val instanceParam = copyFunc.instanceParameter!!
                         copyFunc.callBy(mapOf(instanceParam to propValue))?.let {
-                            entityCopy.setProperty(prop.name, it)
+                            entityCopy.setPrimitiveProperty(prop.name, it)
                         }
                     }
                     else if (prop.isPrimitiveValue())
-                        entityCopy.setProperty(prop.name, propValue)
+                    {
+                        entityCopy.setPrimitiveProperty(prop.name, propValue)
+                    }
+                    else if (prop.isPrimitiveArray())
+                    {
+                        entityCopy.setArrayProperty(prop.name, propValue)
+                    }
                 }
             }
         }

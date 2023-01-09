@@ -93,6 +93,7 @@ abstract class SceneManager
 
     /**
      * Adds the [SceneEntity] to the active [Scene].
+     * @return the newly assigned ID of the given entity.
      */
     fun addEntity(entity: SceneEntity) =
         activeScene.insertEntity(entity)

@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.scene
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.core.shared.utils.Extensions.minus
 import kotlin.reflect.KClass
@@ -13,6 +14,7 @@ abstract class SceneEntity
     @ScnProp(i = -3, editable = false)
     var id = INVALID_ID // ID gets assigned when entity is added to the scene
 
+    @EntityRef
     @ScnProp(i = -2)
     var parentId = INVALID_ID
 

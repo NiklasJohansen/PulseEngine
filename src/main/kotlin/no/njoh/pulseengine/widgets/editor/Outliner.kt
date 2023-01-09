@@ -208,6 +208,9 @@ data class Outliner(
                     val ids = mutableSetOf<Long>()
                     for (entity in entities)
                     {
+                        if (entity.isSet(DEAD) || entity.id in ids)
+                            continue
+
                         val parentEntity = if (entity.parentId != INVALID_ID) engine.scene.getEntity(entity.parentId) else null
                         if (parentEntity != null)
                         {

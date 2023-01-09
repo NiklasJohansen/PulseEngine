@@ -16,10 +16,9 @@ import no.njoh.pulseengine.modules.gui.layout.*
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
-import no.njoh.pulseengine.widgets.editor.EditorUtil.setProperty
+import no.njoh.pulseengine.widgets.editor.EditorUtil.setPrimitiveProperty
 import java.lang.IllegalArgumentException
 import kotlin.math.min
-import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.findAnnotation
@@ -53,7 +52,7 @@ open class UiElementFactory(
         items = prop.javaField?.type?.enumConstants?.toList() ?: emptyList(),
         onItemToString = { it.toString() },
         onItemChanged = { lastValue, newValue ->
-            obj.setProperty(prop.name, newValue)
+            obj.setPrimitiveProperty(prop.name, newValue)
             onChanged(prop.name, lastValue, newValue)
         }
     )
@@ -70,7 +69,7 @@ open class UiElementFactory(
         items = listOf(true, false),
         onItemToString = { it.toString().capitalize() },
         onItemChanged = { lastValue, newValue ->
-            obj.setProperty(prop.name, newValue)
+            obj.setPrimitiveProperty(prop.name, newValue)
             onChanged(prop.name, lastValue, newValue)
         }
     )
@@ -614,7 +613,7 @@ open class UiElementFactory(
         val propUi = propertyUiFactories[propUiKey]?.invoke(obj, prop, onChanged)
             ?: createInputFieldUI(obj, prop).apply { // Default UI when no factory exist
                 setOnValidTextChanged {
-                    obj.setProperty(prop, it.text)
+                    obj.setPrimitiveProperty(prop, it.text)
                     onChanged(prop.name, it.lastValidText, it.text)
                 }
                 editable = obj.getPropInfo(prop)?.editable ?: true
