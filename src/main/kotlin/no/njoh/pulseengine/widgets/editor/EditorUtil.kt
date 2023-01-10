@@ -123,6 +123,30 @@ object EditorUtil
     }
 
     /**
+     * Parses the given string value into the class type given by the [KMutableProperty].
+     * Sets the named property of the obj to the parsed value.
+     */
+    fun Any.setArrayProperty(property: KMutableProperty<*>, value: String) =
+        try
+        {
+            val values = value.split(",").map { it.trim() }
+            when (property.javaField?.type)
+            {
+                LongArray::class.java    -> LongArray(values.size)   { values[it].trim().toLong() }
+                IntArray::class.java     -> IntArray(values.size)    { values[it].trim().toInt() }
+                ShortArray::class.java   -> ShortArray(values.size)  { values[it].trim().toShort() }
+                ByteArray::class.java    -> ByteArray(values.size)   { values[it].trim().toByte() }
+                FloatArray::class.java   -> FloatArray(values.size)  { values[it].trim().toFloat() }
+                DoubleArray::class.java  -> DoubleArray(values.size) { values[it].trim().toDouble() }
+                else                     -> null
+            }?.let { property.setter.call(this, it) }
+        }
+        catch (e: Exception)
+        {
+            Logger.error("Failed to parse value: $value into required type: ${property.javaField?.type}, reason: ${e.message}")
+        }
+
+    /**
      * Returns the [ScnProp] annotations from the property if available, else null.
      */
     fun Any.getPropInfo(prop: KProperty<*>): ScnProp? = this::class.findPropertyAnnotation<ScnProp>(prop.name)

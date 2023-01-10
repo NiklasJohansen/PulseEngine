@@ -12,10 +12,12 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.gui.*
 import no.njoh.pulseengine.modules.gui.ScrollDirection.*
 import no.njoh.pulseengine.modules.gui.elements.*
+import no.njoh.pulseengine.modules.gui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.modules.gui.layout.*
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
+import no.njoh.pulseengine.widgets.editor.EditorUtil.setArrayProperty
 import no.njoh.pulseengine.widgets.editor.EditorUtil.setPrimitiveProperty
 import java.lang.IllegalArgumentException
 import kotlin.math.min
@@ -37,6 +39,12 @@ open class UiElementFactory(
         Enum::class to ::createEnumPropertyUi,
         Boolean::class to ::createBooleanPropertyUi,
         Color::class to { obj, prop, onChanged -> createColorPickerUI(color = prop.getter.call(obj) as Color) },
+        LongArray::class to ::createNumberArrayPropertyUi,
+        IntArray::class to ::createNumberArrayPropertyUi,
+        ShortArray::class to ::createNumberArrayPropertyUi,
+        ByteArray::class to ::createNumberArrayPropertyUi,
+        FloatArray::class to ::createNumberArrayPropertyUi,
+        DoubleArray::class to ::createNumberArrayPropertyUi,
         String::class to { _, _, _ -> null } // Factory functions returning null will use default InputField UI
     )
 
@@ -73,6 +81,21 @@ open class UiElementFactory(
             onChanged(prop.name, lastValue, newValue)
         }
     )
+
+    /**
+     * Creates a [InputField] for editing an array of primitive numbers.
+     */
+    open fun createNumberArrayPropertyUi(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ) = createInputFieldUI(obj, prop).apply {
+        setOnValidTextChanged {
+            obj.setArrayProperty(prop, it.text)
+            onChanged(prop.name, it.lastValidText, it.text)
+        }
+        editable = obj.getPropInfo(prop)?.editable ?: true
+    }
 
     /**
      * Creates a movable and resizable window panel.
@@ -530,16 +553,26 @@ open class UiElementFactory(
      */
     open fun createInputFieldUI(obj: Any, prop: KMutableProperty<*>): InputField
     {
-        val type = when (prop.javaField?.type)
+        val value = prop.getter.call(obj)
+        val (type, defaultText) = when (prop.javaField?.type)
         {
-            Float::class.java, Double::class.java -> InputField.ContentType.FLOAT
-            Int::class.java, Long::class.java, Char::class.java -> InputField.ContentType.INTEGER
-            Boolean::class.java -> InputField.ContentType.BOOLEAN
-            else -> InputField.ContentType.TEXT
+            Float::class.java       -> FLOAT to value?.toString()
+            Double::class.java      -> FLOAT to value?.toString()
+            Int::class.java         -> INTEGER to value?.toString()
+            Long::class.java        -> INTEGER to value?.toString()
+            Char::class.java        -> INTEGER to value?.toString()
+            Boolean::class.java     -> BOOLEAN to value?.toString()
+            FloatArray::class.java  -> FLOAT_ARRAY to (value as? FloatArray?)?.joinToString()
+            DoubleArray::class.java -> FLOAT_ARRAY to (value as? DoubleArray?)?.joinToString()
+            IntArray::class.java    -> INTEGER_ARRAY to (value as? IntArray?)?.joinToString()
+            LongArray::class.java   -> INTEGER_ARRAY to (value as? LongArray?)?.joinToString()
+            ShortArray::class.java  -> INTEGER_ARRAY to (value as? ShortArray?)?.joinToString()
+            ByteArray::class.java   -> INTEGER_ARRAY to (value as? ByteArray?)?.joinToString()
+            else                    -> TEXT to value?.toString()
         }
 
         return InputField(
-            defaultText = prop.getter.call(obj)?.toString() ?: "",
+            defaultText = defaultText ?: "",
             width = Size.relative(0.5f)
         ).apply {
             padding.top = 5f
@@ -554,7 +587,7 @@ open class UiElementFactory(
             strokeColor = Color.BLANK
             contentType = type
 
-            if (type == InputField.ContentType.FLOAT || type == InputField.ContentType.INTEGER)
+            if (type == FLOAT || type == INTEGER)
             {
                 obj.getPropInfo(prop)?.let()
                 {

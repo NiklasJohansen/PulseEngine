@@ -26,7 +26,7 @@ class InputField (
     height: Size = Size.auto()
 )  : UiElement(x, y, width, height)  {
 
-    enum class ContentType  { TEXT, INTEGER, FLOAT, BOOLEAN, HEX_COLOR }
+    enum class ContentType  { TEXT, INTEGER, FLOAT, BOOLEAN, HEX_COLOR, INTEGER_ARRAY, FLOAT_ARRAY }
 
     var editable = true
     var bgColor = Color.WHITE
@@ -77,6 +77,8 @@ class InputField (
     private var lastHasFocus = false
 
     private val hexColorRegex = "#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})".toRegex()
+    private val intArrayRegex = "^\\s*(-?[0-9]+)+(\\s*,\\s*-?[0-9]+)*\\s*\$".toRegex()
+    private val floatArrayRegex = "^\\s*(\\s*-?\\d+(\\.\\d+)?)(\\s*,\\s*-?\\d+(\\.\\d+)?)*\\s*\$".toRegex()
 
     private var onFocusLost: (InputField) -> Unit = {  }
     private var onEnterPressed: (InputField) -> Unit = { unfocus() }
@@ -426,6 +428,8 @@ class InputField (
         FLOAT -> { val num = text.toFloatOrNull(); num != null && num >= numberMinVal && num <= numberMaxVal }
         BOOLEAN -> text == "true" || text == "false"
         HEX_COLOR -> hexColorRegex.matches(text)
+        INTEGER_ARRAY -> intArrayRegex.matches(text)
+        FLOAT_ARRAY -> floatArrayRegex.matches(text)
     }
 
     private fun handleNumberStepper(engine: PulseEngine)
