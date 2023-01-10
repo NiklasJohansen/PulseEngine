@@ -75,8 +75,9 @@ open class Wheel : StandardSceneEntity(), CircleBody
         val x = if (xInterpolated.isNaN()) x else xInterpolated
         val y = if (yInterpolated.isNaN()) y else yInterpolated
         val r = if (rotInterpolated.isNaN()) rotation else rotInterpolated
+        val texture = engine.asset.getOrNull(textureName) ?: Texture.BLANK
 
         surface.setDrawColor(1f, 1f, 1f)
-        surface.drawTexture(Texture.BLANK, x, y, width, height, r, 0.5f, 0.5f)
+        surface.drawTexture(texture, x, y, width, height, r, 0.5f, 0.5f)
     }
 }

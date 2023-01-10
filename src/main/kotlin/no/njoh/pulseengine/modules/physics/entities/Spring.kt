@@ -3,6 +3,8 @@ package no.njoh.pulseengine.modules.physics.entities
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.shared.annotations.EntityRef
+import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
@@ -11,10 +13,21 @@ import kotlin.math.sqrt
 
 open class Spring : StandardSceneEntity(), PhysicsEntity
 {
-    var bodyRef0 = 0L
-    var bodyRef1 = 0L
-    var bodyPoint0 = 0
-    var bodyPoint1 = 0
+    @EntityRef
+    @ScnProp("Connection", 0)
+    var fromBodyId = INVALID_ID
+
+    @ScnProp("Connection", 1)
+    var fromBodyPointIndex = 0
+
+    @EntityRef
+    @ScnProp("Connection", 2)
+    var toBodyId = INVALID_ID
+
+    @ScnProp("Connection", 3)
+    var toBodyPointIndex = 0
+
+    @ScnProp("Physics")
     var stiffness = 1f
 
     @JsonIgnore
@@ -30,13 +43,13 @@ open class Spring : StandardSceneEntity(), PhysicsEntity
 
     override fun iterateStep(engine: PulseEngine, iteration: Int, totalIterations: Int, worldWidth: Int, worldHeight: Int)
     {
-        val body0 = engine.scene.getEntityOfType<PhysicsBody>(bodyRef0)
-        val body1 = engine.scene.getEntityOfType<PhysicsBody>(bodyRef1)
+        val body0 = engine.scene.getEntityOfType<PhysicsBody>(fromBodyId)
+        val body1 = engine.scene.getEntityOfType<PhysicsBody>(toBodyId)
 
-        body0?.shape?.getPoint(bodyPoint0)?.let { p0 ->
+        body0?.shape?.getPoint(fromBodyPointIndex)?.let { p0 ->
             val p0x = p0.x
             val p0y = p0.y
-            body1?.shape?.getPoint(bodyPoint1)?.let { p1 ->
+            body1?.shape?.getPoint(toBodyPointIndex)?.let { p1 ->
                 // Calculate displacement
                 val xDelta = p0x - p1.x
                 val yDelta = p0y - p1.y
@@ -54,18 +67,20 @@ open class Spring : StandardSceneEntity(), PhysicsEntity
 
                 if (body0.bodyType != BodyType.STATIC)
                 {
-                    body0.shape.setPoint(bodyPoint0, p0x + xDisp * ratio0, p0y + yDisp * ratio0)
+                    body0.shape.setPoint(fromBodyPointIndex, p0x + xDisp * ratio0, p0y + yDisp * ratio0)
                     body0.wakeUp()
                 }
 
                 if (body1.bodyType != BodyType.STATIC)
                 {
-                    body1.shape.setPoint(bodyPoint1, p1.x - xDisp * ratio1, p1.y - yDisp * ratio1)
+                    body1.shape.setPoint(toBodyPointIndex, p1.x - xDisp * ratio1, p1.y - yDisp * ratio1)
                     body1.wakeUp()
                 }
             }
         }
     }
+
+    override fun onRender(engine: PulseEngine, surface: Surface2D) { }
 
     override fun render(engine: PulseEngine, surface: Surface2D)
     {
@@ -107,12 +122,12 @@ open class Spring : StandardSceneEntity(), PhysicsEntity
 
     private inline fun getPoints(engine: PulseEngine, block: (x0: Float, y0: Float, x1: Float, y1: Float) -> Unit)
     {
-        val body0 = engine.scene.getEntityOfType<PhysicsBody>(bodyRef0)
-        val body1 = engine.scene.getEntityOfType<PhysicsBody>(bodyRef1)
-        body0?.shape?.getPoint(bodyPoint0)?.let { p0 ->
+        val body0 = engine.scene.getEntityOfType<PhysicsBody>(fromBodyId)
+        val body1 = engine.scene.getEntityOfType<PhysicsBody>(toBodyId)
+        body0?.shape?.getPoint(fromBodyPointIndex)?.let { p0 ->
             val x0 = p0.x
             val y0 = p0.y
-            body1?.shape?.getPoint(bodyPoint1)?.let { p1 ->
+            body1?.shape?.getPoint(toBodyPointIndex)?.let { p1 ->
                 block(x0, y0, p1.x, p1.y)
             }
         }
