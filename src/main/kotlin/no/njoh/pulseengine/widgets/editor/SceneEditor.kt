@@ -20,6 +20,7 @@ import no.njoh.pulseengine.modules.gui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.gui.layout.docking.DockingPanel
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
+import no.njoh.pulseengine.core.input.Key.DELETE
 import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneEntity
@@ -156,6 +157,13 @@ class SceneEditor(
             isRunning = !isRunning
             if (!isRunning) play(engine) else stop(engine)
             CommandResult("", showCommand = false)
+        }
+
+        // Delete selected entities on key press
+        engine.input.setOnKeyPressed()
+        {
+            if (it == DELETE && isRunning)
+                deleteEntitySelection(engine)
         }
 
         // Create and populate editor with UI
@@ -358,7 +366,6 @@ class SceneEditor(
         if (entitySelection.size == 1)
             entitySelection.first().handleEntityTransformation(engine)
 
-        handleEntityDeleting(engine)
         handleEntityCopying(engine)
         handleEntitySelection(engine)
         dragAndDropEntity?.handleEntityDragAndDrop(engine)
@@ -503,18 +510,15 @@ class SceneEditor(
 
     ////////////////////////////// EDIT TOOLS  //////////////////////////////
 
-    private fun handleEntityDeleting(engine: PulseEngine)
+    private fun deleteEntitySelection(engine: PulseEngine)
     {
-        if (engine.input.isPressed(Key.DELETE))
-        {
-            if (entitySelection.isNotEmpty())
-            {
-                entitySelection.forEachFast { it.setDead(engine) }
-                outliner?.removeEntities(entitySelection)
-                isMoving = false
-                clearEntitySelection()
-            }
-        }
+        if (entitySelection.isEmpty())
+            return
+
+        entitySelection.forEachFast { it.setDead(engine) }
+        outliner?.removeEntities(entitySelection)
+        isMoving = false
+        clearEntitySelection()
     }
 
     private fun SceneEntity.setDead(engine: PulseEngine)
