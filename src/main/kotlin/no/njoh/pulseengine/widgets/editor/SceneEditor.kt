@@ -270,7 +270,7 @@ class SceneEditor(
         // Insert window into existing Entity Properties if available
         val propWindow = dockingUI.findElementById("Entity Properties")
         if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
-            dockingUI.insertInsideBottom(target = propWindow as WindowPanel, window)
+            dockingUI.insertInsideTop(target = propWindow as WindowPanel, window)
         else
             dockingUI.insertLeft(window)
     }

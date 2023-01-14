@@ -378,7 +378,7 @@ abstract class UiElement(
         dirtyLayout = false
     }
 
-    fun setOnKeyPress(callback: (Key) -> Boolean)
+    fun setOnKeyPressed(callback: (Key) -> Boolean)
     {
         this.onKeyPressed = callback
     }

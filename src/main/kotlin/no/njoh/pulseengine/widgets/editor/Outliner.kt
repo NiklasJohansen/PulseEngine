@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.widgets.editor
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.input.Key
+import no.njoh.pulseengine.core.input.Key.*
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
@@ -21,6 +21,7 @@ import no.njoh.pulseengine.modules.gui.elements.Label
 import no.njoh.pulseengine.modules.gui.layout.*
 import kotlin.reflect.full.findAnnotation
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon.Companion.getColor
 import no.njoh.pulseengine.modules.gui.ScrollbarVisibility.ALWAYS_VISIBLE
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
 import kotlin.reflect.KClass
@@ -103,13 +104,13 @@ data class Outliner(
             {
                 color = style.getColor("HEADER")
                 addChildren(
-                    visibilityButton,
+                    editDisabledButton,
                     Panel(width = Size.absolute(25f)).apply()
                     {
                         strokeColor = style.getColor("STROKE")
                         strokeTop = false
                         strokeBottom = false
-                        addChildren(editDisabledButton)
+                        addChildren(visibilityButton)
                     },
                     Label(text = "Entity").apply()
                     {
@@ -193,9 +194,7 @@ data class Outliner(
                 ui = VerticalPanel().apply()
                 {
                     addChildren(searchPanel, headerPanel, uiElementFactory.createScrollableSectionUI(rowPanel))
-                    setOnKeyPress { key ->
-                        if (key == Key.DELETE) true.also { onEntityDeleted() } else false
-                    }
+                    setOnKeyPressed { if (it == DELETE) true.also { onEntityDeleted() } else false }
                 },
                 onEntitiesSelected = { entities ->
                     val selectedIds = entities.mapToSet { it.id.toString() }
@@ -240,7 +239,23 @@ data class Outliner(
                 onReload = {
                     rowPanel.clearChildren()
                     rowPanel.addRowsFromActiveScene(engine, style, searchInputField, onEntitiesSelected)
-                    closedParents.forEach { id ->
+
+                    if (lastLoadedSceneFileName != engine.scene.activeScene.fileName)
+                    {
+                        for (row in rowPanel.children)
+                        {
+                            val collapseButton = row.getCollapseButton()
+                            if (collapseButton != null && row.getRowIndentation() == 0f)
+                            {
+                                collapseButton.isPressed = true
+                                row.id?.toLong()?.let { collapsedRows.add(it) }
+                            }
+                            else row.hidden = true
+                        }
+                        lastLoadedSceneFileName = engine.scene.activeScene.fileName
+                    }
+                    else for (id in collapsedRows)
+                    {
                         rowPanel.children.forEachChildOf(id.toString())
                         {
                             it.hidden = true
@@ -294,7 +309,7 @@ data class Outliner(
 
             var rowsAdded = 1
             val row = createRowUi(entity, engine, style, indent, this.children, onEntitiesSelected)
-            row.hidden = (searchText.isNotBlank() && !entity.matches(engine, searchText)) || entity.parentId in closedParents
+            row.hidden = (searchText.isNotBlank() && !entity.matches(engine, searchText)) || entity.parentId in collapsedRows
             this.insertChild(row, index)
             addedIds.add(entity.id)
 
@@ -317,23 +332,6 @@ data class Outliner(
             onEntitiesSelected: () -> Unit // Called when entities are selected in the outliner
         ): UiElement {
             val entityId = entity.id
-            val visibilityButton = Button(width = Size.absolute(25f)).apply()
-            {
-                isPressed = entity.isSet(HIDDEN)
-                toggleButton = true
-                iconFontName = style.iconFontName
-                iconCharacter = style.getIcon("HIDDEN")
-                bgHoverColor = style.getColor("BUTTON_HOVER")
-                activeColor = style.getColor("LABEL")
-                hoverColor = style.getColor("LABEL_DARK")
-                setOnClicked { btn ->
-                    rows.forEachChildOf(entityId.toString(), includeParent = true) { row ->
-                        engine.withEntity(row.id) { if (btn.isPressed) it.set(HIDDEN) else it.setNot(HIDDEN) }
-                        row.getVisibilityButton().isPressed = btn.isPressed
-                    }
-                }
-            }
-
             val editDisabledButton = Button(width = Size.absolute(25f)).apply()
             {
                 isPressed = entity.isNot(EDITABLE)
@@ -351,12 +349,29 @@ data class Outliner(
                 }
             }
 
-            val closeParentButton = if (entity.childIds?.isNotEmpty() == true)
+            val visibilityButton = Button(width = Size.absolute(25f)).apply()
+            {
+                isPressed = entity.isSet(HIDDEN)
+                toggleButton = true
+                iconFontName = style.iconFontName
+                iconCharacter = style.getIcon("HIDDEN")
+                bgHoverColor = style.getColor("BUTTON_HOVER")
+                activeColor = style.getColor("LABEL")
+                hoverColor = style.getColor("LABEL_DARK")
+                setOnClicked { btn ->
+                    rows.forEachChildOf(entityId.toString(), includeParent = true) { row ->
+                        engine.withEntity(row.id) { if (btn.isPressed) it.set(HIDDEN) else it.setNot(HIDDEN) }
+                        row.getVisibilityButton().isPressed = btn.isPressed
+                    }
+                }
+            }
+
+            val collapseButton = if (entity.childIds?.isNotEmpty() == true)
             {
                 Button(width = Size.absolute(10f)).apply()
                 {
                     padding.left = indent
-                    isPressed = entityId in closedParents
+                    isPressed = entityId in collapsedRows
                     toggleButton = true
                     iconFontName = style.iconFontName
                     iconSize = 15f
@@ -382,13 +397,13 @@ data class Outliner(
                                     it.hidden = false
                                     // If it is a parent, add it to the closedParents list
                                     if (it.getCollapseButton() != null)
-                                        it.id?.toLongOrNull()?.let { id -> closedParents.add(id) }
+                                        it.id?.toLongOrNull()?.let { id -> collapsedRows.add(id) }
                                 }
                                 else it.hidden = true
                             }
                         }
 
-                        if (btn.isPressed) closedParents.add(entityId) else closedParents.remove(entityId)
+                        if (btn.isPressed) collapsedRows.add(entityId) else collapsedRows.remove(entityId)
                     }
                 }
             }
@@ -407,7 +422,7 @@ data class Outliner(
                 iconSize = 15f
                 iconFontName = style.iconFontName
                 iconCharacter = style.getIcon(annotation?.iconName ?: "CUBE")
-                color = style.getColor("LABEL")
+                color = annotation?.getColor() ?: style.getColor("LABEL")
             }
 
             val nameLabel = Label(entity.createLabelText()).apply()
@@ -426,7 +441,7 @@ data class Outliner(
 
             val onSelectedCallback = { btn: Button ->
                 val isCurrentlyPressed = btn.isPressed
-                val isShiftPressed = engine.input.isPressed(Key.LEFT_SHIFT)
+                val isShiftPressed = engine.input.isPressed(LEFT_SHIFT)
                 var selectedCount = 0
                 if (isShiftPressed && btn.id != lastSelectedId)
                 {
@@ -442,12 +457,20 @@ data class Outliner(
                             else
                             {
                                 button.isPressed = select
-                                engine.withEntity(button.id) { e -> if (select) e.set(SELECTED) else e.setNot(SELECTED) }
+                                engine.setEntitySelected(button.id, isSelected = select)
+                                if (btn.isCollapsed())
+                                {
+                                    // Select all collapsed rows
+                                    rows.forEachChildOf(button.id) { childRow ->
+                                        (childRow as Button).isPressed = select
+                                        engine.setEntitySelected(childRow.id, isSelected = select)
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                else if (!engine.input.isPressed(Key.LEFT_CONTROL))
+                else if (!engine.input.isPressed(LEFT_CONTROL))
                 {
                     // Deselect previously selected rows when left CTRL is not pressed
                     rows.forEachFast()
@@ -455,7 +478,7 @@ data class Outliner(
                         val button = it as Button
                         if (button.isPressed)
                         {
-                            engine.withEntity(button.id) { e -> e.setNot(SELECTED) }
+                            engine.setEntitySelected(button.id, isSelected = false)
                             button.isPressed = false
                             selectedCount++
                         }
@@ -463,7 +486,15 @@ data class Outliner(
                 }
 
                 btn.isPressed = isCurrentlyPressed || selectedCount > 1
-                engine.withEntity(entityId) { e ->  if (btn.isPressed) e.set(SELECTED) else e.setNot(SELECTED) }
+                engine.setEntitySelected(entityId.toString(), isSelected = btn.isPressed)
+                if (btn.isCollapsed())
+                {
+                    // Select all collapsed rows
+                    rows.forEachChildOf(btn.id) { childRow ->
+                        (childRow as Button).isPressed = btn.isPressed
+                        engine.setEntitySelected(childRow.id, isSelected = btn.isPressed)
+                    }
+                }
                 onEntitiesSelected()
                 if (btn.isPressed && !isShiftPressed)
                     lastSelectedId = btn.id ?: ""
@@ -478,16 +509,19 @@ data class Outliner(
                 bgHoverColor = style.getColor("BUTTON_HOVER")
                 activeColor = style.getColor("ITEM_HOVER")
                 padding.bottom = 1f
-                setOnClicked(onSelectedCallback)
+                setOnClicked {
+                    // None editable rows should not be selected
+                    if (!it.getEditDisabledButton().isPressed) onSelectedCallback(it) else it.isPressed = false
+                }
                 addChildren(
-                    HorizontalPanel().apply { addChildren(visibilityButton, editDisabledButton, closeParentButton, icon, nameLabel, typeLabel) }
+                    HorizontalPanel().apply { addChildren(editDisabledButton, visibilityButton, collapseButton, icon, nameLabel, typeLabel) }
                 )
             }
         }
 
-        private fun UiElement.getVisibilityButton() = this.children[0].children[0] as Button
+        private fun UiElement.getEditDisabledButton() = this.children[0].children[0] as Button
 
-        private fun UiElement.getEditDisabledButton() = this.children[0].children[1] as Button
+        private fun UiElement.getVisibilityButton() = this.children[0].children[1] as Button
 
         private fun UiElement.getCollapseButton() = this.children[0].children[2] as? Button
 
@@ -496,6 +530,8 @@ data class Outliner(
         private fun UiElement.getNameLabel() = this.children[0].children[4] as Label
 
         private fun SceneEntity.createLabelText() = ((this as? Named)?.name?.takeIf { it.isNotEmpty() } ?: typeName)
+
+        private fun UiElement.isCollapsed() = this.getCollapseButton()?.isPressed == true
 
         private fun SceneEntity.matches(engine: PulseEngine, searchString: String): Boolean =
             typeName.contains(searchString, ignoreCase = true) ||
@@ -512,7 +548,10 @@ data class Outliner(
         private inline fun PulseEngine.withEntity(id: Long, action: (SceneEntity) -> Unit) =
             this.scene.getEntity(id)?.let(action)
 
-        private inline fun List<UiElement>.forEachChildOf(id: String, includeParent: Boolean = false, action: (UiElement) -> Unit)
+        private fun PulseEngine.setEntitySelected(id: String?, isSelected: Boolean) =
+            id?.toLongOrNull()?.let { this.scene.getEntity(it) }?.let { if (isSelected) it.set(SELECTED) else it.setNot(SELECTED) }
+
+        private inline fun List<UiElement>.forEachChildOf(id: String?, includeParent: Boolean = false, action: (UiElement) -> Unit)
         {
             var parentIndent = -1f
             for (row in this)
@@ -548,7 +587,8 @@ data class Outliner(
 
         // Stores the ID of the last selected row
         private var lastSelectedId = ""
-        private val closedParents = mutableSetOf<Long>()
+        private var lastLoadedSceneFileName = ""
+        private val collapsedRows = mutableSetOf<Long>()
         private const val CHILD_INDENTATION = 15f
     }
 }

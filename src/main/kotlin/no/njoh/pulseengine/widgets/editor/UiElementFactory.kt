@@ -105,7 +105,7 @@ open class UiElementFactory(
         iconName: String = "",
         x: Float = 0f,
         y: Float = 20f,
-        width: Float = 300f,
+        width: Float = 350f,
         height: Float = 200f,
         onClosed: () -> Unit = { }
     ): WindowPanel {
