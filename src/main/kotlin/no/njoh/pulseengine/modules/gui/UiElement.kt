@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.modules.gui.elements.Label
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
@@ -66,6 +67,7 @@ abstract class UiElement(
     private var created = false
     private var preventRender = false
     private var dirtyLayout = false
+    private var onKeyPressed: ((Key) -> Boolean)? = null
 
     init
     {
@@ -145,6 +147,11 @@ abstract class UiElement(
         // Request input focus for this area
         engine.input.requestFocus(area)
 
+        // Handle key presses
+        val keys = engine.input.clickedKeys
+        if (keys.isNotEmpty())
+            keys.forEachFast { handleKeyPress(it) }
+
         // Update callbacks on state change
         if (mouseInsideStateChanged)
         {
@@ -153,6 +160,12 @@ abstract class UiElement(
 
         if (insideArea && engine.input.wasClicked(Mouse.LEFT))
             onMouseClicked(engine)
+    }
+
+    private fun handleKeyPress(key: Key) {
+        val handled = onKeyPressed?.invoke(key) ?: false
+        if (!handled)
+            parent?.handleKeyPress(key)
     }
 
     private fun handleScrollEvent(xScroll: Int, yScroll: Int)
@@ -363,6 +376,11 @@ abstract class UiElement(
     fun setLayoutClean()
     {
         dirtyLayout = false
+    }
+
+    fun setOnKeyPress(callback: (Key) -> Boolean)
+    {
+        this.onKeyPressed = callback
     }
 
     // Abstract and open functions implemented by concrete UI sub-classes

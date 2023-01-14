@@ -162,7 +162,7 @@ class SceneEditor(
         // Delete selected entities on key press
         engine.input.setOnKeyPressed()
         {
-            if (it == DELETE && isRunning)
+            if (it == DELETE && isRunning && engine.input.hasFocus(screenArea))
                 deleteEntitySelection(engine)
         }
 
@@ -259,7 +259,8 @@ class SceneEditor(
                 if (entitySelection.size == 1)
                     selectSingleEntity(engine, entitySelection.first())
             },
-            onEntityCreated = { type -> createNewEntity(engine, type) }
+            onEntityCreated = { type -> createNewEntity(engine, type) },
+            onEntityDeleted = { deleteEntitySelection(engine) }
         )
         outliner!!.reloadEntitiesFromActiveScene()
 

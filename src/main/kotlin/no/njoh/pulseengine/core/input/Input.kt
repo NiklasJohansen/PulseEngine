@@ -13,6 +13,7 @@ interface Input
     val xScroll: Int
     val yScroll: Int
     val textInput: String
+    val clickedKeys: List<Key>
     val gamepads: List<Gamepad>
 
     fun isPressed(key: Key): Boolean

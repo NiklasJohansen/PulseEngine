@@ -21,6 +21,7 @@ open class InputImpl : InputInternal
     override var yScroll = 0
     override var gamepads = mutableListOf<Gamepad>()
     override var textInput: String = ""
+    override val clickedKeys = mutableListOf<Key>()
     override val xdMouse: Float
         get() = xMouse - xMouseLast
     override val ydMouse: Float
@@ -49,16 +50,17 @@ open class InputImpl : InputInternal
 
         this.windowHandle = windowHandle
 
-        glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
-            if (key >= 0)
+        glfwSetKeyCallback(windowHandle) { window, keyCode, scancode, action, mods ->
+            if (keyCode >= 0)
             {
-                clicked[key] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
-                pressed[key] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else 0
-                if (action == GLFW_PRESS && onKeyPressedCallbacks.isNotEmpty())
+                clicked[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
+                pressed[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else 0
+                if (action == GLFW_PRESS)
                 {
-                    Key.values()
-                        .find { it.code == key }
-                        ?.let { keyEnum -> onKeyPressedCallbacks.forEachFast { it.invoke(keyEnum) } }
+                    Key.codes[keyCode]?.let { keyEnum ->
+                        onKeyPressedCallbacks.forEachFast { it.invoke(keyEnum) }
+                        clickedKeys.add(keyEnum)
+                    }
                 }
             }
         }
@@ -208,6 +210,7 @@ open class InputImpl : InputInternal
         yScroll = 0
         textInput = ""
         clicked.fill(0)
+        clickedKeys.clear()
         glfwPollEvents()
         gamepads.forEachFast { it.updateState() }
         if (focusStack.size == 1)

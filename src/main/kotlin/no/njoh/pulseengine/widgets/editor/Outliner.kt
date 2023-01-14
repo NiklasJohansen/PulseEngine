@@ -45,7 +45,8 @@ data class Outliner(
             engine: PulseEngine,
             uiElementFactory: UiElementFactory,
             onEntitiesSelected: () -> Unit,
-            onEntityCreated: (KClass<out SceneEntity>) -> Unit
+            onEntityCreated: (KClass<out SceneEntity>) -> Unit,
+            onEntityDeleted: () -> Unit
         ): Outliner {
 
             // ---------------------------------- Entity rows ----------------------------------
@@ -192,6 +193,9 @@ data class Outliner(
                 ui = VerticalPanel().apply()
                 {
                     addChildren(searchPanel, headerPanel, uiElementFactory.createScrollableSectionUI(rowPanel))
+                    setOnKeyPress { key ->
+                        if (key == Key.DELETE) true.also { onEntityDeleted() } else false
+                    }
                 },
                 onEntitiesSelected = { entities ->
                     val selectedIds = entities.mapToSet { it.id.toString() }

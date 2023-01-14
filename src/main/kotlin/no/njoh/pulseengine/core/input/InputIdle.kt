@@ -15,6 +15,7 @@ class InputIdle(private val activeInput: InputInternal) : InputInternal
     override val xScroll get() = activeInput.xScroll
     override val yScroll get() = activeInput.yScroll
     override val textInput: String = ""
+    override val clickedKeys = emptyList<Key>()
     override val gamepads = activeInput.gamepads
     override fun init(windowHandle: Long) {}
     override fun cleanUp() {}
