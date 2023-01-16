@@ -139,7 +139,7 @@ data class Outliner(
             val searchInputField = InputField(defaultText = "").apply()
             {
                 placeHolderText = "Search ..."
-                cornerRadius = 8f
+                cornerRadius = 4f
                 font = style.getFont()
                 fontSize = 17f
                 textColor = style.getColor("LABEL")
@@ -174,7 +174,7 @@ data class Outliner(
                 padding.right = 5f
                 bgColor = style.getColor("HEADER")
                 hoverColor = style.getColor("BUTTON_HOVER")
-                cornerRadius = 8f
+                cornerRadius = 4f
             }
 
             val searchPanel = HorizontalPanel(height = Size.absolute(30f)).apply()

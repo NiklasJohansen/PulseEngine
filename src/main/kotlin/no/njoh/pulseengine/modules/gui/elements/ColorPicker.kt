@@ -124,17 +124,17 @@ class ColorPicker(
             bgHoverColor = outputColor
             color = Color.BLANK
             hoverColor = Color(1f, 1f, 1f, 0.5f)
-            padding.setAll(5f)
+            padding.setAll(2f)
+            cornerRadius = 2f
             setOnClicked {
                 colorEditor.hidden = !colorEditor.hidden
             }
         }
 
-        val hPanelButton = HorizontalPanel().apply {
-            addChildren(hexInput, colorPreviewButton)
-            bgColor = bgColor
-            cornerRadius = cornerRadius
-        }
+        val hPanelButton = HorizontalPanel()
+        hPanelButton.addChildren(hexInput, colorPreviewButton)
+        hPanelButton.color = bgColor
+        hPanelButton.cornerRadius = cornerRadius
 
         addChildren(hPanelButton)
         addPopup(colorEditor)
@@ -155,6 +155,7 @@ class ColorPicker(
                     contentType = InputField.ContentType.INTEGER
                     numberMinVal = 0f
                     numberMaxVal = 255f
+                    cornerRadius = 2f
                 }
             )
         }

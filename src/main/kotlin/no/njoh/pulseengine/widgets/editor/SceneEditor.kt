@@ -64,7 +64,7 @@ class SceneEditor(
 
     // UI
     private lateinit var rootUI: VerticalPanel
-    private lateinit var entityPropertiesUI: RowPanel
+    private lateinit var inspectorUI: RowPanel
     private lateinit var systemPropertiesUI: RowPanel
     private lateinit var dockingUI: DockingPanel
     private lateinit var screenArea: FocusArea
@@ -173,7 +173,7 @@ class SceneEditor(
     private fun createSceneEditorUI(engine: PulseEngine)
     {
         // Properties
-        entityPropertiesUI = RowPanel()
+        inspectorUI = RowPanel()
         systemPropertiesUI = RowPanel()
 
         // Create content
@@ -185,7 +185,7 @@ class SceneEditor(
                 MenuBarItem("Save as...") { onSaveAs(engine) }
             )),
             MenuBarButton("View", listOf(
-                MenuBarItem("Entity properties") { createEntityPropertyWindow() },
+                MenuBarItem("Inspector") { createInspectorWindow() },
                 MenuBarItem("Outliner") { createOutlinerWindow(engine) },
                 MenuBarItem("Assets") { createAssetWindow(engine) },
                 MenuBarItem("Scene systems") { createSceneSystemsPropertyWindow(engine) },
@@ -218,7 +218,7 @@ class SceneEditor(
         rootUI.setLayoutClean()
 
         // Create default windows and insert into docking
-        createEntityPropertyWindow()
+        createInspectorWindow()
         createSceneSystemsPropertyWindow(engine)
         createAssetWindow(engine)
         createOutlinerWindow(engine)
@@ -228,15 +228,15 @@ class SceneEditor(
             dockingUI.loadLayout(engine, "/editor_layout.cfg")
     }
 
-    private fun createEntityPropertyWindow()
+    private fun createInspectorWindow()
     {
-        if (dockingUI.findElementById("Entity Properties") != null)
+        if (dockingUI.findElementById("Inspector") != null)
             return // Already exists
 
-        val entityPropertyWindow = uiFactory.createWindowUI("Entity Properties", "CUBE")
-        val propertyPanel = uiFactory.createScrollableSectionUI(entityPropertiesUI)
-        entityPropertyWindow.body.addChildren(propertyPanel)
-        dockingUI.insertLeft(entityPropertyWindow)
+        val inspectorWindow = uiFactory.createWindowUI("Inspector", "CUBE")
+        val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
+        inspectorWindow.body.addChildren(propertyPanel)
+        dockingUI.insertLeft(inspectorWindow)
     }
 
     private fun createOutlinerWindow(engine: PulseEngine)
@@ -249,7 +249,7 @@ class SceneEditor(
             uiElementFactory = uiFactory,
             onEntitiesSelected = {
                 entitySelection.clear()
-                entityPropertiesUI.clearChildren()
+                inspectorUI.clearChildren()
                 entityPropertyUiRows.clear()
                 engine.scene.forEachEntity()
                 {
@@ -267,8 +267,8 @@ class SceneEditor(
         val window = uiFactory.createWindowUI(title = "Outliner", iconName = "LIST", onClosed = { outliner = null })
         window.body.addChildren(outliner!!.ui)
 
-        // Insert window into existing Entity Properties if available
-        val propWindow = dockingUI.findElementById("Entity Properties")
+        // Insert window into existing Inspector if available
+        val propWindow = dockingUI.findElementById("Inspector")
         if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
             dockingUI.insertInsideTop(target = propWindow as WindowPanel, window)
         else
@@ -659,7 +659,7 @@ class SceneEditor(
             }
             else
             {
-                entityPropertiesUI.clearChildren()
+                inspectorUI.clearChildren()
                 if (entitySelection.size != prevEntityCount)
                     outliner?.selectEntities(entitySelection)
             }
@@ -943,7 +943,7 @@ class SceneEditor(
         addEntityToSelection(entity)
         outliner?.selectEntities(entitySelection)
 
-        entityPropertiesUI.addChildren(uiFactory.createEntityHeader(entity))
+        inspectorUI.addChildren(uiFactory.createEntityHeader(entity))
 
         val propertyGroups = entity::class.memberProperties
             .filter { entity.getPropInfo(it)?.hidden != true }
@@ -959,7 +959,7 @@ class SceneEditor(
                 .filter { it.isEditable() }
 
             if (properties.isNotEmpty() && group.isNotEmpty())
-                entityPropertiesUI.addChildren(uiFactory.createCategoryHeader(group))
+                inspectorUI.addChildren(uiFactory.createCategoryHeader(group))
 
             val onChanged = { propName: String, lastValue: Any?, newValue: Any? ->
                 if (propName == SceneEntity::parentId.name)
@@ -979,13 +979,13 @@ class SceneEditor(
             for (prop in properties)
             {
                 val (propertyPanel, inputElement) = uiFactory.createPropertyUI(entity, prop, onChanged)
-                entityPropertiesUI.addChildren(propertyPanel)
+                inspectorUI.addChildren(propertyPanel)
                 entityPropertyUiRows[prop.name] = inputElement
             }
         }
 
         // Add bottom padding to the last property row
-        entityPropertiesUI.children.lastOrNull()?.let { it.padding.bottom = it.padding.top }
+        inspectorUI.children.lastOrNull()?.let { it.padding.bottom = it.padding.top }
     }
 
     private fun updateEntityPropertiesPanel(propName: String, value: Any)
@@ -1173,7 +1173,7 @@ class SceneEditor(
     {
         entitySelection.forEachFast { it.setNot(SELECTED) }
         entitySelection.clear()
-        entityPropertiesUI.clearChildren()
+        inspectorUI.clearChildren()
         entityPropertyUiRows.clear()
     }
 

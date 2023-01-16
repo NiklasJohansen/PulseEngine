@@ -116,7 +116,8 @@ open class UiElementFactory(
             height = Size.absolute(height)
         )
 
-        val icon = Icon(width = Size.absolute(15f)).apply {
+        val icon = Icon(width = Size.absolute(15f)).apply()
+        {
             padding.left = 10f
             iconSize = 18f
             iconFontName = style.iconFontName
@@ -124,21 +125,24 @@ open class UiElementFactory(
             color = style.getColor("LABEL")
         }
 
-        val label = Label(title).apply {
+        val label = Label(title).apply()
+        {
             padding.left = 10f
             fontSize = 20f
             font = style.getFont()
             color = style.getColor("LABEL")
         }
 
-        val crossIcon = Icon(width = Size.absolute(15f)).apply {
+        val crossIcon = Icon(width = Size.absolute(15f)).apply()
+        {
             iconFontName = style.iconFontName
             iconCharacter = style.getIcon("CROSS")
             color = style.getColor("LABEL")
             padding.top = 2f
         }
 
-        val exitButton = Button(width = Size.absolute(20f), height = Size.absolute(20f)).apply {
+        val exitButton = Button(width = Size.absolute(20f), height = Size.absolute(20f)).apply()
+        {
             padding.top = 5f
             padding.right = 5f
             cornerRadius = 4f
@@ -151,7 +155,8 @@ open class UiElementFactory(
             addChildren(crossIcon)
         }
 
-        val headerPanel = HorizontalPanel(height = Size.absolute(30f)).apply {
+        val headerPanel = HorizontalPanel(height = Size.absolute(30f)).apply()
+        {
             color = style.getColor("HEADER")
             focusable = false
             addChildren(icon, label, exitButton)
@@ -165,6 +170,9 @@ open class UiElementFactory(
         windowPanel.minWidth = 150f
         windowPanel.id = title
         windowPanel.header.addChildren(headerPanel)
+        windowPanel.cornerRadius = 2f
+        windowPanel.body.color = style.getColor("BG_DARK")
+        windowPanel.body.cornerRadius = 2f
 
         return windowPanel
     }
@@ -173,7 +181,8 @@ open class UiElementFactory(
      * Creates a menu bar containing buttons with dropdown menus.
      */
     open fun createMenuBarUI(vararg buttons: MenuBarButton): UiElement =
-        HorizontalPanel(height = Size.absolute(25f)).apply {
+        HorizontalPanel(height = Size.absolute(25f)).apply()
+        {
             color = style.getColor("BG_LIGHT")
             strokeColor = style.getColor("STROKE")
             addChildren(
@@ -224,7 +233,7 @@ open class UiElementFactory(
             scrollbar.sliderColor = style.getColor("BUTTON")
             scrollbar.sliderColorHover = style.getColor("BUTTON_HOVER")
             scrollbar.hidden = !showScrollbar
-            scrollbar.cornerRadius = 8f
+            scrollbar.cornerRadius = 2f
             setOnItemToString { it.labelText }
             menuBarButton.items.forEach { addItem(it) }
             setOnItemChanged { _, item -> item.onClick() }
@@ -251,16 +260,13 @@ open class UiElementFactory(
             dropDownWidth = Size.absolute(width),
             dropDownHeight = Size.absolute(height)
         ).apply {
-            padding.top = 5f
-            padding.bottom = 5f
-            padding.right = 5f
             rowHeight = style.getSize("DROPDOWN_ROW_HEIGHT")
             menuLabel.font = font
             menuLabel.fontSize = fontSize
             menuLabel.color = style.getColor("LABEL")
             menuLabel.padding.left = 10f
-            cornerRadius = 8f
-            bgColor = style.getColor("BUTTON")
+            cornerRadius = 2f
+            bgColor = style.getColor("INPUT_BG")
             bgHoverColor = style.getColor("BUTTON_HOVER")
             itemBgColor = Color.BLANK
             itemBgHoverColor = style.getColor("BUTTON_HOVER")
@@ -284,7 +290,8 @@ open class UiElementFactory(
      */
     open fun createAssetPanelUI(engine: PulseEngine, onAssetClicked: (Texture) -> Unit): UiElement
     {
-        val tilePanel = TilePanel().apply {
+        val tilePanel = TilePanel().apply()
+        {
             horizontalTiles = 5
             maxTileSize = 80f
             tilePadding = 5f
@@ -293,13 +300,14 @@ open class UiElementFactory(
         val textureAssets = engine.asset.getAllOfType<Texture>()
         for (tex in textureAssets)
         {
-            val tile = Button().apply {
+            val tile = Button().apply()
+            {
                 bgColor = style.getColor("ITEM")
                 bgHoverColor = style.getColor("ITEM_HOVER")
                 color = Color.WHITE
                 hoverColor = Color.WHITE
                 textureScale = 0.9f
-                cornerRadius = 20f
+                cornerRadius = 4f
                 texture = tex
                 setOnClicked { onAssetClicked(tex) }
             }
@@ -332,7 +340,9 @@ open class UiElementFactory(
             height.updateType(Size.ValueType.ABSOLUTE)
             height.value = 30f
             padding.setAll(0f)
-            bgColor = image.bgColor
+            bgColor = style.getColor("HEADER")
+            hoverColor = style.getColor("BUTTON_HOVER")
+
             setOnClicked {
                 val selected = selectedItem
                 clearItems()
@@ -351,8 +361,10 @@ open class UiElementFactory(
      */
     open fun createSystemPropertiesPanelUI(engine: PulseEngine, propertiesRowPanel: RowPanel): HorizontalPanel
     {
-        val menuItems = SceneSystem.REGISTERED_TYPES.map {
-            MenuBarItem(it.simpleName ?: "") {
+        val menuItems = SceneSystem.REGISTERED_TYPES.map()
+        {
+            MenuBarItem(it.simpleName ?: "")
+            {
                 val newSystem = it.createInstance()
                 newSystem.init(engine)
                 engine.scene.addSystem(newSystem)
@@ -369,8 +381,8 @@ open class UiElementFactory(
         val showScrollBar = menuItems.size > 8
         val buttonUI = createMenuBarButtonUI(button, 18f, showScrollBar).apply()
         {
-            width.setQuiet(Size.absolute(40f))
-            height.setQuiet(Size.absolute(40f))
+            width.setQuiet(Size.absolute(30f))
+            height.setQuiet(Size.absolute(30f))
             dropdown.resizable = true
             dropdown.color = style.getColor("BUTTON")
             menuLabel.fontSize = 40f
@@ -379,7 +391,7 @@ open class UiElementFactory(
             padding.setAll(5f)
             bgColor = style.getColor("HEADER")
             hoverColor = style.getColor("BUTTON_HOVER")
-            cornerRadius = 40f
+            cornerRadius = 4f
         }
 
         return HorizontalPanel().apply()
@@ -413,19 +425,22 @@ open class UiElementFactory(
                 .joinToString(" ")
                 .trim()
 
-        val headerLabel = Label(headerText).apply {
+        val headerLabel = Label(headerText).apply()
+        {
             fontSize = 20f
             color = style.getColor("LABEL")
         }
 
-        val crossIcon = Icon(width = Size.absolute(15f)).apply {
+        val crossIcon = Icon(width = Size.absolute(15f)).apply()
+        {
             iconFontName = style.iconFontName
             iconCharacter = style.getIcon("CROSS")
             color = style.getColor("LABEL")
             padding.top = 3f
         }
 
-        val exitButton = Button(width = Size.absolute(20f)).apply {
+        val exitButton = Button(width = Size.absolute(20f)).apply()
+        {
             padding.setAll(5f)
             color = Color.BLANK
             cornerRadius = 7.5f
@@ -433,7 +448,8 @@ open class UiElementFactory(
             addChildren(crossIcon)
         }
 
-        val headerPanel = HorizontalPanel().apply {
+        val headerPanel = HorizontalPanel().apply()
+        {
             focusable = false
             color = Color.BLANK
             addChildren(headerIcon, headerLabel, exitButton)
@@ -448,10 +464,11 @@ open class UiElementFactory(
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
-            cornerRadius = 12f
+            cornerRadius = 2f
             color = style.getColor("HEADER")
             activeColor = style.getColor("HEADER")
             hoverColor = style.getColor("HEADER_HOVER")
+            activeHoverColor = style.getColor("HEADER_HOVER")
             addChildren(headerPanel)
         }
 
@@ -461,7 +478,8 @@ open class UiElementFactory(
             .sortedBy { system.getPropInfo(it)?.i ?: 1000 }
             .map { prop ->
                 val (panel, _) = createPropertyUI(system, prop as KMutableProperty<*>, nopCallback)
-                panel.apply {
+                panel.apply()
+                {
                     padding.left = 10f
                     padding.right = 10f
                     hidden = isHidden
@@ -499,8 +517,7 @@ open class UiElementFactory(
             outerPanel.addChildren(body, scrollBar)
         }
 
-        outerPanel!!.color = style.getColor("BG_DARK")
-        return outerPanel
+        return outerPanel!!
     }
 
     /**
@@ -510,11 +527,12 @@ open class UiElementFactory(
     {
         val width = if (direction == VERTICAL) Size.absolute(10f) else Size.auto()
         val height = if (direction == HORIZONTAL) Size.absolute(10f) else Size.auto()
-        return Scrollbar(width, height).apply {
+        return Scrollbar(width, height).apply()
+        {
             bgColor = style.getColor("ITEM")
             sliderColor = style.getColor("BUTTON")
             sliderColorHover = style.getColor("BUTTON_HOVER")
-            cornerRadius = 5f
+            cornerRadius = 2f
             padding.setAll(2f)
             sliderPadding = 1.5f
             bind(scrollBinding, direction)
@@ -525,32 +543,31 @@ open class UiElementFactory(
      * Creates a new [ColorPicker] UI element.
      */
     open fun createColorPickerUI(color: Color) =
-        ColorPicker(color).apply {
-            padding.setAll(5f)
-            cornerRadius = 8f
+        ColorPicker(color).apply()
+        {
+            cornerRadius = 2f
             bgColor = style.getColor("BUTTON")
             hexInput.fontSize = 20f
             hexInput.textColor = style.getColor("LABEL")
             hexInput.bgColorHover = style.getColor("BUTTON_HOVER")
+            hexInput.bgColor = style.getColor("INPUT_BG")
             hexInput.strokeColor = Color.BLANK
             hexInput.cornerRadius = cornerRadius
             colorEditor.color = style.getColor("BG_LIGHT")
             colorEditor.strokeColor = style.getColor("STROKE")
             saturationBrightnessPicker.strokeColor = style.getColor("HEADER")
             huePicker.strokeColor = style.getColor("STROKE")
-            hsbSection.color = style.getColor("ITEM")
-            rgbaSection.color = style.getColor("ITEM")
-            listOf(redInput, greenInput, blueInput, alphaInput).forEach {
+            hsbSection.color = style.getColor("BG_DARK")
+            rgbaSection.color = style.getColor("BG_DARK")
+            listOf(redInput, greenInput, blueInput, alphaInput).forEach()
+            {
                 it.fontSize = 20f
                 it.textColor = style.getColor("LABEL")
-                it.bgColor = style.getColor("BUTTON")
+                it.bgColor = style.getColor("INPUT_BG")
                 it.bgColorHover = style.getColor("BUTTON_HOVER")
             }
         }
 
-    /**
-     * Creates a new [InputField] UI element.
-     */
     open fun createInputFieldUI(obj: Any, prop: KMutableProperty<*>): InputField
     {
         val value = prop.getter.call(obj)
@@ -575,14 +592,11 @@ open class UiElementFactory(
             defaultText = defaultText ?: "",
             width = Size.relative(0.5f)
         ).apply {
-            padding.top = 5f
-            padding.bottom = 5f
-            padding.right = 5f
-            cornerRadius = 8f
+            cornerRadius = 2f
             font = style.getFont()
             fontSize = 18f
             textColor = style.getColor("LABEL")
-            bgColor = style.getColor("BUTTON")
+            bgColor = style.getColor("INPUT_BG")
             bgColorHover = style.getColor("BUTTON_HOVER")
             strokeColor = Color.BLANK
             contentType = type
@@ -609,7 +623,7 @@ open class UiElementFactory(
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
-            cornerRadius = 12f
+            cornerRadius = 2f
             color = style.getColor("HEADER")
             addChildren(
                 Icon(width = Size.absolute(25f)).apply()
@@ -655,7 +669,7 @@ open class UiElementFactory(
         val label = Label(text = prop.name.capitalize(), width = Size.relative(0.5f)).apply {
             padding.setAll(5f)
             padding.left = 10f
-            fontSize = 20f
+            fontSize = 19f
             font = style.getFont()
             color = style.getColor("LABEL")
         }
@@ -663,11 +677,11 @@ open class UiElementFactory(
         val hPanel = HorizontalPanel(
             height = Size.absolute(style.getSize("PROP_ROW_HEIGHT"))
         ).apply {
-            padding.left = 5f
-            padding.right = 5f
-            padding.top = 5f
-            cornerRadius = 12f
-            color = style.getColor("ITEM")
+            padding.left = 12f
+            padding.right = 12f
+            padding.top = 4f
+            cornerRadius = 2f
+            color = style.getColor( "BUTTON")
             addChildren(label, propUi)
         }
 
@@ -681,7 +695,7 @@ open class UiElementFactory(
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
-            cornerRadius = 12f
+            cornerRadius = 2f
             color = style.getColor("HEADER")
             addChildren(
                 Label(label, width = Size.relative(0.5f)).apply {
