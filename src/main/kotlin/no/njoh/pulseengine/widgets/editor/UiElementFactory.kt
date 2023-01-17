@@ -173,6 +173,7 @@ open class UiElementFactory(
         windowPanel.cornerRadius = 2f
         windowPanel.body.color = style.getColor("BG_DARK")
         windowPanel.body.cornerRadius = 2f
+        windowPanel.body.padding.top = 1f
 
         return windowPanel
     }
@@ -642,7 +643,7 @@ open class UiElementFactory(
                     fontSize = 20f
                     font = style.getFont()
                     color = style.getColor("LABEL")
-                },
+                }
             )
         }
     }
@@ -688,19 +689,43 @@ open class UiElementFactory(
         return Pair(hPanel, propUi)
     }
 
-    open fun createCategoryHeader(label: String) =
-        HorizontalPanel(
+    open fun createCategoryHeader(label: String, isCollapsed: Boolean, onClicked: (btn: Button) -> Unit) =
+        Button(
             height = Size.absolute(style.getSize("PROP_HEADER_ROW_HEIGHT"))
         ).apply {
+            id = "header_$label"
+            toggleButton = true
+            isPressed = isCollapsed
             padding.left = 5f
             padding.right = 5f
             padding.top = 5f
             cornerRadius = 2f
             color = style.getColor("HEADER")
+            activeColor = style.getColor("HEADER")
+            hoverColor = style.getColor("HEADER_HOVER")
+            activeHoverColor = style.getColor("HEADER_HOVER")
+
+            val icon = Icon(width = Size.absolute(25f)).apply()
+            {
+                padding.left = -6f
+                padding.top = 3f
+                iconSize = 17f
+                iconFontName = style.iconFontName
+                iconCharacter = style.getIcon(if (isPressed) "ARROW_RIGHT" else "ARROW_DOWN")
+                color = style.getColor("LABEL")
+            }
+
+            setOnClicked {
+                icon.iconCharacter = style.getIcon(if (it.isPressed) "ARROW_RIGHT" else "ARROW_DOWN")
+                onClicked(it)
+            }
+
             addChildren(
-                Label(label, width = Size.relative(0.5f)).apply {
+                icon,
+                Label(label, width = Size.relative(0.5f)).apply()
+                {
                     padding.setAll(5f)
-                    padding.left = 10f
+                    padding.left = 20f
                     fontSize = 20f
                     font = style.getFont()
                     color = style.getColor("LABEL")

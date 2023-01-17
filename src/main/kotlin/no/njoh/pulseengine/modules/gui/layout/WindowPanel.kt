@@ -42,7 +42,6 @@ open class WindowPanel(
         header.id = id + "_header"
         body.focusable = false
         body.id = id + "_body"
-        body.padding.setAll(5f)
 
         val content = VerticalPanel()
         content.focusable = false

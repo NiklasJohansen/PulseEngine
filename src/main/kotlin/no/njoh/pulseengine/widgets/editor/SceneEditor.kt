@@ -44,6 +44,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.widget.Widget
 import no.njoh.pulseengine.modules.gui.elements.Button
 import no.njoh.pulseengine.modules.gui.layout.WindowPanel
+import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isPrimitiveValue
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
@@ -70,6 +71,7 @@ class SceneEditor(
     private lateinit var screenArea: FocusArea
     private lateinit var dragAndDropArea: FocusArea
     private var entityPropertyUiRows = mutableMapOf<String, UiElement>()
+    private var collapsedPropertyHeaders = mutableListOf<String>()
     private var showGrid = true
     private var outliner: Outliner? = null
 
@@ -505,7 +507,6 @@ class SceneEditor(
         {
             engine.scene.stop()
             engine.scene.reload()
-            initializeEntities(engine)
         }
     }
 
@@ -943,24 +944,16 @@ class SceneEditor(
         addEntityToSelection(entity)
         outliner?.selectEntities(entitySelection)
 
-        inspectorUI.addChildren(uiFactory.createEntityHeader(entity))
-
+        val entityName = entity::class.getName()
         val propertyGroups = entity::class.memberProperties
             .filter { entity.getPropInfo(it)?.hidden != true }
-            .groupBy { entity.getPropInfo(it)?.group ?: "" }
+            .groupBy { entity.getPropInfo(it)?.group?.takeIf { it.isNotEmpty() } ?: entityName }
             .toList()
-            .sortedBy { it.first }
+            .sortedBy { it.first } // Alphabetic order
+            .sortedBy { it.first != entityName } // Entity type first
 
         for ((group, props) in propertyGroups)
         {
-            val properties = props
-                .sortedBy { entity.getPropInfo(it)?.i ?: 0 }
-                .filterIsInstance<KMutableProperty<*>>()
-                .filter { it.isEditable() }
-
-            if (properties.isNotEmpty() && group.isNotEmpty())
-                inspectorUI.addChildren(uiFactory.createCategoryHeader(group))
-
             val onChanged = { propName: String, lastValue: Any?, newValue: Any? ->
                 if (propName == SceneEntity::parentId.name)
                 {
@@ -976,9 +969,31 @@ class SceneEditor(
                 Unit
             }
 
-            for (prop in properties)
+            val headerId = "header_$group"
+            val isCollapsed = headerId in collapsedPropertyHeaders
+            val propertyRows = props
+                .sortedBy { entity.getPropInfo(it)?.i ?: 0 }
+                .filterIsInstance<KMutableProperty<*>>()
+                .filter { it.isEditable() }
+                .map { prop -> prop to uiFactory.createPropertyUI(entity, prop, onChanged) }
+
+            if (propertyRows.isNotEmpty())
             {
-                val (propertyPanel, inputElement) = uiFactory.createPropertyUI(entity, prop, onChanged)
+                val headerButton = uiFactory.createCategoryHeader(
+                    label = group,
+                    isCollapsed = isCollapsed,
+                    onClicked = {
+                        propertyRows.forEachFast { (_, ui) -> ui.first.hidden = !ui.first.hidden }
+                        if (it.isPressed) collapsedPropertyHeaders.add(headerId) else collapsedPropertyHeaders.remove(headerId)
+                    }
+                )
+                inspectorUI.addChildren(headerButton)
+            }
+
+            for ((prop, ui) in propertyRows)
+            {
+                val (propertyPanel, inputElement) = ui
+                propertyPanel.hidden = isCollapsed
                 inspectorUI.addChildren(propertyPanel)
                 entityPropertyUiRows[prop.name] = inputElement
             }
