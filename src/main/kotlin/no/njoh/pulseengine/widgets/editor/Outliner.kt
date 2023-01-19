@@ -149,10 +149,10 @@ data class Outliner(
                 padding.setAll(5f)
                 setOnTextChanged { inputField ->
                     val text = inputField.text
-                    rowPanel.children.forEachFast()
-                    {
-                        it.hidden = text.isNotBlank() && engine.getEntity(it.id)?.matches(engine, text) != true
-                    }
+                    if (text.isNotBlank())
+                        rowPanel.children.forEachFast { it.hidden = engine.getEntity(it.id)?.matches(engine, text) != true }
+                    else
+                        rowPanel.restoreRowVisibility()
                 }
             }
 
@@ -570,7 +570,8 @@ data class Outliner(
             }
         }
 
-        private fun RowPanel.getChildrenOf(parent: UiElement): List<UiElement> {
+        private fun RowPanel.getChildrenOf(parent: UiElement): List<UiElement>
+        {
             var i = children.indexOfFirst { it.id == parent.id } + 1
             if (i == 0) return emptyList() // Did not find parent, return
             val parentIndentation = parent.getRowIndentation()
@@ -583,6 +584,25 @@ data class Outliner(
                 children.add(child)
             }
             return children
+        }
+
+        private fun RowPanel.restoreRowVisibility() {
+            var isCollapsed = false
+            var currentIndentation = 0f
+            for (row in this.children)
+            {
+                val indentation = row.getRowIndentation()
+                row.hidden = (isCollapsed && indentation > currentIndentation)
+                if (row.isCollapsed())
+                {
+                    isCollapsed = true
+                    currentIndentation = indentation
+                }
+                else if (indentation == currentIndentation)
+                {
+                    isCollapsed = false
+                }
+            }
         }
 
         // Stores the ID of the last selected row
