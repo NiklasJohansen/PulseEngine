@@ -33,7 +33,6 @@ class EditorStyle
         colors["ITEM_HOVER"] = Color(0.10275511f, 0.11865307f, 0.13571429f, 1.0f)
         colors["INPUT_BG"] = Color(0.017f, 0.017f, 0.018f)
 
-
         // Set default sizes
         sizes["PROP_ROW_HEIGHT"] = 25f
         sizes["PROP_HEADER_ROW_HEIGHT"] = 26f
@@ -45,9 +44,16 @@ class EditorStyle
         icons["COG"] = "c"
         icons["MONITOR"] = "d"
         icons["CROSS"] = "e"
-        icons["GEARS"] = "j"
-        icons["SHAPES"] = "i"
         icons["IMAGE"] = "f"
+        icons["CURSOR"] = "g"
+        icons["FILE"] = "h"
+        icons["SHAPES"] = "i"
+        icons["GEARS"] = "j"
+        icons["MUSIC"] = "k"
+        icons["FONT"] = "l"
+        icons["TEXT"] = "m"
+        icons["NO_IMAGE"] = "n"
+        icons["BOX"] = "o"
         icons["LIST"] = "p"
         icons["NESTED_LIST"] = "q"
         icons["EDIT"] = "s"

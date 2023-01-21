@@ -9,7 +9,9 @@ import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.modules.gui.UiUtil.hasFocus
 import no.njoh.pulseengine.modules.gui.layout.HorizontalPanel
+import no.njoh.pulseengine.modules.gui.layout.Panel
 import no.njoh.pulseengine.modules.gui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.gui.layout.WindowPanel
 
@@ -19,9 +21,8 @@ class ColorPicker(
     y: Position = Position.auto(),
     width: Size = Size.auto(),
     height: Size = Size.auto()
-) : UiElement(x, y, width, height) {
+) : Panel(x, y, width, height) {
     var bgColor = Color.BLANK
-    var cornerRadius = 0f
 
     val colorEditor: WindowPanel
     val hexInput: InputField
@@ -113,28 +114,30 @@ class ColorPicker(
         hexInput = InputField(outputColor.toHexString()).apply {
             contentType = InputField.ContentType.HEX_COLOR
             bgColor = Color.BLANK
-            cornerRadius = cornerRadius
+            cornerRadius = 2f
         }
 
         colorPreviewButton = Button(
             width = Size.absolute(10f),
             height = Size.absolute(10f)
         ).apply {
-            bgColor = outputColor
-            bgHoverColor = outputColor
-            color = Color.BLANK
-            hoverColor = Color(1f, 1f, 1f, 0.5f)
-            padding.setAll(2f)
             cornerRadius = 2f
-            setOnClicked {
-                colorEditor.hidden = !colorEditor.hidden
-            }
+            addChildren(
+                Panel().apply {
+                    focusable = false
+                    cornerRadius = 2f
+                    color = outputColor
+                    padding.setAll(5f)
+                }
+            )
         }
 
-        val hPanelButton = HorizontalPanel()
-        hPanelButton.addChildren(hexInput, colorPreviewButton)
-        hPanelButton.color = bgColor
-        hPanelButton.cornerRadius = cornerRadius
+        val hPanelButton = HorizontalPanel().apply()
+        {
+            cornerRadius = 2f
+            color = bgColor
+            addChildren(hexInput, colorPreviewButton)
+        }
 
         addChildren(hPanelButton)
         addPopup(colorEditor)
@@ -162,6 +165,10 @@ class ColorPicker(
 
     private fun createChangeHandlers()
     {
+        colorPreviewButton.setOnClicked {
+            colorEditor.hidden = !colorEditor.hidden
+        }
+
         hexInput.setOnValidTextChanged {
             val color = it.text.toColor()
             saturationBrightnessPicker.updateFrom(color)
@@ -225,7 +232,7 @@ class ColorPicker(
 
     override fun onUpdate(engine: PulseEngine)
     {
-        if (colorEditor.isVisible() && !hasFocus(engine))
+        if (colorEditor.isVisible() && !this.hasFocus(engine))
             colorEditor.hidden = true
     }
 
@@ -261,10 +268,6 @@ class ColorPicker(
         surface.setDrawColor(bgColor)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
     }
-
-    private fun UiElement.hasFocus(engine: PulseEngine): Boolean =
-        if (engine.input.hasFocus(this.area)) true
-        else popup?.hasFocus(engine) ?: false || children.any { it.hasFocus(engine) }
 
     private fun String.toColor() =
         java.awt.Color.decode(this).let { Color(it.red, it.green, it.blue, it.alpha) }
@@ -427,8 +430,8 @@ class ColorPicker(
                 val border = markerSize * 0.5f
                 val xMouse = engine.input.xMouse.coerceIn(x.value + border, x.value + width.value - border)
                 val yMouse = engine.input.yMouse.coerceIn(y.value + border, y.value + height.value - border)
-                saturation = (xMouse - x.value) / width.value
-                luminance = 1f - ((yMouse - y.value) / height.value)
+                saturation = (xMouse - x.value - border) / (width.value - markerSize)
+                luminance = 1f - ((yMouse - y.value - border) / (height.value - markerSize))
 
                 calculateOutputColor()
                 onChanged(outputColor)
@@ -467,8 +470,9 @@ class ColorPicker(
                 surface.drawLine(x.value, y.value + height.value, x.value + width.value, y.value + height.value)
             }
 
-            val xPoint = x.value + saturation * width.value
-            val yPoint = y.value + (1f - luminance) * height.value
+            val border = markerSize * 0.5f
+            val xPoint = x.value + border + saturation * (width.value - markerSize)
+            val yPoint = y.value + border + (1f - luminance) * (height.value - markerSize)
             surface.setDrawColor(0f, 0f, 0f)
             surface.drawTexture(Texture.BLANK, xPoint, yPoint, markerSize, markerSize, 0f, 0.5f, 0.5f)
             surface.setDrawColor(outputColor)

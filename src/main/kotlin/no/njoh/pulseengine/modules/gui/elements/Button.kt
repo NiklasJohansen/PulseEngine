@@ -27,7 +27,7 @@ open class Button(
     var activeColor = Color.BLANK
     var activeHoverColor: Color? = null
 
-    var texture: Texture? = null
+    var textureAssetName: String? = null
     var textureScale = 1f
     var cornerRadius = 0f
     var xOrigin = 0.5f
@@ -81,7 +81,7 @@ open class Button(
 
         if (bgColor.alpha != 0f)
         {
-            surface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue, bgColor.alpha)
+            surface.setDrawColor(bgColor)
             surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
         }
 
@@ -99,30 +99,32 @@ open class Button(
                 xOrigin = 0.5f,
                 yOrigin = 0.5f
             )
+            return
         }
-        else if (texture != null)
+
+        val texture = textureAssetName?.let { engine.asset.getOrNull<Texture>(it) }
+        if (texture != null)
         {
-            val tex = texture!!
             var texWidth = width.value
             var texHeight = height.value
             val xCenter = x.value + width.value * xOrigin
             val yCenter = y.value + height.value * yOrigin
 
-            if (tex.width > tex.height)
-                texHeight = (width.value / tex.width) * tex.height
+            if (texture.width > texture.height)
+                texHeight = (width.value / texture.width) * texture.height
             else
-                texWidth = (height.value / tex.height) * tex.width
+                texWidth = (height.value / texture.height) * texture.width
 
             texWidth *= textureScale
             texHeight *= textureScale
 
-            surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
-            surface.drawTexture(tex, xCenter, yCenter, texWidth, texHeight, 0f, 0.5f, 0.5f, cornerRadius)
+            surface.setDrawColor(color)
+            surface.drawTexture(texture, xCenter, yCenter, texWidth, texHeight, 0f, 0.5f, 0.5f, cornerRadius)
+            return
         }
-        else
-        {
-            surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
-            surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
-        }
+
+        // Draw filled shape as fallback
+        surface.setDrawColor(color)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
     }
 }

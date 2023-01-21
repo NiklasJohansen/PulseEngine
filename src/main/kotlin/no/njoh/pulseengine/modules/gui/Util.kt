@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.gui
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.gui.Size.ValueType.ABSOLUTE
 import no.njoh.pulseengine.modules.gui.layout.HorizontalPanel
@@ -62,4 +63,12 @@ object UiUtil
             else -> minWidth
         }
     }
+
+    /**
+     * Returns true if the [UiElement] itself, its popup or any of its children has focus.
+     */
+    fun UiElement.hasFocus(engine: PulseEngine): Boolean =
+        engine.input.hasFocus(this.area) ||
+        popup?.hasFocus(engine) ?: false ||
+        children.any { it.hasFocus(engine) }
 }

@@ -30,7 +30,7 @@ open class Panel(
     {
         if (color.alpha != 0f)
         {
-            surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
+            surface.setDrawColor(color)
             surface.drawTexture(texture ?: Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
         }
 

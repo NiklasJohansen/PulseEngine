@@ -55,7 +55,7 @@ class Label(
             var currentTextWidth = 0f
             var currentText = text
             var i = 0
-            while (i < text.length)
+            while (i < text.length && i < charWidths.size)
             {
                 currentTextWidth += charWidths[i]
                 if (currentTextWidth > width.value)

@@ -1,20 +1,19 @@
 package no.njoh.pulseengine.widgets.editor
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.asset.types.Font
-import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.scene.SceneSystem
+import no.njoh.pulseengine.core.shared.annotations.AssetRef
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
 import no.njoh.pulseengine.modules.gui.*
 import no.njoh.pulseengine.modules.gui.ScrollDirection.*
 import no.njoh.pulseengine.modules.gui.elements.*
 import no.njoh.pulseengine.modules.gui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.modules.gui.layout.*
-import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.widgets.editor.EditorUtil.setArrayProperty
@@ -36,17 +35,29 @@ open class UiElementFactory(
 ) {
     /** Property UI factory functions for specific class types. */
     val propertyUiFactories = mutableMapOf(
-        Enum::class to ::createEnumPropertyUi,
+        String::class to ::createStringPropertyUi,
         Boolean::class to ::createBooleanPropertyUi,
-        Color::class to { obj, prop, onChanged -> createColorPickerUI(color = prop.getter.call(obj) as Color) },
-        LongArray::class to ::createNumberArrayPropertyUi,
-        IntArray::class to ::createNumberArrayPropertyUi,
-        ShortArray::class to ::createNumberArrayPropertyUi,
-        ByteArray::class to ::createNumberArrayPropertyUi,
-        FloatArray::class to ::createNumberArrayPropertyUi,
-        DoubleArray::class to ::createNumberArrayPropertyUi,
-        String::class to { _, _, _ -> null } // Factory functions returning null will use default InputField UI
+        Enum::class to ::createEnumPropertyUi,
+        Color::class to { obj, prop, onChanged -> createColorPickerUI(outputColor = prop.getter.call(obj) as Color) },
+        LongArray::class to ::createInputFieldUI,
+        IntArray::class to ::createInputFieldUI,
+        ShortArray::class to ::createInputFieldUI,
+        ByteArray::class to ::createInputFieldUI,
+        FloatArray::class to ::createInputFieldUI,
+        DoubleArray::class to ::createInputFieldUI,
     )
+
+    /**
+     * Creates an [AssetPicker] if the property is annotated with [AssetRef] or a default [InputField].
+     */
+    open fun createStringPropertyUi(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): UiElement =
+        obj::class.findPropertyAnnotation<AssetRef>(prop.name)
+            ?.let { createAssetPickerUI(it, obj, prop, onChanged) }
+            ?: createInputFieldUI(obj, prop, onChanged)
 
     /**
      * Creates a [DropdownMenu] containing all the enum constants.
@@ -81,21 +92,6 @@ open class UiElementFactory(
             onChanged(prop.name, lastValue, newValue)
         }
     )
-
-    /**
-     * Creates a [InputField] for editing an array of primitive numbers.
-     */
-    open fun createNumberArrayPropertyUi(
-        obj: Any,
-        prop: KMutableProperty<*>,
-        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
-    ) = createInputFieldUI(obj, prop).apply {
-        setOnValidTextChanged {
-            obj.setArrayProperty(prop, it.text)
-            onChanged(prop.name, it.lastValidText, it.text)
-        }
-        editable = obj.getPropInfo(prop)?.editable ?: true
-    }
 
     /**
      * Creates a movable and resizable window panel.
@@ -309,7 +305,7 @@ open class UiElementFactory(
                 hoverColor = Color.WHITE
                 textureScale = 0.9f
                 cornerRadius = 4f
-                texture = tex
+                textureAssetName = tex.name
                 setOnClicked { onAssetClicked(tex) }
             }
             tilePanel.addChildren(tile)
@@ -543,10 +539,11 @@ open class UiElementFactory(
     /**
      * Creates a new [ColorPicker] UI element.
      */
-    open fun createColorPickerUI(color: Color) =
-        ColorPicker(color).apply()
+    open fun createColorPickerUI(outputColor: Color) =
+        ColorPicker(outputColor).apply()
         {
             cornerRadius = 2f
+            color = style.getColor("INPUT_BG")
             bgColor = style.getColor("BUTTON")
             hexInput.fontSize = 20f
             hexInput.textColor = style.getColor("LABEL")
@@ -554,6 +551,8 @@ open class UiElementFactory(
             hexInput.bgColor = style.getColor("INPUT_BG")
             hexInput.strokeColor = Color.BLANK
             hexInput.cornerRadius = cornerRadius
+            colorPreviewButton.bgColor = style.getColor("INPUT_BG")
+            colorPreviewButton.bgHoverColor = style.getColor("BUTTON_HOVER")
             colorEditor.color = style.getColor("BG_LIGHT")
             colorEditor.strokeColor = style.getColor("STROKE")
             saturationBrightnessPicker.strokeColor = style.getColor("HEADER")
@@ -569,8 +568,59 @@ open class UiElementFactory(
             }
         }
 
-    open fun createInputFieldUI(obj: Any, prop: KMutableProperty<*>): InputField
-    {
+    open fun createAssetPickerUI(
+        annotation: AssetRef,
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): UiElement =
+        AssetPicker(
+            initialAssetName = prop.getter.call(obj) as? String ?: ""
+        ).apply {
+            previewIconCharacter = style.iconFontName
+            previewIconCharacter = style.getIcon(annotation.type.findAnnotation<ScnIcon>()?.iconName ?: "BOX")
+            nameInput.fontSize = 20f
+            nameInput.textColor = style.getColor("LABEL")
+            nameInput.bgColorHover = style.getColor("BUTTON_HOVER")
+            nameInput.bgColor = style.getColor("INPUT_BG")
+            nameInput.strokeColor = Color.BLANK
+            nameInput.cornerRadius = 2f
+            previewButton.bgColor = style.getColor("INPUT_BG")
+            previewButton.bgHoverColor = style.getColor("BUTTON_HOVER")
+            previewButton.color = Color.WHITE
+            previewButton.hoverColor = Color.WHITE
+            previewButton.iconFontName = style.iconFontName
+            previewButton.iconCharacter = previewIconCharacter
+            pickerWindow.color = style.getColor("BG_LIGHT")
+            pickerWindow.strokeColor = style.getColor("HEADER")
+            pickerWindow.strokeRight = false
+            rows.color = style.getColor("BG_DARK")
+            scrollbar.bgColor = style.getColor("ITEM")
+            scrollbar.sliderColor = style.getColor("BUTTON")
+            scrollbar.sliderColorHover = style.getColor("BUTTON_HOVER")
+            headerPanel.color = style.getColor("HEADER")
+            headerPanel.strokeColor = style.getColor("STROKE")
+            searchInput.font = style.getFont()
+            searchInput.textColor = style.getColor("LABEL")
+            searchInput.bgColor = style.getColor("BUTTON")
+            searchInput.bgColorHover = style.getColor("BUTTON_HOVER")
+            searchInput.strokeColor = Color.BLANK
+
+            PulseEngine.GLOBAL_INSTANCE.asset.getAllOfType(annotation.type).forEachFast { addAssetRow(it, style) }
+
+            setOnValueChanged()
+            {
+                obj.setPrimitiveProperty(prop, it)
+                onChanged(prop.name, nameInput.text, it)
+            }
+        }
+
+    open fun createInputFieldUI(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): InputField {
+        val propInfo = obj.getPropInfo(prop)
         val value = prop.getter.call(obj)
         val (type, defaultText) = when (prop.javaField?.type)
         {
@@ -601,50 +651,26 @@ open class UiElementFactory(
             bgColorHover = style.getColor("BUTTON_HOVER")
             strokeColor = Color.BLANK
             contentType = type
+            editable = propInfo?.editable ?: true
 
             if (type == FLOAT || type == INTEGER)
             {
-                obj.getPropInfo(prop)?.let()
+                propInfo?.let()
                 {
                     numberMinVal = it.min
                     numberMaxVal = it.max
                 }
             }
-        }
-    }
 
-    /**
-     * Creates a property row UI header for the given [SceneEntity].
-     */
-    open fun createEntityHeader(entity: SceneEntity): UiElement
-    {
-        return HorizontalPanel(
-            height = Size.absolute(style.getSize("PROP_HEADER_ROW_HEIGHT"))
-        ).apply {
-            padding.left = 5f
-            padding.right = 5f
-            padding.top = 5f
-            cornerRadius = 2f
-            color = style.getColor("HEADER")
-            addChildren(
-                Icon(width = Size.absolute(25f)).apply()
-                {
-                    padding.left = 5f
-                    iconSize = 15f
-                    iconFontName = style.iconFontName
-                    iconCharacter = style.getIcon(entity::class.findAnnotation<ScnIcon>()?.iconName ?: "CUBE")
-                    color = style.getColor("LABEL")
-                },
-                Label(
-                    text = entity::class.getName(),
-                    width = Size.relative(0.5f)
-                ).apply {
-                    padding.setAll(5f)
-                    fontSize = 20f
-                    font = style.getFont()
-                    color = style.getColor("LABEL")
-                }
-            )
+            setOnValidTextChanged()
+            {
+                if (type == FLOAT_ARRAY || type == INTEGER_ARRAY)
+                    obj.setArrayProperty(prop, it.text)
+                else
+                    obj.setPrimitiveProperty(prop, it.text)
+
+                onChanged(prop.name, it.lastValidText, it.text)
+            }
         }
     }
 
@@ -658,14 +684,9 @@ open class UiElementFactory(
         onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
     ): Pair<HorizontalPanel, UiElement> {
         val propUiKey = propertyUiFactories.keys.firstOrNull { prop.javaField?.type?.kotlin?.isSubclassOf(it) == true }
-        val propUi = propertyUiFactories[propUiKey]?.invoke(obj, prop, onChanged)
-            ?: createInputFieldUI(obj, prop).apply { // Default UI when no factory exist
-                setOnValidTextChanged {
-                    obj.setPrimitiveProperty(prop, it.text)
-                    onChanged(prop.name, it.lastValidText, it.text)
-                }
-                editable = obj.getPropInfo(prop)?.editable ?: true
-            }
+        val propUi = propertyUiFactories[propUiKey]
+            ?.invoke(obj, prop, onChanged)
+            ?: createInputFieldUI(obj, prop, onChanged)
 
         val label = Label(text = prop.name.capitalize(), width = Size.relative(0.5f)).apply {
             padding.setAll(5f)
