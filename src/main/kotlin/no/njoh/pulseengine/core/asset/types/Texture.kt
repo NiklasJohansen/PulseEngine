@@ -1,11 +1,13 @@
 package no.njoh.pulseengine.core.asset.types
 
 import de.matthiasmann.twl.utils.PNGDecoder
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadStream
 import org.lwjgl.opengl.GL11.*
 import java.nio.ByteBuffer
 
+@ScnIcon("IMAGE")
 open class Texture(filename: String, override val name: String) : Asset(name, filename)
 {
     var width: Int = 0

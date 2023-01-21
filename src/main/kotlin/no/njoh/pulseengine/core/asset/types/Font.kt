@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
@@ -8,7 +9,7 @@ import org.lwjgl.stb.*
 import org.lwjgl.stb.STBTruetype.*
 import java.nio.ByteBuffer
 
-
+@ScnIcon("FONT")
 class Font(
     fileName: String,
     override val name: String,
