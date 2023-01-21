@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.scene.entities
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.shared.annotations.AssetRef
 import no.njoh.pulseengine.modules.lighting.LightOccluder
 import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
 import no.njoh.pulseengine.modules.lighting.NormalMapped
@@ -10,6 +11,7 @@ import no.njoh.pulseengine.modules.physics.entities.Box
 
 class Wall : Box(), LightOccluder, NormalMapped
 {
+    @AssetRef(Texture::class)
     var textureName: String = ""
 
     override var normalMapName: String = ""

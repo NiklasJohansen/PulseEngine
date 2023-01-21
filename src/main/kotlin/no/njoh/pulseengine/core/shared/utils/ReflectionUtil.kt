@@ -88,7 +88,7 @@ object ReflectionUtil
         val functions = this.java.getAllFunctions()
         val functionName = "get" + propertyName.capitalize()
         val foundAnnotations = functions
-            .filter { it.name.startsWith(functionName) }
+            .filter { it.name.startsWith(functionName) && it.name.getOrNull(functionName.length)?.isLetter() != true }
             .flatMap { it.annotations.filterIsInstance<T>() }
             .toMutableSet()
 
