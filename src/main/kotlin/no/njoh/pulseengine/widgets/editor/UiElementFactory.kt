@@ -180,8 +180,8 @@ open class UiElementFactory(
     open fun createMenuBarUI(vararg buttons: MenuBarButton): UiElement =
         HorizontalPanel(height = Size.absolute(25f)).apply()
         {
-            color = style.getColor("BG_LIGHT")
-            strokeColor = style.getColor("STROKE")
+            color = style.getColor("HEADER_HOVER")
+            strokeColor = style.getColor("BG_DARK")
             addChildren(
                 *buttons.map { createMenuBarButtonUI(it, 18f, false) }.toTypedArray(), Panel()
             )

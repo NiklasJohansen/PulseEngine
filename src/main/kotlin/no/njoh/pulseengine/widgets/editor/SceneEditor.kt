@@ -189,7 +189,6 @@ class SceneEditor(
             MenuBarButton("View", listOf(
                 MenuBarItem("Inspector") { createInspectorWindow() },
                 MenuBarItem("Outliner") { createOutlinerWindow(engine) },
-                MenuBarItem("Assets") { createAssetWindow(engine) },
                 MenuBarItem("Scene systems") { createSceneSystemsPropertyWindow(engine) },
                 MenuBarItem("Viewport") { createViewportWindow(engine) },
                 MenuBarItem("Grid") {
@@ -208,6 +207,8 @@ class SceneEditor(
             ))
         )
 
+        val footer = uiFactory.createMenuBarUI()
+
         // Panel for docking of windows
         dockingUI = DockingPanel()
         dockingUI.focusable = false
@@ -215,14 +216,13 @@ class SceneEditor(
         // Create root UI and perform initial update
         rootUI = VerticalPanel()
         rootUI.focusable = false
-        rootUI.addChildren(menuBar, dockingUI)
+        rootUI.addChildren(menuBar, dockingUI, footer)
         rootUI.updateLayout()
         rootUI.setLayoutClean()
 
         // Create default windows and insert into docking
         createInspectorWindow()
         createSceneSystemsPropertyWindow(engine)
-        createAssetWindow(engine)
         createOutlinerWindow(engine)
 
         // Load previous layout from file
@@ -238,7 +238,7 @@ class SceneEditor(
         val inspectorWindow = uiFactory.createWindowUI("Inspector", "CUBE")
         val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
         inspectorWindow.body.addChildren(propertyPanel)
-        dockingUI.insertLeft(inspectorWindow)
+        dockingUI.insertRight(inspectorWindow)
     }
 
     private fun createOutlinerWindow(engine: PulseEngine)
@@ -268,13 +268,7 @@ class SceneEditor(
 
         val window = uiFactory.createWindowUI(title = "Outliner", iconName = "LIST", onClosed = { outliner = null })
         window.body.addChildren(outliner!!.ui)
-
-        // Insert window into existing Inspector if available
-        val propWindow = dockingUI.findElementById("Inspector")
-        if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
-            dockingUI.insertInsideTop(target = propWindow as WindowPanel, window)
-        else
-            dockingUI.insertLeft(window)
+        dockingUI.insertLeft(window)
     }
 
     private fun createAssetWindow(engine: PulseEngine)
@@ -297,7 +291,12 @@ class SceneEditor(
         val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
         val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems", "GEARS")
         sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
-        dockingUI.insertRight(sceneSystemWindow)
+
+        val propWindow = dockingUI.findElementById("Inspector")
+        if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
+            dockingUI.insertInsideBottom(target = propWindow as WindowPanel, sceneSystemWindow)
+        else
+            dockingUI.insertRight(sceneSystemWindow)
     }
 
     private fun createViewportWindow(engine: PulseEngine)
@@ -1111,23 +1110,24 @@ class SceneEditor(
         val yEnd = (activeCamera.bottomRightWorldPosition.y.toInt() / cellSize + 1) * cellSize
 
         val middleLineSize = 2f / activeCamera.scale.x
-        val color = (activeCamera.scale.x + 0.2f).coerceIn(0.1f, 0.4f)
+        val alpha = (activeCamera.scale.x + 0.2f).coerceIn(0.1f, 0.4f)
+        val shade = 0.3f
 
-        surface.setDrawColor(1f, 1f, 1f, color + 0.1f)
+        surface.setDrawColor(shade, shade, shade, alpha + 0.1f)
         for (x in xStart until xEnd step cellSize)
             if (x != 0 && x % 3 == 0) surface.drawLine(x.toFloat(), yStart.toFloat(), x.toFloat(), yEnd.toFloat())
 
         for (y in yStart until yEnd step cellSize)
             if (y != 0 && y % 3 == 0) surface.drawLine(xStart.toFloat(), y.toFloat(), xEnd.toFloat(), y.toFloat())
 
-        surface.setDrawColor(1f, 1f, 1f, color)
+        surface.setDrawColor(shade, shade, shade, alpha)
         for (x in xStart until xEnd step cellSize)
             if (x != 0 && x % 3 != 0) surface.drawLine(x.toFloat(), yStart.toFloat(), x.toFloat(), yEnd.toFloat())
 
         for (y in yStart until yEnd step cellSize)
             if (y != 0 && y % 3 != 0) surface.drawLine(xStart.toFloat(), y.toFloat(), xEnd.toFloat(), y.toFloat())
 
-        surface.setDrawColor(1f, 1f, 1f, color + 0.2f)
+        surface.setDrawColor(shade, shade, shade, alpha + 0.2f)
         surface.drawTexture(Texture.BLANK, -middleLineSize, yStart.toFloat(), middleLineSize, (yEnd - yStart).toFloat())
         surface.drawTexture(Texture.BLANK, xStart.toFloat(), -middleLineSize, (xEnd - xStart).toFloat(), middleLineSize)
     }
