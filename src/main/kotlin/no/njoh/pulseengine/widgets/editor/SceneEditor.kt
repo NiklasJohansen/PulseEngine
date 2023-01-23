@@ -29,7 +29,6 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
-import no.njoh.pulseengine.core.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
@@ -42,6 +41,7 @@ import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.utils.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.widget.Widget
+import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.gui.elements.Button
 import no.njoh.pulseengine.modules.gui.layout.WindowPanel
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
@@ -72,6 +72,7 @@ class SceneEditor(
     private lateinit var dragAndDropArea: FocusArea
     private var entityPropertyUiRows = mutableMapOf<String, UiElement>()
     private var collapsedPropertyHeaders = mutableListOf<String>()
+    private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
     private var showGrid = true
     private var outliner: Outliner? = null
 
@@ -83,7 +84,6 @@ class SceneEditor(
     // Scene
     private var lastSceneHashCode = -1
     private val entitySelection = mutableListOf<SceneEntity>()
-    private var dragAndDropEntity: SceneEntity? = null
     private var sceneFileToLoad: String? = null
     private var sceneFileToCreate: String? = null
     private var sceneFileToSaveAs: String? = null
@@ -124,6 +124,7 @@ class SceneEditor(
     {
         // Load editor config
         engine.config.load("/pulseengine/config/editor_default.cfg")
+        UI_SCALE = engine.config.getFloat("uiScale") ?: engine.window.scale
 
         // Set editor data
         screenArea = FocusArea(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
@@ -168,12 +169,21 @@ class SceneEditor(
                 deleteEntitySelection(engine)
         }
 
+        // React on scale changes
+        engine.window.setOnScaleChanged()
+        {
+            createSceneEditorUI(engine)
+        }
+
         // Create and populate editor with UI
         createSceneEditorUI(engine)
     }
 
     private fun createSceneEditorUI(engine: PulseEngine)
     {
+        // Set UI scaling
+        UI_SCALE = engine.config.getFloat("uiScale") ?: engine.window.scale
+
         // Properties
         inspectorUI = RowPanel()
         systemPropertiesUI = RowPanel()
@@ -207,11 +217,13 @@ class SceneEditor(
             ))
         )
 
-        val footer = uiFactory.createMenuBarUI()
-
         // Panel for docking of windows
         dockingUI = DockingPanel()
         dockingUI.focusable = false
+
+        // Footer
+        val (footer, callback) = uiFactory.createFooter()
+        updateFooterCallback = callback
 
         // Create root UI and perform initial update
         rootUI = VerticalPanel()
@@ -221,24 +233,25 @@ class SceneEditor(
         rootUI.setLayoutClean()
 
         // Create default windows and insert into docking
-        createInspectorWindow()
         createSceneSystemsPropertyWindow(engine)
         createOutlinerWindow(engine)
+        createInspectorWindow()
 
         // Load previous layout from file
         if (shouldPersistEditorLayout)
             dockingUI.loadLayout(engine, "/editor_layout.cfg")
     }
 
-    private fun createInspectorWindow()
+    private fun createSceneSystemsPropertyWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElementById("Inspector") != null)
+        if (dockingUI.findElementById("Scene Systems") != null)
             return // Already exists
 
-        val inspectorWindow = uiFactory.createWindowUI("Inspector", "CUBE")
-        val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
-        inspectorWindow.body.addChildren(propertyPanel)
-        dockingUI.insertRight(inspectorWindow)
+        updateSceneSystemProperties(engine)
+        val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
+        val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems", "GEARS")
+        sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
+        dockingUI.insertRight(sceneSystemWindow)
     }
 
     private fun createOutlinerWindow(engine: PulseEngine)
@@ -271,32 +284,20 @@ class SceneEditor(
         dockingUI.insertLeft(window)
     }
 
-    private fun createAssetWindow(engine: PulseEngine)
+    private fun createInspectorWindow()
     {
-        if (dockingUI.findElementById("Assets") != null)
+        if (dockingUI.findElementById("Inspector") != null)
             return // Already exists
 
-        val assetWindow = uiFactory.createWindowUI("Assets", "IMAGE")
-        val assetPanel = uiFactory.createAssetPanelUI(engine) { createDragAndDropEntity(engine, it) }
-        assetWindow.body.addChildren(assetPanel)
-        dockingUI.insertBottom(assetWindow)
-    }
+        val inspectorWindow = uiFactory.createWindowUI("Inspector", "CUBE")
+        val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
+        inspectorWindow.body.addChildren(propertyPanel)
 
-    private fun createSceneSystemsPropertyWindow(engine: PulseEngine)
-    {
-        if (dockingUI.findElementById("Scene Systems") != null)
-            return // Already exists
-
-        updateSceneSystemProperties(engine)
-        val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
-        val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems", "GEARS")
-        sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
-
-        val propWindow = dockingUI.findElementById("Inspector")
+        val propWindow = dockingUI.findElementById("Outliner")
         if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
-            dockingUI.insertInsideBottom(target = propWindow as WindowPanel, sceneSystemWindow)
+            dockingUI.insertInsideBottom(target = propWindow as WindowPanel, inspectorWindow)
         else
-            dockingUI.insertRight(sceneSystemWindow)
+            dockingUI.insertLeft(inspectorWindow)
     }
 
     private fun createViewportWindow(engine: PulseEngine)
@@ -325,7 +326,6 @@ class SceneEditor(
         sceneFileToSaveAs?.let()
         {
             engine.scene.saveAs(fileName = it, updateActiveScene = true)
-            setWindowTitleFromSceneName(engine)
             sceneFileToSaveAs = null
         }
 
@@ -339,7 +339,6 @@ class SceneEditor(
         {
             resetUI()
             updateSceneSystemProperties(engine)
-            setWindowTitleFromSceneName(engine)
             initializeEntities(engine)
             outliner?.reloadEntitiesFromActiveScene()
             lastSceneHashCode = engine.scene.activeScene.hashCode()
@@ -370,7 +369,6 @@ class SceneEditor(
 
         handleEntityCopying(engine)
         handleEntitySelection(engine)
-        dragAndDropEntity?.handleEntityDragAndDrop(engine)
 
         if (isMoving)
         {
@@ -380,6 +378,12 @@ class SceneEditor(
             if (!isMoving)
                 entitySelection.forEachFast { it.onMovedScaledOrRotated(engine) }
         }
+
+        updateFooterCallback(
+            engine.scene.getAllEntitiesByType().sumOf { it.size },
+            entitySelection.size,
+            engine.scene.activeScene.fileName
+        )
 
         if (rootUI.width.value.toInt() != engine.window.width || rootUI.height.value.toInt() != engine.window.height)
             rootUI.setLayoutDirty()
@@ -704,27 +708,6 @@ class SceneEditor(
         updateEntityPropertiesPanel(::y.name, y)
     }
 
-    private fun SceneEntity.handleEntityDragAndDrop(engine: PulseEngine)
-    {
-        if (this !is Spatial) return
-
-        if (this !in entitySelection)
-            selectSingleEntity(engine, this)
-
-        engine.input.acquireFocus(dragAndDropArea)
-        this.x = engine.input.xWorldMouse
-        this.y = engine.input.yWorldMouse
-
-        if (!engine.input.isPressed(Mouse.LEFT))
-        {
-            dragAndDropEntity = null
-            engine.scene.activeScene.insertEntity(this)
-            updateEntityPropertiesPanel("id", this.id)
-            outliner?.addEntities(listOf(this))
-            this.onMovedScaledOrRotated(engine)
-        }
-    }
-
     private fun SceneEntity.handleEntityTransformation(engine: PulseEngine)
     {
         if (this !is Spatial) return
@@ -897,27 +880,6 @@ class SceneEditor(
             iconAngle += 360
 
         return iconAngle
-    }
-
-    private fun createDragAndDropEntity(engine: PulseEngine, texture: Texture)
-    {
-        if (dragAndDropEntity != null) return
-
-        val type = REGISTERED_TYPES
-            .find { it.memberProperties.any { prop -> prop.name == "textureName" } }
-            ?: REGISTERED_TYPES.firstOrNull()
-
-        type?.let { t ->
-            val entity = t.constructors.first().call()
-            if (entity !is Spatial)
-                return
-            entity.x = engine.input.xWorldMouse
-            entity.y = engine.input.yWorldMouse
-            entity.width = texture.width.toFloat()
-            entity.height = texture.height.toFloat()
-            entity.setPrimitiveProperty("textureName", texture.name)
-            dragAndDropEntity = entity
-        }
     }
 
     private fun createNewEntity(engine: PulseEngine, type: KClass<out SceneEntity>)
@@ -1217,7 +1179,6 @@ class SceneEditor(
 
     private fun resetUI()
     {
-        dragAndDropEntity = null
         isMoving = false
         isSelecting = false
         isCopying = false
@@ -1225,13 +1186,6 @@ class SceneEditor(
         isResizingVertically = false
         isResizingHorizontally = false
         clearEntitySelection()
-    }
-
-    private fun setWindowTitleFromSceneName(engine: PulseEngine)
-    {
-        engine.window.title = engine.window.title
-            .substringBeforeLast(" [")
-            .plus(" [${engine.scene.activeScene.fileName.removePrefix("/")}]")
     }
 
     override fun onDestroy(engine: PulseEngine)

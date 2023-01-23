@@ -6,10 +6,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.ScrollDirection
-import no.njoh.pulseengine.modules.gui.Size
-import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.modules.gui.*
 import no.njoh.pulseengine.modules.gui.UiUtil.firstElementOrNull
 import no.njoh.pulseengine.modules.gui.UiUtil.hasFocus
 import no.njoh.pulseengine.modules.gui.elements.*
@@ -49,8 +46,8 @@ class AssetPicker(
 
         scrollbar = Scrollbar(width = Size.absolute(10f), height).apply()
         {
-            cornerRadius = 2f
-            sliderPadding = 1.5f
+            cornerRadius = ScaledValue.of(2f)
+            sliderPadding = ScaledValue.of(1.5f)
             padding.setAll(2f)
             bind(rows, ScrollDirection.VERTICAL)
         }
@@ -60,8 +57,8 @@ class AssetPicker(
         searchInput = InputField("").apply()
         {
             placeHolderText = "Search ..."
-            cornerRadius = 4f
-            fontSize = 17f
+            cornerRadius = ScaledValue.of(4f)
+            fontSize = ScaledValue.of(17f)
             padding.setAll(5f)
         }
 
@@ -80,11 +77,11 @@ class AssetPicker(
             width = Size.absolute(300f),
             height = Size.absolute(400f)
         ).apply {
-            color = Color(1f, 1f, 1f)
+            color = Color.WHITE
             hidden = true
             resizable = true
-            minWidth = 100f
-            minHeight = 100f
+            minWidth = ScaledValue.of(100f)
+            minHeight = ScaledValue.of(100f)
             addChildren(
                 VerticalPanel().apply {
                     addChildren(
@@ -109,7 +106,7 @@ class AssetPicker(
             width = Size.absolute(10f),
             height = Size.absolute(10f)
         ).apply {
-            cornerRadius = 2f
+            cornerRadius = ScaledValue.of(2f)
         }
 
         val hPanelButton = HorizontalPanel().apply { addChildren(nameInput, previewButton) }
@@ -169,8 +166,8 @@ class AssetPicker(
         val isOnRightSide = x.value > root.x.value + root.width.value * 0.5f
         val isOnBottomSide = y.value > root.y.value + root.height.value * 0.5f
 
-        pickerWindow.padding.left = if (isOnRightSide) -pickerWindow.width.value + width.value else 0f
-        pickerWindow.padding.top = if (isOnBottomSide) -pickerWindow.height.value else height.value
+        pickerWindow.padding.left = ScaledValue.unscaled(if (isOnRightSide) -pickerWindow.width.value + width.value else 0f)
+        pickerWindow.padding.top = ScaledValue.unscaled(if (isOnBottomSide) -pickerWindow.height.value else height.value)
     }
 
     fun addAssetRow(asset: Asset, style: EditorStyle)
@@ -182,15 +179,15 @@ class AssetPicker(
             color = style.getColor("LABEL")
             iconCharacter = rowIconCharacter
             iconFontName = style.iconFontName
-            iconSize = 15f
+            iconSize = ScaledValue.of(15f)
             padding.setAll(5f)
         }
 
         val label = Label(asset.name).apply()
         {
             color = style.getColor("LABEL")
-            fontSize = 18f
-            padding.left = 0f
+            fontSize = ScaledValue.of(18f)
+            padding.left = ScaledValue.of(0f)
         }
 
         val image = if (asset is Texture)
@@ -213,7 +210,7 @@ class AssetPicker(
                 color = style.getColor("LABEL")
                 iconCharacter = if (asset is Font) "Abc" else rowIconCharacter
                 iconFontName = if (asset is Font) asset.name else style.iconFontName
-                iconSize = 20f
+                iconSize = ScaledValue.of(20f)
                 padding.setAll(5f)
             }
         }

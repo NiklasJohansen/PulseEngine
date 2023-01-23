@@ -10,6 +10,7 @@ import no.njoh.pulseengine.modules.gui.UiUtil.getRequiredHorizontalSpace
 import no.njoh.pulseengine.modules.gui.elements.ResizeBarGizmo
 import no.njoh.pulseengine.modules.gui.UiElement
 import no.njoh.pulseengine.core.shared.utils.Extensions.sumByFloat
+import no.njoh.pulseengine.modules.gui.minus
 import kotlin.math.max
 import kotlin.math.min
 
@@ -37,7 +38,7 @@ class HorizontalResizeGizmo(
 
             val totalWidth = leftChild.width.value + rightChild.width.value
             var leftMinWidth = max(leftChild.actualMinWidth(), totalWidth - rightChild.maxWidth)
-            var leftMaxWidth = min(leftChild.maxWidth, totalWidth - rightChild.actualMinWidth())
+            var leftMaxWidth = min(leftChild.maxWidth.value, totalWidth - rightChild.actualMinWidth())
 
             if (leftMinWidth > leftMaxWidth)
             {
@@ -87,8 +88,8 @@ class HorizontalResizeGizmo(
     private fun UiElement.actualMinWidth(): Float = when (this)
     {
         is HorizontalPanel -> children.sumByFloat { it.getRequiredHorizontalSpace() }
-        is VerticalPanel -> children.maxOfOrNull { it.getRequiredHorizontalSpace() } ?: minWidth
-        else -> minWidth
+        is VerticalPanel -> children.maxOfOrNull { it.getRequiredHorizontalSpace() } ?: minWidth.value
+        else -> minWidth.value
     }
 
     override fun onUpdate(engine: PulseEngine) { }

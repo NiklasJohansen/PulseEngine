@@ -2,17 +2,15 @@ package no.njoh.pulseengine.modules.gui.layout.docking
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.Position.PositionType
 import no.njoh.pulseengine.modules.gui.Position.PositionType.*
-import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.Size.ValueType.*
 import no.njoh.pulseengine.modules.gui.Size.ValueType.AUTO
 import no.njoh.pulseengine.modules.gui.UiUtil.findElementById
-import no.njoh.pulseengine.modules.gui.UiElement
 import no.njoh.pulseengine.modules.gui.layout.*
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.sumByFloat
+import no.njoh.pulseengine.modules.gui.*
 import kotlin.math.min
 
 /**
@@ -319,15 +317,15 @@ class DockingPanel(
     {
         if (this is VerticalPanel)
         {
-            this.minWidth = this.children.maxOfOrNull { it.minWidth + it.padding.left + it.padding.right } ?: this.minWidth
-            this.minHeight = this.children.sumByFloat { it.minHeight + it.padding.top + it.padding.bottom }
-            this.parent?.setMinSizeFromChildren()
+            minWidth = ScaledValue.of(children.maxOfOrNull { it.minWidth + it.padding.left + it.padding.right } ?: minWidth.value)
+            minHeight = ScaledValue.of(children.sumByFloat { it.minHeight + it.padding.top + it.padding.bottom })
+            parent?.setMinSizeFromChildren()
         }
         else if (this is HorizontalPanel)
         {
-            this.minWidth = this.children.sumByFloat { it.minWidth + it.padding.left + it.padding.right }
-            this.minHeight = this.children.maxOfOrNull { it.minHeight + it.padding.top + it.padding.bottom } ?: this.minHeight
-            this.parent?.setMinSizeFromChildren()
+            minWidth = ScaledValue.of(children.sumByFloat { it.minWidth + it.padding.left + it.padding.right })
+            minHeight = ScaledValue.of(children.maxOfOrNull { it.minHeight + it.padding.top + it.padding.bottom } ?: minHeight.value)
+            parent?.setMinSizeFromChildren()
         }
     }
 

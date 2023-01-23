@@ -4,9 +4,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Size
-import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.modules.gui.*
 
 open class Icon(
     x: Position = Position.auto(),
@@ -20,7 +18,7 @@ open class Icon(
     var color = Color.WHITE
     var iconFontName = ""
     var iconCharacter = ""
-    var iconSize = 15f
+    var iconSize = ScaledValue.of(15f)
 
     override fun onUpdate(engine: PulseEngine) { }
 
@@ -33,7 +31,7 @@ open class Icon(
             x = x.value + width.value * 0.5f,
             y = y.value + height.value * 0.5f,
             font = iconFont,
-            fontSize = iconSize,
+            fontSize = iconSize.value,
             xOrigin = 0.5f,
             yOrigin = 0.5f
         )

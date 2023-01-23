@@ -6,13 +6,12 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.input.Input
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Size
-import no.njoh.pulseengine.modules.gui.UiElement
 import no.njoh.pulseengine.modules.gui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.modules.gui.*
+import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
@@ -37,13 +36,13 @@ class InputField (
     var selectionColor = Color(0.2f, 0.4f, 1f, 0.9f)
     var invalidTextColor = Color(227, 108, 60)
     var font = Font.DEFAULT
-    var fontSize = 24f
-    var leftTextPadding = 10
-    var cornerRadius = 0f
-    var contentType = TEXT
-    var numberStepperWidth = 30
+    var fontSize = ScaledValue.of(24f)
     var numberMinVal = Float.NEGATIVE_INFINITY
     var numberMaxVal = Float.POSITIVE_INFINITY
+    var contentType = TEXT
+    var leftTextPadding = ScaledValue.of(10f)
+    var cornerRadius = ScaledValue.of(0f)
+    var numberStepperWidth = ScaledValue.of(30f)
 
     var placeHolderText = ""
     var text: String
@@ -127,7 +126,7 @@ class InputField (
         val isMouseInsideNumberStepper =
             (contentType == INTEGER || contentType == FLOAT) &&
             mouseInsideArea &&
-            engine.input.xMouse > x.value + width.value - numberStepperWidth
+            engine.input.xMouse > x.value + width.value - numberStepperWidth.value
 
         if (engine.input.isPressed(Mouse.LEFT) && editable)
         {
@@ -448,7 +447,7 @@ class InputField (
 
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
-        val charsPerLine = getNumberOfChars(width.value - leftTextPadding)
+        val charsPerLine = getNumberOfChars(width.value - leftTextPadding.value)
         val hasText = inputText.isNotEmpty()
         var text = if (hasText) inputText.toString() else placeHolderText
         var inputCursor = inputCursor
@@ -469,7 +468,7 @@ class InputField (
 
         // Draw input box rectangle
         surface.setDrawColor(if (isMouseOver && !hasFocus) bgColorHover else bgColor)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
 
         if (hasFocus && strokeColor.alpha > 0f)
         {
@@ -483,7 +482,7 @@ class InputField (
         if (!isValid)
         {
             surface.setDrawColor(invalidTextColor)
-            surface.drawTexture(Texture.BLANK, x.value + cornerRadius, y.value + height.value - 2, width.value - cornerRadius * 2, 2f)
+            surface.drawTexture(Texture.BLANK, x.value + cornerRadius.value, y.value + height.value - 2, width.value - cornerRadius.value * 2, 2f)
         }
 
         // Draw selection rectangle
@@ -500,15 +499,15 @@ class InputField (
             val selectionWidth = getTextWidth(selectedOnScreenText) * sign(length.toFloat())
 
             surface.setDrawColor(selectionColor)
-            surface.drawTexture(Texture.BLANK,x.value + leftTextPadding + cursorStart, y.value + height.value / 2, selectionWidth, fontSize, yOrigin = 0.5f)
+            surface.drawTexture(Texture.BLANK,x.value + leftTextPadding.value + cursorStart, y.value + height.value / 2, selectionWidth, fontSize.value, yOrigin = 0.5f)
         }
 
         // Draw cursor
         if (hasFocus && System.currentTimeMillis() % 1000 > 500)
         {
-            val xCursor = x.value + leftTextPadding + cursorStart
+            val xCursor = x.value + leftTextPadding.value + cursorStart
             val yCursorCenter = y.value + height.value / 2f
-            val cursorHeight = fontSize / 2.5f
+            val cursorHeight = fontSize.value / 2.5f
 
             surface.setDrawColor(textColor)
             surface.drawLine(xCursor, yCursorCenter - cursorHeight, xCursor, yCursorCenter + cursorHeight)
@@ -516,14 +515,16 @@ class InputField (
 
         // Draw input text
         surface.setDrawColor(if (hasText) textColor else placeHolderTextColor)
-        surface.drawText(text, x.value + leftTextPadding, y.value + height.value / 2f, font, fontSize, yOrigin = 0.5f)
+        surface.drawText(text, x.value + leftTextPadding.value, y.value + height.value / 2f, font, fontSize.value, yOrigin = 0.5f)
 
         if ((contentType == INTEGER || contentType == FLOAT) && width.value > 50f && editable)
         {
-            val xArrow = x.value + width.value - numberStepperWidth / 2
+            val xArrow = x.value + width.value - numberStepperWidth.value / 2
             val yArrow = y.value + height.value / 2
-            drawArrow(xArrow, yArrow - 5f, 6f, 6f, surface, textColor, -2.5f)
-            drawArrow(xArrow, yArrow + 5f, 6f, 6f, surface, textColor, 2.5f)
+            val size = 6f * UI_SCALE
+            val offset = 5f * UI_SCALE
+            drawArrow(xArrow, yArrow - offset, size, size, surface, textColor, -2.5f)
+            drawArrow(xArrow, yArrow + offset, size, size, surface, textColor, 2.5f)
         }
     }
 
@@ -591,10 +592,10 @@ class InputField (
     }
 
     private fun getTextWidth(text: String): Float
-        = font.getWidth(text, fontSize)
+        = font.getWidth(text, fontSize.value)
 
     private fun getNumberOfChars(availableWidth: Float): Int
-        = max(1f, availableWidth / (fontSize / 2f)).toInt()
+        = max(1f, availableWidth / (fontSize.value / 2f)).toInt()
 
     private fun getSelectedText(): String = when
     {

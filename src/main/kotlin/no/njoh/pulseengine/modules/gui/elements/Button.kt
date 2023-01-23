@@ -6,9 +6,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Size
-import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.modules.gui.*
 
 open class Button(
     x: Position = Position.auto(),
@@ -29,14 +27,14 @@ open class Button(
 
     var textureAssetName: String? = null
     var textureScale = 1f
-    var cornerRadius = 0f
+    var cornerRadius = ScaledValue.of(0f)
     var xOrigin = 0.5f
     var yOrigin = 0.5f
 
-    var iconFontName: String? = null
-    var iconSize = 15f
-    var iconCharacter: String? = null
     var pressedIconCharacter: String? = null
+    var iconFontName: String? = null
+    var iconCharacter: String? = null
+    var iconSize = ScaledValue.of(15f)
 
     private var onClickedCallback: (Button) -> Unit = { }
     private var isMouseOver = false
@@ -82,7 +80,7 @@ open class Button(
         if (bgColor.alpha != 0f)
         {
             surface.setDrawColor(bgColor)
-            surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
+            surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
         }
 
         val character = if (isPressed) pressedIconCharacter ?: iconCharacter else iconCharacter
@@ -95,7 +93,7 @@ open class Button(
                 x = x.value + width.value * xOrigin,
                 y = y.value + height.value * yOrigin,
                 font = iconFont,
-                fontSize = iconSize,
+                fontSize = iconSize.value,
                 xOrigin = 0.5f,
                 yOrigin = 0.5f
             )
@@ -119,12 +117,12 @@ open class Button(
             texHeight *= textureScale
 
             surface.setDrawColor(color)
-            surface.drawTexture(texture, xCenter, yCenter, texWidth, texHeight, 0f, 0.5f, 0.5f, cornerRadius)
+            surface.drawTexture(texture, xCenter, yCenter, texWidth, texHeight, 0f, 0.5f, 0.5f, cornerRadius.value)
             return
         }
 
         // Draw filled shape as fallback
         surface.setDrawColor(color)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
     }
 }

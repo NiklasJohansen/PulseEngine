@@ -21,14 +21,14 @@ class Scrollbar(
     var sliderColor = Color.WHITE
     var sliderColorHover = Color.WHITE
     var bgColor = Color.BLANK
-    var cornerRadius = 0f
     var sliderLengthFraction = 0.1f
-    var sliderPadding = 0f
-    var minSliderLength = 16f
+    var sliderPadding = ScaledValue.of(0f)
+    var minSliderLength = ScaledValue.of(16f)
+    var scrollDistance = ScaledValue.of(50f)
+    var cornerRadius = ScaledValue.of(0f)
     var sliderFraction = 0f
         private set
 
-    var scrollDistance = 50f
     var scrollDirection = VERTICAL
     var scrollable: Scrollable? = null
 
@@ -141,11 +141,11 @@ class Scrollbar(
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         surface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue, bgColor.alpha)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
 
         val sliderColor = if (isMouseOverSlider || sliderGrabbed) sliderColorHover else sliderColor
         surface.setDrawColor(sliderColor.red, sliderColor.green, sliderColor.blue, sliderColor.alpha)
-        surface.drawTexture(Texture.BLANK, xSlider, ySlider, sliderWidth, sliderHeight, cornerRadius = cornerRadius)
+        surface.drawTexture(Texture.BLANK, xSlider, ySlider, sliderWidth, sliderHeight, cornerRadius = cornerRadius.value)
     }
 
     override fun updateChildLayout()

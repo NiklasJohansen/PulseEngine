@@ -6,9 +6,7 @@ import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Size
-import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.modules.gui.*
 import no.njoh.pulseengine.modules.gui.UiUtil.hasFocus
 import no.njoh.pulseengine.modules.gui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.gui.layout.Panel
@@ -49,9 +47,9 @@ class ColorPicker(
             hueColor,
             width = Size.absolute(30f)
         ).apply {
-            padding.right = 5f
-            padding.top = 5f
-            padding.bottom = 5f
+            padding.right = ScaledValue.of(5f)
+            padding.top = ScaledValue.of(5f)
+            padding.bottom = ScaledValue.of(5f)
             hue = hueValue
         }
 
@@ -62,9 +60,9 @@ class ColorPicker(
             height = Size.absolute(140f)
         ).apply {
             strokeColor = Color(0f, 0f, 0f)
-            padding.left = 5f
-            padding.top = 5f
-            padding.bottom = 5f
+            padding.left = ScaledValue.of(5f)
+            padding.top = ScaledValue.of(5f)
+            padding.bottom = ScaledValue.of(5f)
             updateFrom(outputColor)
         }
 
@@ -83,9 +81,9 @@ class ColorPicker(
         alphaInput = InputField((outputColor.alpha * 255f).toInt().toString(), width = Size.absolute(100f))
 
         rgbaSection = VerticalPanel().apply {
-            padding.left = 5f
-            padding.right = 5f
-            padding.bottom = 5f
+            padding.left = ScaledValue.of(5f)
+            padding.right = ScaledValue.of(5f)
+            padding.bottom = ScaledValue.of(5f)
             addChildren(
                 create("Red", redInput),
                 create("Green", greenInput),
@@ -100,8 +98,8 @@ class ColorPicker(
             color = Color(1f, 1f, 1f)
             hidden = true
             resizable = false
-            minWidth = 100f
-            minHeight = 100f
+            minWidth = ScaledValue.of(100f)
+            minHeight = ScaledValue.of(100f)
             addChildren(
                 VerticalPanel().apply {
                     addChildren(hsbSection, rgbaSection)
@@ -114,18 +112,18 @@ class ColorPicker(
         hexInput = InputField(outputColor.toHexString()).apply {
             contentType = InputField.ContentType.HEX_COLOR
             bgColor = Color.BLANK
-            cornerRadius = 2f
+            cornerRadius = ScaledValue.of(2f)
         }
 
         colorPreviewButton = Button(
             width = Size.absolute(10f),
             height = Size.absolute(10f)
         ).apply {
-            cornerRadius = 2f
+            cornerRadius = ScaledValue.of(2f)
             addChildren(
                 Panel().apply {
                     focusable = false
-                    cornerRadius = 2f
+                    cornerRadius = ScaledValue.of(2f)
                     color = outputColor
                     padding.setAll(5f)
                 }
@@ -134,7 +132,7 @@ class ColorPicker(
 
         val hPanelButton = HorizontalPanel().apply()
         {
-            cornerRadius = 2f
+            cornerRadius = ScaledValue.of(2f)
             color = bgColor
             addChildren(hexInput, colorPreviewButton)
         }
@@ -146,19 +144,19 @@ class ColorPicker(
 
     private fun create(labelText: String, inputField: InputField) =
         HorizontalPanel().apply {
-            padding.top = 5f
-            padding.left = 5f
-            padding.right = 5f
+            padding.top = ScaledValue.of(5f)
+            padding.left = ScaledValue.of(5f)
+            padding.right = ScaledValue.of(5f)
             addChildren(
                 Label(labelText).apply {
-                    fontSize = 20f
-                    padding.left = 5f
+                    fontSize = ScaledValue.of(20f)
+                    padding.left = ScaledValue.of(5f)
                 },
                 inputField.apply {
                     contentType = InputField.ContentType.INTEGER
                     numberMinVal = 0f
                     numberMaxVal = 255f
-                    cornerRadius = 2f
+                    cornerRadius = ScaledValue.of(2f)
                 }
             )
         }
@@ -259,14 +257,14 @@ class ColorPicker(
         val isOnRightSide = x.value > root.x.value + root.width.value * 0.5f
         val isOnBottomSide = y.value > root.y.value + root.height.value * 0.5f
 
-        colorEditor.padding.left = if (isOnRightSide) -colorEditor.width.value + width.value else 0f
-        colorEditor.padding.top = if (isOnBottomSide) -colorEditor.height.value else height.value
+        colorEditor.padding.left = ScaledValue.unscaled(if (isOnRightSide) -colorEditor.width.value + width.value else 0f)
+        colorEditor.padding.top = ScaledValue.unscaled(if (isOnBottomSide) -colorEditor.height.value else height.value)
     }
 
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         surface.setDrawColor(bgColor)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
     }
 
     private fun String.toColor() =

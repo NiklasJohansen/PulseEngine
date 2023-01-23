@@ -4,6 +4,7 @@ import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.Size.ValueType.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.sumIf
+import no.njoh.pulseengine.modules.gui.plus
 import kotlin.math.max
 
 class VerticalPanel(

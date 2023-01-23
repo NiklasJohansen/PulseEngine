@@ -28,7 +28,7 @@ open class Scene(
     val entityTypeMap = createEntityTypeMap(entities)
 
     @JsonIgnore
-    internal var fileName: String = "$name.scn"
+    var fileName: String = "$name.scn"
 
     @JsonIgnore
     internal var fileFormat: FileFormat = JSON

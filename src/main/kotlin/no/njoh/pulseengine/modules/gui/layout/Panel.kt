@@ -4,9 +4,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Size
-import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.modules.gui.*
 
 open class Panel(
     x: Position = Position.auto(),
@@ -22,7 +20,7 @@ open class Panel(
     var strokeLeft = true
     var strokeRight = true
     var texture: Texture? = null
-    var cornerRadius = 0f
+    var cornerRadius = ScaledValue.of(0f)
 
     override fun onUpdate(engine: PulseEngine) { }
 
@@ -31,7 +29,7 @@ open class Panel(
         if (color.alpha != 0f)
         {
             surface.setDrawColor(color)
-            surface.drawTexture(texture ?: Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
+            surface.drawTexture(texture ?: Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
         }
 
         if (strokeColor != null && strokeColor!!.alpha != 0f)

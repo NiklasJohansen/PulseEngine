@@ -1,18 +1,22 @@
 package no.njoh.pulseengine.core.window
 
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWErrorCallback
+import org.lwjgl.glfw.GLFWWindowContentScaleCallback
 import org.lwjgl.glfw.GLFWWindowSizeCallback
 import org.lwjgl.system.MemoryUtil
+import kotlin.math.max
 
 open class WindowImpl : WindowInternal
 {
     // Exposed properties
     override var windowHandle : Long = MemoryUtil.NULL
     override var screenMode: ScreenMode = ScreenMode.WINDOWED
-    override var width: Int = 800
-    override var height: Int = 600
+    override var width = 800
+    override var height = 600
+    override var scale = 1f
     override var wasResized: Boolean = false
     override var title: String = ""
         set(value) {
@@ -21,9 +25,10 @@ open class WindowImpl : WindowInternal
         }
 
     // Internal properties
+    private var scaleChangeCallbacks = mutableListOf<(Float) -> Unit>()
     private var resizeCallBack: (width: Int, height: Int, windowRecreated: Boolean) -> Unit = { _, _, _ -> }
-    private var windowedWidth: Int = 800
-    private var windowedHeight: Int = 600
+    private var windowedWidth = 800
+    private var windowedHeight = 600
 
     override fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
     {
@@ -69,6 +74,7 @@ open class WindowImpl : WindowInternal
 
         this.windowHandle = newWindowHandle
         this.title = gameName
+        this.scale = getMonitorScaling()
 
         if (screenMode == ScreenMode.WINDOWED)
         {
@@ -86,6 +92,19 @@ open class WindowImpl : WindowInternal
                     this@WindowImpl.height = height
                     resizeCallBack(width, height, false)
                     wasResized = true
+                }
+            }
+        })
+
+        glfwSetWindowContentScaleCallback(windowHandle, object : GLFWWindowContentScaleCallback()
+        {
+            override fun invoke(window: Long, xScale: Float, yScale: Float)
+            {
+                val newScale = max(xScale, yScale)
+                if (newScale != scale)
+                {
+                    scale = newScale
+                    scaleChangeCallbacks.forEachFast { it(newScale) }
                 }
             }
         })
@@ -127,6 +146,11 @@ open class WindowImpl : WindowInternal
         glfwTerminate()
     }
 
+    override fun setOnScaleChanged(callback: (scale: Float) -> Unit)
+    {
+        scaleChangeCallbacks.add(callback)
+    }
+
     private fun getWindowMonitor(): Long
     {
         if (windowHandle == MemoryUtil.NULL)
@@ -161,4 +185,11 @@ open class WindowImpl : WindowInternal
         glfwGetMonitors()?.let {
             monitors -> 0.until(monitors.limit()).mapNotNull { monitors[it] }
         } ?: emptyList()
+
+    private fun getMonitorScaling(): Float {
+        val xScale = FloatArray(1)
+        val yScale = FloatArray(1)
+        glfwGetMonitorContentScale(getWindowMonitor(), xScale, yScale)
+        return max(xScale[0], yScale[0])
+    }
 }

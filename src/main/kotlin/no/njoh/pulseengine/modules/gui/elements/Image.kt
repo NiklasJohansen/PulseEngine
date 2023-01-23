@@ -17,8 +17,8 @@ open class Image(
 
     init { focusable = false }
 
-    var bgColor = Color(1f, 1f, 1f, 0f)
-    var tint = Color(1f, 1f, 1f)
+    var bgColor = Color.BLANK
+    var tint = Color.WHITE
     var texture: Texture? = null
     var textureAssetName: String? = null
     var textureScale = 1f

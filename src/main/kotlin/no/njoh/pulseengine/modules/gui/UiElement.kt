@@ -34,16 +34,16 @@ abstract class UiElement(
     val area = FocusArea(0f, 0f, 0f, 0f)
 
     /** The minimum width this element can have. */
-    open var minWidth = 0f
+    open var minWidth = ScaledValue.of(0f)
 
     /** The minimum height this element can have. */
-    open var minHeight = 0f
+    open var minHeight = ScaledValue.of(0f)
 
     /** The maximum width this element can have. */
-    open var maxWidth = 10000f
+    open var maxWidth = ScaledValue.of(10000f)
 
     /** The minimum heihgt this element can have. */
-    open var maxHeight = 10000f
+    open var maxHeight = ScaledValue.of(10000f)
 
     /** True if this element should capture input focus. */
     open var focusable = true
@@ -189,8 +189,8 @@ abstract class UiElement(
 
     fun updateLayout()
     {
-        width.setQuiet(width.value.coerceIn(minWidth, maxWidth))
-        height.setQuiet(height.value.coerceIn(minHeight, maxHeight))
+        width.setQuiet(width.value.coerceIn(minWidth.value, maxWidth.value))
+        height.setQuiet(height.value.coerceIn(minHeight.value, maxHeight.value))
         updateFocusArea()
         updateChildLayout()
         updatePopupLayout()
@@ -239,8 +239,8 @@ abstract class UiElement(
 
     private fun alignWithin(xPos: Float, yPos: Float, availableWidth: Float, availableHeight: Float)
     {
-        val newWidth = width.calculate(availableWidth - (padding.left + padding.right)).coerceIn(minWidth, maxWidth)
-        val newHeight = height.calculate(availableHeight - (padding.top + padding.bottom)).coerceIn(minHeight, maxHeight)
+        val newWidth = width.calculate(availableWidth - (padding.left + padding.right)).coerceIn(minWidth.value, maxWidth.value)
+        val newHeight = height.calculate(availableHeight - (padding.top + padding.bottom)).coerceIn(minHeight.value, maxHeight.value)
         val xNew = x.calculate(minVal = xPos + padding.left, maxVal = xPos + availableWidth - newWidth)
         val yNew = y.calculate(minVal = yPos + padding.top, maxVal = yPos + availableHeight - newHeight)
 
