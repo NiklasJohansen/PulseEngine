@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SpatialGrid.Companion.nextQueryId
 import no.njoh.pulseengine.core.shared.primitives.HitResult
 import no.njoh.pulseengine.core.shared.primitives.SwapList
@@ -102,7 +103,7 @@ abstract class SceneManager
      * Returns the [SceneEntity] with the given [id].
      */
     fun getEntity(id: Long): SceneEntity? =
-        activeScene.entityIdMap[id]
+        if (id != INVALID_ID) activeScene.entityIdMap[id] else null
 
     /**
      * Returns the [SceneEntity] with the given [id] that is of type [T].

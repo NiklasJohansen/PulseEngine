@@ -169,6 +169,12 @@ class InputField (
         }
     }
 
+    override fun handleKeyPress(key: Key)
+    {
+        // Capture key presses when focused
+        if (!hasFocus) parent?.handleKeyPress(key)
+    }
+
     private fun handleTextEditing(input: Input)
     {
         ///////////////////////////////// Add new text to text box /////////////////////////////////

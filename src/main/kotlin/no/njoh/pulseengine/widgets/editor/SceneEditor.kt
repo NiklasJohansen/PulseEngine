@@ -20,7 +20,7 @@ import no.njoh.pulseengine.modules.gui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.gui.layout.docking.DockingPanel
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
-import no.njoh.pulseengine.core.input.Key.DELETE
+import no.njoh.pulseengine.core.input.Key.*
 import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneEntity
@@ -369,15 +369,7 @@ class SceneEditor(
 
         handleEntityCopying(engine)
         handleEntitySelection(engine)
-
-        if (isMoving)
-        {
-            engine.input.setCursor(MOVE)
-            entitySelection.forEachFast { it.handleEntityMoving(engine) }
-
-            if (!isMoving)
-                entitySelection.forEachFast { it.onMovedScaledOrRotated(engine) }
-        }
+        handleEntityMoving(engine)
 
         updateFooterCallback(
             engine.scene.getAllEntitiesByType().sumOf { it.size },
@@ -534,69 +526,88 @@ class SceneEditor(
 
     private fun handleEntityCopying(engine: PulseEngine)
     {
-        if (engine.input.isPressed(Key.LEFT_CONTROL))
+        if (!engine.input.isPressed(Key.LEFT_CONTROL) || !engine.input.isPressed(Key.D))
         {
-            if (isMoving && !isCopying)
+            isCopying = false
+            return
+        }
+
+        if (!isMoving || isCopying)
+            return
+
+        val copies = entitySelection.map { it.createCopy() }.toMutableList()
+        val insertedCopies = mutableListOf<SceneEntity>()
+        val idMapping = mutableMapOf<Long, Long>()
+
+        // Insert copied entities in order of parents before children
+        while (copies.isNotEmpty())
+        {
+            val copiesLeft = copies.size
+            for (copy in copies)
             {
-                val copies = entitySelection.map { it.createCopy() }.toMutableList()
-                val insertedCopies = mutableListOf<SceneEntity>()
-                val idMapping = mutableMapOf<Long, Long>()
-
-                // Insert copied entities in order of parents before children
-                while (copies.isNotEmpty())
+                if (copies.none { it.id == copy.parentId })
                 {
-                    val copiesLeft = copies.size
-                    for (copy in copies)
-                    {
-                        if (copies.none { it.id == copy.parentId })
-                        {
-                            copy.childIds = null
-                            copy.parentId = idMapping[copy.parentId] ?: copy.parentId
-                            copy.setNot(SELECTED)
-                            val lastId = copy.id
-                            val newId = engine.scene.addEntity(copy)
-                            idMapping[lastId] = newId
-                            copies.remove(copy)
-                            insertedCopies.add(copy)
-                            break
-                        }
-                    }
-
-                    if (copiesLeft == copies.size)
-                    {
-                        Logger.error("Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}")
-                        return
-                    }
+                    copy.childIds = null
+                    copy.parentId = idMapping[copy.parentId] ?: copy.parentId
+                    copy.setNot(SELECTED)
+                    val lastId = copy.id
+                    val newId = engine.scene.addEntity(copy)
+                    idMapping[lastId] = newId
+                    copies.remove(copy)
+                    insertedCopies.add(copy)
+                    break
                 }
+            }
 
-                // Handle fields annotated with EntityRef
-                for (entity in insertedCopies)
-                {
-                    for (prop in entity::class.memberProperties)
-                    {
-                        if (prop is KMutableProperty<*> && prop.name != "parent" && prop.name != "childIds" && prop.hasAnnotation<EntityRef>())
-                        {
-                            val ref = prop.getter.call(entity)
-                            if (ref is Long)
-                                idMapping[ref]?.let { newRef -> prop.setter.call(entity, newRef) }
-                            else if (ref is LongArray && ref.isNotEmpty())
-                                prop.setter.call(entity, LongArray(ref.size) { idMapping[ref[it]] ?: ref[it] })
-                        }
-                    }
-                }
-
-                outliner?.addEntities(insertedCopies)
-                isCopying = true
+            if (copiesLeft == copies.size)
+            {
+                Logger.error("Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}")
+                return
             }
         }
-        else isCopying = false
+
+        // Handle fields annotated with EntityRef
+        for (entity in insertedCopies)
+        {
+            for (prop in entity::class.memberProperties)
+            {
+                if (prop is KMutableProperty<*> && prop.name != "parent" && prop.name != "childIds" && prop.hasAnnotation<EntityRef>())
+                {
+                    val ref = prop.getter.call(entity)
+                    if (ref is Long)
+                    {
+                        idMapping[ref]?.let { newRef -> prop.setter.call(entity, newRef) }
+                    }
+                    else if (ref is LongArray && ref.isNotEmpty())
+                    {
+                        prop.setter.call(entity, LongArray(ref.size) { idMapping[ref[it]] ?: ref[it] })
+                    }
+                }
+            }
+        }
+
+        outliner?.addEntities(insertedCopies)
+        isCopying = true
     }
 
     private fun handleEntitySelection(engine: PulseEngine)
     {
+        // Select all with CTRL + A
+        if (engine.input.wasClicked(A) && engine.input.isPressed(LEFT_CONTROL))
+        {
+            clearEntitySelection()
+            engine.scene.forEachEntity()
+            {
+                it.set(SELECTED)
+                entitySelection.add(it)
+            }
+            outliner?.selectEntities(entitySelection)
+        }
+
         val xMouse = engine.input.xWorldMouse
         val yMouse = engine.input.yWorldMouse
 
+        // Select / deselect single entity
         if (engine.input.wasClicked(Mouse.LEFT))
         {
             // Select entity
@@ -615,13 +626,32 @@ class SceneEditor(
 
                 closestEntity?.let()
                 {
-                    if (it !in entitySelection)
+                    val isInSelection = (it in entitySelection)
+                    if (engine.input.isPressed(LEFT_CONTROL))
+                    {
+                        if (isInSelection) removeEntityFromSelection(it) else addEntityToSelection(it)
+
+                        if (entitySelection.size == 1)
+                        {
+                            selectSingleEntity(engine, entitySelection.first())
+                        }
+                        else
+                        {
+                            inspectorUI.clearChildren()
+                            entityPropertyUiRows.clear()
+                            outliner?.selectEntities(entitySelection)
+                        }
+                    }
+                    else if (!isInSelection)
+                    {
                         selectSingleEntity(engine, it)
+                    }
                     isMoving = true
                 }
             }
         }
 
+        // Start multi selection
         if (engine.input.isPressed(Mouse.LEFT))
         {
             if (!isMoving && !isRotating && !isResizingVertically && !isResizingHorizontally)
@@ -639,6 +669,7 @@ class SceneEditor(
         }
         else isSelecting = false
 
+        // Multi selection
         if (isSelecting)
         {
             val xStart = min(xStartSelect, xEndSelect)
@@ -647,13 +678,24 @@ class SceneEditor(
             val height  = abs(yEndSelect - yStartSelect)
             val selectedEntity = entitySelection.firstOrNull()
             val prevEntityCount = entitySelection.size
-            entitySelection.forEachFast { it.setNot(SELECTED) }
-            entitySelection.clear()
+
+            if (!engine.input.isPressed(LEFT_CONTROL))
+            {
+                // Reset selection only if CTRL is not pressed
+                entitySelection.forEachFast { it.setNot(SELECTED) }
+                entitySelection.clear()
+            }
 
             engine.scene.forEachEntity()
             {
-                if (it.isSet(EDITABLE) && it.isNot(HIDDEN) && it is Spatial && it.isOverlapping(xStart, yStart, width, height))
+                if (it.isSet(EDITABLE) &&
+                    it.isNot(HIDDEN) &&
+                    it.isNot(SELECTED) &&
+                    it is Spatial &&
+                    it.isOverlapping(xStart, yStart, width, height)
+                ) {
                     addEntityToSelection(it)
+                }
             }
 
             if (entitySelection.size == 1)
@@ -668,14 +710,18 @@ class SceneEditor(
                     outliner?.selectEntities(entitySelection)
             }
         }
+    }
 
+    private fun handleEntityMoving(engine: PulseEngine)
+    {
+        // Nudge with arrow keys
         var xMove = 0f
         var yMove = 0f
-        if (engine.input.wasClicked(Key.UP)) yMove -= 1
-        if (engine.input.wasClicked(Key.DOWN)) yMove += 1
-        if (engine.input.wasClicked(Key.LEFT)) xMove -= 1
-        if (engine.input.wasClicked(Key.RIGHT)) xMove += 1
-        if (xMove != 0f || yMouse != 0f)
+        if (engine.input.wasClicked(UP)) yMove -= 1
+        if (engine.input.wasClicked(DOWN)) yMove += 1
+        if (engine.input.wasClicked(LEFT)) xMove -= 1
+        if (engine.input.wasClicked(RIGHT)) xMove += 1
+        if (xMove != 0f || yMove != 0f)
         {
             entitySelection.forEachFast()
             {
@@ -684,28 +730,33 @@ class SceneEditor(
                     it.x += xMove
                     it.y += yMove
                     it.set(POSITION_UPDATED)
+                    updateEntityPropertiesPanel(it::x.name, it.x)
+                    updateEntityPropertiesPanel(it::y.name, it.y)
                 }
             }
         }
-    }
 
-    private fun SceneEntity.handleEntityMoving(engine: PulseEngine)
-    {
-        if (this !is Spatial) return
+        if (!isMoving) return
 
-        if (isMoving && !engine.input.isPressed(Mouse.LEFT))
+        if (!engine.input.isPressed(Mouse.LEFT))
         {
             engine.input.setCursor(ARROW)
+            entitySelection.forEachFast { it.onMovedScaledOrRotated(engine) }
             isMoving = false
-            this.onMovedScaledOrRotated(engine)
+            return
         }
 
-        this.x += engine.input.xdMouse / activeCamera.scale.x
-        this.y += engine.input.ydMouse / activeCamera.scale.y
-        this.set(POSITION_UPDATED)
+        for (entity in entitySelection)
+        {
+            if (entity !is Spatial) continue
 
-        updateEntityPropertiesPanel(::x.name, x)
-        updateEntityPropertiesPanel(::y.name, y)
+            entity.x += engine.input.xdMouse / activeCamera.scale.x
+            entity.y += engine.input.ydMouse / activeCamera.scale.y
+            entity.set(POSITION_UPDATED)
+
+            updateEntityPropertiesPanel(entity::x.name, entity.x)
+            updateEntityPropertiesPanel(entity::y.name, entity.y)
+        }
     }
 
     private fun SceneEntity.handleEntityTransformation(engine: PulseEngine)
@@ -1158,6 +1209,12 @@ class SceneEditor(
     {
         entitySelection.add(entity)
         entity.set(SELECTED)
+    }
+
+    private fun removeEntityFromSelection(entity: SceneEntity)
+    {
+        entitySelection.remove(entity)
+        entity.setNot(SELECTED)
     }
 
     private fun initializeEntities(engine: PulseEngine)

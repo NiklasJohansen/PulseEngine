@@ -162,7 +162,7 @@ abstract class UiElement(
             onMouseClicked(engine)
     }
 
-    private fun handleKeyPress(key: Key) {
+    open fun handleKeyPress(key: Key) {
         val handled = onKeyPressed?.invoke(key) ?: false
         if (!handled)
             parent?.handleKeyPress(key)

@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.mapToSet
@@ -199,12 +200,13 @@ data class Outliner(
                 ui = VerticalPanel().apply()
                 {
                     addChildren(searchPanel, headerPanel, uiElementFactory.createScrollableSectionUI(rowPanel))
-                    setOnKeyPressed {
+                    setOnKeyPressed { key ->
                         when
                         {
-                            it == DELETE -> true.also { onEntityDeleted() }
-                            it == A && engine.input.isPressed(LEFT_CONTROL) ->
+                            key == DELETE -> true.also { onEntityDeleted() }
+                            key == A && engine.input.isPressed(LEFT_CONTROL) ->
                             {
+                                // Select all
                                 for (row in rowPanel.children)
                                 {
                                     engine.setEntitySelected(row.id, isSelected = true)
@@ -218,7 +220,17 @@ data class Outliner(
                     }
                 },
                 onEntitiesSelected = { entities ->
-                    val selectedIds = entities.mapToSet { it.id.toString() }
+                    val selectedIds = entities.mapToSet { it.id.toString() }.toMutableSet()
+                    for (it in entities)
+                    {
+                        // Select parent entity if all children is selected and parent is not Spatial
+                        val parent = engine.scene.getEntity(it.parentId) ?: continue
+                        if (parent !is Spatial && parent.childIds?.all { it.toString() in selectedIds } == true)
+                        {
+                            parent.set(SELECTED)
+                            selectedIds.add(parent.id.toString())
+                        }
+                    }
                     rowPanel.children.forEachFast { (it as Button).isPressed = (it.id in selectedIds) }
                 },
                 onEntitiesRemoved = { entities ->
@@ -236,7 +248,7 @@ data class Outliner(
                         if (entity.isSet(DEAD) || entity.id in ids)
                             continue
 
-                        val parentEntity = if (entity.parentId != INVALID_ID) engine.scene.getEntity(entity.parentId) else null
+                        val parentEntity = engine.scene.getEntity(entity.parentId)
                         if (parentEntity != null)
                         {
                             val parentId = entity.parentId.toString()
@@ -535,10 +547,7 @@ data class Outliner(
                 bgHoverColor = style.getColor("BUTTON_HOVER")
                 activeColor = style.getColor("HEADER_HOVER")
                 padding.bottom = ScaledValue.of(1f)
-                setOnClicked {
-                    // None editable rows should not be selected
-                    if (!it.getEditDisabledButton().isPressed) onSelectedCallback(it) else it.isPressed = false
-                }
+                setOnClicked { onSelectedCallback(it) }
                 addChildren(
                     HorizontalPanel().apply { addChildren(editDisabledButton, visibilityButton, collapseButton, icon, nameLabel, typeLabel) }
                 )
