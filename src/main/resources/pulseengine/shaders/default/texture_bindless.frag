@@ -20,7 +20,7 @@ void main() {
 
     if (texIndex >= 0)
     {
-        vec2 sampleCoord = texStart + texSize * (texTiling == 1.0 ? texCoord : fract(texCoord * texTiling));
+        vec2 sampleCoord = texStart + texSize * (texTiling == vec2(1.0) ? texCoord : fract(texCoord * texTiling));
         textureColor = texture(textureArray, vec3(sampleCoord, floor(texIndex)));
     }
 

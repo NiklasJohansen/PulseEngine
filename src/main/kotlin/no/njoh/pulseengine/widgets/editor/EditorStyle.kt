@@ -22,7 +22,7 @@ class EditorStyle
         colors["LABEL"] = Color(1.0f, 1.0f, 1.0f, 1.0f)
         colors["LABEL_DARK"] = Color(0.5f, 0.5f, 0.5f, 1.0f)
         colors["LIGHT_BG"] = Color(14, 14, 14)
-        colors["DARK_BG"] = Color(6, 6, 7)
+        colors["DARK_BG"] = Color(10, 10, 11)
         colors["STROKE"] = Color(0.03612247f, 0.038525835f, 0.04285717f, 1.0f)
         colors["HEADER"] = Color(19, 19, 21)
         colors["HEADER_HOVER"] = Color(32, 42, 59)
