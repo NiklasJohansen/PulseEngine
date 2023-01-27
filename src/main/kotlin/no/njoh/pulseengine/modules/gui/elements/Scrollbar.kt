@@ -59,17 +59,17 @@ class Scrollbar(
         val scrollable = scrollable ?: return
 
         // Get scroll amount when the bound scrollable has hover focus
-        var xScroll = 0
-        var yScroll = 0
+        var xScroll = 0f
+        var yScroll = 0f
         if (scrollable is VerticallyScrollable)
         {
             yScroll = scrollable.yScroll
-            scrollable.yScroll = 0
+            scrollable.yScroll = 0f
         }
         if (scrollable is HorizontallyScrollable)
         {
             xScroll = scrollable.xScroll
-            scrollable.xScroll = 0
+            scrollable.xScroll = 0f
         }
 
         // Check if mouse is hovering over slider
@@ -121,7 +121,7 @@ class Scrollbar(
             engine.input.setCursor(CursorType.ARROW)
     }
 
-    private fun updateSliderFraction(mouseChange: Float, scroll: Int, sliderTravelDist: Float)
+    private fun updateSliderFraction(mouseChange: Float, scroll: Float, sliderTravelDist: Float)
     {
         if (sliderTravelDist > 0f)
         {
@@ -129,7 +129,7 @@ class Scrollbar(
             val maxScrollDist = height.value * max(0f,scrollable.getUsedSpaceFraction() - 1f)
             val scrollChangeFraction = -scroll * (scrollDistance / maxScrollDist)
             val fractionChange = mouseMoveFraction + scrollChangeFraction
-            if (fractionChange != 0f && (sliderGrabbed || scroll != 0))
+            if (fractionChange != 0f && (sliderGrabbed || scroll != 0f))
             {
                 sliderFraction = (sliderFraction + fractionChange).coerceIn(0f, 1f)
                 onScrollCallback(sliderFraction)

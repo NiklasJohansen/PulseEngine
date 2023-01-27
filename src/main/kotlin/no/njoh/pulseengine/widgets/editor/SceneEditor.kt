@@ -77,7 +77,7 @@ class SceneEditor(
     private var outliner: Outliner? = null
 
     // Camera
-    private val cameraController = Camera2DController(Mouse.MIDDLE, smoothing = 0.75f)
+    private val cameraController = Camera2DController(Mouse.MIDDLE, smoothing = 0f)
     private lateinit var activeCamera: Camera
     private lateinit var storedCameraState: CameraState
 
@@ -183,6 +183,7 @@ class SceneEditor(
     {
         // Set UI scaling
         UI_SCALE = engine.config.getFloat("uiScale") ?: engine.window.scale
+        cameraController.scrollSpeed = 40f * UI_SCALE
 
         // Properties
         inspectorUI = RowPanel()
@@ -773,8 +774,9 @@ class SceneEditor(
         val len = sqrt(xDiff * xDiff + yDiff * yDiff)
         val xMouse = x + cos(angle) * len
         val yMouse = y + sin(angle) * len
-        val w = (abs(width) + GIZMO_PADDING * 2) / 2
-        val h = (abs(height) + GIZMO_PADDING * 2) / 2
+        val padding = getGizmoPadding()
+        val w = (abs(width) + padding * 2) / 2
+        val h = (abs(height) + padding * 2) / 2
 
         val resizeBottom = xMouse >= x - w - border && xMouse <= x + w + border && yMouse >= y + h - border && yMouse <= y + h + border
         val resizeTop = xMouse >= x - w - border && xMouse <= x + w + border && yMouse >= y - h - border && yMouse <= y - h + border
@@ -1065,9 +1067,10 @@ class SceneEditor(
         if (this !is Spatial) return
 
         val pos = activeCamera.worldPosToScreenPos(x, y)
-        val w = (width + GIZMO_PADDING * 2) * activeCamera.scale.x / 2f
-        val h = (height + GIZMO_PADDING * 2) * activeCamera.scale.y / 2f
-        val size = 4f
+        val padding = getGizmoPadding()
+        val w = (width + padding * 2) * activeCamera.scale.x / 2f
+        val h = (height + padding * 2) * activeCamera.scale.y / 2f
+        val size = 4f * UI_SCALE
         val halfSize = size / 2f
 
         if (rotation != 0f)
@@ -1149,8 +1152,9 @@ class SceneEditor(
 
     private fun Spatial.isInside(xWorld: Float, yWorld: Float): Boolean
     {
-        val w = abs(width) + GIZMO_PADDING * 2
-        val h = abs(height) + GIZMO_PADDING * 2
+        val padding = getGizmoPadding()
+        val w = abs(width) + padding * 2f
+        val h = abs(height) + padding * 2f
         val xDiff = xWorld - x
         val yDiff = yWorld - y
         val angle = -MathUtil.atan2(yDiff, xDiff) - (this.rotation / 180f * PI.toFloat())
@@ -1250,6 +1254,8 @@ class SceneEditor(
         if (shouldPersistEditorLayout)
             dockingUI.saveLayout(engine, "/editor_layout.cfg")
     }
+
+    private fun getGizmoPadding() = GIZMO_PADDING * UI_SCALE
 
     companion object
     {

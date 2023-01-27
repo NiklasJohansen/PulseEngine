@@ -14,7 +14,7 @@ class RowPanel(
 
     override var renderOnlyInside = true
     override var verticalScrollbarVisibility = ONLY_VISIBLE_WHEN_NEEDED
-    override var yScroll = 0
+    override var yScroll = 0f
 
     private var scrollFraction = 0f
     private var cachedUsedSpace = -1f

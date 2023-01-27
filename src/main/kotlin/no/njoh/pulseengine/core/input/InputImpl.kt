@@ -17,8 +17,8 @@ open class InputImpl : InputInternal
     override var yMouse = 0.0f
     override var xWorldMouse = 0f
     override var yWorldMouse = 0f
-    override var xScroll = 0
-    override var yScroll = 0
+    override var xScroll = 0f
+    override var yScroll = 0f
     override var gamepads = mutableListOf<Gamepad>()
     override var textInput: String = ""
     override val clickedKeys = mutableListOf<Key>()
@@ -78,9 +78,14 @@ open class InputImpl : InputInternal
 
         glfwSetScrollCallback(windowHandle) { window, xoffset, yoffset ->
             if (isPressed(Key.LEFT_SHIFT))
-                xScroll = yoffset.toInt()
+            {
+                xScroll = yoffset.toFloat()
+            }
             else
-                yScroll = yoffset.toInt()
+            {
+                xScroll = xoffset.toFloat()
+                yScroll = yoffset.toFloat()
+            }
         }
 
         glfwSetMouseButtonCallback(windowHandle) { window, button, action, mods ->
@@ -206,8 +211,8 @@ open class InputImpl : InputInternal
     {
         xMouseLast = xMouse
         yMouseLast = yMouse
-        xScroll = 0
-        yScroll = 0
+        xScroll = 0f
+        yScroll = 0f
         textInput = ""
         clicked.fill(0)
         clickedKeys.clear()

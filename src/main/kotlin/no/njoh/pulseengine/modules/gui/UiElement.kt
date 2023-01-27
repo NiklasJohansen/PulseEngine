@@ -137,7 +137,7 @@ abstract class UiElement(
         // Handle mouse scroll
         val xScroll = engine.input.xScroll
         val yScroll = engine.input.yScroll
-        if ((xScroll != 0 || yScroll != 0) && engine.input.hasHoverFocus(area))
+        if ((xScroll != 0f || yScroll != 0f) && engine.input.hasHoverFocus(area))
             handleScrollEvent(xScroll, yScroll)
 
         // Do not request focus or update mouse callbacks if the element is not focusable
@@ -168,7 +168,7 @@ abstract class UiElement(
             parent?.handleKeyPress(key)
     }
 
-    private fun handleScrollEvent(xScroll: Int, yScroll: Int)
+    private fun handleScrollEvent(xScroll: Float, yScroll: Float)
     {
         if (this is Scrollable)
         {

@@ -12,7 +12,7 @@ class Camera2DController(
     private var smoothing: Float = 0.92f,
     private var minScale: Float = 0.05f,
     private var maxScale: Float = 5f,
-    private var scrollSpeed: Float = 10f
+    var scrollSpeed: Float = 40f
 ) {
     private var scaleChangeRate = 0f
     private var xPosChangeRate = 0f
