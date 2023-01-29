@@ -32,15 +32,19 @@ import kotlin.math.*
 open class LightingSystem : SceneSystem()
 {
     @ScnProp(i = 1) var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
-    @ScnProp(i = 2, min = 0.1f, max = 5.0f) var textureScale: Float = 1f
-    @ScnProp(i = 3) var textureFilter = TextureFilter.LINEAR
-    @ScnProp(i = 4) var textureFormat = TextureFormat.HDR_16
-    @ScnProp(i = 5) var multisampling = Multisampling.NONE
-    @ScnProp(i = 6) var enableFXAA = true
-    @ScnProp(i = 7) var useNormalMap = false
-    @ScnProp(i = 8) var enableLightSpill = true
-    @ScnProp(i = 9) var correctOffset = true
-    @ScnProp(i = 10) var drawDebug = false
+    @ScnProp(i = 2, min = 0f, max = 10f) var dithering = 0.7f
+    @ScnProp(i = 3, min = 0f, max = 100f) var fogIntensity = 0f
+    @ScnProp(i = 4, min = 0f, max = 100f) var fogTurbulence = 1.5f
+    @ScnProp(i = 5, min = 0f, max = 5f) var fogScale = 0.3f
+    @ScnProp(i = 6, min = 0.01f, max = 5f) var textureScale = 1f
+    @ScnProp(i = 7) var textureFilter = TextureFilter.LINEAR
+    @ScnProp(i = 8) var textureFormat = TextureFormat.HDR_16
+    @ScnProp(i = 9) var multisampling = Multisampling.NONE
+    @ScnProp(i = 10) var enableFXAA = true
+    @ScnProp(i = 11) var useNormalMap = false
+    @ScnProp(i = 12) var enableLightSpill = true
+    @ScnProp(i = 13) var correctOffset = true
+    @ScnProp(i = 14) var drawDebug = false
 
     @JsonIgnore
     private val normalMapRenderPass = RenderPass(
@@ -85,7 +89,7 @@ open class LightingSystem : SceneSystem()
         ).addRenderer(lightRenderer)
 
         // Add lighting as a post-processing effect to main surface
-        lightBlendEffect = LightBlendEffect(lightSurface, ambientColor)
+        lightBlendEffect = LightBlendEffect(lightSurface, ambientColor, engine.gfx.mainCamera)
         engine.gfx.mainSurface.addPostProcessingEffect(lightBlendEffect)
 
         // Configure maps
@@ -111,6 +115,7 @@ open class LightingSystem : SceneSystem()
                 camera = engine.gfx.mainCamera,
                 zOrder = lightSurface.context.zOrder + 1, // Render normal map before lightmap
                 backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
+                textureFormat = TextureFormat.HDR_16,
                 isVisible = false
             )
             val renderContext = (normalMapSurface as Surface2DInternal).context
@@ -154,6 +159,10 @@ open class LightingSystem : SceneSystem()
     {
         // Set light post-processing effect properties
         lightBlendEffect.enableFxaa = enableFXAA
+        lightBlendEffect.dithering = dithering
+        lightBlendEffect.fogIntensity = fogIntensity
+        lightBlendEffect.fogTurbulence = fogTurbulence
+        lightBlendEffect.fogScale = fogScale
 
         // Set light renderer properties
         lightRenderer.ambientColor = ambientColor

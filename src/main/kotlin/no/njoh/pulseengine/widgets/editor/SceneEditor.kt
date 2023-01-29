@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.widgets.editor
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -87,6 +88,7 @@ class SceneEditor(
     private var sceneFileToLoad: String? = null
     private var sceneFileToCreate: String? = null
     private var sceneFileToSaveAs: String? = null
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     // Moving and copying
     private var isMoving = false
@@ -351,7 +353,7 @@ class SceneEditor(
             cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(screenArea))
         }
 
-        if (engine.input.wasClicked(Key.F10))
+        if (engine.input.wasClicked(F10))
         {
             if (engine.scene.state == SceneState.STOPPED)
             {
@@ -438,7 +440,7 @@ class SceneEditor(
         if (engine.scene.state == SceneState.RUNNING)
             engine.scene.stop()
 
-        GlobalScope.launch(context = Dispatchers.IO)
+        scope.launch(context = Dispatchers.IO)
         {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
                 sceneFileToSaveAs = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
@@ -451,7 +453,7 @@ class SceneEditor(
         if (engine.scene.state != SceneState.RUNNING)
             engine.scene.save()
 
-        GlobalScope.launch(context = Dispatchers.IO)
+        scope.launch(context = Dispatchers.IO)
         {
             FileChooser.showFileSelectionDialog("scn", engine.data.saveDirectory) { filePath ->
                 sceneFileToLoad = filePath
@@ -467,7 +469,7 @@ class SceneEditor(
             engine.scene.save()
         }
 
-        GlobalScope.launch(context = Dispatchers.IO)
+        scope.launch(context = Dispatchers.IO)
         {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
                 sceneFileToCreate = filePath
@@ -527,7 +529,7 @@ class SceneEditor(
 
     private fun handleEntityCopying(engine: PulseEngine)
     {
-        if (!engine.input.isPressed(Key.LEFT_CONTROL) || !engine.input.isPressed(Key.D))
+        if (!engine.input.isPressed(LEFT_CONTROL) || !engine.input.isPressed(D))
         {
             isCopying = false
             return
@@ -968,7 +970,7 @@ class SceneEditor(
 
         for ((group, props) in propertyGroups)
         {
-            val onChanged = { propName: String, lastValue: Any?, newValue: Any? ->
+            val onChanged = { propName: String, lastValue: Any?, _: Any? ->
                 if (propName == SceneEntity::parentId.name)
                 {
                     val newParentId = entity.parentId
