@@ -15,16 +15,19 @@ open class Image(
     height: Size = Size.auto()
 ) : UiElement(x, y, width, height) {
 
-    var bgColor = Color(1f, 1f, 1f, 0f)
-    var tint = Color(1f, 1f, 1f)
+    init { focusable = false }
+
+    var bgColor = Color.BLANK
+    var tint = Color.WHITE
     var texture: Texture? = null
+    var textureAssetName: String? = null
     var textureScale = 1f
 
     override fun onUpdate(engine: PulseEngine) { }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
-        val texture = texture ?: return
+        val texture = texture ?: textureAssetName?.let { engine.asset.getOrNull(it) } ?: return
         var texWidth = width.value
         var texHeight = height.value
         val xCenter = x.value + width.value / 2f

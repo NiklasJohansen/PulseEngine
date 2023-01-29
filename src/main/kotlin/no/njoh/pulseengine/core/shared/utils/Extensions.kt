@@ -122,6 +122,15 @@ object Extensions
     }
 
     /**
+     * Fast iteration of [LongArray].
+     */
+    inline fun LongArray.forEachFast(block: (Long) -> Unit)
+    {
+        var i = 0
+        while (i < size) block(this[i++])
+    }
+
+    /**
      * Fast and reversed iteration of constant lookup lists.
      */
     inline fun <T> List<T>.forEachReversed(block: (T) -> Unit)
@@ -146,6 +155,57 @@ object Extensions
     }
 
     /**
+     * Returns the last element matching the given predicate.
+     */
+    inline fun <T> List<T>.lastOrNullFast(predicate: (T) -> Boolean): T?
+    {
+        var i = lastIndex
+        while (i >= 0)
+        {
+            val element = this[i--]
+            if (predicate(element))
+                return element
+        }
+        return null
+    }
+
+    /**
+     * Maps a list of type [T] to a map of type [R].
+     */
+    inline fun <T, R> List<T>.mapToSet(transform: (T) -> R): Set<R>
+    {
+        val destination = HashSet<R>()
+        var i = 0
+        while (i < size)
+        {
+            val element = this[i++]
+            destination.add(transform(element))
+        }
+        return destination
+    }
+
+    /**
+     * Returns a new [LongArray] with the first occurrence of [value] removed.
+     * Returns null if the result is empty.
+     */
+    fun LongArray.minus(value: Long): LongArray?
+    {
+        if (size == 0 || (size == 1 && this[0] == value))
+            return null
+
+        var i = 0
+        var j = 0
+        val array = LongArray(size - 1)
+        while (i < array.size && j < size)
+        {
+            val v = this[j++]
+            if (v == value) continue
+            array[i++] = v
+        }
+        return array
+    }
+
+    /**
      * Prints the time in milliseconds from 'this' to now.
      * @receiver Start time in nanoseconds.
      */
@@ -164,34 +224,30 @@ object Extensions
     /**
      * Class path resources (inside jar or at build dir) needs a leading forward slash
      */
-    fun String.toClassPath(): String =
-        this.takeIf { it.startsWith("/") } ?: "/$this"
+    fun String.toClassPath(): String = this.takeIf { it.startsWith("/") } ?: "/$this"
 
     /**
      * Loads the file as a [InputStream] from class path
      */
-    fun String.loadStream(): InputStream? =
-        javaClass.getResourceAsStream(this.toClassPath())
+    fun String.loadStream(): InputStream? = Extensions::class.java.getResourceAsStream(this.toClassPath())
 
     /**
      * Loads the file as a [ByteArray] from class path
      */
-    fun String.loadBytes(): ByteArray? =
-        javaClass.getResource(this.toClassPath())?.readBytes()
+    fun String.loadBytes(): ByteArray? = Extensions::class.java.getResource(this.toClassPath())?.readBytes()
 
     /**
      * Loads the text content from the given file in class path
      */
-    fun String.loadText(): String? =
-        javaClass.getResource(this.toClassPath())?.readText()
+    fun String.loadText(): String? = Extensions::class.java.getResource(this.toClassPath())?.readText()
 
     /**
      * Loads all file names in the given directory
      */
     fun String.loadFileNames(): List<String>
     {
-        val uri = javaClass.getResource(this.toClassPath()).toURI()
-        return if (uri.scheme == "jar")
+        val uri = Extensions::class.java.getResource(this.toClassPath())?.toURI()
+        return if (uri?.scheme == "jar")
         {
             val fileSystem =
                 try { FileSystems.getFileSystem(uri) }

@@ -1,5 +1,8 @@
 package no.njoh.pulseengine.core.input
 
+import gnu.trove.map.hash.TIntObjectHashMap
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+
 enum class Key(val code: Int)
 {
     // Printable Keys
@@ -125,7 +128,11 @@ enum class Key(val code: Int)
     RIGHT_ALT(346),
     RIGHT_SUPER(347),
     MENU(348),
-    LAST(MENU.code),
+    LAST(MENU.code);
+
+    companion object {
+        val codes = TIntObjectHashMap<Key>().also { map -> values().forEachFast { map.put(it.code, it) } }
+    }
 }
 
 enum class Mouse(val code: Int)

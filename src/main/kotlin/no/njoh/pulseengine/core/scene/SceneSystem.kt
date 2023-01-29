@@ -6,9 +6,15 @@ import kotlin.reflect.KClass
 
 abstract class SceneSystem
 {
-    @JsonIgnore
-    var initialized = false
     var enabled = true
+        set(value)
+        {
+            stateChanged = (value != field)
+            field = value
+        }
+
+    @JsonIgnore var initialized = false
+    @JsonIgnore var stateChanged = false
 
     /**
      * Called by engine when the system is first created
@@ -53,6 +59,11 @@ abstract class SceneSystem
      * Called one time when the system is destroyed
      */
     open fun onDestroy(engine: PulseEngine) { }
+
+    /**
+     * Called when the [enabled] flag changes
+     */
+    open fun onStateChanged(engine: PulseEngine) {  }
 
     /**
      * Whether or not this system takes the care of deleting dead entities

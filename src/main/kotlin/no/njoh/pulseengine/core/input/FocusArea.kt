@@ -1,7 +1,12 @@
 package no.njoh.pulseengine.core.input
 
-data class FocusArea(var x0: Float, var y0: Float, var x1: Float, var y1: Float)
-{
+class FocusArea(
+    var x0: Float,
+    var y0: Float,
+    var x1: Float,
+    var y1: Float,
+    var frame: Int = -1
+) {
     val height: Float
         get() = y1 - y0
 

@@ -84,6 +84,9 @@ class ShaderProgram(
     fun setUniform(name: String, value1: Float, value2: Float, value3: Float) =
         glUniform3f(uniformLocationOf(name), value1, value2, value3)
 
+    fun setUniform(name: String, value1: Float, value2: Float, value3: Float, value4: Float) =
+        glUniform4f(uniformLocationOf(name), value1, value2, value3, value4)
+
     fun setUniform(name: String, color: Color) =
         glUniform4f(uniformLocationOf(name), color.red, color.green, color.blue, color.alpha)
 

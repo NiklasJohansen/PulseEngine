@@ -4,16 +4,18 @@ import no.njoh.pulseengine.core.asset.types.Cursor
 
 class InputIdle(private val activeInput: InputInternal) : InputInternal
 {
+    override val xMouse get() = activeInput.xMouse
+    override val yMouse get() = activeInput.yMouse
     override var xWorldMouse = 0f
+        get() = activeInput.xWorldMouse
     override var yWorldMouse = 0f
-    override val xMouse
-        get() = activeInput.xMouse
-    override val yMouse
-        get() = activeInput.yMouse
-    override val xdMouse = 0f
-    override val ydMouse = 0f
-    override val scroll = 0
+        get() = activeInput.yWorldMouse
+    override val xdMouse get() = activeInput.xdMouse
+    override val ydMouse get() = activeInput.ydMouse
+    override val xScroll get() = activeInput.xScroll
+    override val yScroll get() = activeInput.yScroll
     override val textInput: String = ""
+    override val clickedKeys = emptyList<Key>()
     override val gamepads = activeInput.gamepads
     override fun init(windowHandle: Long) {}
     override fun cleanUp() {}
@@ -33,5 +35,6 @@ class InputIdle(private val activeInput: InputInternal) : InputInternal
     override fun acquireFocus(focusArea: FocusArea) = activeInput.acquireFocus(focusArea)
     override fun releaseFocus(focusArea: FocusArea) = activeInput.releaseFocus(focusArea)
     override fun hasFocus(focusArea: FocusArea): Boolean = activeInput.hasFocus(focusArea)
+    override fun hasHoverFocus(focusArea: FocusArea): Boolean = activeInput.hasHoverFocus(focusArea)
     override fun setCursor(cursorType: CursorType) = activeInput.setCursor(cursorType)
 }

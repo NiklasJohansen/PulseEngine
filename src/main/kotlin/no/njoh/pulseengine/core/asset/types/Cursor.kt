@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadStream
 import org.lwjgl.BufferUtils
@@ -9,6 +10,7 @@ import org.lwjgl.glfw.GLFWImage
 import java.nio.ByteBuffer
 import javax.imageio.ImageIO
 
+@ScnIcon("CURSOR")
 class Cursor(
     fileName: String,
     name: String,

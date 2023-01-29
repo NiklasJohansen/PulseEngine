@@ -10,6 +10,8 @@ import no.njoh.pulseengine.core.data.FileFormat.*
 import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.shared.primitives.SwapList.Companion.swapListOf
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
+import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 
@@ -26,7 +28,7 @@ open class Scene(
     val entityTypeMap = createEntityTypeMap(entities)
 
     @JsonIgnore
-    internal var fileName: String = "$name.scn"
+    var fileName: String = "$name.scn"
 
     @JsonIgnore
     internal var fileFormat: FileFormat = JSON
@@ -37,10 +39,10 @@ open class Scene(
 
     internal var nextId = 0L
 
-    /** Call onCreate function on all loaded entities when scene is created */
-    init { entities.forEachFast { typeList -> typeList.forEachFast { it.onCreate() } } }
+    /** Call onCreate function on all [Initiable] entities when scene is created */
+    init { entities.onCreate() }
 
-    fun insertEntity(entity: SceneEntity)
+    fun insertEntity(entity: SceneEntity): Long
     {
         entity.id = nextId
         entityIdMap.put(nextId, entity)
@@ -52,8 +54,12 @@ open class Scene(
                 entities.add(list)
             }
         spatialGrid.insert(entity)
-        entity.onCreate()
+        if (entity.parentId != INVALID_ID)
+            entityIdMap[entity.parentId]?.addChild(entity)
+        if (entity is Initiable)
+            entity.onCreate()
         nextId++
+        return entity.id
     }
 
     internal fun start(engine: PulseEngine)
@@ -62,6 +68,7 @@ open class Scene(
         {
             if (!it.initialized)
                 it.init(engine)
+
             it.onStart(engine)
         }
         spatialGrid.recalculate()
@@ -77,12 +84,20 @@ open class Scene(
         spatialGrid.update()
 
         var deleteDeadEntities = true
-        systems.forEachFiltered({ it.enabled })
+        systems.forEachFiltered({ it.enabled || it.stateChanged })
         {
             if (!it.initialized)
                 it.init(engine)
+
+            if (it.stateChanged)
+            {
+                it.stateChanged = false
+                it.onStateChanged(engine)
+            }
+
             if (it.handlesEntityDeletion())
                 deleteDeadEntities = false
+
             it.onUpdate(engine)
         }
 
@@ -91,9 +106,11 @@ open class Scene(
             engine.scene.forEachEntityTypeList { typeList ->
                 typeList.forEachFast { entity ->
                     if (entity.isSet(DEAD))
+                    {
+                        entityIdMap[entity.parentId]?.removeChild(entity)
                         entityIdMap.remove(entity.id)
-                    else
-                        typeList.keep(entity)
+                    }
+                    else typeList.keep(entity)
                 }
                 typeList.swap()
             }
@@ -142,6 +159,14 @@ open class Scene(
         TLongObjectHashMap<SceneEntity>().also { map ->
             entities.forEachFast { typeList -> typeList.forEachFast { map.put(it.id, it) } }
         }
+
+    private fun MutableList<SwapList<SceneEntity>>.onCreate()
+    {
+        this.forEachFast()
+        {
+            if (it.firstOrNull() is Initiable) it.forEachFast { entity -> (entity as Initiable).onCreate() }
+        }
+    }
 }
 
 @Target(AnnotationTarget.CLASS)

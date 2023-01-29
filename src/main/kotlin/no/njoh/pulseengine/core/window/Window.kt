@@ -5,9 +5,11 @@ interface Window
     var title: String
     val width: Int
     val height: Int
+    val scale: Float
     val screenMode: ScreenMode
     val wasResized: Boolean
 
+    fun setOnScaleChanged(callback: (scale: Float) -> Unit)
     fun updateScreenMode(mode: ScreenMode)
     fun close()
 }

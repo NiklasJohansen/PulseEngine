@@ -2,17 +2,15 @@ package no.njoh.pulseengine.modules.gui.layout.docking
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.Position.PositionType
 import no.njoh.pulseengine.modules.gui.Position.PositionType.*
-import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.Size.ValueType.*
 import no.njoh.pulseengine.modules.gui.Size.ValueType.AUTO
 import no.njoh.pulseengine.modules.gui.UiUtil.findElementById
-import no.njoh.pulseengine.modules.gui.UiElement
 import no.njoh.pulseengine.modules.gui.layout.*
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.sumByFloat
+import no.njoh.pulseengine.modules.gui.*
 import kotlin.math.min
 
 /**
@@ -47,7 +45,7 @@ class DockingPanel(
         addChildren(viewPort)
     }
 
-    override fun onRender(surface: Surface2D) { }
+    override fun onRender(engine: PulseEngine, surface: Surface2D) { }
 
     override fun onUpdate(engine: PulseEngine)
     {
@@ -136,6 +134,10 @@ class DockingPanel(
     fun insertRight(panel: WindowPanel) = insertOutsideHorizontal(panel, leftSide = false)
     fun insertTop(panel: WindowPanel) = insertOutsideVertical(panel, topSide = true)
     fun insertBottom(panel: WindowPanel) = insertOutsideVertical(panel, topSide = false)
+    fun insertInsideLeft(target: WindowPanel, panel: WindowPanel) = target.insertInsideHorizontal(panel, leftSide = true)
+    fun insertInsideRight(target: WindowPanel, panel: WindowPanel) = target.insertInsideHorizontal(panel, leftSide = false)
+    fun insertInsideTop(target: WindowPanel, panel: WindowPanel) = target.insertInsideVertical(panel, topSide = true)
+    fun insertInsideBottom(target: WindowPanel, panel: WindowPanel) = target.insertInsideVertical(panel, topSide = false)
 
     private fun insertOutsideHorizontal(panel: WindowPanel, leftSide: Boolean)
     {
@@ -240,7 +242,7 @@ class DockingPanel(
     //////////////////////////////////// UTIL ////////////////////////////////////
 
     private fun getDockedElements(): List<UiElement> =
-        this.children.filter { it !is WindowPanel || it == viewPort }
+        this.children.filter { it !is WindowPanel || it === viewPort }
 
     private fun UiElement.removeFromParent()
     {
@@ -275,10 +277,18 @@ class DockingPanel(
     {
         for (child in this.children)
         {
-            if (child is WindowPanel && child.movable && child.isGrabbed)
-                return child
-
-            child.findGrabbed()?.let { return it }
+            if (child is WindowPanel)
+            {
+                if (child.movable && child.isGrabbed)
+                {
+                    return child
+                }
+                else if (child === viewPort) // Search for maximized windows inside viewport
+                {
+                    child.findGrabbed()?.let { return it }
+                }
+            }
+            else child.findGrabbed()?.let { return it }
         }
 
         return null
@@ -286,19 +296,18 @@ class DockingPanel(
 
     private fun findOnHoverTarget(element: UiElement): UiElement?
     {
-        if (element == grabbed)
+        if (element === grabbed)
             return null
 
         for (child in element.children)
         {
-            // Prevent docking inside free floating windows
-            if (child is WindowPanel && child.movable && element == this)
-                continue
-
-            if (child != grabbed && child is WindowPanel && child.mouseInsideArea)
-                return child
-
-            findOnHoverTarget(child)?.let { return it }
+            if (child is WindowPanel)
+            {
+                val isFreeFloatingWindow = (child.movable && element === this) // 'this' is docking root
+                if (child.mouseInsideArea && child !== grabbed && !isFreeFloatingWindow)
+                    return child
+            }
+            else findOnHoverTarget(child)?.let { return it }
         }
 
         return null
@@ -308,15 +317,15 @@ class DockingPanel(
     {
         if (this is VerticalPanel)
         {
-            this.minWidth = this.children.maxOfOrNull { it.minWidth + it.padding.left + it.padding.right } ?: this.minWidth
-            this.minHeight = this.children.sumByFloat { it.minHeight + it.padding.top + it.padding.bottom }
-            this.parent?.setMinSizeFromChildren()
+            minWidth = ScaledValue.of(children.maxOfOrNull { it.minWidth + it.padding.left + it.padding.right } ?: minWidth.value)
+            minHeight = ScaledValue.of(children.sumByFloat { it.minHeight + it.padding.top + it.padding.bottom })
+            parent?.setMinSizeFromChildren()
         }
         else if (this is HorizontalPanel)
         {
-            this.minWidth = this.children.sumByFloat { it.minWidth + it.padding.left + it.padding.right }
-            this.minHeight = this.children.maxOfOrNull { it.minHeight + it.padding.top + it.padding.bottom } ?: this.minHeight
-            this.parent?.setMinSizeFromChildren()
+            minWidth = ScaledValue.of(children.sumByFloat { it.minWidth + it.padding.left + it.padding.right })
+            minHeight = ScaledValue.of(children.maxOfOrNull { it.minHeight + it.padding.top + it.padding.bottom } ?: minHeight.value)
+            parent?.setMinSizeFromChildren()
         }
     }
 

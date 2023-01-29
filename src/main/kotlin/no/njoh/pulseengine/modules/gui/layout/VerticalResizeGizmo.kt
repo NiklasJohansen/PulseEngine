@@ -10,6 +10,7 @@ import no.njoh.pulseengine.modules.gui.UiUtil.getRequiredVerticalSpace
 import no.njoh.pulseengine.modules.gui.elements.ResizeBarGizmo
 import no.njoh.pulseengine.modules.gui.UiElement
 import no.njoh.pulseengine.core.shared.utils.Extensions.sumByFloat
+import no.njoh.pulseengine.modules.gui.minus
 import kotlin.math.max
 import kotlin.math.min
 
@@ -37,7 +38,7 @@ class VerticalResizeGizmo(
 
             val totalHeight = topChild.height.value + bottomChild.height.value
             var topMinHeight = max(topChild.actualMinHeight(), totalHeight - bottomChild.maxHeight)
-            var topMaxHeight = min(topChild.maxHeight, totalHeight - bottomChild.actualMinHeight())
+            var topMaxHeight = min(topChild.maxHeight.value, totalHeight - bottomChild.actualMinHeight())
 
             if (topMinHeight > topMaxHeight)
             {
@@ -87,10 +88,10 @@ class VerticalResizeGizmo(
     private fun UiElement.actualMinHeight(): Float = when (this)
     {
         is VerticalPanel -> children.sumByFloat { it.getRequiredVerticalSpace() }
-        is HorizontalPanel -> children.maxOfOrNull { it.getRequiredVerticalSpace() } ?: minHeight
-        else -> minHeight
+        is HorizontalPanel -> children.maxOfOrNull { it.getRequiredVerticalSpace() } ?: minHeight.value
+        else -> minHeight.value
     }
 
     override fun onUpdate(engine: PulseEngine) { }
-    override fun onRender(surface: Surface2D) { }
+    override fun onRender(engine: PulseEngine, surface: Surface2D) { }
 }

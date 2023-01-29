@@ -12,11 +12,12 @@ import org.lwjgl.opengl.GL11.*
 class LineBatchRenderer(
     private val initialCapacity: Int,
     private val context: RenderContextInternal
-) : BatchRenderer {
+) : BatchRenderer() {
 
     private lateinit var program: ShaderProgram
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: FloatBufferObject
+    private var vertices = 0
 
     override fun init()
     {
@@ -48,6 +49,12 @@ class LineBatchRenderer(
             putAll(x, y, context.depth, context.drawColor)
         }
         context.increaseDepth()
+        vertices++
+        if (vertices == 2)
+        {
+            vertices = 0
+            increaseBatchSize()
+        }
     }
 
     fun line(x0: Float, y0: Float, x1: Float, y1: Float)
@@ -60,22 +67,25 @@ class LineBatchRenderer(
             putAll(x1, y1, depth, rgba)
         }
         context.increaseDepth()
+        increaseBatchSize()
     }
 
-    override fun render(surface: Surface2D)
+    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int) 
     {
         vao.bind()
         vbo.bind()
         program.bind()
-        program.setUniform("projection", surface.camera.projectionMatrix)
-        program.setUniform("view", surface.camera.viewMatrix)
+        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
 
-        vbo.submit()
-        vbo.draw(GL_LINES, 4)
+        // Submit data to GPU in first batch
+        if (startIndex == 0)
+            vbo.submit()
+
+        glDrawArrays(GL_LINES, startIndex * 2, drawCount * 2) // 2 vertices per line
 
         vao.release()
     }
-
+    
     override fun cleanUp()
     {
         vbo.delete()

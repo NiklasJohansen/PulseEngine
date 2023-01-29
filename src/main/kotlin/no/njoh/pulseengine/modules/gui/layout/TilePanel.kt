@@ -1,8 +1,7 @@
 package no.njoh.pulseengine.modules.gui.layout
 
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Scrollable
-import no.njoh.pulseengine.modules.gui.Size
+import no.njoh.pulseengine.modules.gui.*
+import no.njoh.pulseengine.modules.gui.ScrollbarVisibility.ONLY_VISIBLE_WHEN_NEEDED
 import kotlin.math.max
 import kotlin.math.min
 
@@ -11,7 +10,7 @@ class TilePanel(
     y: Position = Position.auto(),
     width: Size = Size.auto(),
     height: Size = Size.auto()
-) : Panel(x, y, width, height), Scrollable {
+) : Panel(x, y, width, height), VerticallyScrollable {
 
     var horizontalTiles = 5
     var tilePadding = 10f
@@ -20,8 +19,9 @@ class TilePanel(
     private var rows = 0
     private var currentTileSize = 0f
     private var currentPaddingSize = 0f
-    override var scrollFraction = 0f
-    override var hideScrollbarOnEnoughSpaceAvailable = false
+    private var scrollFraction = 0f
+    override var verticalScrollbarVisibility = ONLY_VISIBLE_WHEN_NEEDED
+    override var yScroll = 0f
 
     override fun updateChildLayout()
     {
@@ -62,13 +62,13 @@ class TilePanel(
         }
     }
 
-    override fun setScroll(fraction: Float)
+    override fun setVerticalScroll(fraction: Float)
     {
         scrollFraction = fraction
         setLayoutDirty()
     }
 
-    override fun getUsedSpaceFraction(): Float
+    override fun getVerticallyUsedSpaceFraction(): Float
     {
         val neededSpace = rows * (currentTileSize + currentPaddingSize)
         val availableSpace = max(1f, height.value)

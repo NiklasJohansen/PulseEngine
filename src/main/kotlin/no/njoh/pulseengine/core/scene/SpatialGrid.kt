@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.shared.primitives.HitResult
 import no.njoh.pulseengine.core.shared.primitives.Physical
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
@@ -59,7 +60,7 @@ class SpatialGrid (
 
         entities.forEachFast { entities ->
             entities.forEachFast { entity ->
-                if (entity.isSet(DISCOVERABLE) && entity.isNot(DEAD))
+                if (entity.isSet(DISCOVERABLE) && entity.isNot(DEAD) && entity is Spatial)
                 {
                     val r = 0.5f * if (entity.width > entity.height) entity.width else entity.height
                     if (entity.x + r > xMax) xMax = entity.x + r
@@ -173,6 +174,7 @@ class SpatialGrid (
                 val entity = node.entity
                 if (entity.isNot(DEAD) && entity is T)
                 {
+                    entity as Spatial
                     val hitPoint = when (entity)
                     {
                         is Physical -> MathUtil.getLineShapeIntersection(x, y, xEnd, yEnd, entity.shape)
@@ -250,6 +252,7 @@ class SpatialGrid (
                     }
                     else if (entity.isAnySet(POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED))
                     {
+                        entity as Spatial
                         val xDelta = abs(node.xPos - entity.x)
                         val yDelta = abs(node.yPos - entity.y)
                         if (xDelta > minPosChangeBeforeUpdate ||
@@ -358,7 +361,7 @@ class SpatialGrid (
 
     fun insert(entity: SceneEntity)
     {
-        if (entity.isNot(DISCOVERABLE) || entity.isSet(DEAD))
+        if (entity.isNot(DISCOVERABLE) || entity.isSet(DEAD) || entity !is Spatial)
             return
 
         // Check if is entity outside of max area
@@ -385,6 +388,7 @@ class SpatialGrid (
 
     private fun insertPoint(entity: SceneEntity): Boolean
     {
+        entity as Spatial
         val xCell = ((entity.x - xOffset) * invCellSize).toInt()
         val yCell = ((entity.y - yOffset) * invCellSize).toInt()
 
@@ -397,6 +401,7 @@ class SpatialGrid (
 
     private fun insertAxisAligned(entity: SceneEntity): Boolean
     {
+        entity as Spatial
         val halfWidth = abs(entity.width) * 0.5f
         val halfHeight = abs(entity.height) * 0.5f
         val x = entity.x - xOffset
@@ -433,6 +438,7 @@ class SpatialGrid (
 
     private fun insertRotated(entity: SceneEntity): Boolean
     {
+        entity as Spatial
         val angle = -entity.rotation.toRadians()
         val halfLength = entity.width * 0.5f
         val thickness = entity.height
@@ -474,6 +480,7 @@ class SpatialGrid (
 
     private fun createAndInsertNode(xCell: Int, yCell: Int, entity: SceneEntity): Node
     {
+        entity as Spatial
         val node = Node(entity, xCell, yCell, entity.x, entity.y)
         val first = cells[xCell, yCell]
         first?.prev = node
@@ -485,10 +492,10 @@ class SpatialGrid (
 
     private fun removeNode(node: Node)
     {
-        if (node.prev == null)
+        if (node.prev === null)
         {
             val first = cells[node.xCell, node.yCell]
-            if (first == node)
+            if (first === node)
             {
                 first.next?.prev = null
                 cells[node.xCell, node.yCell] = first.next

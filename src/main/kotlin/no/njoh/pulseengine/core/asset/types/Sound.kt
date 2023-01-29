@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import org.lwjgl.BufferUtils
@@ -10,6 +11,7 @@ import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
 import java.nio.ShortBuffer
 
+@ScnIcon("MUSIC")
 class Sound(fileName: String, override val name: String) : Asset(name, fileName)
 {
     private lateinit var buffer: ShortBuffer

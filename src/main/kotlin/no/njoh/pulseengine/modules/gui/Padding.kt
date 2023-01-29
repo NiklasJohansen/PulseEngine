@@ -1,7 +1,11 @@
 package no.njoh.pulseengine.modules.gui
 
-class Padding(left: Float = 0f, right: Float = 0f, top: Float = 0f, bottom: Float = 0f)
-{
+class Padding(
+    left: ScaledValue = ScaledValue.of(0f),
+    right: ScaledValue = ScaledValue.of(0f),
+    top: ScaledValue = ScaledValue.of(0f),
+    bottom: ScaledValue = ScaledValue.of(0f)
+) {
     var left = left
         set(value) { field = value; if (notify) onUpdatedCallback() }
 
@@ -20,10 +24,10 @@ class Padding(left: Float = 0f, right: Float = 0f, top: Float = 0f, bottom: Floa
     fun setAll(padding: Float)
     {
         this.notify = false
-        this.left = padding
-        this.right = padding
-        this.top = padding
-        this.bottom = padding
+        this.left = ScaledValue.of(padding)
+        this.right = ScaledValue.of(padding)
+        this.top = ScaledValue.of(padding)
+        this.bottom = ScaledValue.of(padding)
         this.notify = true
         onUpdatedCallback.invoke()
     }

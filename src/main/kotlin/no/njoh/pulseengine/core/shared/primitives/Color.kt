@@ -1,9 +1,11 @@
 package no.njoh.pulseengine.core.shared.primitives
 
+import no.njoh.pulseengine.core.shared.utils.Logger
+
 data class Color(
-    var red: Float,
-    var green: Float,
-    var blue: Float,
+    var red: Float = 1f,
+    var green: Float = 1f,
+    var blue: Float = 1f,
     var alpha: Float = 1f
 ) {
     constructor(red: Int, green: Int, blue: Int, alpha: Int = 255) :
@@ -28,8 +30,20 @@ data class Color(
         this.alpha = alpha
     }
 
+    fun setFrom(hex: String) = try
+    {
+        val c = java.awt.Color.decode(hex)
+        this.red = c.red / 255f
+        this.green = c.green / 255f
+        this.blue = c.blue / 255f
+        this.alpha = c.alpha / 255f
+    }
+    catch (e: Exception) { Logger.error("Failed to decode hex string: $hex to color. Reason ${e.message}") }
+
     companion object
     {
         val BLANK = Color(0f, 0f, 0f, 0f)
+        val BLACK = Color(0f, 0f, 0f, 1f)
+        val WHITE = Color(1f, 1f, 1f, 1f)
     }
 }

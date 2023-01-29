@@ -4,7 +4,10 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.scene.systems.CustomRenderPassTarget
+import no.njoh.pulseengine.core.shared.annotations.AssetRef
+import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
 
 /**
@@ -12,18 +15,19 @@ import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
  */
 interface NormalMapped : CustomRenderPassTarget
 {
-    /** Name of the normal map [Texture] asset. */
+    @get:AssetRef(Texture::class)
+    @get:ScnProp("Lighting", 0, desc = "Name of the normal map [Texture] asset.")
     var normalMapName: String
 
-    /** The intensity/scale of the normals in the map. */
+    @get:ScnProp("Lighting", 1, desc = "The intensity/scale of the normals in the map.")
     var normalMapIntensity: Float
 
-    /** The orientation of the normals in the map. */
+    @get:ScnProp("Lighting", 2, desc = "The orientation of the normals in the map.")
     var normalMapOrientation: Orientation
 
     override fun renderCustomPass(engine: PulseEngine, surface: Surface2D)
     {
-        if (this is SceneEntity && normalMapName.isNotBlank())
+        if (this is SceneEntity && this is Spatial && normalMapName.isNotBlank())
         {
             surface.getRenderer(NormalMapRenderer::class)?.drawNormalMap(
                 texture = engine.asset.getOrNull(normalMapName),

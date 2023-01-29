@@ -31,7 +31,7 @@ class CommandLine : Widget
     override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface("overlay", zOrder = -100)
-        engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "cli_font", floatArrayOf(FONT_SIZE))
+        engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "cli_font")
         engine.console.registerCommand("showConsole") {
             isRunning = !isRunning
             if (isRunning)
@@ -350,7 +350,7 @@ class CommandLine : Widget
 
         // Draw input text
         surface.setDrawColor(1f, 1f, 1f, 1f)
-        surface.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2, cliFont, yOrigin = 0.2f)
+        surface.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2, cliFont, yOrigin = 0.2f, fontSize = FONT_SIZE)
 
         // Draw console history
         var yPos = height - INPUT_BOX_HEIGHT
@@ -365,7 +365,7 @@ class CommandLine : Widget
 
                 yPos -= lines.size * FONT_SIZE
                 surface.setDrawColor(color.red, color.green, color.blue)
-                lines.forEachIndexed { i, line -> surface.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont, yOrigin = 0.5f) }
+                lines.forEachIndexed { i, line -> surface.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont, yOrigin = 0.5f, fontSize = FONT_SIZE) }
             }
     }
 

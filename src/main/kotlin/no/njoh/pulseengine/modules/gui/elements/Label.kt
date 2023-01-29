@@ -4,9 +4,8 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Size
-import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.modules.gui.*
+import no.njoh.pulseengine.modules.gui.elements.Label.TextSizeStrategy.*
 import kotlin.math.max
 
 class Label(
@@ -17,54 +16,104 @@ class Label(
     height: Size = Size.auto()
 ) : UiElement(x, y, width, height) {
 
-    var color = Color(1f, 1f, 1f)
+    init { focusable = false }
+
+    var color = Color.WHITE
     var font = Font.DEFAULT
-    var fontSize = 24f
     var centerHorizontally = false
     var centerVertically = true
+    var textResizeStrategy = CROP_TEXT
+    var fontSize = ScaledValue.of(24f)
     var text = text
         set (value)
         {
-            setLayoutDirty()
+            if (value != field)
+                setLayoutDirty()
             field = value
         }
 
-    private var croppedText = text
+    private var visibleText = text
+    private var lastText = text
+    private var lastFontSize = fontSize
+    private var lastWidth = width.value
+    private var charWidths = FloatArray(0)
     var textWidth: Float = 0f
         private set
 
-    init { this.text = text }
+    override fun onCreate(engine: PulseEngine)
+    {
+        updateTextWidths()
+    }
 
     override fun updateChildLayout()
     {
         super.updateChildLayout()
-        val charWidths = font.getCharacterWidths(text, fontSize)
-        var currentTextWidth = 0f
-        for (i in text.indices)
+
+        val wasTextWidthUpdate = updateTextWidths()
+
+        if (wasTextWidthUpdate || width.value != lastWidth)
         {
-            currentTextWidth += charWidths[i]
-            if (currentTextWidth > width.value)
+            var currentText = text
+            when (textResizeStrategy)
             {
-                croppedText = text.substring(0, max(0, i - 2)) + "..."
-                return
+                NONE -> { }
+                CROP_TEXT ->
+                {
+                    var i = 0
+                    var currentTextWidth = 0f
+                    while (i < text.length && i < charWidths.size)
+                    {
+                        currentTextWidth += charWidths[i]
+                        if (currentTextWidth > width.value)
+                        {
+                            currentText = text.substring(0, max(0, i - 2)) + "..."
+                            break
+                        }
+                        i++
+                    }
+                }
+                UPDATE_WIDTH ->
+                {
+                    width.type = Size.ValueType.ABSOLUTE
+                    width.value = textWidth
+                }
             }
+
+            visibleText = currentText
+            lastWidth = width.value
         }
-        croppedText = text
-        textWidth = charWidths.sum()
+    }
+
+    private fun updateTextWidths(): Boolean
+    {
+        return if (text != lastText || fontSize != lastFontSize)
+        {
+            charWidths = font.getCharacterWidths(text, fontSize.value, useCache = true)
+            textWidth = charWidths.sum()
+            lastText = text
+            lastFontSize = fontSize
+            true
+        }
+        else false
     }
 
     override fun onUpdate(engine: PulseEngine) { }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
         surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
         surface.drawText(
-            text = croppedText,
+            text = visibleText,
             x = x.value + if (centerHorizontally) width.value / 2f else 0f,
             y = y.value + if (centerVertically) height.value / 2 else 0f,
             font = font,
-            fontSize = fontSize,
+            fontSize = fontSize.value,
             xOrigin = if (centerHorizontally) 0.5f else 0f,
-            yOrigin = if (centerVertically) 0.6f else 0f)
+            yOrigin = if (centerVertically) 0.5f else 0f)
+    }
+
+    enum class TextSizeStrategy
+    {
+        NONE, CROP_TEXT, UPDATE_WIDTH
     }
 }

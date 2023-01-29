@@ -4,11 +4,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.scene.interfaces.Renderable
 import no.njoh.pulseengine.core.shared.annotations.Name
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 
@@ -52,6 +54,7 @@ interface CustomRenderPassTarget
 }
 
 @Name("Entity Renderer")
+@ScnIcon("MONITOR")
 open class EntityRendererImpl : EntityRenderer()
 {
     private val renderQueue = mutableListOf<RenderTask>()
@@ -61,7 +64,7 @@ open class EntityRendererImpl : EntityRenderer()
     {
         addRenderPass(RenderPass(
             surfaceName = engine.gfx.mainSurface.name,
-            targetType = SceneEntity::class
+            targetType = Renderable::class
         ))
     }
 
@@ -77,19 +80,15 @@ open class EntityRendererImpl : EntityRenderer()
             val task = createRenderTask(renderPass)
             val condition = renderPass.drawCondition
             engine.scene.forEachEntityTypeList { typeList ->
-                if (renderPass.targetType.isInstance(typeList[0]))
+                if (typeList[0] is Renderable && renderPass.targetType.isInstance(typeList[0]))
                 {
-                    typeList.forEachFast { entity ->
-                        if (condition == null || condition(entity))
+                    typeList.forEachFast()
+                    {
+                        if (it.isNot(HIDDEN) && (condition == null || condition(it)))
                         {
+                            val entity = it as Renderable
                             val zOrder = entity.z.toInt()
-                            var layer = task.layers[zOrder]
-                            if (layer == null)
-                            {
-                                layer = Layer()
-                                task.layers[zOrder] = layer
-                            }
-                            layer.entities.add(entity)
+                            task.layers.getOrPut(zOrder) { Layer() }.entities.add(entity)
                         }
                     }
                 }
@@ -122,7 +121,6 @@ open class EntityRendererImpl : EntityRenderer()
                             layer.entities.forEachFast { (it as CustomRenderPassTarget).renderCustomPass(engine, surface) }
                         else
                             layer.entities.forEachFast { it.onRender(engine, surface) }
-
                         layer.entities.clear()
                         layer.emptyFrames = 0
                     }
@@ -136,7 +134,7 @@ open class EntityRendererImpl : EntityRenderer()
     }
 
     /**
-     * Represents a single render pass of a collection of layers to a certain [Surface]
+     * Represents a single render pass of a collection of layers to a certain [Surface].
      */
     private data class RenderTask(
         var surfaceName: String,
@@ -145,10 +143,10 @@ open class EntityRendererImpl : EntityRenderer()
     )
 
     /**
-     * Represents a collection of layers at a certain Z-depth.
+     * Represents a collection of entities at a certain Z-depth.
      */
     private data class Layer(
-        val entities: ArrayList<SceneEntity> = ArrayList(),
+        val entities: ArrayList<Renderable> = ArrayList(),
         var emptyFrames: Int = 0
     )
 }

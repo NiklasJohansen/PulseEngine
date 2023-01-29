@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.gui
 
+import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.gui.Size.ValueType.*
 
 class Size internal constructor(
@@ -66,7 +67,8 @@ class Size internal constructor(
 
     companion object
     {
-        fun absolute(value: Float) = Size(value, ABSOLUTE)
+        fun absolute(value: Float) = Size(value * UI_SCALE, ABSOLUTE)
+        fun absolute(value: ScaledValue) = Size(value.value, ABSOLUTE)
         fun relative(fraction: Float) = Size(0f, RELATIVE, fraction)
         fun auto() = Size(0f, AUTO)
     }

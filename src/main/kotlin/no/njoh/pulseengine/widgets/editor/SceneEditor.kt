@@ -1,15 +1,18 @@
 package no.njoh.pulseengine.widgets.editor
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.graphics.Camera
 import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.modules.gui.UiUtil.findElementById
 import no.njoh.pulseengine.modules.gui.elements.InputField
 import no.njoh.pulseengine.modules.gui.UiElement
@@ -18,36 +21,43 @@ import no.njoh.pulseengine.modules.gui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.gui.layout.docking.DockingPanel
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
+import no.njoh.pulseengine.core.input.Key.*
 import no.njoh.pulseengine.core.input.Mouse
-import no.njoh.pulseengine.core.scene.Scene
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
-import no.njoh.pulseengine.core.scene.SceneEntity.Companion.REGISTERED_TYPES
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
-import no.njoh.pulseengine.core.shared.annotations.Property
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
+import no.njoh.pulseengine.core.shared.annotations.EntityRef
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.utils.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.widget.Widget
+import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.gui.elements.Button
+import no.njoh.pulseengine.modules.gui.layout.WindowPanel
+import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
+import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isPrimitiveValue
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
-import no.njoh.pulseengine.widgets.editor.EditorUtil.setProperty
+import no.njoh.pulseengine.widgets.editor.EditorUtil.isPrimitiveArray
+import no.njoh.pulseengine.widgets.editor.EditorUtil.setArrayProperty
+import no.njoh.pulseengine.widgets.editor.EditorUtil.setPrimitiveProperty
 import org.joml.Vector3f
 import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KVisibility
-import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.instanceParameter
-import kotlin.reflect.full.memberFunctions
-import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.*
 
 class SceneEditor(
     val uiFactory: UiElementFactory = UiElementFactory()
@@ -56,27 +66,29 @@ class SceneEditor(
 
     // UI
     private lateinit var rootUI: VerticalPanel
-    private lateinit var entityPropertiesUI: RowPanel
+    private lateinit var inspectorUI: RowPanel
     private lateinit var systemPropertiesUI: RowPanel
     private lateinit var dockingUI: DockingPanel
     private lateinit var screenArea: FocusArea
     private lateinit var dragAndDropArea: FocusArea
     private var entityPropertyUiRows = mutableMapOf<String, UiElement>()
+    private var collapsedPropertyHeaders = mutableListOf<String>()
+    private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
     private var showGrid = true
+    private var outliner: Outliner? = null
 
     // Camera
-    private val cameraController = Camera2DController(Mouse.MIDDLE)
+    private val cameraController = Camera2DController(Mouse.MIDDLE, smoothing = 0f)
     private lateinit var activeCamera: Camera
     private lateinit var storedCameraState: CameraState
 
     // Scene
     private var lastSceneHashCode = -1
     private val entitySelection = mutableListOf<SceneEntity>()
-    private var dragAndDropEntity: SceneEntity? = null
-    private var changeToType: KClass<out SceneEntity>? = null
     private var sceneFileToLoad: String? = null
     private var sceneFileToCreate: String? = null
     private var sceneFileToSaveAs: String? = null
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     // Moving and copying
     private var isMoving = false
@@ -114,6 +126,7 @@ class SceneEditor(
     {
         // Load editor config
         engine.config.load("/pulseengine/config/editor_default.cfg")
+        UI_SCALE = engine.config.getFloat("uiScale") ?: engine.window.scale
 
         // Set editor data
         screenArea = FocusArea(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
@@ -128,7 +141,8 @@ class SceneEditor(
         engine.gfx.createSurface(
             name = "scene_editor_foreground",
             zOrder = -90,
-            attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_TEXTURE)
+            attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_STENCIL_BUFFER),
+            multisampling = Multisampling.MSAA16
         )
 
         // Background surface for grid
@@ -139,14 +153,28 @@ class SceneEditor(
             backgroundColor = Color(0.043f, 0.047f, 0.054f, 0f)
         )
 
-        // Load editor icons
-        engine.asset.loadAllTextures("/pulseengine/icons")
+        // Load editor icon font
+        engine.asset.loadFont("/pulseengine/assets/editor_icons.ttf", uiFactory.style.iconFontName)
 
         // Register a console command to toggle editor visibility
-        engine.console.registerCommand("showSceneEditor") {
+        engine.console.registerCommand("showSceneEditor")
+        {
             isRunning = !isRunning
             if (!isRunning) play(engine) else stop(engine)
             CommandResult("", showCommand = false)
+        }
+
+        // Delete selected entities on key press
+        engine.input.setOnKeyPressed()
+        {
+            if (it == DELETE && isRunning && engine.input.hasFocus(screenArea))
+                deleteEntitySelection(engine)
+        }
+
+        // React on scale changes
+        engine.window.setOnScaleChanged()
+        {
+            createSceneEditorUI(engine)
         }
 
         // Create and populate editor with UI
@@ -155,14 +183,13 @@ class SceneEditor(
 
     private fun createSceneEditorUI(engine: PulseEngine)
     {
-        // Properties
-        entityPropertiesUI = RowPanel()
-        entityPropertiesUI.rowHeight = 34f
-        entityPropertiesUI.rowPadding = 0f
+        // Set UI scaling
+        UI_SCALE = engine.config.getFloat("uiScale") ?: engine.window.scale
+        cameraController.scrollSpeed = 40f * UI_SCALE
 
+        // Properties
+        inspectorUI = RowPanel()
         systemPropertiesUI = RowPanel()
-        systemPropertiesUI.rowHeight = 34f
-        systemPropertiesUI.rowPadding = 0f
 
         // Create content
         val menuBar = uiFactory.createMenuBarUI(
@@ -173,8 +200,8 @@ class SceneEditor(
                 MenuBarItem("Save as...") { onSaveAs(engine) }
             )),
             MenuBarButton("View", listOf(
-                MenuBarItem("Entity properties") { createEntityPropertyWindow() },
-                MenuBarItem("Scene assets") { createAssetWindow(engine) },
+                MenuBarItem("Inspector") { createInspectorWindow() },
+                MenuBarItem("Outliner") { createOutlinerWindow(engine) },
                 MenuBarItem("Scene systems") { createSceneSystemsPropertyWindow(engine) },
                 MenuBarItem("Viewport") { createViewportWindow(engine) },
                 MenuBarItem("Grid") {
@@ -197,61 +224,89 @@ class SceneEditor(
         dockingUI = DockingPanel()
         dockingUI.focusable = false
 
+        // Footer
+        val (footer, callback) = uiFactory.createFooter()
+        updateFooterCallback = callback
+
         // Create root UI and perform initial update
         rootUI = VerticalPanel()
         rootUI.focusable = false
-        rootUI.addChildren(menuBar, dockingUI)
+        rootUI.addChildren(menuBar, dockingUI, footer)
         rootUI.updateLayout()
         rootUI.setLayoutClean()
 
         // Create default windows and insert into docking
-        createEntityPropertyWindow()
         createSceneSystemsPropertyWindow(engine)
-        createAssetWindow(engine)
+        createOutlinerWindow(engine)
+        createInspectorWindow()
 
         // Load previous layout from file
         if (shouldPersistEditorLayout)
             dockingUI.loadLayout(engine, "/editor_layout.cfg")
     }
 
-    private fun createEntityPropertyWindow()
-    {
-        if (dockingUI.findElementById("Entity Properties") == null)
-        {
-            val entityPropertyWindow = uiFactory.createWindowUI("Entity Properties")
-            val propertyPanel = uiFactory.createScrollableSectionUI(entityPropertiesUI)
-            entityPropertyWindow.body.addChildren(propertyPanel)
-            dockingUI.insertLeft(entityPropertyWindow)
-        }
-    }
-
-    private fun createAssetWindow(engine: PulseEngine)
-    {
-        if (dockingUI.findElementById("Scene Assets") == null)
-        {
-            val assetWindow = uiFactory.createWindowUI("Scene Assets")
-            val assetPanel = uiFactory.createAssetPanelUI(engine) { createDragAndDropEntity(engine, it) }
-            assetWindow.body.addChildren(assetPanel)
-            dockingUI.insertBottom(assetWindow)
-        }
-    }
-
     private fun createSceneSystemsPropertyWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElementById("Scene Systems") == null)
-        {
-            updateSceneSystemProperties(engine)
-            val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
-            val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems")
-            sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
-            dockingUI.insertRight(sceneSystemWindow)
-        }
+        if (dockingUI.findElementById("Scene Systems") != null)
+            return // Already exists
+
+        updateSceneSystemProperties(engine)
+        val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
+        val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems", "GEARS")
+        sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
+        dockingUI.insertRight(sceneSystemWindow)
+    }
+
+    private fun createOutlinerWindow(engine: PulseEngine)
+    {
+        if (dockingUI.findElementById("Outliner") != null)
+            return // Already exists
+
+        outliner = Outliner.build(
+            engine = engine,
+            uiElementFactory = uiFactory,
+            onEntitiesSelected = {
+                entitySelection.clear()
+                inspectorUI.clearChildren()
+                entityPropertyUiRows.clear()
+                engine.scene.forEachEntity()
+                {
+                    if (it.isSet(SELECTED or EDITABLE) && it.isNot(HIDDEN))
+                        addEntityToSelection(it)
+                }
+                if (entitySelection.size == 1)
+                    selectSingleEntity(engine, entitySelection.first())
+            },
+            onEntityCreated = { type -> createNewEntity(engine, type) },
+            onEntityDeleted = { deleteEntitySelection(engine) }
+        )
+        outliner!!.reloadEntitiesFromActiveScene()
+
+        val window = uiFactory.createWindowUI(title = "Outliner", iconName = "LIST", onClosed = { outliner = null })
+        window.body.addChildren(outliner!!.ui)
+        dockingUI.insertLeft(window)
+    }
+
+    private fun createInspectorWindow()
+    {
+        if (dockingUI.findElementById("Inspector") != null)
+            return // Already exists
+
+        val inspectorWindow = uiFactory.createWindowUI("Inspector", "CUBE")
+        val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
+        inspectorWindow.body.addChildren(propertyPanel)
+
+        val propWindow = dockingUI.findElementById("Outliner")
+        if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
+            dockingUI.insertInsideBottom(target = propWindow as WindowPanel, inspectorWindow)
+        else
+            dockingUI.insertLeft(inspectorWindow)
     }
 
     private fun createViewportWindow(engine: PulseEngine)
     {
         val viewportUi = uiFactory.createViewportUI(engine)
-        val viewportWindow = uiFactory.createWindowUI("Viewport", 300f, 300f, 640f, 480f)
+        val viewportWindow = uiFactory.createWindowUI("Viewport", "MONITOR",300f, 300f, 640f, 480f)
         viewportWindow.body.addChildren(viewportUi)
         dockingUI.addChildren(viewportWindow)
     }
@@ -274,7 +329,6 @@ class SceneEditor(
         sceneFileToSaveAs?.let()
         {
             engine.scene.saveAs(fileName = it, updateActiveScene = true)
-            setWindowTitleFromSceneName(engine)
             sceneFileToSaveAs = null
         }
 
@@ -288,18 +342,18 @@ class SceneEditor(
         {
             resetUI()
             updateSceneSystemProperties(engine)
-            setWindowTitleFromSceneName(engine)
             initializeEntities(engine)
+            outliner?.reloadEntitiesFromActiveScene()
             lastSceneHashCode = engine.scene.activeScene.hashCode()
         }
 
         if (engine.scene.state == SceneState.STOPPED)
         {
             engine.input.setCursor(ARROW)
-            cameraController.update(engine, activeCamera)
+            cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(screenArea))
         }
 
-        if (engine.input.wasClicked(Key.F10))
+        if (engine.input.wasClicked(F10))
         {
             if (engine.scene.state == SceneState.STOPPED)
             {
@@ -313,27 +367,18 @@ class SceneEditor(
             }
         }
 
-        changeToType?.let {
-            handleEntityTypeChanged(engine.scene.activeScene, it)
-            changeToType = null
-        }
-
         if (entitySelection.size == 1)
             entitySelection.first().handleEntityTransformation(engine)
 
-        handleEntityDeleting(engine)
         handleEntityCopying(engine)
         handleEntitySelection(engine)
-        dragAndDropEntity?.handleEntityDragAndDrop(engine)
+        handleEntityMoving(engine)
 
-        if (isMoving)
-        {
-            engine.input.setCursor(MOVE)
-            entitySelection.forEachFast { it.handleEntityMoving(engine) }
-
-            if (!isMoving)
-                entitySelection.forEachFast { it.onMovedScaledOrRotated(engine) }
-        }
+        updateFooterCallback(
+            engine.scene.getAllEntitiesByType().sumOf { it.size },
+            entitySelection.size,
+            engine.scene.activeScene.fileName
+        )
 
         if (rootUI.width.value.toInt() != engine.window.width || rootUI.height.value.toInt() != engine.window.height)
             rootUI.setLayoutDirty()
@@ -349,23 +394,41 @@ class SceneEditor(
         val foregroundSurface = engine.gfx.getSurfaceOrDefault("scene_editor_foreground")
         renderEntityIconAndGizmo(foregroundSurface, engine)
         renderSelectionRectangle(foregroundSurface)
-        rootUI.render(foregroundSurface)
+        rootUI.render(engine, foregroundSurface)
     }
 
     private fun renderEntityIconAndGizmo(surface: Surface2D, engine: PulseEngine)
     {
         val showResizeDots = (entitySelection.size == 1)
-        entitySelection.forEachFast { it.renderGizmo(surface, showResizeDots) }
+        entitySelection.forEachFast()
+        {
+            if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
+                it.renderGizmo(surface, showResizeDots)
+        }
 
         engine.scene.forEachEntityTypeList { entities ->
-            entities[0]::class.findAnnotation<EditorIcon>()?.let { annotation ->
-                engine.asset.getOrNull<Texture>(annotation.textureAssetName)?.let { texture ->
-                    val width = annotation.width
-                    val height = annotation.height
-                    surface.setDrawColor(1f, 1f, 1f)
-                    entities.forEachFast { entity ->
-                        val pos = engine.gfx.mainCamera.worldPosToScreenPos(entity.x, entity.y)
-                        surface.drawTexture(texture, pos.x, pos.y, width, height, 0f, 0.5f, 0.5f)
+            entities[0]::class.findAnnotation<ScnIcon>()?.let { annotation ->
+                if (annotation.showInViewport && entities[0] is Spatial)
+                {
+                    val size = annotation.size
+                    val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
+                    val font = engine.asset.getOrNull<Font>(uiFactory.style.iconFontName)
+                    val iconChar = uiFactory.style.icons[annotation.iconName]
+                    if (texture != null || (font != null && iconChar != null))
+                    {
+                        surface.setDrawColor(Color.WHITE)
+                        entities.forEachFast()
+                        {
+                            if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
+                            {
+                                it as Spatial
+                                val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
+                                if (texture != null)
+                                    surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
+                                else if (iconChar != null)
+                                    surface.drawText(iconChar, pos.x, pos.y, font, size, xOrigin = 0.5f, yOrigin = 0.5f)
+                            }
+                        }
                     }
                 }
             }
@@ -377,7 +440,7 @@ class SceneEditor(
         if (engine.scene.state == SceneState.RUNNING)
             engine.scene.stop()
 
-        GlobalScope.launch(context = Dispatchers.IO)
+        scope.launch(context = Dispatchers.IO)
         {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
                 sceneFileToSaveAs = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
@@ -390,7 +453,7 @@ class SceneEditor(
         if (engine.scene.state != SceneState.RUNNING)
             engine.scene.save()
 
-        GlobalScope.launch(context = Dispatchers.IO)
+        scope.launch(context = Dispatchers.IO)
         {
             FileChooser.showFileSelectionDialog("scn", engine.data.saveDirectory) { filePath ->
                 sceneFileToLoad = filePath
@@ -406,7 +469,7 @@ class SceneEditor(
             engine.scene.save()
         }
 
-        GlobalScope.launch(context = Dispatchers.IO)
+        scope.launch(context = Dispatchers.IO)
         {
             FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
                 sceneFileToCreate = filePath
@@ -442,52 +505,112 @@ class SceneEditor(
         {
             engine.scene.stop()
             engine.scene.reload()
-            initializeEntities(engine)
         }
     }
 
     ////////////////////////////// EDIT TOOLS  //////////////////////////////
 
-    private fun handleEntityDeleting(engine: PulseEngine)
+    private fun deleteEntitySelection(engine: PulseEngine)
     {
-        if (engine.input.isPressed(Key.DELETE))
-        {
-            if (entitySelection.isNotEmpty())
-            {
-                entitySelection.forEachFast { it.set(DEAD) }
-                clearEntitySelection()
-                isMoving = false
-            }
-        }
+        if (entitySelection.isEmpty())
+            return
+
+        entitySelection.forEachFast { it.setDead(engine) }
+        outliner?.removeEntities(entitySelection)
+        isMoving = false
+        clearEntitySelection()
+    }
+
+    private fun SceneEntity.setDead(engine: PulseEngine)
+    {
+        this.set(DEAD)
+        this.childIds?.forEachFast { engine.scene.getEntity(it)?.setDead(engine) }
     }
 
     private fun handleEntityCopying(engine: PulseEngine)
     {
-        if (engine.input.isPressed(Key.LEFT_CONTROL))
+        if (!engine.input.isPressed(LEFT_CONTROL) || !engine.input.isPressed(D))
         {
-            if (isMoving && !isCopying)
-            {
-                val copies = entitySelection.map { it.createCopy() }
+            isCopying = false
+            return
+        }
 
-                if (copies.size == 1)
-                    selectSingleEntity(copies.first())
-                else
+        if (!isMoving || isCopying)
+            return
+
+        val copies = entitySelection.map { it.createCopy() }.toMutableList()
+        val insertedCopies = mutableListOf<SceneEntity>()
+        val idMapping = mutableMapOf<Long, Long>()
+
+        // Insert copied entities in order of parents before children
+        while (copies.isNotEmpty())
+        {
+            val copiesLeft = copies.size
+            for (copy in copies)
+            {
+                if (copies.none { it.id == copy.parentId })
                 {
-                    clearEntitySelection()
-                    copies.forEachFast { addEntityToSelection(it) }
+                    copy.childIds = null
+                    copy.parentId = idMapping[copy.parentId] ?: copy.parentId
+                    copy.setNot(SELECTED)
+                    val lastId = copy.id
+                    val newId = engine.scene.addEntity(copy)
+                    idMapping[lastId] = newId
+                    copies.remove(copy)
+                    insertedCopies.add(copy)
+                    break
                 }
-                val scene = engine.scene.activeScene
-                copies.forEachFast { scene.insertEntity(it) }
-                isCopying = true
             }
-        } else isCopying = false
+
+            if (copiesLeft == copies.size)
+            {
+                Logger.error("Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}")
+                return
+            }
+        }
+
+        // Handle fields annotated with EntityRef
+        for (entity in insertedCopies)
+        {
+            for (prop in entity::class.memberProperties)
+            {
+                if (prop is KMutableProperty<*> && prop.name != "parent" && prop.name != "childIds" && prop.hasAnnotation<EntityRef>())
+                {
+                    val ref = prop.getter.call(entity)
+                    if (ref is Long)
+                    {
+                        idMapping[ref]?.let { newRef -> prop.setter.call(entity, newRef) }
+                    }
+                    else if (ref is LongArray && ref.isNotEmpty())
+                    {
+                        prop.setter.call(entity, LongArray(ref.size) { idMapping[ref[it]] ?: ref[it] })
+                    }
+                }
+            }
+        }
+
+        outliner?.addEntities(insertedCopies)
+        isCopying = true
     }
 
     private fun handleEntitySelection(engine: PulseEngine)
     {
+        // Select all with CTRL + A
+        if (engine.input.wasClicked(A) && engine.input.isPressed(LEFT_CONTROL))
+        {
+            clearEntitySelection()
+            engine.scene.forEachEntity()
+            {
+                it.set(SELECTED)
+                entitySelection.add(it)
+            }
+            outliner?.selectEntities(entitySelection)
+        }
+
         val xMouse = engine.input.xWorldMouse
         val yMouse = engine.input.yWorldMouse
 
+        // Select / deselect single entity
         if (engine.input.wasClicked(Mouse.LEFT))
         {
             // Select entity
@@ -497,21 +620,41 @@ class SceneEditor(
                 var closestEntity: SceneEntity? = null
                 engine.scene.forEachEntity()
                 {
-                    if (it.z <= zMin && it.isInside(xMouse, yMouse))
+                    if (it is Spatial && it.z <= zMin && it.isInside(xMouse, yMouse) && it.isSet(EDITABLE) && it.isNot(HIDDEN))
                     {
                         zMin = it.z
                         closestEntity = it
                     }
                 }
 
-                closestEntity?.let { entity ->
-                    if (entity !in entitySelection)
-                        selectSingleEntity(entity)
+                closestEntity?.let()
+                {
+                    val isInSelection = (it in entitySelection)
+                    if (engine.input.isPressed(LEFT_CONTROL))
+                    {
+                        if (isInSelection) removeEntityFromSelection(it) else addEntityToSelection(it)
+
+                        if (entitySelection.size == 1)
+                        {
+                            selectSingleEntity(engine, entitySelection.first())
+                        }
+                        else
+                        {
+                            inspectorUI.clearChildren()
+                            entityPropertyUiRows.clear()
+                            outliner?.selectEntities(entitySelection)
+                        }
+                    }
+                    else if (!isInSelection)
+                    {
+                        selectSingleEntity(engine, it)
+                    }
                     isMoving = true
                 }
             }
         }
 
+        // Start multi selection
         if (engine.input.isPressed(Mouse.LEFT))
         {
             if (!isMoving && !isRotating && !isResizingVertically && !isResizingHorizontally)
@@ -529,6 +672,7 @@ class SceneEditor(
         }
         else isSelecting = false
 
+        // Multi selection
         if (isSelecting)
         {
             val xStart = min(xStartSelect, xEndSelect)
@@ -536,76 +680,92 @@ class SceneEditor(
             val width  = abs(xEndSelect - xStartSelect)
             val height  = abs(yEndSelect - yStartSelect)
             val selectedEntity = entitySelection.firstOrNull()
-            entitySelection.forEachFast { it.setNot(SELECTED) }
-            entitySelection.clear()
+            val prevEntityCount = entitySelection.size
+
+            if (!engine.input.isPressed(LEFT_CONTROL))
+            {
+                // Reset selection only if CTRL is not pressed
+                entitySelection.forEachFast { it.setNot(SELECTED) }
+                entitySelection.clear()
+            }
 
             engine.scene.forEachEntity()
             {
-                if (it.isOverlapping(xStart, yStart, width, height))
+                if (it.isSet(EDITABLE) &&
+                    it.isNot(HIDDEN) &&
+                    it.isNot(SELECTED) &&
+                    it is Spatial &&
+                    it.isOverlapping(xStart, yStart, width, height)
+                ) {
                     addEntityToSelection(it)
+                }
             }
 
             if (entitySelection.size == 1)
             {
                 if (entitySelection.first() !== selectedEntity)
-                    selectSingleEntity(entitySelection.first())
+                    selectSingleEntity(engine, entitySelection.first())
             }
-            else entityPropertiesUI.clearChildren()
+            else
+            {
+                inspectorUI.clearChildren()
+                if (entitySelection.size != prevEntityCount)
+                    outliner?.selectEntities(entitySelection)
+            }
         }
+    }
 
+    private fun handleEntityMoving(engine: PulseEngine)
+    {
+        // Nudge with arrow keys
         var xMove = 0f
         var yMove = 0f
-        if (engine.input.wasClicked(Key.UP)) yMove -= 1
-        if (engine.input.wasClicked(Key.DOWN)) yMove += 1
-        if (engine.input.wasClicked(Key.LEFT)) xMove -= 1
-        if (engine.input.wasClicked(Key.RIGHT)) xMove += 1
-        if (xMove != 0f || yMouse != 0f)
+        if (engine.input.wasClicked(UP)) yMove -= 1
+        if (engine.input.wasClicked(DOWN)) yMove += 1
+        if (engine.input.wasClicked(LEFT)) xMove -= 1
+        if (engine.input.wasClicked(RIGHT)) xMove += 1
+        if (xMove != 0f || yMove != 0f)
         {
-            entitySelection.forEachFast {
-                it.x += xMove
-                it.y += yMove
-                it.set(POSITION_UPDATED)
+            entitySelection.forEachFast()
+            {
+                if (it is Spatial)
+                {
+                    it.x += xMove
+                    it.y += yMove
+                    it.set(POSITION_UPDATED)
+                    updateEntityPropertiesPanel(it::x.name, it.x)
+                    updateEntityPropertiesPanel(it::y.name, it.y)
+                }
             }
         }
-    }
 
-    private fun SceneEntity.handleEntityMoving(engine: PulseEngine)
-    {
-        if (isMoving && !engine.input.isPressed(Mouse.LEFT))
-        {
-            engine.input.setCursor(ARROW)
-            isMoving = false
-            this.onMovedScaledOrRotated(engine)
-        }
-
-        this.x += engine.input.xdMouse / activeCamera.scale.x
-        this.y += engine.input.ydMouse / activeCamera.scale.y
-        this.set(POSITION_UPDATED)
-
-        updateEntityPropertiesPanel(::x.name, x)
-        updateEntityPropertiesPanel(::y.name, y)
-    }
-
-    private fun SceneEntity.handleEntityDragAndDrop(engine: PulseEngine)
-    {
-        if (this !in entitySelection)
-            selectSingleEntity(this)
-
-        engine.input.acquireFocus(dragAndDropArea)
-        this.x = engine.input.xWorldMouse
-        this.y = engine.input.yWorldMouse
+        if (!isMoving) return
 
         if (!engine.input.isPressed(Mouse.LEFT))
         {
-            dragAndDropEntity = null
-            engine.scene.activeScene.insertEntity(this)
-            updateEntityPropertiesPanel("id", this.id)
-            this.onMovedScaledOrRotated(engine)
+            engine.input.setCursor(ARROW)
+            entitySelection.forEachFast { it.onMovedScaledOrRotated(engine) }
+            isMoving = false
+            return
+        }
+
+        for (entity in entitySelection)
+        {
+            if (entity !is Spatial) continue
+
+            entity.x += engine.input.xdMouse / activeCamera.scale.x
+            entity.y += engine.input.ydMouse / activeCamera.scale.y
+            entity.set(POSITION_UPDATED)
+
+            updateEntityPropertiesPanel(entity::x.name, entity.x)
+            updateEntityPropertiesPanel(entity::y.name, entity.y)
         }
     }
 
     private fun SceneEntity.handleEntityTransformation(engine: PulseEngine)
     {
+        if (this !is Spatial) return
+
         val border = min(abs(width), abs(height)) * 0.1f
         val rotateArea = min(abs(width), abs(height)) * 0.2f
 
@@ -616,8 +776,9 @@ class SceneEditor(
         val len = sqrt(xDiff * xDiff + yDiff * yDiff)
         val xMouse = x + cos(angle) * len
         val yMouse = y + sin(angle) * len
-        val w = (abs(width) + GIZMO_PADDING * 2) / 2
-        val h = (abs(height) + GIZMO_PADDING * 2) / 2
+        val padding = getGizmoPadding()
+        val w = (abs(width) + padding * 2) / 2
+        val h = (abs(height) + padding * 2) / 2
 
         val resizeBottom = xMouse >= x - w - border && xMouse <= x + w + border && yMouse >= y + h - border && yMouse <= y + h + border
         val resizeTop = xMouse >= x - w - border && xMouse <= x + w + border && yMouse >= y - h - border && yMouse <= y - h + border
@@ -776,71 +937,86 @@ class SceneEditor(
         return iconAngle
     }
 
-    private fun createDragAndDropEntity(engine: PulseEngine, texture: Texture)
+    private fun createNewEntity(engine: PulseEngine, type: KClass<out SceneEntity>)
     {
-        if (dragAndDropEntity != null) return
-
-        val type = REGISTERED_TYPES
-            .find { it.memberProperties.any { prop -> prop.name == "textureName" } }
-            ?: REGISTERED_TYPES.firstOrNull()
-
-        type?.let { t ->
-            val entity = t.constructors.first().call()
-            entity.x = engine.input.xWorldMouse
-            entity.y = engine.input.yWorldMouse
-            entity.width = texture.width.toFloat()
-            entity.height = texture.height.toFloat()
-            entity.setProperty("textureName", texture.name)
-            dragAndDropEntity = entity
+        val entity = type.createInstance()
+        if (entity is Spatial)
+        {
+            val spawnPos = activeCamera.screenPosToWorldPos(engine.window.width * 0.5f, engine.window.height * 0.5f)
+            entity.x = spawnPos.x
+            entity.y = spawnPos.y
+            entity.width = 512f
+            entity.height = 512f
         }
+        entity.setPrimitiveProperty("textureName", "crate")
+        engine.scene.addEntity(entity)
+        outliner?.addEntities(listOf(entity))
+        selectSingleEntity(engine, entity)
     }
 
-    private fun selectSingleEntity(entity: SceneEntity)
+    private fun selectSingleEntity(engine: PulseEngine, entity: SceneEntity)
     {
         clearEntitySelection()
         addEntityToSelection(entity)
+        outliner?.selectEntities(entitySelection)
 
-        val entityTypePropUI = uiFactory.createEntityTypePropertyUI(entity) { changeToType = it }
-        entityPropertiesUI.addChildren(entityTypePropUI)
-
-        entity::class.memberProperties
-            .groupBy { it.findAnnotation<Property>()?.category ?: "" }
+        val entityName = entity::class.getName()
+        val propertyGroups = entity::class.memberProperties
+            .filter { entity.getPropInfo(it)?.hidden != true }
+            .groupBy { entity.getPropInfo(it)?.group?.takeIf { it.isNotEmpty() } ?: entityName }
             .toList()
-            .sortedBy { it.first }
-            .forEachFast { (category, props) ->
-                props.sortedBy { it.findAnnotation<Property>()?.order ?: 0 }
-                    .filterIsInstance<KMutableProperty<*>>()
-                    .filter { it.isEditable() }
-                    .also {
-                        if (it.isNotEmpty() && category.isNotEmpty())
-                            entityPropertiesUI.addChildren(uiFactory.createCategoryHeader(category))
-                    }.forEachFast { prop ->
-                        val (propertyPanel, inputElement) = uiFactory.createPropertyUI(entity, prop)
-                        entityPropertiesUI.addChildren(propertyPanel)
-                        entityPropertyUiRows[prop.name] = inputElement
-                    }
-            }
-    }
+            .sortedBy { it.first } // Alphabetic order
+            .sortedBy { it.first != entityName } // Entity type first
 
-    private fun handleEntityTypeChanged(scene: Scene, type: KClass<out SceneEntity>)
-    {
-        if (entitySelection.size != 1) return
-
-        try
+        for ((group, props) in propertyGroups)
         {
-            val oldEntity = entitySelection.first()
-            val newEntity = type.constructors.first().call()
+            val onChanged = { propName: String, lastValue: Any?, _: Any? ->
+                if (propName == SceneEntity::parentId.name)
+                {
+                    val newParentId = entity.parentId
+                    val lastParentId = (lastValue as? String)?.toLongOrNull() ?: INVALID_ID
 
-            oldEntity::class.memberProperties.forEach { prop ->
-                if (prop.visibility == KVisibility.PUBLIC)
-                    newEntity.setProperty(prop.name, value = prop.getter.call(oldEntity))
+                    engine.scene.getEntity(lastParentId)?.removeChild(entity)
+                    engine.scene.getEntity(newParentId)?.addChild(entity)
+                    outliner?.removeEntities(listOf(entity))
+                    outliner?.addEntities(listOf(entity))
+                }
+                outliner?.updateEntityProperty(entity, propName)
+                Unit
             }
 
-            oldEntity.set(DEAD)
-            scene.insertEntity(newEntity)
-            selectSingleEntity(newEntity)
+            val headerId = "header_$group"
+            val isCollapsed = headerId in collapsedPropertyHeaders
+            val propertyRows = props
+                .sortedBy { entity.getPropInfo(it)?.i ?: 0 }
+                .filterIsInstance<KMutableProperty<*>>()
+                .filter { it.isEditable() }
+                .map { prop -> prop to uiFactory.createPropertyUI(entity, prop, onChanged) }
+
+            if (propertyRows.isNotEmpty())
+            {
+                val headerButton = uiFactory.createCategoryHeader(
+                    label = group,
+                    isCollapsed = isCollapsed,
+                    onClicked = {
+                        propertyRows.forEachFast { (_, ui) -> ui.first.hidden = !ui.first.hidden }
+                        if (it.isPressed) collapsedPropertyHeaders.add(headerId) else collapsedPropertyHeaders.remove(headerId)
+                    }
+                )
+                inspectorUI.addChildren(headerButton)
+            }
+
+            for ((prop, ui) in propertyRows)
+            {
+                val (propertyPanel, inputElement) = ui
+                propertyPanel.hidden = isCollapsed
+                inspectorUI.addChildren(propertyPanel)
+                entityPropertyUiRows[prop.name] = inputElement
+            }
         }
-        catch (e: Exception) { Logger.error("Failed to change entity type, reason: ${e.message}") }
+
+        // Add bottom padding to the last property row
+        inspectorUI.children.lastOrNull()?.let { it.padding.bottom = it.padding.top }
     }
 
     private fun updateEntityPropertiesPanel(propName: String, value: Any)
@@ -850,16 +1026,16 @@ class SceneEditor(
 
     private fun updateSceneSystemProperties(engine: PulseEngine)
     {
-        val hiddenSystems = systemPropertiesUI.children
+        val openSystems = systemPropertiesUI.children
             .filterIsInstance<Button>()
-            .filter { it.state }
+            .filter { !it.isPressed }
             .mapNotNull { it.id }
 
         systemPropertiesUI.clearChildren()
         for (system in engine.scene.activeScene.systems)
         {
-            val isHidden = system::class.simpleName in hiddenSystems
-            val props = uiFactory.createSystemProperties(system, isHidden, onClose = { props ->
+            val isHidden = system::class.simpleName !in openSystems
+            val props = uiFactory.createSystemProperties(system, isHidden = isHidden, onClose = { props ->
                 system.onDestroy(engine)
                 engine.scene.removeSystem(system)
                 systemPropertiesUI.removeChildren(*props.toTypedArray())
@@ -890,10 +1066,13 @@ class SceneEditor(
 
     private fun SceneEntity.renderGizmo(surface: Surface2D, showResizeDots: Boolean)
     {
+        if (this !is Spatial) return
+
         val pos = activeCamera.worldPosToScreenPos(x, y)
-        val w = (width + GIZMO_PADDING * 2) * activeCamera.scale.x / 2f
-        val h = (height + GIZMO_PADDING * 2) * activeCamera.scale.y / 2f
-        val size = 4f
+        val padding = getGizmoPadding()
+        val w = (width + padding * 2) * activeCamera.scale.x / 2f
+        val h = (height + padding * 2) * activeCamera.scale.y / 2f
+        val size = 4f * UI_SCALE
         val halfSize = size / 2f
 
         if (rotation != 0f)
@@ -949,33 +1128,35 @@ class SceneEditor(
         val yEnd = (activeCamera.bottomRightWorldPosition.y.toInt() / cellSize + 1) * cellSize
 
         val middleLineSize = 2f / activeCamera.scale.x
-        val color = (activeCamera.scale.x + 0.2f).coerceIn(0.1f, 0.4f)
+        val alpha = (activeCamera.scale.x + 0.2f).coerceIn(0.1f, 0.4f)
+        val shade = 0.3f
 
-        surface.setDrawColor(1f, 1f, 1f, color + 0.1f)
+        surface.setDrawColor(shade, shade, shade, alpha + 0.1f)
         for (x in xStart until xEnd step cellSize)
             if (x != 0 && x % 3 == 0) surface.drawLine(x.toFloat(), yStart.toFloat(), x.toFloat(), yEnd.toFloat())
 
         for (y in yStart until yEnd step cellSize)
             if (y != 0 && y % 3 == 0) surface.drawLine(xStart.toFloat(), y.toFloat(), xEnd.toFloat(), y.toFloat())
 
-        surface.setDrawColor(1f, 1f, 1f, color)
+        surface.setDrawColor(shade, shade, shade, alpha)
         for (x in xStart until xEnd step cellSize)
             if (x != 0 && x % 3 != 0) surface.drawLine(x.toFloat(), yStart.toFloat(), x.toFloat(), yEnd.toFloat())
 
         for (y in yStart until yEnd step cellSize)
             if (y != 0 && y % 3 != 0) surface.drawLine(xStart.toFloat(), y.toFloat(), xEnd.toFloat(), y.toFloat())
 
-        surface.setDrawColor(1f, 1f, 1f, color + 0.2f)
+        surface.setDrawColor(shade, shade, shade, alpha + 0.2f)
         surface.drawTexture(Texture.BLANK, -middleLineSize, yStart.toFloat(), middleLineSize, (yEnd - yStart).toFloat())
         surface.drawTexture(Texture.BLANK, xStart.toFloat(), -middleLineSize, (xEnd - xStart).toFloat(), middleLineSize)
     }
 
     ////////////////////////////// UTILS //////////////////////////////
 
-    private fun SceneEntity.isInside(xWorld: Float, yWorld: Float): Boolean
+    private fun Spatial.isInside(xWorld: Float, yWorld: Float): Boolean
     {
-        val w = abs(width) + GIZMO_PADDING * 2
-        val h = abs(height) + GIZMO_PADDING * 2
+        val padding = getGizmoPadding()
+        val w = abs(width) + padding * 2f
+        val h = abs(height) + padding * 2f
         val xDiff = xWorld - x
         val yDiff = yWorld - y
         val angle = -MathUtil.atan2(yDiff, xDiff) - (this.rotation / 180f * PI.toFloat())
@@ -986,7 +1167,7 @@ class SceneEditor(
         return xWorldNew > x - w / 2f && xWorldNew < x + w / 2 && yWorldNew > y - h / 2f && yWorldNew < y + h / 2f
     }
 
-    private fun SceneEntity.isOverlapping(xWorld: Float, yWorld: Float, width: Float, height: Float): Boolean
+    private fun Spatial.isOverlapping(xWorld: Float, yWorld: Float, width: Float, height: Float): Boolean
     {
         return this.x > xWorld && this.x < xWorld + width && this.y > yWorld && this.y < yWorld + height
     }
@@ -1005,11 +1186,17 @@ class SceneEditor(
                         val copyFunc = propValue::class.memberFunctions.first { it.name == "copy" }
                         val instanceParam = copyFunc.instanceParameter!!
                         copyFunc.callBy(mapOf(instanceParam to propValue))?.let {
-                            entityCopy.setProperty(prop.name, it)
+                            entityCopy.setPrimitiveProperty(prop.name, it)
                         }
                     }
                     else if (prop.isPrimitiveValue())
-                        entityCopy.setProperty(prop.name, propValue)
+                    {
+                        entityCopy.setPrimitiveProperty(prop.name, propValue)
+                    }
+                    else if (prop.isPrimitiveArray())
+                    {
+                        entityCopy.setArrayProperty(prop.name, propValue)
+                    }
                 }
             }
         }
@@ -1020,7 +1207,7 @@ class SceneEditor(
     {
         entitySelection.forEachFast { it.setNot(SELECTED) }
         entitySelection.clear()
-        entityPropertiesUI.clearChildren()
+        inspectorUI.clearChildren()
         entityPropertyUiRows.clear()
     }
 
@@ -1030,12 +1217,18 @@ class SceneEditor(
         entity.set(SELECTED)
     }
 
+    private fun removeEntityFromSelection(entity: SceneEntity)
+    {
+        entitySelection.remove(entity)
+        entity.setNot(SELECTED)
+    }
+
     private fun initializeEntities(engine: PulseEngine)
     {
         engine.scene.forEachEntity()
         {
             if (prevSelectedEntityId != null && prevSelectedEntityId == it.id)
-                selectSingleEntity(it)
+                selectSingleEntity(engine, it)
             if (it is PhysicsEntity)
                 it.init(engine)
         }
@@ -1049,8 +1242,6 @@ class SceneEditor(
 
     private fun resetUI()
     {
-        dragAndDropEntity = null
-        changeToType = null
         isMoving = false
         isSelecting = false
         isCopying = false
@@ -1060,18 +1251,13 @@ class SceneEditor(
         clearEntitySelection()
     }
 
-    private fun setWindowTitleFromSceneName(engine: PulseEngine)
-    {
-        engine.window.title = engine.window.title
-            .substringBeforeLast(" [")
-            .plus(" [${engine.scene.activeScene.fileName.removePrefix("/")}]")
-    }
-
     override fun onDestroy(engine: PulseEngine)
     {
         if (shouldPersistEditorLayout)
             dockingUI.saveLayout(engine, "/editor_layout.cfg")
     }
+
+    private fun getGizmoPadding() = GIZMO_PADDING * UI_SCALE
 
     companion object
     {

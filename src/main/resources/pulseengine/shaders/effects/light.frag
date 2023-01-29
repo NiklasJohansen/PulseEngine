@@ -92,7 +92,7 @@ vec2 closestPointOnLineSegment(vec2 point, vec2 line0, vec2 line1)
     vec2 lineDir = line1 - line0;
     vec2 pointLine0 = point - line0;
     float lengthSquared = dot(lineDir, lineDir);
-    float param = (lengthSquared == 0f) ? -1.0 : dot(pointLine0, lineDir) / lengthSquared;
+    float param = (lengthSquared == 0.0) ? -1.0 : dot(pointLine0, lineDir) / lengthSquared;
     return (param < 0.0) ? line0 : (param > 1.0 ? line1 : line0 + lineDir * param);
 }
 
@@ -165,7 +165,7 @@ Mask calculateShadowMask(vec2 pixelPos, vec2 light0, vec2 light1, vec2 edge0, ve
         return emptyMask;
 
     // Determines the offset direction and magnitude to move the point in case any of the dot products are negative
-    float offset = (detPixelEdge * -detPixelLight) * 100000f;
+    float offset = (detPixelEdge * -detPixelLight) * 100000;
 
     // Calculate the points where the pixel-to-edge lines intersect the light axis line
     vec2 point0 = (point0Dot >= 0.0)

@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SpatialGrid.Companion.nextQueryId
 import no.njoh.pulseengine.core.shared.primitives.HitResult
 import no.njoh.pulseengine.core.shared.primitives.SwapList
@@ -93,6 +94,7 @@ abstract class SceneManager
 
     /**
      * Adds the [SceneEntity] to the active [Scene].
+     * @return the newly assigned ID of the given entity.
      */
     fun addEntity(entity: SceneEntity) =
         activeScene.insertEntity(entity)
@@ -101,7 +103,7 @@ abstract class SceneManager
      * Returns the [SceneEntity] with the given [id].
      */
     fun getEntity(id: Long): SceneEntity? =
-        activeScene.entityIdMap[id]
+        if (id != INVALID_ID) activeScene.entityIdMap[id] else null
 
     /**
      * Returns the [SceneEntity] with the given [id] that is of type [T].
@@ -134,6 +136,11 @@ abstract class SceneManager
         (activeScene.entityTypeMap[T::class.simpleName] as? SwapList<T>?)?.takeIf { it.isNotEmpty() }
 
     /**
+     * Returns all [SceneEntity]s in type separated lists.
+     */
+    fun getAllEntitiesByType(): List<SwapList<SceneEntity>> = activeScene.entities
+
+    /**
      * Calls the [action] lambda for each [SceneEntity] in the [Scene].
      */
     inline fun forEachEntity(action: (SceneEntity) -> Unit) =
@@ -142,8 +149,8 @@ abstract class SceneManager
     /**
      * Calls the [action] lambda for each [SceneEntity] of type [T].
      */
-    inline fun <reified T: SceneEntity> forEachEntityOfType(action: (T) -> Unit) =
-        activeScene.entityTypeMap[T::class.simpleName]?.forEachFast { action(it as T) }
+    inline fun <reified T> forEachEntityOfType(action: (T) -> Unit) =
+        activeScene.entities.forEachFast { list -> if (list.firstOrNull() is T) list.forEachFast { action(it as T) } }
 
     /**
      * Calls the [action] lambda for each list of [SceneEntity]s with the same type.

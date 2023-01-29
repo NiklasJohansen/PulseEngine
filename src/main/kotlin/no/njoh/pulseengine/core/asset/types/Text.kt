@@ -1,8 +1,10 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadText
 
+@ScnIcon("TEXT")
 class Text(fileName: String, override val name: String) : Asset(name, fileName)
 {
     lateinit var text: String

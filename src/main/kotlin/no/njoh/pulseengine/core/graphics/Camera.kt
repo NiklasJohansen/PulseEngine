@@ -10,6 +10,7 @@ abstract class Camera
     /** Camera matrices */
     open val viewMatrix: Matrix4f = Matrix4f()
     open val projectionMatrix: Matrix4f = Matrix4f()
+    open val viewProjectionMatrix: Matrix4f = Matrix4f()
 
     /** World position */
     var position = Vector3f()
@@ -73,6 +74,7 @@ class DefaultCamera(
 ) : CameraInternal() {
 
     override var projectionMatrix = Matrix4f()
+    override var viewProjectionMatrix = Matrix4f()
 
     private val invViewMatrix = Matrix4f()
     private val returnVector = Vector4f()
@@ -123,6 +125,7 @@ class DefaultCamera(
             .translate(iPos.x - origin.x, iPos.y - origin.y, iPos.z - origin.z)
 
         viewMatrix.invert(invViewMatrix)
+        projectionMatrix.mul(viewMatrix, viewProjectionMatrix)
     }
 
     override fun updateWorldPositions(screenWidth: Int, screenHeight: Int)

@@ -15,7 +15,7 @@ import kotlin.math.max
 class LightRenderer(
     private val initialLightCapacity: Int = 100,
     private val initialEdgeCapacity: Int = 4000
-) : BatchRenderer {
+) : BatchRenderer() {
 
     var ambientColor = Color(0.1f, 0.1f, 0.1f)
     var normalMapSurface: Surface2D? = null
@@ -120,6 +120,7 @@ class LightRenderer(
             put(edgeCount.toFloat())
         }
         lights++
+        increaseBatchSize()
     }
 
     fun addEdge(x0: Float, y0: Float, x1: Float, y1: Float)
@@ -134,7 +135,7 @@ class LightRenderer(
         edges++
     }
 
-    override fun render(surface: Surface2D)
+    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
     {
         if (lights == 0)
         {

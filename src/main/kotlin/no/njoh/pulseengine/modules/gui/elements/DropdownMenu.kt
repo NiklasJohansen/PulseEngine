@@ -5,6 +5,8 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.modules.gui.Position
+import no.njoh.pulseengine.modules.gui.ScaledValue
+import no.njoh.pulseengine.modules.gui.ScrollDirection.VERTICAL
 import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.UiElement
 import no.njoh.pulseengine.modules.gui.layout.HorizontalPanel
@@ -27,10 +29,11 @@ class DropdownMenu <T> (
     var selectedItem: T? = null
         set (value)
         {
-            field = value
             if (useSelectedItemAsMenuLabel)
                 menuLabel.text = value?.let { onItemToString(it) } ?: ""
-            value?.let { onItemChanged(it) }
+            if (field != null && value != null)
+                onItemChanged(field, value)
+            field = value
         }
 
     var itemBgColor = Color(0.5f, 0.5f, 0.5f)
@@ -38,26 +41,28 @@ class DropdownMenu <T> (
     var closeOnItemSelect = true
     var showArrow = true
     var useSelectedItemAsMenuLabel = true
+    var rowHeight = ScaledValue.of(30f)
+    var rowPadding = ScaledValue.of(5f)
 
     private var onItemToString: (T) -> String = { it.toString() }
-    private var onItemChanged: (T) -> Unit = { }
+    private var onItemChanged: (lastItem: T?, newItem: T) -> Unit = { _, _ -> }
+    private var isMouseOver = false
 
     init
     {
-        menuLabel = Label("")
+        menuLabel = Label("", x = Position.center(), y = Position.center())
         menuLabel.focusable = false
-        menuLabel.padding.setAll(5f)
         menuLabel.color = Color(1f, 1f, 1f)
 
         rowPanel = RowPanel()
         rowPanel.padding.setAll(5f)
 
-        scrollbar = Scrollbar(width = Size.absolute(15f))
-        scrollbar.padding.top = 5f
-        scrollbar.padding.bottom = 5f
-        scrollbar.padding.right = 5f
-        scrollbar.sliderPadding = 3f
-        scrollbar.bind(rowPanel)
+        scrollbar = Scrollbar(width = Size.absolute(10f))
+        scrollbar.padding.top = ScaledValue.of(2f)
+        scrollbar.padding.bottom = ScaledValue.of(2f)
+        scrollbar.padding.right = ScaledValue.of(2f)
+        scrollbar.sliderPadding = ScaledValue.of(1.5f)
+        scrollbar.bind(rowPanel, direction = VERTICAL)
 
         val hPanel = HorizontalPanel()
         hPanel.addChildren(rowPanel, scrollbar)
@@ -65,8 +70,8 @@ class DropdownMenu <T> (
         dropdown.color = color
         dropdown.hidden = true
         dropdown.resizable = true
-        dropdown.minWidth = 10f
-        dropdown.minHeight = 10f
+        dropdown.minWidth = ScaledValue.of(10f)
+        dropdown.minHeight = ScaledValue.of(10f)
         dropdown.addChildren(hPanel)
 
         addPopup(dropdown)
@@ -78,6 +83,8 @@ class DropdownMenu <T> (
         super.onUpdate(engine)
         if (dropdown.isVisible() && !hasFocus(engine))
             dropdown.hidden = true
+
+        isMouseOver = engine.input.hasHoverFocus(area) && mouseInsideArea
     }
 
     private fun UiElement.hasFocus(engine: PulseEngine): Boolean =
@@ -88,12 +95,12 @@ class DropdownMenu <T> (
     {
         val label = Label(onItemToString(item))
         label.focusable = false
-        label.padding.left = 5f
+        label.padding.left = ScaledValue.of(5f)
         label.font = menuLabel.font
         label.color = menuLabel.color
         label.fontSize = menuLabel.fontSize
 
-        val button = Button()
+        val button = Button(height = Size.absolute(rowHeight))
         button.color = itemBgColor
         button.hoverColor = itemBgHoverColor
         button.addChildren(label)
@@ -103,6 +110,7 @@ class DropdownMenu <T> (
                 dropdown.hidden = true
         }
 
+        rowPanel.children.lastOrNull()?.padding?.bottom = rowPadding
         rowPanel.addChildren(button)
 
         if (selectedItem == null)
@@ -136,8 +144,8 @@ class DropdownMenu <T> (
         val isOnRightSide = x.value > root.x.value + root.width.value * 0.5f
         val isOnBottomSide = y.value > root.y.value + root.height.value * 0.5f
 
-        dropdown.padding.left = if (isOnRightSide) -dropdown.width.value + width.value else 0f
-        dropdown.padding.top = if (isOnBottomSide) -dropdown.height.value else height.value
+        dropdown.padding.left = ScaledValue.unscaled(if (isOnRightSide) -dropdown.width.value + width.value else 0f)
+        dropdown.padding.top = ScaledValue.unscaled(if (isOnBottomSide) -dropdown.height.value else height.value)
     }
 
     fun setOnItemToString(callback: (T) -> String)
@@ -145,16 +153,16 @@ class DropdownMenu <T> (
         this.onItemToString = callback
     }
 
-    fun setOnItemChanged(callback: (T) -> Unit)
+    fun setOnItemChanged(callback: (lastValue: T?, newValue: T) -> Unit)
     {
         this.onItemChanged = callback
     }
 
-    override fun onRender(surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
-        val bgColor = if (mouseInsideArea) bgHoverColor else bgColor
+        val bgColor = if (isMouseOver) bgHoverColor else bgColor
         surface.setDrawColor(bgColor)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
 
         if (showArrow && width.value - menuLabel.textWidth > 35f)
         {

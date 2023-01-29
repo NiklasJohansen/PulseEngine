@@ -29,7 +29,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         Logger.info("Initializing graphics (${this::class.simpleName})")
 
-        textureArray = TextureArray(1024, 1024, 100)
+        textureArray = TextureArray(1024, 1024, 100, mipMapLevels = 5)
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",
@@ -98,6 +98,7 @@ open class GraphicsImpl : GraphicsInternal
             it.updateViewMatrix()
             it.updateWorldPositions(mainSurface.width, mainSurface.height)
         }
+        surfaces.forEachFast { it.initFrame() }
     }
 
     override fun drawFrame()
@@ -117,7 +118,7 @@ open class GraphicsImpl : GraphicsInternal
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glViewport(0, 0, mainSurface.width, mainSurface.height)
 
-        // Run surfaces through their post processing pipelines
+        // Run surfaces through their post-processing pipelines
         surfaces.forEachFast { it.runPostProcessingPipeline() }
 
         // Draw visible surfaces to back-buffer
@@ -178,11 +179,12 @@ open class GraphicsImpl : GraphicsInternal
             name = name,
             camera = newCamera,
             context = context,
-            textRenderer = TextRenderer(),
+            textRenderer = TextRenderer(initialCapacity, context, textureArray),
             quadRenderer = QuadBatchRenderer(initialCapacity, context),
             lineRenderer = LineBatchRenderer(initialCapacity, context),
             bindlessTextureRenderer = BindlessTextureRenderer(initialCapacity, context, textureArray),
-            textureRenderer = TextureRenderer(initialCapacity, context)
+            textureRenderer = TextureRenderer(initialCapacity, context),
+            stencilRenderer = StencilRenderer(),
         )
 
         if (initializeSurface)

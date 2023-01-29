@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.input
 import no.njoh.pulseengine.core.asset.types.Cursor
-import no.njoh.pulseengine.core.shared.primitives.Subscription
+import no.njoh.pulseengine.core.console.Subscription
 
 interface Input
 {
@@ -10,8 +10,10 @@ interface Input
     val yWorldMouse: Float
     val xdMouse: Float
     val ydMouse: Float
-    val scroll: Int
+    val xScroll: Float
+    val yScroll: Float
     val textInput: String
+    val clickedKeys: List<Key>
     val gamepads: List<Gamepad>
 
     fun isPressed(key: Key): Boolean
@@ -27,6 +29,7 @@ interface Input
     fun acquireFocus(focusArea: FocusArea)
     fun releaseFocus(focusArea: FocusArea)
     fun hasFocus(focusArea: FocusArea): Boolean
+    fun hasHoverFocus(focusArea: FocusArea): Boolean
     fun setCursor(cursorType: CursorType)
 }
 

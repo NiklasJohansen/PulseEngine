@@ -3,7 +3,9 @@ package no.njoh.pulseengine.core.input
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Cursor
 import no.njoh.pulseengine.core.asset.types.Cursor.Companion.createWithHandle
-import no.njoh.pulseengine.core.shared.primitives.Subscription
+import no.njoh.pulseengine.core.console.Subscription
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.lastOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*
@@ -15,9 +17,11 @@ open class InputImpl : InputInternal
     override var yMouse = 0.0f
     override var xWorldMouse = 0f
     override var yWorldMouse = 0f
-    override var scroll = 0
+    override var xScroll = 0f
+    override var yScroll = 0f
     override var gamepads = mutableListOf<Gamepad>()
     override var textInput: String = ""
+    override val clickedKeys = mutableListOf<Key>()
     override val xdMouse: Float
         get() = xMouse - xMouseLast
     override val ydMouse: Float
@@ -27,15 +31,18 @@ open class InputImpl : InputInternal
     private var yMouseLast = 0.0f
     private var windowHandle: Long = -1
     private val clicked = ByteArray(Key.LAST.code + 1)
+    private val pressed = ByteArray(Key.LAST.code + 1)
     private val onKeyPressedCallbacks = mutableListOf<(Key) -> Unit>()
     private var onFocusChangedCallback: (Boolean) -> Unit = {}
     private var focusStack = mutableListOf<FocusArea>()
     private var currentFocusArea: FocusArea? = null
     private var previousFocusArea: FocusArea? = null
+    private var hoverFocusArea: FocusArea? = null
 
     private var cursors = mutableMapOf<CursorType, Cursor>()
     private var selectedCursor = ARROW
     private var activeCursor = ARROW
+    private var currentFrame = 0
 
     override fun init(windowHandle: Long)
     {
@@ -43,42 +50,49 @@ open class InputImpl : InputInternal
 
         this.windowHandle = windowHandle
 
-        glfwSetKeyCallback(windowHandle) { window, key, scancode, action, mods ->
-            if (key >= 0)
+        glfwSetKeyCallback(windowHandle) { _, keyCode, _, action, _ ->
+            if (keyCode >= 0)
             {
-                clicked[key] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
-                if (action == GLFW_PRESS && onKeyPressedCallbacks.isNotEmpty())
+                clicked[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
+                pressed[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else 0
+                if (action == GLFW_PRESS)
                 {
-                    Key.values()
-                        .find { it.code == key }
-                        ?.let { keyEnum -> onKeyPressedCallbacks.forEach { it.invoke(keyEnum) } }
+                    Key.codes[keyCode]?.let { keyEnum ->
+                        onKeyPressedCallbacks.forEachFast { it.invoke(keyEnum) }
+                        clickedKeys.add(keyEnum)
+                    }
                 }
             }
         }
 
-        glfwSetCharCallback(windowHandle) { window, character ->
+        glfwSetCharCallback(windowHandle) { _, character ->
             textInput += character.toChar()
         }
 
-        glfwSetCursorPosCallback(windowHandle) { window, xPos, yPos ->
+        glfwSetCursorPosCallback(windowHandle) { _, xPos, yPos ->
             xMouseLast = xMouse
             yMouseLast = yMouse
             xMouse = xPos.toFloat()
             yMouse = yPos.toFloat()
         }
 
-        glfwSetScrollCallback(windowHandle) { window, xoffset, yoffset ->
-            scroll = yoffset.toInt()
+        glfwSetScrollCallback(windowHandle) { _, xOffset, yOffset ->
+            if (isPressed(Key.LEFT_SHIFT))
+            {
+                xScroll = yOffset.toFloat()
+            }
+            else
+            {
+                xScroll = xOffset.toFloat()
+                yScroll = yOffset.toFloat()
+            }
         }
 
-        glfwSetMouseButtonCallback(windowHandle) { window, button, action, mods ->
+        glfwSetMouseButtonCallback(windowHandle) { _, button, action, _ ->
             clicked[button] = if (action == GLFW_PRESS) 1 else -1
+            pressed[button] = if (action == GLFW_PRESS) 1 else 0
             if (action == GLFW_PRESS && focusStack.isNotEmpty())
-            {
-                focusStack
-                    .lastOrNull { it.isInside(xMouse, yMouse) }
-                    ?.let { acquireFocus(it) }
-            }
+                focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }?.let { acquireFocus(it) }
         }
 
         glfwSetJoystickCallback { jid: Int, event: Int ->
@@ -118,9 +132,9 @@ open class InputImpl : InputInternal
         }
     }
 
-    override fun isPressed(btn: Mouse): Boolean = glfwGetMouseButton(windowHandle, btn.code) == 1
+    override fun isPressed(btn: Mouse): Boolean = pressed[btn.code] > 0
 
-    override fun isPressed(key: Key): Boolean = glfwGetKey(windowHandle, key.code) == 1
+    override fun isPressed(key: Key): Boolean = pressed[key.code] > 0
 
     override fun wasClicked(key: Key): Boolean = clicked[key.code] > 0
 
@@ -159,15 +173,18 @@ open class InputImpl : InputInternal
 
     override fun requestFocus(focusArea: FocusArea)
     {
-        if (focusArea !in focusStack)
+        if (focusArea.frame != currentFrame)
+        {
             focusStack.add(focusArea)
+            focusArea.frame = currentFrame
+        }
 
         onFocusChangedCallback.invoke(hasFocus(focusArea))
     }
 
     override fun releaseFocus(focusArea: FocusArea)
     {
-        if (currentFocusArea == focusArea)
+        if (currentFocusArea === focusArea)
         {
             currentFocusArea = previousFocusArea
             previousFocusArea = focusStack.firstOrNull()
@@ -175,7 +192,10 @@ open class InputImpl : InputInternal
     }
 
     override fun hasFocus(focusArea: FocusArea): Boolean =
-         focusArea == currentFocusArea
+         focusArea === currentFocusArea
+
+    override fun hasHoverFocus(focusArea: FocusArea): Boolean =
+        focusArea === hoverFocusArea
 
     override fun setCursor(cursorType: CursorType)
     {
@@ -191,14 +211,18 @@ open class InputImpl : InputInternal
     {
         xMouseLast = xMouse
         yMouseLast = yMouse
-        scroll = 0
+        xScroll = 0f
+        yScroll = 0f
         textInput = ""
         clicked.fill(0)
+        clickedKeys.clear()
         glfwPollEvents()
-        gamepads.forEach { it.updateState() }
+        gamepads.forEachFast { it.updateState() }
         if (focusStack.size == 1)
             currentFocusArea = focusStack.first()
+        hoverFocusArea = focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }
         focusStack.clear()
+        currentFrame++
         updateSelectedCursor()
     }
 

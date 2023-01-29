@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.shared.utils
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.graphics.Camera
+import no.njoh.pulseengine.core.input.Key
 import kotlin.math.max
 import kotlin.math.min
 
@@ -10,17 +11,29 @@ class Camera2DController(
     private var dragMouseKey: Mouse,
     private var smoothing: Float = 0.92f,
     private var minScale: Float = 0.05f,
-    private var maxScale: Float = 5f
+    private var maxScale: Float = 5f,
+    var scrollSpeed: Float = 40f
 ) {
     private var scaleChangeRate = 0f
     private var xPosChangeRate = 0f
     private var yPosChangeRate = 0f
 
-    fun update(engine: PulseEngine, camera: Camera? = null)
+    fun update(engine: PulseEngine, camera: Camera? = null, enableScrolling: Boolean = true)
     {
         val cam = camera ?: engine.gfx.mainCamera
 
-        scaleChangeRate += engine.input.scroll * 0.01f * min(1f, cam.scale.x)
+        if (enableScrolling)
+        {
+            if (engine.input.isPressed(Key.LEFT_CONTROL))
+            {
+                scaleChangeRate += engine.input.yScroll * 0.01f * min(1f, cam.scale.x)
+            }
+            else
+            {
+                xPosChangeRate += engine.input.xScroll * scrollSpeed / cam.scale.x
+                yPosChangeRate += engine.input.yScroll * scrollSpeed / cam.scale.y
+            }
+        }
 
         if (scaleChangeRate != 0f)
         {

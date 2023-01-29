@@ -4,18 +4,18 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.interfaces.Spatial
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
-import no.njoh.pulseengine.widgets.editor.EditorIcon
 import kotlin.math.*
 
-@EditorIcon("icon_camera")
-open class Camera : SceneEntity()
+@ScnIcon("CAMERA", size = 24f, showInViewport = true)
+open class Camera : StandardSceneEntity()
 {
     var viewPortWidth = 1000f
     var viewPortHeight = 800f
-    var targetEntityId = -1L
+    var targetEntityId = INVALID_ID
     var trackRotation = false
     var smoothing = 0.1f
     var targetZoom = 1f
@@ -107,40 +107,42 @@ open class Camera : SceneEntity()
 
     override fun onFixedUpdate(engine: PulseEngine)
     {
-        engine.scene.getEntity(targetEntityId)?.let {
-            if (!initalized)
-            {
-                x = it.x
-                y = it.y
-                if (trackRotation)
-                    rotation = it.rotation
-                zoom = targetZoom
-                initalized = true
-            }
-            else
-            {
-                x += (it.x - x) * smoothing
-                y += (it.y - y) * smoothing
-                zoom += (targetZoom - zoom) * smoothing
-
-                if (trackRotation)
-                {
-                    val diff = (it.rotation - rotation).toRadians()
-                    rotation += atan2(sin(diff), cos(diff)).toDegrees() * smoothing
-                }
-            }
-        }
+        engine.scene.getEntityOfType<Spatial>(targetEntityId)?.let { trackEntity(it) }
 
         val surfaceWidth = engine.gfx.mainSurface.width
         val surfaceHeight = engine.gfx.mainSurface.height
         val newScale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight) * zoom
-        engine.gfx.mainCamera.apply {
+        engine.gfx.mainCamera.apply()
+        {
             scale.set(newScale)
             rotation.z = -super.rotation / 180f * PI.toFloat()
             origin.x = surfaceWidth * 0.5f
             origin.y = surfaceHeight * 0.5f
             position.x = surfaceWidth * 0.5f - x
             position.y = surfaceHeight * 0.5f - y
+        }
+    }
+
+    private fun trackEntity(entity: Spatial)
+    {
+        if (!initalized)
+        {
+            x = entity.x
+            y = entity.y
+            if (trackRotation)
+                rotation = entity.rotation
+            zoom = targetZoom
+            initalized = true
+            return
+        }
+
+        x += (entity.x - x) * smoothing
+        y += (entity.y - y) * smoothing
+        zoom += (targetZoom - zoom) * smoothing
+        if (trackRotation)
+        {
+            val diff = (entity.rotation - rotation).toRadians()
+            rotation += atan2(sin(diff), cos(diff)).toDegrees() * smoothing
         }
     }
 }

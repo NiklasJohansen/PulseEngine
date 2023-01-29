@@ -13,58 +13,45 @@ import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.lighting.ShadowType.NONE
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer.RenderPass
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.MathUtil
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.annotations.Name
-import no.njoh.pulseengine.core.shared.annotations.Property
+import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.modules.lighting.LightType.*
 import kotlin.math.*
 
-@Name("Lighting 2D")
+@Name("Lighting")
+@ScnIcon("LIGHT_BULB")
 open class LightingSystem : SceneSystem()
 {
-    @Property(order = 1)
-    var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
+    @ScnProp(i = 1) var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
+    @ScnProp(i = 2, min = 0f, max = 10f) var dithering = 0.7f
+    @ScnProp(i = 3, min = 0f, max = 100f) var fogIntensity = 0f
+    @ScnProp(i = 4, min = 0f, max = 100f) var fogTurbulence = 1.5f
+    @ScnProp(i = 5, min = 0f, max = 5f) var fogScale = 0.3f
+    @ScnProp(i = 6, min = 0.01f, max = 5f) var textureScale = 1f
+    @ScnProp(i = 7) var textureFilter = TextureFilter.LINEAR
+    @ScnProp(i = 8) var textureFormat = TextureFormat.HDR_16
+    @ScnProp(i = 9) var multisampling = Multisampling.NONE
+    @ScnProp(i = 10) var enableFXAA = true
+    @ScnProp(i = 11) var useNormalMap = false
+    @ScnProp(i = 12) var enableLightSpill = true
+    @ScnProp(i = 13) var correctOffset = true
+    @ScnProp(i = 14) var drawDebug = false
 
-    @Property(order = 2, min = 0.1f, max = 5.0f)
-    var textureScale: Float = 1f
 
-    @Property(order = 3)
-    var textureFilter = TextureFilter.LINEAR
-
-    @Property(order = 4)
-    var textureFormat = TextureFormat.HDR_16
-
-    @Property(order = 5)
-    var multisampling = Multisampling.NONE
-
-    @Property(order = 6)
-    var enableFXAA = true
-
-    @Property(order = 7)
-    var useNormalMap = false
-
-    @Property(order = 8)
-    var enableLightSpill = true
-
-    @Property(order = 9)
-    var correctOffset = true
-
-    @Property(order = 10)
-    var drawDebug = false
-
-    @JsonIgnore
     private val normalMapRenderPass = RenderPass(
         surfaceName = "lighting_normal_map",
         targetType = NormalMapped::class
     )
 
-    @JsonIgnore
     private val occluderRenderPass = RenderPass(
         surfaceName = "lighting_occluder_map",
         targetType = LightOccluder::class,
@@ -101,7 +88,7 @@ open class LightingSystem : SceneSystem()
         ).addRenderer(lightRenderer)
 
         // Add lighting as a post-processing effect to main surface
-        lightBlendEffect = LightBlendEffect(lightSurface, ambientColor)
+        lightBlendEffect = LightBlendEffect(lightSurface, ambientColor, engine.gfx.mainCamera)
         engine.gfx.mainSurface.addPostProcessingEffect(lightBlendEffect)
 
         // Configure maps
@@ -127,6 +114,7 @@ open class LightingSystem : SceneSystem()
                 camera = engine.gfx.mainCamera,
                 zOrder = lightSurface.context.zOrder + 1, // Render normal map before lightmap
                 backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
+                textureFormat = TextureFormat.HDR_16,
                 isVisible = false
             )
             val renderContext = (normalMapSurface as Surface2DInternal).context
@@ -170,6 +158,10 @@ open class LightingSystem : SceneSystem()
     {
         // Set light post-processing effect properties
         lightBlendEffect.enableFxaa = enableFXAA
+        lightBlendEffect.dithering = dithering
+        lightBlendEffect.fogIntensity = fogIntensity
+        lightBlendEffect.fogTurbulence = fogTurbulence
+        lightBlendEffect.fogScale = fogScale
 
         // Set light renderer properties
         lightRenderer.ambientColor = ambientColor
@@ -241,8 +233,9 @@ open class LightingSystem : SceneSystem()
     private fun addLightsSources(lightSources: SwapList<SceneEntity>, engine: PulseEngine)
     {
         lightSources.forEachFast { entity ->
+            val isHidden = entity.isSet(HIDDEN)
             val light = entity as LightSource
-            if (light.intensity != 0f && isInsideBoundingRectangle(light))
+            if (!isHidden && light.intensity != 0f && isInsideBoundingRectangle(light))
             {
                 val edgeIndex = edgeCount
                 if (light.shadowType != NONE)
@@ -254,7 +247,7 @@ open class LightingSystem : SceneSystem()
                         height = light.radius * 1.7f,
                         rotation = light.rotation
                     ) {
-                        if (it.castShadows)
+                        if (it.castShadows && (it as SceneEntity).isNot(HIDDEN))
                         {
                             addOccluderEdges(it.shape)
                             shadowCasterCount++
@@ -417,9 +410,14 @@ open class LightingSystem : SceneSystem()
         lightRenderer.occluderMapSurface?.let { engine.gfx.deleteSurface(it.name) }
         engine.gfx.deleteSurface(lightSurface.name)
 
-        // Remove and delete post processing effect
+        // Remove and delete post-processing effect
         engine.gfx.mainSurface.removePostProcessingEffect(lightBlendEffect)
         lightBlendEffect.cleanUp()
+    }
+
+    override fun onStateChanged(engine: PulseEngine)
+    {
+        if (enabled) onCreate(engine) else onDestroy(engine)
     }
 
     companion object

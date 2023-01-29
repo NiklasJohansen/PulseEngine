@@ -11,7 +11,7 @@ import java.lang.Float.floatToRawIntBits
 class TextureRenderer(
     private val initialCapacity: Int,
     private val context: RenderContextInternal
-) : BatchRenderer {
+) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
     private lateinit var program: ShaderProgram
@@ -68,26 +68,23 @@ class TextureRenderer(
 
         count++
         context.increaseDepth()
+        increaseBatchSize()
     }
 
-    override fun render(surface: Surface2D)
+    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
     {
-        if (count == 0)
-            return
-
         // Bind VAO and shader program
         vao.bind()
         program.bind()
 
         // Set matrices
-        program.setUniform("projection", surface.camera.projectionMatrix)
-        program.setUniform("view", surface.camera.viewMatrix)
+        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
 
         // Set texture unit
         glActiveTexture(GL_TEXTURE0)
 
         // Draw each texture with separate draw call
-        for (i in 0 until count)
+        for (i in startIndex until startIndex + drawCount)
         {
             val base = i * stride
             val x = data[base + 0]

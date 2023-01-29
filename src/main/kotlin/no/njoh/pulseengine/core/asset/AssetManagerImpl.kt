@@ -31,8 +31,8 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet =
         SpriteSheet(fileName, assetName, horizontalCells, verticalCells).also{ add(it) }
 
-    override fun loadFont(fileName: String, assetName: String, fontSizes: FloatArray): Font =
-        Font(fileName, assetName, fontSizes).also { add(it) }
+    override fun loadFont(fileName: String, assetName: String, fontSize: Float): Font =
+        Font(fileName, assetName, fontSize).also { add(it) }
 
     override fun loadCursor(fileName: String, assetName: String, xHotSpot: Int, yHotSpot: Int): Cursor =
         Cursor(fileName, assetName, xHotSpot, yHotSpot).also { add(it) }

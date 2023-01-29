@@ -1,8 +1,10 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 
+@ScnIcon("FILE")
 class Binary(fileName: String, override val name: String) : Asset(name, fileName)
 {
     lateinit var bytes: ByteArray

@@ -13,7 +13,7 @@ import org.lwjgl.opengl.GL11.*
 class QuadBatchRenderer(
     private val initialCapacity: Int,
     private val context: RenderContextInternal
-) : BatchRenderer {
+) : BatchRenderer() {
 
     private lateinit var program: ShaderProgram
     private lateinit var vao: VertexArrayObject
@@ -70,6 +70,7 @@ class QuadBatchRenderer(
 
         vertexCount += 4
         context.increaseDepth()
+        increaseBatchSize()
     }
 
     fun vertex(x: Float, y: Float)
@@ -88,33 +89,35 @@ class QuadBatchRenderer(
                 putAll(vertexCount + 0, vertexCount + 1, vertexCount + 2)
                 putAll(vertexCount + 2, vertexCount + 3, vertexCount + 0)
             }
-            singleVertexCount = 0
             vertexCount += 4
+            singleVertexCount = 0
             context.increaseDepth()
+            increaseBatchSize()
         }
     }
 
-    override fun render(surface: Surface2D)
+    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
     {
-        if (vertexCount == 0)
-            return
-
         vao.bind()
         ebo.bind()
         vbo.bind()
 
         program.bind()
-        program.setUniform("projection", surface.camera.projectionMatrix)
-        program.setUniform("view", surface.camera.viewMatrix)
+        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
 
         glBindTexture(GL_TEXTURE_2D, 0)
 
-        vbo.submit()
-        ebo.submit()
-        ebo.draw(GL_TRIANGLES, 6)
+        if (startIndex == 0)
+        {
+            vbo.submit()
+            ebo.submit()
+        }
 
-        vertexCount = 0
+        // 6 elements per quad, 4 bytes per element
+        glDrawElements(GL_TRIANGLES, drawCount * 6, GL_UNSIGNED_INT, startIndex * 6L * 4)
+
         vao.release()
+        vertexCount = 0
     }
 
     override fun cleanUp()

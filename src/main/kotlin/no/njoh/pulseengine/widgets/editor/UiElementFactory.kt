@@ -1,25 +1,26 @@
 package no.njoh.pulseengine.widgets.editor
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.asset.types.Font
-import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.scene.SceneSystem
+import no.njoh.pulseengine.core.shared.annotations.AssetRef
+import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.annotations.Name
-import no.njoh.pulseengine.core.shared.annotations.Property
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import no.njoh.pulseengine.modules.gui.Position
-import no.njoh.pulseengine.modules.gui.Scrollable
-import no.njoh.pulseengine.modules.gui.Size
-import no.njoh.pulseengine.modules.gui.UiElement
+import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
+import no.njoh.pulseengine.modules.gui.*
+import no.njoh.pulseengine.modules.gui.ScrollDirection.*
 import no.njoh.pulseengine.modules.gui.elements.*
+import no.njoh.pulseengine.modules.gui.elements.InputField.ContentType.*
+import no.njoh.pulseengine.modules.gui.elements.Label.TextSizeStrategy.UPDATE_WIDTH
 import no.njoh.pulseengine.modules.gui.layout.*
+import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
-import no.njoh.pulseengine.widgets.editor.EditorUtil.setProperty
+import no.njoh.pulseengine.widgets.editor.EditorUtil.setArrayProperty
+import no.njoh.pulseengine.widgets.editor.EditorUtil.setPrimitiveProperty
 import java.lang.IllegalArgumentException
 import kotlin.math.min
-import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.findAnnotation
@@ -35,41 +36,76 @@ open class UiElementFactory(
 ) {
     /** Property UI factory functions for specific class types. */
     val propertyUiFactories = mutableMapOf(
-        Enum::class to ::createEnumPropertyUi,
+        String::class to ::createStringPropertyUi,
         Boolean::class to ::createBooleanPropertyUi,
-        Color::class to { obj, prop -> createColorPickerUI(color = prop.getter.call(obj) as Color) },
-        String::class to { _: Any, _: KMutableProperty<*> -> null } // Factory functions returning null will use default InputField UI
+        Enum::class to ::createEnumPropertyUi,
+        Color::class to { obj, prop, onChanged -> createColorPickerUI(outputColor = prop.getter.call(obj) as Color) },
+        LongArray::class to ::createInputFieldUI,
+        IntArray::class to ::createInputFieldUI,
+        ShortArray::class to ::createInputFieldUI,
+        ByteArray::class to ::createInputFieldUI,
+        FloatArray::class to ::createInputFieldUI,
+        DoubleArray::class to ::createInputFieldUI,
     )
+
+    /**
+     * Creates an [AssetPicker] if the property is annotated with [AssetRef] or a default [InputField].
+     */
+    open fun createStringPropertyUi(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): UiElement =
+        obj::class.findPropertyAnnotation<AssetRef>(prop.name)
+            ?.let { createAssetPickerUI(it, obj, prop, onChanged) }
+            ?: createInputFieldUI(obj, prop, onChanged)
 
     /**
      * Creates a [DropdownMenu] containing all the enum constants.
      */
-    open fun createEnumPropertyUi(obj: Any, prop: KMutableProperty<*>) =
-        createItemSelectionDropdownUI(
-            selectedItem = prop.getter.call(obj),
-            items = prop.javaField?.type?.enumConstants?.toList() ?: emptyList(),
-            onItemToString = { it.toString() }
-        ).apply {
-            setOnItemChanged { value -> obj.setProperty(prop.name, value) }
+    open fun createEnumPropertyUi(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ) = createItemSelectionDropdownUI(
+        selectedItem = prop.getter.call(obj),
+        items = prop.javaField?.type?.enumConstants?.toList() ?: emptyList(),
+        onItemToString = { it.toString() },
+        onItemChanged = { lastValue, newValue ->
+            obj.setPrimitiveProperty(prop.name, newValue)
+            onChanged(prop.name, lastValue, newValue)
         }
+    )
 
     /**
      * Creates a [DropdownMenu] containing TRUE and FALSE.
      */
-    open fun createBooleanPropertyUi(obj: Any, prop: KMutableProperty<*>) =
-        createItemSelectionDropdownUI(
-            selectedItem = prop.getter.call(obj),
-            items = listOf(true, false),
-            onItemToString = { it.toString().capitalize() }
-        ).apply {
-            setOnItemChanged { value -> obj.setProperty(prop.name, value) }
+    open fun createBooleanPropertyUi(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ) = createItemSelectionDropdownUI(
+        selectedItem = prop.getter.call(obj),
+        items = listOf(true, false),
+        onItemToString = { it.toString().capitalize() },
+        onItemChanged = { lastValue, newValue ->
+            obj.setPrimitiveProperty(prop.name, newValue)
+            onChanged(prop.name, lastValue, newValue)
         }
+    )
 
     /**
      * Creates a movable and resizable window panel.
      */
-    open fun createWindowUI(title: String, x: Float = 0f, y: Float = 20f, width: Float = 300f, height: Float = 200f): WindowPanel
-    {
+    open fun createWindowUI(
+        title: String,
+        iconName: String = "",
+        x: Float = 0f,
+        y: Float = 20f,
+        width: Float = 350f,
+        height: Float = 200f,
+        onClosed: () -> Unit = { }
+    ): WindowPanel {
         val windowPanel = WindowPanel(
             x = Position.fixed(x),
             y = Position.fixed(y),
@@ -77,45 +113,70 @@ open class UiElementFactory(
             height = Size.absolute(height)
         )
 
-        val label = Label(title).apply {
-            padding.left = 10f
-            fontSize = 22f
+        val icon = Icon(width = Size.absolute(15f)).apply()
+        {
+            padding.left = ScaledValue.of(10f)
+            iconSize = ScaledValue.of(18f)
+            iconFontName = style.iconFontName
+            iconCharacter = style.getIcon(iconName)
+            color = style.getColor("LABEL")
+        }
+
+        val label = Label(title).apply()
+        {
+            padding.left = ScaledValue.of(10f)
+            fontSize = ScaledValue.of(20f)
             font = style.getFont()
             color = style.getColor("LABEL")
-            focusable = false
         }
 
-        val xLabel = Label("x").apply {
-            focusable = false
-            fontSize = 20f
-            padding.top = -3f
-            padding.left = 6f
+        val crossIcon = Icon(width = Size.absolute(15f)).apply()
+        {
+            iconFontName = style.iconFontName
+            iconCharacter = style.getIcon("CROSS")
             color = style.getColor("LABEL")
+            padding.top = ScaledValue.of(2f)
         }
 
-        val exitButton = Button(width = Size.absolute(20f), height = Size.absolute(20f)).apply {
-            padding.top = 5f
-            padding.right = 5f
+        val exitButton = Button(width = Size.absolute(20f), height = Size.absolute(20f)).apply()
+        {
+            padding.top = ScaledValue.of(5f)
+            padding.right = ScaledValue.of(5f)
+            cornerRadius = ScaledValue.of(4f)
             color = Color.BLANK
             hoverColor = style.getColor("BUTTON_EXIT")
-            setOnClicked { windowPanel.parent?.removeChildren(windowPanel) }
-            addChildren(xLabel)
+            setOnClicked {
+                windowPanel.parent?.removeChildren(windowPanel)
+                onClosed()
+            }
+            addChildren(crossIcon)
         }
 
-        val headerPanel = HorizontalPanel(height = Size.absolute(30f)).apply {
-            color = style.getColor("HEADER")
+        val headerPanel = HorizontalPanel(height = Size.absolute(30f)).apply()
+        {
+            color = style.getColor("WINDOW_HEADER")
+            strokeColor = style.getColor("STROKE")
+            strokeTop = false
+            strokeLeft = false
+            strokeRight = false
+            strokeBottom = true
             focusable = false
-            addChildren(label, exitButton)
+            cornerRadius = ScaledValue.of(2f)
+            addChildren(icon, label, exitButton)
         }
 
-        windowPanel.color = style.getColor("BG_LIGHT")
+        windowPanel.color = Color.BLANK
         windowPanel.strokeColor = style.getColor("STROKE")
         windowPanel.movable = true
         windowPanel.resizable = true
-        windowPanel.minHeight = windowPanel.header.height.value + 100
-        windowPanel.minWidth = 150f
+        windowPanel.minHeight = ScaledValue.of(130f)
+        windowPanel.minWidth = ScaledValue.of(150f)
         windowPanel.id = title
         windowPanel.header.addChildren(headerPanel)
+        windowPanel.cornerRadius = ScaledValue.of(3f)
+        windowPanel.body.color = style.getColor("DARK_BG")
+        windowPanel.body.cornerRadius = ScaledValue.of(2f)
+        windowPanel.body.padding.top = ScaledValue.of(0f)
 
         return windowPanel
     }
@@ -124,13 +185,58 @@ open class UiElementFactory(
      * Creates a menu bar containing buttons with dropdown menus.
      */
     open fun createMenuBarUI(vararg buttons: MenuBarButton): UiElement =
-        HorizontalPanel(height = Size.absolute(25f)).apply {
-            color = style.getColor("BG_LIGHT")
+        HorizontalPanel(height = Size.absolute(25f)).apply()
+        {
+            color = style.getColor("HEADER_FOOTER")
             strokeColor = style.getColor("STROKE")
             addChildren(
                 *buttons.map { createMenuBarButtonUI(it, 18f, false) }.toTypedArray(), Panel()
             )
         }
+
+    open fun createFooter(): Pair<HorizontalPanel, (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit>
+    {
+        val icon = Icon(width = Size.absolute(15f)).apply()
+        {
+            iconFontName = style.iconFontName
+            iconCharacter = style.getIcon("CUBE")
+            iconSize = ScaledValue.of(13f)
+            color = style.getColor("LABEL")
+            padding.left = ScaledValue.of(10f)
+        }
+
+        val entityCountLabel = Label("2/12311").apply {
+            padding.left = ScaledValue.of(7f)
+            fontSize = ScaledValue.of(15f)
+            color = style.getColor("LABEL")
+        }
+
+        val sceneNameLabel = Label(width = Size.absolute(400f), text = "default.scn").apply {
+            padding.left = ScaledValue.of(7f)
+            fontSize = ScaledValue.of(15f)
+            padding.right = ScaledValue.of(10f)
+            textResizeStrategy = UPDATE_WIDTH
+            color = style.getColor("LABEL")
+        }
+
+        val footer = HorizontalPanel(height = Size.absolute(25f)).apply()
+        {
+            color = style.getColor("HEADER_FOOTER")
+            strokeColor = style.getColor("STROKE")
+            addChildren(
+                HorizontalPanel().apply { addChildren(icon, entityCountLabel) },
+                sceneNameLabel,
+                Panel()
+            )
+        }
+
+        val onUpdate = { totalEntities: Int, totalSelected: Int, sceneName: String ->
+            entityCountLabel.text = "$totalSelected/$totalEntities"
+            sceneNameLabel.text = sceneName
+        }
+
+        return Pair(footer, onUpdate)
+    }
 
     /**
      * Creates a menu button with a dropdown.
@@ -144,7 +250,9 @@ open class UiElementFactory(
         val scrollBarWidth = if (showScrollbar) 25f else 0f
         val maxItemCount = if (showScrollbar) 8 else 100
         val items = menuBarButton.items.map { it.labelText }
-        val (width, height) = getDropDownDimensions(font, fontSize, scrollBarWidth, 30f, maxItemCount, items)
+        val dropdownRowHeight = style.getSize("DROPDOWN_ROW_HEIGHT")
+        val dropdownRowPadding = 5f
+        val (width, height) = getDropDownDimensions(font, fontSize, scrollBarWidth, dropdownRowHeight + dropdownRowPadding, maxItemCount, items)
         return DropdownMenu<MenuBarItem>(
             width = Size.absolute(55f),
             dropDownWidth = Size.absolute(width),
@@ -156,27 +264,27 @@ open class UiElementFactory(
             bgHoverColor = style.getColor("BUTTON_HOVER")
             itemBgColor = Color.BLANK
             itemBgHoverColor = style.getColor("BUTTON_HOVER")
+            rowHeight = ScaledValue.of(dropdownRowHeight)
+            rowPadding = ScaledValue.of(dropdownRowPadding)
             menuLabel.text = menuBarButton.labelText
-            menuLabel.fontSize = fontSize
+            menuLabel.fontSize = ScaledValue.of(fontSize)
             menuLabel.font = font
-            menuLabel.padding.top = 7f
             menuLabel.centerHorizontally = true
+            menuLabel.centerVertically = true
             menuLabel.font = style.getFont()
-            rowPanel.rowHeight = 25f
-            rowPanel.rowPadding = 5f
-            dropdown.color = style.getColor("BG_LIGHT")
-            dropdown.strokeColor = style.getColor("STROKE")
-            dropdown.minHeight = 0f
-            dropdown.minWidth = 10f
+            dropdown.color = style.getColor("LIGHT_BG")
+            dropdown.cornerRadius = ScaledValue.of(2f)
+            dropdown.minHeight = ScaledValue.of(0f)
+            dropdown.minWidth = ScaledValue.of(10f)
             dropdown.resizable = false
-            scrollbar.bgColor = style.getColor("ITEM")
-            scrollbar.sliderColor = style.getColor("BUTTON")
-            scrollbar.sliderColorHover = style.getColor("BUTTON_HOVER")
+            scrollbar.bgColor = style.getColor("SCROLLBAR_BG")
+            scrollbar.sliderColor = style.getColor("SCROLLBAR")
+            scrollbar.sliderColorHover = style.getColor("SCROLLBAR_HOVER")
             scrollbar.hidden = !showScrollbar
-            scrollbar.cornerRadius = 8f
+            scrollbar.cornerRadius = ScaledValue.of(2f)
             setOnItemToString { it.labelText }
             menuBarButton.items.forEach { addItem(it) }
-            setOnItemChanged { it.onClick() }
+            setOnItemChanged { _, item -> item.onClick() }
         }
     }
 
@@ -186,7 +294,8 @@ open class UiElementFactory(
     open fun <T> createItemSelectionDropdownUI(
         selectedItem: T,
         items: List<T>,
-        onItemToString: (T) -> String
+        onItemToString: (T) -> String,
+        onItemChanged: (lastValue: T?, newValue: T) -> Unit
     ): DropdownMenu<T> {
         val fontSize = 18f
         val font = style.getFont()
@@ -199,59 +308,29 @@ open class UiElementFactory(
             dropDownWidth = Size.absolute(width),
             dropDownHeight = Size.absolute(height)
         ).apply {
-            padding.top = 5f
-            padding.bottom = 5f
-            padding.right = 5f
-            rowPanel.rowPadding = 5f
-            rowPanel.rowHeight = 30f
+            rowHeight = ScaledValue.of(style.getSize("DROPDOWN_ROW_HEIGHT"))
             menuLabel.font = font
-            menuLabel.fontSize = fontSize
+            menuLabel.fontSize = ScaledValue.of(fontSize)
             menuLabel.color = style.getColor("LABEL")
-            menuLabel.padding.left = 10f
-            cornerRadius = 8f
-            bgColor = style.getColor("BUTTON")
+            menuLabel.padding.left = ScaledValue.of(10f)
+            cornerRadius = ScaledValue.of(2f)
+            bgColor = style.getColor("INPUT_BG")
             bgHoverColor = style.getColor("BUTTON_HOVER")
             itemBgColor = Color.BLANK
             itemBgHoverColor = style.getColor("BUTTON_HOVER")
-            dropdown.color = style.getColor("BG_DARK") // BG_LIGHT
-            dropdown.strokeColor = style.getColor("STROKE")
-            scrollbar.bgColor = style.getColor("ITEM")
-            scrollbar.sliderColor = style.getColor("BUTTON")
-            scrollbar.sliderColorHover = style.getColor("BUTTON_HOVER")
+            dropdown.color = style.getColor("DARK_BG")
+            dropdown.strokeColor = Color.BLANK
+            dropdown.cornerRadius = ScaledValue.of(2f)
+            scrollbar.bgColor = style.getColor("SCROLLBAR_BG")
+            scrollbar.sliderColor = style.getColor("SCROLLBAR")
+            scrollbar.sliderColorHover = style.getColor("SCROLLBAR_HOVER")
             scrollbar.hidden = !showScrollbar
-            scrollbar.cornerRadius = 8f
+            scrollbar.cornerRadius = ScaledValue.of(2f)
             setOnItemToString(onItemToString)
+            setOnItemChanged(onItemChanged)
             this.selectedItem = selectedItem
             items.forEach(this::addItem)
         }
-    }
-
-    /**
-     * Creates an panel containing all loaded texture assets.
-     */
-    open fun createAssetPanelUI(engine: PulseEngine, onAssetClicked: (Texture) -> Unit): UiElement
-    {
-        val tilePanel = TilePanel().apply {
-            horizontalTiles = 5
-            maxTileSize = 80f
-            tilePadding = 5f
-        }
-
-        val textureAssets = engine.asset.getAllOfType<Texture>()
-        for (tex in textureAssets)
-        {
-            val tile = Button().apply {
-                bgColor = style.getColor("ITEM")
-                bgHoverColor = style.getColor("ITEM_HOVER")
-                textureScale = 0.9f
-                cornerRadius = 20f
-                texture = tex
-                setOnClicked { onAssetClicked(tex) }
-            }
-            tilePanel.addChildren(tile)
-        }
-
-        return createScrollableSectionUI(tilePanel)
     }
 
     /**
@@ -260,24 +339,26 @@ open class UiElementFactory(
     open fun createViewportUI(engine: PulseEngine): VerticalPanel
     {
         val image = Image()
-        image.bgColor = Color(0f, 0f, 0f, 1f)
+        image.bgColor = Color.BLACK
         image.texture = engine.gfx.mainSurface.getTexture()
 
         val surfaceSelector = createItemSelectionDropdownUI(
             selectedItem = engine.gfx.mainSurface.name,
+            items = engine.gfx.getAllSurfaces().flatMap { it.getTextures().mapIndexed { i, tex -> "${it.name}  (${tex.name})  #$i" } },
             onItemToString = { it },
-            items = engine.gfx.getAllSurfaces().flatMap { it.getTextures().mapIndexed { i, tex -> "${it.name}  (${tex.name})  #$i" } }
+            onItemChanged = { _, surfaceName ->
+                val surface = surfaceName.substringBefore("  (")
+                val index = surfaceName.substringAfterLast("#").toIntOrNull() ?: 0
+                image.texture = engine.gfx.getSurface(surface)?.getTexture(index)
+            }
         ).apply {
             width.updateType(Size.ValueType.AUTO)
             height.updateType(Size.ValueType.ABSOLUTE)
             height.value = 30f
             padding.setAll(0f)
-            bgColor = image.bgColor
-            setOnItemChanged { surfaceName ->
-                val surface = surfaceName.substringBefore("  (")
-                val index = surfaceName.substringAfterLast("#").toIntOrNull() ?: 0
-                image.texture = engine.gfx.getSurface(surface)?.getTexture(index)
-            }
+            bgColor = style.getColor("HEADER")
+            hoverColor = style.getColor("BUTTON_HOVER")
+
             setOnClicked {
                 val selected = selectedItem
                 clearItems()
@@ -296,8 +377,10 @@ open class UiElementFactory(
      */
     open fun createSystemPropertiesPanelUI(engine: PulseEngine, propertiesRowPanel: RowPanel): HorizontalPanel
     {
-        val menuItems = SceneSystem.REGISTERED_TYPES.map {
-            MenuBarItem(it.simpleName ?: "") {
+        val menuItems = SceneSystem.REGISTERED_TYPES.map()
+        {
+            MenuBarItem(it.simpleName ?: "")
+            {
                 val newSystem = it.createInstance()
                 newSystem.init(engine)
                 engine.scene.addSystem(newSystem)
@@ -312,27 +395,31 @@ open class UiElementFactory(
 
         val button = MenuBarButton(labelText = "+", items = menuItems)
         val showScrollBar = menuItems.size > 8
-        val buttonUI = createMenuBarButtonUI(button, 20f, showScrollBar).apply {
-            width.setQuiet(Size.absolute(40f))
-            height.setQuiet(Size.absolute(40f))
+        val buttonUI = createMenuBarButtonUI(button, 18f, showScrollBar).apply()
+        {
+            width.setQuiet(Size.absolute(30f))
+            height.setQuiet(Size.absolute(30f))
             dropdown.resizable = true
-            menuLabel.fontSize = 40f
-            menuLabel.padding.left = 6f
-            menuLabel.padding.top = 6f
+            dropdown.color = style.getColor("BUTTON")
+            menuLabel.fontSize = ScaledValue.of(40f)
+            menuLabel.padding.top = ScaledValue.of(4f)
+            menuLabel.padding.right = ScaledValue.of(2f)
             padding.setAll(5f)
             bgColor = style.getColor("HEADER")
             hoverColor = style.getColor("BUTTON_HOVER")
-            cornerRadius = 40f
+            cornerRadius = ScaledValue.of(2f)
         }
 
-        return HorizontalPanel().apply {
-            color = style.getColor("BG_DARK")
-            cornerRadius = 4f
+        return HorizontalPanel().apply()
+        {
+            color = style.getColor("DARK_BG")
+            cornerRadius = ScaledValue.of(4f)
             addChildren(
-                VerticalPanel().apply {
+                VerticalPanel().apply()
+                {
                     addChildren(propertiesRowPanel, buttonUI)
                 },
-                createScrollbarUI(propertiesRowPanel)
+                createScrollbarUI(propertiesRowPanel, VERTICAL)
             )
         }
     }
@@ -342,195 +429,266 @@ open class UiElementFactory(
      */
     open fun createSystemProperties(system: SceneSystem, isHidden: Boolean, onClose: (props: List<UiElement>) -> Unit): List<UiElement>
     {
+        val icon = system::class.findAnnotation<ScnIcon>()
+        val headerIcon = Icon(width = Size.absolute(30f))
+        headerIcon.iconFontName = style.iconFontName
+        headerIcon.iconCharacter = style.getIcon(icon?.iconName ?: "COG")
+        headerIcon.iconSize = ScaledValue.of(15f)
+
         val headerText = system::class.findAnnotation<Name>()?.name
             ?: (system::class.java.simpleName ?: "")
                 .split("(?=[A-Z])".toRegex())
                 .joinToString(" ")
+                .trim()
 
-        val headerLabel = Label(headerText).apply {
-            focusable = false
-            padding.left = 10f
-            fontSize = 20f
+        val headerLabel = Label(headerText).apply()
+        {
+            fontSize = ScaledValue.of(20f)
             color = style.getColor("LABEL")
         }
 
-        val xLabel = Label("x").apply {
-            focusable = false
-            fontSize = 20f
-            centerVertically = true
-            centerHorizontally = true
-            padding.top = -3f
+        val exitButton = Button(
+            width = Size.absolute(style.getSize("PROP_HEADER_ROW_HEIGHT") - 8f)
+        ).apply {
+            padding.setAll(4f)
             color = style.getColor("LABEL")
+            hoverColor = style.getColor("LABEL")
+            bgColor = Color.BLANK
+            bgHoverColor = style.getColor("BUTTON_EXIT")
+            cornerRadius = ScaledValue.of(2f)
+            iconFontName = style.iconFontName
+            iconCharacter = style.getIcon("CROSS")
+            xOrigin = 0.35f
+            yOrigin = 0.55f
+            iconSize = ScaledValue.of(15f)
         }
 
-        val exitButton = Button(width = Size.absolute(15f)).apply {
-            padding.setAll(5f)
-            color = Color.BLANK
-            cornerRadius = 7.5f
-            hoverColor = style.getColor("BUTTON_EXIT")
-            addChildren(xLabel)
-        }
-
-        val headerPanel = HorizontalPanel().apply {
+        val headerPanel = HorizontalPanel().apply()
+        {
             focusable = false
             color = Color.BLANK
-            addChildren(headerLabel)
-            addChildren(exitButton)
+            addChildren(headerIcon, headerLabel, exitButton)
         }
 
-        val headerButton = Button().apply {
+        val headerButton = Button(
+            height = Size.absolute(style.getSize("PROP_HEADER_ROW_HEIGHT"))
+        ).apply {
             id = system::class.simpleName
             toggleButton = true
-            state = isHidden
-            padding.left = 5f
-            padding.right = 5f
-            padding.top = 5f
-            cornerRadius = 12f
+            isPressed = isHidden
+            padding.left = ScaledValue.of(5f)
+            padding.right = ScaledValue.of(5f)
+            padding.top = ScaledValue.of(5f)
+            cornerRadius = ScaledValue.of(2f)
             color = style.getColor("HEADER")
             activeColor = style.getColor("HEADER")
             hoverColor = style.getColor("HEADER_HOVER")
+            activeHoverColor = style.getColor("HEADER_HOVER")
             addChildren(headerPanel)
         }
 
+        val nopCallback = { _: String, _: Any?, _: Any? -> }
         val props = system::class.memberProperties
-            .filter { it is KMutableProperty<*> && it.isEditable() }
-            .sortedBy { it.findAnnotation<Property>()?.order ?: 1000 }
+            .filter { it is KMutableProperty<*> && it.isEditable() && system.getPropInfo(it)?.hidden != true }
+            .sortedBy { system.getPropInfo(it)?.i ?: 1000 }
             .map { prop ->
-                val (panel, _) = createPropertyUI(system, prop as KMutableProperty<*>)
-                panel.apply {
-                    padding.left = 10f
-                    padding.right = 10f
+                val (panel, _) = createPropertyUI(system, prop as KMutableProperty<*>, nopCallback)
+                panel.apply()
+                {
+                    padding.left = ScaledValue.of(10f)
+                    padding.right = ScaledValue.of(10f)
                     hidden = isHidden
                 }
             }
 
         val uiElements = listOf(headerButton).plus(props)
 
-        headerButton.setOnClicked { btn -> props.forEach { it.hidden = btn.state } }
+        headerButton.setOnClicked { btn -> props.forEach { it.hidden = btn.isPressed } }
         exitButton.setOnClicked { onClose(uiElements) }
 
         return uiElements
     }
 
     /**
-     * Creates a UI panel with a horizontally aligned scrollbar.
+     * Creates a UI panel with a horizontally and/or vertically aligned scrollbar.
      */
-    open fun createScrollableSectionUI(panel: UiElement): HorizontalPanel
+    open fun createScrollableSectionUI(scrollablePanel: UiElement): Panel
     {
-        if (panel !is Scrollable)
-            throw IllegalArgumentException("${panel::class.simpleName} is not Scrollable")
+        if (scrollablePanel !is Scrollable)
+            throw IllegalArgumentException("${scrollablePanel::class.simpleName} is not Scrollable")
 
-        return HorizontalPanel().apply {
-            color = style.getColor("BG_DARK")
-            addChildren(panel, createScrollbarUI(panel))
+        var outerPanel: Panel? = null
+        if (scrollablePanel is VerticallyScrollable)
+        {
+            outerPanel = HorizontalPanel()
+            outerPanel.addChildren(scrollablePanel, createScrollbarUI(scrollablePanel, direction = VERTICAL))
         }
+
+        if (scrollablePanel is HorizontallyScrollable)
+        {
+            val scrollBar = createScrollbarUI(scrollablePanel, direction = HORIZONTAL)
+            val body = outerPanel ?: scrollablePanel
+            outerPanel = VerticalPanel()
+            outerPanel.addChildren(body, scrollBar)
+        }
+
+        return outerPanel!!
     }
 
     /**
      * Creates a default [Scrollbar] UI element.
      */
-    open fun createScrollbarUI(scrollBinding: Scrollable): Scrollbar =
-        Scrollbar(width = Size.absolute(15f)).apply {
-            bgColor = style.getColor("ITEM")
-            sliderColor = style.getColor("BUTTON")
-            sliderColorHover = style.getColor("BUTTON_HOVER")
-            cornerRadius = 8f
-            padding.top = 5f
-            padding.bottom = 5f
-            padding.right = 5f
-            sliderPadding = 3f
-            bind(scrollBinding)
-        }
-
-    /**
-     * Creates a new [ColorPicker] UI element.
-     */
-    open fun createColorPickerUI(color: Color) =
-        ColorPicker(color).apply {
-            padding.setAll(5f)
-            cornerRadius = 8f
-            bgColor = style.getColor("BUTTON")
-            hexInput.fontSize = 20f
-            hexInput.fontColor = style.getColor("LABEL")
-            hexInput.bgColorHover = style.getColor("BUTTON_HOVER")
-            hexInput.strokeColor = Color.BLANK
-            hexInput.cornerRadius = cornerRadius
-            colorEditor.color = style.getColor("BG_LIGHT")
-            colorEditor.strokeColor = style.getColor("STROKE")
-            saturationBrightnessPicker.strokeColor = style.getColor("HEADER")
-            huePicker.strokeColor = style.getColor("STROKE")
-            hsbSection.color = style.getColor("ITEM")
-            rgbaSection.color = style.getColor("ITEM")
-            listOf(redInput, greenInput, blueInput, alphaInput).forEach {
-                it.fontSize = 20f
-                it.fontColor = style.getColor("LABEL")
-                it.bgColor = style.getColor("BUTTON")
-                it.bgColorHover = style.getColor("BUTTON_HOVER")
-            }
-        }
-
-    /**
-     * Creates a new [InputField] UI element.
-     */
-    open fun createInputFieldUI(value: Any?, prop: KMutableProperty<*>): InputField
+    open fun createScrollbarUI(scrollBinding: Scrollable, direction: ScrollDirection): Scrollbar
     {
-        val type = when (prop.javaField?.type)
+        val width = if (direction == VERTICAL) Size.absolute(10f) else Size.auto()
+        val height = if (direction == HORIZONTAL) Size.absolute(10f) else Size.auto()
+        return Scrollbar(width, height).apply()
         {
-            Float::class.java, Double::class.java -> InputField.ContentType.FLOAT
-            Int::class.java, Long::class.java, Char::class.java -> InputField.ContentType.INTEGER
-            Boolean::class.java -> InputField.ContentType.BOOLEAN
-            else -> InputField.ContentType.TEXT
-        }
-
-        return InputField(
-            defaultText = value?.toString() ?: "",
-            width = Size.relative(0.5f)
-        ).apply {
-            padding.top = 5f
-            padding.bottom = 5f
-            padding.right = 5f
-            cornerRadius = 8f
-            font = style.getFont()
-            fontSize = 18f
-            fontColor = style.getColor("LABEL")
-            bgColor = style.getColor("BUTTON")
-            bgColorHover = style.getColor("BUTTON_HOVER")
-            strokeColor = Color.BLANK
-            contentType = type
-
-            if (type == InputField.ContentType.FLOAT || type == InputField.ContentType.INTEGER)
-            {
-                prop.findAnnotation<Property>()?.let {
-                    numberMinVal = it.min
-                    numberMaxVal = it.max
-                }
-            }
+            bgColor = style.getColor("SCROLLBAR_BG")
+            sliderColor = style.getColor("SCROLLBAR")
+            sliderColorHover = style.getColor("SCROLLBAR_HOVER")
+            cornerRadius = ScaledValue.of(0f)
+            padding.top = ScaledValue.of(0f)
+            sliderPadding = ScaledValue.of(1.5f)
+            bind(scrollBinding, direction)
         }
     }
 
     /**
-     * Creates a property row UI element for the given entity with a dropdown of [SceneEntity] types.
+     * Creates a new [ColorPicker] UI element.
      */
-    open fun createEntityTypePropertyUI(entity: SceneEntity, onItemChange: (KClass<out SceneEntity>) -> Unit): UiElement
-    {
-        val typeLabel = Label("Entity type", width = Size.relative(0.5f)).apply {
-            padding.setAll(5f)
-            padding.left = 10f
-            fontSize = 18f
-            font = style.getFont()
-            color = style.getColor("LABEL")
+    open fun createColorPickerUI(outputColor: Color) =
+        ColorPicker(outputColor).apply()
+        {
+            cornerRadius = ScaledValue.of(2f)
+            color = style.getColor("INPUT_BG")
+            bgColor = style.getColor("BUTTON")
+            hexInput.fontSize = ScaledValue.of(20f)
+            hexInput.textColor = style.getColor("LABEL")
+            hexInput.bgColorHover = style.getColor("BUTTON_HOVER")
+            hexInput.bgColor = style.getColor("INPUT_BG")
+            hexInput.strokeColor = Color.BLANK
+            hexInput.cornerRadius = ScaledValue.of(2f)
+            colorPreviewButton.bgColor = style.getColor("INPUT_BG")
+            colorPreviewButton.bgHoverColor = style.getColor("BUTTON_HOVER")
+            colorEditor.color = style.getColor("LIGHT_BG")
+            colorEditor.strokeColor = style.getColor("STROKE")
+            saturationBrightnessPicker.strokeColor = style.getColor("HEADER")
+            huePicker.strokeColor = style.getColor("STROKE")
+            hsbSection.color = style.getColor("DARK_BG")
+            rgbaSection.color = style.getColor("DARK_BG")
+            listOf(redInput, greenInput, blueInput, alphaInput).forEach()
+            {
+                it.fontSize = ScaledValue.of(20f)
+                it.textColor = style.getColor("LABEL")
+                it.bgColor = style.getColor("INPUT_BG")
+                it.bgColorHover = style.getColor("BUTTON_HOVER")
+            }
         }
 
-        val typeDropdown = createItemSelectionDropdownUI(entity::class, SceneEntity.REGISTERED_TYPES.toList()) { it.simpleName ?: "NO NAME" }
-        typeDropdown.setOnItemChanged(onItemChange)
+    open fun createAssetPickerUI(
+        annotation: AssetRef,
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): UiElement =
+        AssetPicker(
+            initialAssetName = prop.getter.call(obj) as? String ?: ""
+        ).apply {
+            previewIconCharacter = style.iconFontName
+            previewIconCharacter = style.getIcon(annotation.type.findAnnotation<ScnIcon>()?.iconName ?: "BOX")
+            nameInput.fontSize = ScaledValue.of(20f)
+            nameInput.textColor = style.getColor("LABEL")
+            nameInput.bgColorHover = style.getColor("BUTTON_HOVER")
+            nameInput.bgColor = style.getColor("INPUT_BG")
+            nameInput.strokeColor = Color.BLANK
+            nameInput.cornerRadius = ScaledValue.of(2f)
+            previewButton.bgColor = style.getColor("INPUT_BG")
+            previewButton.bgHoverColor = style.getColor("BUTTON_HOVER")
+            previewButton.color = Color.WHITE
+            previewButton.hoverColor = Color.WHITE
+            previewButton.iconFontName = style.iconFontName
+            previewButton.iconCharacter = previewIconCharacter
+            pickerWindow.color = style.getColor("LIGHT_BG")
+            pickerWindow.strokeColor = style.getColor("HEADER")
+            pickerWindow.strokeRight = false
+            rows.color = style.getColor("DARK_BG")
+            scrollbar.bgColor = style.getColor("SCROLLBAR_BG")
+            scrollbar.sliderColor = style.getColor("SCROLLBAR")
+            scrollbar.sliderColorHover = style.getColor("SCROLLBAR_HOVER")
+            headerPanel.color = style.getColor("HEADER")
+            headerPanel.strokeColor = style.getColor("STROKE")
+            searchInput.font = style.getFont()
+            searchInput.textColor = style.getColor("LABEL")
+            searchInput.bgColor = style.getColor("BUTTON")
+            searchInput.bgColorHover = style.getColor("BUTTON_HOVER")
+            searchInput.strokeColor = Color.BLANK
 
-        return HorizontalPanel().apply {
-            padding.left = 5f
-            padding.right = 5f
-            padding.top = 5f
-            color = style.getColor("ITEM")
-            cornerRadius = 12f
-            addChildren(typeLabel, Panel(), typeDropdown)
+            PulseEngine.GLOBAL_INSTANCE.asset.getAllOfType(annotation.type).forEachFast { addAssetRow(it, style) }
+
+            setOnValueChanged()
+            {
+                obj.setPrimitiveProperty(prop, it)
+                onChanged(prop.name, nameInput.text, it)
+            }
+        }
+
+    open fun createInputFieldUI(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): InputField {
+        val propInfo = obj.getPropInfo(prop)
+        val value = prop.getter.call(obj)
+        val (type, defaultText) = when (prop.javaField?.type)
+        {
+            Float::class.java       -> FLOAT to value?.toString()
+            Double::class.java      -> FLOAT to value?.toString()
+            Int::class.java         -> INTEGER to value?.toString()
+            Long::class.java        -> INTEGER to value?.toString()
+            Char::class.java        -> INTEGER to value?.toString()
+            Boolean::class.java     -> BOOLEAN to value?.toString()
+            FloatArray::class.java  -> FLOAT_ARRAY to (value as? FloatArray?)?.joinToString()
+            DoubleArray::class.java -> FLOAT_ARRAY to (value as? DoubleArray?)?.joinToString()
+            IntArray::class.java    -> INTEGER_ARRAY to (value as? IntArray?)?.joinToString()
+            LongArray::class.java   -> INTEGER_ARRAY to (value as? LongArray?)?.joinToString()
+            ShortArray::class.java  -> INTEGER_ARRAY to (value as? ShortArray?)?.joinToString()
+            ByteArray::class.java   -> INTEGER_ARRAY to (value as? ByteArray?)?.joinToString()
+            else                    -> TEXT to value?.toString()
+        }
+
+        return InputField(
+            defaultText = defaultText ?: "",
+            width = Size.relative(0.5f)
+        ).apply {
+            cornerRadius = ScaledValue.of(2f)
+            font = style.getFont()
+            fontSize = ScaledValue.of(18f)
+            textColor = style.getColor("LABEL")
+            bgColor = style.getColor("INPUT_BG")
+            bgColorHover = style.getColor("BUTTON_HOVER")
+            strokeColor = Color.BLANK
+            contentType = type
+            editable = propInfo?.editable ?: true
+
+            if (type == FLOAT || type == INTEGER)
+            {
+                propInfo?.let()
+                {
+                    numberMinVal = it.min
+                    numberMaxVal = it.max
+                }
+            }
+
+            setOnValidTextChanged()
+            {
+                if (type == FLOAT_ARRAY || type == INTEGER_ARRAY)
+                    obj.setArrayProperty(prop, it.text)
+                else
+                    obj.setPrimitiveProperty(prop, it.text)
+
+                onChanged(prop.name, it.lastValidText, it.text)
+            }
         }
     }
 
@@ -538,47 +696,76 @@ open class UiElementFactory(
      * Creates a property row UI element for the given object.
      * Returns the main UI panel and the input UiElement
      */
-    open fun createPropertyUI(obj: Any, prop: KMutableProperty<*>): Pair<HorizontalPanel, UiElement>
-    {
+    open fun createPropertyUI(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): Pair<HorizontalPanel, UiElement> {
         val propUiKey = propertyUiFactories.keys.firstOrNull { prop.javaField?.type?.kotlin?.isSubclassOf(it) == true }
-        val propUi = propertyUiFactories[propUiKey]?.invoke(obj, prop)
-            ?: createInputFieldUI(value = prop.getter.call(obj), prop).apply { // Default UI when no factory exist
-                setOnTextChanged { if (it.isValid) obj.setProperty(prop, it.text) }
-                editable = prop.name != "id"
-            }
+        val propUi = propertyUiFactories[propUiKey]
+            ?.invoke(obj, prop, onChanged)
+            ?: createInputFieldUI(obj, prop, onChanged)
 
         val label = Label(text = prop.name.capitalize(), width = Size.relative(0.5f)).apply {
             padding.setAll(5f)
-            padding.left = 10f
-            fontSize = 20f
+            padding.left = ScaledValue.of(10f)
+            fontSize = ScaledValue.of(19f)
             font = style.getFont()
             color = style.getColor("LABEL")
         }
 
-        val hPanel = HorizontalPanel().apply {
-            padding.left = 5f
-            padding.right = 5f
-            padding.top = 5f
-            cornerRadius = 12f
-            color = style.getColor("ITEM")
+        val hPanel = HorizontalPanel(
+            height = Size.absolute(style.getSize("PROP_ROW_HEIGHT"))
+        ).apply {
+            padding.left = ScaledValue.of(12f)
+            padding.right = ScaledValue.of(12f)
+            padding.top = ScaledValue.of(4f)
+            cornerRadius = ScaledValue.of(2f)
+            color = style.getColor( "BUTTON")
             addChildren(label, propUi)
         }
 
         return Pair(hPanel, propUi)
     }
 
-    open fun createCategoryHeader(label: String) =
-        HorizontalPanel().apply {
-            padding.left = 5f
-            padding.right = 5f
-            padding.top = 5f
-            cornerRadius = 12f
+    open fun createCategoryHeader(label: String, isCollapsed: Boolean, onClicked: (btn: Button) -> Unit) =
+        Button(
+            height = Size.absolute(style.getSize("PROP_HEADER_ROW_HEIGHT"))
+        ).apply {
+            id = "header_$label"
+            toggleButton = true
+            isPressed = isCollapsed
+            padding.left = ScaledValue.of(5f)
+            padding.right = ScaledValue.of(5f)
+            padding.top = ScaledValue.of(5f)
+            cornerRadius = ScaledValue.of(2f)
             color = style.getColor("HEADER")
+            activeColor = style.getColor("HEADER")
+            hoverColor = style.getColor("HEADER_HOVER")
+            activeHoverColor = style.getColor("HEADER_HOVER")
+
+            val icon = Icon(width = Size.absolute(25f)).apply()
+            {
+                padding.left = ScaledValue.of(-6f)
+                padding.top = ScaledValue.of(3f)
+                iconSize = ScaledValue.of(17f)
+                iconFontName = style.iconFontName
+                iconCharacter = style.getIcon(if (isPressed) "ARROW_RIGHT" else "ARROW_DOWN")
+                color = style.getColor("LABEL")
+            }
+
+            setOnClicked {
+                icon.iconCharacter = style.getIcon(if (it.isPressed) "ARROW_RIGHT" else "ARROW_DOWN")
+                onClicked(it)
+            }
+
             addChildren(
-                Label(label, width = Size.relative(0.5f)).apply {
+                icon,
+                Label(label, width = Size.relative(0.5f)).apply()
+                {
                     padding.setAll(5f)
-                    padding.left = 10f
-                    fontSize = 20f
+                    padding.left = ScaledValue.of(20f)
+                    fontSize = ScaledValue.of(20f)
                     font = style.getFont()
                     color = style.getColor("LABEL")
                 }
@@ -586,7 +773,7 @@ open class UiElementFactory(
         }
 
     /**
-     * Determines the dropdown menu size based on the its content.
+     * Determines the dropdown menu size based on its content.
      */
     private fun getDropDownDimensions(
         font: Font,

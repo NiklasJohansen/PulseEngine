@@ -43,7 +43,7 @@ abstract class AssetManager
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Font].
      */
-    abstract fun loadFont(fileName: String, assetName: String, fontSizes: FloatArray): Font
+    abstract fun loadFont(fileName: String, assetName: String, fontSize: Float = 80f): Font
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Cursor].
