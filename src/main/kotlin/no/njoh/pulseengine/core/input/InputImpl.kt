@@ -50,7 +50,7 @@ open class InputImpl : InputInternal
 
         this.windowHandle = windowHandle
 
-        glfwSetKeyCallback(windowHandle) { window, keyCode, scancode, action, mods ->
+        glfwSetKeyCallback(windowHandle) { _, keyCode, _, action, _ ->
             if (keyCode >= 0)
             {
                 clicked[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
@@ -65,30 +65,30 @@ open class InputImpl : InputInternal
             }
         }
 
-        glfwSetCharCallback(windowHandle) { window, character ->
+        glfwSetCharCallback(windowHandle) { _, character ->
             textInput += character.toChar()
         }
 
-        glfwSetCursorPosCallback(windowHandle) { window, xPos, yPos ->
+        glfwSetCursorPosCallback(windowHandle) { _, xPos, yPos ->
             xMouseLast = xMouse
             yMouseLast = yMouse
             xMouse = xPos.toFloat()
             yMouse = yPos.toFloat()
         }
 
-        glfwSetScrollCallback(windowHandle) { window, xoffset, yoffset ->
+        glfwSetScrollCallback(windowHandle) { _, xOffset, yOffset ->
             if (isPressed(Key.LEFT_SHIFT))
             {
-                xScroll = yoffset.toFloat()
+                xScroll = yOffset.toFloat()
             }
             else
             {
-                xScroll = xoffset.toFloat()
-                yScroll = yoffset.toFloat()
+                xScroll = xOffset.toFloat()
+                yScroll = yOffset.toFloat()
             }
         }
 
-        glfwSetMouseButtonCallback(windowHandle) { window, button, action, mods ->
+        glfwSetMouseButtonCallback(windowHandle) { _, button, action, _ ->
             clicked[button] = if (action == GLFW_PRESS) 1 else -1
             pressed[button] = if (action == GLFW_PRESS) 1 else 0
             if (action == GLFW_PRESS && focusStack.isNotEmpty())

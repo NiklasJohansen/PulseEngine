@@ -68,6 +68,7 @@ open class Scene(
         {
             if (!it.initialized)
                 it.init(engine)
+
             it.onStart(engine)
         }
         spatialGrid.recalculate()
@@ -83,12 +84,20 @@ open class Scene(
         spatialGrid.update()
 
         var deleteDeadEntities = true
-        systems.forEachFiltered({ it.enabled })
+        systems.forEachFiltered({ it.enabled || it.stateChanged })
         {
             if (!it.initialized)
                 it.init(engine)
+
+            if (it.stateChanged)
+            {
+                it.stateChanged = false
+                it.onStateChanged(engine)
+            }
+
             if (it.handlesEntityDeletion())
                 deleteDeadEntities = false
+
             it.onUpdate(engine)
         }
 

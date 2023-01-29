@@ -46,13 +46,12 @@ open class LightingSystem : SceneSystem()
     @ScnProp(i = 13) var correctOffset = true
     @ScnProp(i = 14) var drawDebug = false
 
-    @JsonIgnore
+
     private val normalMapRenderPass = RenderPass(
         surfaceName = "lighting_normal_map",
         targetType = NormalMapped::class
     )
 
-    @JsonIgnore
     private val occluderRenderPass = RenderPass(
         surfaceName = "lighting_occluder_map",
         targetType = LightOccluder::class,
@@ -411,9 +410,14 @@ open class LightingSystem : SceneSystem()
         lightRenderer.occluderMapSurface?.let { engine.gfx.deleteSurface(it.name) }
         engine.gfx.deleteSurface(lightSurface.name)
 
-        // Remove and delete post processing effect
+        // Remove and delete post-processing effect
         engine.gfx.mainSurface.removePostProcessingEffect(lightBlendEffect)
         lightBlendEffect.cleanUp()
+    }
+
+    override fun onStateChanged(engine: PulseEngine)
+    {
+        if (enabled) onCreate(engine) else onDestroy(engine)
     }
 
     companion object
