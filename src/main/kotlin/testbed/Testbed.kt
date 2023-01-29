@@ -3,6 +3,7 @@ package testbed
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState.STOPPED
 import no.njoh.pulseengine.core.PulseEngineGame
+import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.widgets.cli.CommandLine
 import no.njoh.pulseengine.widgets.profiler.Profiler
 import no.njoh.pulseengine.widgets.editor.SceneEditor
@@ -25,10 +26,11 @@ class Testbed : PulseEngineGame()
 
     override fun onRender()
     {
+        engine.gfx.mainSurface.setDrawColor(Color.WHITE)
         engine.gfx.mainSurface.drawText(
-            text = "PulseEngine 0.8.0-SNAPSHOT - Testbed",
-            x = engine.window.width / 2f,
-            y = engine.window.height / 2f,
+            text = "PulseEngine 0.8.0 - Testbed",
+            x = engine.window.width * 0.5f,
+            y = engine.window.height * 0.5f,
             xOrigin = 0.5f,
             yOrigin = 0.5f,
             fontSize = 72f
