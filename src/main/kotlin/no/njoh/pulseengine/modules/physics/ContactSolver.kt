@@ -32,18 +32,28 @@ object ContactSolver
                 is PolygonBody -> return solvePolygonOnPolygon(b0, b1)
                 is PointBody -> return solvePointOnPolygon(b1, b0)
                 is CircleBody -> return solveCircleOnPolygon(b1, b0)
+                is LineBody -> return null
             }
             is PointBody -> when (b1)
             {
                 is PointBody -> return null
                 is PolygonBody -> return solvePointOnPolygon(b0, b1)
                 is CircleBody -> return solveCircleOnPoint(b1, b0)
+                is LineBody -> return null
             }
             is CircleBody -> when (b1)
             {
                 is PolygonBody -> return solveCircleOnPolygon(b0, b1)
                 is PointBody -> return solveCircleOnPoint(b0, b1)
                 is CircleBody -> return solveCircleOnCircle(b0, b1)
+                is LineBody -> return solveCircleOnLine(b0, b1)
+            }
+            is LineBody -> when (b1)
+            {
+                is PolygonBody -> return null
+                is PointBody -> return null
+                is CircleBody -> return solveCircleOnLine(b1, b0)
+                is LineBody -> return null
             }
         }
 
@@ -657,6 +667,136 @@ object ContactSolver
         )
     }
 
+    private fun solveCircleOnLine(circleBody: CircleBody, lineBody: LineBody): ContactResult?
+    {
+        val circle = circleBody.shape
+        val xCircle = circle.x
+        val yCircle = circle.y
+        val radius = circle.radius
+
+        // Find the closest point along line within radius of circle
+        val line = lineBody.shape
+        val (x0, y0) = line.getPoint(0)
+        val (x1, y1) = line.getPoint(1)
+        val closestPoint = MathUtil.closestPointOnLineSegment(xCircle, yCircle, x0, y0, x1, y1)
+        val xd = xCircle - closestPoint.x
+        val yd = yCircle - closestPoint.y
+        val distSquared = xd * xd + yd * yd
+        if (distSquared > radius * radius)
+            return null // No collision
+
+        // Calculate collision normal and penetration depth
+        val xDelta = closestPoint.x - xCircle
+        val yDelta = closestPoint.y - yCircle
+        val dist = sqrt(xDelta * xDelta + yDelta * yDelta)
+        val xNormal = xDelta / dist
+        val yNormal = yDelta / dist
+        val depth = dist - radius
+
+        // Calculate mass ratios, friction restitution coefficients
+        val invTotalMass = 1.0f / (line.mass + circle.mass)
+        val circleBodyRatio = if (lineBody.bodyType == STATIC) 1f else line.mass * invTotalMass
+        val rigidBodyRatio = if (circleBody.bodyType == STATIC) 1f else circle.mass * invTotalMass
+        val coefficientOfFriction = (lineBody.friction + circleBody.friction) * 0.5f
+        val coefficientOfRestitution = (lineBody.restitution + circleBody.restitution) * 0.5f
+
+        // Calculate where on the edge the collision point lies (0.0 - 1.0). If-check prevents divide by zero.
+        val t = if (abs(x0 - x1) > abs(y0 - y1)) (closestPoint.x - x0) / (x1 - x0) else (closestPoint.y - y0) / (y1 - y0)
+
+        if (lineBody.bodyType != STATIC)
+        {
+            // Calculate a scaling factor that ensures that the point lies on the edge after the collision response
+            val lambda = 1.0f / (t * t + (1 - t) * (1 - t)) * rigidBodyRatio
+
+            // Correct edge point positions
+            line.x0 -= xNormal * depth * lambda * (1 - t)
+            line.y0 -= yNormal * depth * lambda * (1 - t)
+            line.x1 -= xNormal * depth * lambda * t
+            line.y1 -= yNormal * depth * lambda * t
+
+            // Add friction to point 0
+            val xVel0 = x0 - line.xLast0
+            val yVel0 = y0 - line.yLast0
+            val frictionImpulse0 = calculateFrictionImpulse(xVel0, yVel0, yNormal, -xNormal, depth, coefficientOfFriction)
+            line.xLast0 += frictionImpulse0.x * (1 - t)
+            line.yLast0 += frictionImpulse0.y * (1 - t)
+
+            // Add friction to point 1
+            val xVel1 = x1 - line.xLast1
+            val yVel1 = y1 - line.yLast1
+            val frictionImpulse1 = calculateFrictionImpulse(xVel1, yVel1, yNormal, -xNormal, depth, coefficientOfFriction)
+            line.xLast1 += frictionImpulse1.x * t
+            line.yLast1 += frictionImpulse1.y * t
+        }
+
+        // Calculate circle velocity before position is corrected
+        val xVel = circle.x - circle.xLast
+        val yVel = circle.y - circle.yLast
+
+        // If dot product between edge normal and travel direction is more than 0, then the circle is moving towards the edge
+        val dot = xVel * xNormal + yVel * yNormal
+
+        if (circleBody.bodyType != STATIC && dot > 0f)
+        {
+            // Correct circle position
+            circle.x += xNormal * depth * circleBodyRatio
+            circle.y += yNormal * depth * circleBodyRatio
+
+            // Split velocity vector up into its normal and perpendicular components
+            val vnDot = xVel * xNormal + yVel * yNormal
+            val xN = xNormal * vnDot
+            val yN = yNormal * vnDot
+            var xP = (xVel - xN)
+            var yP = (yVel - yN)
+
+            // Rotational velocity transformed from angle to world space
+            val circumference = 2 * PI.toFloat() * radius
+            var rotVel = -circle.lastRotVel / (2f * PI.toFloat()) * circumference
+
+            // Signed length of perpendicular velocity
+            val xEdgeDir = yNormal
+            val yEdgeDir = -xNormal
+            val velEdgeDot = sign(xP * xEdgeDir + yP * yEdgeDir)
+            val perpendicularVel = sqrt(xP * xP + yP * yP) * velEdgeDot
+
+            // Difference between rotational and perpendicular velocity
+            val velDiff = (rotVel - perpendicularVel) * coefficientOfFriction
+
+            // Decrease rotational velocity
+            rotVel -= velDiff
+
+            // Increase perpendicular velocity of circle
+            val xVelChange = xEdgeDir * velDiff
+            val yVelChange = yEdgeDir * velDiff
+            xP += xVelChange
+            yP += yVelChange
+
+            // Nudge velocity of rigid body in opposite direction
+            if (lineBody.bodyType != STATIC)
+            {
+                line.xLast0 += xVelChange * (1f - t)
+                line.yLast0 += yVelChange * (1f - t)
+                line.xLast1 += xVelChange * t
+                line.yLast1 += yVelChange * t
+            }
+
+            // Recombine perpendicular and normal velocities reflected about the edge normal
+            circle.xLast = circle.x - (xP - xN * coefficientOfRestitution)
+            circle.yLast = circle.y - (yP - yN * coefficientOfRestitution)
+
+            // Update rotational velocity
+            circle.rotLast = circle.rot + ((rotVel / circumference) * 2f * PI.toFloat())
+        }
+
+        return result.set(
+            x = closestPoint.x,
+            y = closestPoint.y,
+            xNormal = xNormal,
+            yNormal = yNormal,
+            depth = depth
+        )
+    }
+
     private fun solveCircleOnPoint(circleBody: CircleBody, pointBody: PointBody): ContactResult?
     {
         val point = pointBody.shape
@@ -784,6 +924,9 @@ object ContactSolver
         return impulse
     }
 }
+
+private operator fun Vector2f.component1() = this.x
+private operator fun Vector2f.component2() = this.y
 
 data class ContactResult(
     var x: Float = 0f,
