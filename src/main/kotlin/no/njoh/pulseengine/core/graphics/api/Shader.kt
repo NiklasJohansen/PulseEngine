@@ -11,6 +11,7 @@ class Shader(
     id: Int,
     fileName: String,
     val type: ShaderType,
+    val transform: (source: String) -> String
 ) {
     var id = id
         private set
@@ -20,7 +21,7 @@ class Shader(
 
     fun reload(newFileName: String = fileName): Boolean
     {
-        val newShader = load(newFileName, type)
+        val newShader = load(newFileName, type, transform)
         return if (loadedSuccessfully(newShader))
         {
             glDeleteShader(id)
@@ -46,20 +47,20 @@ class Shader(
         // Cache of all loaded shaders
         private val cache = mutableMapOf<String, Shader>()
 
-        fun getOrLoad(fileName: String, type: ShaderType, onLoad: (source: String) -> String = { it }): Shader =
-            cache.getOrPut(fileName) { load(fileName, type, onLoad) }
+        fun getOrLoad(fileName: String, type: ShaderType, transform: (source: String) -> String = { it }): Shader =
+            cache.getOrPut(fileName) { load(fileName, type, transform) }
 
         fun getShaderFromAbsolutePath(path: String) =
             cache.firstNotNullOfOrNull { if (path.endsWith(it.key)) it.value else null }
 
         fun reloadAll() = cache.values.forEach { it.reload() }
 
-        private fun load(fileName: String, type: ShaderType, onLoad: (source: String) -> String = { it }) : Shader
+        private fun load(fileName: String, type: ShaderType, transform: (source: String) -> String = { it }) : Shader
         {
             try
             {
                 val file = File(fileName)
-                val sourceCode = when
+                val source = when
                 {
                     file.isFile && file.isAbsolute -> file.readText()
                     else -> Shader::class.java.getResource(fileName)?.readText()
@@ -67,15 +68,14 @@ class Shader(
                 }
 
                 val id = glCreateShader(type.value)
-                val source = onLoad(sourceCode)
-                glShaderSource(id, source)
+                glShaderSource(id, transform(source))
                 glCompileShader(id)
 
                 if (glGetShaderi(id, GL_COMPILE_STATUS) != GL_TRUE)
                     throw RuntimeException("\n" + glGetShaderInfoLog(id))
 
                 Logger.debug("Loaded shader: $fileName")
-                return Shader(id, fileName, type)
+                return Shader(id, fileName, type, transform)
             }
             catch (e: Exception)
             {
@@ -85,7 +85,7 @@ class Shader(
                     FRAGMENT -> errFragShader
                     VERTEX -> errVertShader
                 }
-                return Shader(errorShader.id, fileName, type)
+                return Shader(errorShader.id, fileName, type, transform = { it })
             }
         }
 
