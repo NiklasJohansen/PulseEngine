@@ -32,7 +32,7 @@ class ShaderProgram(
 
     fun reload()
     {
-        val newProgram = create(*shaders.toTypedArray())
+        val newProgram = createProgram(*shaders.toTypedArray())
         if (linkedSuccessfully(newProgram))
         {
             delete()
@@ -125,24 +125,27 @@ class ShaderProgram(
     companion object
     {
         private val shaderPrograms = mutableListOf<ShaderProgram>()
-        private val errProgram = create(Shader.errVertShader, Shader.errFragShader)
+        private val errProgram = createProgram(Shader.errVertShader, Shader.errFragShader)
 
         fun reloadAll()
         {
             shaderPrograms.toList().forEachFast { it.reload() }
         }
 
-        fun create(vertexShaderFileName: String, fragmentShaderFileName: String): ShaderProgram
+        fun create(vertexShaderFileName: String, fragmentShaderFileName: String) = create(
+            vertexShader = Shader.getOrLoad(vertexShaderFileName, VERTEX),
+            fragmentShader = Shader.getOrLoad(fragmentShaderFileName, FRAGMENT)
+        )
+
+        fun create(vertexShader: Shader, fragmentShader: Shader): ShaderProgram
         {
-            val vertexShader = Shader.getOrLoad(vertexShaderFileName, VERTEX)
-            val fragmentShader = Shader.getOrLoad(fragmentShaderFileName, FRAGMENT)
-            val program = create(vertexShader, fragmentShader)
+            val program = createProgram(vertexShader, fragmentShader)
             if (linkedSuccessfully(program))
                 shaderPrograms.add(program)
             return program
         }
 
-        private fun create(vararg shaders: Shader): ShaderProgram
+        private fun createProgram(vararg shaders: Shader): ShaderProgram
         {
             val programId = glCreateProgram()
             for (shader in shaders)

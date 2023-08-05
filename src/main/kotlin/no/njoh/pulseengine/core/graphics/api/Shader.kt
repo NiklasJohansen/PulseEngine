@@ -46,20 +46,20 @@ class Shader(
         // Cache of all loaded shaders
         private val cache = mutableMapOf<String, Shader>()
 
-        fun getOrLoad(fileName: String, type: ShaderType): Shader =
-            cache.getOrPut(fileName) { load(fileName, type) }
+        fun getOrLoad(fileName: String, type: ShaderType, onLoad: (source: String) -> String = { it }): Shader =
+            cache.getOrPut(fileName) { load(fileName, type, onLoad) }
 
         fun getShaderFromAbsolutePath(path: String) =
             cache.firstNotNullOfOrNull { if (path.endsWith(it.key)) it.value else null }
 
         fun reloadAll() = cache.values.forEach { it.reload() }
 
-        private fun load(fileName: String, type: ShaderType) : Shader
+        private fun load(fileName: String, type: ShaderType, onLoad: (source: String) -> String = { it }) : Shader
         {
             try
             {
                 val file = File(fileName)
-                val source = when
+                val sourceCode = when
                 {
                     file.isFile && file.isAbsolute -> file.readText()
                     else -> Shader::class.java.getResource(fileName)?.readText()
@@ -67,6 +67,7 @@ class Shader(
                 }
 
                 val id = glCreateShader(type.value)
+                val source = onLoad(sourceCode)
                 glShaderSource(id, source)
                 glCompileShader(id)
 
