@@ -41,7 +41,7 @@ open class Button(
 
     override fun onMouseLeave(engine: PulseEngine)
     {
-        engine.input.setCursor(CursorType.ARROW)
+        engine.input.setCursorType(CursorType.ARROW)
     }
 
     override fun onMouseClicked(engine: PulseEngine)
@@ -58,7 +58,7 @@ open class Button(
 
         if (isMouseOver)
         {
-            engine.input.setCursor(CursorType.HAND)
+            engine.input.setCursorType(CursorType.HAND)
         }
     }
 

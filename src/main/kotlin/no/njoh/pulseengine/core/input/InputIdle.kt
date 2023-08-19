@@ -36,5 +36,7 @@ class InputIdle(private val activeInput: InputInternal) : InputInternal
     override fun releaseFocus(focusArea: FocusArea) = activeInput.releaseFocus(focusArea)
     override fun hasFocus(focusArea: FocusArea): Boolean = activeInput.hasFocus(focusArea)
     override fun hasHoverFocus(focusArea: FocusArea): Boolean = activeInput.hasHoverFocus(focusArea)
-    override fun setCursor(cursorType: CursorType) = activeInput.setCursor(cursorType)
+    override fun setCursorType(cursorType: CursorType) = activeInput.setCursorType(cursorType)
+    override fun setCursorPosition(x: Float, y: Float) = activeInput.setCursorPosition(x, y)
+    override fun setCursorMode(mode: CursorMode) = activeInput.setCursorMode(mode)
 }

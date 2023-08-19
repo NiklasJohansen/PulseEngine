@@ -95,7 +95,7 @@ class InputField (
 
     override fun onMouseLeave(engine: PulseEngine)
     {
-        engine.input.setCursor(ARROW)
+        engine.input.setCursorType(ARROW)
     }
 
     override fun onUpdate(engine: PulseEngine)
@@ -139,15 +139,15 @@ class InputField (
         }
         else if (isSteppingNumber)
         {
-            engine.input.setCursor(ARROW)
+            engine.input.setCursorType(ARROW)
             isSteppingNumber = false
         }
 
         when
         {
             !editable -> { }
-            isSteppingNumber || isMouseInsideNumberStepper -> engine.input.setCursor(VERTICAL_RESIZE)
-            mouseInsideArea -> engine.input.setCursor(IBEAM)
+            isSteppingNumber || isMouseInsideNumberStepper -> engine.input.setCursorType(VERTICAL_RESIZE)
+            mouseInsideArea -> engine.input.setCursorType(IBEAM)
         }
 
         if (isSteppingNumber)

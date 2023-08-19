@@ -198,3 +198,10 @@ enum class CursorType
     TOP_RIGHT_RESIZE,
     ROTATE
 }
+
+enum class CursorMode
+{
+    NORMAL,
+    HIDDEN,
+    GRABBED
+}

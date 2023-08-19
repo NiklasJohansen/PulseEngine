@@ -103,37 +103,37 @@ open class WindowPanel(
         }
 
         if (isResizingTop || isResizingBottom || isInsideTopResizeArea || isInsideBottomResizeArea)
-            input.setCursor(VERTICAL_RESIZE)
+            input.setCursorType(VERTICAL_RESIZE)
 
         if (isResizingLeft || isResizingRight || isInsideRightResizeArea || isInsideLeftResizeArea)
-            input.setCursor(HORIZONTAL_RESIZE)
+            input.setCursorType(HORIZONTAL_RESIZE)
 
         if (!isResizingTop && isInsideTopResizeArea != lastIsInsideTopResizeArea)
         {
             lastIsInsideTopResizeArea = isInsideTopResizeArea
             if (!isInsideTopResizeArea)
-                input.setCursor(ARROW)
+                input.setCursorType(ARROW)
         }
 
         if (!isResizingBottom && isInsideBottomResizeArea != lastIsInsideBottomResizeArea)
         {
             lastIsInsideBottomResizeArea = isInsideBottomResizeArea
             if (!isInsideBottomResizeArea)
-                input.setCursor(ARROW)
+                input.setCursorType(ARROW)
         }
 
         if (!isResizingLeft && isInsideLeftResizeArea != lastIsInsideLeftResizeArea)
         {
             lastIsInsideLeftResizeArea = isInsideLeftResizeArea
             if (!isInsideLeftResizeArea)
-                input.setCursor(ARROW)
+                input.setCursorType(ARROW)
         }
 
         if (!isResizingRight && isInsideRightResizeArea != lastIsInsideRightResizeArea)
         {
             lastIsInsideRightResizeArea = isInsideRightResizeArea
             if (!isInsideRightResizeArea)
-                input.setCursor(ARROW)
+                input.setCursorType(ARROW)
         }
     }
 

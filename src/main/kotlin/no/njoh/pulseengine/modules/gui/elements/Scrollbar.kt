@@ -118,7 +118,7 @@ class Scrollbar(
         }
 
         if (isMouseOverSlider)
-            engine.input.setCursor(CursorType.ARROW)
+            engine.input.setCursorType(CursorType.ARROW)
     }
 
     private fun updateSliderFraction(mouseChange: Float, scroll: Float, sliderTravelDist: Float)

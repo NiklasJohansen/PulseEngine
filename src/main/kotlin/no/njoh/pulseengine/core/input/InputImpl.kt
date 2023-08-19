@@ -197,9 +197,25 @@ open class InputImpl : InputInternal
     override fun hasHoverFocus(focusArea: FocusArea): Boolean =
         focusArea === hoverFocusArea
 
-    override fun setCursor(cursorType: CursorType)
+    override fun setCursorType(cursorType: CursorType)
     {
         selectedCursor = cursorType
+    }
+
+    override fun setCursorMode(mode: CursorMode)
+    {
+        val glfwMode = when (mode)
+        {
+            CursorMode.NORMAL -> GLFW_CURSOR_NORMAL
+            CursorMode.HIDDEN -> GLFW_CURSOR_HIDDEN
+            CursorMode.GRABBED -> GLFW_CURSOR_DISABLED
+        }
+        glfwSetInputMode(windowHandle, GLFW_CURSOR, glfwMode)
+    }
+
+    override fun setCursorPosition(x: Float, y: Float)
+    {
+        glfwSetCursorPos(windowHandle, x.toDouble(), y.toDouble())
     }
 
     override fun setOnFocusChanged(callback: (Boolean) -> Unit)

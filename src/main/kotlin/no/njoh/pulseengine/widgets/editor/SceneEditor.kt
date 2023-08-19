@@ -2,7 +2,6 @@ package no.njoh.pulseengine.widgets.editor
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
@@ -349,7 +348,7 @@ class SceneEditor(
 
         if (engine.scene.state == SceneState.STOPPED)
         {
-            engine.input.setCursor(ARROW)
+            engine.input.setCursorType(ARROW)
             cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(screenArea))
         }
 
@@ -487,7 +486,7 @@ class SceneEditor(
         prevSelectedEntityId = entitySelection.firstOrNull()?.id
 
         resetUI()
-        engine.input.setCursor(ARROW)
+        engine.input.setCursorType(ARROW)
 
         if (engine.scene.state == SceneState.STOPPED)
         {
@@ -743,7 +742,7 @@ class SceneEditor(
 
         if (!engine.input.isPressed(Mouse.LEFT))
         {
-            engine.input.setCursor(ARROW)
+            engine.input.setCursorType(ARROW)
             entitySelection.forEachFast { it.onMovedScaledOrRotated(engine) }
             isMoving = false
             return
@@ -903,7 +902,7 @@ class SceneEditor(
                 MOVE
             else null // ARROW
 
-        cursorType?.let { engine.input.setCursor(it) }
+        cursorType?.let { engine.input.setCursorType(it) }
 
         if (isRotating || isResizingHorizontally || isResizingVertically)
         {

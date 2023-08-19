@@ -316,7 +316,7 @@ class ColorPicker(
 
             if (isSelecting)
             {
-                engine.input.setCursor(CursorType.CROSSHAIR)
+                engine.input.setCursorType(CursorType.CROSSHAIR)
 
                 hue = ((engine.input.yMouse - y.value) / height.value).coerceIn(0f, 1f)
 
@@ -416,14 +416,14 @@ class ColorPicker(
 
         override fun onMouseLeave(engine: PulseEngine)
         {
-            engine.input.setCursor(CursorType.ARROW)
+            engine.input.setCursorType(CursorType.ARROW)
         }
 
         override fun onUpdate(engine: PulseEngine)
         {
             if (isSelecting)
             {
-                engine.input.setCursor(CursorType.CROSSHAIR)
+                engine.input.setCursorType(CursorType.CROSSHAIR)
 
                 val border = markerSize * 0.5f
                 val xMouse = engine.input.xMouse.coerceIn(x.value + border, x.value + width.value - border)
