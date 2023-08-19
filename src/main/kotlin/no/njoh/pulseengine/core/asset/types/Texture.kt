@@ -24,25 +24,25 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
             return field
         }
 
-    internal var uMin: Float = 0f
+    var uMin: Float = 0f
         private set
 
-    internal var vMin: Float = 0f
+    var vMin: Float = 0f
         private set
 
-    internal var uMax: Float = 1f
+    var uMax: Float = 1f
         private set
 
-    internal var vMax: Float = 1f
+    var vMax: Float = 1f
         private set
 
-    internal var textureData: ByteBuffer? = null
-        private set
-
-    internal var format: Int = 0
+    var format: Int = 0
         private set
 
     internal var isBindless = false
+        private set
+
+    internal var textureData: ByteBuffer? = null
         private set
 
     internal var attachment: Int = -1
