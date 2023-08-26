@@ -59,17 +59,19 @@ import kotlin.reflect.KVisibility
 import kotlin.reflect.full.*
 
 class SceneEditor(
-    val uiFactory: UiElementFactory = UiElementFactory()
+    val uiFactory: UiElementFactory = UiElementFactory(),
+    var enableViewportInteractions: Boolean = true
 ): Widget {
+
     override var isRunning = false
 
     // UI
-    private lateinit var rootUI: VerticalPanel
-    private lateinit var inspectorUI: RowPanel
-    private lateinit var systemPropertiesUI: RowPanel
-    private lateinit var dockingUI: DockingPanel
-    private lateinit var screenArea: FocusArea
-    private lateinit var dragAndDropArea: FocusArea
+    lateinit var viewportArea: FocusArea
+    lateinit var rootUI: VerticalPanel
+    lateinit var inspectorUI: RowPanel
+    lateinit var systemPropertiesUI: RowPanel
+    lateinit var dockingUI: DockingPanel
+
     private var entityPropertyUiRows = mutableMapOf<String, UiElement>()
     private var collapsedPropertyHeaders = mutableListOf<String>()
     private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
@@ -128,8 +130,7 @@ class SceneEditor(
         UI_SCALE = engine.config.getFloat("uiScale") ?: engine.window.scale
 
         // Set editor data
-        screenArea = FocusArea(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
-        dragAndDropArea = FocusArea(0f, 0f, 0f, 0f)
+        viewportArea = FocusArea(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
         activeCamera = engine.gfx.mainCamera
         storedCameraState = CameraState.from(activeCamera)
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
@@ -166,7 +167,7 @@ class SceneEditor(
         // Delete selected entities on key press
         engine.input.setOnKeyPressed()
         {
-            if (it == DELETE && isRunning && engine.input.hasFocus(screenArea))
+            if (it == DELETE && isRunning && engine.input.hasFocus(viewportArea))
                 deleteEntitySelection(engine)
         }
 
@@ -333,8 +334,8 @@ class SceneEditor(
 
         if (engine.scene.state == SceneState.STOPPED)
         {
-            screenArea.update(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
-            engine.input.requestFocus(screenArea)
+            viewportArea.update(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
+            engine.input.requestFocus(viewportArea)
         }
 
         if (engine.scene.activeScene.hashCode() != lastSceneHashCode)
@@ -346,10 +347,17 @@ class SceneEditor(
             lastSceneHashCode = engine.scene.activeScene.hashCode()
         }
 
-        if (engine.scene.state == SceneState.STOPPED)
+        if (enableViewportInteractions && engine.scene.state == SceneState.STOPPED)
         {
             engine.input.setCursorType(ARROW)
-            cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(screenArea))
+            cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(viewportArea))
+
+            if (entitySelection.size == 1)
+                entitySelection.first().handleEntityTransformation(engine)
+
+            handleEntityCopying(engine)
+            handleEntitySelection(engine)
+            handleEntityMoving(engine)
         }
 
         if (engine.input.wasClicked(F10))
@@ -365,13 +373,6 @@ class SceneEditor(
                 engine.scene.reload()
             }
         }
-
-        if (entitySelection.size == 1)
-            entitySelection.first().handleEntityTransformation(engine)
-
-        handleEntityCopying(engine)
-        handleEntitySelection(engine)
-        handleEntityMoving(engine)
 
         updateFooterCallback(
             engine.scene.getAllEntitiesByType().sumOf { it.size },
@@ -391,8 +392,13 @@ class SceneEditor(
             renderGrid(engine.gfx.getSurfaceOrDefault("scene_editor_background"))
 
         val foregroundSurface = engine.gfx.getSurfaceOrDefault("scene_editor_foreground")
-        renderEntityIconAndGizmo(foregroundSurface, engine)
-        renderSelectionRectangle(foregroundSurface)
+
+        if (enableViewportInteractions)
+        {
+            renderEntityIconAndGizmo(foregroundSurface, engine)
+            renderSelectionRectangle(foregroundSurface)
+        }
+
         rootUI.render(engine, foregroundSurface)
     }
 
