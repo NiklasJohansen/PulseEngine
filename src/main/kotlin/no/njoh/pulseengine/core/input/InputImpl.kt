@@ -40,8 +40,10 @@ open class InputImpl : InputInternal
     private var hoverFocusArea: FocusArea? = null
 
     private var cursors = mutableMapOf<CursorType, Cursor>()
-    private var selectedCursor = ARROW
-    private var activeCursor = ARROW
+    private var selectedCursorType = ARROW
+    private var activeCursorType = ARROW
+    private var selectedCursorMode = CursorMode.NORMAL
+    private var activeCursorMode = CursorMode.NORMAL
     private var currentFrame = 0
 
     override fun init(windowHandle: Long)
@@ -199,18 +201,12 @@ open class InputImpl : InputInternal
 
     override fun setCursorType(cursorType: CursorType)
     {
-        selectedCursor = cursorType
+        selectedCursorType = cursorType
     }
 
-    override fun setCursorMode(mode: CursorMode)
+    override fun setCursorMode(cursorMode: CursorMode)
     {
-        val glfwMode = when (mode)
-        {
-            CursorMode.NORMAL -> GLFW_CURSOR_NORMAL
-            CursorMode.HIDDEN -> GLFW_CURSOR_HIDDEN
-            CursorMode.GRABBED -> GLFW_CURSOR_DISABLED
-        }
-        glfwSetInputMode(windowHandle, GLFW_CURSOR, glfwMode)
+        selectedCursorMode = cursorMode
     }
 
     override fun setCursorPosition(x: Float, y: Float)
@@ -239,20 +235,32 @@ open class InputImpl : InputInternal
         hoverFocusArea = focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }
         focusStack.clear()
         currentFrame++
-        updateSelectedCursor()
+        updateCursor()
     }
 
-    private fun updateSelectedCursor()
+    private fun updateCursor()
     {
-        if (activeCursor != selectedCursor)
+        if (activeCursorType != selectedCursorType)
         {
-            cursors[selectedCursor]?.let { cursor ->
+            cursors[selectedCursorType]?.let { cursor ->
                 if (cursor.handle != -1L) glfwSetCursor(windowHandle, cursor.handle)
-                else Logger.error("Cursor of type: $selectedCursor has not been loaded")
+                else Logger.error("Cursor of type: $selectedCursorType has not been loaded")
             } ?: run {
-                Logger.error("Cursor of type: $selectedCursor has not been registered in input module")
+                Logger.error("Cursor of type: $selectedCursorType has not been registered in input module")
             }
-            activeCursor = selectedCursor
+            activeCursorType = selectedCursorType
+        }
+
+        if (activeCursorMode != selectedCursorMode)
+        {
+            val glfwMode = when (selectedCursorMode)
+            {
+                CursorMode.NORMAL -> GLFW_CURSOR_NORMAL
+                CursorMode.HIDDEN -> GLFW_CURSOR_HIDDEN
+                CursorMode.GRABBED -> GLFW_CURSOR_DISABLED
+            }
+            glfwSetInputMode(windowHandle, GLFW_CURSOR, glfwMode)
+            activeCursorMode = selectedCursorMode
         }
     }
 

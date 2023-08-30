@@ -32,7 +32,7 @@ interface Input
     fun hasHoverFocus(focusArea: FocusArea): Boolean
     fun setCursorType(cursorType: CursorType)
     fun setCursorPosition(x: Float, y: Float)
-    fun setCursorMode(mode: CursorMode)
+    fun setCursorMode(cursorMode: CursorMode)
 }
 
 interface InputInternal : Input
