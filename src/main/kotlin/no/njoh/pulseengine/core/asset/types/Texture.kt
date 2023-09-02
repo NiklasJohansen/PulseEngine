@@ -81,7 +81,7 @@ open class Texture(
 
         try {
             val bytes = fileName.loadBytes() ?: throw RuntimeException("No such file")
-            val buffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip()
+            val buffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer
             val width = IntArray(1)
             val height = IntArray(1)
             val components = IntArray(1)
