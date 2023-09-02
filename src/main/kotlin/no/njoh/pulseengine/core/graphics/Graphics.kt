@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_STENCIL_BUFFER
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.NORMAL
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 
 interface Graphics
 {
@@ -26,7 +26,7 @@ interface Graphics
         camera: Camera? = null,
         isVisible: Boolean = true,
         textureScale: Float = 1f,
-        textureFormat: TextureFormat = NORMAL,
+        textureFormat: TextureFormat = RGBA8,
         textureFilter: TextureFilter = LINEAR,
         multisampling: Multisampling = NONE,
         blendFunction: BlendFunction = BlendFunction.NORMAL,
@@ -34,12 +34,14 @@ interface Graphics
         backgroundColor: Color = Color(0.1f, 0.1f, 0.1f, 0f),
         initializeSurface: Boolean = true
     ) : Surface2D
+
+    fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat = RGBA8)
 }
 
 interface GraphicsInternal : Graphics
 {
     override val mainCamera: CameraInternal
-    val textureArray: TextureArray
+    val textureBank: TextureBank
 
     fun init(viewPortWidth: Int, viewPortHeight: Int)
     fun uploadTexture(texture: Texture)

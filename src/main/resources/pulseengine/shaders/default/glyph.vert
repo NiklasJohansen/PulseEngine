@@ -10,10 +10,11 @@ in float rotation;
 in vec2 uvMin;
 in vec2 uvMax;
 in uint color;
-in float textureIndex;
+in uint textureHandle;
 
 out vec4 vertexColor;
 out vec2 texCoord;
+flat out uint samplerIndex;
 out float texIndex;
 
 uniform mat4 viewProjection;
@@ -24,6 +25,14 @@ vec4 getColor(uint rgba) {
     uint b = ((rgba >> uint(8))  & uint(255));
     uint a = (rgba & uint(255));
     return vec4(r, g, b, a) / 255.0f;
+}
+
+uint getSamplerIndex(uint textureHandle) {
+    return (textureHandle >> uint(16)) & ((uint(1) << uint(16)) - uint(1));
+}
+
+float getTexIndex(uint textureHandle) {
+    return float(textureHandle & ((uint(1) << uint(16)) - uint(1)));
 }
 
 mat2 rotate(float angle) {
@@ -38,7 +47,8 @@ mat2 rotate(float angle) {
 void main() {
     vertexColor = getColor(color);
     texCoord = uvMin + (uvMax - uvMin) * vertexPos;
-    texIndex = textureIndex;
+    texIndex = getTexIndex(textureHandle);
+    samplerIndex = getSamplerIndex(textureHandle);
 
     vec2 offset = vertexPos * size * rotate(radians(rotation));
     vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);

@@ -1,6 +1,5 @@
 package no.njoh.pulseengine.modules.lighting
 
-import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Shape
@@ -38,7 +37,7 @@ open class LightingSystem : SceneSystem()
     @ScnProp(i = 5, min = 0f, max = 5f) var fogScale = 0.3f
     @ScnProp(i = 6, min = 0.01f, max = 5f) var textureScale = 1f
     @ScnProp(i = 7) var textureFilter = TextureFilter.LINEAR
-    @ScnProp(i = 8) var textureFormat = TextureFormat.HDR_16
+    @ScnProp(i = 8) var textureFormat = TextureFormat.RGBA16F
     @ScnProp(i = 9) var multisampling = Multisampling.NONE
     @ScnProp(i = 10) var enableFXAA = true
     @ScnProp(i = 11) var useNormalMap = false
@@ -114,12 +113,12 @@ open class LightingSystem : SceneSystem()
                 camera = engine.gfx.mainCamera,
                 zOrder = lightSurface.context.zOrder + 1, // Render normal map before lightmap
                 backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
-                textureFormat = TextureFormat.HDR_16,
+                textureFormat = TextureFormat.RGBA16F,
                 isVisible = false
             )
             val renderContext = (normalMapSurface as Surface2DInternal).context
-            val textureArray = (engine.gfx as GraphicsInternal).textureArray
-            normalMapSurface.addRenderer(NormalMapRenderer(1000, renderContext, textureArray))
+            val textureBank = (engine.gfx as GraphicsInternal).textureBank
+            normalMapSurface.addRenderer(NormalMapRenderer(1000, renderContext, textureBank))
             lightRenderer.normalMapSurface = normalMapSurface
         }
         else if (!isEnabled && lightRenderer.normalMapSurface != null)

@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.NORMAL
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -18,7 +18,8 @@ open class GraphicsImpl : GraphicsInternal
 {
     override lateinit var mainCamera: CameraInternal
     override lateinit var mainSurface: Surface2DInternal
-    override lateinit var textureArray: TextureArray
+    override lateinit var textureBank: TextureBank
+
     private lateinit var renderer: FrameTextureRenderer
 
     private val surfaces = mutableListOf<Surface2DInternal>()
@@ -29,7 +30,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         Logger.info("Initializing graphics (${this::class.simpleName})")
 
-        textureArray = TextureArray(1024, 1024, 100, mipMapLevels = 5)
+        textureBank = TextureBank()
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",
@@ -37,7 +38,7 @@ open class GraphicsImpl : GraphicsInternal
             height = viewPortHeight,
             camera = mainCamera,
             multisampling = MSAA4,
-            textureFormat = NORMAL,
+            textureFormat = RGBA8,
             textureFilter = LINEAR,
             backgroundColor = defaultClearColor.copy(),
             attachments = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
@@ -77,16 +78,16 @@ open class GraphicsImpl : GraphicsInternal
     override fun cleanUp()
     {
         Logger.info("Cleaning up graphics (${this::class.simpleName})")
-        textureArray.cleanUp()
+        textureBank.cleanUp()
         renderer.cleanUp()
         surfaces.forEachFast { it.cleanUp() }
     }
 
     override fun uploadTexture(texture: Texture) =
-        textureArray.upload(texture)
+        textureBank.upload(texture)
 
     override fun deleteTexture(texture: Texture) =
-        textureArray.delete(texture)
+        textureBank.delete(texture)
 
     override fun updateCameras() =
         surfaces.forEachCamera { it.updateLastState() }
@@ -179,10 +180,10 @@ open class GraphicsImpl : GraphicsInternal
             name = name,
             camera = newCamera,
             context = context,
-            textRenderer = TextRenderer(initialCapacity, context, textureArray),
+            textRenderer = TextRenderer(initialCapacity, context, textureBank),
             quadRenderer = QuadBatchRenderer(initialCapacity, context),
             lineRenderer = LineBatchRenderer(initialCapacity, context),
-            bindlessTextureRenderer = BindlessTextureRenderer(initialCapacity, context, textureArray),
+            bindlessTextureRenderer = BindlessTextureRenderer(initialCapacity, context, textureBank),
             textureRenderer = TextureRenderer(initialCapacity, context),
             stencilRenderer = StencilRenderer(),
         )
@@ -193,6 +194,11 @@ open class GraphicsImpl : GraphicsInternal
         surfaces.add(newSurface)
         surfaceMap[name] = newSurface
         return newSurface
+    }
+
+    override fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat)
+    {
+        textureBank.setTextureCapacity(maxCount, textureSize, format)
     }
 
     /**

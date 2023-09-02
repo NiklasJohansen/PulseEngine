@@ -1,27 +1,28 @@
 #version 150 core
 #define EDGE_SOFTNESS 0.01
+#define NO_TEXTURE 1000
 
 in vec4 vertexColor;
 in vec2 texStart;
 in vec2 texSize;
 in vec2 texCoord;
 in vec2 texTiling;
-in float texIndex;
 in vec2 quadSize;
 in float quadCornerRadius;
+in float texIndex;
+flat in uint samplerIndex;
 
 out vec4 fragColor;
 
-// 19:00 and 1:08:43 https://gdcvault.com/play/1020791/
-uniform sampler2DArray textureArray; // TODO: Can be an array of sampler2DArray, to have support for multiple texture sizes and sampling types
+uniform sampler2DArray textureArrays[16];
 
 void main() {
     vec4 textureColor = vec4(1.0, 1.0, 1.0, 1.0);
 
-    if (texIndex >= 0)
+    if (texIndex != NO_TEXTURE)
     {
         vec2 sampleCoord = texStart + texSize * (texTiling == vec2(1.0) ? texCoord : fract(texCoord * texTiling));
-        textureColor = texture(textureArray, vec3(sampleCoord, floor(texIndex)));
+        textureColor = texture(textureArrays[samplerIndex], vec3(sampleCoord, floor(texIndex)));
     }
 
     if (quadCornerRadius > 0.0)

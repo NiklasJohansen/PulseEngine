@@ -6,8 +6,8 @@ import no.njoh.pulseengine.core.asset.types.Font.Companion.MAX_CHAR_COUNT
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.RenderContextInternal
 import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.TextureBank
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureArray
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.BufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.FloatBufferObject
@@ -27,7 +27,7 @@ import kotlin.math.sin
 class TextRenderer(
     private val initialCapacity: Int,
     private val context: RenderContextInternal,
-    private val textureArray: TextureArray
+    private val textureBank: TextureBank
 ) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
@@ -54,7 +54,7 @@ class TextRenderer(
             .withAttribute("uvMin", 2, GL_FLOAT, 1)
             .withAttribute("uvMax", 2, GL_FLOAT, 1)
             .withAttribute("color", 1, GL_FLOAT, 1)
-            .withAttribute("textureIndex", 1, GL_FLOAT, 1)
+            .withAttribute("textureHandle", 1, GL_FLOAT, 1)
 
         if (!this::program.isInitialized)
         {
@@ -153,7 +153,7 @@ class TextRenderer(
                 put(fontTex.uMax * glyphData[U_MAX(i)])
                 put(fontTex.vMax * glyphData[V_MAX(i)])
                 put(context.drawColor)
-                put(fontTex.id.toFloat())
+                put(fontTex.handle.toFloat())
             }
 
             increaseBatchSize()
@@ -192,7 +192,7 @@ class TextRenderer(
                 put(fontTex.uMax * glyphData[U_MAX(i)])
                 put(fontTex.vMax * glyphData[V_MAX(i)])
                 put(context.drawColor)
-                put(fontTex.id.toFloat())
+                put(fontTex.handle.toFloat())
             }
 
             increaseBatchSize()
@@ -212,7 +212,7 @@ class TextRenderer(
         vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        textureArray.bind(0)
+        textureBank.bindAllTexturesTo(program)
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
     }

@@ -53,12 +53,13 @@ class Font(
         rgbaBuffer.flip()
 
         charTexture = Texture("char_tex", "")
-        charTexture.load(rgbaBuffer, BITMAP_W, BITMAP_H, GL_RGBA)
+        charTexture.stage(rgbaBuffer, BITMAP_W, BITMAP_H)
     }
 
     override fun delete()
     {
-        glDeleteTextures(charTexture.id)
+        // TODO: Fix deleting/freeing of texture slots
+        // glDeleteTextures(charTexture.id)
         charData.free()
     }
 

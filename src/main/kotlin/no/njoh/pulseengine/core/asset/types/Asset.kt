@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 @ScnIcon("BOX")
 abstract class Asset(
     open val name: String,
-    protected val fileName: String
+    open val fileName: String
 ) {
     abstract fun load()
     abstract fun delete()

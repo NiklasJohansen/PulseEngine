@@ -3,7 +3,6 @@ package no.njoh.pulseengine.modules.lighting
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureArray
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
@@ -14,14 +13,13 @@ import org.lwjgl.opengl.GL20.*
 class NormalMapRenderer(
     private val initialCapacity: Int,
     private val context: RenderContextInternal,
-    private val textureArray: TextureArray
+    private val textureBank: TextureBank
 ) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
     private lateinit var program: ShaderProgram
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: FloatBufferObject
-    private var instanceCount = 0
 
     override fun init()
     {
@@ -38,7 +36,7 @@ class NormalMapRenderer(
             .withAttribute("uvMin", 2, GL_FLOAT, 1)
             .withAttribute("uvMax", 2, GL_FLOAT, 1)
             .withAttribute("tiling", 2, GL_FLOAT, 1)
-            .withAttribute("textureIndex", 1, GL_FLOAT, 1)
+            .withAttribute("textureHandle", 1, GL_FLOAT, 1)
             .withAttribute("normalScale", 2, GL_FLOAT, 1)
 
         if (!this::program.isInitialized)
@@ -94,7 +92,7 @@ class NormalMapRenderer(
             put(texture?.vMax ?: 1f)
             put(uTiling)
             put(vTiling)
-            put(texture?.id?.toFloat() ?: -1f)
+            put(texture?.handle?.toFloat() ?: -1f)
             put(normalScale * orientation.xDir)
             put(normalScale * orientation.yDir)
         }
@@ -121,13 +119,13 @@ class NormalMapRenderer(
         // Bind VAO with buffers and attribute layout
         vao.bind()
 
-        // Bind texture array to texture unit 0
-        textureArray.bind(0)
-
         // Bind shader program and set uniforms
         program.bind()
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", surface.camera.viewMatrix)
+
+        // Bind textures in bank
+        textureBank.bindAllTexturesTo(program)
 
         // Draw all instances
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)

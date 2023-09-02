@@ -182,7 +182,7 @@ class LightRenderer(
         var hasNormalMap = 0f
         normalMapSurface?.let {
             glActiveTexture(GL_TEXTURE0)
-            glBindTexture(GL_TEXTURE_2D, it.getTexture().id)
+            glBindTexture(GL_TEXTURE_2D, it.getTexture().handle.textureIndex)
             hasNormalMap = 1f
         }
 
@@ -190,7 +190,7 @@ class LightRenderer(
         var hasOccluderMap = 0f
         occluderMapSurface?.let {
             glActiveTexture(GL_TEXTURE1)
-            glBindTexture(GL_TEXTURE_2D, it.getTexture().id)
+            glBindTexture(GL_TEXTURE_2D, it.getTexture().handle.textureIndex)
             hasOccluderMap = 1f
         }
 

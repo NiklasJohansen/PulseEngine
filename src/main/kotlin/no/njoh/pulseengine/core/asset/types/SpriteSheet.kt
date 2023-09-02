@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 
 @ScnIcon("IMAGE")
@@ -15,9 +16,9 @@ class SpriteSheet(
     var size = 0
         private set
 
-    override fun finalize(textureId: Int, isBindless: Boolean, uMin: Float, vMin: Float, uMax: Float, vMax: Float, attachment: Int)
+    override fun finalize(handle: TextureHandle, isBindless: Boolean, uMin: Float, vMin: Float, uMax: Float, vMax: Float, attachment: Int)
     {
-        super.finalize(textureId, isBindless, uMin, vMin, uMax, vMax, attachment)
+        super.finalize(handle, isBindless, uMin, vMin, uMax, vMax, attachment)
 
         val uCellSize = 1f / horizontalCells
         val vCellSize = 1f / verticalCells
@@ -35,8 +36,8 @@ class SpriteSheet(
             val uMaxCell = uMinCell + uCellSize * uTexSize
             val vMaxCell = vMinCell + vCellSize * vTexSize
 
-            texture.load(textureData, (width * uCellSize).toInt(), (height * vCellSize).toInt(), format)
-            texture.finalize(textureId, isBindless, uMinCell, vMinCell, uMaxCell, vMaxCell)
+            texture.stage(null, (width * uCellSize).toInt(), (height * vCellSize).toInt())
+            texture.finalize(handle, isBindless, uMinCell, vMinCell, uMaxCell, vMaxCell)
             texture
         }
     }

@@ -3,7 +3,6 @@ package no.njoh.pulseengine.core.graphics.renderers
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureArray
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
@@ -12,7 +11,7 @@ import org.lwjgl.opengl.GL20.*
 class BindlessTextureRenderer(
     private val initialCapacity: Int,
     private val context: RenderContextInternal,
-    private val textureArray: TextureArray
+    private val textureBank: TextureBank
 ) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
@@ -37,7 +36,7 @@ class BindlessTextureRenderer(
             .withAttribute("uvMax", 2, GL_FLOAT, 1)
             .withAttribute("tiling", 2, GL_FLOAT, 1)
             .withAttribute("color", 1, GL_FLOAT, 1)
-            .withAttribute("textureIndex", 1, GL_FLOAT, 1)
+            .withAttribute("textureHandle", 1, GL_FLOAT, 1)
 
         if (!this::program.isInitialized)
         {
@@ -82,7 +81,7 @@ class BindlessTextureRenderer(
             put(1f) // U-tiling
             put(1f) // V-tiling
             put(context.drawColor)
-            put(texture.id.toFloat())
+            put(texture.handle.toFloat())
         }
 
         increaseBatchSize()
@@ -124,7 +123,7 @@ class BindlessTextureRenderer(
             put(uTiling)
             put(vTiling)
             put(context.drawColor)
-            put(texture.id.toFloat())
+            put(texture.handle.toFloat())
         }
 
         increaseBatchSize()
@@ -144,12 +143,12 @@ class BindlessTextureRenderer(
         // Bind VAO with buffers and attribute layout
         vao.bind()
 
-        // Bind texture array to texture unit 0
-        textureArray.bind(0)
-
         // Bind shader program and set uniforms
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+
+        // Bind texture bank
+        textureBank.bindAllTexturesTo(program)
 
         // Draw all instances
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)

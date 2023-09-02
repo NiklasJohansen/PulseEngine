@@ -64,7 +64,7 @@ class TextureRenderer(
         data[base + 6] = xOrigin
         data[base + 7] = yOrigin
         data[base + 8] = context.drawColor
-        data[base + 9] = texture.id.toFloat()
+        data[base + 9] = texture.handle.textureIndex.toFloat()
 
         count++
         context.increaseDepth()
@@ -99,7 +99,7 @@ class TextureRenderer(
             val textureId = data[base + 9].toInt()
 
             // Bind texture
-            if (textureId >= 0)
+            if (textureId != 1000) // See TextureHandle.NONE
                 glBindTexture(GL_TEXTURE_2D, textureId)
 
             // Set uniforms
@@ -108,7 +108,7 @@ class TextureRenderer(
             program.setUniform("origin", xOrigin, yOrigin)
             program.setUniform("rotation", rotation)
             program.setUniform("color", floatToRawIntBits(rgba))
-            program.setUniform("sampleTexture", textureId >= 0)
+            program.setUniform("sampleTexture", textureId != 1000)
 
             // Draw quad
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)

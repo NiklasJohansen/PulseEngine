@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.asset
 
 import no.njoh.pulseengine.core.asset.types.*
+import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import kotlin.reflect.KClass
 
 abstract class AssetManager
@@ -33,7 +35,7 @@ abstract class AssetManager
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Texture].
      */
-    abstract fun loadTexture(fileName: String, assetName: String): Texture
+    abstract fun loadTexture(fileName: String, assetName: String, filter: TextureFilter = LINEAR): Texture
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [SpriteSheet].

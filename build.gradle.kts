@@ -55,11 +55,10 @@ dependencies {
     }
 
     // Other
-    implementation("org.l33tlabs.twl:pngdecoder:1.0")
     implementation("org.joml:joml:1.10.4")
     implementation("net.sf.trove4j:trove4j:3.0.3")
     implementation("de.undercouch:bson4jackson:2.13.1")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.3")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
 
     // Java Microbenchmark Harness
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.35")

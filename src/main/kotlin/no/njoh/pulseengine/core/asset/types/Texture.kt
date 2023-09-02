@@ -1,28 +1,36 @@
 package no.njoh.pulseengine.core.asset.types
 
-import de.matthiasmann.twl.utils.PNGDecoder
+import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
+import no.njoh.pulseengine.core.graphics.api.TextureFormat
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
+import no.njoh.pulseengine.core.graphics.api.TextureHandle
+import no.njoh.pulseengine.core.graphics.api.TextureHandle.Companion.INVALID
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import no.njoh.pulseengine.core.shared.utils.Logger
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadStream
-import org.lwjgl.opengl.GL11.*
+import org.lwjgl.BufferUtils
+import org.lwjgl.stb.STBImage.*
 import java.nio.ByteBuffer
+import java.nio.FloatBuffer
 
 @ScnIcon("IMAGE")
-open class Texture(filename: String, override val name: String) : Asset(name, filename)
-{
-    var width: Int = 0
+open class Texture(
+    filename: String,
+    override val name: String,
+    val filter: TextureFilter = LINEAR,
+    val mipLevels: Int = 5
+) : Asset(name, filename) {
+
+    var handle: TextureHandle = INVALID
         private set
 
-    var height: Int = 0
+    var width: Int = 1
         private set
 
-    var id: Int = -2
+    var height: Int = 1
         private set
-        get() {
-            if (field == -2)
-                throw IllegalStateException("Accessing unfinalized texture with asset name: $name")
-            return field
-        }
 
     var uMin: Float = 0f
         private set
@@ -36,68 +44,93 @@ open class Texture(filename: String, override val name: String) : Asset(name, fi
     var vMax: Float = 1f
         private set
 
-    var format: Int = 0
+    var isBindless: Boolean = false
         private set
 
-    internal var isBindless = false
+    var format: TextureFormat = RGBA8
         private set
 
-    internal var textureData: ByteBuffer? = null
+    var pixelsLDR: ByteBuffer? = null
         private set
 
-    internal var attachment: Int = -1
+    var pixelsHDR: FloatBuffer? = null
         private set
 
-    open fun finalize(textureId: Int, isBindless: Boolean, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, attachment: Int = -1)
+    var attachment: Int = -1
+        private set
+
+    private var onFinalized: (Texture) -> Unit = { }
+
+    open fun finalize(handle: TextureHandle, isBindless: Boolean, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, attachment: Int = -1)
     {
-        this.id = textureId
+        this.handle = handle
         this.isBindless = isBindless
         this.uMin = uMin
         this.vMin = vMin
         this.uMax = uMax
         this.vMax = vMax
         this.attachment = attachment
-        this.textureData = null
+        this.onFinalized(this)
+        this.pixelsLDR = null
+        this.pixelsHDR = null
     }
 
     override fun load()
     {
-        if (fileName.isNotBlank())
-        {
-            val stream = fileName.loadStream() ?: run {
-                Logger.error("Failed to find and load Texture asset: $fileName")
-                load(ByteBuffer.allocate(0), 0, 0, GL_RGBA)
-                return
-            }
+        if (fileName.isBlank()) return
 
-            val decoder = PNGDecoder(stream)
-            val buffer = ByteBuffer.allocateDirect(4 * decoder.width * decoder.height)
-            decoder.decode(buffer, decoder.width * 4, PNGDecoder.Format.RGBA)
-            buffer.flip()
-            load(buffer, decoder.width, decoder.height, GL_RGBA)
+        try {
+            val bytes = fileName.loadBytes() ?: throw RuntimeException("No such file")
+            val buffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip()
+            val width = IntArray(1)
+            val height = IntArray(1)
+            val components = IntArray(1)
+
+            stbi_info_from_memory(buffer, width, height, components)
+
+            if (stbi_is_hdr_from_memory(buffer))
+            {
+                this.format = RGBA16F
+                this.pixelsHDR = stbi_loadf_from_memory(buffer, width, height, components, STBI_rgb_alpha)
+                    ?: throw RuntimeException("Could not load HDR image into memory: " + stbi_failure_reason())
+            }
+            else
+            {
+                this.format = RGBA8
+                this.pixelsLDR = stbi_load_from_memory(buffer, width, height, components, STBI_rgb_alpha)
+                    ?: throw RuntimeException("Could not load image into memory: " + stbi_failure_reason())
+            }
+            this.width = width[0]
+            this.height = height[0]
+            this.onFinalized = { tex ->
+                tex.pixelsLDR?.let { stbi_image_free(it) }
+                tex.pixelsHDR?.let { stbi_image_free(it) }
+            }
+        }
+        catch (e: Exception)
+        {
+            Logger.error("Failed to load image $fileName: ${e.message}")
         }
     }
 
-    fun load(textureData: ByteBuffer?, width: Int, height: Int, format: Int)
+    fun stage(pixels: ByteBuffer?, width: Int, height: Int)
     {
-        this.textureData = textureData
+        this.pixelsLDR = pixels
+        this.format = RGBA8
         this.width = width
         this.height = height
-        this.format = format
     }
 
     override fun delete() { }
 
     companion object
     {
-        val SUPPORTED_FORMATS = listOf("png")
+        val SUPPORTED_FORMATS = listOf("png", "jpg", "jpeg", "hdr")
         val BLANK = Texture("", "BLANK").apply {
-            load(textureData = null, width = 1, height = 1, format = GL_RGBA)
-            finalize(textureId = -1, isBindless = true, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
+            finalize(handle = TextureHandle.NONE, isBindless = true, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
         val BLANK_BINDABLE = Texture("", "BLANK_BINDABLE").apply {
-            load(textureData = null, width = 1, height = 1, format = GL_RGBA)
-            finalize(textureId = -1, isBindless = false, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
+            finalize(handle = TextureHandle.NONE, isBindless = false, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
     }
 }
