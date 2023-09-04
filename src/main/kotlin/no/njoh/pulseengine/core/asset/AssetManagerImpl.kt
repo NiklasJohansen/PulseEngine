@@ -26,8 +26,8 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun <T : Asset> getAllOfType(type: KClass<T>): List<T> =
         assets.values.filterIsInstance(type.java)
 
-    override fun loadTexture(fileName: String, assetName: String, filter: TextureFilter): Texture =
-        Texture(fileName, assetName, filter).also { add(it)  }
+    override fun loadTexture(fileName: String, assetName: String, filter: TextureFilter, mipLevels: Int): Texture =
+        Texture(fileName, assetName, filter, mipLevels).also { add(it)  }
 
     override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet =
         SpriteSheet(fileName, assetName, horizontalCells, verticalCells).also{ add(it) }

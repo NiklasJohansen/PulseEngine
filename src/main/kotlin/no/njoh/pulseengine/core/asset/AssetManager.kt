@@ -35,7 +35,7 @@ abstract class AssetManager
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Texture].
      */
-    abstract fun loadTexture(fileName: String, assetName: String, filter: TextureFilter = LINEAR): Texture
+    abstract fun loadTexture(fileName: String, assetName: String, filter: TextureFilter = LINEAR, mipLevels: Int = 5): Texture
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [SpriteSheet].
