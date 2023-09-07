@@ -21,7 +21,7 @@ class Shader(
 
     fun reload(newFileName: String = fileName): Boolean
     {
-        val newShader = load(newFileName, type, transform)
+        val newShader = createShader(newFileName, type, transform)
         return if (loadedSuccessfully(newShader))
         {
             glDeleteShader(id)
@@ -41,21 +41,36 @@ class Shader(
     companion object
     {
         // Default error shaders
-        val errFragShader = load("/pulseengine/shaders/default/error.frag", FRAGMENT)
-        val errVertShader = load("/pulseengine/shaders/default/error.vert", VERTEX)
+        val errFragShader = createShader("/pulseengine/shaders/default/error.frag", FRAGMENT)
+        val errVertShader = createShader("/pulseengine/shaders/default/error.vert", VERTEX)
 
         // Cache of all loaded shaders
         private val cache = mutableMapOf<String, Shader>()
 
-        fun getOrLoad(fileName: String, type: ShaderType, transform: (source: String) -> String = { it }): Shader =
-            cache.getOrPut(fileName) { load(fileName, type, transform) }
+        /**
+         * Loads the shader from the given file.
+         */
+        fun load(fileName: String, type: ShaderType, transform: (source: String) -> String = { it }): Shader =
+            createShader(fileName, type, transform).also { cache[fileName] = it }
 
+        /**
+         * Returns the shader from the cache if it exists, otherwise loads it from the given file.
+         */
+        fun getOrLoad(fileName: String, type: ShaderType, transform: (source: String) -> String = { it }): Shader =
+            cache.getOrPut(fileName) { createShader(fileName, type, transform) }
+
+        /**
+         * Returns the shader with filename matching the given path, or null if it does not exist.
+         */
         fun getShaderFromAbsolutePath(path: String) =
             cache.firstNotNullOfOrNull { if (path.endsWith(it.key)) it.value else null }
 
+        /**
+         * Reloads all cached shaders.
+         */
         fun reloadAll() = cache.values.forEach { it.reload() }
 
-        private fun load(fileName: String, type: ShaderType, transform: (source: String) -> String = { it }) : Shader
+        private fun createShader(fileName: String, type: ShaderType, transform: (source: String) -> String = { it }) : Shader
         {
             try
             {
