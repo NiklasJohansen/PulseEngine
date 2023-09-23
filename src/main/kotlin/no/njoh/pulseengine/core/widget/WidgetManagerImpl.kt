@@ -10,6 +10,7 @@ open class WidgetManagerImpl: WidgetManagerInternal()
 {
     private var renderTimeMs = 0f
     private var updateTimeMs = 0f
+    private var fixedUpdateTimeMs = 0f
 
     override fun init(engine: PulseEngine)
     {
@@ -20,6 +21,7 @@ open class WidgetManagerImpl: WidgetManagerInternal()
 
         // Add metrics to measure widget performance
         engine.data.addMetric("WIDGETS UPDATE", "MS") { updateTimeMs }
+        engine.data.addMetric("WIDGETS FIXED UPDATE", "MS") { fixedUpdateTimeMs }
         engine.data.addMetric("WIDGETS RENDER", "MS") { renderTimeMs }
     }
 
@@ -28,6 +30,14 @@ open class WidgetManagerImpl: WidgetManagerInternal()
         updateTimeMs = measureMillisTime()
         {
             widgets.forEachFiltered({ it.isRunning }) { it.onUpdate(engine) }
+        }
+    }
+
+    override fun fixedUpdate(engine: PulseEngine)
+    {
+        fixedUpdateTimeMs = measureMillisTime()
+        {
+            widgets.forEachFiltered({ it.isRunning }) { it.onFixedUpdate(engine) }
         }
     }
 

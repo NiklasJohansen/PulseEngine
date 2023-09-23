@@ -17,6 +17,7 @@ abstract class WidgetManagerInternal : WidgetManager()
 {
     abstract fun init(engine: PulseEngine)
     abstract fun update(engine: PulseEngine)
+    abstract fun fixedUpdate(engine: PulseEngine)
     abstract fun render(engine: PulseEngine)
     abstract fun cleanUp(engine: PulseEngine)
 }

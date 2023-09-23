@@ -199,8 +199,9 @@ class PulseEngineImpl(
             audio.cleanSources()
             input.requestFocus(focusArea)
             gfx.updateCameras()
-            scene.fixedUpdate()
             game.onFixedUpdate()
+            scene.fixedUpdate()
+            widget.fixedUpdate(this)
 
             updated = true
             data.fixedUpdateAccumulator -= dt
