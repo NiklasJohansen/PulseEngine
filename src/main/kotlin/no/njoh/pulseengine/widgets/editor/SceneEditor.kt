@@ -168,7 +168,7 @@ class SceneEditor(
         engine.input.setOnKeyPressed()
         {
             if (it == DELETE && isRunning && engine.input.hasFocus(viewportArea))
-                deleteEntitySelection(engine)
+                deleteSelectedEntities(engine)
         }
 
         // React on scale changes
@@ -278,7 +278,7 @@ class SceneEditor(
                     selectSingleEntity(engine, entitySelection.first())
             },
             onEntityCreated = { type -> createNewEntity(engine, type) },
-            onEntityDeleted = { deleteEntitySelection(engine) }
+            onEntityDeleted = { deleteSelectedEntities(engine) }
         )
         outliner!!.reloadEntitiesFromActiveScene()
 
@@ -515,17 +515,6 @@ class SceneEditor(
 
     ////////////////////////////// EDIT TOOLS  //////////////////////////////
 
-    private fun deleteEntitySelection(engine: PulseEngine)
-    {
-        if (entitySelection.isEmpty())
-            return
-
-        entitySelection.forEachFast { it.setDead(engine) }
-        outliner?.removeEntities(entitySelection)
-        isMoving = false
-        clearEntitySelection()
-    }
-
     private fun SceneEntity.setDead(engine: PulseEngine)
     {
         this.set(DEAD)
@@ -543,58 +532,8 @@ class SceneEditor(
         if (!isMoving || isCopying)
             return
 
-        val copies = entitySelection.map { it.createCopy() }.toMutableList()
-        val insertedCopies = mutableListOf<SceneEntity>()
-        val idMapping = mutableMapOf<Long, Long>()
+        duplicateSelectedEntities(engine)
 
-        // Insert copied entities in order of parents before children
-        while (copies.isNotEmpty())
-        {
-            val copiesLeft = copies.size
-            for (copy in copies)
-            {
-                if (copies.none { it.id == copy.parentId })
-                {
-                    copy.childIds = null
-                    copy.parentId = idMapping[copy.parentId] ?: copy.parentId
-                    copy.setNot(SELECTED)
-                    val lastId = copy.id
-                    val newId = engine.scene.addEntity(copy)
-                    idMapping[lastId] = newId
-                    copies.remove(copy)
-                    insertedCopies.add(copy)
-                    break
-                }
-            }
-
-            if (copiesLeft == copies.size)
-            {
-                Logger.error("Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}")
-                return
-            }
-        }
-
-        // Handle fields annotated with EntityRef
-        for (entity in insertedCopies)
-        {
-            for (prop in entity::class.memberProperties)
-            {
-                if (prop is KMutableProperty<*> && prop.name != "parent" && prop.name != "childIds" && prop.hasAnnotation<EntityRef>())
-                {
-                    val ref = prop.getter.call(entity)
-                    if (ref is Long)
-                    {
-                        idMapping[ref]?.let { newRef -> prop.setter.call(entity, newRef) }
-                    }
-                    else if (ref is LongArray && ref.isNotEmpty())
-                    {
-                        prop.setter.call(entity, LongArray(ref.size) { idMapping[ref[it]] ?: ref[it] })
-                    }
-                }
-            }
-        }
-
-        outliner?.addEntities(insertedCopies)
         isCopying = true
     }
 
@@ -959,7 +898,25 @@ class SceneEditor(
         selectSingleEntity(engine, entity)
     }
 
-    private fun selectSingleEntity(engine: PulseEngine, entity: SceneEntity)
+    fun selectEntities(engine: PulseEngine, entities: List<SceneEntity>)
+    {
+        if (entities.isEmpty())
+        {
+            clearEntitySelection()
+        }
+        else if (entities.size == 1)
+        {
+            selectSingleEntity(engine, entities[0])
+        }
+        else
+        {
+            clearEntitySelection()
+            entities.forEachFast { addEntityToSelection(it) }
+            outliner?.selectEntities(entities)
+        }
+    }
+
+    fun selectSingleEntity(engine: PulseEngine, entity: SceneEntity)
     {
         clearEntitySelection()
         addEntityToSelection(entity)
@@ -1022,6 +979,73 @@ class SceneEditor(
 
         // Add bottom padding to the last property row
         inspectorUI.children.lastOrNull()?.let { it.padding.bottom = it.padding.top }
+    }
+
+    fun duplicateSelectedEntities(engine: PulseEngine)
+    {
+        val copies = entitySelection.map { it.createCopy() }.toMutableList()
+        val insertedCopies = mutableListOf<SceneEntity>()
+        val idMapping = mutableMapOf<Long, Long>()
+
+        // Insert copied entities in order of parents before children
+        while (copies.isNotEmpty())
+        {
+            val copiesLeft = copies.size
+            for (copy in copies)
+            {
+                if (copies.none { it.id == copy.parentId })
+                {
+                    copy.childIds = null
+                    copy.parentId = idMapping[copy.parentId] ?: copy.parentId
+                    copy.setNot(SELECTED)
+                    val lastId = copy.id
+                    val newId = engine.scene.addEntity(copy)
+                    idMapping[lastId] = newId
+                    copies.remove(copy)
+                    insertedCopies.add(copy)
+                    break
+                }
+            }
+
+            if (copiesLeft == copies.size)
+            {
+                Logger.error("Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}")
+                return
+            }
+        }
+
+        // Handle fields annotated with EntityRef
+        for (entity in insertedCopies)
+        {
+            for (prop in entity::class.memberProperties)
+            {
+                if (prop is KMutableProperty<*> && prop.name != "parent" && prop.name != "childIds" && prop.hasAnnotation<EntityRef>())
+                {
+                    val ref = prop.getter.call(entity)
+                    if (ref is Long)
+                    {
+                        idMapping[ref]?.let { newRef -> prop.setter.call(entity, newRef) }
+                    }
+                    else if (ref is LongArray && ref.isNotEmpty())
+                    {
+                        prop.setter.call(entity, LongArray(ref.size) { idMapping[ref[it]] ?: ref[it] })
+                    }
+                }
+            }
+        }
+
+        outliner?.addEntities(insertedCopies)
+    }
+
+    fun deleteSelectedEntities(engine: PulseEngine)
+    {
+        if (entitySelection.isEmpty())
+            return
+
+        entitySelection.forEachFast { it.setDead(engine) }
+        outliner?.removeEntities(entitySelection)
+        isMoving = false
+        clearEntitySelection()
     }
 
     private fun updateEntityPropertiesPanel(propName: String, value: Any)
