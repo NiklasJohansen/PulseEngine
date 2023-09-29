@@ -17,20 +17,20 @@ import java.nio.ByteBuffer
 import kotlin.math.min
 
 open class FrameBufferObject(
+    val id: Int,
     val width: Int,
     val height: Int,
-    private val frameBufferId: Int,
     private val renderBufferIds: List<Int>,
     private val textures: List<Texture>
 ) {
-    fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
+    fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, id)
     fun release() = glBindFramebuffer(GL_FRAMEBUFFER, 0)
     fun clear() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
     fun delete()
     {
         textures.forEachFast { glDeleteTextures(it.handle.textureIndex) }
         renderBufferIds.forEachFast { glDeleteRenderbuffers(it) }
-        glDeleteFramebuffers(frameBufferId)
+        glDeleteFramebuffers(id)
     }
 
     fun getTexture(index: Int = 0): Texture? =
@@ -40,8 +40,8 @@ open class FrameBufferObject(
 
     fun resolveToFBO(destinationFbo: FrameBufferObject)
     {
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, this.frameBufferId)
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destinationFbo.frameBufferId)
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, this.id)
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destinationFbo.id)
 
         for (i in 0 until min(this.textures.size, destinationFbo.textures.size))
         {
@@ -120,7 +120,7 @@ open class FrameBufferObject(
             // Unbind frame buffer (binds default buffer)
             glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
-            return FrameBufferObject(width, height, frameBufferId, bufferIds, textures)
+            return FrameBufferObject(frameBufferId, width, height, bufferIds, textures)
         }
 
         private fun createColorTextureAttachment(width: Int, height: Int, format: TextureFormat, filter: TextureFilter, attachment: Attachment, samples: Int): Int

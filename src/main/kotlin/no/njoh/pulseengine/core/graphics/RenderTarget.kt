@@ -15,6 +15,8 @@ interface RenderTarget
     var textureFilter: TextureFilter
     var attachments: List<Attachment>
 
+    var fbo: FrameBufferObject
+
     fun init(width: Int, height: Int)
     fun begin()
     fun end()
@@ -29,7 +31,8 @@ class OffScreenRenderTarget(
     override var textureFilter: TextureFilter,
     override var attachments: List<Attachment>
 ) : RenderTarget {
-    private lateinit var fbo: FrameBufferObject
+
+    override lateinit var fbo: FrameBufferObject
 
     override fun init(width: Int, height: Int)
     {
@@ -54,8 +57,8 @@ class MultisampledOffScreenRenderTarget(
     override var attachments: List<Attachment>
 ) : RenderTarget {
 
+    override lateinit var fbo: FrameBufferObject
     private lateinit var msFbo: FrameBufferObject
-    private lateinit var fbo: FrameBufferObject
 
     override fun init(width: Int, height: Int)
     {

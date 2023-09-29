@@ -76,6 +76,8 @@ abstract class Surface2DInternal : Surface2D()
     abstract override val camera: CameraInternal
     abstract override val context: RenderContextInternal
 
+    abstract val renderTarget: RenderTarget
+
     abstract fun init(width: Int, height: Int, glContextRecreated: Boolean)
     abstract fun initFrame()
     abstract fun renderToOffScreenTarget()
@@ -97,7 +99,7 @@ class Surface2DImpl(
 
     override var width = 0
     override var height = 0
-    private var renderTarget = createRenderTarget(context)
+    override var renderTarget = createRenderTarget(context)
     private val postProcessingPipeline = PostProcessingPipeline()
     private var renderStates = Array<RenderState?>(BatchRenderer.MAX_BATCH_COUNT) { null }
     private var batchCount = 0

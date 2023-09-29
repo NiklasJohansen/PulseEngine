@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api
 
-import no.njoh.pulseengine.core.graphics.api.ShaderType.FRAGMENT
-import no.njoh.pulseengine.core.graphics.api.ShaderType.VERTEX
+import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL20.*
 import java.io.File
@@ -43,6 +42,7 @@ class Shader(
         // Default error shaders
         val errFragShader = createShader("/pulseengine/shaders/default/error.frag", FRAGMENT)
         val errVertShader = createShader("/pulseengine/shaders/default/error.vert", VERTEX)
+        val errCompShader = createShader("/pulseengine/shaders/default/error.comp", COMPUTE)
 
         // Cache of all loaded shaders
         private val cache = mutableMapOf<String, Shader>()
@@ -99,12 +99,13 @@ class Shader(
                 {
                     FRAGMENT -> errFragShader
                     VERTEX -> errVertShader
+                    COMPUTE -> errCompShader
                 }
                 return Shader(errorShader.id, fileName, type, transform = { it })
             }
         }
 
         private fun loadedSuccessfully(shader: Shader) =
-            shader.id != errFragShader.id && shader.id != errVertShader.id
+            shader.id != errFragShader.id && shader.id != errVertShader.id && shader.id != errCompShader.id
     }
 }

@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api
 
-import no.njoh.pulseengine.core.graphics.api.ShaderType.FRAGMENT
-import no.njoh.pulseengine.core.graphics.api.ShaderType.VERTEX
+import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -140,6 +139,15 @@ class ShaderProgram(
         fun create(vertexShader: Shader, fragmentShader: Shader): ShaderProgram
         {
             val program = createProgram(vertexShader, fragmentShader)
+            if (linkedSuccessfully(program))
+                shaderPrograms.add(program)
+            return program
+        }
+
+        fun createCompute(computeShaderFileName: String): ShaderProgram
+        {
+            val shader = Shader.getOrLoad(computeShaderFileName, COMPUTE)
+            val program = createProgram(shader)
             if (linkedSuccessfully(program))
                 shaderPrograms.add(program)
             return program
