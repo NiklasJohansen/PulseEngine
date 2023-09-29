@@ -144,10 +144,12 @@ class ShaderProgram(
             return program
         }
 
-        fun createCompute(computeShaderFileName: String): ShaderProgram
+        fun createCompute(computeShaderFileName: String): ShaderProgram =
+            createCompute(Shader.getOrLoad(computeShaderFileName, COMPUTE))
+
+        fun createCompute(computeShader: Shader): ShaderProgram
         {
-            val shader = Shader.getOrLoad(computeShaderFileName, COMPUTE)
-            val program = createProgram(shader)
+            val program = createProgram(computeShader)
             if (linkedSuccessfully(program))
                 shaderPrograms.add(program)
             return program
