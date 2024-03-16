@@ -95,11 +95,11 @@ open class LightingSystem : SceneSystem()
         configureOccluderMap(engine, isEnabled = enableLightSpill)
 
         // Add metrics
-        engine.data.addMetric("Lights", "") { lightCount.toFloat() }
-        engine.data.addMetric("Shadow casters", "") { shadowCasterCount.toFloat() }
-        engine.data.addMetric("Edges", "") { edgeCount.toFloat() }
-        engine.data.addMetric("Lighting total", "MS") { renderTimeMs + lightRenderer.renderTimeMs }
-        engine.data.addMetric("Lighting build", "MS") { renderTimeMs }
+        engine.data.addMetric("Lights")                { sample(lightCount.toFloat()) }
+        engine.data.addMetric("Shadow casters")        { sample(shadowCasterCount.toFloat()) }
+        engine.data.addMetric("Edges")                 { sample(edgeCount.toFloat()) }
+        engine.data.addMetric("Lighting total (MS)")   { sample(renderTimeMs + lightRenderer.renderTimeMs) }
+        engine.data.addMetric("Lighting build (MS)", ) { sample(renderTimeMs) }
     }
 
     private fun configureNormalMap(engine: PulseEngine, isEnabled: Boolean)

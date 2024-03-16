@@ -20,9 +20,9 @@ open class WidgetManagerImpl: WidgetManagerInternal()
         widgets.forEachFast { it.onCreate(engine) }
 
         // Add metrics to measure widget performance
-        engine.data.addMetric("WIDGETS UPDATE", "MS") { updateTimeMs }
-        engine.data.addMetric("WIDGETS FIXED UPDATE", "MS") { fixedUpdateTimeMs }
-        engine.data.addMetric("WIDGETS RENDER", "MS") { renderTimeMs }
+        engine.data.addMetric("WIDGETS UPDATE (MS)") { sample(updateTimeMs) }
+        engine.data.addMetric("WIDGETS FIXED UPDATE (MS)") { sample(fixedUpdateTimeMs) }
+        engine.data.addMetric("WIDGETS RENDER (MS)") { sample(renderTimeMs) }
     }
 
     override fun update(engine: PulseEngine)

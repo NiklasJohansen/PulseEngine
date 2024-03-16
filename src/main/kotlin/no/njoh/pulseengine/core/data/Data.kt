@@ -13,10 +13,10 @@ abstract class Data
     abstract val interpolation: Float
     abstract val totalMemory: Long
     abstract val usedMemory: Long
-    abstract val metrics: Map<String, Metric>
+    abstract val metrics: List<Metric>
     abstract var saveDirectory: String
 
-    abstract fun addMetric(name: String, unit: String = "", source: () -> Float)
+    abstract fun addMetric(name: String, onSample: Metric.() -> Unit)
     abstract fun exists(fileName: String): Boolean
     abstract fun <T> saveObject(data: T, fileName: String, format: FileFormat = JSON): Boolean
     abstract fun <T> saveObjectAsync(data: T, fileName: String, format: FileFormat = JSON, onComplete: (T) -> Unit = {})
@@ -36,6 +36,8 @@ abstract class Data
 
 data class Metric(
     val name: String,
-    val unit: String,
-    val source: () -> Float
-)
+    val onSample: Metric.() -> Unit,
+    var latestValue: Float = 0f
+) {
+    fun sample(value: Float) { latestValue = value }
+}

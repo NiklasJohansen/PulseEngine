@@ -8,7 +8,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
-import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import java.io.File
 import java.io.FileNotFoundException
@@ -25,7 +24,7 @@ open class DataImpl : Data()
     override var interpolation: Float = 0f
     override var usedMemory: Long = 0L
     override var totalMemory: Long = 0L
-    override var metrics = mutableMapOf<String, Metric>()
+    override val metrics = mutableListOf<Metric>()
     override lateinit var saveDirectory: String
 
     // Used by engine
@@ -40,11 +39,18 @@ open class DataImpl : Data()
     {
         Logger.info("Initializing data (${this::class.simpleName})")
         updateSaveDirectory(gameName)
+
+        addMetric("FRAMES PER SECOND (FPS)") { sample(currentFps.toFloat()) }
+        addMetric("RENDER TIME (MS)")        { sample(renderTimeMs) }
+        addMetric("UPDATE TIME (MS)")        { sample(updateTimeMS) }
+        addMetric("FIXED UPDATE TIME (MS)")  { sample(fixedUpdateTimeMS) }
+        addMetric("USED MEMORY (KB)")        { sample(usedMemory.toFloat()) }
+        addMetric("MEMORY OF TOTAL (%)")     { sample(usedMemory * 100f / totalMemory) }
     }
 
-    override fun addMetric(name: String, unit: String, source: () -> Float)
+    override fun addMetric(name: String, onSample: Metric.() -> Unit)
     {
-        metrics[name] = Metric(name, unit, source)
+        metrics += Metric(name, onSample)
     }
 
     override fun exists(fileName: String): Boolean =
@@ -123,8 +129,8 @@ open class DataImpl : Data()
 
     fun updateMemoryStats()
     {
-        usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / MEGA_BYTE
-        totalMemory = runtime.maxMemory() / MEGA_BYTE
+        usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / KILO_BYTE
+        totalMemory = runtime.maxMemory() / KILO_BYTE
     }
 
     inline fun measureRenderTimeAndUpdateInterpolationValue(block: () -> Unit)
@@ -175,7 +181,7 @@ open class DataImpl : Data()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)
 
-        private const val MEGA_BYTE = 1048576L
+        private const val KILO_BYTE = 1024L
         private val runtime = Runtime.getRuntime()
         val homeDir = javax.swing.JFileChooser().fileSystemView.defaultDirectory.toString()
     }

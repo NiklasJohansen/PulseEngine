@@ -6,9 +6,12 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
+import no.njoh.pulseengine.core.data.Metric
 import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.shared.utils.Extensions.append
+import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.widget.Widget
-import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
@@ -40,31 +43,14 @@ class Profiler : Widget
             isRunning = !isRunning
             CommandResult("", showCommand = false)
         }
-
-        graphs.addAll(listOf(
-            Graph("FRAMES PER SECOND", "") { engine.data.currentFps.toFloat() },
-            Graph("RENDER TIME", "MS") { engine.data.renderTimeMs },
-            Graph("UPDATE TIME", "MS") { engine.data.updateTimeMS },
-            Graph("FIXED UPDATE TIME", "MS") { engine.data.fixedUpdateTimeMS },
-            Graph("USED MEMORY", "MB") { engine.data.usedMemory.toFloat() },
-            Graph("MEMORY OF TOTAL", "%") { engine.data.usedMemory * 100f / engine.data.totalMemory }
-        ))
     }
 
     override fun onUpdate(engine: PulseEngine)
     {
-        for (metric in engine.data.metrics.values)
-        {
-            val graph = graphs.find { it.name == metric.name }
+        engine.data.metrics.forEachFast { metric ->
+            val graph = graphs.firstOrNullFast { it.metric === metric }
             if (graph == null)
-            {
-                graphs.add(Graph(metric.name, metric.unit, metric.source))
-                break
-            } else if (!(graph.source === metric.source)) {
-                graphs.remove(graph)
-                graphs.add(Graph(metric.name, metric.unit, metric.source))
-                break
-            }
+                graphs.add(Graph(metric))
         }
 
         engine.input.requestFocus(area)
@@ -93,13 +79,12 @@ class Profiler : Widget
         else if (adjustingSize)
         {
             maxWidth = max(minWidth, maxWidth + engine.input.xdMouse * 5)
-
         }
         else engine.input.releaseFocus(area)
 
         if (System.currentTimeMillis() - lastTime > 1000 / TICK_RATE)
         {
-            graphs.forEach { it.update() }
+            graphs.forEachFast { it.update() }
             lastTime = System.currentTimeMillis()
         }
     }
@@ -123,9 +108,9 @@ class Profiler : Widget
         val surface = engine.gfx.getSurfaceOrDefault("overlay")
         val font = engine.asset.getOrNull("graph_font") ?: Font.DEFAULT
 
-        for (graph in graphs)
+        graphs.forEachFast()
         {
-            graph.render(surface, font, x, y, w, h)
+            it.render(surface, font, x, y, w, h)
             xMax = max(xMax, x + w + graphPadding)
             yMax = max(yMax, y + h + graphPadding)
             x += w + graphPadding
@@ -150,17 +135,13 @@ class Profiler : Widget
 
     override fun onDestroy(engine: PulseEngine) {  }
 
-    class Graph(
-        val name: String,
-        val unit: String,
-        val source: () -> Float
-    ) : Iterable<Float> {
-        private var data: FloatArray = FloatArray(WINDOWS_LENGTH * 2)
-        private var taleCursor: Int = 0
-        private var headCursor: Int = 0
-        private var latestValue: Float = 0f
-        private var averageValue: Float = 0f
-        private val iterator = GraphDataIterator(data, taleCursor, headCursor)
+    class Graph(val metric: Metric)
+    {
+        private var data = FloatArray(WINDOWS_LENGTH * 2)
+        private var taleCursor = 0
+        private var headCursor = 0
+        private var latestValue = 0f
+        private var averageValue = 0f
 
         fun size(): Int =
             if (taleCursor > headCursor)
@@ -170,9 +151,10 @@ class Profiler : Widget
 
         fun update()
         {
-            val value = source.invoke()
-            latestValue = value
-            data[headCursor] = value
+            metric.onSample(metric)
+
+            latestValue = metric.latestValue
+            data[headCursor] = latestValue
             headCursor = (headCursor + 1) % data.size
 
             if (size() >= WINDOWS_LENGTH)
@@ -185,7 +167,7 @@ class Profiler : Widget
         {
             val headerText = newText(metric.name)
             surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)
-            surface.drawTexture(Texture.BLANK, xPos, yPos, width, height)
+            surface.drawTexture(Texture.BLANK, xPos, yPos, width, height, cornerRadius = 4f)
             surface.setDrawColor(1f,1f,1f,0.95f)
             surface.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 
@@ -235,23 +217,27 @@ class Profiler : Widget
                 surface.drawLine(xTick, yTick, xTick + tickLength, yTick)
 
                 // Value text
-                surface.setDrawColor(1f, 1f, 1f, 0.95f)
-                surface.drawText(tickValueText, xTick + tickLength*1.5f, yTick, yOrigin = 0.5f, font = font, fontSize = TICK_MARK_FONT_SIZE)
+                if (maxVal != minVal || i == nTicks / 2)
+                {
+                    surface.setDrawColor(1f, 1f, 1f, 0.95f)
+                    surface.drawText(tickValueText, xTick + tickLength * 1.5f, yTick, yOrigin = 0.5f, font = font, fontSize = TICK_MARK_FONT_SIZE)
+                }
             }
 
             surface.setDrawColor(1f,1f,1f,0.95f)
 
+            var i = 0
+            val size = size()
             var xPlotLast = 0f
             var yPlotLast = 0f
-            var i = 0
-            for (value in this)
+            val range = (maxVal - minVal)
+            forEachValue()
             {
-                val fraction = (value - min) / (max - min)
-                val xPlot = x + w - (this.size() - i) * sampleWidth
+                val fraction = if (range == 0f) 0.5f else (it - minVal) / range
+                val xPlot = x + w - (size - i) * sampleWidth
                 val yPlot = y + (h / 2f) + (1f - fraction * 2f) * (h / 2f)
                 if (i > 0)
                     surface.drawLine(xPlot, yPlot, xPlotLast, yPlotLast)
-
                 xPlotLast = xPlot
                 yPlotLast = yPlot
                 i++
