@@ -38,7 +38,9 @@ abstract class Surface2D : Surface
     abstract fun drawQuadVertex(x: Float, y: Float)
     abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f)
     abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, uTiling: Float = 1f, vTiling: Float = 1f)
-    abstract fun drawText(text: String, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+    abstract fun drawText(text: CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+    inline fun drawText(textBuilder: (text: StringBuilder) -> CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f) =
+        drawText(textBuilder(sb.clear()), x, y, font, fontSize, angle, xOrigin, yOrigin)
 
     // Property setters
     abstract fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float = 1f): Surface2D
@@ -69,6 +71,9 @@ abstract class Surface2D : Surface
         drawFunc()
         setRenderState(StencilState(x, y, width, height, action = CLEAR))
     }
+
+    // Reusable StringBuilder for text drawing
+    @PublishedApi internal val sb = StringBuilder()
 }
 
 abstract class Surface2DInternal : Surface2D()
@@ -197,7 +202,7 @@ class Surface2DImpl(
             textureRenderer.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin)
     }
 
-    override fun drawText(text: String, x: Float, y: Float, font: Font?, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float) =
+    override fun drawText(text: CharSequence, x: Float, y: Float, font: Font?, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float) =
         textRenderer.draw(text, x, y, font ?: Font.DEFAULT, fontSize, angle, xOrigin, yOrigin)
 
     // Exposed getters

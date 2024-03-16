@@ -183,21 +183,24 @@ class Profiler : Widget
 
         fun render(surface: Surface2D, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
         {
-            val headerText = name + if (unit.isNotEmpty()) " ($unit)" else ""
-
+            val headerText = newText(metric.name)
             surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)
             surface.drawTexture(Texture.BLANK, xPos, yPos, width, height)
             surface.setDrawColor(1f,1f,1f,0.95f)
             surface.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 
-            val min = this.minOrNull() ?: 0f
-            val max = this.maxOrNull() ?: 0f
-            val valueRange = (max - min)
+            var minVal = if (size() > 0) Float.MAX_VALUE else 0f
+            var maxVal = if (size() > 0) Float.MIN_VALUE else 0f
+            forEachValue()
+            {
+                if (it < minVal) minVal = it
+                if (it > maxVal) maxVal = it
+            }
+            val valueRange = (maxVal - minVal)
             val nTicks = 4
             val tickLength = 8
-            val maxTickText = if (max < nTicks) "%.1f".format(Locale.US, max) else max.toInt().toString()
+            val maxTickText = newText().append(maxVal, decimals = if (maxVal < nTicks) 1 else 0)
             val tickTextSize = (2 + maxTickText.length) * (TICK_MARK_FONT_SIZE / 2f)
-
             val x = xPos + PADDING
             val y = yPos + TOP_PADDING
             val w = width - PADDING - tickTextSize
@@ -216,8 +219,8 @@ class Profiler : Widget
                 val fraction = (i.toFloat() / nTicks) * 2f - 1f
                 val xTick = x + w - tickLength / 2
                 val yTick = y + (h / 2) + (h / 2) * fraction
-                val tickValue = min + (valueRange / 2f) - (valueRange / 2f) * fraction
-                val tickValueText = if (max < nTicks) "%.1f".format(Locale.US, tickValue) else tickValue.toInt().toString()
+                val tickValue = minVal + (valueRange / 2f) - (valueRange / 2f) * fraction
+                val tickValueText = newText().append(tickValue, decimals = if (maxVal < nTicks) 1 else 0)
 
                 // Guide line
                 if (i % 2 != 0)
@@ -254,38 +257,31 @@ class Profiler : Widget
                 i++
             }
 
-            val lastValueText = if (latestValue < 5) "%.2f".format(Locale.US, latestValue) else "(${latestValue.toInt()})"
-            val averageValueText = if (averageValue < 5) "(%.2f)".format(Locale.US, averageValue) else "(${averageValue.toInt()})"
+            val lastValueText = newText('(').append(latestValue, decimals = if (latestValue < 5) 2 else 0).append(')')
             surface.drawText(lastValueText, x + 5, y + 22f, font = font, fontSize = VALUE_FONT_SIZE, yOrigin = 0.5f)
+
+            val averageValueText = newText('(').append(averageValue, decimals = if (averageValue < 5) 2 else 0).append(')')
             surface.drawText(averageValueText, x + 5, y + 50f, font = font, fontSize = AVG_VALUE_FONT_SIZE, yOrigin = 0.5f)
         }
 
-        override fun iterator(): Iterator<Float> =
-            iterator.reset(taleCursor, headCursor)
-
-        class GraphDataIterator(
-            private val data: FloatArray,
-            private var taleCursor: Int = 0,
-            private var headCursor: Int = 0
-        ): Iterator<Float> {
-            override fun hasNext(): Boolean = taleCursor != headCursor
-            override fun next(): Float
+        private inline fun forEachValue(action: (Float) -> Unit)
+        {
+            var i = taleCursor
+            while (i != headCursor)
             {
-                val value = data[taleCursor]
-                taleCursor = (taleCursor + 1) % data.size
-                return value
-            }
-            fun reset(taleCursor: Int, headCursor: Int): GraphDataIterator
-            {
-                this.taleCursor = taleCursor
-                this.headCursor = headCursor
-                return this
+                action(data[i])
+                i = (i + 1) % data.size
             }
         }
     }
 
     companion object
     {
+        private val sb = StringBuilder()
+        private fun newText() = sb.clear()
+        private fun newText(s: String) = newText().append(s)
+        private fun newText(c: Char) = newText().append(c)
+
         const val PADDING = 15f
         const val TOP_PADDING = 40f
         const val TICK_RATE = 100       // Update every 10 ms

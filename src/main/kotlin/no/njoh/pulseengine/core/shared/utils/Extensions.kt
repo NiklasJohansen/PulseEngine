@@ -264,4 +264,30 @@ object Extensions
                 ?: emptyList()
         }
     }
+
+    /**
+     * Appends the given [value] to the [StringBuilder] with the given number of [decimals].
+     */
+    fun StringBuilder.append(value: Float, decimals: Int): StringBuilder
+    {
+        var integral = value.toInt()
+        var fraction = value - integral
+        append(integral)
+        if (decimals > 0)
+            append('.')
+        for (i in 0 until decimals)
+        {
+            fraction *= 10f
+            integral = fraction.toInt()
+            fraction -= integral
+            append(integral)
+        }
+        return this
+    }
+
+    operator fun StringBuilder.plus(s: String): StringBuilder = append(s)
+    operator fun StringBuilder.plus(l: Long): StringBuilder = append(l)
+    operator fun StringBuilder.plus(f: Float): StringBuilder = append(f)
+    operator fun StringBuilder.plus(i: Int): StringBuilder = append(i)
+    operator fun StringBuilder.plus(c: Char): StringBuilder = append(c)
 }

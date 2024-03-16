@@ -79,7 +79,7 @@ class TextRenderer(
         vao.release()
     }
 
-    fun draw(text: String, x: Float, y: Float, font: Font, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float)
+    fun draw(text: CharSequence, x: Float, y: Float, font: Font, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float)
     {
         if (text.isEmpty()) return
 
@@ -138,7 +138,9 @@ class TextRenderer(
 
     private fun drawAxisAlignedGlyphs(spriteCount: Int, fontTex: Texture, x: Float, y: Float, xOffset: Float, yOffset: Float)
     {
-        for (i in 0 until spriteCount * GLYPH_STRIDE step GLYPH_STRIDE)
+        var i = 0
+        val end = spriteCount * GLYPH_STRIDE
+        while (i < end)
         {
             instanceBuffer.fill(12)
             {
@@ -155,9 +157,9 @@ class TextRenderer(
                 put(context.drawColor)
                 put(fontTex.handle.toFloat())
             }
-
             increaseBatchSize()
             context.increaseDepth()
+            i += GLYPH_STRIDE
         }
     }
 
@@ -172,7 +174,9 @@ class TextRenderer(
         val xStart = x - (xOffset * c0 - yOffset * c1)
         val yStart = y - (xOffset * s0 - yOffset * s1)
 
-        for (i in 0 until spriteCount * GLYPH_STRIDE step GLYPH_STRIDE)
+        var i = 0
+        val end = spriteCount * GLYPH_STRIDE
+        while (i < end)
         {
             val xGlyph = glyphData[X(i)]
             val yGlyph = glyphData[Y(i)]
@@ -197,6 +201,7 @@ class TextRenderer(
 
             increaseBatchSize()
             context.increaseDepth()
+            i += GLYPH_STRIDE
         }
     }
 
@@ -227,7 +232,7 @@ class TextRenderer(
 
     private val advanceWidth = IntArray(1)
     private val leftSideBearing = IntArray(1)
-    private fun getLeftSideBearing(text: String, font: Font, fontSize: Float): Float
+    private fun getLeftSideBearing(text: CharSequence, font: Font, fontSize: Float): Float
     {
         stbtt_GetCodepointHMetrics(font.info, text[0].code, advanceWidth, leftSideBearing)
         return leftSideBearing[0] * stbtt_ScaleForPixelHeight(font.info, fontSize)
