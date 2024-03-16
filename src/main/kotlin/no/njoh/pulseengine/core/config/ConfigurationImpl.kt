@@ -5,109 +5,154 @@ import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadStream
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
+import java.io.FileNotFoundException
 import java.lang.Exception
-import java.util.*
+import java.util.Properties
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 open class ConfigurationImpl : ConfigurationInternal
 {
-    override var gameName: String       by StringConfig("ExampleGame")
-    override var fixedTickRate: Int     by IntConfig(60)
-    override var targetFps: Int         by IntConfig(60)
-    override var windowWidth: Int       by IntConfig(1000)
-    override var windowHeight: Int      by IntConfig(800)
-    override var screenMode: ScreenMode by EnumConfig(ScreenMode.WINDOWED, { ScreenMode.valueOf(it.toUpperCase()) })
+    override var gameName      by StringConfig("ExampleGame")
+    override var targetFps     by IntConfig(60)
+    override var fixedTickRate by IntConfig(60)
+    override var windowWidth   by IntConfig(1000)
+    override var windowHeight  by IntConfig(800)
+    override var screenMode    by EnumConfig(ScreenMode.WINDOWED, ScreenMode::class)
 
-    private val properties: Properties = Properties()
-    private var onChangeCallback: (property: KProperty<*>, value: Any) -> Unit = { _, _ -> }
+    private val properties = Properties()
+    private var onChangeCallback = { prop: KProperty<*>, value: Any -> }
 
     override fun init()
     {
         Logger.info("Initializing configuration (${this::class.simpleName})")
         load("/pulseengine/config/engine_default.cfg")
         load("application.cfg")
-        setLogLevel()
-    }
-
-    override fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
-    {
-        onChangeCallback = callback
+        Logger.logLevel = getEnum("logLevel", LogLevel::class) ?: LogLevel.INFO
     }
 
     override fun load(fileName: String) =
         try
         {
             val startTime = System.nanoTime()
-            fileName.loadStream()?.let {
-                properties.load(it)
-                Logger.debug("Loaded configuration file: $fileName in ${startTime.toNowFormatted()}")
-            } ?: Logger.warn("Configuration file: $fileName was not found")
+            val stream = fileName.loadStream() ?: throw FileNotFoundException("file not found")
+            properties.load(stream)
+            for ((key, value) in properties)
+            {
+                properties[key] = when {
+                    value !is String -> value
+                    value == "true" || value == "false" -> value.toBoolean()
+                    value.all { it.isDigit() } -> value.toInt()
+                    value.all { it.isDigit() || it == '.' } -> value.toFloat()
+                    else -> value
+                }
+            }
+            Logger.debug("Loaded configuration file: $fileName in ${startTime.toNowFormatted()}")
         }
-        catch (e: Exception) {
+        catch (e: Exception)
+        {
             Logger.error("Failed to load configuration: $fileName, reason: ${e.message}")
         }
 
-    private fun setLogLevel()
+    override fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
     {
-        getString("logLevel")?.let { Logger.logLevel = LogLevel.valueOf(it.toUpperCase()) }
+        onChangeCallback = callback
     }
 
-    override fun getString(name: String): String? =
-        try { properties[name] as String? }
-        catch (e: Exception) { throw Exception("Failed to find or parse String property: $name") }
+    override fun getString(name: String) =
+        (properties[name] as? String) ?: null.also { Logger.error("Config property: $name (String) not found") }
 
-    override fun getInt(name: String): Int? =
-        try { properties[name]?.toString()?.toInt() }
-        catch (e: Exception) { throw Exception("Failed to find or parse Int property: $name") }
+    override fun getInt(name: String) =
+        (properties[name] as? Int) ?: null.also { Logger.error("Config property: $name (Int) not found") }
 
-    override fun getFloat(name: String): Float? =
-        try { properties[name]?.toString()?.toFloat() }
-        catch (e: Exception) { throw Exception("Failed to find or parse Float property: $name") }
+    override fun getFloat(name: String) =
+        (properties[name] as? Float) ?: null.also { Logger.error("Config property: $name (Float) not found") }
 
-    override fun getBool(name: String): Boolean? =
-        try { properties[name]?.toString()?.toBoolean() }
-        catch (e: Exception) { throw Exception("Failed to find or parse Boolean property: $name") }
+    override fun getBool(name: String) =
+        (properties[name] as? Boolean) ?: null.also { Logger.error("Config property: $name (Boolean) not found") }
 
-    override fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T? =
-        try { java.lang.Enum.valueOf(type.java, properties[name].toString()) }
-        catch (e: Exception) { throw Exception("Failed to find or parse Boolean property: $name") }
+    override fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T? {
+        val value = properties[name] ?: return null.also { Logger.error("Config property: $name (Enum) not found") }
+        if (value::class == type)
+            return value as T
+
+        if (value is String)
+            runCatching { return java.lang.Enum.valueOf(type.java, value).also { properties[name] = it } }
+
+        Logger.error("Config property: $name (Enum) not applicable to type: ${type.simpleName}")
+        return null
+    }
 
     inner class StringConfig(private val initValue: String)
     {
-        operator fun getValue(thisRef: Any?, property: KProperty<*>): String =
-            properties.getProperty(property.name) ?: initValue.also { setValue(thisRef, property, initValue) }
-
-        operator fun setValue(thisRef: Any?, property: KProperty<*>, value: String)
+        operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: String)
         {
-            properties.setProperty(property.name, value)
-            onChangeCallback.invoke(property, value)
+            properties[prop.name] = value
+            onChangeCallback.invoke(prop, value)
+        }
+
+        operator fun getValue(thisRef: Any?, prop: KProperty<*>): String
+        {
+            val value = properties[prop.name]
+            return if (value is String) value else
+            {
+                if (value != null)
+                    Logger.warn("Config property: ${prop.name} (String) has value: $value (${value::class.simpleName}), using default: $initValue")
+                properties[prop.name] = initValue
+                initValue
+            }
         }
     }
 
     inner class IntConfig(private val initValue: Int)
     {
-        operator fun getValue(thisRef: Any?, property: KProperty<*>): Int =
-            properties.getProperty(property.name)?.toInt() ?: initValue.also { setValue(thisRef, property, initValue) }
-
-        operator fun setValue(thisRef: Any?, property: KProperty<*>, value: Int)
+        operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: Int)
         {
-            properties.setProperty(property.name, value.toString())
-            onChangeCallback.invoke(property, value)
+            properties[prop.name] = value
+            onChangeCallback.invoke(prop, value)
+        }
+
+        operator fun getValue(thisRef: Any?, prop: KProperty<*>): Int
+        {
+            val value = properties[prop.name]
+            return if (value is Int) value else
+            {
+                if (value != null)
+                    Logger.warn("Config property: ${prop.name} (Int) has value: $value (${value::class.simpleName}), using default: $initValue")
+                properties[prop.name] = initValue
+                initValue
+            }
         }
     }
 
-    inner class EnumConfig <T> (private val initValue: T, private val mapper: (String) -> T)
+    inner class EnumConfig <T : Enum<T>> (private val initValue: T, private val type: KClass<T>)
     {
-        operator fun getValue(thisRef: Any?, property: KProperty<*>): T =
-            properties.getProperty(property.name)
-                ?.let { mapper.invoke(it) }
-                ?: initValue.also { setValue(thisRef, property, initValue) }
-
-        operator fun setValue(thisRef: Any?, property: KProperty<*>, value: T)
+        operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: T)
         {
-            properties.setProperty(property.name, value.toString())
-            onChangeCallback.invoke(property, value!!)
+            properties[prop.name] = value
+            onChangeCallback.invoke(prop, value)
+        }
+
+        operator fun getValue(thisRef: Any?, prop: KProperty<*>): T {
+            val value = properties[prop.name]
+            if (value != null && value::class == type)
+                return value as T
+
+            var newValue = initValue
+            if (value is String)
+            {
+                try { newValue = java.lang.Enum.valueOf(type.java, value) }
+                catch (e: Exception)
+                {
+                    Logger.warn("Config property: ${prop.name} (Enum) has unknown value: $value, using default: ${type.simpleName}.$newValue")
+                }
+            }
+            else if (value != null)
+            {
+                Logger.warn("Config property: ${prop.name} (Enum) has unknown value: $value (${value::class.simpleName}), using default: ${type.simpleName}.$newValue")
+            }
+            properties[prop.name] = newValue
+            return newValue
         }
     }
 }
