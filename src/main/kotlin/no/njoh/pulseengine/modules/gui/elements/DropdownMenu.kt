@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.ScaledValue
 import no.njoh.pulseengine.modules.gui.ScrollDirection.VERTICAL
@@ -89,7 +90,7 @@ class DropdownMenu <T> (
 
     private fun UiElement.hasFocus(engine: PulseEngine): Boolean =
         if (engine.input.hasFocus(this.area)) true
-        else popup?.hasFocus(engine) ?: false || children.any { it.hasFocus(engine) }
+        else popup?.hasFocus(engine) ?: false || children.anyMatches { it.hasFocus(engine) }
 
     fun addItem(item: T)
     {

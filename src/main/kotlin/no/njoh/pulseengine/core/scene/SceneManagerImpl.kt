@@ -1,10 +1,10 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneState.*
 import no.njoh.pulseengine.core.scene.systems.EntityUpdater
 import no.njoh.pulseengine.core.scene.systems.EntityRendererImpl
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.getClassesFromFullyQualifiedClassNames
@@ -230,8 +230,8 @@ open class SceneManagerImpl : SceneManagerInternal()
             val classes = ReflectionUtil.getFullyQualifiedClassNames()
                 .getClassesFromFullyQualifiedClassNames()
 
-            classes.getClassesOfSuperType(SceneEntity::class).forEach { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
-            classes.getClassesOfSuperType(SceneSystem::class).forEach { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
+            classes.getClassesOfSuperType(SceneEntity::class).forEachFast { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
+            classes.getClassesOfSuperType(SceneSystem::class).forEachFast { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
 
             SceneEntity.REGISTERED_TYPES.remove(SceneEntity::class)
             SceneSystem.REGISTERED_TYPES.remove(SceneSystem::class)

@@ -86,10 +86,15 @@ class TextureArray(
     {
         glActiveTexture(GL_TEXTURE0 + samplerIndex)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
-        program.setUniform("textureArrays[$samplerIndex]", samplerIndex)
+        program.setUniform(textureArrayNames[samplerIndex], samplerIndex)
     }
 
     fun cleanUp() = glDeleteTextures(textureArrayId)
 
     override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$textureFormat, filter=$textureFilter, mips=$mipLevels"
+
+    companion object
+    {
+        private val textureArrayNames = Array(64) { "textureArrays[$it]" }
+    }
 }

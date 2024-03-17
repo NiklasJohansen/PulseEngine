@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.widget
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
+import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
 import no.njoh.pulseengine.core.shared.utils.Extensions.measureMillisTime
 import no.njoh.pulseengine.core.shared.utils.Logger
 
@@ -57,10 +58,7 @@ open class WidgetManagerImpl: WidgetManagerInternal()
 
     override fun add(vararg widgets: Widget)
     {
-        widgets.forEach {
-            if (it !in this.widgets)
-                this.widgets.add(it)
-        }
+        widgets.forEachFast { if (it isNotIn this.widgets) this.widgets.add(it) }
     }
 
     override fun terminate(widget: Widget)

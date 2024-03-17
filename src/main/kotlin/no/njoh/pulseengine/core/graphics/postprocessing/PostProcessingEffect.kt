@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.objects.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.renderers.FrameTextureRenderer
-import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
 interface PostProcessingEffect
 {
@@ -81,7 +81,7 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
         if (renderers.isEmpty())
             renderers.addAll(programs.map { FrameTextureRenderer(it) })
 
-        renderers.forEach { it.init() }
+        renderers.forEachFast { it.init() }
     }
 
     override fun process(texture: Texture): Texture
@@ -97,7 +97,7 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
 
         if (fbo.first().width != texture.width || fbo.first().height != texture.height)
         {
-            fbo.forEach { it.delete() }
+            fbo.forEachFast { it.delete() }
             fbo.clear()
             fbo.addAll(createNewFBOList(numberOfRenderPasses, texture.width, texture.height))
         }
@@ -110,8 +110,8 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
 
     override fun cleanUp()
     {
-        programs.forEach { it.delete() }
-        renderers.forEach { it.cleanUp() }
-        fbo.forEach { it.delete() }
+        programs.forEachFast { it.delete() }
+        renderers.forEachFast { it.cleanUp() }
+        fbo.forEachFast { it.delete() }
     }
 }

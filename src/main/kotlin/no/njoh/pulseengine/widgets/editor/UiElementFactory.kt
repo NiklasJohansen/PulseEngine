@@ -283,7 +283,7 @@ open class UiElementFactory(
             scrollbar.hidden = !showScrollbar
             scrollbar.cornerRadius = ScaledValue.of(2f)
             setOnItemToString { it.labelText }
-            menuBarButton.items.forEach { addItem(it) }
+            menuBarButton.items.forEachFast { addItem(it) }
             setOnItemChanged { _, item -> item.onClick() }
         }
     }
@@ -503,7 +503,7 @@ open class UiElementFactory(
 
         val uiElements = listOf(headerButton).plus(props)
 
-        headerButton.setOnClicked { btn -> props.forEach { it.hidden = btn.isPressed } }
+        headerButton.setOnClicked { btn -> props.forEachFast { it.hidden = btn.isPressed } }
         exitButton.setOnClicked { onClose(uiElements) }
 
         return uiElements

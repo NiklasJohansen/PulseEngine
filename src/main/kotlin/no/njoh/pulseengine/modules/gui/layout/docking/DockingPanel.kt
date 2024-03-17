@@ -2,6 +2,7 @@ package no.njoh.pulseengine.modules.gui.layout.docking
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.gui.Position.PositionType
 import no.njoh.pulseengine.modules.gui.Position.PositionType.*
 import no.njoh.pulseengine.modules.gui.Size.ValueType.*
@@ -384,7 +385,7 @@ class DockingPanel(
                     clearChildren() // Removes default viewport
                     node.children
                         .mapNotNull { rebuildLayoutFromGraph(root, it) }
-                        .forEach { addChildren(it) }
+                        .forEachFast { addChildren(it) }
                 }
             }
             HorizontalPanel::class.simpleName ->
@@ -397,7 +398,7 @@ class DockingPanel(
                     height.setQuiet(node.height)
                     node.children
                         .mapNotNull { rebuildLayoutFromGraph(root, it) }
-                        .forEach { addChildren(it) }
+                        .forEachFast { addChildren(it) }
                     setMinSizeFromChildren()
                 }
             }
@@ -410,7 +411,7 @@ class DockingPanel(
                     height.setQuiet(node.height)
                     node.children
                         .mapNotNull { rebuildLayoutFromGraph(root, it) }
-                        .forEach { addChildren(it) }
+                        .forEachFast { addChildren(it) }
 
                     setMinSizeFromChildren()
                 }

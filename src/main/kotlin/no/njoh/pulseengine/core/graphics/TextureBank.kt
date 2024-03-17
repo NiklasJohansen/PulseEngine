@@ -6,6 +6,8 @@ import no.njoh.pulseengine.core.graphics.api.TextureArray
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 import kotlin.math.max
 
@@ -37,7 +39,7 @@ class TextureBank
 
     fun bindAllTexturesTo(shaderProgram: ShaderProgram)
     {
-        textureArrays.forEach { it.bind(shaderProgram) }
+        textureArrays.forEachFast { it.bind(shaderProgram) }
     }
 
     fun delete(texture: Texture)
@@ -48,12 +50,12 @@ class TextureBank
 
     fun cleanUp()
     {
-        textureArrays.forEach { it.cleanUp() }
+        textureArrays.forEachFast { it.cleanUp() }
     }
 
     fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat = RGBA8)
     {
-        capacitySpecs.removeIf { it.texSize == textureSize && it.format == format }
+        capacitySpecs.removeWhen { it.texSize == textureSize && it.format == format }
         capacitySpecs.add(TextureCapacitySpec(textureSize, maxCount, format))
         capacitySpecs.sortBy { it.texSize }
     }

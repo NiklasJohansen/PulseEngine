@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.audio
 
 import no.njoh.pulseengine.core.asset.types.Sound
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.*
@@ -80,7 +82,7 @@ open class AudioImpl : AudioInternal
         alDeleteSources(sourceId)
     }
 
-    override fun stopAll() = sources.toList().forEach { stop(it) }
+    override fun stopAll() = sources.toList().forEachFast { stop(it) }
 
     override fun play(sourceId: Int) = alSourcePlay(sourceId)
 
@@ -127,7 +129,8 @@ open class AudioImpl : AudioInternal
 
     override fun cleanSources()
     {
-       sources.removeIf {
+       sources.removeWhen()
+       {
            val stopped = !isPlaying(it) && !isPaused(it)
            if (stopped)
                alDeleteSources(it)
@@ -143,7 +146,7 @@ open class AudioImpl : AudioInternal
     override fun cleanUp()
     {
         Logger.info("Cleaning up audio (${this::class.simpleName})")
-        sources.forEach { alDeleteSources(it) }
+        sources.forEachFast { alDeleteSources(it) }
         alcSetThreadContext(MemoryUtil.NULL)
         alcDestroyContext(context)
         alcCloseDevice(device)

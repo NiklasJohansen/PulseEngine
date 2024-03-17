@@ -14,6 +14,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 
 @JsonAutoDetect(fieldVisibility = ANY)
 open class Scene(
@@ -136,7 +137,7 @@ open class Scene(
     internal fun optimizeCollections()
     {
         entityTypeMap.values.removeIf { entities -> entities.isEmpty() }
-        entities.removeIf { it.isEmpty() }
+        entities.removeWhen { it.isEmpty() }
         entities.forEachFast { it.fitToSize() }
     }
 

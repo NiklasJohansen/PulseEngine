@@ -68,6 +68,7 @@ object Extensions
     inline fun <T> List<T>.forEachFiltered(predicate: (T) -> Boolean, action: (T) -> Unit)
     {
         var i = 0
+        val size = size
         while (i < size)
         {
             val element = this[i++]
@@ -80,8 +81,9 @@ object Extensions
      */
     inline fun <T> List<T>.sumIf(predicate: (T) -> Boolean, selector: (T) -> Float): Float
     {
-        var sum = 0f
         var i = 0
+        val size = size
+        var sum = 0f
         while (i < size)
         {
             val element = this[i++]
@@ -96,8 +98,9 @@ object Extensions
      */
     inline fun <T> List<T>.sumByFloat(selector: (T) -> Float): Float
     {
-        var sum = 0f
         var i = 0
+        val size = size
+        var sum = 0f
         while (i < size)
             sum += selector(this[i++])
         return sum
@@ -106,45 +109,60 @@ object Extensions
     /**
      * Fast iteration of constant lookup lists.
      */
-    inline fun <T> List<T>.forEachFast(block: (T) -> Unit)
+    inline fun <T> List<T>.forEachFast(action: (T) -> Unit)
     {
         var i = 0
-        while (i < size) block(this[i++])
+        val size = size
+        while (i < size) action(this[i++])
     }
 
     /**
      * Fast iteration of [Array].
      */
-    inline fun <T> Array<T>.forEachFast(block: (T) -> Unit)
+    inline fun <T> Array<T>.forEachFast(action: (T) -> Unit)
     {
         var i = 0
-        while (i < size) block(this[i++])
+        val size = size
+        while (i < size) action(this[i++])
     }
 
     /**
      * Fast iteration of [LongArray].
      */
-    inline fun LongArray.forEachFast(block: (Long) -> Unit)
+    inline fun LongArray.forEachFast(action: (Long) -> Unit)
     {
         var i = 0
-        while (i < size) block(this[i++])
+        val size = size
+        while (i < size) action(this[i++])
+    }
+
+    /**
+     * Fast iteration of [FloatArray].
+     */
+    inline fun FloatArray.forEachFast(action: (Float) -> Unit)
+    {
+        var i = 0
+        val size = size
+        while (i < size) action(this[i++])
     }
 
     /**
      * Fast and reversed iteration of constant lookup lists.
      */
-    inline fun <T> List<T>.forEachReversed(block: (T) -> Unit)
+    inline fun <T> List<T>.forEachReversed(action: (T) -> Unit)
     {
+        val size = size
         var i = size - 1
-        while (i > -1) block(this[i--])
+        while (i > -1) action(this[i--])
     }
 
     /**
-     * Returns the first element matching the given predicate.
+     * Fast lookup of the first element matching the given predicate for constant lookup lists.
      */
     inline fun <T> List<T>.firstOrNullFast(predicate: (T) -> Boolean): T?
     {
         var i = 0
+        val size = size
         while (i < size)
         {
             val element = this[i++]
@@ -155,7 +173,7 @@ object Extensions
     }
 
     /**
-     * Returns the last element matching the given predicate.
+     * Fast lookup of the last element matching the given predicate for constant lookup lists.
      */
     inline fun <T> List<T>.lastOrNullFast(predicate: (T) -> Boolean): T?
     {
@@ -170,12 +188,85 @@ object Extensions
     }
 
     /**
+     * Checks if any of the list elements matches the predicate (fast for constant lookup lists).
+     */
+    inline fun <T> List<T>.anyMatches(predicate: (T) -> Boolean): Boolean
+    {
+        var i = 0
+        val size = size
+        while (i < size)
+        {
+            if (predicate(this[i++])) return true
+        }
+        return false
+    }
+
+    /**
+     * Checks if none of the list elements matches the predicate (fast for constant lookup lists).
+     */
+    inline fun <T> List<T>.noneMatches(predicate: (T) -> Boolean) = !anyMatches(predicate)
+
+    /**
+     * Checks if the value is in the list (fast for constant lookup lists).
+     */
+    infix fun <T> T.isIn(list: List<T>): Boolean
+    {
+        var i = 0
+        val size = list.size
+        while (i < size)
+        {
+            if (list[i++] == this) return true
+        }
+        return false
+    }
+
+    /**
+     * Checks if the value is not in the list (fast for constant lookup lists).
+     */
+    infix fun <T> T.isNotIn(list: List<T>) = !isIn(list)
+
+    /**
+     * Faster removeIf implementation for constant lookup lists.
+     * Removes all elements matching the given predicate. Uses a one-pass approach with no memory allocation.
+     * Other operations should not be performed on the list during this operation.
+     */
+    inline fun <T> MutableList<T>.removeWhen(predicate: (T) -> Boolean): Boolean
+    {
+        // Find first element to remove
+        var headIndex = 0
+        val size = size
+        while (true)
+        {
+            if (headIndex == size)
+                return false
+            if (predicate(this[headIndex]))
+                break
+            headIndex++
+        }
+
+        // Skip elements to remove and copy the rest
+        var tailIndex = headIndex
+        while (++headIndex < size)
+        {
+            val value = this[headIndex]
+            if (!predicate(value))
+                this[tailIndex++] = value
+        }
+
+        // Null out the rest of the list
+        while (this.size > tailIndex) removeLast()
+
+        return true
+    }
+
+    /**
      * Maps a list of type [T] to a map of type [R].
      */
     inline fun <T, R> List<T>.mapToSet(transform: (T) -> R): Set<R>
     {
         val destination = HashSet<R>()
         var i = 0
+        val size = size
         while (i < size)
         {
             val element = this[i++]
@@ -190,6 +281,7 @@ object Extensions
      */
     fun LongArray.minus(value: Long): LongArray?
     {
+        val size = size
         if (size == 0 || (size == 1 && this[0] == value))
             return null
 

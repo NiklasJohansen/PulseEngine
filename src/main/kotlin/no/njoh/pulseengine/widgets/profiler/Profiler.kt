@@ -9,8 +9,10 @@ import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.data.Metric
 import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.shared.utils.Extensions.append
-import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
+import no.njoh.pulseengine.core.shared.utils.Extensions.noneMatches
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.widget.Widget
 import kotlin.math.max
 import kotlin.math.min
@@ -47,27 +49,25 @@ class Profiler : Widget
 
     override fun onUpdate(engine: PulseEngine)
     {
+        graphs.removeWhen { it.metric isNotIn engine.data.metrics }
+
         engine.data.metrics.forEachFast { metric ->
-            val graph = graphs.firstOrNullFast { it.metric === metric }
-            if (graph == null)
+            if (graphs.noneMatches { it.metric === metric })
                 graphs.add(Graph(metric))
         }
 
         engine.input.requestFocus(area)
-
         val insideArea = area.isInside(engine.input.xMouse, engine.input.yMouse)
 
         if (engine.input.isPressed(Mouse.RIGHT))
         {
-            if (insideArea)
-                adjustingSize = true
+            if (insideArea) adjustingSize = true
         }
         else adjustingSize = false
 
         if (engine.input.isPressed(Mouse.LEFT))
         {
-            if (insideArea)
-                grabbed = true
+            if (insideArea) grabbed = true
         }
         else grabbed = false
 
@@ -143,11 +143,7 @@ class Profiler : Widget
         private var latestValue = 0f
         private var averageValue = 0f
 
-        fun size(): Int =
-            if (taleCursor > headCursor)
-                data.size - taleCursor + headCursor
-            else
-                headCursor - taleCursor
+        fun size(): Int = if (taleCursor > headCursor) data.size - taleCursor + headCursor else headCursor - taleCursor
 
         fun update()
         {
@@ -160,7 +156,9 @@ class Profiler : Widget
             if (size() >= WINDOWS_LENGTH)
                 taleCursor = (taleCursor + 1) % data.size
 
-            averageValue = data.average().toFloat()
+            var avg = 0f
+            forEachValue { avg += it }
+            averageValue = avg / max(size(), 1)
         }
 
         fun render(surface: Surface2D, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
@@ -246,7 +244,7 @@ class Profiler : Widget
             val lastValueText = newText('(').append(latestValue, decimals = if (latestValue < 5) 2 else 0).append(')')
             surface.drawText(lastValueText, x + 5, y + 22f, font = font, fontSize = VALUE_FONT_SIZE, yOrigin = 0.5f)
 
-            val averageValueText = newText('(').append(averageValue, decimals = if (averageValue < 5) 2 else 0).append(')')
+            val averageValueText = newText("(avg ").append(averageValue, decimals = if (averageValue < 5) 2 else 0).append(')')
             surface.drawText(averageValueText, x + 5, y + 50f, font = font, fontSize = AVG_VALUE_FONT_SIZE, yOrigin = 0.5f)
         }
 

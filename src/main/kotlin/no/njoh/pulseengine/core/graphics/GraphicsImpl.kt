@@ -1,18 +1,19 @@
 package no.njoh.pulseengine.core.graphics
 
-import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
+import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
+import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
-import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.renderers.*
-import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
+import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
+import kotlin.math.sign
 
 open class GraphicsImpl : GraphicsInternal
 {
@@ -105,7 +106,7 @@ open class GraphicsImpl : GraphicsInternal
     override fun drawFrame()
     {
         // Sort surfaces by Z-order
-        surfaces.sortByDescending { it.context.zOrder }
+        surfaces.sortWith(SurfaceOrderComparator)
 
         // Render all batched data to offscreen target
         surfaces.forEachFast { it.renderToOffScreenTarget() }
@@ -218,5 +219,10 @@ open class GraphicsImpl : GraphicsInternal
     {
         private var updateNumber = 0
         private var defaultClearColor = Color(0.043f, 0.047f, 0.054f, 0f)
+    }
+
+    object SurfaceOrderComparator : Comparator<Surface2DInternal>
+    {
+        override fun compare(a: Surface2DInternal, b: Surface2DInternal): Int = (b.context.zOrder - a.context.zOrder).sign
     }
 }

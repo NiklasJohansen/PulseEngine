@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.asset.types.Cursor.Companion.createWithHandle
 import no.njoh.pulseengine.core.console.Subscription
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.lastOrNullFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*
@@ -103,7 +104,7 @@ open class InputImpl : InputInternal
                 if (event == GLFW_CONNECTED)
                     gamepads.add(Gamepad(jid)).also { Logger.info("Added joystick: $jid") }
                 else if (event == GLFW_DISCONNECTED)
-                    gamepads.removeIf { it.id == jid }.also { Logger.info("Removed joystick: $jid") }
+                    gamepads.removeWhen { it.id == jid }.also { Logger.info("Removed joystick: $jid") }
             }
         }
 

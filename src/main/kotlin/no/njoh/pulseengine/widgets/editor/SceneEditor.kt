@@ -40,6 +40,8 @@ import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.utils.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
+import no.njoh.pulseengine.core.shared.utils.Extensions.noneMatches
 import no.njoh.pulseengine.core.widget.Widget
 import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.gui.elements.Button
@@ -993,7 +995,7 @@ class SceneEditor(
             val copiesLeft = copies.size
             for (copy in copies)
             {
-                if (copies.none { it.id == copy.parentId })
+                if (copies.noneMatches { it.id == copy.parentId })
                 {
                     copy.childIds = null
                     copy.parentId = idMapping[copy.parentId] ?: copy.parentId
@@ -1063,7 +1065,7 @@ class SceneEditor(
         systemPropertiesUI.clearChildren()
         for (system in engine.scene.activeScene.systems)
         {
-            val isHidden = system::class.simpleName !in openSystems
+            val isHidden = system::class.simpleName isNotIn openSystems
             val props = uiFactory.createSystemProperties(system, isHidden = isHidden, onClose = { props ->
                 system.onDestroy(engine)
                 engine.scene.removeSystem(system)
