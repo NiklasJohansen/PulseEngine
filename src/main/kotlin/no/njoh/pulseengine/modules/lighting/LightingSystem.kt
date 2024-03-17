@@ -3,7 +3,6 @@ package no.njoh.pulseengine.modules.lighting
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Shape
-import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
@@ -186,11 +185,7 @@ open class LightingSystem : SceneSystem()
         updateLightMapPositionOffset()
         updateBoundingRect(lightSurface.width.toFloat(), lightSurface.height.toFloat())
 
-        engine.scene.forEachEntityTypeList { entities ->
-            val firstEntity = entities[0]
-            if (firstEntity is LightSource)
-                addLightsSources(entities, engine)
-        }
+        engine.scene.forEachEntityOfType<LightSource> { addLightsSources(it, engine)  }
 
         renderTimeMs = (System.nanoTime() - startTime) / 1_000_000f
     }
@@ -229,55 +224,51 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun addLightsSources(lightSources: SwapList<SceneEntity>, engine: PulseEngine)
+    private fun addLightsSources(light: LightSource, engine: PulseEngine)
     {
-        lightSources.forEachFast { entity ->
-            val isHidden = entity.isSet(HIDDEN)
-            val light = entity as LightSource
-            if (!isHidden && light.intensity != 0f && isInsideBoundingRectangle(light))
-            {
-                val edgeIndex = edgeCount
-                if (light.shadowType != NONE)
+        if ((light as SceneEntity).isSet(HIDDEN) || light.intensity == 0f || !isInsideBoundingRectangle(light))
+            return
+
+        val edgeIndex = edgeCount
+        if (light.shadowType != NONE)
+        {
+            engine.scene.forEachEntityNearbyOfType<LightOccluder>(
+                x = light.x,
+                y = light.y,
+                width = light.radius * 1.7f + if (light.type == LINEAR) light.size * 2 else 0f,
+                height = light.radius * 1.7f,
+                rotation = light.rotation
+            ) {
+                if (it.castShadows && (it as SceneEntity).isNot(HIDDEN))
                 {
-                    engine.scene.forEachEntityNearbyOfType<LightOccluder>(
-                        x = light.x,
-                        y = light.y,
-                        width = light.radius * 1.7f + if (light.type == LINEAR) light.size * 2 else 0f,
-                        height = light.radius * 1.7f,
-                        rotation = light.rotation
-                    ) {
-                        if (it.castShadows && (it as SceneEntity).isNot(HIDDEN))
-                        {
-                            addOccluderEdges(it.shape)
-                            shadowCasterCount++
-                        }
-                    }
+                    addOccluderEdges(it.shape)
+                    shadowCasterCount++
                 }
-
-                lightCount++
-                lightRenderer.addLight(
-                    x = light.x,
-                    y = light.y,
-                    z = light.z,
-                    radius = light.radius,
-                    direction = light.rotation.toRadians(),
-                    coneAngle = 0.5f * light.coneAngle.toRadians(),
-                    sourceSize = light.size,
-                    intensity = light.intensity,
-                    red = light.color.red,
-                    green = light.color.green,
-                    blue = light.color.blue,
-                    lightType = light.type,
-                    shadowType = light.shadowType,
-                    spill = light.spill,
-                    edgeIndex = edgeIndex,
-                    edgeCount = edgeCount - edgeIndex
-                )
-
-                if (drawDebug)
-                    drawDebugOutline(light)
             }
         }
+
+        lightCount++
+        lightRenderer.addLight(
+            x = light.x,
+            y = light.y,
+            z = light.z,
+            radius = light.radius,
+            direction = light.rotation.toRadians(),
+            coneAngle = 0.5f * light.coneAngle.toRadians(),
+            sourceSize = light.size,
+            intensity = light.intensity,
+            red = light.color.red,
+            green = light.color.green,
+            blue = light.color.blue,
+            lightType = light.type,
+            shadowType = light.shadowType,
+            spill = light.spill,
+            edgeIndex = edgeIndex,
+            edgeCount = edgeCount - edgeIndex
+        )
+
+        if (drawDebug)
+            drawDebugOutline(light)
     }
 
     private fun isInsideBoundingRectangle(light: LightSource) =

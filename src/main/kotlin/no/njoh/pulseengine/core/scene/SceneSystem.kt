@@ -65,11 +65,6 @@ abstract class SceneSystem
      */
     open fun onStateChanged(engine: PulseEngine) {  }
 
-    /**
-     * Whether or not this system takes the care of deleting dead entities
-     */
-    open fun handlesEntityDeletion(): Boolean = false
-
     companion object
     {
         val REGISTERED_TYPES = mutableSetOf<KClass<out SceneSystem>>()

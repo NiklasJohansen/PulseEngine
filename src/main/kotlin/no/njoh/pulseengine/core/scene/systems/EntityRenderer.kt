@@ -80,7 +80,7 @@ open class EntityRendererImpl : EntityRenderer()
             val task = createRenderTask(renderPass)
             val condition = renderPass.drawCondition
             engine.scene.forEachEntityTypeList { typeList ->
-                if (typeList[0] is Renderable && renderPass.targetType.isInstance(typeList[0]))
+                if (typeList.firstOrNull() is Renderable && renderPass.targetType.isInstance(typeList.firstOrNull()))
                 {
                     typeList.forEachFast()
                     {

@@ -414,27 +414,27 @@ class SceneEditor(
         }
 
         engine.scene.forEachEntityTypeList { entities ->
-            entities[0]::class.findAnnotation<ScnIcon>()?.let { annotation ->
-                if (annotation.showInViewport && entities[0] is Spatial)
+            val firstEntity = entities.firstOrNull()
+            val annotation = firstEntity?.let { it::class.findAnnotation<ScnIcon>() }
+            if (annotation != null && annotation.showInViewport && firstEntity is Spatial)
+            {
+                val size = annotation.size
+                val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
+                val font = engine.asset.getOrNull<Font>(uiFactory.style.iconFontName)
+                val iconChar = uiFactory.style.icons[annotation.iconName]
+                if (texture != null || (font != null && iconChar != null))
                 {
-                    val size = annotation.size
-                    val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
-                    val font = engine.asset.getOrNull<Font>(uiFactory.style.iconFontName)
-                    val iconChar = uiFactory.style.icons[annotation.iconName]
-                    if (texture != null || (font != null && iconChar != null))
+                    surface.setDrawColor(Color.WHITE)
+                    entities.forEachFast()
                     {
-                        surface.setDrawColor(Color.WHITE)
-                        entities.forEachFast()
+                        if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
                         {
-                            if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
-                            {
-                                it as Spatial
-                                val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
-                                if (texture != null)
-                                    surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
-                                else if (iconChar != null)
-                                    surface.drawText(iconChar, pos.x, pos.y, font, size, xOrigin = 0.5f, yOrigin = 0.5f)
-                            }
+                            it as Spatial
+                            val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
+                            if (texture != null)
+                                surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
+                            else if (iconChar != null)
+                                surface.drawText(iconChar, pos.x, pos.y, font, size, xOrigin = 0.5f, yOrigin = 0.5f)
                         }
                     }
                 }

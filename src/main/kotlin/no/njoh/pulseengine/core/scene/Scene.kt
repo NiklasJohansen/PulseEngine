@@ -7,9 +7,6 @@ import gnu.trove.map.hash.TLongObjectHashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.data.FileFormat
 import no.njoh.pulseengine.core.data.FileFormat.*
-import no.njoh.pulseengine.core.shared.primitives.SwapList
-import no.njoh.pulseengine.core.shared.primitives.SwapList.Companion.swapListOf
-import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -19,7 +16,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 @JsonAutoDetect(fieldVisibility = ANY)
 open class Scene(
     val name: String,
-    val entities: MutableList<SwapList<SceneEntity>> = mutableListOf(),
+    val entities: MutableList<SceneEntityList> = mutableListOf(),
     val systems: MutableList<SceneSystem> = mutableListOf()
 ) {
     @JsonIgnore
@@ -50,7 +47,7 @@ open class Scene(
         entityTypeMap[entity.typeName]
             ?.add(entity)
             ?: run {
-                val list = swapListOf(entity)
+                val list = SceneEntityList.of(entity)
                 entityTypeMap[entity.typeName] = list
                 entities.add(list)
             }
@@ -84,7 +81,6 @@ open class Scene(
     {
         spatialGrid.update()
 
-        var deleteDeadEntities = true
         systems.forEachFiltered({ it.enabled || it.stateChanged })
         {
             if (!it.initialized)
@@ -96,24 +92,14 @@ open class Scene(
                 it.onStateChanged(engine)
             }
 
-            if (it.handlesEntityDeletion())
-                deleteDeadEntities = false
-
             it.onUpdate(engine)
         }
 
-        if (deleteDeadEntities)
-        {
-            engine.scene.forEachEntityTypeList { typeList ->
-                typeList.forEachFast { entity ->
-                    if (entity.isSet(DEAD))
-                    {
-                        entityIdMap[entity.parentId]?.removeChild(entity)
-                        entityIdMap.remove(entity.id)
-                    }
-                    else typeList.keep(entity)
-                }
-                typeList.swap()
+        engine.scene.forEachEntityTypeList { entityList ->
+            entityList.removeDeadEntities { deadEntity ->
+                entityIdMap.remove(deadEntity.id)
+                if (deadEntity.parentId != INVALID_ID)
+                    entityIdMap[deadEntity.parentId]?.removeChild(deadEntity)
             }
         }
     }
@@ -151,17 +137,17 @@ open class Scene(
         spatialGrid.clear()
     }
 
-    private fun createEntityTypeMap(entities: MutableList<SwapList<SceneEntity>>) =
-        HashMap<String, SwapList<SceneEntity>>(entities.size).also { map ->
-            entities.forEachFast { list -> list.first()?.let { map[it.typeName] = list } }
+    private fun createEntityTypeMap(entities: MutableList<SceneEntityList>) =
+        HashMap<String, SceneEntityList>(entities.size).also { map ->
+            entities.forEachFast { list -> list.firstOrNull()?.let { map[it.typeName] = list } }
         }
 
-    private fun createEntityIdMap(entities: MutableList<SwapList<SceneEntity>>) =
+    private fun createEntityIdMap(entities: MutableList<SceneEntityList>) =
         TLongObjectHashMap<SceneEntity>().also { map ->
             entities.forEachFast { typeList -> typeList.forEachFast { map.put(it.id, it) } }
         }
 
-    private fun MutableList<SwapList<SceneEntity>>.onCreate()
+    private fun MutableList<SceneEntityList>.onCreate()
     {
         this.forEachFast()
         {
@@ -169,6 +155,3 @@ open class Scene(
         }
     }
 }
-
-@Target(AnnotationTarget.CLASS)
-annotation class SurfaceName(val name: String)

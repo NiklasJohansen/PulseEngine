@@ -4,11 +4,9 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SpatialGrid.Companion.nextQueryId
 import no.njoh.pulseengine.core.shared.primitives.HitResult
-import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
-@Suppress("UNCHECKED_CAST")
 abstract class SceneManager
 {
     /** Reference to the currently active Scene. */
@@ -115,7 +113,7 @@ abstract class SceneManager
      * Returns the first [SceneEntity] of type [T].
      */
     inline fun <reified T: SceneEntity> getFirstEntityOfType(): T? =
-        activeScene.entityTypeMap[T::class.simpleName]?.first() as? T?
+        activeScene.entityTypeMap[T::class.simpleName]?.firstOrNull() as? T?
 
     /**
      * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity].
@@ -132,13 +130,13 @@ abstract class SceneManager
     /**
      * Returns a list of all [SceneEntity]s with type [T].
      */
-    inline fun <reified T: SceneEntity> getAllEntitiesOfType(): SwapList<T>? =
-        (activeScene.entityTypeMap[T::class.simpleName] as? SwapList<T>?)?.takeIf { it.isNotEmpty() }
+    inline fun <reified T: SceneEntity> getAllEntitiesOfType(): SceneEntityList? =
+        (activeScene.entityTypeMap[T::class.simpleName])?.takeIf { it.isNotEmpty() }
 
     /**
      * Returns all [SceneEntity]s in type separated lists.
      */
-    fun getAllEntitiesByType(): List<SwapList<SceneEntity>> = activeScene.entities
+    fun getAllEntitiesByType(): List<SceneEntityList> = activeScene.entities
 
     /**
      * Calls the [action] lambda for each [SceneEntity] in the [Scene].
@@ -155,7 +153,7 @@ abstract class SceneManager
     /**
      * Calls the [action] lambda for each list of [SceneEntity]s with the same type.
      */
-    inline fun forEachEntityTypeList(action: (SwapList<SceneEntity>) -> Unit) =
+    inline fun forEachEntityTypeList(action: (SceneEntityList) -> Unit) =
         activeScene.entities.forEachFast { if (it.isNotEmpty()) action(it) }
 
     /**

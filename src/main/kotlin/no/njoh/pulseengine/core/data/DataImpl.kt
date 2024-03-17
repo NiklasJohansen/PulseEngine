@@ -8,6 +8,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import java.io.File
 import java.io.FileNotFoundException
@@ -50,6 +51,7 @@ open class DataImpl : Data()
 
     override fun addMetric(name: String, onSample: Metric.() -> Unit)
     {
+        metrics.removeWhen { it.name == name }
         metrics += Metric(name, onSample)
     }
 
