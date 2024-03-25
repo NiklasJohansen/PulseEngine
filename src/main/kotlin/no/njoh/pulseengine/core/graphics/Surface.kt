@@ -39,7 +39,7 @@ abstract class Surface2D : Surface
     abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f)
     abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, uTiling: Float = 1f, vTiling: Float = 1f)
     abstract fun drawText(text: CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
-    inline fun drawText(textBuilder: (text: StringBuilder) -> CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f) =
+    inline fun drawText(textBuilder: (builder: StringBuilder) -> CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Float = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f) =
         drawText(textBuilder(sb.clear()), x, y, font, fontSize, angle, xOrigin, yOrigin)
 
     // Property setters
@@ -73,7 +73,7 @@ abstract class Surface2D : Surface
     }
 
     // Reusable StringBuilder for text drawing
-    @PublishedApi internal val sb = StringBuilder()
+    @PublishedApi internal val sb = StringBuilder(1000)
 }
 
 abstract class Surface2DInternal : Surface2D()

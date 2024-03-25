@@ -261,7 +261,7 @@ class Profiler : Widget
 
     companion object
     {
-        private val sb = StringBuilder()
+        private val sb = StringBuilder(150)
         private fun newText() = sb.clear()
         private fun newText(s: String) = newText().append(s)
         private fun newText(c: Char) = newText().append(c)
