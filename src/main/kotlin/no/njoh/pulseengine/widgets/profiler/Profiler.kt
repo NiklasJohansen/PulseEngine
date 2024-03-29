@@ -39,7 +39,7 @@ class Profiler : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface("overlay", zOrder = -100)
+        engine.gfx.createSurface("profiler", zOrder = -101)
         engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "graph_font")
         engine.console.registerCommand("showGraphs") {
             isRunning = !isRunning
@@ -105,7 +105,7 @@ class Profiler : Widget
             h *= scale
         }
 
-        val surface = engine.gfx.getSurfaceOrDefault("overlay")
+        val surface = engine.gfx.getSurfaceOrDefault("profiler")
         val font = engine.asset.getOrNull("graph_font") ?: Font.DEFAULT
 
         graphs.forEachFast()

@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.core.graphics.postprocessing
 
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 
 class PostProcessingPipeline
 {
@@ -11,7 +13,9 @@ class PostProcessingPipeline
 
     fun addEffect(effect: PostProcessingEffect) = effects.add(effect)
 
-    fun removeEffect(effect: PostProcessingEffect) = effects.remove(effect)
+    fun getEffect(name: String) = effects.firstOrNullFast { it.name == name }
+
+    fun removeEffect(name: String) = effects.removeWhen { it.name == name }
 
     fun process(texture: Texture): Texture
     {

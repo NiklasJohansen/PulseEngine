@@ -32,7 +32,6 @@ interface Graphics
         blendFunction: BlendFunction = BlendFunction.NORMAL,
         attachments: List<Attachment> = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
         backgroundColor: Color = Color(0.1f, 0.1f, 0.1f, 0f),
-        initializeSurface: Boolean = true
     ) : Surface2D
 
     fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat = RGBA8)

@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
 interface PostProcessingEffect
 {
+    val name: String
     fun init()
     fun process(texture: Texture): Texture
     fun getTexture(): Texture?
