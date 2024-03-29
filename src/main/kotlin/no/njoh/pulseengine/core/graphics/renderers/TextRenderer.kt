@@ -9,10 +9,8 @@ import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.graphics.TextureBank
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
-import no.njoh.pulseengine.core.graphics.api.objects.BufferObject
-import no.njoh.pulseengine.core.graphics.api.objects.FloatBufferObject
-import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
-import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
+import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject.Companion.QUAD_VERTICES
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Math.PI
 import org.joml.Math.cos
@@ -25,15 +23,14 @@ import kotlin.math.max
 import kotlin.math.sin
 
 class TextRenderer(
-    private val initialCapacity: Int,
     private val context: RenderContextInternal,
     private val textureBank: TextureBank
 ) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
-    private lateinit var program: ShaderProgram
     private lateinit var vertexBuffer: StaticBufferObject
-    private lateinit var instanceBuffer: FloatBufferObject
+    private lateinit var instanceBuffer: DoubleBufferedFloatObject
+    private lateinit var program: ShaderProgram
 
     private val xb = FloatArray(1) { 0f }
     private val yb = FloatArray(1) { 0f }
@@ -42,7 +39,15 @@ class TextRenderer(
 
     override fun init()
     {
-        vao = VertexArrayObject.createAndBind()
+        if (!this::program.isInitialized)
+        {
+            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
+            vertexBuffer = StaticBufferObject.createBuffer(QUAD_VERTICES)
+            program = ShaderProgram.create(
+                vertexShaderFileName = "/pulseengine/shaders/default/glyph.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/default/glyph.frag"
+            )
+        }
 
         val vertexLayout = VertexAttributeLayout()
             .withAttribute("vertexPos", 2, GL_FLOAT)
@@ -56,27 +61,43 @@ class TextRenderer(
             .withAttribute("color", 1, GL_FLOAT, 1)
             .withAttribute("textureHandle", 1, GL_FLOAT, 1)
 
-        if (!this::program.isInitialized)
-        {
-            instanceBuffer = BufferObject.createArrayBuffer(initialCapacity * instanceLayout.strideInBytes)
-            vertexBuffer = StaticBufferObject.createBuffer(floatArrayOf(
-                0f, 0f, // Top-left vertex
-                1f, 0f, // Top-right vertex
-                0f, 1f, // Bottom-left vertex
-                1f, 1f  // Bottom-right vertex
-            ))
-            program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/glyph.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/glyph.frag"
-            )
-        }
-
+        vao = VertexArrayObject.createAndBind()
         program.bind()
         vertexBuffer.bind()
         program.setVertexAttributeLayout(vertexLayout)
         instanceBuffer.bind()
         program.setVertexAttributeLayout(instanceLayout)
         vao.release()
+    }
+
+    override fun onInitFrame()
+    {
+        instanceBuffer.swapBuffers()
+    }
+
+    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
+    {
+        if (startIndex == 0)
+        {
+            instanceBuffer.bind()
+            instanceBuffer.submit()
+            instanceBuffer.release()
+        }
+
+        vao.bind()
+        program.bind()
+        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+        textureBank.bindAllTexturesTo(program)
+        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
+        vao.release()
+    }
+
+    override fun cleanUp()
+    {
+        vertexBuffer.delete()
+        instanceBuffer.delete()
+        program.delete()
+        vao.delete()
     }
 
     fun draw(text: CharSequence, x: Float, y: Float, font: Font, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float)
@@ -203,31 +224,6 @@ class TextRenderer(
             context.increaseDepth()
             i += GLYPH_STRIDE
         }
-    }
-
-    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
-    {
-        if (startIndex == 0) // Submit all data in first batch
-        {
-            instanceBuffer.bind()
-            instanceBuffer.submit()
-            instanceBuffer.release()
-        }
-
-        vao.bind()
-        program.bind()
-        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        textureBank.bindAllTexturesTo(program)
-        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
-        vao.release()
-    }
-
-    override fun cleanUp()
-    {
-        vertexBuffer.delete()
-        instanceBuffer.delete()
-        program.delete()
-        vao.delete()
     }
 
     private val advanceWidth = IntArray(1)

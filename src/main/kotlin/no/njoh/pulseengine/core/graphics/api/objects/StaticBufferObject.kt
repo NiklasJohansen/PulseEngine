@@ -31,5 +31,12 @@ class StaticBufferObject(
             glBindBuffer(target, 0)
             return StaticBufferObject(id, target, blockBinding)
         }
+
+        val QUAD_VERTICES = floatArrayOf(
+            0f, 0f, // Top-left vertex
+            1f, 0f, // Top-right vertex
+            0f, 1f, // Bottom-left vertex
+            1f, 1f  // Bottom-right vertex
+        )
     }
 }

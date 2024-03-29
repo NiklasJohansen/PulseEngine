@@ -3,72 +3,57 @@ package no.njoh.pulseengine.core.graphics.renderers
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject.Companion.QUAD_VERTICES
 import org.lwjgl.opengl.GL20.*
 import java.lang.Float.floatToRawIntBits
 
 class TextureRenderer(
-    private val initialCapacity: Int,
     private val context: RenderContextInternal
 ) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
+    private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram
-    private lateinit var vertexBuffer: StaticBufferObject
-
     private lateinit var data: FloatArray
-    private var count = 0
+
+    private var readCount = 0
+    private var writeCount = 0
+    private var readOffset = 0
+    private var writeOffset = 0
+    private val capacity = 50
     private val stride = 10
 
     override fun init()
     {
-        vao = VertexArrayObject.createAndBind()
-
-        val vertexLayout = VertexAttributeLayout()
-            .withAttribute("vertexPos", 2, GL_FLOAT)
-
         if (!this::program.isInitialized)
         {
-            data = FloatArray(initialCapacity * stride)
-            vertexBuffer = StaticBufferObject.createBuffer(floatArrayOf(
-                0f, 0f, // Top-left vertex
-                1f, 0f, // Top-right vertex
-                0f, 1f, // Bottom-left vertex
-                1f, 1f  // Bottom-right vertex
-            ))
+            readOffset = 0
+            writeOffset = capacity * stride
+            data = FloatArray(capacity * stride * 2)
+            vbo = StaticBufferObject.createBuffer(QUAD_VERTICES)
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/texture.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/texture.frag"
             )
         }
 
+        val vertexLayout = VertexAttributeLayout()
+            .withAttribute("vertexPos", 2, GL_FLOAT)
+
+        vao = VertexArrayObject.createAndBind()
+        vbo.bind()
         program.bind()
-        vertexBuffer.bind()
         program.setVertexAttributeLayout(vertexLayout)
         vao.release()
     }
 
-    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float)
+    override fun onInitFrame()
     {
-        if (count >= initialCapacity)
-            return
-
-        val base = count * stride
-        data[base + 0] = x
-        data[base + 1] = y
-        data[base + 2] = context.depth
-        data[base + 3] = w
-        data[base + 4] = h
-        data[base + 5] = rot
-        data[base + 6] = xOrigin
-        data[base + 7] = yOrigin
-        data[base + 8] = context.drawColor
-        data[base + 9] = texture.handle.textureIndex.toFloat()
-
-        count++
-        context.increaseDepth()
-        increaseBatchSize()
+        readOffset = writeOffset.also { writeOffset = readOffset }
+        readCount = writeCount.also { writeCount = 0 }
     }
 
     override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
@@ -86,7 +71,7 @@ class TextureRenderer(
         // Draw each texture with separate draw call
         for (i in startIndex until startIndex + drawCount)
         {
-            val base = i * stride
+            val base = readOffset + i * stride
             val x = data[base + 0]
             val y = data[base + 1]
             val z = data[base + 2]
@@ -99,7 +84,7 @@ class TextureRenderer(
             val textureId = data[base + 9].toInt()
 
             // Bind texture
-            if (textureId != 1000) // See TextureHandle.NONE
+            if (textureId != TextureHandle.NONE.textureIndex)
                 glBindTexture(GL_TEXTURE_2D, textureId)
 
             // Set uniforms
@@ -108,7 +93,7 @@ class TextureRenderer(
             program.setUniform("origin", xOrigin, yOrigin)
             program.setUniform("rotation", rotation)
             program.setUniform("color", floatToRawIntBits(rgba))
-            program.setUniform("sampleTexture", textureId != 1000)
+            program.setUniform("sampleTexture", textureId != TextureHandle.NONE.textureIndex)
 
             // Draw quad
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
@@ -116,13 +101,35 @@ class TextureRenderer(
 
         // Release VAO and reset count
         vao.release()
-        count = 0
+        readCount = 0
     }
 
     override fun cleanUp()
     {
-        vertexBuffer.delete()
+        vbo.delete()
         program.delete()
         vao.delete()
+    }
+
+    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float)
+    {
+        if (writeCount >= capacity)
+            return
+
+        val base = writeOffset + writeCount * stride
+        data[base + 0] = x
+        data[base + 1] = y
+        data[base + 2] = context.depth
+        data[base + 3] = w
+        data[base + 4] = h
+        data[base + 5] = rot
+        data[base + 6] = xOrigin
+        data[base + 7] = yOrigin
+        data[base + 8] = context.drawColor
+        data[base + 9] = texture.handle.textureIndex.toFloat()
+
+        writeCount++
+        context.increaseDepth()
+        increaseBatchSize()
     }
 }

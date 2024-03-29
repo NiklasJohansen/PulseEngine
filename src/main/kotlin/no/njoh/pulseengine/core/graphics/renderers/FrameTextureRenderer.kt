@@ -2,6 +2,8 @@ package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureHandle
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL30.*
 
@@ -71,6 +73,22 @@ class FrameTextureRenderer(private val program: ShaderProgram)
 
         glBindVertexArray(0)
         glActiveTexture(GL_TEXTURE0)
+    }
+
+    fun render(textureHandles: List<TextureHandle>)
+    {
+        glBindVertexArray(vaoId)
+
+        var i = 0
+        textureHandles.forEachFast { handle ->
+            glActiveTexture(GL_TEXTURE0 + i++)
+            glBindTexture(GL_TEXTURE_2D, handle.textureIndex)
+        }
+
+        program.bind()
+        glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
+
+        glBindVertexArray(0)
     }
 
     fun cleanUp()

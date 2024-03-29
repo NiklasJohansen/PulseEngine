@@ -3,50 +3,78 @@ package no.njoh.pulseengine.core.graphics.renderers
 import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
-import no.njoh.pulseengine.core.graphics.api.objects.BufferObject
-import no.njoh.pulseengine.core.graphics.api.objects.FloatBufferObject
-import no.njoh.pulseengine.core.graphics.api.objects.IntBufferObject
-import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
+import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.shared.utils.BufferExtensions.putAll
 import org.lwjgl.opengl.GL11.*
 
 class QuadBatchRenderer(
-    private val initialCapacity: Int,
     private val context: RenderContextInternal
 ) : BatchRenderer() {
 
-    private lateinit var program: ShaderProgram
     private lateinit var vao: VertexArrayObject
-    private lateinit var vbo: FloatBufferObject
-    private lateinit var ebo: IntBufferObject
+    private lateinit var vbo: DoubleBufferedFloatObject
+    private lateinit var ebo: DoubleBufferedIntObject
+    private lateinit var program: ShaderProgram
 
     private var vertexCount = 0
     private var singleVertexCount = 0
 
     override fun init()
     {
-        vao = VertexArrayObject.createAndBind()
-
-        val layout = VertexAttributeLayout()
-            .withAttribute("position",3, GL_FLOAT)
-            .withAttribute("color",1, GL_FLOAT)
-
         if (!this::program.isInitialized)
         {
-            val capacity = initialCapacity * layout.strideInBytes * 4L
-            vbo = BufferObject.createArrayBuffer(capacity)
-            ebo = BufferObject.createElementBuffer(capacity / 6)
+            vbo = DoubleBufferedFloatObject.createArrayBuffer()
+            ebo = DoubleBufferedIntObject.createElementBuffer()
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/quad.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/quad.frag"
             )
         }
 
+        val layout = VertexAttributeLayout()
+            .withAttribute("position", 3, GL_FLOAT)
+            .withAttribute("color", 1, GL_FLOAT)
+
+        vao = VertexArrayObject.createAndBind()
         vbo.bind()
         ebo.bind()
         program.bind()
         program.setVertexAttributeLayout(layout)
         vao.release()
+    }
+
+    override fun onInitFrame()
+    {
+        vbo.swapBuffers()
+        ebo.swapBuffers()
+        vertexCount = 0
+    }
+
+    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
+    {
+        if (startIndex == 0)
+        {
+            vbo.bind()
+            vbo.submit()
+            ebo.bind()
+            ebo.submit()
+        }
+
+        vao.bind()
+        program.bind()
+        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+        glBindTexture(GL_TEXTURE_2D, 0)
+        // 6 elements per quad, 4 bytes per element
+        glDrawElements(GL_TRIANGLES, drawCount * 6, GL_UNSIGNED_INT, startIndex * 6L * 4)
+        vao.release()
+    }
+
+    override fun cleanUp()
+    {
+        vao.delete()
+        vbo.delete()
+        ebo.delete()
+        program.delete()
     }
 
     fun quad(x: Float, y: Float, width: Float, height: Float)
@@ -94,37 +122,5 @@ class QuadBatchRenderer(
             context.increaseDepth()
             increaseBatchSize()
         }
-    }
-
-    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
-    {
-        vao.bind()
-        ebo.bind()
-        vbo.bind()
-
-        program.bind()
-        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-
-        glBindTexture(GL_TEXTURE_2D, 0)
-
-        if (startIndex == 0)
-        {
-            vbo.submit()
-            ebo.submit()
-        }
-
-        // 6 elements per quad, 4 bytes per element
-        glDrawElements(GL_TRIANGLES, drawCount * 6, GL_UNSIGNED_INT, startIndex * 6L * 4)
-
-        vao.release()
-        vertexCount = 0
-    }
-
-    override fun cleanUp()
-    {
-        vbo.delete()
-        vao.delete()
-        ebo.delete()
-        program.delete()
     }
 }

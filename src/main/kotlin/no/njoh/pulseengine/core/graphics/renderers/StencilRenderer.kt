@@ -4,52 +4,45 @@ import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject.Companion.QUAD_VERTICES
 import org.lwjgl.opengl.GL20.*
 
 class StencilRenderer : BatchRenderer()
 {
     private lateinit var vao: VertexArrayObject
+    private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram
-    private lateinit var vertexBuffer: StaticBufferObject
 
     override fun init()
     {
-        vao = VertexArrayObject.createAndBind()
-
         if (!this::program.isInitialized)
         {
-            vertexBuffer = StaticBufferObject.createBuffer(floatArrayOf(
-                0f, 0f, // Top-left vertex
-                1f, 0f, // Top-right vertex
-                0f, 1f, // Bottom-left vertex
-                1f, 1f  // Bottom-right vertex
-            ))
+            vbo = StaticBufferObject.createBuffer(QUAD_VERTICES)
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/stencil.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/stencil.frag"
             )
         }
 
+        val layout = VertexAttributeLayout()
+            .withAttribute("vertexPos", 2, GL_FLOAT)
+
+        vao = VertexArrayObject.createAndBind()
+        vbo.bind()
         program.bind()
-        vertexBuffer.bind()
-        program.setVertexAttributeLayout(VertexAttributeLayout().withAttribute("vertexPos", 2, GL_FLOAT))
+        program.setVertexAttributeLayout(layout)
         vao.release()
     }
 
+    override fun onInitFrame() { }
+
     fun drawStencil(surface: Surface2D, x: Float, y: Float, width: Float, height: Float)
     {
-        // Bind VAO and shader program
         vao.bind()
-
-        // Set uniforms
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniform("posAndSize", x, y, width, height)
-
-        // Draw quad
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
-
-        // Release VAO and reset count
         vao.release()
     }
 
@@ -57,8 +50,8 @@ class StencilRenderer : BatchRenderer()
 
     override fun cleanUp()
     {
-        vertexBuffer.delete()
-        program.delete()
         vao.delete()
+        vbo.delete()
+        program.delete()
     }
 }

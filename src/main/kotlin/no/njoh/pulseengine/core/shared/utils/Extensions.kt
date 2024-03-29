@@ -8,6 +8,8 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.nio.file.FileSystems
 import java.nio.file.Files
+import java.util.*
+import kotlin.collections.HashSet
 import kotlin.math.PI
 
 object Extensions
@@ -356,6 +358,11 @@ object Extensions
                 ?: emptyList()
         }
     }
+
+    /**
+     * Formats the Float value to a String with a given numbers of decimals.
+     */
+    fun Float.formatted(decimals: Int = 1) = StringBuilder().append(this, decimals).toString()
 
     /**
      * Appends the given [value] to the [StringBuilder] with the given number of [decimals].
