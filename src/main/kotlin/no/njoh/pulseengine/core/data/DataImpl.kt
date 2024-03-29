@@ -17,7 +17,9 @@ import kotlin.system.measureNanoTime
 open class DataImpl : Data()
 {
     override var currentFps: Int = 0
-    override var renderTimeMs: Float = 0f
+    override var totalFrameTime: Float = 0f
+    override var gpuRenderTimeMs: Float = 0f
+    override var cpuRenderTimeMs: Float = 0f
     override var updateTimeMS: Float = 0f
     override var fixedUpdateTimeMS: Float = 0f
     override var fixedDeltaTime: Float = 0.017f
@@ -42,7 +44,9 @@ open class DataImpl : Data()
         updateSaveDirectory(gameName)
 
         addMetric("FRAMES PER SECOND (FPS)") { sample(currentFps.toFloat()) }
-        addMetric("RENDER TIME (MS)")        { sample(renderTimeMs) }
+        addMetric("TOTAL FRAME TIME (MS)")   { sample(totalFrameTime) }
+        addMetric("GPU RENDER TIME (MS)")    { sample(gpuRenderTimeMs) }
+        addMetric("CPU RENDER TIME (MS)")    { sample(cpuRenderTimeMs) }
         addMetric("UPDATE TIME (MS)")        { sample(updateTimeMS) }
         addMetric("FIXED UPDATE TIME (MS)")  { sample(fixedUpdateTimeMS) }
         addMetric("USED MEMORY (KB)")        { sample(usedMemory.toFloat()) }
@@ -118,6 +122,15 @@ open class DataImpl : Data()
         saveDirectory = File("$homeDir/$gameName").absolutePath
     }
 
+    inline fun measureTotalFrameTime(block: () -> Unit)
+    {
+        val startTime = glfwGetTime()
+
+        block.invoke()
+
+        totalFrameTime = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+    }
+
     inline fun measureAndUpdateTimeStats(block: () -> Unit)
     {
         val startTime = glfwGetTime()
@@ -135,14 +148,27 @@ open class DataImpl : Data()
         totalMemory = runtime.maxMemory() / KILO_BYTE
     }
 
-    inline fun measureRenderTimeAndUpdateInterpolationValue(block: () -> Unit)
+    inline fun measureGpuRenderTime(block: () -> Unit)
     {
         val startTime = glfwGetTime()
-        interpolation = fixedUpdateAccumulator.toFloat() / fixedDeltaTime
 
         block.invoke()
 
-        renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        gpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+    }
+
+    inline fun measureCpuRenderTime(block: () -> Unit)
+    {
+        val startTime = glfwGetTime()
+
+        block.invoke()
+
+        cpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+    }
+
+    fun updateInterpolationValue()
+    {
+        interpolation = fixedUpdateAccumulator.toFloat() / fixedDeltaTime
     }
 
     fun calculateFrameRate()

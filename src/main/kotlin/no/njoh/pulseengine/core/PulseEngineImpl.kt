@@ -12,8 +12,7 @@ import no.njoh.pulseengine.core.config.ConfigurationInternal
 import no.njoh.pulseengine.core.console.ConsoleImpl
 import no.njoh.pulseengine.core.console.ConsoleInternal
 import no.njoh.pulseengine.core.data.DataImpl
-import no.njoh.pulseengine.core.graphics.GraphicsImpl
-import no.njoh.pulseengine.core.graphics.GraphicsInternal
+import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.InputIdle
 import no.njoh.pulseengine.core.input.InputImpl
@@ -30,6 +29,7 @@ import no.njoh.pulseengine.core.widget.WidgetManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
 import org.lwjgl.glfw.GLFW.*
+import java.util.concurrent.CyclicBarrier
 import kotlin.math.min
 
 /**
@@ -50,9 +50,12 @@ class PulseEngineImpl(
 
     private val engineStartTime = System.nanoTime()
     private val frameRateLimiter = FpsLimiter()
+    private val beginFrame = CyclicBarrier(2)
+    private val endFrame = CyclicBarrier(2)
+    private val idleInput = InputIdle(input)
     private val activeInput = input
-    private val idleInput = InputIdle(activeInput)
     private lateinit var focusArea: FocusArea
+    private lateinit var gameThread: Thread
 
     init { PulseEngine.GLOBAL_INSTANCE = this }
 
@@ -63,14 +66,9 @@ class PulseEngineImpl(
         initGame(game)
         postGameSetup()
 
-        // Run main game loop
-        while (window.isOpen())
-        {
-            update(game)
-            fixedUpdate(game)
-            render(game)
-            syncFps()
-        }
+        // Start loops
+        startGameLoop(game)
+        startMainLoop()
 
         // Clean up game and engine
         game.onDestroy()
@@ -169,12 +167,56 @@ class PulseEngineImpl(
         Logger.info("Finished initialization in ${engineStartTime.toNowFormatted()}")
     }
 
+    private fun startGameLoop(game: PulseEngineGame)
+    {
+        gameThread = Thread()
+        {
+            while (true)
+            {
+                beginFrame.await()
+                update(game)
+                fixedUpdate(game)
+                render(game)
+                endFrame.await()
+            }
+        }
+        gameThread.name = "game"
+        gameThread.start()
+    }
+
+    private fun startMainLoop()
+    {
+        while (window.isOpen())
+        {
+            data.measureTotalFrameTime()
+            {
+                // Set up frame
+                gfx.initFrame()
+                audio.cleanSources()
+                updateInput()
+
+                // Wait for every thread to be ready
+                beginFrame.await()
+
+                // Let GPU draw previous frame
+                data.measureGpuRenderTime()
+                {
+                    gfx.drawFrame()
+                    window.swapBuffers()
+                }
+
+                // Wait for every thread to finish
+                endFrame.await()
+                syncFps()
+            }
+        }
+    }
+
     private fun update(game: PulseEngineGame)
     {
         data.updateMemoryStats()
         data.measureAndUpdateTimeStats()
         {
-            updateInput()
             console.update()
             game.onUpdate()
             scene.update()
@@ -196,7 +238,6 @@ class PulseEngineImpl(
         var updated = false
         while (data.fixedUpdateAccumulator >= dt)
         {
-            audio.cleanSources()
             input.requestFocus(focusArea)
             gfx.updateCameras()
             game.onFixedUpdate()
@@ -214,33 +255,18 @@ class PulseEngineImpl(
 
     private fun render(game: PulseEngineGame)
     {
-        data.measureRenderTimeAndUpdateInterpolationValue()
+        data.updateInterpolationValue()
+        data.measureCpuRenderTime()
         {
-            // Get ready for rendering next frame
-            gfx.initFrame()
-
-            // Gather batch data to draw
             scene.render()
             game.onRender()
             widget.render(this)
-
-            // Perform draw calls and update back-buffer
-            gfx.drawFrame()
-
-            // Swap front and back buffers
-            window.swapBuffers()
-            window.wasResized = false
         }
-    }
-
-    private fun syncFps()
-    {
-        data.calculateFrameRate()
-        frameRateLimiter.sync(config.targetFps)
     }
 
     private fun updateInput()
     {
+        window.wasResized = false
         input.pollEvents()
 
         // Update world mouse position
@@ -252,8 +278,15 @@ class PulseEngineImpl(
         input.requestFocus(focusArea)
     }
 
+    private fun syncFps()
+    {
+        data.calculateFrameRate()
+        frameRateLimiter.sync(config.targetFps)
+    }
+
     private fun destroy()
     {
+        gameThread.stop()
         FileWatcher.shutdown()
         scene.cleanUp()
         widget.cleanUp(this)
