@@ -138,12 +138,14 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun deleteSurface(name: String)
     {
-        val surface = surfaceMap[name] ?: return
         runOnInitFrame()
         {
-            surfaces.remove(surface)
-            surfaceMap.remove(surface.name)
-            surface.cleanUp()
+            surfaceMap[name]?.let()
+            {
+                surfaces.remove(it)
+                surfaceMap.remove(it.name)
+                it.cleanUp()
+            }
         }
     }
 
@@ -185,7 +187,8 @@ open class GraphicsImpl : GraphicsInternal
             surfaceMap[name]?.let()
             {
                 Logger.warn("Surface with name: $name already exists. Destroying and creating new...")
-                deleteSurface(name)
+                surfaces.remove(it)
+                it.cleanUp()
             }
             newSurface.init(surfaceWidth, surfaceHeight, true)
             surfaces.add(newSurface)

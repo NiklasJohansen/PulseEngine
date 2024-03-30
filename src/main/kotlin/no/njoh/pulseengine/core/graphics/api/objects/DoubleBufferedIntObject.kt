@@ -115,7 +115,7 @@ class DoubleBufferedIntObject private constructor(
     companion object
     {
         var START_CAPACITY = 1
-        var MIN_RESIZE_CAPACITY = 512 // 2Kb
+        var MIN_RESIZE_CAPACITY = 512 // 2kB
 
         fun createArrayBuffer(capacity: Int = START_CAPACITY, usage: Int = GL_DYNAMIC_DRAW) =
             createBuffer(capacity, usage, GL_ARRAY_BUFFER, null)
@@ -126,8 +126,8 @@ class DoubleBufferedIntObject private constructor(
         fun createUniformBuffer(blockBinding: Int, capacity: Int = START_CAPACITY, usage: Int = GL_DYNAMIC_DRAW) =
             createBuffer(capacity, usage, GL_UNIFORM_BUFFER, blockBinding)
 
-        fun createElementBuffer(sizeInBytes: Int = START_CAPACITY, usage: Int = GL_DYNAMIC_DRAW) =
-            createBuffer(sizeInBytes, usage, GL_ELEMENT_ARRAY_BUFFER, null)
+        fun createElementBuffer(capacity: Int = START_CAPACITY, usage: Int = GL_DYNAMIC_DRAW) =
+            createBuffer(capacity, usage, GL_ELEMENT_ARRAY_BUFFER, null)
 
         private fun createBuffer(capacity: Int, usage: Int, target: Int, blockBinding: Int?): DoubleBufferedIntObject
         {

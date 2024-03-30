@@ -6,7 +6,6 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
-import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject.Companion.QUAD_VERTICES
 import org.lwjgl.opengl.GL20.*
 import java.lang.Float.floatToRawIntBits
 
@@ -33,7 +32,7 @@ class TextureRenderer(
             readOffset = 0
             writeOffset = capacity * stride
             data = FloatArray(capacity * stride * 2)
-            vbo = StaticBufferObject.createBuffer(QUAD_VERTICES)
+            vbo = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/texture.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/texture.frag"

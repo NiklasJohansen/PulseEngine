@@ -5,7 +5,6 @@ import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
-import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject.Companion.QUAD_VERTICES
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
 
@@ -24,7 +23,7 @@ class BindlessTextureRenderer(
         if (!this::program.isInitialized)
         {
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
-            vertexBuffer = StaticBufferObject.createBuffer(QUAD_VERTICES)
+            vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/texture_bindless.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/texture_bindless.frag"

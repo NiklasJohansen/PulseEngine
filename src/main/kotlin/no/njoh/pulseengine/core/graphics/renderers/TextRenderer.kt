@@ -10,7 +10,6 @@ import no.njoh.pulseengine.core.graphics.TextureBank
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
-import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject.Companion.QUAD_VERTICES
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Math.PI
 import org.joml.Math.cos
@@ -42,7 +41,7 @@ class TextRenderer(
         if (!this::program.isInitialized)
         {
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
-            vertexBuffer = StaticBufferObject.createBuffer(QUAD_VERTICES)
+            vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/glyph.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/glyph.frag"

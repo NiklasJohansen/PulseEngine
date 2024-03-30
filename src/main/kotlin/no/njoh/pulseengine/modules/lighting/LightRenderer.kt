@@ -40,7 +40,7 @@ class LightRenderer : BatchRenderer()
         {
             lightBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             edgeBuffer = DoubleBufferedFloatObject.createShaderStorageBuffer(blockBinding = 0)
-            vertexBuffer = StaticBufferObject.createBuffer(floatArrayOf(
+            vertexBuffer = StaticBufferObject.createArrayBuffer(floatArrayOf(
                 0f, 0f, // Top-left vertex
                 1f, 0f, // Top-right vertex
                 0f, 1f, // Bottom-left vertex

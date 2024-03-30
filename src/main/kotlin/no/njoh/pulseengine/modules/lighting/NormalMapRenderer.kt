@@ -5,7 +5,6 @@ import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
-import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject.Companion.QUAD_VERTICES
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
@@ -25,7 +24,7 @@ class NormalMapRenderer(
         if (!this::program.isInitialized)
         {
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
-            vertexBuffer = StaticBufferObject.createBuffer(QUAD_VERTICES)
+            vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/effects/normal_map.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/effects/normal_map.frag"

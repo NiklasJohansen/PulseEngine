@@ -51,28 +51,21 @@ class FrameTextureRenderer(private val program: ShaderProgram)
         glActiveTexture(GL_TEXTURE0)
     }
 
-    fun render(vararg texture: Texture)
+    fun render(vararg textures: Texture)
     {
         glBindVertexArray(vaoId)
 
-        program.bind()
-
-        for ((i, tex) in texture.withIndex())
+        var i = 0
+        while (i < textures.size)
         {
             glActiveTexture(GL_TEXTURE0 + i)
-            glBindTexture(GL_TEXTURE_2D, tex.handle.textureIndex)
+            glBindTexture(GL_TEXTURE_2D, textures[i++].handle.textureIndex)
         }
 
+        program.bind()
         glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
 
-        for (i in texture.indices)
-        {
-            glActiveTexture(GL_TEXTURE0 + i)
-            glBindTexture(GL_TEXTURE_2D, 0)
-        }
-
         glBindVertexArray(0)
-        glActiveTexture(GL_TEXTURE0)
     }
 
     fun render(textureHandles: List<TextureHandle>)
@@ -80,9 +73,10 @@ class FrameTextureRenderer(private val program: ShaderProgram)
         glBindVertexArray(vaoId)
 
         var i = 0
-        textureHandles.forEachFast { handle ->
-            glActiveTexture(GL_TEXTURE0 + i++)
-            glBindTexture(GL_TEXTURE_2D, handle.textureIndex)
+        while (i < textureHandles.size)
+        {
+            glActiveTexture(GL_TEXTURE0 + i)
+            glBindTexture(GL_TEXTURE_2D, textureHandles[i++].textureIndex)
         }
 
         program.bind()
@@ -93,8 +87,6 @@ class FrameTextureRenderer(private val program: ShaderProgram)
 
     fun cleanUp()
     {
-        glDisableVertexAttribArray(0)
-
         // Delete the VBO
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glDeleteBuffers(vboId)

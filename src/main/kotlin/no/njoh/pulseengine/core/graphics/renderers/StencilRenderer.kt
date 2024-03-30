@@ -4,7 +4,6 @@ import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
-import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject.Companion.QUAD_VERTICES
 import org.lwjgl.opengl.GL20.*
 
 class StencilRenderer : BatchRenderer()
@@ -17,7 +16,7 @@ class StencilRenderer : BatchRenderer()
     {
         if (!this::program.isInitialized)
         {
-            vbo = StaticBufferObject.createBuffer(QUAD_VERTICES)
+            vbo = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
                 vertexShaderFileName = "/pulseengine/shaders/default/stencil.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/default/stencil.frag"

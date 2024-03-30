@@ -28,13 +28,10 @@ class Surface2DImpl(
     override var renderTarget = createRenderTarget(context)
 
     private var initialized = false
-    private var initFrameCommands = mutableListOf<() -> Unit>()
     private val postProcessingPipeline = PostProcessingPipeline()
-    private var renderStates = Array<RenderState?>(MAX_BATCH_COUNT * 2) { null }
-    private var readRenderStateOffset = 0
-    private var writeRenderStateOffset = MAX_BATCH_COUNT
-    private var readBatchCount = 0
-    private var writeBatchCount = 0
+    private var readRenderStates = ArrayList<RenderState>(MAX_BATCH_COUNT)
+    private var writeRenderStates = ArrayList<RenderState>(MAX_BATCH_COUNT)
+    private var initFrameCommands = mutableListOf<() -> Unit>()
 
     private var textRenderer: TextRenderer? = null
     private var quadRenderer: QuadBatchRenderer? = null
@@ -75,8 +72,8 @@ class Surface2DImpl(
 
     override fun initFrame()
     {
-        readRenderStateOffset = writeRenderStateOffset.also { writeRenderStateOffset = readRenderStateOffset }
-        readBatchCount = writeBatchCount.also { writeBatchCount = 0 }
+        readRenderStates = writeRenderStates.also { writeRenderStates = readRenderStates }
+        writeRenderStates.clear()
 
         initFrameCommands.forEachFast { it.invoke() }
         initFrameCommands.clear()
@@ -90,15 +87,12 @@ class Surface2DImpl(
     {
         renderTarget.begin()
 
-        for (batchNum in 0 until readBatchCount)
+        var batchNum = 0
+        while (batchNum < readRenderStates.size)
         {
-            // Apply render state for current batch if set, then remove it
-            val index = readRenderStateOffset + batchNum
-            renderStates[index]?.apply(this)
-            renderStates[index] = null
-
-            // Render current batch
+            readRenderStates[batchNum].apply(this)
             renderers.forEachFast { it.renderBatch(this, batchNum) }
+            batchNum++
         }
 
         renderTarget.end()
@@ -298,27 +292,28 @@ class Surface2DImpl(
 
     override fun deletePostProcessingEffect(name: String)
     {
-        val effect = postProcessingPipeline.getEffect(name) ?: return
         runOnInitFrame()
         {
+            val effect = postProcessingPipeline.getEffect(name)
             postProcessingPipeline.removeEffect(name)
-            effect.cleanUp()
+            effect?.cleanUp()
         }
     }
 
     override fun setRenderState(state: RenderState)
     {
-        val count = writeBatchCount
-        if (count == MAX_BATCH_COUNT)
+        if (writeRenderStates.size >= MAX_BATCH_COUNT)
         {
             Logger.error("Reached max batch count of $MAX_BATCH_COUNT")
             return
         }
-        renderers.forEachFast { it.setBatchNumber(count) }
-        renderStates[count + writeRenderStateOffset] = state
-        writeBatchCount++
-    }
 
+        // Finnish current batch if new render states are added after the base state
+        if (writeRenderStates.size > 0)
+            renderers.forEachFast { it.finishCurrentBatch() }
+
+        writeRenderStates.add(state)
+    }
     override fun addRenderer(renderer: BatchRenderer)
     {
         runOnInitFrame()

@@ -8,31 +8,39 @@ import no.njoh.pulseengine.core.graphics.Surface2D
  */
 abstract class BatchRenderer
 {
+    private val batchSize = IntArray(MAX_BATCH_COUNT * 2)
+    private val batchStart = IntArray(MAX_BATCH_COUNT * 2)
+
+    private var currentBatch = 0
+    private var currentStart = 0
+    private var currentSize = 0
     private var readOffset = 0
     private var writeOffset = MAX_BATCH_COUNT
-    private var currentBatchNumber = 0
-    private val batchSize = IntArray(MAX_BATCH_COUNT * 2)
-    private val batchStartIndex = IntArray(MAX_BATCH_COUNT * 2)
 
     /**
      * Called once at the beginning of every frame.
      */
     fun initFrame()
     {
-        readOffset = writeOffset.also { writeOffset = readOffset }
+        finishCurrentBatch()
         onInitFrame()
+
+        readOffset = writeOffset.also { writeOffset = readOffset }
+        currentBatch = 0
+        currentStart = 0
     }
 
     /**
-     * Sets the current bach number and the buffer start index.
+     * Records the size of the current batch and prepares the next.
      */
-    fun setBatchNumber(number: Int)
+    fun finishCurrentBatch()
     {
-        currentBatchNumber = number
-        var startIndex = 0
-        for (num in 0 until number)
-            startIndex += batchSize[num + writeOffset]
-        batchStartIndex[number + writeOffset] = startIndex
+        val i = writeOffset + currentBatch
+        batchSize[i] = currentSize
+        batchStart[i] = currentStart
+        currentStart += currentSize
+        currentSize = 0
+        currentBatch++
     }
 
     /**
@@ -40,7 +48,7 @@ abstract class BatchRenderer
      */
     fun increaseBatchSize()
     {
-        batchSize[currentBatchNumber + writeOffset]++
+        currentSize++
     }
 
     /**
@@ -48,13 +56,12 @@ abstract class BatchRenderer
      */
     fun renderBatch(surface: Surface2D, batchNum: Int)
     {
-        val drawCount = batchSize[batchNum + readOffset]
+        val i = readOffset + batchNum
+        val drawCount = batchSize[i]
         if (drawCount == 0)
             return
 
-        onRenderBatch(surface, batchStartIndex[batchNum + readOffset], drawCount)
-
-        batchSize[batchNum + readOffset] = 0
+        onRenderBatch(surface, batchStart[i], drawCount)
     }
 
     /**

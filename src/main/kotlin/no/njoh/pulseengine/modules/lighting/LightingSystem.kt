@@ -29,31 +29,20 @@ import kotlin.math.*
 @ScnIcon("LIGHT_BULB")
 open class LightingSystem : SceneSystem()
 {
-    @ScnProp(i = 1) var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
-    @ScnProp(i = 2, min = 0f, max = 10f) var dithering = 0.7f
-    @ScnProp(i = 3, min = 0f, max = 100f) var fogIntensity = 0f
-    @ScnProp(i = 4, min = 0f, max = 100f) var fogTurbulence = 1.5f
-    @ScnProp(i = 5, min = 0f, max = 5f) var fogScale = 0.3f
+    @ScnProp(i = 1)                        var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
+    @ScnProp(i = 2, min = 0f, max = 10f)   var dithering = 0.7f
+    @ScnProp(i = 3, min = 0f, max = 100f)  var fogIntensity = 0f
+    @ScnProp(i = 4, min = 0f, max = 100f)  var fogTurbulence = 1.5f
+    @ScnProp(i = 5, min = 0f, max = 5f)    var fogScale = 0.3f
     @ScnProp(i = 6, min = 0.01f, max = 5f) var textureScale = 1f
-    @ScnProp(i = 7) var textureFilter = TextureFilter.LINEAR
-    @ScnProp(i = 8) var textureFormat = TextureFormat.RGBA16F
-    @ScnProp(i = 9) var multisampling = Multisampling.NONE
-    @ScnProp(i = 10) var enableFXAA = true
-    @ScnProp(i = 11) var useNormalMap = false
-    @ScnProp(i = 12) var enableLightSpill = true
-    @ScnProp(i = 13) var correctOffset = true
-    @ScnProp(i = 14) var drawDebug = false
-
-    private val normalMapRenderPass = RenderPass(
-        surfaceName = NORMAL_SURFACE_NAME,
-        targetType = NormalMapped::class
-    )
-
-    private val occluderRenderPass = RenderPass(
-        surfaceName = OCCLUDER_SURFACE_NAME,
-        targetType = LightOccluder::class,
-        drawCondition = { (it as? LightOccluder)?.castShadows ?: true }
-    )
+    @ScnProp(i = 7)                        var textureFilter = TextureFilter.LINEAR
+    @ScnProp(i = 8)                        var textureFormat = TextureFormat.RGBA16F
+    @ScnProp(i = 9)                        var multisampling = Multisampling.NONE
+    @ScnProp(i = 10)                       var enableFXAA = true
+    @ScnProp(i = 11)                       var useNormalMap = false
+    @ScnProp(i = 12)                       var enableLightSpill = true
+    @ScnProp(i = 13)                       var correctOffset = true
+    @ScnProp(i = 14)                       var drawDebug = false
 
     private var xMin = 0f
     private var yMin = 0f
@@ -67,21 +56,34 @@ open class LightingSystem : SceneSystem()
     private var isUsingNormalMap = false
     private var isUsingOccluderMap = false
 
+    private val normalMapRenderPass = RenderPass(
+        surfaceName = NORMAL_SURFACE_NAME,
+        targetType = NormalMapped::class
+    )
+
+    private val occluderRenderPass = RenderPass(
+        surfaceName = OCCLUDER_SURFACE_NAME,
+        targetType = LightOccluder::class,
+        drawCondition = { (it as? LightOccluder)?.castShadows ?: true }
+    )
+
     override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface(
             name = LIGHT_SURFACE_NAME,
             camera = engine.gfx.mainCamera,
             isVisible = false,
-            backgroundColor = Color(0f, 0f, 0f, 0f),
+            backgroundColor = Color.BLANK,
             textureFormat = textureFormat,
             textureFilter = textureFilter,
             textureScale = textureScale,
             multisampling = multisampling,
             blendFunction = ADDITIVE,
             attachments = listOf(COLOR_TEXTURE_0)
-        ).apply {
-            addRenderer(LightRenderer())
+        ).also {
+            it.addRenderer(LightRenderer())
+            configureNormalMap(engine, it, useNormalMap)
+            configureOccluderMap(engine, it, enableLightSpill)
         }
 
         // Add lighting as a post-processing effect to main surface
@@ -90,18 +92,18 @@ open class LightingSystem : SceneSystem()
         )
 
         // Add metrics
-        engine.data.addMetric("Lights")                { sample(lightCount.toFloat()) }
-        engine.data.addMetric("Edges")                 { sample(edgeCount.toFloat()) }
-        engine.data.addMetric("Shadow casters")        { sample(shadowCasterCount.toFloat()) }
-        engine.data.addMetric("Lighting CPU (MS)", )   { sample(cpuRenderTimeMs) }
-        engine.data.addMetric("Lighting GPU (MS)", )   { sample(gpuRenderTimeMs) }
+        engine.data.addMetric("Lights")              { sample(lightCount.toFloat())        }
+        engine.data.addMetric("Edges")               { sample(edgeCount.toFloat())         }
+        engine.data.addMetric("Shadow casters")      { sample(shadowCasterCount.toFloat()) }
+        engine.data.addMetric("Lighting CPU (MS)", ) { sample(cpuRenderTimeMs)             }
+        engine.data.addMetric("Lighting GPU (MS)", ) { sample(gpuRenderTimeMs)             }
     }
 
     private fun configureNormalMap(engine: PulseEngine, lightSurface: Surface2D, isEnabled: Boolean)
     {
         if (isEnabled && !isUsingNormalMap)
         {
-            Logger.debug("Enabling normal maps for lighting")
+            Logger.debug("LightingSystem: enabling normal maps")
             engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(normalMapRenderPass)
             val surface = engine.gfx.createSurface(
                 name = NORMAL_SURFACE_NAME,
@@ -118,7 +120,7 @@ open class LightingSystem : SceneSystem()
         }
         else if (!isEnabled && isUsingNormalMap)
         {
-            Logger.debug("Disabling normal maps for lighting")
+            Logger.debug("LightingSystem: disabling normal maps")
             engine.scene.getSystemOfType<EntityRenderer>()?.removeRenderPass(normalMapRenderPass)
             engine.gfx.deleteSurface(NORMAL_SURFACE_NAME)
             isUsingNormalMap = false
@@ -129,7 +131,7 @@ open class LightingSystem : SceneSystem()
     {
         if (isEnabled && !isUsingOccluderMap)
         {
-            Logger.debug("Enabling occluder map for lighting")
+            Logger.debug("LightingSystem: enabling occluder map")
             engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(occluderRenderPass)
             engine.gfx.createSurface(
                 name = OCCLUDER_SURFACE_NAME,
@@ -142,7 +144,7 @@ open class LightingSystem : SceneSystem()
         }
         else if (!isEnabled && isUsingOccluderMap)
         {
-            Logger.debug("Disabling occluder map for lighting")
+            Logger.debug("LightingSystem: disabling occluder map")
             engine.scene.getSystemOfType<EntityRenderer>()?.removeRenderPass(occluderRenderPass)
             engine.gfx.deleteSurface(OCCLUDER_SURFACE_NAME)
             isUsingOccluderMap = false
