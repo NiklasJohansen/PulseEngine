@@ -92,7 +92,8 @@ open class Scene(
                 it.onStateChanged(engine)
             }
 
-            it.onUpdate(engine)
+            if (it.enabled)
+                it.onUpdate(engine)
         }
 
         engine.scene.forEachEntityTypeList { entityList ->
