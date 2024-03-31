@@ -19,6 +19,7 @@ import no.njoh.pulseengine.core.input.InputImpl
 import no.njoh.pulseengine.core.input.InputInternal
 import no.njoh.pulseengine.core.scene.SceneManagerImpl
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
+import no.njoh.pulseengine.core.shared.primitives.GameLoopMode.MULTITHREADED
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
 import no.njoh.pulseengine.core.shared.utils.FileWatcher
@@ -55,22 +56,20 @@ class PulseEngineImpl(
     private val idleInput = InputIdle(input)
     private val activeInput = input
     private lateinit var focusArea: FocusArea
-    private lateinit var gameThread: Thread
 
     init { PulseEngine.GLOBAL_INSTANCE = this }
 
     fun run(game: PulseEngineGame)
     {
-        // Setup engine and game
+        // Setup
         initEngine()
         initGame(game)
         postGameSetup()
 
-        // Start loops
-        startGameLoop(game)
-        startMainLoop()
+        // Run
+        runGameLoop(game)
 
-        // Clean up game and engine
+        // Destroy
         game.onDestroy()
         destroy()
     }
@@ -146,8 +145,8 @@ class PulseEngineImpl(
 
     private fun initGame(game: PulseEngineGame)
     {
-        Logger.info("Initializing game (${game::class.simpleName})")
         val startTime = System.nanoTime()
+        Logger.info("Initializing game (${game::class.simpleName})")
         game.onCreate()
         Logger.debug("Finished initializing game in: ${startTime.toNowFormatted()}")
     }
@@ -167,49 +166,65 @@ class PulseEngineImpl(
         Logger.info("Finished initialization in ${engineStartTime.toNowFormatted()}")
     }
 
-    private fun startGameLoop(game: PulseEngineGame)
+    private fun runGameLoop(game: PulseEngineGame)
     {
-        gameThread = Thread()
+        var running = true
+        val isMultithreaded = (config.gameLoopMode == MULTITHREADED)
+
+        if (isMultithreaded)
         {
-            while (true)
-            {
-                beginFrame.await()
-                update(game)
-                fixedUpdate(game)
-                render(game)
-                endFrame.await()
-            }
+            val logicLoop = { while (running) runSyncronized { updateGameLogic(game) } }
+            Thread(logicLoop, "logic").start()
         }
-        gameThread.name = "game"
-        gameThread.start()
+
+        while (running)
+        {
+            beginFrame()
+
+            if (isMultithreaded)
+            {
+                // Draw previous frame simultaneously as updating next game state in logic thread
+                runSyncronized { drawFrame() }
+            }
+            else
+            {
+                updateGameLogic(game)
+                drawFrame()
+            }
+
+            endFrame()
+            running = window.isOpen()
+        }
     }
 
-    private fun startMainLoop()
+    private fun beginFrame()
     {
-        while (window.isOpen())
+        data.startFrameTimer()
+        gfx.initFrame()
+        updateInput()
+    }
+
+    private fun updateGameLogic(game: PulseEngineGame)
+    {
+        update(game)
+        fixedUpdate(game)
+        render(game)
+    }
+
+    private fun drawFrame()
+    {
+        data.measureGpuRenderTime()
         {
-            data.measureTotalFrameTime()
-            {
-                // Set up frame
-                gfx.initFrame()
-                audio.cleanSources()
-                updateInput()
-
-                // Wait for every thread to be ready
-                beginFrame.await()
-
-                // Let GPU draw previous frame
-                data.measureGpuRenderTime()
-                {
-                    gfx.drawFrame()
-                    window.swapBuffers()
-                }
-
-                // Wait for every thread to finish
-                endFrame.await()
-                syncFps()
-            }
+            gfx.drawFrame()
+            window.swapBuffers()
         }
+    }
+
+    private fun endFrame()
+    {
+        audio.cleanSources()
+        frameRateLimiter.sync(config.targetFps)
+        data.calculateFrameRate()
     }
 
     private fun update(game: PulseEngineGame)
@@ -250,7 +265,7 @@ class PulseEngineImpl(
         }
 
         if (updated)
-            data.fixedUpdateTimeMS = ((glfwGetTime() - time) * 1000.0).toFloat()
+            data.fixedUpdateTimeMs = ((glfwGetTime() - time) * 1000.0).toFloat()
     }
 
     private fun render(game: PulseEngineGame)
@@ -278,15 +293,11 @@ class PulseEngineImpl(
         input.requestFocus(focusArea)
     }
 
-    private fun syncFps()
-    {
-        data.calculateFrameRate()
-        frameRateLimiter.sync(config.targetFps)
-    }
-
     private fun destroy()
     {
-        gameThread.stop()
+        // Stop logic thread if running
+        Thread.getAllStackTraces().keys.find { it.name == "logic" }?.interrupt()
+
         FileWatcher.shutdown()
         scene.cleanUp()
         widget.cleanUp(this)
@@ -295,6 +306,13 @@ class PulseEngineImpl(
         activeInput.cleanUp()
         gfx.cleanUp()
         window.cleanUp()
+    }
+
+    private inline fun runSyncronized(action: () -> Unit)
+    {
+        beginFrame.await() // Waits for all threads to be ready
+        action()           // Runs the actions
+        endFrame.await()   // Waits for all threads to be finished
     }
 
     private fun printLogo() = println("""

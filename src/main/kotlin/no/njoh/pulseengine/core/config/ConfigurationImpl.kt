@@ -1,10 +1,13 @@
 package no.njoh.pulseengine.core.config
 
+import no.njoh.pulseengine.core.shared.primitives.GameLoopMode
+import no.njoh.pulseengine.core.shared.primitives.GameLoopMode.*
 import no.njoh.pulseengine.core.window.ScreenMode
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadStream
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
+import no.njoh.pulseengine.core.window.ScreenMode.*
 import java.io.FileNotFoundException
 import java.lang.Exception
 import java.util.Properties
@@ -13,12 +16,13 @@ import kotlin.reflect.KProperty
 
 open class ConfigurationImpl : ConfigurationInternal
 {
-    override var gameName      by StringConfig("ExampleGame")
-    override var targetFps     by IntConfig(60)
-    override var fixedTickRate by IntConfig(60)
-    override var windowWidth   by IntConfig(1000)
-    override var windowHeight  by IntConfig(800)
-    override var screenMode    by EnumConfig(ScreenMode.WINDOWED, ScreenMode::class)
+    override var gameName: String           by StringConfig("ExampleGame")
+    override var targetFps: Int             by IntConfig(60)
+    override var fixedTickRate: Int         by IntConfig(60)
+    override var windowWidth: Int           by IntConfig(1000)
+    override var windowHeight: Int          by IntConfig(800)
+    override var screenMode: ScreenMode     by EnumConfig(WINDOWED, ScreenMode::class)
+    override var gameLoopMode: GameLoopMode by EnumConfig(MULTITHREADED, GameLoopMode::class)
 
     private val properties = Properties()
     private var onChangeCallback = { prop: KProperty<*>, value: Any -> }

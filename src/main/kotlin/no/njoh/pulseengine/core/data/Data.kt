@@ -5,16 +5,16 @@ import no.njoh.pulseengine.core.data.FileFormat.JSON
 abstract class Data
 {
     abstract val currentFps: Int
-    abstract val totalFrameTime: Float
+    abstract val totalFrameTimeMs: Float
     abstract val gpuRenderTimeMs: Float
     abstract val cpuRenderTimeMs: Float
-    abstract val updateTimeMS: Float
-    abstract val fixedUpdateTimeMS: Float
+    abstract val updateTimeMs: Float
+    abstract val fixedUpdateTimeMs: Float
     abstract val fixedDeltaTime: Float
     abstract val deltaTime: Float
     abstract val interpolation: Float
-    abstract val totalMemory: Long
-    abstract val usedMemory: Long
+    abstract val totalMemoryKb: Long
+    abstract val usedMemoryKb: Long
     abstract val metrics: List<Metric>
     abstract var saveDirectory: String
 

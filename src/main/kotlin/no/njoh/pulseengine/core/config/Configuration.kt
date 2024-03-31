@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.config
 
+import no.njoh.pulseengine.core.shared.primitives.GameLoopMode
 import no.njoh.pulseengine.core.window.ScreenMode
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
@@ -23,6 +24,7 @@ interface ConfigurationInternal : Configuration
     val windowWidth: Int
     val windowHeight: Int
     val screenMode: ScreenMode
+    var gameLoopMode: GameLoopMode
 
     fun init()
     fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
