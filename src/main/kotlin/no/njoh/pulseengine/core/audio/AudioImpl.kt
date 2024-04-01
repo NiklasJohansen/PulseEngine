@@ -32,6 +32,11 @@ open class AudioImpl : AudioInternal
         setupDevice(alcOpenDevice(null as ByteBuffer?))
     }
 
+    override fun enableInCurrentThread()
+    {
+        alcSetThreadContext(context)
+    }
+
     private fun setupDevice(device: Long)
     {
         check(device != MemoryUtil.NULL) { "Failed to open the default output device" }
@@ -42,7 +47,7 @@ open class AudioImpl : AudioInternal
         context = alcCreateContext(device, null as IntBuffer?)
         check(context != MemoryUtil.NULL) { "Failed to create an OpenAL context" }
 
-        alcSetThreadContext(context)
+        enableInCurrentThread()
         createCapabilities(deviceCaps)
 
         val numHrtf = alcGetInteger(device, ALC_NUM_HRTF_SPECIFIERS_SOFT)
@@ -127,7 +132,7 @@ open class AudioImpl : AudioInternal
         }
     }
 
-    override fun cleanSources()
+    override fun update()
     {
        sources.removeWhen()
        {
@@ -143,7 +148,7 @@ open class AudioImpl : AudioInternal
         this.outputChangedCallback = callback
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
         Logger.info("Cleaning up audio (${this::class.simpleName})")
         sources.forEachFast { alDeleteSources(it) }

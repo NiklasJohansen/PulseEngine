@@ -55,6 +55,7 @@ class PulseEngineImpl(
     private val endFrame = CyclicBarrier(2)
     private val idleInput = InputIdle(input)
     private val activeInput = input
+    private var logicThread: Thread? = null
     private lateinit var focusArea: FocusArea
 
     init { PulseEngine.GLOBAL_INSTANCE = this }
@@ -173,8 +174,10 @@ class PulseEngineImpl(
 
         if (isMultithreaded)
         {
-            val logicLoop = { while (running) runSyncronized { updateGameLogic(game) } }
-            Thread(logicLoop, "logic").start()
+            runInLogicThread()
+            {
+                while (running) runSyncronized { updateLogic(game) }
+            }
         }
 
         while (running)
@@ -183,12 +186,12 @@ class PulseEngineImpl(
 
             if (isMultithreaded)
             {
-                // Draw previous frame simultaneously as updating next game state in logic thread
+                // Draw previous frame simultaneously with logic thread updating next game state
                 runSyncronized { drawFrame() }
             }
             else
             {
-                updateGameLogic(game)
+                updateLogic(game)
                 drawFrame()
             }
 
@@ -204,7 +207,7 @@ class PulseEngineImpl(
         updateInput()
     }
 
-    private fun updateGameLogic(game: PulseEngineGame)
+    private fun updateLogic(game: PulseEngineGame)
     {
         update(game)
         fixedUpdate(game)
@@ -222,7 +225,7 @@ class PulseEngineImpl(
 
     private fun endFrame()
     {
-        audio.cleanSources()
+        audio.update()
         frameRateLimiter.sync(config.targetFps)
         data.calculateFrameRate()
     }
@@ -295,23 +298,31 @@ class PulseEngineImpl(
 
     private fun destroy()
     {
-        // Stop logic thread if running
-        Thread.getAllStackTraces().keys.find { it.name == "logic" }?.interrupt()
-
         FileWatcher.shutdown()
+        logicThread?.interrupt()
         scene.cleanUp()
         widget.cleanUp(this)
-        audio.cleanUp()
+        audio.destroy()
         asset.cleanUp()
         activeInput.cleanUp()
         gfx.cleanUp()
         window.cleanUp()
     }
 
+    private fun runInLogicThread(action: () -> Unit)
+    {
+        val runnable =
+        {
+            audio.enableInCurrentThread()
+            action()
+        }
+        logicThread = Thread(runnable, "logic").apply { start() }
+    }
+
     private inline fun runSyncronized(action: () -> Unit)
     {
         beginFrame.await() // Waits for all threads to be ready
-        action()           // Runs the actions
+        action()           // Runs the action
         endFrame.await()   // Waits for all threads to be finished
     }
 
