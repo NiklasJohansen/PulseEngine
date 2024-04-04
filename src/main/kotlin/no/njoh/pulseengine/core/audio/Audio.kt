@@ -30,6 +30,8 @@ interface AudioInternal : Audio
 {
     fun init()
     fun enableInCurrentThread()
+    fun uploadSound(sound: Sound)
+    fun deleteSound(sound: Sound)
     fun setOnOutputDeviceChanged(callback: () -> Unit)
     fun update()
     fun destroy()

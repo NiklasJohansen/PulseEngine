@@ -10,7 +10,7 @@ abstract class AssetManager
     /**
      * Adds the [asset] to the [AssetManager] and returns it.
      */
-    abstract fun <T : Asset> add(asset: T): T
+    abstract fun <T : Asset> load(asset: T)
 
     /**
      * Removes the [Asset] with given [assetName] and calls its delete function.
@@ -35,37 +35,37 @@ abstract class AssetManager
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Texture].
      */
-    abstract fun loadTexture(fileName: String, assetName: String, filter: TextureFilter = LINEAR, mipLevels: Int = 5): Texture
+    abstract fun loadTexture(fileName: String, assetName: String, filter: TextureFilter = LINEAR, mipLevels: Int = 5)
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [SpriteSheet].
      */
-    abstract fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet
+    abstract fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int)
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Font].
      */
-    abstract fun loadFont(fileName: String, assetName: String, fontSize: Float = 80f): Font
+    abstract fun loadFont(fileName: String, assetName: String, fontSize: Float = 80f)
+
+    /**
+     * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Sound].
+     */
+    abstract fun loadSound(fileName: String, assetName: String)
+
+    /**
+     * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Text].
+     */
+    abstract fun loadText(fileName: String, assetName: String)
+
+    /**
+     * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Binary].
+     */
+    abstract fun loadBinary(fileName: String, assetName: String)
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Cursor].
      */
     abstract fun loadCursor(fileName: String, assetName: String, xHotSpot: Int, yHotSpot: Int): Cursor
-
-    /**
-     * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Sound].
-     */
-    abstract fun loadSound(fileName: String, assetName: String): Sound
-
-    /**
-     * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Text].
-     */
-    abstract fun loadText(fileName: String, assetName: String): Text
-
-    /**
-     * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Binary].
-     */
-    abstract fun loadBinary(fileName: String, assetName: String): Binary
 
     // Internal abstract versions of the public inline functions
     @PublishedApi internal abstract fun <T : Asset> getAllOfType(type: KClass<T>): List<T>
@@ -74,7 +74,7 @@ abstract class AssetManager
 
 abstract class AssetManagerInternal : AssetManager()
 {
-    abstract fun loadInitialAssets()
+    abstract fun update()
     abstract fun setOnAssetLoaded(callback: (Asset) -> Unit)
     abstract fun setOnAssetRemoved(callback: (Asset) -> Unit)
     abstract fun cleanUp()

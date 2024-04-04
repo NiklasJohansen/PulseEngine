@@ -73,7 +73,7 @@ open class AudioImpl : AudioInternal
     {
         val sourceId = alGenSources()
         alSourcei(sourceId, AL_SOURCE_RELATIVE, AL_TRUE) // Research AL_SOURCE_ABSOLUTE
-        alSourcei(sourceId, AL_BUFFER, sound.pointer)
+        alSourcei(sourceId, AL_BUFFER, sound.id)
         setVolume(sourceId, volume)
         setLooping(sourceId, looping)
         sources.add(sourceId)
@@ -141,6 +141,24 @@ open class AudioImpl : AudioInternal
                alDeleteSources(it)
            stopped
        }
+    }
+
+    override fun uploadSound(sound: Sound)
+    {
+        if (sound.buffer == null)
+        {
+            Logger.error("Failed to upload sound: ${sound.fileName} - buffer is null")
+            return
+        }
+
+        val id = alGenBuffers()
+        alBufferData(id, AL_FORMAT_MONO16, sound.buffer!!, sound.sampleRate)
+        sound.finalize(id)
+    }
+
+    override fun deleteSound(sound: Sound)
+    {
+        alDeleteBuffers(sound.id)
     }
 
     override fun setOnOutputDeviceChanged(callback: () -> Unit)

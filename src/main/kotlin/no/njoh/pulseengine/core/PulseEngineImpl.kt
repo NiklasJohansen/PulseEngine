@@ -102,26 +102,28 @@ class PulseEngineImpl(
                 input.init(window.windowHandle)
         }
 
-        // Reload sound buffers to new OpenAL context
+        // Reload sound buffers to new OpenAL context when output device changes
         audio.setOnOutputDeviceChanged {
-            asset.getAllOfType<Sound>().forEachFast { it.reloadBuffer() }
+            asset.getAllOfType<Sound>().forEachFast { audio.uploadSound(it) }
         }
 
-        // Notify gfx implementation about loaded textures
+        // Notify gfx and audio implementation about loaded textures and sounds
         asset.setOnAssetLoaded {
             when (it)
             {
                 is Texture -> gfx.uploadTexture(it)
                 is Font -> gfx.uploadTexture(it.charTexture)
+                is Sound -> audio.uploadSound(it)
             }
         }
 
-        // Notify gfx implementation about deleted textures
+        // Notify gfx and audio implementation about deleted textures and sounds
         asset.setOnAssetRemoved {
             when (it)
             {
                 is Texture -> gfx.deleteTexture(it)
                 is Font -> gfx.deleteTexture(it.charTexture)
+                is Sound -> audio.deleteSound(it)
             }
         }
 
@@ -154,8 +156,8 @@ class PulseEngineImpl(
 
     private fun postGameSetup()
     {
-        // Load assets from disk
-        asset.loadInitialAssets()
+        // Load initial assets from disk
+        asset.update()
 
         // Initialize widgets
         widget.init(this)
@@ -203,6 +205,8 @@ class PulseEngineImpl(
     private fun beginFrame()
     {
         data.startFrameTimer()
+        asset.update()
+        audio.update()
         gfx.initFrame()
         updateInput()
     }
@@ -225,7 +229,6 @@ class PulseEngineImpl(
 
     private fun endFrame()
     {
-        audio.update()
         frameRateLimiter.sync(config.targetFps)
         data.calculateFrameRate()
     }
