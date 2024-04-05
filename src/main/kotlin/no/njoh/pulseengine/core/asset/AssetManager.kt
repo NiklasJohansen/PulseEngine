@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.asset
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
+import no.njoh.pulseengine.core.input.CursorType
 import kotlin.reflect.KClass
 
 abstract class AssetManager
@@ -65,7 +66,7 @@ abstract class AssetManager
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Cursor].
      */
-    abstract fun loadCursor(fileName: String, assetName: String, xHotSpot: Int, yHotSpot: Int): Cursor
+    abstract fun loadCursor(fileName: String, assetName: String, type: CursorType, xHotSpot: Int, yHotSpot: Int)
 
     // Internal abstract versions of the public inline functions
     @PublishedApi internal abstract fun <T : Asset> getAllOfType(type: KClass<T>): List<T>

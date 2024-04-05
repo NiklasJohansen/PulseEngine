@@ -29,7 +29,9 @@ class InputIdle(private val activeInput: InputInternal) : InputInternal
     override fun setClipboard(text: String)  {}
     override fun getClipboard(): String = ""
     override fun setOnFocusChanged(callback: (Boolean) -> Unit) = activeInput.setOnFocusChanged(callback)
-    override fun loadCursors(loader: (String, String, Int, Int) -> Cursor) = activeInput.loadCursors(loader)
+    override fun createCursor(cursor: Cursor) = activeInput.createCursor(cursor)
+    override fun deleteCursor(cursor: Cursor) = activeInput.deleteCursor(cursor)
+    override fun getCursorsToLoad() = activeInput.getCursorsToLoad()
     override fun setOnKeyPressed(callback: (Key) -> Unit) = activeInput.setOnKeyPressed(callback)
     override fun requestFocus(focusArea: FocusArea) = activeInput.requestFocus(focusArea)
     override fun acquireFocus(focusArea: FocusArea) = activeInput.acquireFocus(focusArea)

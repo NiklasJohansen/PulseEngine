@@ -2,7 +2,6 @@ package no.njoh.pulseengine.core.input
 
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Cursor
-import no.njoh.pulseengine.core.asset.types.Cursor.Companion.createWithHandle
 import no.njoh.pulseengine.core.console.Subscription
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.lastOrNullFast
@@ -10,6 +9,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*
+import org.lwjgl.glfw.GLFWImage
 
 open class InputImpl : InputInternal
 {
@@ -113,26 +113,14 @@ open class InputImpl : InputInternal
             .filter { glfwJoystickPresent(it) && glfwJoystickIsGamepad(it) }
             .map { Gamepad(id = it) }
             .toMutableList()
-    }
 
-    override fun loadCursors(loader: (String, String, Int, Int) -> Cursor)
-    {
-        for (type in values())
-        {
-            cursors[type] = when (type)
-            {
-                ARROW -> createWithHandle(glfwCreateStandardCursor(0x00036001))
-                HAND -> createWithHandle(glfwCreateStandardCursor(0x00036004))
-                IBEAM -> createWithHandle(glfwCreateStandardCursor(0x00036002))
-                CROSSHAIR -> createWithHandle(glfwCreateStandardCursor(0x00036003))
-                HORIZONTAL_RESIZE -> createWithHandle(glfwCreateStandardCursor(0x00036005))
-                VERTICAL_RESIZE -> createWithHandle(glfwCreateStandardCursor(0x00036006))
-                MOVE -> loader.invoke("/pulseengine/cursors/move.png", "move_cursor", 8, 8)
-                ROTATE -> loader.invoke("/pulseengine/cursors/rotate.png", "rotate_cursor", 6, 6)
-                TOP_LEFT_RESIZE -> loader.invoke("/pulseengine/cursors/resize_top_left.png", "resize_top_left_cursor", 8, 8)
-                TOP_RIGHT_RESIZE -> loader.invoke("/pulseengine/cursors/resize_top_right.png", "resize_top_right_cursor", 8, 8)
-            }
-        }
+        // Create cursors from built in shapes
+        cursors[ARROW]             = createBuiltInCursor(ARROW,0x00036001)
+        cursors[HAND]              = createBuiltInCursor(HAND,0x00036004)
+        cursors[IBEAM]             = createBuiltInCursor(IBEAM,0x00036002)
+        cursors[CROSSHAIR]         = createBuiltInCursor(CROSSHAIR,0x00036003)
+        cursors[HORIZONTAL_RESIZE] = createBuiltInCursor(HORIZONTAL_RESIZE,0x00036005)
+        cursors[VERTICAL_RESIZE]   = createBuiltInCursor(VERTICAL_RESIZE,0x00036006)
     }
 
     override fun isPressed(btn: Mouse): Boolean = pressed[btn.code] > 0
@@ -265,9 +253,35 @@ open class InputImpl : InputInternal
         }
     }
 
+    override fun getCursorsToLoad() = listOf(
+        Cursor("/pulseengine/cursors/move.png", "move_cursor", MOVE, 8, 8),
+        Cursor("/pulseengine/cursors/rotate.png", "rotate_cursor", ROTATE, 6, 6),
+        Cursor("/pulseengine/cursors/resize_top_left.png", "top_left_resize_cursor", TOP_LEFT_RESIZE, 8, 8),
+        Cursor("/pulseengine/cursors/resize_top_right.png", "top_right_resize_tcursor", TOP_RIGHT_RESIZE, 8, 8)
+    )
+
+    override fun createCursor(cursor: Cursor)
+    {
+        val cursorImg = GLFWImage.create()
+        cursorImg.width(cursor.width)
+        cursorImg.height(cursor.height)
+        cursorImg.pixels(cursor.pixelBuffer!!)
+        val handle = glfwCreateCursor(cursorImg, cursor.xHotspot, cursor.yHotspot)
+        cursor.finalize(handle)
+        cursors[cursor.type] = cursor
+    }
+
+    override fun deleteCursor(cursor: Cursor)
+    {
+        glfwDestroyCursor(cursor.handle)
+    }
+
     override fun cleanUp()
     {
         Logger.info("Cleaning up input (${this::class.simpleName})")
         glfwFreeCallbacks(windowHandle)
     }
+
+    private fun createBuiltInCursor(type: CursorType, shape: Int): Cursor =
+        Cursor("", "standard_cursor", type, 0, 0).apply { finalize(handle = glfwCreateStandardCursor(shape)) }
 }

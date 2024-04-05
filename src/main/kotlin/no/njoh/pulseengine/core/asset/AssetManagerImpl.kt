@@ -5,6 +5,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadFileNames
@@ -45,8 +46,8 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun loadBinary(fileName: String, assetName: String) =
         load(Binary(fileName, assetName))
 
-    override fun loadCursor(fileName: String, assetName: String, xHotSpot: Int, yHotSpot: Int) =
-        Cursor(fileName, assetName, xHotSpot, yHotSpot).also { load(it) }
+    override fun loadCursor(fileName: String, assetName: String, type: CursorType, xHotSpot: Int, yHotSpot: Int) =
+        load(Cursor(fileName, assetName, type, xHotSpot, yHotSpot))
 
     override fun loadAllTextures(directory: String)
     {

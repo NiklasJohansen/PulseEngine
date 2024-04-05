@@ -1,12 +1,10 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadStream
 import org.lwjgl.BufferUtils
-import org.lwjgl.glfw.GLFW
-import org.lwjgl.glfw.GLFW.glfwDestroyCursor
-import org.lwjgl.glfw.GLFWImage
 import java.nio.ByteBuffer
 import javax.imageio.ImageIO
 
@@ -14,11 +12,21 @@ import javax.imageio.ImageIO
 class Cursor(
     fileName: String,
     name: String,
-    private val xHotspot: Int,
-    private val yHotspot: Int
+    val type: CursorType,
+    val xHotspot: Int,
+    val yHotspot: Int
 ) : Asset(name, fileName) {
 
     var handle: Long = -1
+        private set
+
+    var width: Int = 0
+        private set
+
+    var height: Int = 0
+        private set
+
+    var pixelBuffer: ByteBuffer? = null
         private set
 
     override fun load()
@@ -27,10 +35,10 @@ class Cursor(
             Logger.error("Failed to find and load Cursor asset: $fileName")
             return
         }
+
         val image = ImageIO.read(stream)
         val width = image.width
         val height = image.height
-
         val pixels = IntArray(width * height)
         image.getRGB(0, 0, width, height, pixels, 0, width)
 
@@ -48,23 +56,16 @@ class Cursor(
         }
         buffer.flip()
 
-        val cursorImg = GLFWImage.create()
-        cursorImg.width(width)
-        cursorImg.height(height)
-        cursorImg.pixels(buffer)
-
-        handle = GLFW.glfwCreateCursor(cursorImg, xHotspot, yHotspot)
+        this.pixelBuffer = buffer
+        this.width = width
+        this.height = height
     }
 
-    override fun delete()
-    {
-        glfwDestroyCursor(handle)
-    }
+    override fun delete() { }
 
-    companion object
+    fun finalize(handle: Long)
     {
-        fun createWithHandle(handle: Long): Cursor =
-            Cursor("", "standard_cursor", 0, 0)
-                .apply { this.handle = handle }
+        this.handle = handle
+        this.pixelBuffer = null
     }
 }

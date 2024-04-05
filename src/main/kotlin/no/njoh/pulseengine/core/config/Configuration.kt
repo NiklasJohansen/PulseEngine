@@ -10,6 +10,7 @@ interface Configuration
     var gameName: String
     var targetFps: Int
     var fixedTickRate: Int
+    var gameLoopMode: GameLoopMode
 
     fun load(fileName: String)
     fun getString(name: String): String?
@@ -24,7 +25,6 @@ interface ConfigurationInternal : Configuration
     val windowWidth: Int
     val windowHeight: Int
     val screenMode: ScreenMode
-    var gameLoopMode: GameLoopMode
 
     fun init()
     fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
