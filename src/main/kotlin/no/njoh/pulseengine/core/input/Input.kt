@@ -44,5 +44,7 @@ interface InputInternal : Input
     fun cleanUp()
     fun pollEvents()
     fun setOnFocusChanged(callback: (Boolean) -> Unit)
-    fun loadCursors(loader: (String, String, Int, Int) -> Cursor)
+    fun createCursor(cursor: Cursor)
+    fun deleteCursor(cursor: Cursor)
+    fun getCursorsToLoad(): List<Cursor>
 }

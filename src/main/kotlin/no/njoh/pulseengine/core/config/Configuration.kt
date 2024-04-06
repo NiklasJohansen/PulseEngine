@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.config
 
+import no.njoh.pulseengine.core.shared.primitives.GameLoopMode
 import no.njoh.pulseengine.core.window.ScreenMode
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
@@ -9,6 +10,7 @@ interface Configuration
     var gameName: String
     var targetFps: Int
     var fixedTickRate: Int
+    var gameLoopMode: GameLoopMode
 
     fun load(fileName: String)
     fun getString(name: String): String?

@@ -23,6 +23,7 @@ open class GraphicsImpl : GraphicsInternal
 
     private lateinit var renderer: FrameTextureRenderer
 
+    private val initFrameCommands = mutableListOf<() -> Unit>()
     private val surfaces = mutableListOf<Surface2DInternal>()
     private val surfaceMap = mutableMapOf<String, Surface2DInternal>()
     private var zOrder = 0
@@ -43,7 +44,6 @@ open class GraphicsImpl : GraphicsInternal
             textureFilter = LINEAR,
             backgroundColor = defaultClearColor.copy(),
             attachments = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
-            initializeSurface = false // Will be initialized in next step
         )
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
@@ -95,6 +95,9 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun initFrame()
     {
+        initFrameCommands.forEachFast { it.invoke() }
+        initFrameCommands.clear()
+
         surfaces.forEachCamera()
         {
             it.updateViewMatrix()
@@ -135,10 +138,14 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun deleteSurface(name: String)
     {
-        surfaceMap[name]?.let {
-            it.cleanUp()
-            surfaces.remove(it)
-            surfaceMap.remove(it.name)
+        runOnInitFrame()
+        {
+            surfaceMap[name]?.let()
+            {
+                surfaces.remove(it)
+                surfaceMap.remove(it.name)
+                it.cleanUp()
+            }
         }
     }
 
@@ -155,11 +162,8 @@ open class GraphicsImpl : GraphicsInternal
         multisampling: Multisampling,
         blendFunction: BlendFunction,
         attachments: List<Attachment>,
-        backgroundColor: Color,
-        initializeSurface: Boolean
+        backgroundColor: Color
     ): Surface2DInternal {
-        // Return existing surface if available
-        surfaceMap[name]?.let { return it }
 
         // Create new surface
         val surfaceWidth = width ?: mainSurface.width
@@ -176,24 +180,21 @@ open class GraphicsImpl : GraphicsInternal
             attachments = attachments,
             backgroundColor = backgroundColor
         )
-        val initialCapacity = 5000
-        val newSurface = Surface2DImpl(
-            name = name,
-            camera = newCamera,
-            context = context,
-            textRenderer = TextRenderer(initialCapacity, context, textureBank),
-            quadRenderer = QuadBatchRenderer(initialCapacity, context),
-            lineRenderer = LineBatchRenderer(initialCapacity, context),
-            bindlessTextureRenderer = BindlessTextureRenderer(initialCapacity, context, textureBank),
-            textureRenderer = TextureRenderer(initialCapacity, context),
-            stencilRenderer = StencilRenderer(),
-        )
+        val newSurface = Surface2DImpl(name, surfaceWidth, surfaceHeight, newCamera, context, textureBank)
 
-        if (initializeSurface)
+        runOnInitFrame()
+        {
+            surfaceMap[name]?.let()
+            {
+                Logger.warn("Surface with name: $name already exists. Destroying and creating new...")
+                surfaces.remove(it)
+                it.cleanUp()
+            }
             newSurface.init(surfaceWidth, surfaceHeight, true)
+            surfaces.add(newSurface)
+            surfaceMap[name] = newSurface
+        }
 
-        surfaces.add(newSurface)
-        surfaceMap[name] = newSurface
         return newSurface
     }
 
@@ -225,4 +226,6 @@ open class GraphicsImpl : GraphicsInternal
     {
         override fun compare(a: Surface2DInternal, b: Surface2DInternal): Int = (b.context.zOrder - a.context.zOrder).sign
     }
+
+    private fun runOnInitFrame(command: () -> Unit) { initFrameCommands.add(command) }
 }

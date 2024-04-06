@@ -9,7 +9,7 @@ abstract class SceneSystem
     var enabled = true
         set(value)
         {
-            stateChanged = (value != field)
+            stateChanged = (value != field && initialized)
             field = value
         }
 

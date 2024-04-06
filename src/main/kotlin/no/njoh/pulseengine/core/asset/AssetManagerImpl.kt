@@ -5,99 +5,111 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadFileNames
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
 import kotlin.reflect.KClass
 import kotlin.reflect.safeCast
 
 open class AssetManagerImpl : AssetManagerInternal()
 {
-    private val assets = mutableMapOf<String, Asset>()
-    private var initialAssetsLoaded = false
+    private val loadedAssets = mutableMapOf<String, Asset>()
+    private val assetsToLoad = mutableListOf<Asset>(Font.DEFAULT)
     private var onAssetLoadedCallbacks = mutableListOf<(Asset) -> Unit>()
     private var onAssetRemovedCallbacks = mutableListOf<(Asset) -> Unit>()
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : Asset> getOrNull(assetName: String, type: KClass<T>): T? =
-        assets[assetName]?.let { type.safeCast(it) }
+        loadedAssets[assetName]?.let { type.safeCast(it) }
 
     override fun <T : Asset> getAllOfType(type: KClass<T>): List<T> =
-        assets.values.filterIsInstance(type.java)
+        loadedAssets.values.filterIsInstance(type.java)
 
-    override fun loadTexture(fileName: String, assetName: String, filter: TextureFilter, mipLevels: Int): Texture =
-        Texture(fileName, assetName, filter, mipLevels).also { add(it)  }
+    override fun loadTexture(fileName: String, assetName: String, filter: TextureFilter, mipLevels: Int) =
+        load(Texture(fileName, assetName, filter, mipLevels))
 
-    override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int): SpriteSheet =
-        SpriteSheet(fileName, assetName, horizontalCells, verticalCells).also{ add(it) }
+    override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int) =
+        load(SpriteSheet(fileName, assetName, horizontalCells, verticalCells))
 
-    override fun loadFont(fileName: String, assetName: String, fontSize: Float): Font =
-        Font(fileName, assetName, fontSize).also { add(it) }
+    override fun loadFont(fileName: String, assetName: String, fontSize: Float) =
+        load(Font(fileName, assetName, fontSize))
 
-    override fun loadCursor(fileName: String, assetName: String, xHotSpot: Int, yHotSpot: Int): Cursor =
-        Cursor(fileName, assetName, xHotSpot, yHotSpot).also { add(it) }
+    override fun loadSound(fileName: String, assetName: String) =
+        load(Sound(fileName, assetName))
 
-    override fun loadSound(fileName: String, assetName: String): Sound =
-        Sound(fileName, assetName).also { add(it)  }
+    override fun loadText(fileName: String, assetName: String) =
+        load(Text(fileName, assetName))
 
-    override fun loadText(fileName: String, assetName: String): Text =
-        Text(fileName, assetName).also { add(it) }
+    override fun loadBinary(fileName: String, assetName: String) =
+        load(Binary(fileName, assetName))
 
-    override fun loadBinary(fileName: String, assetName: String): Binary =
-        Binary(fileName, assetName).also { add(it) }
+    override fun loadCursor(fileName: String, assetName: String, type: CursorType, xHotSpot: Int, yHotSpot: Int) =
+        load(Cursor(fileName, assetName, type, xHotSpot, yHotSpot))
 
-    override fun loadAllTextures(directory: String) =
-        directory
-            .loadFileNames()
-            .filter { fileName -> Texture.SUPPORTED_FORMATS.any { fileName.endsWith(it) } }
-            .forEachFast { fileName ->
-                val assetName = fileName.substringAfterLast("/").substringBeforeLast(".")
-                if (assets.none { it.value.name == assetName })
-                    loadTexture(fileName, assetName)
-            }
-
-    override fun loadInitialAssets()
+    override fun loadAllTextures(directory: String)
     {
-        val startTime = System.nanoTime()
-        add(Font.DEFAULT)
-        runBlocking(Dispatchers.IO)
+        for (fileName in directory.loadFileNames())
         {
-            assets.values.forEach()
-            {
-                if (it !is Sound)
-                    launch { it.load() }
-            }
+            if (Texture.SUPPORTED_FORMATS.none { fileName.endsWith(it) })
+                continue
+
+            val assetName = fileName.substringAfterLast("/").substringBeforeLast(".")
+            if (loadedAssets.none { it.value.name == assetName } && assetsToLoad.none { it.name == assetName })
+                loadTexture(fileName, assetName)
         }
-        // Sound assets need to be loaded in main thread
-        assets.values.filterIsInstance<Sound>().forEachFast { it.load() }
-        assets.values.forEach { asset -> onAssetLoadedCallbacks.forEachFast { it.invoke(asset)  } }
-        initialAssetsLoaded = true
-        Logger.debug("Loaded ${assets.size} assets in ${startTime.toNowFormatted()}. [${assets.values.joinToString { it.name }}]")
     }
 
-    override fun <T: Asset> add(asset: T): T
+    override fun <T: Asset> load(asset: T)
     {
-        val existingAsset = assets[asset.name]
+        val existingAsset = loadedAssets[asset.name]
         if (existingAsset != null)
         {
-            Logger.warn("Asset with name: ${existingAsset.name} already exists and will be deleted and overridden")
+            Logger.warn("Asset with name: ${existingAsset.name} has already been loaded and will be deleted and overridden")
             existingAsset.delete()
+            onAssetRemovedCallbacks.forEachFast { it(existingAsset) }
         }
 
-        if (initialAssetsLoaded)
+        if (assetsToLoad.any { it.name == asset.name })
         {
-            asset.load()
-            onAssetLoadedCallbacks.forEachFast { it.invoke(asset)  }
+            Logger.warn("Asset with name: ${asset.name} is already staged for loading")
+            return
         }
 
-        assets[asset.name] = asset
-        return asset
+        assetsToLoad.add(asset)
     }
 
     override fun delete(assetName: String)
     {
-        assets.remove(assetName)?.delete()
+        assetsToLoad.removeWhen { it.name == assetName }
+        loadedAssets.remove(assetName)?.let()
+        {
+            it.delete()
+            onAssetRemovedCallbacks.forEachFast { callback -> callback.invoke(it) }
+        }
+    }
+
+    override fun update()
+    {
+        if (assetsToLoad.isEmpty())
+            return
+
+        val startTime = System.nanoTime()
+        runBlocking(Dispatchers.IO)
+        {
+            assetsToLoad.forEachFast { launch { it.load() } }
+        }
+
+        assetsToLoad.forEachFast()
+        {
+            loadedAssets[it.name] = it
+            onAssetLoadedCallbacks.forEachFast { callback -> callback.invoke(it) }
+        }
+
+        Logger.debug("Loaded ${assetsToLoad.size} assets in ${startTime.toNowFormatted()}. [${assetsToLoad.joinToString { it.name }}]")
+        assetsToLoad.clear()
     }
 
     override fun setOnAssetLoaded(callback: (Asset) -> Unit)
@@ -113,9 +125,6 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun cleanUp()
     {
         Logger.info("Cleaning up assets (${this::class.simpleName})")
-        assets.values.forEach { asset ->
-            asset.delete()
-            onAssetRemovedCallbacks.forEachFast { it.invoke(asset) }
-        }
+        loadedAssets.values.toList().forEachFast { delete(it.name) }
     }
 }

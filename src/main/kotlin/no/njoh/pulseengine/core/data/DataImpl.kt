@@ -17,14 +17,16 @@ import kotlin.system.measureNanoTime
 open class DataImpl : Data()
 {
     override var currentFps: Int = 0
-    override var renderTimeMs: Float = 0f
-    override var updateTimeMS: Float = 0f
-    override var fixedUpdateTimeMS: Float = 0f
+    override var totalFrameTimeMs: Float = 0f
+    override var gpuRenderTimeMs: Float = 0f
+    override var cpuRenderTimeMs: Float = 0f
+    override var updateTimeMs: Float = 0f
+    override var fixedUpdateTimeMs: Float = 0f
     override var fixedDeltaTime: Float = 0.017f
     override var deltaTime: Float = 0.017f
     override var interpolation: Float = 0f
-    override var usedMemory: Long = 0L
-    override var totalMemory: Long = 0L
+    override var usedMemoryKb: Long = 0L
+    override var totalMemoryKb: Long = 0L
     override val metrics = mutableListOf<Metric>()
     override lateinit var saveDirectory: String
 
@@ -32,6 +34,7 @@ open class DataImpl : Data()
     private var fpsTimer = 0.0
     private val fpsFilter = FloatArray(20)
     private var frameCounter = 0
+    private var frameStartTime = 0.0
     var lastFrameTime = 0.0
     var fixedUpdateAccumulator = 0.0
     var fixedUpdateLastTime = 0.0
@@ -42,11 +45,13 @@ open class DataImpl : Data()
         updateSaveDirectory(gameName)
 
         addMetric("FRAMES PER SECOND (FPS)") { sample(currentFps.toFloat()) }
-        addMetric("RENDER TIME (MS)")        { sample(renderTimeMs) }
-        addMetric("UPDATE TIME (MS)")        { sample(updateTimeMS) }
-        addMetric("FIXED UPDATE TIME (MS)")  { sample(fixedUpdateTimeMS) }
-        addMetric("USED MEMORY (KB)")        { sample(usedMemory.toFloat()) }
-        addMetric("MEMORY OF TOTAL (%)")     { sample(usedMemory * 100f / totalMemory) }
+        addMetric("TOTAL FRAME TIME (MS)")   { sample(totalFrameTimeMs) }
+        addMetric("GPU RENDER TIME (MS)")    { sample(gpuRenderTimeMs) }
+        addMetric("CPU RENDER TIME (MS)")    { sample(cpuRenderTimeMs) }
+        addMetric("UPDATE TIME (MS)")        { sample(updateTimeMs) }
+        addMetric("FIXED UPDATE TIME (MS)")  { sample(fixedUpdateTimeMs) }
+        addMetric("USED MEMORY (KB)")        { sample(usedMemoryKb.toFloat()) }
+        addMetric("MEMORY OF TOTAL (%)")     { sample(usedMemoryKb * 100f / totalMemoryKb) }
     }
 
     override fun addMetric(name: String, onSample: Metric.() -> Unit)
@@ -118,6 +123,11 @@ open class DataImpl : Data()
         saveDirectory = File("$homeDir/$gameName").absolutePath
     }
 
+    fun startFrameTimer()
+    {
+        frameStartTime = glfwGetTime()
+    }
+
     inline fun measureAndUpdateTimeStats(block: () -> Unit)
     {
         val startTime = glfwGetTime()
@@ -126,23 +136,36 @@ open class DataImpl : Data()
         block.invoke()
 
         lastFrameTime = glfwGetTime()
-        updateTimeMS = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        updateTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
     fun updateMemoryStats()
     {
-        usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / KILO_BYTE
-        totalMemory = runtime.maxMemory() / KILO_BYTE
+        usedMemoryKb = (runtime.totalMemory() - runtime.freeMemory()) / KILO_BYTE
+        totalMemoryKb = runtime.maxMemory() / KILO_BYTE
     }
 
-    inline fun measureRenderTimeAndUpdateInterpolationValue(block: () -> Unit)
+    inline fun measureGpuRenderTime(block: () -> Unit)
     {
         val startTime = glfwGetTime()
-        interpolation = fixedUpdateAccumulator.toFloat() / fixedDeltaTime
 
         block.invoke()
 
-        renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        gpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+    }
+
+    inline fun measureCpuRenderTime(block: () -> Unit)
+    {
+        val startTime = glfwGetTime()
+
+        block.invoke()
+
+        cpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+    }
+
+    fun updateInterpolationValue()
+    {
+        interpolation = fixedUpdateAccumulator.toFloat() / fixedDeltaTime
     }
 
     fun calculateFrameRate()
@@ -152,6 +175,7 @@ open class DataImpl : Data()
         frameCounter = (frameCounter + 1) % fpsFilter.size
         currentFps = fpsFilter.average().toInt()
         fpsTimer = nowTime
+        totalFrameTimeMs = ((nowTime - frameStartTime) * 1000.0).toFloat()
     }
 
     private fun getMapper(fileFormat: FileFormat) =

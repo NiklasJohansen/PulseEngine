@@ -29,32 +29,20 @@ import kotlin.math.*
 @ScnIcon("LIGHT_BULB")
 open class LightingSystem : SceneSystem()
 {
-    @ScnProp(i = 1) var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
-    @ScnProp(i = 2, min = 0f, max = 10f) var dithering = 0.7f
-    @ScnProp(i = 3, min = 0f, max = 100f) var fogIntensity = 0f
-    @ScnProp(i = 4, min = 0f, max = 100f) var fogTurbulence = 1.5f
-    @ScnProp(i = 5, min = 0f, max = 5f) var fogScale = 0.3f
+    @ScnProp(i = 1)                        var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
+    @ScnProp(i = 2, min = 0f, max = 10f)   var dithering = 0.7f
+    @ScnProp(i = 3, min = 0f, max = 100f)  var fogIntensity = 0f
+    @ScnProp(i = 4, min = 0f, max = 100f)  var fogTurbulence = 1.5f
+    @ScnProp(i = 5, min = 0f, max = 5f)    var fogScale = 0.3f
     @ScnProp(i = 6, min = 0.01f, max = 5f) var textureScale = 1f
-    @ScnProp(i = 7) var textureFilter = TextureFilter.LINEAR
-    @ScnProp(i = 8) var textureFormat = TextureFormat.RGBA16F
-    @ScnProp(i = 9) var multisampling = Multisampling.NONE
-    @ScnProp(i = 10) var enableFXAA = true
-    @ScnProp(i = 11) var useNormalMap = false
-    @ScnProp(i = 12) var enableLightSpill = true
-    @ScnProp(i = 13) var correctOffset = true
-    @ScnProp(i = 14) var drawDebug = false
-
-
-    private val normalMapRenderPass = RenderPass(
-        surfaceName = "lighting_normal_map",
-        targetType = NormalMapped::class
-    )
-
-    private val occluderRenderPass = RenderPass(
-        surfaceName = "lighting_occluder_map",
-        targetType = LightOccluder::class,
-        drawCondition = { (it as? LightOccluder)?.castShadows ?: true }
-    )
+    @ScnProp(i = 7)                        var textureFilter = TextureFilter.LINEAR
+    @ScnProp(i = 8)                        var textureFormat = TextureFormat.RGBA16F
+    @ScnProp(i = 9)                        var multisampling = Multisampling.NONE
+    @ScnProp(i = 10)                       var enableFXAA = true
+    @ScnProp(i = 11)                       var useNormalMap = false
+    @ScnProp(i = 12)                       var enableLightSpill = true
+    @ScnProp(i = 13)                       var correctOffset = true
+    @ScnProp(i = 14)                       var drawDebug = false
 
     private var xMin = 0f
     private var yMin = 0f
@@ -63,134 +51,155 @@ open class LightingSystem : SceneSystem()
     private var lightCount = 0
     private var shadowCasterCount = 0
     private var edgeCount = 0
-    private var renderTimeMs = 0f
+    private var cpuRenderTimeMs = 0f
+    private var gpuRenderTimeMs = 0f
+    private var isUsingNormalMap = false
+    private var isUsingOccluderMap = false
 
-    private lateinit var lightSurface: Surface2D
-    private lateinit var lightRenderer: LightRenderer
-    private lateinit var lightBlendEffect: LightBlendEffect
+    private val normalMapRenderPass = RenderPass(
+        surfaceName = NORMAL_SURFACE_NAME,
+        targetType = NormalMapped::class
+    )
+
+    private val occluderRenderPass = RenderPass(
+        surfaceName = OCCLUDER_SURFACE_NAME,
+        targetType = LightOccluder::class,
+        drawCondition = { (it as? LightOccluder)?.castShadows ?: true }
+    )
 
     override fun onCreate(engine: PulseEngine)
     {
-        lightRenderer = LightRenderer()
-        lightSurface = engine.gfx.createSurface(
-            name = "lighting_v3",
+        engine.gfx.createSurface(
+            name = LIGHT_SURFACE_NAME,
             camera = engine.gfx.mainCamera,
             isVisible = false,
-            backgroundColor = Color(0f, 0f, 0f, 0f),
+            backgroundColor = Color.BLANK,
             textureFormat = textureFormat,
             textureFilter = textureFilter,
             textureScale = textureScale,
             multisampling = multisampling,
             blendFunction = ADDITIVE,
             attachments = listOf(COLOR_TEXTURE_0)
-        ).addRenderer(lightRenderer)
+        ).also {
+            it.addRenderer(LightRenderer())
+            configureNormalMap(engine, it, useNormalMap)
+            configureOccluderMap(engine, it, enableLightSpill)
+        }
 
         // Add lighting as a post-processing effect to main surface
-        lightBlendEffect = LightBlendEffect(lightSurface, ambientColor, engine.gfx.mainCamera)
-        engine.gfx.mainSurface.addPostProcessingEffect(lightBlendEffect)
-
-        // Configure maps
-        configureNormalMap(engine, isEnabled = useNormalMap)
-        configureOccluderMap(engine, isEnabled = enableLightSpill)
+        engine.gfx.mainSurface.addPostProcessingEffect(
+            LightBlendEffect(LIGHT_BLEND_EFFECT_NAME, ambientColor, engine.gfx.mainCamera)
+        )
 
         // Add metrics
-        engine.data.addMetric("Lights")                { sample(lightCount.toFloat()) }
-        engine.data.addMetric("Shadow casters")        { sample(shadowCasterCount.toFloat()) }
-        engine.data.addMetric("Edges")                 { sample(edgeCount.toFloat()) }
-        engine.data.addMetric("Lighting total (MS)")   { sample(renderTimeMs + lightRenderer.renderTimeMs) }
-        engine.data.addMetric("Lighting build (MS)", ) { sample(renderTimeMs) }
+        engine.data.addMetric("Lights")              { sample(lightCount.toFloat())        }
+        engine.data.addMetric("Edges")               { sample(edgeCount.toFloat())         }
+        engine.data.addMetric("Shadow casters")      { sample(shadowCasterCount.toFloat()) }
+        engine.data.addMetric("Lighting CPU (MS)", ) { sample(cpuRenderTimeMs)             }
+        engine.data.addMetric("Lighting GPU (MS)", ) { sample(gpuRenderTimeMs)             }
     }
 
-    private fun configureNormalMap(engine: PulseEngine, isEnabled: Boolean)
+    private fun configureNormalMap(engine: PulseEngine, lightSurface: Surface2D, isEnabled: Boolean)
     {
-        if (isEnabled && lightRenderer.normalMapSurface == null)
+        if (isEnabled && !isUsingNormalMap)
         {
-            Logger.debug("Enabling normal maps for lighting")
+            Logger.debug("LightingSystem: enabling normal maps")
             engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(normalMapRenderPass)
-            val normalMapSurface = engine.gfx.createSurface(
-                name = normalMapRenderPass.surfaceName,
+            val surface = engine.gfx.createSurface(
+                name = NORMAL_SURFACE_NAME,
                 camera = engine.gfx.mainCamera,
                 zOrder = lightSurface.context.zOrder + 1, // Render normal map before lightmap
                 backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
                 textureFormat = TextureFormat.RGBA16F,
                 isVisible = false
             )
-            val renderContext = (normalMapSurface as Surface2DInternal).context
+            val renderContext = (surface as Surface2DInternal).context
             val textureBank = (engine.gfx as GraphicsInternal).textureBank
-            normalMapSurface.addRenderer(NormalMapRenderer(1000, renderContext, textureBank))
-            lightRenderer.normalMapSurface = normalMapSurface
+            surface.addRenderer(NormalMapRenderer(renderContext, textureBank))
+            isUsingNormalMap = true
         }
-        else if (!isEnabled && lightRenderer.normalMapSurface != null)
+        else if (!isEnabled && isUsingNormalMap)
         {
-            Logger.debug("Disabling normal maps for lighting")
+            Logger.debug("LightingSystem: disabling normal maps")
             engine.scene.getSystemOfType<EntityRenderer>()?.removeRenderPass(normalMapRenderPass)
-            engine.gfx.deleteSurface(lightRenderer.normalMapSurface!!.name)
-            lightRenderer.normalMapSurface = null
+            engine.gfx.deleteSurface(NORMAL_SURFACE_NAME)
+            isUsingNormalMap = false
         }
     }
 
-    private fun configureOccluderMap(engine: PulseEngine, isEnabled: Boolean)
+    private fun configureOccluderMap(engine: PulseEngine, lightSurface: Surface2D, isEnabled: Boolean)
     {
-        if (isEnabled && lightRenderer.occluderMapSurface == null)
+        if (isEnabled && !isUsingOccluderMap)
         {
-            Logger.debug("Enabling occluder map for lighting")
+            Logger.debug("LightingSystem: enabling occluder map")
             engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(occluderRenderPass)
-            lightRenderer.occluderMapSurface = engine.gfx.createSurface(
-                name = occluderRenderPass.surfaceName,
+            engine.gfx.createSurface(
+                name = OCCLUDER_SURFACE_NAME,
                 camera = engine.gfx.mainCamera,
                 zOrder = lightSurface.context.zOrder + 1, // Render occluder map before lightmap
                 backgroundColor = Color(0f, 0f, 0f, 0f),
                 isVisible = false
             )
+            isUsingOccluderMap = true
         }
-        else if (!isEnabled && lightRenderer.occluderMapSurface != null)
+        else if (!isEnabled && isUsingOccluderMap)
         {
-            Logger.debug("Disabling occluder map for lighting")
+            Logger.debug("LightingSystem: disabling occluder map")
             engine.scene.getSystemOfType<EntityRenderer>()?.removeRenderPass(occluderRenderPass)
-            engine.gfx.deleteSurface(lightRenderer.occluderMapSurface!!.name)
-            lightRenderer.occluderMapSurface = null
+            engine.gfx.deleteSurface(OCCLUDER_SURFACE_NAME)
+            isUsingOccluderMap = false
         }
     }
 
     override fun onUpdate(engine: PulseEngine)
     {
-        // Set light post-processing effect properties
+        val lightSurface = engine.gfx.getSurface(LIGHT_SURFACE_NAME) ?: return
+        val lightRenderer = lightSurface.getRenderer(LightRenderer::class) ?: return
+        val lightBlendEffect = engine.gfx.mainSurface.getPostProcessingEffect(LIGHT_BLEND_EFFECT_NAME) as? LightBlendEffect ?: return
+
+        lightSurface.setMultisampling(multisampling)
+        lightSurface.setTextureScale(textureScale)
+        lightSurface.setTextureFilter(textureFilter)
+        lightSurface.setTextureFormat(textureFormat)
+
+        lightRenderer.ambientColor = ambientColor
+        lightRenderer.normalMapTextureHandle = engine.gfx.getSurface(NORMAL_SURFACE_NAME)?.getTexture()?.handle
+        lightRenderer.occluderMapTextureHandle = engine.gfx.getSurface(OCCLUDER_SURFACE_NAME)?.getTexture()?.handle
+
+        lightBlendEffect.lightMapTextureHandle = lightSurface.getTexture().handle
         lightBlendEffect.enableFxaa = enableFXAA
         lightBlendEffect.dithering = dithering
         lightBlendEffect.fogIntensity = fogIntensity
         lightBlendEffect.fogTurbulence = fogTurbulence
         lightBlendEffect.fogScale = fogScale
 
-        // Set light renderer properties
-        lightRenderer.ambientColor = ambientColor
-
-        // Set light surface properties
-        lightSurface.setMultisampling(multisampling)
-        lightSurface.setTextureScale(textureScale)
-        lightSurface.setTextureFilter(textureFilter)
-        lightSurface.setTextureFormat(textureFormat)
-
-        // Update normal and occluder map configurations
-        configureNormalMap(engine, isEnabled = useNormalMap)
-        configureOccluderMap(engine, isEnabled = enableLightSpill)
+        configureNormalMap(engine, lightSurface, isEnabled = useNormalMap)
+        configureOccluderMap(engine, lightSurface, isEnabled = enableLightSpill)
     }
 
     override fun onRender(engine: PulseEngine)
     {
+        val lightSurface = engine.gfx.getSurface(LIGHT_SURFACE_NAME) ?: return
+        val lightRenderer = lightSurface.getRenderer(LightRenderer::class) ?: return
+        val lightBlendEffect = engine.gfx.mainSurface.getPostProcessingEffect(LIGHT_BLEND_EFFECT_NAME) as? LightBlendEffect ?: return
+
         val startTime = System.nanoTime()
         shadowCasterCount = 0
         lightCount = 0
         edgeCount = 0
 
-        updateLightMapPositionOffset()
-        updateBoundingRect(lightSurface.width.toFloat(), lightSurface.height.toFloat())
+        updateLightMapPositionOffset(lightSurface, lightRenderer, lightBlendEffect)
+        updateBoundingRect(lightSurface)
+        engine.scene.forEachEntityOfType<LightSource>()
+        {
+            addLightsSources(it, lightRenderer, lightSurface, engine)
+        }
 
-        engine.scene.forEachEntityOfType<LightSource> { addLightsSources(it, engine)  }
-
-        renderTimeMs = (System.nanoTime() - startTime) / 1_000_000f
+        cpuRenderTimeMs = (System.nanoTime() - startTime) / 1_000_000f
+        gpuRenderTimeMs = lightRenderer.gpuRenderTimeMs
     }
 
-    private fun updateLightMapPositionOffset()
+    private fun updateLightMapPositionOffset(lightSurface: Surface2D, lightRenderer: LightRenderer, lightBlendEffect: LightBlendEffect)
     {
         var xOffset = 0f
         var yOffset = 0f
@@ -209,8 +218,10 @@ open class LightingSystem : SceneSystem()
         lightRenderer.yDrawOffset = yOffset
     }
 
-    private fun updateBoundingRect(screenWidth: Float, screenHeight: Float)
+    private fun updateBoundingRect(lightSurface: Surface2D)
     {
+        val screenWidth = lightSurface.width.toFloat()
+        val screenHeight = lightSurface.height.toFloat()
         for (i in BOUNDING_COORDS.indices step 2)
         {
             val worldPos = lightSurface.camera.screenPosToWorldPos(
@@ -224,7 +235,7 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun addLightsSources(light: LightSource, engine: PulseEngine)
+    private fun addLightsSources(light: LightSource, lightRenderer: LightRenderer, lightSurface: Surface2D, engine: PulseEngine)
     {
         if ((light as SceneEntity).isSet(HIDDEN) || light.intensity == 0f || !isInsideBoundingRectangle(light))
             return
@@ -241,7 +252,7 @@ open class LightingSystem : SceneSystem()
             ) {
                 if (it.castShadows && (it as SceneEntity).isNot(HIDDEN))
                 {
-                    addOccluderEdges(it.shape)
+                    addOccluderEdges(it.shape, lightRenderer, lightSurface)
                     shadowCasterCount++
                 }
             }
@@ -268,7 +279,7 @@ open class LightingSystem : SceneSystem()
         )
 
         if (drawDebug)
-            drawDebugOutline(light)
+            drawDebugOutline(light, lightSurface)
     }
 
     private fun isInsideBoundingRectangle(light: LightSource) =
@@ -301,7 +312,7 @@ open class LightingSystem : SceneSystem()
             }
         }
 
-    private fun addOccluderEdges(shape: Shape)
+    private fun addOccluderEdges(shape: Shape, lightRenderer: LightRenderer, lightSurface: Surface2D)
     {
         val pointCount = shape.getPointCount()
         if (pointCount == 1)
@@ -316,7 +327,7 @@ open class LightingSystem : SceneSystem()
                 val angle = i / points.toFloat() * 2 * PI
                 val x = center.x + cos(angle).toFloat() * radius
                 val y = center.y + sin(angle).toFloat() * radius
-                addEdge(xLast, yLast, x, y)
+                addEdge(xLast, yLast, x, y, lightRenderer, lightSurface)
                 xLast = x
                 yLast = y
             }
@@ -327,7 +338,7 @@ open class LightingSystem : SceneSystem()
             val x0 = p.x
             val y0 = p.y
             p = shape.getPoint(1)
-            addEdge(x0, y0, p.x, p.y)
+            addEdge(x0, y0, p.x, p.y, lightRenderer, lightSurface)
         }
         else
         {
@@ -337,14 +348,14 @@ open class LightingSystem : SceneSystem()
             for (i in 0 until pointCount)
             {
                 val point = shape.getPoint(i)
-                addEdge(xLast, yLast, point.x, point.y)
+                addEdge(xLast, yLast, point.x, point.y, lightRenderer, lightSurface)
                 xLast = point.x
                 yLast = point.y
             }
         }
     }
 
-    private fun addEdge(x0: Float, y0: Float, x1: Float, y1: Float)
+    private fun addEdge(x0: Float, y0: Float, x1: Float, y1: Float, lightRenderer: LightRenderer, lightSurface: Surface2D)
     {
         lightRenderer.addEdge(x0, y0, x1, y1)
         edgeCount++
@@ -356,7 +367,7 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun drawDebugOutline(light: LightSource)
+    private fun drawDebugOutline(light: LightSource, lightSurface: Surface2D)
     {
         lightSurface.setDrawColor(light.color.red, light.color.green, light.color.blue, 0.3f)
 
@@ -396,13 +407,12 @@ open class LightingSystem : SceneSystem()
         renderer?.removeRenderPass(occluderRenderPass)
 
         // Delete surfaces
-        lightRenderer.normalMapSurface?.let { engine.gfx.deleteSurface(it.name) }
-        lightRenderer.occluderMapSurface?.let { engine.gfx.deleteSurface(it.name) }
-        engine.gfx.deleteSurface(lightSurface.name)
+        engine.gfx.deleteSurface(LIGHT_SURFACE_NAME)
+        engine.gfx.deleteSurface(NORMAL_SURFACE_NAME)
+        engine.gfx.deleteSurface(OCCLUDER_SURFACE_NAME)
 
         // Remove and delete post-processing effect
-        engine.gfx.mainSurface.removePostProcessingEffect(lightBlendEffect)
-        lightBlendEffect.cleanUp()
+        engine.gfx.mainSurface.deletePostProcessingEffect(LIGHT_BLEND_EFFECT_NAME)
     }
 
     override fun onStateChanged(engine: PulseEngine)
@@ -412,6 +422,10 @@ open class LightingSystem : SceneSystem()
 
     companion object
     {
+        private val LIGHT_BLEND_EFFECT_NAME = "light-system-blend-effect"
+        private val LIGHT_SURFACE_NAME = "light-system-surface"
+        private val NORMAL_SURFACE_NAME = "light-system-normal-map"
+        private val OCCLUDER_SURFACE_NAME = "light-system-occluder-map"
         private val BOUNDING_COORDS = listOf(0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f)
     }
 }

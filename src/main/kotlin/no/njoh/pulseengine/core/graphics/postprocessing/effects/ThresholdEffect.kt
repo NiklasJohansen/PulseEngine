@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
 
 class ThresholdEffect(
+    override val name: String,
     var brightnessThreshold: Float = 0.5f
 ) : SinglePassEffect() {
 

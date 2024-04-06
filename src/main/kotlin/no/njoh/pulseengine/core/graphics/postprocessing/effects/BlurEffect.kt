@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.graphics.postprocessing.MultiPassEffect
 import kotlin.math.max
 
 class BlurEffect(
+    override val name: String,
     var radius: Float = 0.5f,
     var blurPasses: Int = 2
 ) : MultiPassEffect(2) {

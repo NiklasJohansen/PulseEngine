@@ -4,17 +4,20 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.Camera
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.Surface
+import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
 import org.joml.Vector3f
 import org.joml.Vector4f
 import kotlin.math.max
 
 class LightBlendEffect(
-    private val lightMapSurface: Surface,
+    override val name: String,
     private val ambientColor: Color,
     private val camera: Camera
 ) : SinglePassEffect() {
+
+    /** Handle to the light map texture */
+    var lightMapTextureHandle: TextureHandle? = null
 
     /** Offsets the sampling coordinates of the light map */
     var xSamplingOffset = 0f
@@ -35,6 +38,7 @@ class LightBlendEffect(
     /** Determines the scale of the noise used to generate the fog  */
     var fogScale = 1f
 
+    private var textureHandles = mutableListOf(TextureHandle.NONE, TextureHandle.NONE)
     private var camPos = Vector4f()
     private var camScale = Vector3f()
 
@@ -46,6 +50,9 @@ class LightBlendEffect(
 
     override fun applyEffect(texture: Texture): Texture
     {
+        textureHandles[0] = texture.handle
+        textureHandles[1] = lightMapTextureHandle ?: return texture
+
         camPos.set(1f).mul(camera.viewProjectionMatrix)
         camera.viewMatrix.getScale(camScale)
 
@@ -62,7 +69,8 @@ class LightBlendEffect(
         program.setUniform("camPos", camPos.x, camPos.y)
         program.setUniform("time", 0.001f * fogTurbulence * time++)
 
-        renderer.render(texture, lightMapSurface.getTexture(0))
+        renderer.render(textureHandles)
+
         fbo.release()
 
         return fbo.getTexture() ?: texture

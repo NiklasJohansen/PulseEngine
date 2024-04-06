@@ -20,16 +20,22 @@ class StaticBufferObject(
 
     companion object
     {
-        fun createBuffer(
-            data: FloatArray,
-            target: Int = GL_ARRAY_BUFFER,
-            blockBinding: Int? = null
-        ): StaticBufferObject {
+        fun createArrayBuffer(data: FloatArray, target: Int = GL_ARRAY_BUFFER, blockBinding: Int? = null): StaticBufferObject
+        {
             val id = glGenBuffers()
             glBindBuffer(target, id)
             glBufferData(target, data, GL_STATIC_DRAW)
             glBindBuffer(target, 0)
             return StaticBufferObject(id, target, blockBinding)
         }
+
+        fun createQuadVertexArrayBuffer() = createArrayBuffer(
+            floatArrayOf(
+                0f, 0f, // Top-left vertex
+                1f, 0f, // Top-right vertex
+                0f, 1f, // Bottom-left vertex
+                1f, 1f  // Bottom-right vertex
+            )
+        )
     }
 }

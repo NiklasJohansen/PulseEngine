@@ -95,31 +95,31 @@ open class StencilState(
         }
         else // Wipe stencil buffer and disable stencil testing when layer is 0
         {
-            glClearStencil(0)            // Set clearing value to 0
-            glStencilMask(0xff)       // Enable drawing to stencil mask
-            glClear(GL_STENCIL_BUFFER_BIT)  // Clear stencil
-            glDisable(GL_STENCIL_TEST)      // Disable stencil testing
-            glStencilMask(0x00)       // Disable drawing to stencil mask
+            glClearStencil(0)              // Set clearing value to 0
+            glStencilMask(0xff)            // Enable drawing to stencil mask
+            glClear(GL_STENCIL_BUFFER_BIT) // Clear stencil
+            glDisable(GL_STENCIL_TEST)     // Disable stencil testing
+            glStencilMask(0x00)            // Disable drawing to stencil mask
         }
     }
 
     private fun updateStencilBuffer(surface: Surface2DInternal, renderer: StencilRenderer, operation: Int)
     {
-        glEnable(GL_STENCIL_TEST)                                      // Enable stencil testing
-        glStencilOp(GL_KEEP, GL_KEEP, operation)                       // Specify the operation to performed when the stencil test passes
-        glColorMask(false, false, false, false) // Disable drawing to color buffer
-        glDepthMask(false)                                        // Disable drawing to depth buffer
-        glStencilMask(0xff)                                      // Enable drawing to stencil mask
-        glStencilFunc(GL_ALWAYS, layer, 0xff)                    // Make the stencil test always pass while writing
-        renderer.drawStencil(surface, x, y, width, height)             // Draw the rectangle to the stencil buffer
+        glEnable(GL_STENCIL_TEST)                          // Enable stencil testing
+        glStencilOp(GL_KEEP, GL_KEEP, operation)           // Specify the operation to performed when the stencil test passes
+        glColorMask(false, false, false, false)            // Disable drawing to color buffer
+        glDepthMask(false)                                 // Disable drawing to depth buffer
+        glStencilMask(0xff)                                // Enable drawing to stencil mask
+        glStencilFunc(GL_ALWAYS, layer, 0xff)              // Make the stencil test always pass while writing
+        renderer.drawStencil(surface, x, y, width, height) // Draw the rectangle to the stencil buffer
     }
 
     private fun enableStenciledDrawing()
     {
-        glColorMask(true, true, true, true) // Enable drawing to color buffer
-        glDepthMask(true)                                     // Enable drawing to depth buffer
-        glStencilMask(0x00)                                  // Disable drawing to stencil mask
-        glStencilFunc(GL_EQUAL, layer, 0xff)                 // Stencil test will only pass if stencil value is equal to layer
+        glColorMask(true, true, true, true)  // Enable drawing to color buffer
+        glDepthMask(true)                    // Enable drawing to depth buffer
+        glStencilMask(0x00)                  // Disable drawing to stencil mask
+        glStencilFunc(GL_EQUAL, layer, 0xff) // Stencil test will only pass if stencil value is equal to layer
     }
 
     companion object

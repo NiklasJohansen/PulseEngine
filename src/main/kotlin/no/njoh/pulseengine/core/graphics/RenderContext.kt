@@ -34,11 +34,7 @@ class RenderContextInternal(
 ) : RenderContext {
 
     val hasDepthAttachment = attachments.any { it.hasDepth }
-    val textureAttachments = attachments
-        .filter { it.isDrawable }
-        .map { it.value }
-        .toTypedArray()
-        .toIntArray()
+    val textureAttachments = attachments.filter { it.isDrawable }.map { it.value }.toIntArray()
 
     init { setDrawColor(1f, 1f, 1f, 1f) }
 

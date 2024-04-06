@@ -32,6 +32,11 @@ open class AudioImpl : AudioInternal
         setupDevice(alcOpenDevice(null as ByteBuffer?))
     }
 
+    override fun enableInCurrentThread()
+    {
+        alcSetThreadContext(context)
+    }
+
     private fun setupDevice(device: Long)
     {
         check(device != MemoryUtil.NULL) { "Failed to open the default output device" }
@@ -42,7 +47,7 @@ open class AudioImpl : AudioInternal
         context = alcCreateContext(device, null as IntBuffer?)
         check(context != MemoryUtil.NULL) { "Failed to create an OpenAL context" }
 
-        alcSetThreadContext(context)
+        enableInCurrentThread()
         createCapabilities(deviceCaps)
 
         val numHrtf = alcGetInteger(device, ALC_NUM_HRTF_SPECIFIERS_SOFT)
@@ -68,7 +73,7 @@ open class AudioImpl : AudioInternal
     {
         val sourceId = alGenSources()
         alSourcei(sourceId, AL_SOURCE_RELATIVE, AL_TRUE) // Research AL_SOURCE_ABSOLUTE
-        alSourcei(sourceId, AL_BUFFER, sound.pointer)
+        alSourcei(sourceId, AL_BUFFER, sound.id)
         setVolume(sourceId, volume)
         setLooping(sourceId, looping)
         sources.add(sourceId)
@@ -127,7 +132,7 @@ open class AudioImpl : AudioInternal
         }
     }
 
-    override fun cleanSources()
+    override fun update()
     {
        sources.removeWhen()
        {
@@ -138,12 +143,30 @@ open class AudioImpl : AudioInternal
        }
     }
 
+    override fun uploadSound(sound: Sound)
+    {
+        if (sound.buffer == null)
+        {
+            Logger.error("Failed to upload sound: ${sound.fileName} - buffer is null")
+            return
+        }
+
+        val id = alGenBuffers()
+        alBufferData(id, AL_FORMAT_MONO16, sound.buffer!!, sound.sampleRate)
+        sound.finalize(id)
+    }
+
+    override fun deleteSound(sound: Sound)
+    {
+        alDeleteBuffers(sound.id)
+    }
+
     override fun setOnOutputDeviceChanged(callback: () -> Unit)
     {
         this.outputChangedCallback = callback
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
         Logger.info("Cleaning up audio (${this::class.simpleName})")
         sources.forEachFast { alDeleteSources(it) }

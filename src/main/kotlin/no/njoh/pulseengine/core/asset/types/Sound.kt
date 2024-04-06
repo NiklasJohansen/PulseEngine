@@ -14,24 +14,27 @@ import java.nio.ShortBuffer
 @ScnIcon("MUSIC")
 class Sound(fileName: String, override val name: String) : Asset(name, fileName)
 {
-    private lateinit var buffer: ShortBuffer
-    private var format: Int = AL10.AL_FORMAT_MONO16
-    var pointer: Int = -1
+    var id: Int = -1
+        private set
+
+    var buffer: ShortBuffer? = null
+        private set
+
+    var sampleRate: Int = 0
         private set
 
     override fun load()
     {
-        STBVorbisInfo.malloc().use { info ->
-            pointer = AL10.alGenBuffers()
-            format = AL10.AL_FORMAT_MONO16
-            buffer = readVorbis(fileName, info)
-            AL10.alBufferData(pointer, format, buffer, info.sample_rate())
+        STBVorbisInfo.malloc().use()
+        {
+            buffer = readVorbis(fileName, it)
+            sampleRate = it.sample_rate()
         }
     }
 
     override fun delete()
     {
-        AL10.alDeleteBuffers(pointer)
+        buffer = null
     }
 
     private fun readVorbis(fileName: String, info: STBVorbisInfo): ShortBuffer
@@ -59,11 +62,8 @@ class Sound(fileName: String, override val name: String) : Asset(name, fileName)
         return pcm
     }
 
-    fun reloadBuffer()
+    fun finalize(id: Int)
     {
-        STBVorbisInfo.malloc().use { info ->
-            pointer = AL10.alGenBuffers()
-            AL10.alBufferData(pointer, format, buffer, info.sample_rate())
-        }
+        this.id = id
     }
 }

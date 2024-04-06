@@ -8,20 +8,39 @@ import no.njoh.pulseengine.core.graphics.Surface2D
  */
 abstract class BatchRenderer
 {
-    private var batchNumber = 0
-    private val batchSize = IntArray(MAX_BATCH_COUNT)
-    private val batchStartIndex = IntArray(MAX_BATCH_COUNT)
+    private val batchSize = IntArray(MAX_BATCH_COUNT * 2)
+    private val batchStart = IntArray(MAX_BATCH_COUNT * 2)
+
+    private var currentBatch = 0
+    private var currentStart = 0
+    private var currentSize = 0
+    private var readOffset = 0
+    private var writeOffset = MAX_BATCH_COUNT
 
     /**
-     * Sets the current bach number and the buffer start index.
+     * Called once at the beginning of every frame.
      */
-    fun setBatchNumber(number: Int)
+    fun initFrame()
     {
-        batchNumber = number
-        var startIndex = 0
-        for (num in 0 until number)
-            startIndex += batchSize[num]
-        batchStartIndex[number] = startIndex
+        finishCurrentBatch()
+        onInitFrame()
+
+        readOffset = writeOffset.also { writeOffset = readOffset }
+        currentBatch = 0
+        currentStart = 0
+    }
+
+    /**
+     * Records the size of the current batch and prepares the next.
+     */
+    fun finishCurrentBatch()
+    {
+        val i = writeOffset + currentBatch
+        batchSize[i] = currentSize
+        batchStart[i] = currentStart
+        currentStart += currentSize
+        currentSize = 0
+        currentBatch++
     }
 
     /**
@@ -29,7 +48,7 @@ abstract class BatchRenderer
      */
     fun increaseBatchSize()
     {
-        batchSize[batchNumber]++
+        currentSize++
     }
 
     /**
@@ -37,29 +56,36 @@ abstract class BatchRenderer
      */
     fun renderBatch(surface: Surface2D, batchNum: Int)
     {
-        val drawCount = batchSize[batchNum]
+        val i = readOffset + batchNum
+        val drawCount = batchSize[i]
         if (drawCount == 0)
             return
 
-        onRenderBatch(surface, batchStartIndex[batchNum], drawCount)
-
-        batchSize[batchNum] = 0
+        onRenderBatch(surface, batchStart[i], drawCount)
     }
 
-    /** Called once when the renderer is added to the [Surface2D] */
+    /**
+     * Called once when the renderer is added to the [Surface2D]
+     */
     abstract fun init()
 
-    /** Called once at the beginning of every frame. */
-    open fun initBatch() { }
+    /**
+     * Called once at the start of every frame.
+     */
+    abstract fun onInitFrame()
 
-    /** Called every frame on every none-empty batch. */
+    /**
+     * Called every frame on every none-empty batch.
+     */
     abstract fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
 
-    /** Called once when the [Surface2D] is destroyed. */
+    /**
+     * Called once when the [Surface2D] is destroyed.
+     */
     abstract fun cleanUp()
 
     companion object
     {
-        const val MAX_BATCH_COUNT = 256
+        const val MAX_BATCH_COUNT = 64
     }
 }

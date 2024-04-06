@@ -8,6 +8,8 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.nio.file.FileSystems
 import java.nio.file.Files
+import java.util.*
+import kotlin.collections.HashSet
 import kotlin.math.PI
 
 object Extensions
@@ -68,7 +70,6 @@ object Extensions
     inline fun <T> List<T>.forEachFiltered(predicate: (T) -> Boolean, action: (T) -> Unit)
     {
         var i = 0
-        val size = size
         while (i < size)
         {
             val element = this[i++]
@@ -112,7 +113,6 @@ object Extensions
     inline fun <T> List<T>.forEachFast(action: (T) -> Unit)
     {
         var i = 0
-        val size = size
         while (i < size) action(this[i++])
     }
 
@@ -151,7 +151,6 @@ object Extensions
      */
     inline fun <T> List<T>.forEachReversed(action: (T) -> Unit)
     {
-        val size = size
         var i = size - 1
         while (i > -1) action(this[i--])
     }
@@ -356,6 +355,11 @@ object Extensions
                 ?: emptyList()
         }
     }
+
+    /**
+     * Formats the Float value to a String with a given numbers of decimals.
+     */
+    fun Float.formatted(decimals: Int = 1) = StringBuilder().append(this, decimals).toString()
 
     /**
      * Appends the given [value] to the [StringBuilder] with the given number of [decimals].
