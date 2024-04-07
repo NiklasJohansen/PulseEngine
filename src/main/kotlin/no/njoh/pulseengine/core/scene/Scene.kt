@@ -16,7 +16,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 @JsonAutoDetect(fieldVisibility = ANY)
 open class Scene(
     val name: String,
-    val entities: MutableList<SceneEntityList> = mutableListOf(),
+    val entities: MutableList<SceneEntityList<SceneEntity>> = mutableListOf(),
     val systems: MutableList<SceneSystem> = mutableListOf()
 ) {
     @JsonIgnore
@@ -44,11 +44,12 @@ open class Scene(
     {
         entity.id = nextId
         entityIdMap.put(nextId, entity)
-        entityTypeMap[entity.typeName]
+        val type = entity::class.java
+        entityTypeMap[type]
             ?.add(entity)
             ?: run {
                 val list = SceneEntityList.of(entity)
-                entityTypeMap[entity.typeName] = list
+                entityTypeMap[type] = list
                 entities.add(list)
             }
         spatialGrid.insert(entity)
@@ -138,17 +139,17 @@ open class Scene(
         spatialGrid.clear()
     }
 
-    private fun createEntityTypeMap(entities: MutableList<SceneEntityList>) =
-        HashMap<String, SceneEntityList>(entities.size).also { map ->
-            entities.forEachFast { list -> list.firstOrNull()?.let { map[it.typeName] = list } }
+    private fun createEntityTypeMap(entities: MutableList<SceneEntityList<SceneEntity>>) =
+        HashMap<Class<*>, SceneEntityList<SceneEntity>>(entities.size).also { map ->
+            entities.forEachFast { list -> list.firstOrNull()?.let { map[it::class.java] = list } }
         }
 
-    private fun createEntityIdMap(entities: MutableList<SceneEntityList>) =
+    private fun createEntityIdMap(entities: MutableList<SceneEntityList<SceneEntity>>) =
         TLongObjectHashMap<SceneEntity>().also { map ->
             entities.forEachFast { typeList -> typeList.forEachFast { map.put(it.id, it) } }
         }
 
-    private fun MutableList<SceneEntityList>.onCreate()
+    private fun MutableList<SceneEntityList<SceneEntity>>.onCreate()
     {
         this.forEachFast()
         {

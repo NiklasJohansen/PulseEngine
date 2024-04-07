@@ -17,7 +17,7 @@ import no.njoh.pulseengine.core.shared.utils.MathUtil
 import kotlin.math.*
 
 class SpatialGrid (
-    private val entities : List<SceneEntityList>
+    private val entities : List<SceneEntityList<SceneEntity>>
 ) {
     var maxWidth = 100_000
     var maxHeight = 100_000

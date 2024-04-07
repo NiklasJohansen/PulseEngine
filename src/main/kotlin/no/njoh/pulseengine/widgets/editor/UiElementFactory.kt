@@ -624,7 +624,7 @@ open class UiElementFactory(
             searchInput.bgColorHover = style.getColor("BUTTON_HOVER")
             searchInput.strokeColor = Color.BLANK
 
-            PulseEngine.GLOBAL_INSTANCE.asset.getAllOfType(annotation.type).forEachFast { addAssetRow(it, style) }
+            PulseEngine.GLOBAL_INSTANCE.asset.getAllOfType(annotation.type.java).forEachFast { addAssetRow(it, style) }
 
             setOnValueChanged()
             {

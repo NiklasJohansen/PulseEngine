@@ -4,13 +4,18 @@ import com.fasterxml.jackson.annotation.JsonAlias
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 
-class SceneEntityList(
+@Suppress("UNCHECKED_CAST")
+class SceneEntityList<T : SceneEntity>(
     @PublishedApi
     @JsonAlias("items")
     internal var entities: Array<SceneEntity?> = Array(10) { null }
-) {
+): Iterable<T> {
+
     @JsonIgnore
     var size: Int = entities.count { it != null }
+
+    @JsonIgnore
+    private var iterator = ListIterator()
 
     @JsonIgnore
     fun isEmpty() = (size == 0)
@@ -19,24 +24,40 @@ class SceneEntityList(
     fun isNotEmpty() = (size != 0)
 
     @JsonIgnore
-    fun firstOrNull() = if (size > 0) entities[0] else null
+    fun firstOrNull(): T? = if (size > 0) entities[0] as T else null
 
-    inline fun forEachFast(action: (SceneEntity) -> Unit)
+    fun toList() = entities.filterNotNull()
+
+    inline fun firstOrNull(predicate: (T) -> Boolean): T?
     {
         val size = size
         val entities = entities
         var i = 0
-        while (i < size) action(entities[i++]!!)
+        while (i < size)
+        {
+            val entity = entities[i++] as T
+            if (predicate(entity))
+                return entity
+        }
+        return null
     }
 
-    inline fun forEachReversed(action: (SceneEntity) -> Unit)
+    inline fun forEachFast(action: (T) -> Unit)
+    {
+        val size = size
+        val entities = entities
+        var i = 0
+        while (i < size) action(entities[i++] as T)
+    }
+
+    inline fun forEachReversed(action: (T) -> Unit)
     {
         val entities = entities
         var i = size - 1
-        while (i > -1) action(entities[i--]!!)
+        while (i > -1) action(entities[i--] as T)
     }
 
-    fun add(entity: SceneEntity)
+    fun add(entity: T)
     {
         if (size >= entities.size)
         {
@@ -57,7 +78,7 @@ class SceneEntityList(
         entities = Array(size) { i -> entities[i] }
     }
 
-    inline fun removeDeadEntities(onRemoved: (SceneEntity) -> Unit)
+    inline fun removeDeadEntities(onRemoved: (T) -> Unit)
     {
         // Find first dead entity
         var srcIndex = 0
@@ -67,8 +88,12 @@ class SceneEntityList(
         {
             if (srcIndex == size)
                 return
-            if (entities[srcIndex]!!.isSet(DEAD))
+            val entity = entities[srcIndex]!!
+            if (entity.isSet(DEAD))
+            {
+                onRemoved(entity as T)
                 break
+            }
             srcIndex++
         }
 
@@ -76,8 +101,8 @@ class SceneEntityList(
         var dstIndex = srcIndex
         while (++srcIndex < size)
         {
-            val entity = entities[srcIndex]
-            if (entity!!.isSet(DEAD)) onRemoved(entity) else entities[dstIndex++] = entity
+            val entity = entities[srcIndex]!!
+            if (entity.isSet(DEAD)) onRemoved(entity as T) else entities[dstIndex++] = entity
         }
 
         // Null out the rest of the list
@@ -86,8 +111,16 @@ class SceneEntityList(
             entities[dstIndex++] = null
     }
 
+    override fun iterator() = iterator.also { it.index = 0 }
+
+    inner class ListIterator(var index: Int = 0) : Iterator<T>
+    {
+        override fun next(): T = entities[index++] as T
+        override fun hasNext() = index < size
+    }
+
     companion object
     {
-        fun of(entity: SceneEntity) = SceneEntityList().also { it.add(entity) }
+        fun <T: SceneEntity> of(entity: T) = SceneEntityList<T>().also { it.add(entity) }
     }
 }

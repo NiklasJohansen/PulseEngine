@@ -42,8 +42,8 @@ abstract class StandardSceneEntity : SceneEntity(), Initiable, Updatable, Render
     override fun onFixedUpdate(engine: PulseEngine) { }
     override fun onRender(engine: PulseEngine, surface: Surface2D)
     {
-        var text = typeName
-        val fontWidth = Font.DEFAULT.getWidth(typeName)
+        var text = this::class.java.simpleName
+        val fontWidth = Font.DEFAULT.getWidth(text)
         if (fontWidth > width)
             text = text.substring(0, ((text.length / (fontWidth / max(width, 1f))).toInt().coerceIn(0, text.length)))
         surface.setDrawColor(1f, 1f, 1f, 0.5f)
