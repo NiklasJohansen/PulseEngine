@@ -21,12 +21,12 @@ abstract class AssetManager
     /**
      * Returns the [Asset] with name [assetName] and type [T] or null if not found.
      */
-    inline fun <reified T : Asset> getOrNull(assetName: String): T? = getOrNull(assetName, T::class)
+    inline fun <reified T : Asset> getOrNull(assetName: String): T? = getOrNull(assetName, T::class.java)
 
     /**
      * Returns a list of all [Asset]s with given type [T].
      */
-    inline fun <reified T : Asset> getAllOfType(): List<T> = getAllOfType(T::class)
+    inline fun <reified T : Asset> getAllOfType(): List<T> = getAllOfType(T::class.java)
 
     /**
      * Loads all [Texture]s in the given [directory].
@@ -69,8 +69,8 @@ abstract class AssetManager
     abstract fun loadCursor(fileName: String, assetName: String, type: CursorType, xHotSpot: Int, yHotSpot: Int)
 
     // Internal abstract versions of the public inline functions
-    @PublishedApi internal abstract fun <T : Asset> getAllOfType(type: KClass<T>): List<T>
-    @PublishedApi internal abstract fun <T : Asset> getOrNull(assetName: String, type: KClass<T>): T?
+    @PublishedApi internal abstract fun <T : Asset> getAllOfType(type: Class<T>): List<T>
+    @PublishedApi internal abstract fun <T : Asset> getOrNull(assetName: String, type: Class<T>): T?
 }
 
 abstract class AssetManagerInternal : AssetManager()

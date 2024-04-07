@@ -22,11 +22,11 @@ open class AssetManagerImpl : AssetManagerInternal()
     private var onAssetRemovedCallbacks = mutableListOf<(Asset) -> Unit>()
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T : Asset> getOrNull(assetName: String, type: KClass<T>): T? =
-        loadedAssets[assetName]?.let { type.safeCast(it) }
+    override fun <T : Asset> getOrNull(assetName: String, type: Class<T>): T? =
+        loadedAssets[assetName]?.takeIf { it.javaClass == type } as T?
 
-    override fun <T : Asset> getAllOfType(type: KClass<T>): List<T> =
-        loadedAssets.values.filterIsInstance(type.java)
+    override fun <T : Asset> getAllOfType(type: Class<T>): List<T> =
+        loadedAssets.values.filterIsInstance(type)
 
     override fun loadTexture(fileName: String, assetName: String, filter: TextureFilter, mipLevels: Int) =
         load(Texture(fileName, assetName, filter, mipLevels))
