@@ -217,7 +217,7 @@ open class SceneManagerImpl : SceneManagerInternal()
                 ?: engine.gfx.createSurface("scene_transition", zOrder = -99)
 
             surface.setDrawColor(0f, 0f, 0f, fade)
-            surface.drawQuad(0f, 0f, surface.width.toFloat(), surface.height.toFloat())
+            surface.drawQuad(0f, 0f, surface.config.width.toFloat(), surface.config.height.toFloat())
         }
     }
 

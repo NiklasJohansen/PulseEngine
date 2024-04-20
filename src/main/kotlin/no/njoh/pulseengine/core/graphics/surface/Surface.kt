@@ -11,9 +11,9 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 
 abstract class Surface
 {
-    abstract val name: String
-    abstract val width: Int
-    abstract val height: Int
+//    abstract val name: String
+//    abstract val width: Int
+//    abstract val height: Int
     abstract val camera: Camera
     abstract val config: SurfaceConfig
 

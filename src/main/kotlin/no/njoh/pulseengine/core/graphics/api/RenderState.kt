@@ -48,7 +48,7 @@ object BaseState : RenderState
         glDrawBuffers(config.textureAttachments)
 
         // Set viewport size
-        glViewport(0, 0, (surface.width * config.textureScale).toInt(), (surface.height * config.textureScale).toInt())
+        glViewport(0, 0, (surface.config.width * config.textureScale).toInt(), (surface.config.height * config.textureScale).toInt())
 
         // Set color and clear surface
         val c = config.backgroundColor

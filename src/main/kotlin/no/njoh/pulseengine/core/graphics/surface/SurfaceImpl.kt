@@ -13,9 +13,9 @@ import no.njoh.pulseengine.core.shared.utils.Logger
 import java.lang.RuntimeException
 
 class SurfaceImpl(
-    override val name: String,
-    override var width: Int,
-    override var height: Int,
+//    override val name: String,
+//    override var width: Int,
+//    override var height: Int,
     override val camera: CameraInternal,
     override val config: SurfaceConfigInternal,
     val textureBank: TextureBank
@@ -43,8 +43,8 @@ class SurfaceImpl(
 
     override fun init(width: Int, height: Int, glContextRecreated: Boolean)
     {
-        this.width = width
-        this.height = height
+        config.width = width
+        config.height = height
 
         if (!initialized)
         {
@@ -161,7 +161,7 @@ class SurfaceImpl(
         return postProcessingPipeline.getFinalTexture()
             ?: renderTarget.getTexture(index)
             ?: throw RuntimeException(
-                "Failed to get texture with index: $index from surface with name: $name. " +
+                "Failed to get texture with index: $index from surface with name: ${config.name}. " +
                     "Surface has the following output specification: ${config.attachments})"
             )
     }
@@ -230,7 +230,7 @@ class SurfaceImpl(
             {
                 renderTarget.cleanUp()
                 renderTarget = createRenderTarget(config)
-                renderTarget.init(width, height)
+                renderTarget.init(config.width, config.height)
             }
         }
         return this
@@ -248,7 +248,7 @@ class SurfaceImpl(
         {
             config.textureFormat = format
             renderTarget.textureFormat = format
-            runOnInitFrame { renderTarget.init(width, height) }
+            runOnInitFrame { renderTarget.init(config.width, config.height) }
         }
         return this
     }
@@ -259,7 +259,7 @@ class SurfaceImpl(
         {
             config.textureFilter = filter
             renderTarget.textureFilter = filter
-            runOnInitFrame { renderTarget.init(width, height) }
+            runOnInitFrame { renderTarget.init(config.width, config.height) }
         }
         return this
     }
@@ -270,7 +270,7 @@ class SurfaceImpl(
         {
             config.textureScale = scale
             renderTarget.textureScale = scale
-            runOnInitFrame { renderTarget.init(width, height) }
+            runOnInitFrame { renderTarget.init(config.width, config.height) }
         }
         return this
     }

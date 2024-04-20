@@ -343,8 +343,8 @@ open class UiElementFactory(
         image.texture = engine.gfx.mainSurface.getTexture()
 
         val surfaceSelector = createItemSelectionDropdownUI(
-            selectedItem = engine.gfx.mainSurface.name,
-            items = engine.gfx.getAllSurfaces().flatMap { it.getTextures().mapIndexed { i, tex -> "${it.name}  (${tex.name})  #$i" } },
+            selectedItem = engine.gfx.mainSurface.config.name,
+            items = engine.gfx.getAllSurfaces().flatMap { it.getTextures().mapIndexed { i, tex -> "${it.config.name}  (${tex.name})  #$i" } },
             onItemToString = { it },
             onItemChanged = { _, surfaceName ->
                 val surface = surfaceName.substringBefore("  (")
@@ -363,7 +363,7 @@ open class UiElementFactory(
                 val selected = selectedItem
                 clearItems()
                 engine.gfx.getAllSurfaces().forEachFast { surface ->
-                    surface.getTextures().forEachIndexed { i, tex -> addItem("${surface.name}  (${tex.name})  #$i") }
+                    surface.getTextures().forEachIndexed { i, tex -> addItem("${surface.config.name}  (${tex.name})  #$i") }
                 }
                 selectedItem = selected
             }

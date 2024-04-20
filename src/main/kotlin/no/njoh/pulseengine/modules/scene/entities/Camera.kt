@@ -109,8 +109,8 @@ open class Camera : StandardSceneEntity()
     {
         engine.scene.getEntityOfType<Spatial>(targetEntityId)?.let { trackEntity(it) }
 
-        val surfaceWidth = engine.gfx.mainSurface.width
-        val surfaceHeight = engine.gfx.mainSurface.height
+        val surfaceWidth = engine.gfx.mainSurface.config.width
+        val surfaceHeight = engine.gfx.mainSurface.config.height
         val newScale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight) * zoom
         engine.gfx.mainCamera.apply()
         {

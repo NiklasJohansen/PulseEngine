@@ -7,6 +7,9 @@ import java.lang.Float.intBitsToFloat
 
 interface SurfaceConfig
 {
+    val name: String
+    val width: Int
+    val height: Int
     val zOrder: Int
     val isVisible: Boolean
     val textureScale: Float
@@ -19,7 +22,10 @@ interface SurfaceConfig
 }
 
 class SurfaceConfigInternal(
-    override val zOrder: Int,
+    override val name: String,
+    override var width: Int,
+    override var height: Int,
+    override var zOrder: Int,
     override var isVisible: Boolean,
     override var textureScale: Float,
     override var textureFormat: TextureFormat,
@@ -27,7 +33,7 @@ class SurfaceConfigInternal(
     override var multisampling: Multisampling,
     override var blendFunction: BlendFunction,
     override val attachments: List<Attachment>,
-    override val backgroundColor: Color
+    override var backgroundColor: Color
 ) : SurfaceConfig {
 
     val hasDepthAttachment = attachments.anyMatches { it.hasDepth }

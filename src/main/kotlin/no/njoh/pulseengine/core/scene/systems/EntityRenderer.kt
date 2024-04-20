@@ -61,7 +61,7 @@ open class EntityRendererImpl : EntityRenderer()
 
     override fun onCreate(engine: PulseEngine)
     {
-        addRenderPass(RenderPass(surfaceName = engine.gfx.mainSurface.name, targetType = Renderable::class.java))
+        addRenderPass(RenderPass(surfaceName = engine.gfx.mainSurface.config.name, targetType = Renderable::class.java))
     }
 
     override fun onRender(engine: PulseEngine)

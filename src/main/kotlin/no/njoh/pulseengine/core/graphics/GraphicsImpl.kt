@@ -101,7 +101,7 @@ open class GraphicsImpl : GraphicsInternal
         surfaces.forEachCamera()
         {
             it.updateViewMatrix()
-            it.updateWorldPositions(mainSurface.width, mainSurface.height)
+            it.updateWorldPositions(mainSurface.config.width, mainSurface.config.height)
         }
         surfaces.forEachFast { it.initFrame() }
     }
@@ -121,7 +121,7 @@ open class GraphicsImpl : GraphicsInternal
         glDisable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glViewport(0, 0, mainSurface.width, mainSurface.height)
+        glViewport(0, 0, mainSurface.config.width, mainSurface.config.height)
 
         // Run surfaces through their post-processing pipelines
         surfaces.forEachFast { it.runPostProcessingPipeline() }
@@ -143,7 +143,7 @@ open class GraphicsImpl : GraphicsInternal
             surfaceMap[name]?.let()
             {
                 surfaces.remove(it)
-                surfaceMap.remove(it.name)
+                surfaceMap.remove(it.config.name)
                 it.cleanUp()
             }
         }
@@ -166,10 +166,13 @@ open class GraphicsImpl : GraphicsInternal
     ): SurfaceInternal {
 
         // Create new surface
-        val surfaceWidth = width ?: mainSurface.width
-        val surfaceHeight = height ?: mainSurface.height
+        val surfaceWidth = width ?: mainSurface.config.width
+        val surfaceHeight = height ?: mainSurface.config.height
         val newCamera = (camera ?: DefaultCamera.createOrthographic(surfaceWidth, surfaceHeight)) as CameraInternal
         val config = SurfaceConfigInternal(
+            name = name,
+            width = surfaceWidth,
+            height = surfaceHeight,
             zOrder = zOrder ?: this.zOrder--,
             isVisible = isVisible,
             textureScale = textureScale,
@@ -180,7 +183,7 @@ open class GraphicsImpl : GraphicsInternal
             attachments = attachments,
             backgroundColor = backgroundColor
         )
-        val newSurface = SurfaceImpl(name, surfaceWidth, surfaceHeight, newCamera, config, textureBank)
+        val newSurface = SurfaceImpl(newCamera, config, textureBank)
 
         runOnInitFrame()
         {

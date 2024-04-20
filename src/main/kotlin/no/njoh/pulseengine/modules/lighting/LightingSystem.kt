@@ -214,16 +214,16 @@ open class LightingSystem : SceneSystem()
             xOffset = xTranslation % pixelSize
             yOffset = yTranslation % pixelSize
         }
-        lightBlendEffect.xSamplingOffset = -xOffset / lightSurface.width
-        lightBlendEffect.ySamplingOffset = yOffset / lightSurface.height
+        lightBlendEffect.xSamplingOffset = -xOffset / lightSurface.config.width
+        lightBlendEffect.ySamplingOffset = yOffset / lightSurface.config.height
         lightRenderer.xDrawOffset = xOffset
         lightRenderer.yDrawOffset = yOffset
     }
 
     private fun updateBoundingRect(lightSurface: Surface)
     {
-        val screenWidth = lightSurface.width.toFloat()
-        val screenHeight = lightSurface.height.toFloat()
+        val screenWidth = lightSurface.config.width.toFloat()
+        val screenHeight = lightSurface.config.height.toFloat()
         for (i in BOUNDING_COORDS.indices step 2)
         {
             val worldPos = lightSurface.camera.screenPosToWorldPos(
