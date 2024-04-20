@@ -14,7 +14,6 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Logger
 import java.lang.RuntimeException
-import kotlin.reflect.KClass
 
 class Surface2DImpl(
     override val name: String,
@@ -25,21 +24,22 @@ class Surface2DImpl(
     val textureBank: TextureBank
 ): Surface2DInternal() {
 
-    override var renderTarget = createRenderTarget(context)
+    override var renderTarget           = createRenderTarget(context)
 
-    private var initialized = false
-    private val postProcessingPipeline = PostProcessingPipeline()
-    private var readRenderStates = ArrayList<RenderState>(MAX_BATCH_COUNT)
-    private var writeRenderStates = ArrayList<RenderState>(MAX_BATCH_COUNT)
-    private var initFrameCommands = mutableListOf<() -> Unit>()
+    private var initialized             = false
+    private val postProcessingPipeline  = PostProcessingPipeline()
+    private var readRenderStates        = ArrayList<RenderState>(MAX_BATCH_COUNT)
+    private var writeRenderStates       = ArrayList<RenderState>(MAX_BATCH_COUNT)
+    private var initFrameCommands       = ArrayList<() -> Unit>()
 
-    private var textRenderer: TextRenderer? = null
-    private var quadRenderer: QuadBatchRenderer? = null
-    private var lineRenderer: LineBatchRenderer? = null
-    private var bindlessTextureRenderer: BindlessTextureRenderer? = null
-    private var textureRenderer: TextureRenderer? = null
-    private var stencilRenderer: StencilRenderer? = null
-    private var renderers = mutableListOf<BatchRenderer>()
+    private var renderers               = ArrayList<BatchRenderer>()
+    private var rendererMap             = HashMap<Class<out BatchRenderer>, BatchRenderer>()
+    private var textRenderer            = null as TextRenderer?
+    private var quadRenderer            = null as QuadBatchRenderer?
+    private var lineRenderer            = null as LineBatchRenderer?
+    private var textureRenderer         = null as TextureRenderer?
+    private var stencilRenderer         = null as StencilRenderer?
+    private var bindlessTextureRenderer = null as BindlessTextureRenderer?
 
     // Internal functions
     //--------------------------------------------------------------------------------------------
@@ -51,13 +51,15 @@ class Surface2DImpl(
 
         if (!initialized)
         {
-             textRenderer            = TextRenderer(context, textureBank)
-             quadRenderer            = QuadBatchRenderer(context)
-             lineRenderer            = LineBatchRenderer(context)
-             bindlessTextureRenderer = BindlessTextureRenderer(context, textureBank)
-             textureRenderer         = TextureRenderer(context)
-             stencilRenderer         = StencilRenderer()
-             renderers               += listOfNotNull(textRenderer, quadRenderer, lineRenderer, bindlessTextureRenderer, textureRenderer, stencilRenderer)
+            textRenderer            = TextRenderer(context, textureBank)
+            quadRenderer            = QuadBatchRenderer(context)
+            lineRenderer            = LineBatchRenderer(context)
+            textureRenderer         = TextureRenderer(context)
+            stencilRenderer         = StencilRenderer()
+            bindlessTextureRenderer = BindlessTextureRenderer(context, textureBank)
+            renderers               += listOfNotNull(textRenderer, quadRenderer, lineRenderer, textureRenderer, stencilRenderer, bindlessTextureRenderer)
+
+            renderers.forEachFast { rendererMap[it::class.java] = it }
         }
 
         if (glContextRecreated || !initialized)
@@ -173,9 +175,9 @@ class Surface2DImpl(
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T : BatchRenderer> getRenderer(type: KClass<T>): T?
+    override fun <T : BatchRenderer> getRenderer(type: Class<T>): T?
     {
-        return renderers.firstOrNull { type.isInstance(it) } as T?
+        return rendererMap[type] as T?
     }
 
     override fun getRenderers(): List<BatchRenderer>
@@ -320,6 +322,7 @@ class Surface2DImpl(
         {
             renderer.init()
             renderers.add(renderer)
+            rendererMap[renderer.javaClass] = renderer
         }
     }
 

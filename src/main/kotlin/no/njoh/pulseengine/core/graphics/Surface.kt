@@ -60,7 +60,7 @@ abstract class Surface2D : Surface
     abstract fun setRenderState(state: RenderState)
     abstract fun addRenderer(renderer: BatchRenderer)
     abstract fun getRenderers(): List<BatchRenderer>
-    abstract fun <T: BatchRenderer> getRenderer(type: KClass<T>): T?
+    inline fun <reified T: BatchRenderer> getRenderer(): T? = getRenderer(T::class.java)
 
     // Clipping/stencil masking
     inline fun drawWithin(x: Float, y: Float, width: Float, height: Float, drawFunc: () -> Unit)
@@ -69,6 +69,9 @@ abstract class Surface2D : Surface
         drawFunc()
         setRenderState(StencilState(x, y, width, height, action = CLEAR))
     }
+
+    // Internal abstract versions of the public inline functions
+    @PublishedApi internal abstract fun <T: BatchRenderer> getRenderer(type: Class<T>): T?
 
     // Reusable StringBuilder for text drawing
     @PublishedApi internal val sb = StringBuilder(1000)

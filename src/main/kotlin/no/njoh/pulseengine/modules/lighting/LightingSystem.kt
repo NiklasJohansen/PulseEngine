@@ -154,7 +154,7 @@ open class LightingSystem : SceneSystem()
     override fun onUpdate(engine: PulseEngine)
     {
         val lightSurface = engine.gfx.getSurface(LIGHT_SURFACE_NAME) ?: return
-        val lightRenderer = lightSurface.getRenderer(LightRenderer::class) ?: return
+        val lightRenderer = lightSurface.getRenderer<LightRenderer>() ?: return
         val lightBlendEffect = engine.gfx.mainSurface.getPostProcessingEffect(LIGHT_BLEND_EFFECT_NAME) as? LightBlendEffect ?: return
 
         lightSurface.setMultisampling(multisampling)
@@ -180,7 +180,7 @@ open class LightingSystem : SceneSystem()
     override fun onRender(engine: PulseEngine)
     {
         val lightSurface = engine.gfx.getSurface(LIGHT_SURFACE_NAME) ?: return
-        val lightRenderer = lightSurface.getRenderer(LightRenderer::class) ?: return
+        val lightRenderer = lightSurface.getRenderer<LightRenderer>() ?: return
         val lightBlendEffect = engine.gfx.mainSurface.getPostProcessingEffect(LIGHT_BLEND_EFFECT_NAME) as? LightBlendEffect ?: return
 
         val startTime = System.nanoTime()

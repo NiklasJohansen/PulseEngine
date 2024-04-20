@@ -72,7 +72,7 @@ open class StencilState(
 
     override fun apply(surface: Surface2DInternal)
     {
-        val renderer = surface.getRenderer(StencilRenderer::class) ?: return
+        val renderer = surface.getRenderer<StencilRenderer>() ?: return
         if (action == SET) setStencil(surface, renderer)
         if (action == CLEAR) clearStencil(surface, renderer)
     }

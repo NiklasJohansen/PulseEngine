@@ -29,7 +29,7 @@ interface NormalMapped : CustomRenderPassTarget
     {
         if (this is SceneEntity && this is Spatial && normalMapName.isNotBlank())
         {
-            surface.getRenderer(NormalMapRenderer::class)?.drawNormalMap(
+            surface.getRenderer<NormalMapRenderer>()?.drawNormalMap(
                 texture = engine.asset.getOrNull(normalMapName),
                 x = x,
                 y = y,
