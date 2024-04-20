@@ -109,7 +109,7 @@ open class EntityRendererImpl : EntityRenderer()
     private fun drawRenderQueue(engine: PulseEngine)
     {
         renderQueue.forEachFast { task ->
-            val isCustomRenderTarget = task.type.isAssignableFrom(CustomRenderPassTarget::class.java)
+            val isCustomRenderTarget = CustomRenderPassTarget::class.java.isAssignableFrom(task.type)
             val surface = engine.gfx.getSurface(task.surfaceName) ?: return@forEachFast
 
             task.layers.sortWith(BackToFrontComparator)

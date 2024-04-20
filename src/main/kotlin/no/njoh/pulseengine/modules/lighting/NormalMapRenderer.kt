@@ -21,8 +21,6 @@ class NormalMapRenderer(
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
 
-    var a = 0f
-
     override fun init()
     {
         if (!this::program.isInitialized)
