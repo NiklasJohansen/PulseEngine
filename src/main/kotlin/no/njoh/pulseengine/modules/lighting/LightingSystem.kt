@@ -58,12 +58,12 @@ open class LightingSystem : SceneSystem()
 
     private val normalMapRenderPass = RenderPass(
         surfaceName = NORMAL_SURFACE_NAME,
-        targetType = NormalMapped::class
+        targetType = NormalMapped::class.java
     )
 
     private val occluderRenderPass = RenderPass(
         surfaceName = OCCLUDER_SURFACE_NAME,
-        targetType = LightOccluder::class,
+        targetType = LightOccluder::class.java,
         drawCondition = { (it as? LightOccluder)?.castShadows ?: true }
     )
 
