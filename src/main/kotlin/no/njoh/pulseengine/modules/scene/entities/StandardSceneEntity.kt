@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.scene.entities
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
@@ -40,7 +40,7 @@ abstract class StandardSceneEntity : SceneEntity(), Initiable, Updatable, Render
     override fun onStart(engine: PulseEngine) {  }
     override fun onUpdate(engine: PulseEngine) { }
     override fun onFixedUpdate(engine: PulseEngine) { }
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         var text = this::class.java.simpleName
         val fontWidth = Font.DEFAULT.getWidth(text)

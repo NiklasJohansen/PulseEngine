@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.gui.layout.docking
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.gui.Position.PositionType
 import no.njoh.pulseengine.modules.gui.Position.PositionType.*
@@ -45,7 +45,7 @@ class DockingPanel(
         addChildren(viewport)
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D) { }
+    override fun onRender(engine: PulseEngine, surface: Surface) { }
 
     override fun onUpdate(engine: PulseEngine)
     {

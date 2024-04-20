@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.gui
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Mouse
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.modules.gui.elements.Label
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -253,7 +253,7 @@ abstract class UiElement(
     // Rendering the UI element
     // ---------------------------------------------------------------------------------------------------------
 
-    open fun render(engine: PulseEngine, surface: Surface2D)
+    open fun render(engine: PulseEngine, surface: Surface)
     {
         if (!isVisible())
             return
@@ -277,7 +277,7 @@ abstract class UiElement(
             renderPopup(engine, surface)
     }
 
-    private fun renderPopup(engine: PulseEngine, surface: Surface2D)
+    private fun renderPopup(engine: PulseEngine, surface: Surface)
     {
         if (!isVisible())
             return
@@ -393,5 +393,5 @@ abstract class UiElement(
     open fun onVisibilityIndependentUpdate(engine: PulseEngine) { }
 
     protected abstract fun onUpdate(engine: PulseEngine)
-    protected abstract fun onRender(engine: PulseEngine, surface: Surface2D)
+    protected abstract fun onRender(engine: PulseEngine, surface: Surface)
 }

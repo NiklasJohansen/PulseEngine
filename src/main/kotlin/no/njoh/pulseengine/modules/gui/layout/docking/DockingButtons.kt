@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.gui.layout.docking
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.UiElement
@@ -32,7 +32,7 @@ class DockingButtons : UiElement(Position.auto(), Position.auto(), Size.auto(), 
         updateEdgeButtons(engine, x.value, y.value, width.value, height.value)
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         targetPanel?.let {
             renderPanelButtons(surface, it.x.value, it.y.value, it.width.value, it.height.value)
@@ -41,7 +41,7 @@ class DockingButtons : UiElement(Position.auto(), Position.auto(), Size.auto(), 
         renderEdgeButtons(surface, x.value, y.value, width.value, height.value)
     }
 
-    private fun renderPanelButtons(surface: Surface2D, x: Float, y: Float, parentWidth: Float, parentHeight: Float)
+    private fun renderPanelButtons(surface: Surface, x: Float, y: Float, parentWidth: Float, parentHeight: Float)
     {
         val xCenter = x + parentWidth / 2f
         val yCenter = y + parentHeight / 2f
@@ -55,7 +55,7 @@ class DockingButtons : UiElement(Position.auto(), Position.auto(), Size.auto(), 
         surface.drawButton( xCenter - size *  0.5f, yCenter + size * 0.75f, size, size * 0.5f, bottomHover, HORIZONTAL)
     }
 
-    private fun renderEdgeButtons(surface: Surface2D, x: Float, y: Float, parentWidth: Float, parentHeight: Float)
+    private fun renderEdgeButtons(surface: Surface, x: Float, y: Float, parentWidth: Float, parentHeight: Float)
     {
         val xCenter = x + parentWidth / 2f
         val yCenter = y + parentHeight / 2f
@@ -92,7 +92,7 @@ class DockingButtons : UiElement(Position.auto(), Position.auto(), Size.auto(), 
         bottomEdgeHover = inside(xMouse, yMouse, xCenter - size *  0.5f, y + parentHeight - size * 0.5f, size, size * 0.5f)
     }
 
-    private fun Surface2D.drawButton(x: Float, y: Float, width: Float, height: Float, isHovering: Boolean, centerLine: CenterLine)
+    private fun Surface.drawButton(x: Float, y: Float, width: Float, height: Float, isHovering: Boolean, centerLine: CenterLine)
     {
         setDrawColor(1f, 1f, 1f, if (isHovering) 0.3f * 1.2f else 0.3f)
         drawQuad( x, y, width, height)

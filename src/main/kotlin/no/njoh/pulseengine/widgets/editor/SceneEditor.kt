@@ -8,9 +8,9 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
-import no.njoh.pulseengine.core.graphics.Camera
+import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.Attachment
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.modules.gui.UiUtil.findElementById
 import no.njoh.pulseengine.modules.gui.elements.InputField
@@ -404,7 +404,7 @@ class SceneEditor(
         rootUI.render(engine, foregroundSurface)
     }
 
-    private fun renderEntityIconAndGizmo(surface: Surface2D, engine: PulseEngine)
+    private fun renderEntityIconAndGizmo(surface: Surface, engine: PulseEngine)
     {
         val showResizeDots = (entitySelection.size == 1)
         entitySelection.forEachFast()
@@ -1077,7 +1077,7 @@ class SceneEditor(
 
     ////////////////////////////// RENDERING  //////////////////////////////
 
-    private fun renderSelectionRectangle(surface: Surface2D)
+    private fun renderSelectionRectangle(surface: Surface)
     {
         if (isSelecting)
         {
@@ -1095,7 +1095,7 @@ class SceneEditor(
         }
     }
 
-    private fun SceneEntity.renderGizmo(surface: Surface2D, showResizeDots: Boolean)
+    private fun SceneEntity.renderGizmo(surface: Surface, showResizeDots: Boolean)
     {
         if (this !is Spatial) return
 
@@ -1150,7 +1150,7 @@ class SceneEditor(
         }
     }
 
-    private fun renderGrid(surface: Surface2D)
+    private fun renderGrid(surface: Surface)
     {
         val cellSize = 200
         val xStart = (activeCamera.topLeftWorldPosition.x.toInt() / cellSize - 2) * cellSize

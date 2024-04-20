@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.gui.layout
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 
 import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.Size.ValueType.ABSOLUTE
@@ -93,5 +93,5 @@ class VerticalResizeGizmo(
     }
 
     override fun onUpdate(engine: PulseEngine) { }
-    override fun onRender(engine: PulseEngine, surface: Surface2D) { }
+    override fun onRender(engine: PulseEngine, surface: Surface) { }
 }

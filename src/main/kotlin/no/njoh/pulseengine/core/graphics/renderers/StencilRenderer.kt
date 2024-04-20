@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
-import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import org.lwjgl.opengl.GL20.*
 
 class StencilRenderer : BatchRenderer()
@@ -35,7 +35,7 @@ class StencilRenderer : BatchRenderer()
 
     override fun onInitFrame() { }
 
-    fun drawStencil(surface: Surface2D, x: Float, y: Float, width: Float, height: Float)
+    fun drawStencil(surface: Surface, x: Float, y: Float, width: Float, height: Float)
     {
         vao.bind()
         program.bind()
@@ -45,7 +45,7 @@ class StencilRenderer : BatchRenderer()
         vao.release()
     }
 
-    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int) { }
+    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int) { }
 
     override fun cleanUp()
     {

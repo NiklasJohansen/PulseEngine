@@ -4,9 +4,9 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Font.*
 import no.njoh.pulseengine.core.asset.types.Font.Companion.MAX_CHAR_COUNT
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.RenderContextInternal
-import no.njoh.pulseengine.core.graphics.Surface2D
-import no.njoh.pulseengine.core.graphics.TextureBank
+import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.api.TextureBank
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
@@ -22,7 +22,7 @@ import kotlin.math.max
 import kotlin.math.sin
 
 class TextRenderer(
-    private val context: RenderContextInternal,
+    private val config: SurfaceConfigInternal,
     private val textureBank: TextureBank
 ) : BatchRenderer() {
 
@@ -74,7 +74,7 @@ class TextRenderer(
         instanceBuffer.swapBuffers()
     }
 
-    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {
@@ -166,7 +166,7 @@ class TextRenderer(
             {
                 put(glyphData[X(i)] + x - xOffset)
                 put(glyphData[Y(i)] + y + yOffset)
-                put(context.depth)
+                put(config.currentDepth)
                 put(glyphData[W(i)])
                 put(glyphData[H(i)])
                 put(0f) // Rotation
@@ -174,11 +174,11 @@ class TextRenderer(
                 put(fontTex.vMax * glyphData[V_MIN(i)])
                 put(fontTex.uMax * glyphData[U_MAX(i)])
                 put(fontTex.vMax * glyphData[V_MAX(i)])
-                put(context.drawColor)
+                put(config.currentDrawColor)
                 put(fontTex.handle.toFloat())
             }
             increaseBatchSize()
-            context.increaseDepth()
+            config.increaseDepth()
             i += GLYPH_STRIDE
         }
     }
@@ -207,7 +207,7 @@ class TextRenderer(
             {
                 put(x0)
                 put(y0)
-                put(context.depth)
+                put(config.currentDepth)
                 put(glyphData[W(i)])
                 put(glyphData[H(i)])
                 put(angle)
@@ -215,12 +215,12 @@ class TextRenderer(
                 put(fontTex.vMax * glyphData[V_MIN(i)])
                 put(fontTex.uMax * glyphData[U_MAX(i)])
                 put(fontTex.vMax * glyphData[V_MAX(i)])
-                put(context.drawColor)
+                put(config.currentDrawColor)
                 put(fontTex.handle.toFloat())
             }
 
             increaseBatchSize()
-            context.increaseDepth()
+            config.increaseDepth()
             i += GLYPH_STRIDE
         }
     }

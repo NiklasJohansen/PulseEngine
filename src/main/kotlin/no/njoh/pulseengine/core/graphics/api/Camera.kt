@@ -1,7 +1,7 @@
-package no.njoh.pulseengine.core.graphics
+package no.njoh.pulseengine.core.graphics.api
 
-import no.njoh.pulseengine.core.graphics.DefaultCamera.*
-import no.njoh.pulseengine.core.graphics.DefaultCamera.ProjectionType.*
+import no.njoh.pulseengine.core.graphics.api.DefaultCamera.*
+import no.njoh.pulseengine.core.graphics.api.DefaultCamera.ProjectionType.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import org.joml.*
 
@@ -38,7 +38,7 @@ abstract class Camera
     /** Transforms a coordinate from world space to screen space */
     abstract fun worldPosToScreenPos(x: Float, y: Float, z: Float = 0f): Vector2f
 
-    /** Returns true if a rectangle (in world space coordinates) intersects intersects the camera view rectangle */
+    /** Returns true if a rectangle (in world space coordinates) intersects the camera view rectangle */
     abstract fun isInView(x: Float, y: Float, width: Float, height: Float, padding: Float = 0f): Boolean
 
     /** Updates the projection matrix */

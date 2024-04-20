@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.physics.bodies
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
@@ -123,7 +123,7 @@ interface CircleBody : PhysicsBody
         shape.isSleeping = false
     }
 
-    override fun render(engine: PulseEngine, surface: Surface2D)
+    override fun render(engine: PulseEngine, surface: Surface)
     {
         val dotSize = 5f
         val radius = shape.radius

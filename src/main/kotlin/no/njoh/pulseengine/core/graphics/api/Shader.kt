@@ -45,7 +45,7 @@ class Shader(
         val errCompShader = createShader("/pulseengine/shaders/default/error.comp", COMPUTE)
 
         // Cache of all loaded shaders
-        private val cache = mutableMapOf<String, Shader>()
+        private val cache = HashMap<String, Shader>()
 
         /**
          * Loads the shader from the given file.

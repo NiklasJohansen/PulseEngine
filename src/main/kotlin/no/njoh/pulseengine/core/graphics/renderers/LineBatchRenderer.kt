@@ -1,15 +1,16 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
-import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
+import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import no.njoh.pulseengine.core.shared.utils.BufferExtensions.putAll
 import org.lwjgl.opengl.GL11.*
 
 class LineBatchRenderer(
-    private val context: RenderContextInternal
+    private val config: SurfaceConfigInternal
 ) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
@@ -44,7 +45,7 @@ class LineBatchRenderer(
         vbo.swapBuffers()
     }
 
-    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int) 
+    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {
@@ -71,9 +72,9 @@ class LineBatchRenderer(
     {
         vbo.fill(4)
         {
-            putAll(x, y, context.depth, context.drawColor)
+            putAll(x, y, config.currentDepth, config.currentDrawColor)
         }
-        context.increaseDepth()
+        config.increaseDepth()
         vertices++
         if (vertices == 2)
         {
@@ -84,14 +85,14 @@ class LineBatchRenderer(
 
     fun line(x0: Float, y0: Float, x1: Float, y1: Float)
     {
-        val depth = context.depth
-        val rgba = context.drawColor
+        val depth = config.currentDepth
+        val rgba = config.currentDrawColor
         vbo.fill(8)
         {
             putAll(x0, y0, depth, rgba)
             putAll(x1, y1, depth, rgba)
         }
-        context.increaseDepth()
+        config.increaseDepth()
         increaseBatchSize()
     }
 }

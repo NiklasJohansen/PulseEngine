@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 
 /**
  * Used to batch up vertex data into separate draw calls.
@@ -54,7 +54,7 @@ abstract class BatchRenderer
     /**
      * Renders the numbered batch if it is not empty.
      */
-    fun renderBatch(surface: Surface2D, batchNum: Int)
+    fun renderBatch(surface: Surface, batchNum: Int)
     {
         val i = readOffset + batchNum
         val drawCount = batchSize[i]
@@ -65,7 +65,7 @@ abstract class BatchRenderer
     }
 
     /**
-     * Called once when the renderer is added to the [Surface2D]
+     * Called once when the renderer is added to the [Surface]
      */
     abstract fun init()
 
@@ -77,10 +77,10 @@ abstract class BatchRenderer
     /**
      * Called every frame on every none-empty batch.
      */
-    abstract fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
+    abstract fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
 
     /**
-     * Called once when the [Surface2D] is destroyed.
+     * Called once when the [Surface] is destroyed.
      */
     abstract fun cleanUp()
 

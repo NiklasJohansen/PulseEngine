@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.data.Metric
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.utils.Extensions.append
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
@@ -161,7 +161,7 @@ class Profiler : Widget
             averageValue = avg / max(size(), 1)
         }
 
-        fun render(surface: Surface2D, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
+        fun render(surface: Surface, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
         {
             val headerText = newText(metric.name)
             surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)

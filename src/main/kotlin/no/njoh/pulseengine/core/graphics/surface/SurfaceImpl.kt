@@ -1,11 +1,8 @@
-package no.njoh.pulseengine.core.graphics
+package no.njoh.pulseengine.core.graphics.surface
 
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.BlendFunction
-import no.njoh.pulseengine.core.graphics.api.Multisampling
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
+import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.core.graphics.renderers.*
@@ -15,16 +12,16 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Logger
 import java.lang.RuntimeException
 
-class Surface2DImpl(
+class SurfaceImpl(
     override val name: String,
     override var width: Int,
     override var height: Int,
     override val camera: CameraInternal,
-    override val context: RenderContextInternal,
+    override val config: SurfaceConfigInternal,
     val textureBank: TextureBank
-): Surface2DInternal() {
+): SurfaceInternal() {
 
-    override var renderTarget           = createRenderTarget(context)
+    override var renderTarget           = createRenderTarget(config)
 
     private var initialized             = false
     private val postProcessingPipeline  = PostProcessingPipeline()
@@ -51,12 +48,12 @@ class Surface2DImpl(
 
         if (!initialized)
         {
-            textRenderer            = TextRenderer(context, textureBank)
-            quadRenderer            = QuadBatchRenderer(context)
-            lineRenderer            = LineBatchRenderer(context)
-            textureRenderer         = TextureRenderer(context)
+            textRenderer            = TextRenderer(config, textureBank)
+            quadRenderer            = QuadBatchRenderer(config)
+            lineRenderer            = LineBatchRenderer(config)
+            textureRenderer         = TextureRenderer(config)
             stencilRenderer         = StencilRenderer()
-            bindlessTextureRenderer = BindlessTextureRenderer(context, textureBank)
+            bindlessTextureRenderer = BindlessTextureRenderer(config, textureBank)
             renderers               += listOfNotNull(textRenderer, quadRenderer, lineRenderer, textureRenderer, stencilRenderer, bindlessTextureRenderer)
 
             renderers.forEachFast { rendererMap[it::class.java] = it }
@@ -81,7 +78,7 @@ class Surface2DImpl(
         initFrameCommands.clear()
 
         renderers.forEachFast { it.initFrame() }
-        context.resetDepth(camera.nearPlane)
+        config.resetDepth(camera.nearPlane)
         setRenderState(BaseState)
     }
 
@@ -165,7 +162,7 @@ class Surface2DImpl(
             ?: renderTarget.getTexture(index)
             ?: throw RuntimeException(
                 "Failed to get texture with index: $index from surface with name: $name. " +
-                    "Surface has the following output specification: ${context.attachments})"
+                    "Surface has the following output specification: ${config.attachments})"
             )
     }
 
@@ -188,90 +185,90 @@ class Surface2DImpl(
     // Exposed setters
     //------------------------------------------------------------------------------------------------
 
-    override fun setIsVisible(isVisible: Boolean): Surface2D
+    override fun setIsVisible(isVisible: Boolean): Surface
     {
-        context.isVisible = isVisible
+        config.isVisible = isVisible
         return this
     }
 
-    override fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float): Surface2D
+    override fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float): Surface
     {
-        context.setDrawColor(red, green, blue, alpha)
+        config.setDrawColor(red, green, blue, alpha)
         return this
     }
 
-    override fun setDrawColor(color: Color): Surface2D
+    override fun setDrawColor(color: Color): Surface
     {
-        context.setDrawColor(color.red, color.green, color.blue, color.alpha)
+        config.setDrawColor(color.red, color.green, color.blue, color.alpha)
         return this
     }
 
-    override fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float): Surface2D
+    override fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float): Surface
     {
-        context.backgroundColor.setFrom(red, green, blue, alpha)
+        config.backgroundColor.setFrom(red, green, blue, alpha)
         return this
     }
 
-    override fun setBackgroundColor(color: Color): Surface2D
+    override fun setBackgroundColor(color: Color): Surface
     {
-        context.backgroundColor.setFrom(color)
+        config.backgroundColor.setFrom(color)
         return this
     }
 
-    override fun setBlendFunction(func: BlendFunction): Surface2D
+    override fun setBlendFunction(func: BlendFunction): Surface
     {
-        context.blendFunction = func
+        config.blendFunction = func
         return this
     }
 
-    override fun setMultisampling(multisampling: Multisampling): Surface2D
+    override fun setMultisampling(multisampling: Multisampling): Surface
     {
-        if (multisampling != context.multisampling)
+        if (multisampling != config.multisampling)
         {
-            context.multisampling = multisampling
+            config.multisampling = multisampling
             runOnInitFrame()
             {
                 renderTarget.cleanUp()
-                renderTarget = createRenderTarget(context)
+                renderTarget = createRenderTarget(config)
                 renderTarget.init(width, height)
             }
         }
         return this
     }
 
-    private fun createRenderTarget(context: RenderContext) = when (context.multisampling)
+    private fun createRenderTarget(config: SurfaceConfig) = when (config.multisampling)
     {
-        Multisampling.NONE -> OffScreenRenderTarget(context.textureScale, context.textureFormat, context.textureFilter, context.attachments)
-        else -> MultisampledOffScreenRenderTarget(context.textureScale, context.textureFormat, context.textureFilter, context.multisampling, context.attachments)
+        Multisampling.NONE -> OffScreenRenderTarget(config.textureScale, config.textureFormat, config.textureFilter, config.attachments)
+        else -> MultisampledOffScreenRenderTarget(config.textureScale, config.textureFormat, config.textureFilter, config.multisampling, config.attachments)
     }
 
-    override fun setTextureFormat(format: TextureFormat): Surface2D
+    override fun setTextureFormat(format: TextureFormat): Surface
     {
-        if (format != context.textureFormat)
+        if (format != config.textureFormat)
         {
-            context.textureFormat = format
+            config.textureFormat = format
             renderTarget.textureFormat = format
             runOnInitFrame { renderTarget.init(width, height) }
         }
         return this
     }
 
-    override fun setTextureFilter(filter: TextureFilter): Surface2D
+    override fun setTextureFilter(filter: TextureFilter): Surface
     {
-        if (filter != context.textureFilter)
+        if (filter != config.textureFilter)
         {
-            context.textureFilter = filter
+            config.textureFilter = filter
             renderTarget.textureFilter = filter
             runOnInitFrame { renderTarget.init(width, height) }
         }
         return this
     }
 
-    override fun setTextureScale(scale: Float): Surface2D
+    override fun setTextureScale(scale: Float): Surface
     {
-        if (scale != context.textureScale)
+        if (scale != config.textureScale)
         {
-            context.textureScale = scale
+            config.textureScale = scale
             renderTarget.textureScale = scale
             runOnInitFrame { renderTarget.init(width, height) }
         }

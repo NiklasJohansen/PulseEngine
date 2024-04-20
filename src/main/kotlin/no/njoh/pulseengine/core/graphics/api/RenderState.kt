@@ -1,8 +1,8 @@
-package no.njoh.pulseengine.core.graphics
+package no.njoh.pulseengine.core.graphics.api
 
-import no.njoh.pulseengine.core.graphics.StencilState.Action.CLEAR
-import no.njoh.pulseengine.core.graphics.StencilState.Action.SET
-import no.njoh.pulseengine.core.graphics.api.BlendFunction
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
+import no.njoh.pulseengine.core.graphics.api.StencilState.Action.CLEAR
+import no.njoh.pulseengine.core.graphics.api.StencilState.Action.SET
 import no.njoh.pulseengine.core.graphics.renderers.StencilRenderer
 import org.lwjgl.opengl.GL20.*
 
@@ -10,10 +10,10 @@ import org.lwjgl.opengl.GL20.*
  * Base interface for all render states.
  * A render state represents a collection of API calls changing the current graphics state.
  */
-interface RenderState {
-
+interface RenderState
+{
     /** Called by the graphics pipeline before rendering the next batch. */
-    fun apply(surface: Surface2DInternal)
+    fun apply(surface: SurfaceInternal)
 }
 
 /**
@@ -21,12 +21,12 @@ interface RenderState {
  */
 object BaseState : RenderState
 {
-    override fun apply(surface: Surface2DInternal)
+    override fun apply(surface: SurfaceInternal)
     {
-        val context = surface.context
+        val config = surface.config
 
         // Set depth state
-        if (context.hasDepthAttachment)
+        if (config.hasDepthAttachment)
         {
             glEnable(GL_DEPTH_TEST)
             glDepthMask(true)
@@ -37,21 +37,21 @@ object BaseState : RenderState
         else glDisable(GL_DEPTH_TEST)
 
         // Set blending options
-        if (context.blendFunction != BlendFunction.NONE)
+        if (config.blendFunction != BlendFunction.NONE)
         {
             glEnable(GL_BLEND)
-            glBlendFunc(context.blendFunction.src, context.blendFunction.dest)
+            glBlendFunc(config.blendFunction.src, config.blendFunction.dest)
         }
         else glDisable(GL_BLEND)
 
         // Set which attachments from the fragment shader data will be written to
-        glDrawBuffers(context.textureAttachments)
+        glDrawBuffers(config.textureAttachments)
 
         // Set viewport size
-        glViewport(0, 0, (surface.width * context.textureScale).toInt(), (surface.height * context.textureScale).toInt())
+        glViewport(0, 0, (surface.width * config.textureScale).toInt(), (surface.height * config.textureScale).toInt())
 
         // Set color and clear surface
-        val c = context.backgroundColor
+        val c = config.backgroundColor
         glClearColor(c.red, c.green, c.blue, c.alpha)
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
     }
@@ -70,21 +70,21 @@ open class StencilState(
 
     enum class Action { SET, CLEAR }
 
-    override fun apply(surface: Surface2DInternal)
+    override fun apply(surface: SurfaceInternal)
     {
         val renderer = surface.getRenderer<StencilRenderer>() ?: return
         if (action == SET) setStencil(surface, renderer)
         if (action == CLEAR) clearStencil(surface, renderer)
     }
 
-    private fun setStencil(surface: Surface2DInternal, renderer: StencilRenderer)
+    private fun setStencil(surface: SurfaceInternal, renderer: StencilRenderer)
     {
         layer++
         updateStencilBuffer(surface, renderer, operation = if (layer == 1) GL_REPLACE else GL_INCR)
         enableStenciledDrawing()
     }
 
-    private fun clearStencil(surface: Surface2DInternal, renderer: StencilRenderer)
+    private fun clearStencil(surface: SurfaceInternal, renderer: StencilRenderer)
     {
         layer--
 
@@ -103,7 +103,7 @@ open class StencilState(
         }
     }
 
-    private fun updateStencilBuffer(surface: Surface2DInternal, renderer: StencilRenderer, operation: Int)
+    private fun updateStencilBuffer(surface: SurfaceInternal, renderer: StencilRenderer, operation: Int)
     {
         glEnable(GL_STENCIL_TEST)                          // Enable stencil testing
         glStencilOp(GL_KEEP, GL_KEEP, operation)           // Specify the operation to performed when the stencil test passes
@@ -127,7 +127,3 @@ open class StencilState(
         private var layer = 0
     }
 }
-
-
-
-

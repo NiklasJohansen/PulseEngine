@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.Mouse
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.*
 import no.njoh.pulseengine.modules.gui.UiUtil.hasFocus
 import no.njoh.pulseengine.modules.gui.layout.HorizontalPanel
@@ -261,7 +261,7 @@ class ColorPicker(
         colorEditor.padding.top = ScaledValue.unscaled(if (isOnBottomSide) -colorEditor.height.value else height.value)
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         surface.setDrawColor(bgColor)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
@@ -336,7 +336,7 @@ class ColorPicker(
             hueColor.blue = color.blue / 255f
         }
 
-        override fun onRender(engine: PulseEngine, surface: Surface2D)
+        override fun onRender(engine: PulseEngine, surface: Surface)
         {
             val xOffset = 5f
             val xBox = x.value + xOffset
@@ -448,7 +448,7 @@ class ColorPicker(
             outputColor.blue = ((1 - saturation) + saturation * hueColor.blue) * (luminance)
         }
 
-        override fun onRender(engine: PulseEngine, surface: Surface2D)
+        override fun onRender(engine: PulseEngine, surface: Surface)
         {
             surface.setDrawColor(Color(1f, 1f, 1f)) // White
             surface.drawQuadVertex(x.value, y.value)

@@ -20,7 +20,7 @@ class ShaderProgram(
         private set
 
     /** Cache of uniform locations */
-    private var uniformLocations = mutableMapOf<String, Int>()
+    private var uniformLocations = HashMap<String, Int>()
 
     /** Used for getting matrix data as an array */
     private val floatArray16 = FloatArray(16)

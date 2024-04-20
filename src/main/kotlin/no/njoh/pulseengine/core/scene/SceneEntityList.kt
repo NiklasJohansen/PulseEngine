@@ -26,8 +26,6 @@ class SceneEntityList<T : SceneEntity>(
     @JsonIgnore
     fun firstOrNull(): T? = if (size > 0) entities[0] as T else null
 
-    fun toList() = entities.filterNotNull()
-
     inline fun firstOrNull(predicate: (T) -> Boolean): T?
     {
         val size = size

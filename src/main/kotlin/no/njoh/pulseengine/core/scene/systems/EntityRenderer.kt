@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.scene.systems
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
@@ -49,7 +49,7 @@ abstract class EntityRenderer : SceneSystem()
  */
 interface CustomRenderPassTarget
 {
-    fun renderCustomPass(engine: PulseEngine, surface: Surface2D)
+    fun renderCustomPass(engine: PulseEngine, surface: Surface)
 }
 
 @Name("Entity Renderer")

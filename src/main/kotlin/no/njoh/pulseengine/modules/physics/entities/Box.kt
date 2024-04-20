@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.physics.entities
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.bodies.PolygonBody
@@ -39,7 +39,7 @@ open class Box : StandardSceneEntity(), PolygonBody
         rotInterpolated = rotation + i * rotation.degreesBetween(shape.angleLast)
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         val x = if (xInterpolated.isNaN()) x else xInterpolated
         val y = if (yInterpolated.isNaN()) y else yInterpolated

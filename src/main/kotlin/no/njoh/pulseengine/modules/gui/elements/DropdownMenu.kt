@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.gui.elements
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.ScaledValue
@@ -159,7 +159,7 @@ class DropdownMenu <T> (
         this.onItemChanged = callback
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         val bgColor = if (isMouseOver) bgHoverColor else bgColor
         surface.setDrawColor(bgColor)

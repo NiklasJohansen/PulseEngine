@@ -10,6 +10,8 @@ import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
+import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
@@ -99,7 +101,7 @@ open class LightingSystem : SceneSystem()
         engine.data.addMetric("Lighting GPU (MS)", ) { sample(gpuRenderTimeMs)             }
     }
 
-    private fun configureNormalMap(engine: PulseEngine, lightSurface: Surface2D, isEnabled: Boolean)
+    private fun configureNormalMap(engine: PulseEngine, lightSurface: Surface, isEnabled: Boolean)
     {
         if (isEnabled && !isUsingNormalMap)
         {
@@ -108,14 +110,14 @@ open class LightingSystem : SceneSystem()
             val surface = engine.gfx.createSurface(
                 name = NORMAL_SURFACE_NAME,
                 camera = engine.gfx.mainCamera,
-                zOrder = lightSurface.context.zOrder + 1, // Render normal map before lightmap
+                zOrder = lightSurface.config.zOrder + 1, // Render normal map before lightmap
                 backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
                 textureFormat = TextureFormat.RGBA16F,
                 isVisible = false
             )
-            val renderContext = (surface as Surface2DInternal).context
+            val surfaceConfig = (surface as SurfaceInternal).config
             val textureBank = (engine.gfx as GraphicsInternal).textureBank
-            surface.addRenderer(NormalMapRenderer(renderContext, textureBank))
+            surface.addRenderer(NormalMapRenderer(surfaceConfig, textureBank))
             isUsingNormalMap = true
         }
         else if (!isEnabled && isUsingNormalMap)
@@ -127,7 +129,7 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun configureOccluderMap(engine: PulseEngine, lightSurface: Surface2D, isEnabled: Boolean)
+    private fun configureOccluderMap(engine: PulseEngine, lightSurface: Surface, isEnabled: Boolean)
     {
         if (isEnabled && !isUsingOccluderMap)
         {
@@ -136,7 +138,7 @@ open class LightingSystem : SceneSystem()
             engine.gfx.createSurface(
                 name = OCCLUDER_SURFACE_NAME,
                 camera = engine.gfx.mainCamera,
-                zOrder = lightSurface.context.zOrder + 1, // Render occluder map before lightmap
+                zOrder = lightSurface.config.zOrder + 1, // Render occluder map before lightmap
                 backgroundColor = Color(0f, 0f, 0f, 0f),
                 isVisible = false
             )
@@ -199,7 +201,7 @@ open class LightingSystem : SceneSystem()
         gpuRenderTimeMs = lightRenderer.gpuRenderTimeMs
     }
 
-    private fun updateLightMapPositionOffset(lightSurface: Surface2D, lightRenderer: LightRenderer, lightBlendEffect: LightBlendEffect)
+    private fun updateLightMapPositionOffset(lightSurface: Surface, lightRenderer: LightRenderer, lightBlendEffect: LightBlendEffect)
     {
         var xOffset = 0f
         var yOffset = 0f
@@ -218,7 +220,7 @@ open class LightingSystem : SceneSystem()
         lightRenderer.yDrawOffset = yOffset
     }
 
-    private fun updateBoundingRect(lightSurface: Surface2D)
+    private fun updateBoundingRect(lightSurface: Surface)
     {
         val screenWidth = lightSurface.width.toFloat()
         val screenHeight = lightSurface.height.toFloat()
@@ -235,7 +237,7 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun addLightsSources(light: LightSource, lightRenderer: LightRenderer, lightSurface: Surface2D, engine: PulseEngine)
+    private fun addLightsSources(light: LightSource, lightRenderer: LightRenderer, lightSurface: Surface, engine: PulseEngine)
     {
         if ((light as SceneEntity).isSet(HIDDEN) || light.intensity == 0f || !isInsideBoundingRectangle(light))
             return
@@ -312,7 +314,7 @@ open class LightingSystem : SceneSystem()
             }
         }
 
-    private fun addOccluderEdges(shape: Shape, lightRenderer: LightRenderer, lightSurface: Surface2D)
+    private fun addOccluderEdges(shape: Shape, lightRenderer: LightRenderer, lightSurface: Surface)
     {
         val pointCount = shape.getPointCount()
         if (pointCount == 1)
@@ -355,7 +357,7 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun addEdge(x0: Float, y0: Float, x1: Float, y1: Float, lightRenderer: LightRenderer, lightSurface: Surface2D)
+    private fun addEdge(x0: Float, y0: Float, x1: Float, y1: Float, lightRenderer: LightRenderer, lightSurface: Surface)
     {
         lightRenderer.addEdge(x0, y0, x1, y1)
         edgeCount++
@@ -367,7 +369,7 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun drawDebugOutline(light: LightSource, lightSurface: Surface2D)
+    private fun drawDebugOutline(light: LightSource, lightSurface: Surface)
     {
         lightSurface.setDrawColor(light.color.red, light.color.green, light.color.blue, 0.3f)
 

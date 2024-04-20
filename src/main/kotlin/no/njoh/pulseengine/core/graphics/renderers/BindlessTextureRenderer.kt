@@ -1,15 +1,17 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureBank
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
 
 class BindlessTextureRenderer(
-    private val context: RenderContextInternal,
+    private val config: SurfaceConfigInternal,
     private val textureBank: TextureBank
 ) : BatchRenderer() {
 
@@ -59,7 +61,7 @@ class BindlessTextureRenderer(
         instanceBuffer.swapBuffers()
     }
 
-    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {
@@ -90,7 +92,7 @@ class BindlessTextureRenderer(
         {
             put(x)
             put(y)
-            put(context.depth)
+            put(config.currentDepth)
             put(w)
             put(h)
             put(xOrigin)
@@ -103,12 +105,12 @@ class BindlessTextureRenderer(
             put(texture.vMax)
             put(1f) // U-tiling
             put(1f) // V-tiling
-            put(context.drawColor)
+            put(config.currentDrawColor)
             put(texture.handle.toFloat())
         }
 
         increaseBatchSize()
-        context.increaseDepth()
+        config.increaseDepth()
     }
 
     fun drawTexture(
@@ -132,7 +134,7 @@ class BindlessTextureRenderer(
         {
             put(x)
             put(y)
-            put(context.depth)
+            put(config.currentDepth)
             put(w)
             put(h)
             put(xOrigin)
@@ -145,11 +147,11 @@ class BindlessTextureRenderer(
             put(texture.vMax * vMax)
             put(uTiling)
             put(vTiling)
-            put(context.drawColor)
+            put(config.currentDrawColor)
             put(texture.handle.toFloat())
         }
 
         increaseBatchSize()
-        context.increaseDepth()
+        config.increaseDepth()
     }
 }

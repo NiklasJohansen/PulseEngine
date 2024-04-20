@@ -8,15 +8,18 @@ import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_STENCIL_BUFFER
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
+import no.njoh.pulseengine.core.graphics.api.Camera
+import no.njoh.pulseengine.core.graphics.api.CameraInternal
+import no.njoh.pulseengine.core.graphics.surface.Surface
 
 interface Graphics
 {
     val mainCamera: Camera
-    val mainSurface: Surface2D
+    val mainSurface: Surface
 
-    fun getSurface(name: String): Surface2D?
-    fun getSurfaceOrDefault(name: String): Surface2D
-    fun getAllSurfaces(): List<Surface2D>
+    fun getSurface(name: String): Surface?
+    fun getSurfaceOrDefault(name: String): Surface
+    fun getAllSurfaces(): List<Surface>
     fun deleteSurface(name: String)
     fun createSurface(
         name: String,
@@ -32,7 +35,7 @@ interface Graphics
         blendFunction: BlendFunction = BlendFunction.NORMAL,
         attachments: List<Attachment> = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
         backgroundColor: Color = Color(0.1f, 0.1f, 0.1f, 0f),
-    ) : Surface2D
+    ) : Surface
 
     fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat = RGBA8)
 }

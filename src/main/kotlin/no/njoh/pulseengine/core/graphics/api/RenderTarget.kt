@@ -1,11 +1,7 @@
-package no.njoh.pulseengine.core.graphics
+package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
-import no.njoh.pulseengine.core.graphics.api.Attachment
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.objects.FrameBufferObject
 
 interface RenderTarget
@@ -14,7 +10,6 @@ interface RenderTarget
     var textureFormat: TextureFormat
     var textureFilter: TextureFilter
     var attachments: List<Attachment>
-
     var fbo: FrameBufferObject
 
     fun init(width: Int, height: Int)

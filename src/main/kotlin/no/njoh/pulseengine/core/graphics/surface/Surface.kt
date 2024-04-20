@@ -1,32 +1,21 @@
-package no.njoh.pulseengine.core.graphics
+package no.njoh.pulseengine.core.graphics.surface
 
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.StencilState.Action.CLEAR
-import no.njoh.pulseengine.core.graphics.StencilState.Action.SET
-import no.njoh.pulseengine.core.graphics.api.BlendFunction
-import no.njoh.pulseengine.core.graphics.api.Multisampling
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
+import no.njoh.pulseengine.core.graphics.api.StencilState.Action.CLEAR
+import no.njoh.pulseengine.core.graphics.api.StencilState.Action.SET
+import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.shared.primitives.Color
-import kotlin.reflect.KClass
 
-interface Surface
+abstract class Surface
 {
-    val name: String
-    val width: Int
-    val height: Int
-
-    fun getTexture(index: Int = 0): Texture
-    fun getTextures(): List<Texture>
-}
-
-abstract class Surface2D : Surface
-{
+    abstract val name: String
+    abstract val width: Int
+    abstract val height: Int
     abstract val camera: Camera
-    abstract val context: RenderContext
+    abstract val config: SurfaceConfig
 
     // Drawing
     abstract fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
@@ -40,16 +29,20 @@ abstract class Surface2D : Surface
         drawText(textBuilder(sb.clear()), x, y, font, fontSize, angle, xOrigin, yOrigin)
 
     // Property setters
-    abstract fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float = 1f): Surface2D
-    abstract fun setDrawColor(color: Color): Surface2D
-    abstract fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface2D
-    abstract fun setBackgroundColor(color: Color): Surface2D
-    abstract fun setBlendFunction(func: BlendFunction): Surface2D
-    abstract fun setMultisampling(multisampling: Multisampling): Surface2D
-    abstract fun setIsVisible(isVisible: Boolean): Surface2D
-    abstract fun setTextureFormat(format: TextureFormat): Surface2D
-    abstract fun setTextureFilter(filter: TextureFilter): Surface2D
-    abstract fun setTextureScale(scale: Float): Surface2D
+    abstract fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float = 1f): Surface
+    abstract fun setDrawColor(color: Color): Surface
+    abstract fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface
+    abstract fun setBackgroundColor(color: Color): Surface
+    abstract fun setBlendFunction(func: BlendFunction): Surface
+    abstract fun setMultisampling(multisampling: Multisampling): Surface
+    abstract fun setIsVisible(isVisible: Boolean): Surface
+    abstract fun setTextureFormat(format: TextureFormat): Surface
+    abstract fun setTextureFilter(filter: TextureFilter): Surface
+    abstract fun setTextureScale(scale: Float): Surface
+
+    // Texture
+    abstract fun getTexture(index: Int = 0): Texture
+    abstract fun getTextures(): List<Texture>
 
     // Post-processing
     abstract fun addPostProcessingEffect(effect: PostProcessingEffect)
@@ -60,6 +53,7 @@ abstract class Surface2D : Surface
     abstract fun setRenderState(state: RenderState)
     abstract fun addRenderer(renderer: BatchRenderer)
     abstract fun getRenderers(): List<BatchRenderer>
+    abstract fun <T: BatchRenderer> getRenderer(type: Class<T>): T?
     inline fun <reified T: BatchRenderer> getRenderer(): T? = getRenderer(T::class.java)
 
     // Clipping/stencil masking
@@ -70,17 +64,14 @@ abstract class Surface2D : Surface
         setRenderState(StencilState(x, y, width, height, action = CLEAR))
     }
 
-    // Internal abstract versions of the public inline functions
-    @PublishedApi internal abstract fun <T: BatchRenderer> getRenderer(type: Class<T>): T?
-
     // Reusable StringBuilder for text drawing
     @PublishedApi internal val sb = StringBuilder(1000)
 }
 
-abstract class Surface2DInternal : Surface2D()
+abstract class SurfaceInternal : Surface()
 {
     abstract override val camera: CameraInternal
-    abstract override val context: RenderContextInternal
+    abstract override val config: SurfaceConfigInternal
 
     abstract val renderTarget: RenderTarget
 

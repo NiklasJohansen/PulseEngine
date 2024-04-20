@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.renderers.*
+import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
@@ -18,15 +19,14 @@ import kotlin.math.sign
 open class GraphicsImpl : GraphicsInternal
 {
     override lateinit var mainCamera: CameraInternal
-    override lateinit var mainSurface: Surface2DInternal
+    override lateinit var mainSurface: SurfaceInternal
     override lateinit var textureBank: TextureBank
+    private  lateinit var renderer: FrameTextureRenderer
 
-    private lateinit var renderer: FrameTextureRenderer
-
-    private val initFrameCommands = mutableListOf<() -> Unit>()
-    private val surfaces = mutableListOf<Surface2DInternal>()
-    private val surfaceMap = mutableMapOf<String, Surface2DInternal>()
-    private var zOrder = 0
+    private val initFrameCommands = ArrayList<() -> Unit>()
+    private val surfaceMap        = HashMap<String, SurfaceInternal>()
+    private val surfaces          = ArrayList<SurfaceInternal>()
+    private var zOrder            = 0
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
     {
@@ -115,7 +115,7 @@ open class GraphicsImpl : GraphicsInternal
         surfaces.forEachFast { it.renderToOffScreenTarget() }
 
         // Set OpenGL state for rendering offscreen target textures
-        val c = surfaces.firstOrNull()?.context?.backgroundColor ?: defaultClearColor // Clear back-buffer with color of first surface
+        val c = surfaces.firstOrNull()?.config?.backgroundColor ?: defaultClearColor // Clear back-buffer with color of first surface
         glClearColor(c.red, c.green, c.blue, c.alpha)
         glClear(GL_COLOR_BUFFER_BIT)
         glDisable(GL_DEPTH_TEST)
@@ -127,7 +127,7 @@ open class GraphicsImpl : GraphicsInternal
         surfaces.forEachFast { it.runPostProcessingPipeline() }
 
         // Draw visible surfaces to back-buffer
-        surfaces.forEachFiltered({ it.context.isVisible }) { renderer.render(it.getTexture()) }
+        surfaces.forEachFiltered({ it.config.isVisible }) { renderer.render(it.getTexture()) }
     }
 
     override fun getAllSurfaces() = surfaces
@@ -163,13 +163,13 @@ open class GraphicsImpl : GraphicsInternal
         blendFunction: BlendFunction,
         attachments: List<Attachment>,
         backgroundColor: Color
-    ): Surface2DInternal {
+    ): SurfaceInternal {
 
         // Create new surface
         val surfaceWidth = width ?: mainSurface.width
         val surfaceHeight = height ?: mainSurface.height
         val newCamera = (camera ?: DefaultCamera.createOrthographic(surfaceWidth, surfaceHeight)) as CameraInternal
-        val context = RenderContextInternal(
+        val config = SurfaceConfigInternal(
             zOrder = zOrder ?: this.zOrder--,
             isVisible = isVisible,
             textureScale = textureScale,
@@ -180,7 +180,7 @@ open class GraphicsImpl : GraphicsInternal
             attachments = attachments,
             backgroundColor = backgroundColor
         )
-        val newSurface = Surface2DImpl(name, surfaceWidth, surfaceHeight, newCamera, context, textureBank)
+        val newSurface = SurfaceImpl(name, surfaceWidth, surfaceHeight, newCamera, config, textureBank)
 
         runOnInitFrame()
         {
@@ -206,7 +206,7 @@ open class GraphicsImpl : GraphicsInternal
     /**
      * Iterates through each camera only once.
      */
-    private inline fun List<Surface2DInternal>.forEachCamera(block: (CameraInternal) -> Unit)
+    private inline fun List<SurfaceInternal>.forEachCamera(block: (CameraInternal) -> Unit)
     {
         val number = updateNumber++
         this.forEachFiltered({ it.camera.updateNumber != number })
@@ -222,9 +222,9 @@ open class GraphicsImpl : GraphicsInternal
         private var defaultClearColor = Color(0.043f, 0.047f, 0.054f, 0f)
     }
 
-    object SurfaceOrderComparator : Comparator<Surface2DInternal>
+    object SurfaceOrderComparator : Comparator<SurfaceInternal>
     {
-        override fun compare(a: Surface2DInternal, b: Surface2DInternal): Int = (b.context.zOrder - a.context.zOrder).sign
+        override fun compare(a: SurfaceInternal, b: SurfaceInternal): Int = (b.config.zOrder - a.config.zOrder).sign
     }
 
     private fun runOnInitFrame(command: () -> Unit) { initFrameCommands.add(command) }

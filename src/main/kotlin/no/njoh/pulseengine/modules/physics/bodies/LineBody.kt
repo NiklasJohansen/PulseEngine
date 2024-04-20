@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.physics.bodies
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
@@ -106,7 +106,7 @@ interface LineBody : PhysicsBody
         }
     }
 
-    override fun render(engine: PulseEngine, surface: Surface2D)
+    override fun render(engine: PulseEngine, surface: Surface)
     {
         surface.setDrawColor(Color.WHITE)
         surface.drawLine(shape.x0, shape.y0, shape.x1, shape.y1)

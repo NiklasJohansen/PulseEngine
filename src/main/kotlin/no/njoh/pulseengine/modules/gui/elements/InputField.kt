@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.input.Input
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.Mouse
@@ -451,7 +451,7 @@ class InputField (
         }
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         val charsPerLine = getNumberOfChars(width.value - leftTextPadding.value)
         val hasText = inputText.isNotEmpty()
@@ -534,7 +534,7 @@ class InputField (
         }
     }
 
-    private fun drawArrow(x: Float, y: Float, width: Float, height: Float, surface: Surface2D, color: Color, lengthFactor: Float = 2.5f)
+    private fun drawArrow(x: Float, y: Float, width: Float, height: Float, surface: Surface, color: Color, lengthFactor: Float = 2.5f)
     {
         surface.setDrawColor(color)
         surface.drawQuadVertex(x, y + height / lengthFactor)

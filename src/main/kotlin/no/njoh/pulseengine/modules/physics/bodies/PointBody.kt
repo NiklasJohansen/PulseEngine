@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.physics.bodies
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
@@ -77,7 +77,7 @@ interface PointBody : PhysicsBody
         onBodyUpdated()
     }
 
-    override fun render(engine: PulseEngine, surface: Surface2D)
+    override fun render(engine: PulseEngine, surface: Surface)
     {
         surface.setDrawColor(0.5f, 0.5f, 1f, 0.1f)
         surface.drawLine(shape.x, shape.y, shape.xLast, shape.yLast)

@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.scene.entities
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
@@ -26,7 +26,7 @@ open class Camera : StandardSceneEntity()
     @JsonIgnore private var camSize = 100f
     @JsonIgnore private var zoom = targetZoom
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         if (engine.scene.state != SceneState.STOPPED)
             return

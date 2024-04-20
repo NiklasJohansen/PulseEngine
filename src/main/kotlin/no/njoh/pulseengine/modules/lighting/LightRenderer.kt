@@ -1,12 +1,13 @@
 package no.njoh.pulseengine.modules.lighting
 
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
+import no.njoh.pulseengine.core.graphics.api.CameraInternal
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import org.lwjgl.opengl.GL13.glActiveTexture
 import org.lwjgl.opengl.GL30.GL_TEXTURE0
@@ -86,7 +87,7 @@ class LightRenderer : BatchRenderer()
         readEdges = writeEdges.also { writeEdges = 0 }
     }
 
-    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (readLights == 0)
         {
@@ -97,7 +98,7 @@ class LightRenderer : BatchRenderer()
         val cam = surface.camera as CameraInternal
         val zRotCamera = cam.rotation.z.interpolateFrom(cam.rotationLast.z)
         val renderStartTime = System.nanoTime()
-        val texScale = surface.context.textureScale
+        val texScale = surface.config.textureScale
         val view = surface.camera.viewMatrix
         var index = 0
         val size = readEdges * 4

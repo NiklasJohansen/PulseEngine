@@ -1,16 +1,17 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.GL20.*
 import java.lang.Float.floatToRawIntBits
 
 class TextureRenderer(
-    private val context: RenderContextInternal
+    private val config: SurfaceConfigInternal
 ) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
@@ -55,7 +56,7 @@ class TextureRenderer(
         readCount = writeCount.also { writeCount = 0 }
     }
 
-    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
     {
         // Bind VAO and shader program
         vao.bind()
@@ -118,17 +119,17 @@ class TextureRenderer(
         val base = writeOffset + writeCount * stride
         data[base + 0] = x
         data[base + 1] = y
-        data[base + 2] = context.depth
+        data[base + 2] = config.currentDepth
         data[base + 3] = w
         data[base + 4] = h
         data[base + 5] = rot
         data[base + 6] = xOrigin
         data[base + 7] = yOrigin
-        data[base + 8] = context.drawColor
+        data[base + 8] = config.currentDrawColor
         data[base + 9] = texture.handle.textureIndex.toFloat()
 
         writeCount++
-        context.increaseDepth()
+        config.increaseDepth()
         increaseBatchSize()
     }
 }

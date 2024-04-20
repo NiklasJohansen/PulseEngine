@@ -1,16 +1,18 @@
 package no.njoh.pulseengine.modules.lighting
 
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureBank
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
+import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
 
 class NormalMapRenderer(
-    private val context: RenderContextInternal,
+    private val config: SurfaceConfigInternal,
     private val textureBank: TextureBank
 ) : BatchRenderer() {
 
@@ -59,7 +61,7 @@ class NormalMapRenderer(
         instanceBuffer.swapBuffers()
     }
 
-    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {
@@ -103,7 +105,7 @@ class NormalMapRenderer(
         {
             put(x)
             put(y)
-            put(context.depth)
+            put(config.currentDepth)
             put(w)
             put(h)
             put(xOrigin)
@@ -121,7 +123,7 @@ class NormalMapRenderer(
         }
 
         increaseBatchSize()
-        context.increaseDepth()
+        config.increaseDepth()
     }
 
     enum class Orientation(val xDir: Float, val yDir: Float)

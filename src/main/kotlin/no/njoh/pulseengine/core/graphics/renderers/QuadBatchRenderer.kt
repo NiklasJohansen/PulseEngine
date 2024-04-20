@@ -1,14 +1,15 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
-import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import no.njoh.pulseengine.core.shared.utils.BufferExtensions.putAll
 import org.lwjgl.opengl.GL11.*
 
 class QuadBatchRenderer(
-    private val context: RenderContextInternal
+    private val config: SurfaceConfigInternal
 ) : BatchRenderer() {
 
     private lateinit var vao: VertexArrayObject
@@ -50,7 +51,7 @@ class QuadBatchRenderer(
         vertexCount = 0
     }
 
-    override fun onRenderBatch(surface: Surface2D, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {
@@ -79,8 +80,8 @@ class QuadBatchRenderer(
 
     fun quad(x: Float, y: Float, width: Float, height: Float)
     {
-        val depth = context.depth
-        val rgba = context.drawColor
+        val depth = config.currentDepth
+        val rgba = config.currentDrawColor
 
         vbo.fill(16)
         {
@@ -97,7 +98,7 @@ class QuadBatchRenderer(
         }
 
         vertexCount += 4
-        context.increaseDepth()
+        config.increaseDepth()
         increaseBatchSize()
     }
 
@@ -105,7 +106,7 @@ class QuadBatchRenderer(
     {
         vbo.fill(4)
         {
-            putAll(x, y, context.depth, context.drawColor)
+            putAll(x, y, config.currentDepth, config.currentDrawColor)
         }
 
         singleVertexCount++
@@ -119,7 +120,7 @@ class QuadBatchRenderer(
             }
             vertexCount += 4
             singleVertexCount = 0
-            context.increaseDepth()
+            config.increaseDepth()
             increaseBatchSize()
         }
     }
