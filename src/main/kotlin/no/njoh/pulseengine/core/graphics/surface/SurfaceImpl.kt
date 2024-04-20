@@ -4,18 +4,16 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
-import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingPipeline
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer.Companion.MAX_BATCH_COUNT
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 import java.lang.RuntimeException
 
 class SurfaceImpl(
-//    override val name: String,
-//    override var width: Int,
-//    override var height: Int,
     override val camera: CameraInternal,
     override val config: SurfaceConfigInternal,
     val textureBank: TextureBank
@@ -24,13 +22,12 @@ class SurfaceImpl(
     override var renderTarget           = createRenderTarget(config)
 
     private var initialized             = false
-    private val postProcessingPipeline  = PostProcessingPipeline()
+    private val onInitFrame             = ArrayList<() -> Unit>()
     private var readRenderStates        = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private var writeRenderStates       = ArrayList<RenderState>(MAX_BATCH_COUNT)
-    private var initFrameCommands       = ArrayList<() -> Unit>()
-
-    private var renderers               = ArrayList<BatchRenderer>()
-    private var rendererMap             = HashMap<Class<out BatchRenderer>, BatchRenderer>()
+    private val postEffects             = ArrayList<PostProcessingEffect>()
+    private val renderers               = ArrayList<BatchRenderer>()
+    private val rendererMap             = HashMap<Class<out BatchRenderer>, BatchRenderer>()
     private var textRenderer            = null as TextRenderer?
     private var quadRenderer            = null as QuadBatchRenderer?
     private var lineRenderer            = null as LineBatchRenderer?
@@ -62,7 +59,7 @@ class SurfaceImpl(
         if (glContextRecreated || !initialized)
         {
             renderers.forEachFast { it.init() }
-            postProcessingPipeline.init()
+            postEffects.forEachFast { it.init() }
         }
 
         renderTarget.init(width, height)
@@ -74,12 +71,12 @@ class SurfaceImpl(
         readRenderStates = writeRenderStates.also { writeRenderStates = readRenderStates }
         writeRenderStates.clear()
 
-        initFrameCommands.forEachFast { it.invoke() }
-        initFrameCommands.clear()
+        onInitFrame.forEachFast { it.invoke() }
+        onInitFrame.clear()
 
         renderers.forEachFast { it.initFrame() }
         config.resetDepth(camera.nearPlane)
-        setRenderState(BaseState)
+        applyRenderState(BatchRenderBaseState)
     }
 
     override fun renderToOffScreenTarget()
@@ -99,14 +96,18 @@ class SurfaceImpl(
 
     override fun runPostProcessingPipeline()
     {
-        renderTarget.getTexture()?.let { postProcessingPipeline.process(it) }
+        var texture = renderTarget.getTexture() ?: return
+        postEffects.forEachFast()
+        {
+            texture = it.process(texture)
+        }
     }
 
     override fun destroy()
     {
         renderers.forEachFast { it.destroy() }
+        postEffects.forEachFast { it.destroy() }
         renderTarget.destroy()
-        postProcessingPipeline.destroy()
     }
 
     // Exposed draw functions
@@ -158,7 +159,7 @@ class SurfaceImpl(
 
     override fun getTexture(index: Int): Texture
     {
-        return postProcessingPipeline.getFinalTexture()
+        return postEffects.lastOrNull()?.getTexture()
             ?: renderTarget.getTexture(index)
             ?: throw RuntimeException(
                 "Failed to get texture with index: $index from surface with name: ${config.name}. " +
@@ -279,27 +280,31 @@ class SurfaceImpl(
     {
         runOnInitFrame()
         {
+            getPostProcessingEffect(effect.name)?.let()
+            {
+                Logger.warn("Replacing existing post processing effect with same name: ${it.name}")
+                deletePostProcessingEffect(it.name)
+            }
             effect.init()
-            postProcessingPipeline.addEffect(effect)
+            postEffects.add(effect)
         }
     }
 
     override fun getPostProcessingEffect(name: String): PostProcessingEffect?
     {
-        return postProcessingPipeline.getEffect(name)
+        return postEffects.firstOrNullFast { it.name == name }
     }
 
     override fun deletePostProcessingEffect(name: String)
     {
         runOnInitFrame()
         {
-            val effect = postProcessingPipeline.getEffect(name)
-            postProcessingPipeline.removeEffect(name)
-            effect?.destroy()
+            getPostProcessingEffect(name)?.destroy()
+            postEffects.removeWhen { it.name == name }
         }
     }
 
-    override fun setRenderState(state: RenderState)
+    override fun applyRenderState(state: RenderState)
     {
         if (writeRenderStates.size >= MAX_BATCH_COUNT)
         {
@@ -323,5 +328,5 @@ class SurfaceImpl(
         }
     }
 
-    private fun runOnInitFrame(command: () -> Unit) { initFrameCommands.add(command) }
+    private fun runOnInitFrame(command: () -> Unit) { onInitFrame.add(command) }
 }

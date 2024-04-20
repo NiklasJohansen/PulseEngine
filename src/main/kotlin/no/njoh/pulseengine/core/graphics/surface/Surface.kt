@@ -11,11 +11,8 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 
 abstract class Surface
 {
-//    abstract val name: String
-//    abstract val width: Int
-//    abstract val height: Int
-    abstract val camera: Camera
     abstract val config: SurfaceConfig
+    abstract val camera: Camera
 
     // Drawing
     abstract fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float)
@@ -50,7 +47,7 @@ abstract class Surface
     abstract fun deletePostProcessingEffect(name: String)
 
     // Renderers and render state
-    abstract fun setRenderState(state: RenderState)
+    abstract fun applyRenderState(state: RenderState)
     abstract fun addRenderer(renderer: BatchRenderer)
     abstract fun getRenderers(): List<BatchRenderer>
     abstract fun <T: BatchRenderer> getRenderer(type: Class<T>): T?
@@ -59,9 +56,9 @@ abstract class Surface
     // Clipping/stencil masking
     inline fun drawWithin(x: Float, y: Float, width: Float, height: Float, drawFunc: () -> Unit)
     {
-        setRenderState(StencilState(x, y, width, height, action = SET))
+        applyRenderState(StencilState(x, y, width, height, action = SET))
         drawFunc()
-        setRenderState(StencilState(x, y, width, height, action = CLEAR))
+        applyRenderState(StencilState(x, y, width, height, action = CLEAR))
     }
 
     // Reusable StringBuilder for text drawing

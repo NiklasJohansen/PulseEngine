@@ -14,16 +14,15 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
-import kotlin.math.sign
 
 open class GraphicsImpl : GraphicsInternal
 {
     override lateinit var mainCamera: CameraInternal
     override lateinit var mainSurface: SurfaceInternal
     override lateinit var textureBank: TextureBank
-    private  lateinit var renderer: FrameTextureRenderer
+    private  lateinit var fullFrameRenderer: FullFrameRenderer
 
-    private val initFrameCommands = ArrayList<() -> Unit>()
+    private val onInitFrame       = ArrayList<() -> Unit>()
     private val surfaceMap        = HashMap<String, SurfaceInternal>()
     private val surfaces          = ArrayList<SurfaceInternal>()
     private var zOrder            = 0
@@ -53,17 +52,18 @@ open class GraphicsImpl : GraphicsInternal
     {
         if (windowRecreated)
         {
+            // Create OpenGL context in current thread
             GL.createCapabilities()
 
-            // Create frameRenderer
-            if (!this::renderer.isInitialized)
-               renderer = FrameTextureRenderer(ShaderProgram.create(
-                   vertexShaderFileName = "/pulseengine/shaders/default/surface.vert",
-                   fragmentShaderFileName = "/pulseengine/shaders/default/surface.frag"
-               ))
-
-            // Initialize frameRenderer
-            renderer.init()
+            // Create and initialize full frame renderer
+            if (!this::fullFrameRenderer.isInitialized)
+            {
+                val vertex = "/pulseengine/shaders/default/surface.vert"
+                val fragment = "/pulseengine/shaders/default/surface.frag"
+                val shaderProgram = ShaderProgram.create(vertex, fragment)
+                fullFrameRenderer = FullFrameRenderer(shaderProgram)
+            }
+            fullFrameRenderer.init()
         }
 
         // Initialize surfaces
@@ -76,58 +76,87 @@ open class GraphicsImpl : GraphicsInternal
         glViewport(0, 0, width, height)
     }
 
-    override fun destroy()
-    {
-        Logger.info("Destroying graphics (${this::class.simpleName})")
-        textureBank.destroy()
-        renderer.destroy()
-        surfaces.forEachFast { it.destroy() }
-    }
-
-    override fun uploadTexture(texture: Texture) =
-        textureBank.upload(texture)
-
-    override fun deleteTexture(texture: Texture) =
-        textureBank.delete(texture)
-
-    override fun updateCameras() =
-        surfaces.forEachCamera { it.updateLastState() }
-
     override fun initFrame()
     {
-        initFrameCommands.forEachFast { it.invoke() }
-        initFrameCommands.clear()
+        onInitFrame.forEachFast { it.invoke() }
+        onInitFrame.clear()
 
+        surfaces.forEachFast { it.initFrame() }
         surfaces.forEachCamera()
         {
             it.updateViewMatrix()
             it.updateWorldPositions(mainSurface.config.width, mainSurface.config.height)
         }
-        surfaces.forEachFast { it.initFrame() }
     }
 
     override fun drawFrame()
     {
-        // Sort surfaces by Z-order
-        surfaces.sortWith(SurfaceOrderComparator)
-
         // Render all batched data to offscreen target
         surfaces.forEachFast { it.renderToOffScreenTarget() }
 
-        // Set OpenGL state for rendering offscreen target textures
-        val c = surfaces.firstOrNull()?.config?.backgroundColor ?: defaultClearColor // Clear back-buffer with color of first surface
-        glClearColor(c.red, c.green, c.blue, c.alpha)
-        glClear(GL_COLOR_BUFFER_BIT)
-        glDisable(GL_DEPTH_TEST)
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glViewport(0, 0, mainSurface.config.width, mainSurface.config.height)
+        // Set OpenGL state for rendering offscreen target textures to back-buffer
+        BackBufferBaseState.apply(surfaces.firstOrNull() ?: mainSurface)
 
         // Run surfaces through their post-processing pipelines
         surfaces.forEachFast { it.runPostProcessingPipeline() }
 
         // Draw visible surfaces to back-buffer
-        surfaces.forEachFiltered({ it.config.isVisible }) { renderer.render(it.getTexture()) }
+        surfaces.forEachFiltered({ it.config.isVisible }) { fullFrameRenderer.render(it.getTexture()) }
+    }
+
+    override fun createSurface(
+        name: String,
+        width: Int?,
+        height: Int?,
+        zOrder: Int?,
+        camera: Camera?,
+        isVisible: Boolean,
+        textureScale: Float,
+        textureFormat: TextureFormat,
+        textureFilter: TextureFilter,
+        multisampling: Multisampling,
+        blendFunction: BlendFunction,
+        attachments: List<Attachment>,
+        backgroundColor: Color
+    ): SurfaceInternal {
+
+        val surfaceWidth = width ?: mainSurface.config.width
+        val surfaceHeight = height ?: mainSurface.config.height
+        val newCamera = (camera ?: DefaultCamera.createOrthographic(surfaceWidth, surfaceHeight)) as CameraInternal
+        val newSurface = SurfaceImpl(
+            camera = newCamera,
+            textureBank = textureBank,
+            config = SurfaceConfigInternal(
+                name = name,
+                width = surfaceWidth,
+                height = surfaceHeight,
+                zOrder = zOrder ?: this.zOrder--,
+                isVisible = isVisible,
+                textureScale = textureScale,
+                textureFormat = textureFormat,
+                textureFilter = textureFilter,
+                multisampling = multisampling,
+                blendFunction = blendFunction,
+                attachments = attachments,
+                backgroundColor = backgroundColor
+            )
+        )
+
+        runOnInitFrame()
+        {
+            surfaceMap[name]?.let()
+            {
+                Logger.warn("Surface with name: $name already exists. Destroying and creating new...")
+                surfaces.remove(it)
+                it.destroy()
+            }
+            newSurface.init(surfaceWidth, surfaceHeight, true)
+            surfaceMap[name] = newSurface
+            surfaces.add(newSurface)
+            surfaces.sortBy { -it.config.zOrder }
+        }
+
+        return newSurface
     }
 
     override fun getAllSurfaces() = surfaces
@@ -149,68 +178,28 @@ open class GraphicsImpl : GraphicsInternal
         }
     }
 
-    override fun createSurface(
-        name: String,
-        width: Int?,
-        height: Int?,
-        zOrder: Int?,
-        camera: Camera?,
-        isVisible: Boolean,
-        textureScale: Float,
-        textureFormat: TextureFormat,
-        textureFilter: TextureFilter,
-        multisampling: Multisampling,
-        blendFunction: BlendFunction,
-        attachments: List<Attachment>,
-        backgroundColor: Color
-    ): SurfaceInternal {
+    override fun uploadTexture(texture: Texture) = textureBank.upload(texture)
 
-        // Create new surface
-        val surfaceWidth = width ?: mainSurface.config.width
-        val surfaceHeight = height ?: mainSurface.config.height
-        val newCamera = (camera ?: DefaultCamera.createOrthographic(surfaceWidth, surfaceHeight)) as CameraInternal
-        val config = SurfaceConfigInternal(
-            name = name,
-            width = surfaceWidth,
-            height = surfaceHeight,
-            zOrder = zOrder ?: this.zOrder--,
-            isVisible = isVisible,
-            textureScale = textureScale,
-            textureFormat = textureFormat,
-            textureFilter = textureFilter,
-            multisampling = multisampling,
-            blendFunction = blendFunction,
-            attachments = attachments,
-            backgroundColor = backgroundColor
-        )
-        val newSurface = SurfaceImpl(newCamera, config, textureBank)
+    override fun deleteTexture(texture: Texture) = textureBank.delete(texture)
 
-        runOnInitFrame()
-        {
-            surfaceMap[name]?.let()
-            {
-                Logger.warn("Surface with name: $name already exists. Destroying and creating new...")
-                surfaces.remove(it)
-                it.destroy()
-            }
-            newSurface.init(surfaceWidth, surfaceHeight, true)
-            surfaces.add(newSurface)
-            surfaceMap[name] = newSurface
-        }
-
-        return newSurface
-    }
+    override fun updateCameras() = surfaces.forEachCamera { it.updateLastState() }
 
     override fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat)
     {
         textureBank.setTextureCapacity(maxCount, textureSize, format)
     }
 
-    /**
-     * Iterates through each camera only once.
-     */
+    override fun destroy()
+    {
+        Logger.info("Destroying graphics (${this::class.simpleName})")
+        textureBank.destroy()
+        fullFrameRenderer.destroy()
+        surfaces.forEachFast { it.destroy() }
+    }
+
     private inline fun List<SurfaceInternal>.forEachCamera(block: (CameraInternal) -> Unit)
     {
+        // Iterates through each camera only once.
         val number = updateNumber++
         this.forEachFiltered({ it.camera.updateNumber != number })
         {
@@ -225,10 +214,5 @@ open class GraphicsImpl : GraphicsInternal
         private var defaultClearColor = Color(0.043f, 0.047f, 0.054f, 0f)
     }
 
-    object SurfaceOrderComparator : Comparator<SurfaceInternal>
-    {
-        override fun compare(a: SurfaceInternal, b: SurfaceInternal): Int = (b.config.zOrder - a.config.zOrder).sign
-    }
-
-    private fun runOnInitFrame(command: () -> Unit) { initFrameCommands.add(command) }
+    private fun runOnInitFrame(command: () -> Unit) { onInitFrame.add(command) }
 }

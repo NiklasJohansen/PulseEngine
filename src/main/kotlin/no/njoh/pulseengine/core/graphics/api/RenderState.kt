@@ -17,9 +17,33 @@ interface RenderState
 }
 
 /**
- * This state sets up the base Open GL state for the given surface.
+ * Sets up the base OpenGL state before rendering all surfaces to the back-buffer.
  */
-object BaseState : RenderState
+object BackBufferBaseState : RenderState
+{
+    override fun apply(surface: SurfaceInternal)
+    {
+        // Clear back-buffer with color of given surface
+        val c = surface.config.backgroundColor
+        glClearColor(c.red, c.green, c.blue, c.alpha)
+        glClear(GL_COLOR_BUFFER_BIT)
+
+        // Disable depth testing
+        glDisable(GL_DEPTH_TEST)
+
+        // Enable blending
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        // Set viewport size
+        glViewport(0, 0, surface.config.width, surface.config.height)
+    }
+}
+
+/**
+ * Sets up the base OpenGL state before running all batch renderers for the given surface.
+ */
+object BatchRenderBaseState : RenderState
 {
     override fun apply(surface: SurfaceInternal)
     {

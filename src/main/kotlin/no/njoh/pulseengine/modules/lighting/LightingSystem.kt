@@ -36,7 +36,7 @@ open class LightingSystem : SceneSystem()
     @ScnProp(i = 3, min = 0f, max = 100f)  var fogIntensity = 0f
     @ScnProp(i = 4, min = 0f, max = 100f)  var fogTurbulence = 1.5f
     @ScnProp(i = 5, min = 0f, max = 5f)    var fogScale = 0.3f
-    @ScnProp(i = 6, min = 0.01f, max = 5f) var textureScale = 1f
+    @ScnProp(i = 6, min = 0.01f, max = 5f) var textureScale = 0.4f
     @ScnProp(i = 7)                        var textureFilter = TextureFilter.LINEAR
     @ScnProp(i = 8)                        var textureFormat = TextureFormat.RGBA16F
     @ScnProp(i = 9)                        var multisampling = Multisampling.NONE
