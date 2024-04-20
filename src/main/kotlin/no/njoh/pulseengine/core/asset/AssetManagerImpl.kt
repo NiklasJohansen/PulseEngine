@@ -122,9 +122,9 @@ open class AssetManagerImpl : AssetManagerInternal()
        onAssetRemovedCallbacks.add(callback)
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
-        Logger.info("Cleaning up assets (${this::class.simpleName})")
+        Logger.info("Destroying assets (${this::class.simpleName})")
         loadedAssets.values.toList().forEachFast { delete(it.name) }
     }
 }

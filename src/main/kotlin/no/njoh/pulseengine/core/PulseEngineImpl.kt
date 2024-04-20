@@ -302,13 +302,13 @@ class PulseEngineImpl(
     {
         FileWatcher.shutdown()
         gameThread?.interrupt()
-        scene.cleanUp()
-        widget.cleanUp(this)
+        scene.destroy()
+        widget.destroy(this)
         audio.destroy()
-        asset.cleanUp()
-        activeInput.cleanUp()
-        gfx.cleanUp()
-        window.cleanUp()
+        asset.destroy()
+        activeInput.destroy()
+        gfx.destroy()
+        window.destroy()
     }
 
     private fun runInSeparateGameThread(action: () -> Unit)

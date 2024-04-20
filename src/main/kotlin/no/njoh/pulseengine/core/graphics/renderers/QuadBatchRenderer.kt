@@ -70,7 +70,7 @@ class QuadBatchRenderer(
         vao.release()
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
         vao.delete()
         vbo.delete()

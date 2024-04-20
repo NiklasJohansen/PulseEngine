@@ -89,7 +89,7 @@ class TextureArray(
         program.setUniform(textureArrayNames[samplerIndex], samplerIndex)
     }
 
-    fun cleanUp() = glDeleteTextures(textureArrayId)
+    fun destroy() = glDeleteTextures(textureArrayId)
 
     override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$textureFormat, filter=$textureFilter, mips=$mipLevels"
 

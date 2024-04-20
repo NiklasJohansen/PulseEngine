@@ -52,5 +52,5 @@ interface GraphicsInternal : Graphics
     fun updateCameras()
     fun initFrame()
     fun drawFrame()
-    fun cleanUp()
+    fun destroy()
 }

@@ -276,9 +276,9 @@ open class InputImpl : InputInternal
         glfwDestroyCursor(cursor.handle)
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
-        Logger.info("Cleaning up input (${this::class.simpleName})")
+        Logger.info("Destroying input (${this::class.simpleName})")
         glfwFreeCallbacks(windowHandle)
     }
 

@@ -232,6 +232,6 @@ abstract class SceneManagerInternal : SceneManager()
     abstract fun render()
     abstract fun update()
     abstract fun fixedUpdate()
-    abstract fun cleanUp()
+    abstract fun destroy()
     abstract fun registerSystemsAndEntityClasses()
 }

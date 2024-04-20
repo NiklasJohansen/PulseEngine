@@ -104,7 +104,7 @@ class TextureRenderer(
         readCount = 0
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
         vbo.delete()
         program.delete()

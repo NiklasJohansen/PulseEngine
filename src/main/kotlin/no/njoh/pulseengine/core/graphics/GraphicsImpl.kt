@@ -76,12 +76,12 @@ open class GraphicsImpl : GraphicsInternal
         glViewport(0, 0, width, height)
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
-        Logger.info("Cleaning up graphics (${this::class.simpleName})")
-        textureBank.cleanUp()
-        renderer.cleanUp()
-        surfaces.forEachFast { it.cleanUp() }
+        Logger.info("Destroying graphics (${this::class.simpleName})")
+        textureBank.destroy()
+        renderer.destroy()
+        surfaces.forEachFast { it.destroy() }
     }
 
     override fun uploadTexture(texture: Texture) =
@@ -144,7 +144,7 @@ open class GraphicsImpl : GraphicsInternal
             {
                 surfaces.remove(it)
                 surfaceMap.remove(it.config.name)
-                it.cleanUp()
+                it.destroy()
             }
         }
     }
@@ -191,7 +191,7 @@ open class GraphicsImpl : GraphicsInternal
             {
                 Logger.warn("Surface with name: $name already exists. Destroying and creating new...")
                 surfaces.remove(it)
-                it.cleanUp()
+                it.destroy()
             }
             newSurface.init(surfaceWidth, surfaceHeight, true)
             surfaces.add(newSurface)

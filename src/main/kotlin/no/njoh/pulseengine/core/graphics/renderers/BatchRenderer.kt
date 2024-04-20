@@ -82,7 +82,7 @@ abstract class BatchRenderer
     /**
      * Called once when the [Surface] is destroyed.
      */
-    abstract fun cleanUp()
+    abstract fun destroy()
 
     companion object
     {

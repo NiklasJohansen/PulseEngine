@@ -44,9 +44,9 @@ class TextureBank
         textureArrays.find { it.samplerIndex == samplerIndex }?.delete(texture)
     }
 
-    fun cleanUp()
+    fun destroy()
     {
-        textureArrays.forEachFast { it.cleanUp() }
+        textureArrays.forEachFast { it.destroy() }
     }
 
     fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat = RGBA8)

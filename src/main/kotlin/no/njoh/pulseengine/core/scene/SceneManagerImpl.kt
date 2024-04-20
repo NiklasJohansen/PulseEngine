@@ -243,9 +243,9 @@ open class SceneManagerImpl : SceneManagerInternal()
         }
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
-        Logger.info("Cleaning up scene (${this::class.simpleName})")
+        Logger.info("Destroying scene (${this::class.simpleName})")
         activeScene.stop(engine)
     }
 }

@@ -170,7 +170,7 @@ class LightRenderer : BatchRenderer()
         gpuRenderTimeMs = (System.nanoTime() - renderStartTime) / 1_000_000f
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
         vertexBuffer.delete()
         lightBuffer.delete()

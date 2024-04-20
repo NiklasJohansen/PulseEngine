@@ -168,7 +168,7 @@ open class AudioImpl : AudioInternal
 
     override fun destroy()
     {
-        Logger.info("Cleaning up audio (${this::class.simpleName})")
+        Logger.info("Destroying audio (${this::class.simpleName})")
         sources.forEachFast { alDeleteSources(it) }
         alcSetThreadContext(MemoryUtil.NULL)
         alcDestroyContext(context)

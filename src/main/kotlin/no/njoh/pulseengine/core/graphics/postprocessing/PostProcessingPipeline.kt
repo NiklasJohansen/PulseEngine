@@ -26,5 +26,5 @@ class PostProcessingPipeline
 
     fun getFinalTexture() = effects.lastOrNull()?.getTexture()
 
-    fun cleanUp() = effects.forEachFast { it.cleanUp() }
+    fun destroy() = effects.forEachFast { it.destroy() }
 }

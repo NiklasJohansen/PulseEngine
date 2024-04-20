@@ -102,11 +102,11 @@ class SurfaceImpl(
         renderTarget.getTexture()?.let { postProcessingPipeline.process(it) }
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
-        renderers.forEachFast { it.cleanUp() }
-        renderTarget.cleanUp()
-        postProcessingPipeline.cleanUp()
+        renderers.forEachFast { it.destroy() }
+        renderTarget.destroy()
+        postProcessingPipeline.destroy()
     }
 
     // Exposed draw functions
@@ -228,7 +228,7 @@ class SurfaceImpl(
             config.multisampling = multisampling
             runOnInitFrame()
             {
-                renderTarget.cleanUp()
+                renderTarget.destroy()
                 renderTarget = createRenderTarget(config)
                 renderTarget.init(config.width, config.height)
             }
@@ -295,7 +295,7 @@ class SurfaceImpl(
         {
             val effect = postProcessingPipeline.getEffect(name)
             postProcessingPipeline.removeEffect(name)
-            effect?.cleanUp()
+            effect?.destroy()
         }
     }
 

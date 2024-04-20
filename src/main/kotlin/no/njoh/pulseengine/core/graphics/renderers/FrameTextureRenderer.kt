@@ -3,7 +3,6 @@ package no.njoh.pulseengine.core.graphics.renderers
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL30.*
 
@@ -85,7 +84,7 @@ class FrameTextureRenderer(private val program: ShaderProgram)
         glBindVertexArray(0)
     }
 
-    fun cleanUp()
+    fun destroy()
     {
         // Delete the VBO
         glBindBuffer(GL_ARRAY_BUFFER, 0)

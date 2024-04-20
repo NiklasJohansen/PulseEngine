@@ -81,7 +81,7 @@ class NormalMapRenderer(
         vao.release()
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
         vertexBuffer.delete()
         instanceBuffer.delete()

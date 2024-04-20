@@ -4,7 +4,6 @@ import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.input.CursorType
-import kotlin.reflect.KClass
 
 abstract class AssetManager
 {
@@ -78,6 +77,6 @@ abstract class AssetManagerInternal : AssetManager()
     abstract fun update()
     abstract fun setOnAssetLoaded(callback: (Asset) -> Unit)
     abstract fun setOnAssetRemoved(callback: (Asset) -> Unit)
-    abstract fun cleanUp()
+    abstract fun destroy()
 }
 

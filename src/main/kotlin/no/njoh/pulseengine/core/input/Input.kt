@@ -41,7 +41,7 @@ interface InputInternal : Input
     override var yWorldMouse: Float
 
     fun init(windowHandle: Long)
-    fun cleanUp()
+    fun destroy()
     fun pollEvents()
     fun setOnFocusChanged(callback: (Boolean) -> Unit)
     fun createCursor(cursor: Cursor)

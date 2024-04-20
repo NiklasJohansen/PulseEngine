@@ -13,7 +13,7 @@ interface PostProcessingEffect
     fun init()
     fun process(texture: Texture): Texture
     fun getTexture(): Texture?
-    fun cleanUp()
+    fun destroy()
 }
 
 abstract class SinglePassEffect : PostProcessingEffect
@@ -57,10 +57,10 @@ abstract class SinglePassEffect : PostProcessingEffect
         }
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
         if (this::program.isInitialized) program.delete()
-        if (this::renderer.isInitialized) renderer.cleanUp()
+        if (this::renderer.isInitialized) renderer.destroy()
         if (this::fbo.isInitialized) fbo.delete()
     }
 }
@@ -109,10 +109,10 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
 
     override fun getTexture(): Texture? = fbo.lastOrNull()?.getTexture(0)
 
-    override fun cleanUp()
+    override fun destroy()
     {
         programs.forEachFast { it.delete() }
-        renderers.forEachFast { it.cleanUp() }
+        renderers.forEachFast { it.destroy() }
         fbo.forEachFast { it.delete() }
     }
 }

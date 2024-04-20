@@ -20,7 +20,7 @@ interface WindowInternal : Window
     val windowHandle: Long
 
     fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
-    fun cleanUp()
+    fun destroy()
     fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit)
     fun swapBuffers()
     fun isOpen(): Boolean

@@ -89,7 +89,7 @@ class DockingPanel(
                 panel.removeFromParent()
                 addChildren(panel)
 
-                parent?.cleanup()
+                parent?.destroy()
                 parent?.setMinSizeFromChildren()
 
                 popup?.hidden = false
@@ -261,7 +261,7 @@ class DockingPanel(
         this.height.type = AUTO
     }
 
-    private fun UiElement.cleanup()
+    private fun UiElement.destroy()
     {
         if (this.parent != null && this.children.size == 1 && (this is VerticalPanel || this is HorizontalPanel))
         {
@@ -269,7 +269,7 @@ class DockingPanel(
             child.width.setQuiet(this.width)
             child.height.setQuiet(this.height)
             this.parent?.replaceChild(this, child)
-            this.parent?.cleanup()
+            this.parent?.destroy()
         }
     }
 

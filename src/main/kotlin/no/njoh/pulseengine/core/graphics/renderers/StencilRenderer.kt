@@ -47,7 +47,7 @@ class StencilRenderer : BatchRenderer()
 
     override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int) { }
 
-    override fun cleanUp()
+    override fun destroy()
     {
         vao.delete()
         vbo.delete()

@@ -17,7 +17,7 @@ interface RenderTarget
     fun end()
     fun getTexture(index: Int = 0): Texture?
     fun getTextures(): List<Texture>
-    fun cleanUp()
+    fun destroy()
 }
 
 class OffScreenRenderTarget(
@@ -41,7 +41,7 @@ class OffScreenRenderTarget(
     override fun end() = fbo.release()
     override fun getTexture(index: Int) = fbo.getTexture(index)
     override fun getTextures() = fbo.getTextures()
-    override fun cleanUp() = fbo.delete()
+    override fun destroy() = fbo.delete()
 }
 
 class MultisampledOffScreenRenderTarget(
@@ -82,7 +82,7 @@ class MultisampledOffScreenRenderTarget(
     override fun getTextures() =
         fbo.getTextures()
 
-    override fun cleanUp()
+    override fun destroy()
     {
         msFbo.delete()
         fbo.delete()

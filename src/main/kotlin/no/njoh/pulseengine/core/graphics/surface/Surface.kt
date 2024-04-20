@@ -79,5 +79,5 @@ abstract class SurfaceInternal : Surface()
     abstract fun initFrame()
     abstract fun renderToOffScreenTarget()
     abstract fun runPostProcessingPipeline()
-    abstract fun cleanUp()
+    abstract fun destroy()
 }

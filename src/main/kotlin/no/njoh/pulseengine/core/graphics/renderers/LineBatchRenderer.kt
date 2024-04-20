@@ -61,7 +61,7 @@ class LineBatchRenderer(
         vao.release()
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
         vbo.delete()
         vao.delete()

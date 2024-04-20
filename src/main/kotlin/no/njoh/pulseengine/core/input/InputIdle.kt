@@ -18,7 +18,7 @@ class InputIdle(private val activeInput: InputInternal) : InputInternal
     override val clickedKeys = emptyList<Key>()
     override val gamepads = activeInput.gamepads
     override fun init(windowHandle: Long) {}
-    override fun cleanUp() {}
+    override fun destroy() {}
     override fun pollEvents() {}
     override fun isPressed(key: Key) = false
     override fun isPressed(btn: Mouse) = false

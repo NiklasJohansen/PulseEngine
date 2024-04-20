@@ -50,9 +50,9 @@ open class WidgetManagerImpl: WidgetManagerInternal()
         }
     }
 
-    override fun cleanUp(engine: PulseEngine)
+    override fun destroy(engine: PulseEngine)
     {
-        Logger.info("Cleaning up widgets (${this::class.simpleName})")
+        Logger.info("Destroying widgets (${this::class.simpleName})")
         widgets.forEachFast { it.onDestroy(engine) }
     }
 
