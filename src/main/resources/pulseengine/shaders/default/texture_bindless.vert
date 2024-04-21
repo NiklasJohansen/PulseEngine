@@ -7,7 +7,7 @@ in vec2 vertexPos; // In range (0-1)
 in vec3 worldPos;
 in vec2 size;
 in vec2 origin;
-in float rotation;
+in float angle;
 in float cornerRadius;
 in vec2 uvMin;
 in vec2 uvMax;
@@ -64,7 +64,7 @@ void main() {
     samplerIndex = getSamplerIndex(textureHandle);
     texIndex = getTexIndex(textureHandle);
 
-    vec2 offset = (vertexPos * size - size * origin) * rotate(radians(rotation));
+    vec2 offset = (vertexPos - origin) * size * rotate(radians(angle));
     vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);
 
     gl_Position = viewProjection * vertexPos;

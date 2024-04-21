@@ -77,7 +77,7 @@ class TextureRenderer(
             val z = data[base + 2]
             val w = data[base + 3]
             val h = data[base + 4]
-            val rotation = data[base + 5]
+            val angle = data[base + 5]
             val xOrigin = data[base + 6]
             val yOrigin = data[base + 7]
             val rgba = data[base + 8]
@@ -91,7 +91,7 @@ class TextureRenderer(
             program.setUniform("position", x, y, z)
             program.setUniform("size", w, h)
             program.setUniform("origin", xOrigin, yOrigin)
-            program.setUniform("rotation", rotation)
+            program.setUniform("angle", angle)
             program.setUniform("color", floatToRawIntBits(rgba))
             program.setUniform("sampleTexture", textureId != TextureHandle.NONE.textureIndex)
 
@@ -111,7 +111,7 @@ class TextureRenderer(
         vao.delete()
     }
 
-    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float)
+    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float)
     {
         if (writeCount >= capacity)
             return
@@ -122,7 +122,7 @@ class TextureRenderer(
         data[base + 2] = config.currentDepth
         data[base + 3] = w
         data[base + 4] = h
-        data[base + 5] = rot
+        data[base + 5] = angle
         data[base + 6] = xOrigin
         data[base + 7] = yOrigin
         data[base + 8] = config.currentDrawColor

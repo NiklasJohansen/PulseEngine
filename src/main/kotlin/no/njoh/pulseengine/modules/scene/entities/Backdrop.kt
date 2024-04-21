@@ -32,7 +32,7 @@ open class Backdrop : StandardSceneEntity(), NormalMapped
             y = y,
             width = width,
             height = height,
-            rot = rotation,
+            angle = rotation,
             xOrigin = 0.5f,
             yOrigin = 0.5f,
             uTiling = xTiling,

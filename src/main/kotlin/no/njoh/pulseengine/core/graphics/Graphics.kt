@@ -14,13 +14,40 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 
 interface Graphics
 {
-    val mainCamera: Camera
+    /**
+     * A standard surface set up with default parameters intended for easy access to rendering.
+     */
     val mainSurface: Surface
 
+    /**
+     * A reference to camera associated with the main surface.
+     */
+    val mainCamera: Camera
+
+    /**
+     * Returns the [Surface] with the given name or null if it does not exist.
+     */
     fun getSurface(name: String): Surface?
+
+    /**
+     * Returns the [Surface] with the given name if it exists or the default [mainSurface].
+     */
     fun getSurfaceOrDefault(name: String): Surface
+
+    /**
+     * Returns all available [Surface]s.
+     */
     fun getAllSurfaces(): List<Surface>
+
+    /**
+     * Deletes the [Surface] with the given name.
+     */
     fun deleteSurface(name: String)
+
+    /**
+     * Creates and returns a new [Surface] with the given parameters.
+     * The surface will be initialized and ready on the next frame.
+     */
     fun createSurface(
         name: String,
         width: Int? = null,
@@ -37,6 +64,10 @@ interface Graphics
         backgroundColor: Color = Color(0.1f, 0.1f, 0.1f, 0f),
     ) : Surface
 
+    /**
+     * Sets the number of textures that should be allocated up-front on the GPU when a
+     * texture asset matching the given size and format is loaded.
+     */
     fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat = RGBA8)
 }
 

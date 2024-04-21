@@ -133,20 +133,20 @@ class SurfaceImpl(
         quadRenderer?.vertex(x, y)
     }
 
-    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
     {
         if (texture.isBindless)
-            bindlessTextureRenderer?.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin, cornerRadius)
+            bindlessTextureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius)
         else
-            textureRenderer?.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin)
+            textureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin)
     }
 
-    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, rot: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, uTiling: Float, vTiling: Float)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, uTiling: Float, vTiling: Float)
     {
         if (texture.isBindless)
-            bindlessTextureRenderer?.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, uTiling, vTiling)
+            bindlessTextureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, uTiling, vTiling)
         else
-            textureRenderer?.drawTexture(texture, x, y, width, height, rot, xOrigin, yOrigin)
+            textureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin)
     }
 
     override fun drawText(text: CharSequence, x: Float, y: Float, font: Font?, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float)

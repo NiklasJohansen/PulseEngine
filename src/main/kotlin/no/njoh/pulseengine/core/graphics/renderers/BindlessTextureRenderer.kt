@@ -39,7 +39,7 @@ class BindlessTextureRenderer(
             .withAttribute("worldPos", 3, GL_FLOAT, 1)
             .withAttribute("size", 2, GL_FLOAT, 1)
             .withAttribute("origin", 2, GL_FLOAT, 1)
-            .withAttribute("rotation", 1, GL_FLOAT, 1)
+            .withAttribute("angle", 1, GL_FLOAT, 1)
             .withAttribute("cornerRadius", 1, GL_FLOAT, 1)
             .withAttribute("uvMin", 2, GL_FLOAT, 1)
             .withAttribute("uvMax", 2, GL_FLOAT, 1)
@@ -86,7 +86,7 @@ class BindlessTextureRenderer(
         vao.delete()
     }
 
-    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, rot: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
+    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
     {
         instanceBuffer.fill(17)
         {
@@ -97,7 +97,7 @@ class BindlessTextureRenderer(
             put(h)
             put(xOrigin)
             put(yOrigin)
-            put(rot)
+            put(angle)
             put(cornerRadius)
             put(texture.uMin)
             put(texture.vMin)
@@ -119,7 +119,7 @@ class BindlessTextureRenderer(
         y: Float,
         w: Float,
         h: Float,
-        rot: Float,
+        angle: Float,
         xOrigin: Float,
         yOrigin: Float,
         cornerRadius: Float,
@@ -139,7 +139,7 @@ class BindlessTextureRenderer(
             put(h)
             put(xOrigin)
             put(yOrigin)
-            put(rot)
+            put(angle)
             put(cornerRadius)
             put(texture.uMax * uMin)
             put(texture.vMax * vMin)
