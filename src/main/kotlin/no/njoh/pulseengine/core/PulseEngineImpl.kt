@@ -218,11 +218,10 @@ class PulseEngineImpl(
 
     private fun drawFrame()
     {
-        data.measureGpuRenderTime()
-        {
-            gfx.drawFrame()
-            window.swapBuffers()
-        }
+        gfx.startGpuTimer()
+        gfx.drawFrame()
+        window.swapBuffers()
+        gfx.stopGpuTimer().let { data.gpuTimeMs = it }
     }
 
     private fun endFrame()
@@ -270,7 +269,7 @@ class PulseEngineImpl(
         }
 
         if (updated)
-            data.fixedUpdateTimeMs = ((glfwGetTime() - time) * 1000.0).toFloat()
+            data.cpuFixedUpdateTimeMs = ((glfwGetTime() - time) * 1000.0).toFloat()
     }
 
     private fun render(game: PulseEngineGame)

@@ -6,10 +6,10 @@ abstract class Data
 {
     abstract val currentFps: Int
     abstract val totalFrameTimeMs: Float
-    abstract val gpuRenderTimeMs: Float
+    abstract val gpuTimeMs: Float
     abstract val cpuRenderTimeMs: Float
-    abstract val updateTimeMs: Float
-    abstract val fixedUpdateTimeMs: Float
+    abstract val cpuUpdateTimeMs: Float
+    abstract val cpuFixedUpdateTimeMs: Float
     abstract val fixedDeltaTime: Float
     abstract val deltaTime: Float
     abstract val interpolation: Float

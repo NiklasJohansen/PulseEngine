@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import de.undercouch.bson4jackson.BsonFactory
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -16,42 +17,42 @@ import kotlin.system.measureNanoTime
 
 open class DataImpl : Data()
 {
-    override var currentFps: Int = 0
-    override var totalFrameTimeMs: Float = 0f
-    override var gpuRenderTimeMs: Float = 0f
-    override var cpuRenderTimeMs: Float = 0f
-    override var updateTimeMs: Float = 0f
-    override var fixedUpdateTimeMs: Float = 0f
-    override var fixedDeltaTime: Float = 0.017f
-    override var deltaTime: Float = 0.017f
-    override var interpolation: Float = 0f
-    override var usedMemoryKb: Long = 0L
-    override var totalMemoryKb: Long = 0L
-    override val metrics = mutableListOf<Metric>()
-    override lateinit var saveDirectory: String
+    override var currentFps           = 0
+    override var totalFrameTimeMs     = 0f
+    override var gpuTimeMs            = 0f
+    override var cpuRenderTimeMs      = 0f
+    override var cpuUpdateTimeMs      = 0f
+    override var cpuFixedUpdateTimeMs = 0f
+    override var fixedDeltaTime       = 0.017f
+    override var deltaTime            = 0.017f
+    override var interpolation        = 0f
+    override var usedMemoryKb         = 0L
+    override var totalMemoryKb        = 0L
+    override val metrics              = ArrayList<Metric>()
+    override var saveDirectory        = "NOT SET"
 
-    // Used by engine
-    private var fpsTimer = 0.0
-    private val fpsFilter = FloatArray(20)
-    private var frameCounter = 0
+    private val fpsFilter      = FloatArray(20)
+    private var fpsTimer       = 0.0
+    private var frameCounter   = 0
     private var frameStartTime = 0.0
-    var lastFrameTime = 0.0
+
+    var lastFrameTime          = 0.0
     var fixedUpdateAccumulator = 0.0
-    var fixedUpdateLastTime = 0.0
+    var fixedUpdateLastTime    = 0.0
 
     fun init(gameName: String)
     {
         Logger.info("Initializing data (${this::class.simpleName})")
         updateSaveDirectory(gameName)
 
-        addMetric("FRAMES PER SECOND (FPS)") { sample(currentFps.toFloat()) }
-        addMetric("TOTAL FRAME TIME (MS)")   { sample(totalFrameTimeMs) }
-        addMetric("GPU RENDER TIME (MS)")    { sample(gpuRenderTimeMs) }
-        addMetric("CPU RENDER TIME (MS)")    { sample(cpuRenderTimeMs) }
-        addMetric("UPDATE TIME (MS)")        { sample(updateTimeMs) }
-        addMetric("FIXED UPDATE TIME (MS)")  { sample(fixedUpdateTimeMs) }
-        addMetric("USED MEMORY (KB)")        { sample(usedMemoryKb.toFloat()) }
-        addMetric("MEMORY OF TOTAL (%)")     { sample(usedMemoryKb * 100f / totalMemoryKb) }
+        addMetric("FRAMES PER SECOND (FPS)")    { sample(currentFps.toFloat())                }
+        addMetric("FRAME TIME (MS)")            { sample(totalFrameTimeMs)                    }
+        addMetric("GPU TIME (MS)")              { sample(gpuTimeMs)                           }
+        addMetric("CPU RENDER TIME (MS)")       { sample(cpuRenderTimeMs)                     }
+        addMetric("CPU UPDATE TIME (MS)")       { sample(cpuUpdateTimeMs)                     }
+        addMetric("CPU FIXED UPDATE TIME (MS)") { sample(cpuFixedUpdateTimeMs)                }
+        addMetric("USED MEMORY (KB)")           { sample(usedMemoryKb.toFloat())              }
+        addMetric("MEMORY OF TOTAL (%)")        { sample(usedMemoryKb * 100f / totalMemoryKb) }
     }
 
     override fun addMetric(name: String, onSample: Metric.() -> Unit)
@@ -98,23 +99,22 @@ open class DataImpl : Data()
 
     override fun <T> saveObjectAsync(data: T, fileName: String, format: FileFormat, onComplete: (T) -> Unit)
     {
-        GlobalScope.launch {
-            saveObject(data, fileName, format)
-                .takeIf { it }
-                ?.let { onComplete.invoke(data) }
+        GlobalScope.launch(Dispatchers.IO)
+        {
+            saveObject(data, fileName, format).takeIf { it }?.let { onComplete.invoke(data) }
         }
     }
 
     override fun <T> loadObjectAsync(
-        fileName: String, type: Class<T>,
+        fileName: String,
+        type: Class<T>,
         fromClassPath: Boolean,
         onFail: () -> Unit,
         onComplete: (T) -> Unit
     ) {
-        GlobalScope.launch {
-            loadObject(fileName, type, fromClassPath)
-                ?.let(onComplete)
-                ?: onFail()
+        GlobalScope.launch(Dispatchers.IO)
+        {
+            loadObject(fileName, type, fromClassPath)?.let(onComplete) ?: onFail()
         }
     }
 
@@ -136,22 +136,13 @@ open class DataImpl : Data()
         block.invoke()
 
         lastFrameTime = glfwGetTime()
-        updateTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        cpuUpdateTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
     fun updateMemoryStats()
     {
         usedMemoryKb = (runtime.totalMemory() - runtime.freeMemory()) / KILO_BYTE
         totalMemoryKb = runtime.maxMemory() / KILO_BYTE
-    }
-
-    inline fun measureGpuRenderTime(block: () -> Unit)
-    {
-        val startTime = glfwGetTime()
-
-        block.invoke()
-
-        gpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
     inline fun measureCpuRenderTime(block: () -> Unit)

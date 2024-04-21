@@ -81,6 +81,8 @@ interface GraphicsInternal : Graphics
     fun deleteTexture(texture: Texture)
     fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
     fun updateCameras()
+    fun startGpuTimer()
+    fun stopGpuTimer(): Float
     fun initFrame()
     fun drawFrame()
     fun destroy()
