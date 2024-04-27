@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.scene.SceneState.*
 import no.njoh.pulseengine.core.scene.systems.EntityUpdater
 import no.njoh.pulseengine.core.scene.systems.EntityRendererImpl
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.getClassesFromFullyQualifiedClassNames
@@ -113,8 +114,11 @@ open class SceneManagerImpl : SceneManagerInternal()
             if (scene.entities !== activeScene.entities)
                 activeScene.clearAll()
 
+            // Trigger garbage collection to remove unused resources
+            System.gc()
+
             // Missing system implementations gets deserialized to null and should be removed
-            scene.systems.removeIf { it == null }
+            scene.systems.removeWhen { it == null }
             activeScene = scene
 
             if (state != STOPPED)
