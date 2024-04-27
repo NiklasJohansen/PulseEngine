@@ -100,8 +100,11 @@ open class GraphicsImpl : GraphicsInternal
         // Run surfaces through their post-processing pipelines
         surfaces.forEachFast { it.runPostProcessingPipeline() }
 
-        // Draw visible surfaces to back-buffer
-        surfaces.forEachFiltered({ it.config.isVisible }) { fullFrameRenderer.render(it.getTexture()) }
+        // Draw visible surfaces with content to back-buffer
+        surfaces.forEachFiltered({ it.config.isVisible && it.hasContent() })
+        {
+            fullFrameRenderer.render(it.getTexture())
+        }
     }
 
     override fun createSurface(

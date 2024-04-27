@@ -211,4 +211,5 @@ abstract class SurfaceInternal : Surface()
     abstract fun renderToOffScreenTarget()
     abstract fun runPostProcessingPipeline()
     abstract fun destroy()
+    abstract fun hasContent(): Boolean
 }

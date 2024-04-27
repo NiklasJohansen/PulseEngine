@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer.Companion.MAX_BATCH_COUNT
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
@@ -20,8 +21,8 @@ class SurfaceImpl(
 ): SurfaceInternal() {
 
     override var renderTarget           = createRenderTarget(config)
-
     private var initialized             = false
+    private var hasContent              = false
     private val onInitFrame             = ArrayList<() -> Unit>()
     private var readRenderStates        = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private var writeRenderStates       = ArrayList<RenderState>(MAX_BATCH_COUNT)
@@ -81,6 +82,10 @@ class SurfaceImpl(
 
     override fun renderToOffScreenTarget()
     {
+        hasContent = renderers.anyMatches { it.hasBatchesToRender() }
+        if (!hasContent)
+            return // No content to render
+
         renderTarget.begin()
 
         var batchNum = 0
@@ -96,6 +101,8 @@ class SurfaceImpl(
 
     override fun runPostProcessingPipeline()
     {
+        if (!hasContent) return // Render target is blank
+
         var texture = renderTarget.getTexture() ?: return
         postEffects.forEachFast()
         {
@@ -109,6 +116,8 @@ class SurfaceImpl(
         postEffects.forEachFast { it.destroy() }
         renderTarget.destroy()
     }
+
+    override fun hasContent() = hasContent
 
     // Exposed draw functions
     //------------------------------------------------------------------------------------------------
