@@ -8,11 +8,11 @@ import org.lwjgl.opengl.GL33.GL_TIME_ELAPSED
  */
 class GpuTimer
 {
-    private var initialized       = false
-    private var queryIds          = IntArray(5)
-    private var lastQueryTimeMs   = 0f
-    private var readIndex         = 0
-    private var writeIndex        = 0
+    private var initialized     = false
+    private var queryIds        = IntArray(5)
+    private var lastQueryTimeMs = 0f
+    private var readIndex       = 0
+    private var writeIndex      = 0
 
     fun start()
     {

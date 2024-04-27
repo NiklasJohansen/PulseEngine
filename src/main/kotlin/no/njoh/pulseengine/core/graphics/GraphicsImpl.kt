@@ -25,7 +25,6 @@ open class GraphicsImpl : GraphicsInternal
     private val onInitFrame       = ArrayList<() -> Unit>()
     private val surfaceMap        = HashMap<String, SurfaceInternal>()
     private val surfaces          = ArrayList<SurfaceInternal>()
-    private var gpuTimer          = GpuTimer()
     private var lastZOrder        = 0
 
     override fun init(viewPortWidth: Int, viewPortHeight: Int)
@@ -184,10 +183,6 @@ open class GraphicsImpl : GraphicsInternal
     override fun deleteTexture(texture: Texture) = textureBank.delete(texture)
 
     override fun updateCameras() = surfaces.forEachCamera { it.updateLastState() }
-
-    override fun startGpuTimer() = gpuTimer.start()
-
-    override fun stopGpuTimer() = gpuTimer.stop()
 
     override fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat)
     {

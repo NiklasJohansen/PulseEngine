@@ -19,7 +19,7 @@ open class DataImpl : Data()
 {
     override var currentFps           = 0
     override var totalFrameTimeMs     = 0f
-    override var gpuTimeMs            = 0f
+    override var gpuRenderTimeMs      = 0f
     override var cpuRenderTimeMs      = 0f
     override var cpuUpdateTimeMs      = 0f
     override var cpuFixedUpdateTimeMs = 0f
@@ -33,8 +33,8 @@ open class DataImpl : Data()
 
     private val fpsFilter      = FloatArray(20)
     private var fpsTimer       = 0.0
-    private var frameCounter   = 0
     private var frameStartTime = 0.0
+    private var frameCounter   = 0
 
     var lastFrameTime          = 0.0
     var fixedUpdateAccumulator = 0.0
@@ -47,7 +47,7 @@ open class DataImpl : Data()
 
         addMetric("FRAMES PER SECOND (FPS)")    { sample(currentFps.toFloat())                }
         addMetric("FRAME TIME (MS)")            { sample(totalFrameTimeMs)                    }
-        addMetric("GPU TIME (MS)")              { sample(gpuTimeMs)                           }
+        addMetric("GPU RENDER TIME (MS)")       { sample(gpuRenderTimeMs)                     }
         addMetric("CPU RENDER TIME (MS)")       { sample(cpuRenderTimeMs)                     }
         addMetric("CPU UPDATE TIME (MS)")       { sample(cpuUpdateTimeMs)                     }
         addMetric("CPU FIXED UPDATE TIME (MS)") { sample(cpuFixedUpdateTimeMs)                }
@@ -152,6 +152,15 @@ open class DataImpl : Data()
         block.invoke()
 
         cpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+    }
+
+    inline fun measureGpuRenderTime(block: () -> Unit)
+    {
+        val startTime = glfwGetTime()
+
+        block.invoke()
+
+        gpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
     fun updateInterpolationValue()
