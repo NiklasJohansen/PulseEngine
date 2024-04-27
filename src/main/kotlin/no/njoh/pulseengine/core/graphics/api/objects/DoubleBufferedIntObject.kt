@@ -91,7 +91,7 @@ class DoubleBufferedIntObject private constructor(
     inline fun fill(amount: Int, fillBuffer: IntBuffer.() -> Unit)
     {
         if (amount > writeBuffer.remaining())
-            writeBuffer = resizeBuffer(writeBuffer)
+            writeBuffer = resizeBuffer(writeBuffer, newCapacity = (writeBuffer.position() + amount) * 3 / 2)
 
         fillBuffer(writeBuffer)
     }
@@ -99,7 +99,7 @@ class DoubleBufferedIntObject private constructor(
     @PublishedApi
     internal fun resizeBuffer(
         currentBuffer: IntBuffer,
-        newCapacity: Int = currentBuffer.capacity() * 3 / 2
+        newCapacity: Int
     ): IntBuffer {
         var newBufferCapacity = newCapacity
         if (currentBuffer.capacity() == START_CAPACITY)

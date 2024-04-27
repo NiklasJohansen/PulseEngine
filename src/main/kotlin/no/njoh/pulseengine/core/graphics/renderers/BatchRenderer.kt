@@ -46,9 +46,9 @@ abstract class BatchRenderer
     /**
      * Called for every element that is added to the batch.
      */
-    fun increaseBatchSize()
+    fun increaseBatchSize(amount: Int = 1)
     {
-        currentSize++
+        currentSize += amount
     }
 
     /**
@@ -63,6 +63,11 @@ abstract class BatchRenderer
 
         onRenderBatch(surface, batchStart[i], drawCount)
     }
+
+    /**
+     * Checks if there are any batches to render.
+     */
+    fun hasBatchesToRender() = batchSize[readOffset] > 0
 
     /**
      * Called once when the renderer is added to the [Surface]

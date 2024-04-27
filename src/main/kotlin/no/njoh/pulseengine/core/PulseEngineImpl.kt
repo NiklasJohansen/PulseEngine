@@ -218,10 +218,11 @@ class PulseEngineImpl(
 
     private fun drawFrame()
     {
-        gfx.startGpuTimer()
-        gfx.drawFrame()
-        window.swapBuffers()
-        gfx.stopGpuTimer().let { data.gpuTimeMs = it }
+        data.measureGpuRenderTime()
+        {
+            gfx.drawFrame()
+            window.swapBuffers()
+        }
     }
 
     private fun endFrame()

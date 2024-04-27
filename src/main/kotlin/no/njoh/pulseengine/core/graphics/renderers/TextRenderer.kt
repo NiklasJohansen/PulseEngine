@@ -3,7 +3,6 @@ package no.njoh.pulseengine.core.graphics.renderers
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Font.*
 import no.njoh.pulseengine.core.asset.types.Font.Companion.MAX_CHAR_COUNT
-import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.api.TextureBank
@@ -106,6 +105,9 @@ class TextRenderer(
         val scale = fontSize / font.fontSize
         val width = font.charTexture.width
         val height = font.charTexture.height
+        val uMax = font.charTexture.uMax
+        val vMax = font.charTexture.vMax
+        val texHandle = font.charTexture.handle.toFloat()
         val charData = font.charData
         xb[0] = -getLeftSideBearing(text, font, fontSize) // Compensate for space before first character
         yb[0] = 0f
@@ -127,10 +129,10 @@ class TextRenderer(
                 glyphData[Y(i)] = y0
                 glyphData[W(i)] = x1 - x0
                 glyphData[H(i)] = y1 - y0
-                glyphData[U_MIN(i)] = quad.s0()
-                glyphData[V_MIN(i)] = quad.t0()
-                glyphData[U_MAX(i)] = quad.s1()
-                glyphData[V_MAX(i)] = quad.t1()
+                glyphData[U_MIN(i)] = quad.s0() * uMax
+                glyphData[V_MIN(i)] = quad.t0() * vMax
+                glyphData[U_MAX(i)] = quad.s1() * uMax
+                glyphData[V_MAX(i)] = quad.t1() * vMax
                 i += GLYPH_STRIDE
             }
             charIndex += cp.advanceCount
@@ -144,85 +146,91 @@ class TextRenderer(
 
         // Find max height over baseline
         var textHeight = -glyphData[Y(0)]
-        for (j in 1 until text.length) textHeight = max(textHeight, -glyphData[Y(j * GLYPH_STRIDE)])
+        for (j in 1 until text.length)
+            textHeight = max(textHeight, -glyphData[Y(j * GLYPH_STRIDE)])
 
         // Calculate position offsets
         val xOffset = textWidth * xOrigin
         val yOffset = textHeight * (1f - yOrigin)
 
         if (angle == 0f)
-            drawAxisAlignedGlyphs(text.length, font.charTexture, x, y, xOffset, yOffset)
+            drawAxisAlignedGlyphs(text.length, texHandle, x, y, xOffset, yOffset)
         else
-            drawRotatedGlyphs(text.length, font.charTexture, x, y, xOffset, yOffset, angle)
+            drawRotatedGlyphs(text.length, texHandle, x, y, xOffset, yOffset, angle)
     }
 
-    private fun drawAxisAlignedGlyphs(spriteCount: Int, fontTex: Texture, x: Float, y: Float, xOffset: Float, yOffset: Float)
+    private fun drawAxisAlignedGlyphs(spriteCount: Int, texHandle: Float, x: Float, y: Float, xOffset: Float, yOffset: Float)
     {
-        var i = 0
+        val data = glyphData
+        val color = config.currentDrawColor
+        val depth = config.currentDepth
+        val xPos = x - xOffset
+        val yPos = y + yOffset
         val end = spriteCount * GLYPH_STRIDE
-        while (i < end)
+        var i = 0
+
+        instanceBuffer.fill(spriteCount * 12)
         {
-            instanceBuffer.fill(12)
+            while (i < end)
             {
-                put(glyphData[X(i)] + x - xOffset)
-                put(glyphData[Y(i)] + y + yOffset)
-                put(config.currentDepth)
-                put(glyphData[W(i)])
-                put(glyphData[H(i)])
+                put(data[X(i)] + xPos)
+                put(data[Y(i)] + yPos)
+                put(depth)
+                put(data[W(i)])
+                put(data[H(i)])
                 put(0f) // Rotation
-                put(fontTex.uMax * glyphData[U_MIN(i)])
-                put(fontTex.vMax * glyphData[V_MIN(i)])
-                put(fontTex.uMax * glyphData[U_MAX(i)])
-                put(fontTex.vMax * glyphData[V_MAX(i)])
-                put(config.currentDrawColor)
-                put(fontTex.handle.toFloat())
+                put(data[U_MIN(i)])
+                put(data[V_MIN(i)])
+                put(data[U_MAX(i)])
+                put(data[V_MAX(i)])
+                put(color)
+                put(texHandle)
+                i += GLYPH_STRIDE
             }
-            increaseBatchSize()
-            config.increaseDepth()
-            i += GLYPH_STRIDE
         }
+        increaseBatchSize(spriteCount)
+        config.increaseDepth()
     }
 
-    private fun drawRotatedGlyphs(spriteCount: Int, fontTex: Texture, x: Float, y: Float, xOffset: Float, yOffset: Float, angle: Float)
+    private fun drawRotatedGlyphs(spriteCount: Int, texHandle: Float, x: Float, y: Float, xOffset: Float, yOffset: Float, angle: Float)
     {
+        val data = glyphData
+        val color = config.currentDrawColor
+        val depth = config.currentDepth
         val angleRad = -angle.toRadians()
         val normalRad = angleRad + 0.5f * PI.toFloat()
         val c0 = cos(angleRad)
         val s0 = sin(angleRad)
         val c1 = cos(normalRad)
         val s1 = sin(normalRad)
-        val xStart = x - (xOffset * c0 - yOffset * c1)
-        val yStart = y - (xOffset * s0 - yOffset * s1)
-
-        var i = 0
+        val xPos = x - (xOffset * c0 - yOffset * c1)
+        val yPos = y - (xOffset * s0 - yOffset * s1)
         val end = spriteCount * GLYPH_STRIDE
-        while (i < end)
+        var i = 0
+
+        instanceBuffer.fill(spriteCount * 12)
         {
-            val xGlyph = glyphData[X(i)]
-            val yGlyph = glyphData[Y(i)]
-            val x0 = xStart + (xGlyph * c0) + (yGlyph * c1)
-            val y0 = yStart + (xGlyph * s0) + (yGlyph * s1)
-
-            instanceBuffer.fill(12)
+            while (i < end)
             {
-                put(x0)
-                put(y0)
-                put(config.currentDepth)
-                put(glyphData[W(i)])
-                put(glyphData[H(i)])
+                val xGlyph = data[X(i)]
+                val yGlyph = data[Y(i)]
+                put(xPos + (xGlyph * c0) + (yGlyph * c1))
+                put(yPos + (xGlyph * s0) + (yGlyph * s1))
+                put(depth)
+                put(data[W(i)])
+                put(data[H(i)])
                 put(angle)
-                put(fontTex.uMax * glyphData[U_MIN(i)])
-                put(fontTex.vMax * glyphData[V_MIN(i)])
-                put(fontTex.uMax * glyphData[U_MAX(i)])
-                put(fontTex.vMax * glyphData[V_MAX(i)])
-                put(config.currentDrawColor)
-                put(fontTex.handle.toFloat())
+                put(data[U_MIN(i)])
+                put(data[V_MIN(i)])
+                put(data[U_MAX(i)])
+                put(data[V_MAX(i)])
+                put(color)
+                put(texHandle)
+                i += GLYPH_STRIDE
             }
-
-            increaseBatchSize()
-            config.increaseDepth()
-            i += GLYPH_STRIDE
         }
+        increaseBatchSize(spriteCount)
+        config.increaseDepth()
     }
 
     private val advanceWidth = IntArray(1)
