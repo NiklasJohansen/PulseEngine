@@ -196,13 +196,13 @@ open class DataImpl : Data()
     companion object
     {
         private val bsonMapper = ObjectMapper(BsonFactory())
-            .registerModule(KotlinModule())
+            .registerModule(KotlinModule.Builder().build())
             .enableDefaultTyping()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)
 
         private val jsonMapper = ObjectMapper()
-            .registerModule(KotlinModule())
+            .registerModule(KotlinModule.Builder().build())
             .enableDefaultTyping()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)

@@ -449,8 +449,9 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
-                sceneFileToSaveAs = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
+            FileChooser.showSaveFileDialog(engine.data.saveDirectory)
+            {
+                sceneFileToSaveAs = it + if (!it.endsWith(".scn")) ".scn" else ""
             }
         }
     }
@@ -462,8 +463,9 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showFileSelectionDialog("scn", engine.data.saveDirectory) { filePath ->
-                sceneFileToLoad = filePath
+            FileChooser.showFileSelectionDialog(engine.data.saveDirectory)
+            {
+                sceneFileToLoad = it
             }
         }
     }
@@ -478,8 +480,9 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
-                sceneFileToCreate = filePath
+            FileChooser.showSaveFileDialog(engine.data.saveDirectory)
+            {
+                sceneFileToCreate = it
             }
         }
     }
