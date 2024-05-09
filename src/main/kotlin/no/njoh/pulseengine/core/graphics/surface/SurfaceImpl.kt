@@ -82,7 +82,7 @@ class SurfaceImpl(
 
     override fun renderToOffScreenTarget()
     {
-        hasContent = renderers.anyMatches { it.hasBatchesToRender() }
+        hasContent = renderers.anyMatches { it.hasContentToRender() }
         if (!hasContent)
             return // No content to render
 

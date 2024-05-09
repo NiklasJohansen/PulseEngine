@@ -4,18 +4,20 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 
 /**
  * Used to batch up vertex data into separate draw calls.
- * Handled by the [Graphics] implementation.
+ * Managed by the [Graphics] implementation.
  */
 abstract class BatchRenderer
 {
-    private val batchSize = IntArray(MAX_BATCH_COUNT * 2)
+    private val batchSize  = IntArray(MAX_BATCH_COUNT * 2)
     private val batchStart = IntArray(MAX_BATCH_COUNT * 2)
 
     private var currentBatch = 0
     private var currentStart = 0
-    private var currentSize = 0
-    private var readOffset = 0
-    private var writeOffset = MAX_BATCH_COUNT
+    private var currentSize  = 0
+    private var readOffset   = 0
+    private var writeOffset  = MAX_BATCH_COUNT
+    private var hasContent   = false
+    private var wasUpdated   = false
 
     /**
      * Called once at the beginning of every frame.
@@ -26,6 +28,8 @@ abstract class BatchRenderer
         onInitFrame()
 
         readOffset = writeOffset.also { writeOffset = readOffset }
+        hasContent = wasUpdated
+        wasUpdated = false
         currentBatch = 0
         currentStart = 0
     }
@@ -39,6 +43,7 @@ abstract class BatchRenderer
         batchSize[i] = currentSize
         batchStart[i] = currentStart
         currentStart += currentSize
+        wasUpdated = (wasUpdated || currentSize > 0)
         currentSize = 0
         currentBatch++
     }
@@ -46,9 +51,17 @@ abstract class BatchRenderer
     /**
      * Called for every element that is added to the batch.
      */
-    fun increaseBatchSize(amount: Int = 1)
+    fun increaseBatchSize(amount: Int)
     {
         currentSize += amount
+    }
+
+    /**
+     * Called for every element that is added to the batch.
+     */
+    fun increaseBatchSize()
+    {
+        currentSize++
     }
 
     /**
@@ -67,7 +80,7 @@ abstract class BatchRenderer
     /**
      * Checks if there are any batches to render.
      */
-    fun hasBatchesToRender() = batchSize[readOffset] > 0
+    fun hasContentToRender() = hasContent
 
     /**
      * Called once when the renderer is added to the [Surface]
