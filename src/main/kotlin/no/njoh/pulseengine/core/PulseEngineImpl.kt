@@ -167,6 +167,9 @@ class PulseEngineImpl(
         // Run startup script
         console.runScript("/startup.ps")
 
+        // Remove garbage before starting game loop
+        System.gc()
+
         // Log when finished
         Logger.info("Finished initialization in ${engineStartTime.toNowFormatted()}")
     }
