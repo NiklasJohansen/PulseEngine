@@ -30,8 +30,8 @@ class SurfaceImpl(
     private val renderers               = ArrayList<BatchRenderer>()
     private val rendererMap             = HashMap<Class<out BatchRenderer>, BatchRenderer>()
     private var textRenderer            = null as TextRenderer?
-    private var quadRenderer            = null as QuadBatchRenderer?
-    private var lineRenderer            = null as LineBatchRenderer?
+    private var quadRenderer            = null as QuadRenderer?
+    private var lineRenderer            = null as LineRenderer?
     private var textureRenderer         = null as TextureRenderer?
     private var stencilRenderer         = null as StencilRenderer?
     private var bindlessTextureRenderer = null as BindlessTextureRenderer?
@@ -47,8 +47,8 @@ class SurfaceImpl(
         if (!initialized)
         {
             textRenderer            = TextRenderer(config, textureBank)
-            quadRenderer            = QuadBatchRenderer(config)
-            lineRenderer            = LineBatchRenderer(config)
+            quadRenderer            = QuadRenderer(config)
+            lineRenderer            = LineRenderer(config)
             textureRenderer         = TextureRenderer(config)
             stencilRenderer         = StencilRenderer()
             bindlessTextureRenderer = BindlessTextureRenderer(config, textureBank)

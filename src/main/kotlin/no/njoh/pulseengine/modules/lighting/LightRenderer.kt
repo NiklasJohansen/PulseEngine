@@ -102,7 +102,7 @@ class LightRenderer : BatchRenderer()
         val view = surface.camera.viewMatrix
         var index = 0
         val size = readEdges * 4
-        val buffer = edgeBuffer.readBuffer
+        val buffer = edgeBuffer.readArray
         val xEdgeDrawOffset = xDrawOffset * texScale
         val yEdgeDrawOffset = yDrawOffset * texScale
 
@@ -113,10 +113,10 @@ class LightRenderer : BatchRenderer()
             val y0 = buffer[index + 1]
             val x1 = buffer[index + 2]
             val y1 = buffer[index + 3]
-            buffer.put(index + 0, (view.m00() * x0 + view.m10() * y0 + view.m30()) * texScale - xEdgeDrawOffset)
-            buffer.put(index + 1, (view.m01() * x0 + view.m11() * y0 + view.m31()) * texScale - yEdgeDrawOffset)
-            buffer.put(index + 2, (view.m00() * x1 + view.m10() * y1 + view.m30()) * texScale - xEdgeDrawOffset)
-            buffer.put(index + 3, (view.m01() * x1 + view.m11() * y1 + view.m31()) * texScale - yEdgeDrawOffset)
+            buffer[index + 0] = (view.m00() * x0 + view.m10() * y0 + view.m30()) * texScale - xEdgeDrawOffset
+            buffer[index + 1] = (view.m01() * x0 + view.m11() * y0 + view.m31()) * texScale - yEdgeDrawOffset
+            buffer[index + 2] = (view.m00() * x1 + view.m10() * y1 + view.m30()) * texScale - xEdgeDrawOffset
+            buffer[index + 3] = (view.m01() * x1 + view.m11() * y1 + view.m31()) * texScale - yEdgeDrawOffset
             index += 4
         }
 

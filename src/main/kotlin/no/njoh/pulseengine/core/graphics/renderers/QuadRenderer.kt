@@ -5,10 +5,9 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
-import no.njoh.pulseengine.core.shared.utils.BufferExtensions.putAll
 import org.lwjgl.opengl.GL11.*
 
-class QuadBatchRenderer(
+class QuadRenderer(
     private val config: SurfaceConfigInternal
 ) : BatchRenderer() {
 
@@ -85,16 +84,16 @@ class QuadBatchRenderer(
 
         vbo.fill(16)
         {
-            putAll(x, y, depth, rgba)
-            putAll(x, y + height, depth, rgba)
-            putAll(x + width, y + height, depth, rgba)
-            putAll(x + width, y, depth, rgba)
+            put(x, y, depth, rgba)
+            put(x, y + height, depth, rgba)
+            put(x + width, y + height, depth, rgba)
+            put(x + width, y, depth, rgba)
         }
 
         ebo.fill(6)
         {
-            putAll(vertexCount + 0, vertexCount + 1, vertexCount + 2)
-            putAll(vertexCount + 2, vertexCount + 3, vertexCount + 0)
+            put(vertexCount + 0, vertexCount + 1, vertexCount + 2)
+            put(vertexCount + 2, vertexCount + 3, vertexCount + 0)
         }
 
         vertexCount += 4
@@ -106,7 +105,7 @@ class QuadBatchRenderer(
     {
         vbo.fill(4)
         {
-            putAll(x, y, config.currentDepth, config.currentDrawColor)
+            put(x, y, config.currentDepth, config.currentDrawColor)
         }
 
         singleVertexCount++
@@ -115,8 +114,8 @@ class QuadBatchRenderer(
         {
             ebo.fill(6)
             {
-                putAll(vertexCount + 0, vertexCount + 1, vertexCount + 2)
-                putAll(vertexCount + 2, vertexCount + 3, vertexCount + 0)
+                put(vertexCount + 0, vertexCount + 1, vertexCount + 2)
+                put(vertexCount + 2, vertexCount + 3, vertexCount + 0)
             }
             vertexCount += 4
             singleVertexCount = 0

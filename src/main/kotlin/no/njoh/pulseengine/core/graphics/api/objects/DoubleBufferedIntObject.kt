@@ -5,12 +5,8 @@ import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL15.*
 import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BUFFER
-import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
-import java.nio.IntBuffer
-import java.util.*
 import kotlin.math.max
-import kotlin.math.min
 
 class DoubleBufferedIntObject private constructor(
     val id: Int,
@@ -22,11 +18,10 @@ class DoubleBufferedIntObject private constructor(
     private var mappedSizeInBytes = mappedByteBuffer.capacity().toLong()
     private var mappedIntBuffer = mappedByteBuffer.asIntBuffer()
 
-    @PublishedApi
-    internal var writeBuffer: IntBuffer = MemoryUtil.memAllocInt(mappedIntBuffer.capacity())
-
-    @PublishedApi
-    internal var readBuffer: IntBuffer = MemoryUtil.memAllocInt(mappedIntBuffer.capacity())
+    @PublishedApi internal var writeArray = IntArray(mappedIntBuffer.capacity())
+    @PublishedApi internal var readArray  = IntArray(mappedIntBuffer.capacity())
+    @PublishedApi internal var writeIndex = 0
+    @PublishedApi internal var readSize   = 0
 
     fun bind()
     {
@@ -37,12 +32,12 @@ class DoubleBufferedIntObject private constructor(
 
     fun submit()
     {
-        if (readBuffer.position() == 0)
+        if (readSize == 0)
             return // Nothing to submit
 
-        if (readBuffer.capacity() > mappedIntBuffer.capacity())
+        if (readArray.size > mappedIntBuffer.capacity() )
         {
-            val newSizeInBytes = 4L * readBuffer.capacity()
+            val newSizeInBytes = 4L * readArray.size
             Logger.debug("Resizing GPU buffer #$id (${(mappedSizeInBytes / 1024f).formatted()} kB -> ${(newSizeInBytes / 1024f).formatted()} kB)")
             glBindBuffer(target, id)
             glBufferData(target, newSizeInBytes, usage)
@@ -52,16 +47,14 @@ class DoubleBufferedIntObject private constructor(
         val buffer = glMapBuffer(target, GL_WRITE_ONLY, mappedSizeInBytes, mappedByteBuffer)!!
         if (buffer !== mappedByteBuffer)
         {
-            mappedByteBuffer = buffer
+            mappedByteBuffer  = buffer
             mappedIntBuffer = buffer.asIntBuffer()
             mappedSizeInBytes = buffer.capacity().toLong()
         }
 
-        readBuffer.flip()
         mappedIntBuffer.clear()
-        mappedIntBuffer.put(readBuffer)
+        mappedIntBuffer.put(readArray, 0, readSize)
         mappedIntBuffer.flip()
-        readBuffer.clear()
 
         glUnmapBuffer(target)
     }
@@ -74,71 +67,94 @@ class DoubleBufferedIntObject private constructor(
     fun delete()
     {
         glDeleteBuffers(id)
-        MemoryUtil.memFree(readBuffer)
-        MemoryUtil.memFree(writeBuffer)
     }
 
     fun swapBuffers()
     {
         // Resize read buffer to same size if write buffer has grown
-        if (writeBuffer.capacity() > readBuffer.capacity())
-            readBuffer = resizeBuffer(readBuffer, newCapacity = writeBuffer.capacity())
+        if (writeArray.size > readArray.size)
+            readArray = resizeArray(readArray, newCapacity = writeArray.size)
 
         // Swap buffer references
-        readBuffer = writeBuffer.also { writeBuffer = readBuffer }
+        readArray = writeArray.also { writeArray = readArray }
+        readSize = writeIndex
+        writeIndex = 0
     }
 
-    inline fun fill(amount: Int, fillBuffer: IntBuffer.() -> Unit)
+    inline fun fill(amount: Int, fillBuffer: DoubleBufferedIntObject.(i: Int) -> Unit)
     {
-        if (amount > writeBuffer.remaining())
-            writeBuffer = resizeBuffer(writeBuffer, newCapacity = (writeBuffer.position() + amount) * 3 / 2)
+        if (writeIndex + amount >= writeArray.size)
+            writeArray = resizeArray(writeArray, newCapacity = (writeIndex + amount) * 3 / 2)
 
-        fillBuffer(writeBuffer)
+        fillBuffer(this, writeIndex)
+    }
+
+    fun put(v: Int)
+    {
+        writeArray[writeIndex++] = v
+    }
+
+    fun put(v0: Int, v1: Int)
+    {
+        val i = writeIndex
+        writeIndex += 2
+        writeArray[i    ] = v0
+        writeArray[i + 1] = v1
+    }
+
+    fun put(v0: Int, v1: Int, v2: Int)
+    {
+        val i = writeIndex
+        writeIndex += 3
+        writeArray[i    ] = v0
+        writeArray[i + 1] = v1
+        writeArray[i + 2] = v2
+    }
+
+    fun put(v0: Int, v1: Int, v2: Int, v3: Int)
+    {
+        val i = writeIndex
+        writeIndex += 4
+        writeArray[i    ] = v0
+        writeArray[i + 1] = v1
+        writeArray[i + 2] = v2
+        writeArray[i + 3] = v3
     }
 
     @PublishedApi
-    internal fun resizeBuffer(
-        currentBuffer: IntBuffer,
-        newCapacity: Int
-    ): IntBuffer {
-        var newBufferCapacity = newCapacity
-        if (currentBuffer.capacity() == START_CAPACITY)
-            newBufferCapacity = max(MIN_RESIZE_CAPACITY, newBufferCapacity)
-        currentBuffer.limit(min(currentBuffer.position(), newBufferCapacity))
-        currentBuffer.rewind()
-        val newBuffer = MemoryUtil.memAllocInt(newBufferCapacity)
-        newBuffer.put(currentBuffer)
-        MemoryUtil.memFree(currentBuffer)
-        return newBuffer
-    }
+    internal fun resizeArray(currentArray: IntArray, newCapacity: Int) =
+        currentArray.copyInto(IntArray(max(newCapacity, MIN_RESIZE_CAPACITY)))
 
     companion object
     {
-        var START_CAPACITY = 1
-        var MIN_RESIZE_CAPACITY = 512 // 2kB
+        var MIN_RESIZE_CAPACITY = 1024 // 4kB
 
-        fun createArrayBuffer(capacity: Int = START_CAPACITY, usage: Int = GL_DYNAMIC_DRAW) =
-            createBuffer(capacity, usage, GL_ARRAY_BUFFER, null)
+        fun createArrayBuffer(initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
+            createBuffer(initCapacity, usage, GL_ARRAY_BUFFER, null)
 
-        fun createShaderStorageBuffer(blockBinding: Int, capacity: Int = START_CAPACITY, usage: Int = GL_DYNAMIC_DRAW) =
-            createBuffer(capacity, usage, GL_SHADER_STORAGE_BUFFER, blockBinding)
+        fun createShaderStorageBuffer(blockBinding: Int, initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
+            createBuffer(initCapacity, usage, GL_SHADER_STORAGE_BUFFER, blockBinding)
 
-        fun createUniformBuffer(blockBinding: Int, capacity: Int = START_CAPACITY, usage: Int = GL_DYNAMIC_DRAW) =
-            createBuffer(capacity, usage, GL_UNIFORM_BUFFER, blockBinding)
+        fun createUniformBuffer(blockBinding: Int, initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
+            createBuffer(initCapacity, usage, GL_UNIFORM_BUFFER, blockBinding)
 
-        fun createElementBuffer(capacity: Int = START_CAPACITY, usage: Int = GL_DYNAMIC_DRAW) =
-            createBuffer(capacity, usage, GL_ELEMENT_ARRAY_BUFFER, null)
+        fun createElementBuffer(initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
+            createBuffer(initCapacity, usage, GL_ELEMENT_ARRAY_BUFFER, null)
 
-        private fun createBuffer(capacity: Int, usage: Int, target: Int, blockBinding: Int?): DoubleBufferedIntObject
+        private fun createBuffer(initCapacity: Int, usage: Int, target: Int, blockBinding: Int?): DoubleBufferedIntObject
         {
             val id = glGenBuffers()
-            val sizeInBytes = capacity * 4
-            glBindBuffer(target, id)
-            glBufferData(target, sizeInBytes.toLong(), usage)
-            val mappedBuffer = glMapBuffer(target, GL_WRITE_ONLY, sizeInBytes.toLong(), null)!!
-            glUnmapBuffer(target)
-            glBindBuffer(target, 0)
-            return DoubleBufferedIntObject(id, target, usage, blockBinding, mappedBuffer)
+            var mappedBuffer = null as ByteBuffer?
+            val sizeInBytes = initCapacity * 4L
+            if (sizeInBytes > 0)
+            {
+                glBindBuffer(target, id)
+                glBufferData(target, sizeInBytes, usage)
+                mappedBuffer = glMapBuffer(target, GL_WRITE_ONLY, sizeInBytes, null)!!
+                glUnmapBuffer(target)
+                glBindBuffer(target, 0)
+            }
+            return DoubleBufferedIntObject(id, target, usage, blockBinding, mappedBuffer ?: ByteBuffer.allocate(0))
         }
     }
 }

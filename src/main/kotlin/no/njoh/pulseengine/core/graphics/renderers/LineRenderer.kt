@@ -6,10 +6,9 @@ import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
-import no.njoh.pulseengine.core.shared.utils.BufferExtensions.putAll
 import org.lwjgl.opengl.GL11.*
 
-class LineBatchRenderer(
+class LineRenderer(
     private val config: SurfaceConfigInternal
 ) : BatchRenderer() {
 
@@ -72,7 +71,7 @@ class LineBatchRenderer(
     {
         vbo.fill(4)
         {
-            putAll(x, y, config.currentDepth, config.currentDrawColor)
+            put(x, y, config.currentDepth, config.currentDrawColor)
         }
         config.increaseDepth()
         vertices++
@@ -89,8 +88,8 @@ class LineBatchRenderer(
         val rgba = config.currentDrawColor
         vbo.fill(8)
         {
-            putAll(x0, y0, depth, rgba)
-            putAll(x1, y1, depth, rgba)
+            put(x0, y0, depth, rgba)
+            put(x1, y1, depth, rgba)
         }
         config.increaseDepth()
         increaseBatchSize()
