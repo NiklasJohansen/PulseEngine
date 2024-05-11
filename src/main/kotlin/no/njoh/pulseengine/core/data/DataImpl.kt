@@ -209,6 +209,6 @@ open class DataImpl : Data()
 
         private const val KILO_BYTE = 1024L
         private val runtime = Runtime.getRuntime()
-        val homeDir = javax.swing.JFileChooser().fileSystemView.defaultDirectory.toString()
+        private val homeDir = System.getProperty("user.home")
     }
 }
