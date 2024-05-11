@@ -38,8 +38,8 @@ class ColorPicker(
 
     init
     {
-        val hueValue = outputColor.toHue()
-        val hueColor = hueValue.toColor()
+        val hueValue = outputColor.toHsb().hue
+        val hueColor = hueValue.hueToColor()
 
         /////////////////////////////////////////// HSB Section
 
@@ -109,7 +109,7 @@ class ColorPicker(
 
         /////////////////////////////////////////// Button
 
-        hexInput = InputField(outputColor.toHexString()).apply {
+        hexInput = InputField(outputColor.toHex()).apply {
             contentType = InputField.ContentType.HEX_COLOR
             bgColor = Color.BLANK
             cornerRadius = ScaledValue.of(2f)
@@ -184,7 +184,7 @@ class ColorPicker(
             redInput.setTextQuiet((outputColor.red * 255f).toInt().toString())
             greenInput.setTextQuiet((outputColor.green * 255f).toInt().toString())
             blueInput.setTextQuiet((outputColor.blue * 255f).toInt().toString())
-            hexInput.setTextQuiet(it.toHexString())
+            hexInput.setTextQuiet(it.toHex())
         }
 
         huePicker.setOnHueChanged {
@@ -192,7 +192,7 @@ class ColorPicker(
             redInput.setTextQuiet((outputColor.red * 255f).toInt().toString())
             greenInput.setTextQuiet((outputColor.green * 255f).toInt().toString())
             blueInput.setTextQuiet((outputColor.blue * 255f).toInt().toString())
-            hexInput.setTextQuiet(outputColor.toHexString())
+            hexInput.setTextQuiet(outputColor.toHex())
         }
 
         redInput.setOnValidTextChanged {
@@ -200,7 +200,7 @@ class ColorPicker(
             outputColor.red = red
             saturationBrightnessPicker.updateFrom(outputColor)
             huePicker.updateFromColor(outputColor)
-            hexInput.setTextQuiet(outputColor.toHexString())
+            hexInput.setTextQuiet(outputColor.toHex())
         }
 
         greenInput.setOnValidTextChanged {
@@ -208,7 +208,7 @@ class ColorPicker(
             outputColor.green = green
             saturationBrightnessPicker.updateFrom(outputColor)
             huePicker.updateFromColor(outputColor)
-            hexInput.setTextQuiet(outputColor.toHexString())
+            hexInput.setTextQuiet(outputColor.toHex())
         }
 
         blueInput.setOnValidTextChanged {
@@ -216,7 +216,7 @@ class ColorPicker(
             outputColor.blue = blue
             saturationBrightnessPicker.updateFrom(outputColor)
             huePicker.updateFromColor(outputColor)
-            hexInput.setTextQuiet(outputColor.toHexString())
+            hexInput.setTextQuiet(outputColor.toHex())
         }
 
         alphaInput.setOnValidTextChanged {
@@ -224,7 +224,7 @@ class ColorPicker(
             outputColor.alpha = alpha
             saturationBrightnessPicker.updateFrom(outputColor)
             huePicker.updateFromColor(outputColor)
-            hexInput.setTextQuiet(outputColor.toHexString())
+            hexInput.setTextQuiet(outputColor.toHex())
         }
     }
 
@@ -267,29 +267,9 @@ class ColorPicker(
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
     }
 
-    private fun String.toColor() =
-        java.awt.Color.decode(this).let { Color(it.red, it.green, it.blue, it.alpha) }
+    private fun String.toColor() = Color().setFromHex(this)
 
-    private fun Color.toHexString() =
-        String.format(
-            "#%02X%02X%02X",
-            (red * 255f).toInt(),
-            (green * 255f).toInt(),
-            (blue * 255f).toInt()
-        )
-
-    private fun Color.toHue(): Float
-    {
-        val values = FloatArray(3)
-        java.awt.Color.RGBtoHSB((red * 255f).toInt(), (green * 255f).toInt(), (blue * 255f).toInt(), values)
-        return values[0]
-    }
-
-    private fun Float.toColor(): Color
-    {
-        val color = java.awt.Color(java.awt.Color.HSBtoRGB(this, 1f, 1f))
-        return Color(color.red / 255f, color.green / 255f, color.blue / 255f)
-    }
+    private fun Float.hueToColor() = Color().setFromHsb(hue = this, 1f, 1f)
 
     class HuePicker(
         var hueColor: Color,
@@ -302,12 +282,8 @@ class ColorPicker(
         var hue = 0f
 
         private var isSelecting = false
-        private var onHueChanged = { c: Color -> }
-        private var colorSpace = Array(10) {
-            java.awt.Color.getHSBColor(it / 9f, 1f, 1f).let {
-                Color(it.red, it.green, it.blue)
-            }
-        }
+        private var onHueChanged = { _: Color -> }
+        private var colorSpace = Array(10) { i -> Color().setFromHsb(hue = i / 9f, 1f, 1f) }
 
         override fun onUpdate(engine: PulseEngine)
         {
@@ -320,20 +296,12 @@ class ColorPicker(
 
                 hue = ((engine.input.yMouse - y.value) / height.value).coerceIn(0f, 1f)
 
-                setColorFromHue(hue)
+                hueColor.setFromHsb(hue, 1f, 1f)
                 onHueChanged(hueColor)
 
                 if (!engine.input.isPressed(Mouse.LEFT))
                     isSelecting = false
             }
-        }
-
-        private fun setColorFromHue(hue: Float)
-        {
-            val color = java.awt.Color(java.awt.Color.HSBtoRGB(hue, 1f, 1f))
-            hueColor.red = color.red / 255f
-            hueColor.green = color.green / 255f
-            hueColor.blue = color.blue / 255f
         }
 
         override fun onRender(engine: PulseEngine, surface: Surface)
@@ -386,10 +354,8 @@ class ColorPicker(
 
         fun updateFromColor(color: Color)
         {
-            val values = FloatArray(3)
-            java.awt.Color.RGBtoHSB((color.red * 255f).toInt(), (color.green * 255f).toInt(), (color.blue * 255f).toInt(), values)
-            hue = values[0]
-            setColorFromHue(hue)
+            hue = color.toHsb().hue
+            hueColor.setFromHsb(hue, 1f, 1f)
         }
 
         fun setOnHueChanged(onHueChanged: (Color) -> Unit)
@@ -484,11 +450,9 @@ class ColorPicker(
 
         fun updateFrom(color: Color)
         {
-            val values = FloatArray(3)
-            java.awt.Color.RGBtoHSB((color.red * 255f).toInt(), (color.green * 255f).toInt(), (color.blue * 255f).toInt(), values)
-            val (hue, saturation, luminance) = values
-            this.saturation = saturation
-            this.luminance = luminance
+            val hsb = color.toHsb()
+            this.saturation = hsb.saturation
+            this.luminance = hsb.brightness
         }
     }
 }

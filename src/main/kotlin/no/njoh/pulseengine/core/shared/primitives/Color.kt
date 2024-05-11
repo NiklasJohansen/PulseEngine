@@ -1,6 +1,9 @@
 package no.njoh.pulseengine.core.shared.primitives
 
 import no.njoh.pulseengine.core.shared.utils.Logger
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
 
 data class Color(
     var red: Float = 1f,
@@ -14,31 +17,107 @@ data class Color(
     constructor(color: Color) :
         this(color.red, color.green, color.blue, color.alpha)
 
-    fun setFrom(color: Color)
+    fun setFrom(color: Color): Color
     {
         this.red = color.red
         this.green = color.green
         this.blue = color.blue
         this.alpha = color.alpha
+        return this
     }
 
-    fun setFrom(red: Float, green: Float, blue: Float, alpha: Float = 1f)
+    fun setFromRgba(red: Float, green: Float, blue: Float, alpha: Float = 1f): Color
     {
         this.red = red
         this.green = green
         this.blue = blue
         this.alpha = alpha
+        return this
     }
 
-    fun setFrom(hex: String) = try
+    fun setFromHex(rgbHex: String): Color
     {
-        val c = java.awt.Color.decode(hex)
-        this.red = c.red / 255f
-        this.green = c.green / 255f
-        this.blue = c.blue / 255f
-        this.alpha = c.alpha / 255f
+        try
+        {
+            val int    = Integer.decode(rgbHex)
+            this.red   = ((int shr 16) and 0xFF) / 255f
+            this.green = ((int shr 8) and 0xFF) / 255f
+            this.blue  = (int and 0xFF) / 255f
+            this.alpha = 1f
+        }
+        catch (e: Exception)
+        {
+            Logger.error("Failed to decode hex string: $rgbHex to color. Reason ${e.message}")
+        }
+        return this
     }
-    catch (e: Exception) { Logger.error("Failed to decode hex string: $hex to color. Reason ${e.message}") }
+
+    fun setFromHsb(hsb: HSB) = setFromHsb(hsb.hue, hsb.saturation, hsb.brightness)
+
+    fun setFromHsb(hue: Float, saturation: Float, brightness: Float): Color
+    {
+        if (saturation == 0f)
+        {
+            setFromRgba(brightness, brightness, brightness)
+        }
+        else
+        {
+            val h = (hue - floor(hue.toDouble()).toFloat()) * 6.0f
+            val f = h - floor(h.toDouble()).toFloat()
+            val p = brightness * (1.0f - saturation)
+            val q = brightness * (1.0f - saturation * f)
+            val t = brightness * (1.0f - saturation * (1.0f - f))
+            when (h.toInt())
+            {
+                0 -> setFromRgba(brightness, t, p)
+                1 -> setFromRgba(q, brightness, p)
+                2 -> setFromRgba(p, brightness, t)
+                3 -> setFromRgba(p, q, brightness)
+                4 -> setFromRgba(t, p, brightness)
+                5 -> setFromRgba(brightness, p, q)
+            }
+        }
+        return this
+    }
+
+    fun toHex(): String
+    {
+        val r = (red * 255).toInt()
+        val g = (green * 255).toInt()
+        val b = (blue * 255).toInt()
+        return String.format("#%02X%02X%02X", r, g, b)
+    }
+
+    fun toHsb(): HSB
+    {
+        val r = (red * 255f).toInt()
+        val g = (green * 255f).toInt()
+        val b = (blue * 255f).toInt()
+        val cMax = max(b, max(r, g))
+        val cMin = min(b, min(r, g))
+        val delta = cMax - cMin
+        val hsb = HSB()
+        hsb.brightness = cMax / 255.0f
+        hsb.saturation = if (cMax != 0) delta / cMax.toFloat() else 0f
+
+        if (hsb.saturation == 0f)
+            return hsb
+
+        val cRed   = (cMax - r).toFloat() / delta
+        val cGreen = (cMax - g).toFloat() / delta
+        val cBlue  = (cMax - b).toFloat() / delta
+
+        hsb.hue =
+            if (r == cMax) cBlue - cGreen
+            else if (g == cMax) 2f + cRed - cBlue
+            else 4f + cGreen - cRed
+
+        hsb.hue /= 6.0f
+
+        if (hsb.hue < 0) hsb.hue += 1.0f
+
+        return hsb
+    }
 
     companion object
     {

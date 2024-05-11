@@ -215,7 +215,7 @@ class SurfaceImpl(
 
     override fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float): Surface
     {
-        config.backgroundColor.setFrom(red, green, blue, alpha)
+        config.backgroundColor.setFromRgba(red, green, blue, alpha)
         return this
     }
 
