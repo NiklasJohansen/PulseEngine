@@ -2,11 +2,11 @@ package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import no.njoh.pulseengine.core.shared.utils.Logger
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadStream
 import org.lwjgl.BufferUtils
+import org.lwjgl.stb.STBImage.*
 import java.nio.ByteBuffer
-import javax.imageio.ImageIO
 
 @ScnIcon("CURSOR")
 class Cursor(
@@ -31,41 +31,31 @@ class Cursor(
 
     override fun load()
     {
-        val stream = fileName.loadStream() ?: run {
-            Logger.error("Failed to find and load Cursor asset: $fileName")
-            return
+        try {
+            val bytes = fileName.loadBytes() ?: throw RuntimeException("No such file")
+            val buffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer
+            val width = IntArray(1)
+            val height = IntArray(1)
+            val components = IntArray(1)
+
+            stbi_info_from_memory(buffer, width, height, components)
+            this.width = width[0]
+            this.height = height[0]
+            this.pixelBuffer = stbi_load_from_memory(buffer, width, height, components, STBI_rgb_alpha)
+                ?: throw RuntimeException("Could not load image into memory: " + stbi_failure_reason())
         }
-
-        val image = ImageIO.read(stream)
-        val width = image.width
-        val height = image.height
-        val pixels = IntArray(width * height)
-        image.getRGB(0, 0, width, height, pixels, 0, width)
-
-        val buffer = BufferUtils.createByteBuffer(width * height * 4) as ByteBuffer
-        for (y in 0 until height)
+        catch (e: Exception)
         {
-            for (x in 0 until width)
-            {
-                val pixel = pixels[y * width + x]
-                buffer.put((pixel shr 16 and 0xFF).toByte()) // red
-                buffer.put((pixel shr 8 and 0xFF).toByte())  // green
-                buffer.put((pixel and 0xFF).toByte())        // blue
-                buffer.put((pixel shr 24 and 0xFF).toByte()) // alpha
-            }
+            Logger.error("Failed to load cursor $fileName: ${e.message}")
         }
-        buffer.flip()
-
-        this.pixelBuffer = buffer
-        this.width = width
-        this.height = height
     }
 
     override fun delete() { }
 
     fun finalize(handle: Long)
     {
-        this.handle = handle
+        pixelBuffer?.let { stbi_image_free(it) }
         this.pixelBuffer = null
+        this.handle = handle
     }
 }
