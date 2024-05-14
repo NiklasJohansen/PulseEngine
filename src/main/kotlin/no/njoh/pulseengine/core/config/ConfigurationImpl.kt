@@ -17,7 +17,7 @@ import kotlin.reflect.KProperty
 open class ConfigurationImpl : ConfigurationInternal
 {
     override var gameName: String           by StringConfig("ExampleGame")
-    override var targetFps: Int             by IntConfig(60)
+    override var targetFps: Int             by IntConfig(120)
     override var fixedTickRate: Int         by IntConfig(60)
     override var windowWidth: Int           by IntConfig(1000)
     override var windowHeight: Int          by IntConfig(800)

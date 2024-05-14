@@ -41,7 +41,7 @@ class Profiler : Widget
     {
         engine.gfx.createSurface("profiler", zOrder = -101)
         engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "graph_font")
-        engine.console.registerCommand("showGraphs") {
+        engine.console.registerCommand("showProfiler") {
             isRunning = !isRunning
             CommandResult("", showCommand = false)
         }

@@ -14,7 +14,7 @@ class Testbed : PulseEngineGame()
 {
     override fun onCreate()
     {
-        engine.config.targetFps = 120
+        engine.config.gameName = "Testbed"
         engine.widget.add(SceneEditor(), CommandLine(), Profiler())
         engine.console.runScript("testbed/startup.ps")
         engine.asset.loadAllTextures("testbed/images")

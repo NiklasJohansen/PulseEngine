@@ -29,11 +29,9 @@ abstract class Data
     inline fun <reified T> loadObjectAsync(fileName: String, fromClassPath: Boolean = false, noinline onFail: () -> Unit = {}, noinline onComplete: (T) -> Unit) =
         loadObjectAsync(fileName, T::class.java, fromClassPath, onFail, onComplete)
 
-    @PublishedApi
-    internal abstract fun <T> loadObject(fileName: String, type: Class<T>, fromClassPath: Boolean): T?
-
-    @PublishedApi
-    internal abstract fun <T> loadObjectAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
+    // Internal abstract versions of the public inline functions
+    @PublishedApi internal abstract fun <T> loadObject(fileName: String, type: Class<T>, fromClassPath: Boolean): T?
+    @PublishedApi internal abstract fun <T> loadObjectAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
 }
 
 data class Metric(
