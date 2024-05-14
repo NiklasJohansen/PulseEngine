@@ -23,6 +23,7 @@ open class AudioImpl : AudioInternal
     private var context: Long = MemoryUtil.NULL
     private val sources = mutableListOf<Int>()
     private var outputChangedCallback: () -> Unit = { }
+    private var soundProvider: (String) -> Sound? = { null }
 
     override fun init()
     {
@@ -69,41 +70,56 @@ open class AudioImpl : AudioInternal
         this.device = device
     }
 
-    override fun createSource(sound: Sound, volume: Float, looping: Boolean): Int
+    override fun playSound(sound: Sound, volume: Float, pitch: Float, looping: Boolean)
+    {
+        playSource(sourceId = createSource(sound, volume, pitch, looping))
+    }
+
+    override fun playSound(soundAssetName: String, volume: Float, pitch: Float, looping: Boolean)
+    {
+        val sound = soundProvider(soundAssetName)
+        if (sound != null)
+            playSound(sound, volume, pitch, looping)
+        else
+            Logger.error("Failed to play sound - no asset with name: $soundAssetName was found")
+    }
+
+    override fun createSource(sound: Sound, volume: Float, pitch: Float, looping: Boolean): Int
     {
         val sourceId = alGenSources()
         alSourcei(sourceId, AL_SOURCE_RELATIVE, AL_TRUE) // Research AL_SOURCE_ABSOLUTE
         alSourcei(sourceId, AL_BUFFER, sound.id)
-        setVolume(sourceId, volume)
-        setLooping(sourceId, looping)
+        setSourceVolume(sourceId, volume)
+        setSourcePitch(sourceId, pitch)
+        setSourceLooping(sourceId, looping)
         sources.add(sourceId)
         return sourceId
     }
 
-    override fun stop(sourceId: Int)
+    override fun stopSource(sourceId: Int)
     {
         sources.remove(sourceId)
         alSourceStop(sourceId)
         alDeleteSources(sourceId)
     }
 
-    override fun stopAll() = sources.toList().forEachFast { stop(it) }
+    override fun stopAllSources() = sources.toList().forEachFast { stopSource(it) }
 
-    override fun play(sourceId: Int) = alSourcePlay(sourceId)
+    override fun playSource(sourceId: Int) = alSourcePlay(sourceId)
 
-    override fun pause(sourceId: Int) = alSourcePause(sourceId)
+    override fun pauseSource(sourceId: Int) = alSourcePause(sourceId)
 
-    override fun isPlaying(sourceId: Int): Boolean = alGetSourcei(sourceId, AL_SOURCE_STATE) == AL_PLAYING
+    override fun isSourcePlaying(sourceId: Int): Boolean = alGetSourcei(sourceId, AL_SOURCE_STATE) == AL_PLAYING
 
-    override fun isPaused(sourceId: Int): Boolean = alGetSourcei(sourceId, AL_SOURCE_STATE) == AL_PAUSED
+    override fun isSourcePaused(sourceId: Int): Boolean = alGetSourcei(sourceId, AL_SOURCE_STATE) == AL_PAUSED
 
-    override fun setVolume(sourceId: Int, volume: Float) = alSourcef(sourceId, AL_GAIN, java.lang.Float.max(0.0f, volume))
+    override fun setSourceVolume(sourceId: Int, volume: Float) = alSourcef(sourceId, AL_GAIN, java.lang.Float.max(0.0f, volume))
 
-    override fun setPitch(sourceId: Int, pitch: Float) = alSourcef(sourceId, AL_PITCH, pitch)
+    override fun setSourcePitch(sourceId: Int, pitch: Float) = alSourcef(sourceId, AL_PITCH, pitch)
 
-    override fun setLooping(sourceId: Int, looping: Boolean) = alSourcei(sourceId, AL_LOOPING, if (looping) AL_TRUE else AL_FALSE)
+    override fun setSourceLooping(sourceId: Int, looping: Boolean) = alSourcei(sourceId, AL_LOOPING, if (looping) AL_TRUE else AL_FALSE)
 
-    override fun setPosition(sourceId: Int, x: Float, y: Float, z: Float) = alSource3f(sourceId, AL_POSITION, x, y, z)
+    override fun setSourcePosition(sourceId: Int, x: Float, y: Float, z: Float) = alSource3f(sourceId, AL_POSITION, x, y, z)
 
     override fun setListenerPosition(x: Float, y: Float, z: Float) = alListener3f(AL_POSITION, x, y, z)
 
@@ -136,7 +152,7 @@ open class AudioImpl : AudioInternal
     {
        sources.removeWhen()
        {
-           val stopped = !isPlaying(it) && !isPaused(it)
+           val stopped = !isSourcePlaying(it) && !isSourcePaused(it)
            if (stopped)
                alDeleteSources(it)
            stopped
@@ -164,6 +180,11 @@ open class AudioImpl : AudioInternal
     override fun setOnOutputDeviceChanged(callback: () -> Unit)
     {
         this.outputChangedCallback = callback
+    }
+
+    override fun setSoundProvider(soundProvider: (String) -> Sound?)
+    {
+        this.soundProvider = soundProvider
     }
 
     override fun destroy()

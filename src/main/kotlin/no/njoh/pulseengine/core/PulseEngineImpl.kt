@@ -104,10 +104,11 @@ class PulseEngineImpl(
                 input.init(window.windowHandle)
         }
 
+        // Let Audio module get sound assets based on name
+        audio.setSoundProvider { soundAssetName -> asset.getOrNull<Sound>(soundAssetName) }
+
         // Reload sound buffers to new OpenAL context when output device changes
-        audio.setOnOutputDeviceChanged {
-            asset.getAllOfType<Sound>().forEachFast { audio.uploadSound(it) }
-        }
+        audio.setOnOutputDeviceChanged { asset.getAllOfType<Sound>().forEachFast { audio.uploadSound(it) } }
 
         // Notify gfx and audio implementation about loaded textures and sounds
         asset.setOnAssetLoaded {
@@ -132,7 +133,7 @@ class PulseEngineImpl(
         }
 
         // Update save directory based on creator and game name
-        config.setOnChanged { property, value ->
+        config.setOnChanged { property, _ ->
             when (property.name)
             {
                 config::gameName.name -> data.updateSaveDirectory(config.gameName)
