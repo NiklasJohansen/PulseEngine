@@ -71,8 +71,10 @@ open class ConsoleImpl : ConsoleInternal
     {
         return commandString
             .splitIgnoreLiterals(";".toRegex())
-            .map { it.trimStart().trimEnd() }
-            .map { command ->
+            .mapNotNull {
+                val command = it.trimStart().trimEnd()
+                if (command.isBlank() || command.startsWith("//"))
+                    return@mapNotNull null
 
                 // Add command to history
                 val commandEntry = ConsoleEntry(command, showCommand, MessageType.COMMAND)
@@ -88,7 +90,7 @@ open class ConsoleImpl : ConsoleInternal
                 if (result.message.isNotEmpty())
                     history.add(ConsoleEntry(result.message, true, result.type))
 
-                return@map result
+                return@mapNotNull result
             }
     }
 
