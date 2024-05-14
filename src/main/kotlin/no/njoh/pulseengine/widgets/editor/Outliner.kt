@@ -621,7 +621,8 @@ data class Outliner(
             return children
         }
 
-        private fun RowPanel.restoreRowVisibility() {
+        private fun RowPanel.restoreRowVisibility()
+        {
             var isCollapsed = false
             var currentIndentation = 0f
             for (row in this.children)

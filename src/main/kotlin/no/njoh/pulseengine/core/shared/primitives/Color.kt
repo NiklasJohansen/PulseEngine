@@ -59,23 +59,22 @@ data class Color(
         if (saturation == 0f)
         {
             setFromRgba(brightness, brightness, brightness)
+            return this
         }
-        else
+
+        val h = (hue - floor(hue)) * 6.0f
+        val f = h - floor(h)
+        val p = brightness * (1.0f - saturation)
+        val q = brightness * (1.0f - saturation * f)
+        val t = brightness * (1.0f - saturation * (1.0f - f))
+        when (h.toInt())
         {
-            val h = (hue - floor(hue.toDouble()).toFloat()) * 6.0f
-            val f = h - floor(h.toDouble()).toFloat()
-            val p = brightness * (1.0f - saturation)
-            val q = brightness * (1.0f - saturation * f)
-            val t = brightness * (1.0f - saturation * (1.0f - f))
-            when (h.toInt())
-            {
-                0 -> setFromRgba(brightness, t, p)
-                1 -> setFromRgba(q, brightness, p)
-                2 -> setFromRgba(p, brightness, t)
-                3 -> setFromRgba(p, q, brightness)
-                4 -> setFromRgba(t, p, brightness)
-                5 -> setFromRgba(brightness, p, q)
-            }
+            0 -> setFromRgba(brightness, t, p)
+            1 -> setFromRgba(q, brightness, p)
+            2 -> setFromRgba(p, brightness, t)
+            3 -> setFromRgba(p, q, brightness)
+            4 -> setFromRgba(t, p, brightness)
+            5 -> setFromRgba(brightness, p, q)
         }
         return this
     }
@@ -95,17 +94,16 @@ data class Color(
         val b = (blue * 255f).toInt()
         val cMax = max(b, max(r, g))
         val cMin = min(b, min(r, g))
-        val delta = cMax - cMin
+        val delta =  (cMax - cMin).toFloat()
         val hsb = HSB()
         hsb.brightness = cMax / 255.0f
-        hsb.saturation = if (cMax != 0) delta / cMax.toFloat() else 0f
-
+        hsb.saturation = if (cMax != 0) delta / cMax else 0f
         if (hsb.saturation == 0f)
             return hsb
 
-        val cRed   = (cMax - r).toFloat() / delta
-        val cGreen = (cMax - g).toFloat() / delta
-        val cBlue  = (cMax - b).toFloat() / delta
+        val cRed   = (cMax - r) / delta
+        val cGreen = (cMax - g) / delta
+        val cBlue  = (cMax - b) / delta
 
         hsb.hue =
             if (r == cMax) cBlue - cGreen
@@ -113,8 +111,8 @@ data class Color(
             else 4f + cGreen - cRed
 
         hsb.hue /= 6.0f
-
-        if (hsb.hue < 0) hsb.hue += 1.0f
+        if (hsb.hue < 0)
+            hsb.hue += 1.0f
 
         return hsb
     }
