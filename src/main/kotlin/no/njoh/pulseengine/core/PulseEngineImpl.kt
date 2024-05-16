@@ -15,7 +15,7 @@ import no.njoh.pulseengine.core.console.ConsoleInternal
 import no.njoh.pulseengine.core.data.DataImpl
 import no.njoh.pulseengine.core.graphics.*
 import no.njoh.pulseengine.core.input.FocusArea
-import no.njoh.pulseengine.core.input.InputIdle
+import no.njoh.pulseengine.core.input.UnfocusedInput
 import no.njoh.pulseengine.core.input.InputImpl
 import no.njoh.pulseengine.core.input.InputInternal
 import no.njoh.pulseengine.core.scene.SceneManagerImpl
@@ -54,8 +54,8 @@ class PulseEngineImpl(
     private val fpsLimiter       = FpsLimiter()
     private val beginFrame       = CyclicBarrier(2)
     private val endFrame         = CyclicBarrier(2)
-    private val idleInput        = InputIdle(input)
-    private val activeInput      = input
+    private val unfocusedInput   = UnfocusedInput(input)
+    private val focusedInput     = input
     private val focusArea        = FocusArea(0f, 0f, 0f, 0f)
     private var gameThread       = null as Thread?
     private var running          = true
@@ -144,9 +144,7 @@ class PulseEngineImpl(
         input.getCursorsToLoad().forEachFast { asset.load(it) }
 
         // Sets the active input implementation
-        input.setOnFocusChanged { hasFocus ->
-            input = if (hasFocus) activeInput else idleInput
-        }
+        input.setOnFocusChanged { hasFocus -> input = if (hasFocus) focusedInput else unfocusedInput }
     }
 
     private fun initGame(game: PulseEngineGame)
@@ -245,7 +243,7 @@ class PulseEngineImpl(
             game.onUpdate()
             scene.update()
             widget.update(this)
-            input = activeInput
+            input = focusedInput
         }
     }
 
@@ -270,7 +268,7 @@ class PulseEngineImpl(
 
             updated = true
             data.fixedUpdateAccumulator -= dt
-            input = activeInput
+            input = focusedInput
         }
 
         if (updated)
@@ -310,7 +308,7 @@ class PulseEngineImpl(
         widget.destroy(this)
         audio.destroy()
         asset.destroy()
-        activeInput.destroy()
+        input.destroy()
         gfx.destroy()
         window.destroy()
     }
