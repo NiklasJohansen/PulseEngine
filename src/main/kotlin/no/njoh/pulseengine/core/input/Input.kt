@@ -17,11 +17,41 @@ interface Input
     val gamepads: List<Gamepad>
 
     fun isPressed(key: Key): Boolean
-    fun isPressed(btn: Mouse): Boolean
+
+    /**
+     * Returns True if the given [MouseButton] is currently pressed.
+     */
+    fun isPressed(btn: MouseButton): Boolean
+
+    /**
+     * Returns True if the given keyboard [Key] was pressed this frame.
+     */
     fun wasClicked(key: Key): Boolean
-    fun wasClicked(btn: Mouse): Boolean
+
+    /**
+     * Returns True if the given [MouseButton] was pressed this frame.
+     */
+    fun wasClicked(btn: MouseButton): Boolean
+
+    /**
+     * Returns True if the given keyboard [Key] was released this frame.
+     */
     fun wasReleased(key: Key): Boolean
-    fun wasReleased(btn: Mouse): Boolean
+
+    /**
+     * Returns True if the given [MouseButton] was released this frame.
+     */
+    fun wasReleased(btn: MouseButton): Boolean
+
+    /**
+     * Sets a callback to be called when a key is pressed.
+     * @return A subscription that can be used to remove the callback.
+     */
+    fun setOnKeyPressed(callback: (Key) -> Unit): Subscription
+
+    /**
+     * Sets the clipboard content to the given text.
+     */
     fun setClipboard(text: String)
     fun getClipboard(): String
     fun setOnKeyPressed(callback: (Key) -> Unit): Subscription

@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.input
 
-import no.njoh.pulseengine.core.input.Axis.*
+import no.njoh.pulseengine.core.input.GamepadAxis.*
 import org.joml.Vector2f
 import org.lwjgl.glfw.GLFW.glfwGetJoystickAxes
 import org.lwjgl.glfw.GLFW.glfwGetJoystickButtons
@@ -20,9 +20,9 @@ data class Gamepad(var id: Int)
 
     init { updateState() }
 
-    fun isPressed(button: Button): Boolean = buttons[button.code] > 0
+    fun isPressed(button: GamepadButton): Boolean = buttons[button.code] > 0
 
-    fun getAxis(axis: Axis): Float = axes[axis.code]
+    fun getAxis(axis: GamepadAxis): Float = axes[axis.code]
 
     fun getLeftStick(deadZone: Float = 0.2f): Vector2f =
         leftStick.set(getAxis(LEFT_X), getAxis(LEFT_Y)).filtered(deadZone)

@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.gui.layout
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.CursorType.*
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.input.Input
 import no.njoh.pulseengine.core.window.Window
 import no.njoh.pulseengine.modules.gui.Position
@@ -65,7 +65,7 @@ open class WindowPanel(
         val isInsideLeftResizeArea = allowResize && isInsideArea && (input.xMouse < area.x0 + resizeMargin)
         val isInsideRightResizeArea = allowResize && isInsideArea && (input.xMouse > area.x1 - resizeMargin)
 
-        if (input.isPressed(Mouse.LEFT))
+        if (input.isPressed(MouseButton.LEFT))
         {
             if (!isGrabbed && !isResizingTop && !isResizingBottom && !isResizingLeft && !isResizingRight && isInsideArea)
             {

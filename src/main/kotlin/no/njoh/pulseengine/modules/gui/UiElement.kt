@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.gui
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.FocusArea
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.modules.gui.elements.Label
@@ -158,11 +158,12 @@ abstract class UiElement(
             if (insideArea) onMouseEnter(engine) else onMouseLeave(engine)
         }
 
-        if (insideArea && engine.input.wasClicked(Mouse.LEFT))
+        if (insideArea && engine.input.wasClicked(MouseButton.LEFT))
             onMouseClicked(engine)
     }
 
-    open fun handleKeyPress(key: Key) {
+    open fun handleKeyPress(key: Key)
+    {
         val handled = onKeyPressed?.invoke(key) ?: false
         if (!handled)
             parent?.handleKeyPress(key)

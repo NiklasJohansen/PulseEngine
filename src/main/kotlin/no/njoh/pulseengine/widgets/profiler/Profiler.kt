@@ -3,7 +3,7 @@ package no.njoh.pulseengine.widgets.profiler
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.asset.types.Font
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.data.Metric
@@ -59,13 +59,13 @@ class Profiler : Widget
         engine.input.requestFocus(area)
         val insideArea = area.isInside(engine.input.xMouse, engine.input.yMouse)
 
-        if (engine.input.isPressed(Mouse.RIGHT))
+        if (engine.input.isPressed(MouseButton.RIGHT))
         {
             if (insideArea) adjustingSize = true
         }
         else adjustingSize = false
 
-        if (engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(MouseButton.LEFT))
         {
             if (insideArea) grabbed = true
         }

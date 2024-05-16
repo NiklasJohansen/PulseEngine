@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.console.MessageType
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.widget.Widget
 import kotlin.math.max
 import kotlin.math.min
@@ -303,7 +303,7 @@ class CommandLine : Widget
         }
 
         // Resize width of console window (MOUSE LEFT)
-        if (engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(MouseButton.LEFT))
         {
             widthFraction = max(0f, min(1f, widthFraction + engine.input.xdMouse / engine.window.width))
             heightFraction = max(0f, min(1f, heightFraction + engine.input.ydMouse / engine.window.height))

@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.gui.elements
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.CursorType.*
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.Position
@@ -26,17 +26,17 @@ class ResizeBarGizmo(
 
     override fun onUpdate(engine: PulseEngine)
     {
-        val mouseInside = area.isInside(engine.input.xMouse, engine.input.yMouse)
+        val mouseInside = area.isInside(engine.input.xMouse, engine.input.yMouse) && engine.input.hasHoverFocus(area)
         if (mouseInside)
         {
-            if (!resizing && engine.input.isPressed(Mouse.LEFT))
+            if (!resizing && engine.input.isPressed(MouseButton.LEFT))
                 resizing = true
 
             val cursor = if (isVertical) HORIZONTAL_RESIZE else VERTICAL_RESIZE
             engine.input.setCursorType(cursor)
             cursorSet = true
         }
-        else if (cursorSet && !engine.input.isPressed(Mouse.LEFT))
+        else if (cursorSet && !engine.input.isPressed(MouseButton.LEFT))
         {
             engine.input.setCursorType(ARROW)
             cursorSet = false
@@ -44,7 +44,7 @@ class ResizeBarGizmo(
 
         if (resizing)
         {
-            if (!engine.input.isPressed(Mouse.LEFT))
+            if (!engine.input.isPressed(MouseButton.LEFT))
                 resizing = false
 
             positionDiff += if (isVertical) engine.input.xdMouse else engine.input.ydMouse

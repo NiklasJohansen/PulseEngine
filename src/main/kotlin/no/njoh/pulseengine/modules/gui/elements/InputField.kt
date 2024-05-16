@@ -8,7 +8,7 @@ import no.njoh.pulseengine.core.input.Input
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.core.input.Key
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.gui.*
 import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
@@ -128,7 +128,7 @@ class InputField (
             mouseInsideArea &&
             engine.input.xMouse > x.value + width.value - numberStepperWidth.value
 
-        if (engine.input.isPressed(Mouse.LEFT) && editable)
+        if (engine.input.isPressed(MouseButton.LEFT) && editable)
         {
             if (!isSteppingNumber && isMouseInsideNumberStepper)
             {

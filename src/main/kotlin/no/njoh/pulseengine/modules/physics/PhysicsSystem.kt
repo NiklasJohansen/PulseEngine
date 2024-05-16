@@ -2,13 +2,11 @@ package no.njoh.pulseengine.modules.physics
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
-import no.njoh.pulseengine.core.scene.SceneManager
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
 
@@ -73,7 +71,7 @@ class PhysicsSystem : SceneSystem()
 
     private fun pickBody(engine: PulseEngine)
     {
-        if (!engine.input.isPressed(Mouse.LEFT))
+        if (!engine.input.isPressed(MouseButton.LEFT))
         {
             pickedBody = null
             return

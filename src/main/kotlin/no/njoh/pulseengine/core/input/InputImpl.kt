@@ -123,17 +123,17 @@ open class InputImpl : InputInternal
         cursors[VERTICAL_RESIZE]   = createBuiltInCursor(VERTICAL_RESIZE,0x00036006)
     }
 
-    override fun isPressed(btn: Mouse): Boolean = pressed[btn.code] > 0
+    override fun isPressed(btn: MouseButton): Boolean = pressed[btn.code] > 0
 
     override fun isPressed(key: Key): Boolean = pressed[key.code] > 0
 
     override fun wasClicked(key: Key): Boolean = clicked[key.code] > 0
 
-    override fun wasClicked(btn: Mouse): Boolean = clicked[btn.code] > 0
+    override fun wasClicked(btn: MouseButton): Boolean = clicked[btn.code] > 0
 
     override fun wasReleased(key: Key): Boolean = clicked[key.code] < 0
 
-    override fun wasReleased(btn: Mouse): Boolean = clicked[btn.code] < 0
+    override fun wasReleased(btn: MouseButton): Boolean = clicked[btn.code] < 0
 
     override fun getClipboard(): String = glfwGetClipboardString(windowHandle) ?: ""
 

@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.gui.elements
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.input.CursorType
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.*
@@ -287,7 +287,7 @@ class ColorPicker(
 
         override fun onUpdate(engine: PulseEngine)
         {
-            if (mouseInsideArea && engine.input.isPressed(Mouse.LEFT))
+            if (mouseInsideArea && engine.input.isPressed(MouseButton.LEFT))
                 isSelecting = true
 
             if (isSelecting)
@@ -299,7 +299,7 @@ class ColorPicker(
                 hueColor.setFromHsb(hue, 1f, 1f)
                 onHueChanged(hueColor)
 
-                if (!engine.input.isPressed(Mouse.LEFT))
+                if (!engine.input.isPressed(MouseButton.LEFT))
                     isSelecting = false
             }
         }
@@ -400,10 +400,10 @@ class ColorPicker(
                 calculateOutputColor()
                 onChanged(outputColor)
 
-                if (!engine.input.isPressed(Mouse.LEFT))
+                if (!engine.input.isPressed(MouseButton.LEFT))
                     isSelecting = false
             }
-            else if (mouseInsideArea && engine.input.isPressed(Mouse.LEFT))
+            else if (mouseInsideArea && engine.input.isPressed(MouseButton.LEFT))
                 isSelecting = true
         }
 

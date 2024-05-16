@@ -21,7 +21,7 @@ import no.njoh.pulseengine.modules.gui.layout.docking.DockingPanel
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.Key.*
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
@@ -81,7 +81,7 @@ class SceneEditor(
     private var outliner: Outliner? = null
 
     // Camera
-    private val cameraController = Camera2DController(Mouse.MIDDLE, smoothing = 0f)
+    private val cameraController = Camera2DController(MouseButton.MIDDLE, smoothing = 0f)
     private lateinit var activeCamera: Camera
     private lateinit var storedCameraState: CameraState
 
@@ -560,7 +560,7 @@ class SceneEditor(
         val yMouse = engine.input.yWorldMouse
 
         // Select / deselect single entity
-        if (engine.input.wasClicked(Mouse.LEFT))
+        if (engine.input.wasClicked(MouseButton.LEFT))
         {
             // Select entity
             if (!isMoving && !isSelecting && !isRotating && !isResizingVertically && !isResizingHorizontally)
@@ -604,7 +604,7 @@ class SceneEditor(
         }
 
         // Start multi selection
-        if (engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(MouseButton.LEFT))
         {
             if (!isMoving && !isRotating && !isResizingVertically && !isResizingHorizontally)
             {
@@ -690,7 +690,7 @@ class SceneEditor(
 
         if (!isMoving) return
 
-        if (!engine.input.isPressed(Mouse.LEFT))
+        if (!engine.input.isPressed(MouseButton.LEFT))
         {
             engine.input.setCursorType(ARROW)
             entitySelection.forEachFast { it.onMovedScaledOrRotated(engine) }
@@ -739,7 +739,7 @@ class SceneEditor(
         val rotateTopRight = xMouse >= x + w && xMouse <= x + w + rotateArea && yMouse >= y - h - rotateArea && yMouse <= y - h
         val rotateBottomRight = xMouse >= x + w && xMouse <= x + w + rotateArea && yMouse >= y + h && yMouse <= y + h + rotateArea
 
-        if (engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(MouseButton.LEFT))
         {
             if (!isMoving && !isSelecting && !isRotating && !isResizingHorizontally && !isResizingVertically)
             {
