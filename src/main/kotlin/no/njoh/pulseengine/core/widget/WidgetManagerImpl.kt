@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.widget
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
@@ -9,6 +10,7 @@ import no.njoh.pulseengine.core.shared.utils.Logger
 
 open class WidgetManagerImpl: WidgetManagerInternal()
 {
+    private var widgets = mutableListOf<Widget>()
     private var renderTimeMs = 0f
     private var updateTimeMs = 0f
     private var fixedUpdateTimeMs = 0f
@@ -56,12 +58,18 @@ open class WidgetManagerImpl: WidgetManagerInternal()
         widgets.forEachFast { it.onDestroy(engine) }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> get(type: Class<T>): T?
+    {
+        return widgets.firstOrNullFast { it.javaClass == type } as? T?
+    }
+
     override fun add(vararg widgets: Widget)
     {
         widgets.forEachFast { if (it isNotIn this.widgets) this.widgets.add(it) }
     }
 
-    override fun terminate(widget: Widget)
+    override fun remove(widget: Widget)
     {
         widgets.remove(widget)
     }

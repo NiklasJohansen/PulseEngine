@@ -157,9 +157,9 @@ open class InputImpl : InputInternal
         onGetClipboard.add(callback)
     }
 
-    override fun setClipboard(text: String)
+    override fun setClipboard(content: String)
     {
-        setClipboardTo = text
+        setClipboardTo = content
     }
 
     override fun setOnKeyPressed(callback: (Key) -> Unit): Subscription

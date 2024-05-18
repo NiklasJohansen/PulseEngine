@@ -76,7 +76,7 @@ interface Input
     /**
      * Sets the clipboard content to the given text. The clipboard will be updated at the start of the next frame.
      */
-    fun setClipboard(text: String)
+    fun setClipboard(content: String)
 
     /**
      * Asynchronously calls the [callback] with the current clipboard content at next event poll (start of next frame).
