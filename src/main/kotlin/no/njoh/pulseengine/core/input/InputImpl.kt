@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.input
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Cursor
 import no.njoh.pulseengine.core.console.Subscription
+import no.njoh.pulseengine.core.input.CursorMode.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.lastOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
@@ -13,39 +14,42 @@ import org.lwjgl.glfw.GLFWImage
 
 open class InputImpl : InputInternal
 {
-    // Exposed properties
-    override var xMouse = 0.0f
-    override var yMouse = 0.0f
-    override var xWorldMouse = 0f
-    override var yWorldMouse = 0f
-    override var xScroll = 0f
-    override var yScroll = 0f
-    override var gamepads = mutableListOf<Gamepad>()
+    override val xdMouse get() = xMouse - xMouseLast
+    override val ydMouse get() = yMouse - yMouseLast
+
     override var textInput: String = ""
+        get() = if (isFocused) field else ""
+
     override val clickedKeys = mutableListOf<Key>()
-    override val xdMouse: Float
-        get() = xMouse - xMouseLast
-    override val ydMouse: Float
-        get() = yMouse - yMouseLast
+        get() = if (isFocused) field else NO_KEYS
 
-    private var xMouseLast = 0.0f
-    private var yMouseLast = 0.0f
-    private var windowHandle: Long = -1
-    private val clicked = ByteArray(Key.LAST.code + 1)
-    private val pressed = ByteArray(Key.LAST.code + 1)
-    private val onKeyPressedCallbacks = mutableListOf<(Key) -> Unit>()
-    private var onFocusChangedCallback: (Boolean) -> Unit = {}
-    private var focusStack = mutableListOf<FocusArea>()
-    private var currentFocusArea: FocusArea? = null
-    private var previousFocusArea: FocusArea? = null
-    private var hoverFocusArea: FocusArea? = null
+    override var xMouse            = 0f
+    override var yMouse            = 0f
+    override var xWorldMouse       = 0f
+    override var yWorldMouse       = 0f
+    override var xScroll           = 0f
+    override var yScroll           = 0f
+    override var gamepads          = mutableListOf<Gamepad>()
 
-    private var cursors = mutableMapOf<CursorType, Cursor>()
+    private var xMouseLast         = 0f
+    private var yMouseLast         = 0f
+    private var windowHandle       = -1L
+    private val clicked            = ByteArray(Key.LAST.code + 1)
+    private val pressed            = ByteArray(Key.LAST.code + 1)
+    private val onKeyPressed       = mutableListOf<(Key) -> Unit>()
+
+    private var currentFrame       = 0
+    private var isFocused          = true
+    private var focusStack         = mutableListOf<FocusArea>()
+    private var currentFocusArea   = null as FocusArea?
+    private var previousFocusArea  = null as FocusArea?
+    private var hoverFocusArea     = null as FocusArea?
+
+    private var cursors            = mutableMapOf<CursorType, Cursor>()
     private var selectedCursorType = ARROW
-    private var activeCursorType = ARROW
-    private var selectedCursorMode = CursorMode.NORMAL
-    private var activeCursorMode = CursorMode.NORMAL
-    private var currentFrame = 0
+    private var activeCursorType   = ARROW
+    private var selectedCursorMode = NORMAL
+    private var activeCursorMode   = NORMAL
 
     override fun init(windowHandle: Long)
     {
@@ -56,12 +60,12 @@ open class InputImpl : InputInternal
         glfwSetKeyCallback(windowHandle) { _, keyCode, _, action, _ ->
             if (keyCode >= 0)
             {
-                clicked[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else -1
-                pressed[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) 1 else 0
+                clicked[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) PRESSED else RELEASED
+                pressed[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) PRESSED else UNCHANGED
                 if (action == GLFW_PRESS)
                 {
                     Key.codes[keyCode]?.let { keyEnum ->
-                        onKeyPressedCallbacks.forEachFast { it.invoke(keyEnum) }
+                        onKeyPressed.forEachFast { it.invoke(keyEnum) }
                         clickedKeys.add(keyEnum)
                     }
                 }
@@ -92,8 +96,8 @@ open class InputImpl : InputInternal
         }
 
         glfwSetMouseButtonCallback(windowHandle) { _, button, action, _ ->
-            clicked[button] = if (action == GLFW_PRESS) 1 else -1
-            pressed[button] = if (action == GLFW_PRESS) 1 else 0
+            clicked[button] = if (action == GLFW_PRESS) PRESSED else RELEASED
+            pressed[button] = if (action == GLFW_PRESS) PRESSED else UNCHANGED
             if (action == GLFW_PRESS && focusStack.isNotEmpty())
                 focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }?.let { acquireFocus(it) }
         }
@@ -123,30 +127,38 @@ open class InputImpl : InputInternal
         cursors[VERTICAL_RESIZE]   = createBuiltInCursor(VERTICAL_RESIZE,0x00036006)
     }
 
-    override fun isPressed(btn: MouseButton): Boolean = pressed[btn.code] > 0
+    override fun isPressed(btn: MouseButton) =
+        isFocused && pressed[btn.code] == PRESSED
 
-    override fun isPressed(key: Key): Boolean = pressed[key.code] > 0
+    override fun isPressed(key: Key) =
+        isFocused && pressed[key.code] == PRESSED
 
-    override fun wasClicked(key: Key): Boolean = clicked[key.code] > 0
+    override fun wasClicked(btn: MouseButton) =
+        isFocused && clicked[btn.code] == PRESSED
 
-    override fun wasClicked(btn: MouseButton): Boolean = clicked[btn.code] > 0
+    override fun wasClicked(key: Key) =
+        isFocused && clicked[key.code] == PRESSED
 
-    override fun wasReleased(key: Key): Boolean = clicked[key.code] < 0
+    override fun wasReleased(btn: MouseButton) =
+        isFocused && clicked[btn.code] == RELEASED
 
-    override fun wasReleased(btn: MouseButton): Boolean = clicked[btn.code] < 0
+    override fun wasReleased(key: Key) =
+        isFocused && clicked[key.code] == RELEASED
 
-    override fun getClipboard(): String = glfwGetClipboardString(windowHandle) ?: ""
+    override fun getClipboard() =
+        glfwGetClipboardString(windowHandle) ?: ""
 
-    override fun setClipboard(text: String) = glfwSetClipboardString(windowHandle, text)
+    override fun setClipboard(text: String) =
+        glfwSetClipboardString(windowHandle, text)
 
     override fun setOnKeyPressed(callback: (Key) -> Unit): Subscription
     {
-        onKeyPressedCallbacks.add(callback)
+        onKeyPressed.add(callback)
         return object : Subscription
         {
             override fun unsubscribe()
             {
-                onKeyPressedCallbacks.remove(callback)
+                onKeyPressed.remove(callback)
             }
         }
     }
@@ -158,8 +170,7 @@ open class InputImpl : InputInternal
             previousFocusArea = currentFocusArea
             currentFocusArea = focusArea
         }
-
-        onFocusChangedCallback.invoke(true)
+        isFocused = true
     }
 
     override fun requestFocus(focusArea: FocusArea)
@@ -169,8 +180,7 @@ open class InputImpl : InputInternal
             focusStack.add(focusArea)
             focusArea.frame = currentFrame
         }
-
-        onFocusChangedCallback.invoke(hasFocus(focusArea))
+        isFocused = hasFocus(focusArea)
     }
 
     override fun releaseFocus(focusArea: FocusArea)
@@ -203,19 +213,15 @@ open class InputImpl : InputInternal
         glfwSetCursorPos(windowHandle, x.toDouble(), y.toDouble())
     }
 
-    override fun setOnFocusChanged(callback: (Boolean) -> Unit)
-    {
-        this.onFocusChangedCallback = callback
-    }
-
     override fun pollEvents()
     {
+        isFocused = true
         xMouseLast = xMouse
         yMouseLast = yMouse
         xScroll = 0f
         yScroll = 0f
         textInput = ""
-        clicked.fill(0)
+        clicked.fill(UNCHANGED)
         clickedKeys.clear()
         glfwPollEvents()
         gamepads.forEachFast { it.updateState() }
@@ -244,9 +250,9 @@ open class InputImpl : InputInternal
         {
             val glfwMode = when (selectedCursorMode)
             {
-                CursorMode.NORMAL -> GLFW_CURSOR_NORMAL
-                CursorMode.HIDDEN -> GLFW_CURSOR_HIDDEN
-                CursorMode.GRABBED -> GLFW_CURSOR_DISABLED
+                NORMAL  -> GLFW_CURSOR_NORMAL
+                HIDDEN  -> GLFW_CURSOR_HIDDEN
+                GRABBED -> GLFW_CURSOR_DISABLED
             }
             glfwSetInputMode(windowHandle, GLFW_CURSOR, glfwMode)
             activeCursorMode = selectedCursorMode
@@ -284,4 +290,12 @@ open class InputImpl : InputInternal
 
     private fun createBuiltInCursor(type: CursorType, shape: Int): Cursor =
         Cursor("", "standard_cursor", type, 0, 0).apply { finalize(handle = glfwCreateStandardCursor(shape)) }
+
+    companion object
+    {
+        private const val PRESSED: Byte = 1
+        private const val RELEASED: Byte = -1
+        private const val UNCHANGED: Byte = 0
+        private val NO_KEYS = mutableListOf<Key>()
+    }
 }

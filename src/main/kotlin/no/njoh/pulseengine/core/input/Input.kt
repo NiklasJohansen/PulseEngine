@@ -4,16 +4,16 @@ import no.njoh.pulseengine.core.console.Subscription
 
 interface Input
 {
-    /** The current mouse X-position in screen space (left = 0.0, right = window width) */
+    /** The current screen space mouse X-position (left = 0.0, right = window width) */
     val xMouse: Float
 
-    /** The current mouse Y-position in screen space (top = 0.0, bottom = window height) */
+    /** The current screen space mouse Y-position (top = 0.0, bottom = window height) */
     val yMouse: Float
 
-    /** The current mouse X-position in world space */
+    /** The current world space mouse X-position in relation to where the main camera is looking */
     val xWorldMouse: Float
 
-    /** The current mouse Y-position in world space */
+    /** The current world space mouse Y-position in relation to where the main camera is looking */
     val yWorldMouse: Float
 
     /** The change in mouse X-position since last frame in screen space */
@@ -28,42 +28,42 @@ interface Input
     /** The change in vertical scroll since last frame */
     val yScroll: Float
 
-    /** The text written since last frame */
+    /** The text written since last frame if focus is acquired, else empty string */
     val textInput: String
 
-    /** The keys clicked since last frame */
+    /** The keys clicked since last frame if focus is acquired, else empty list */
     val clickedKeys: List<Key>
 
     /** All connected gamepads */
     val gamepads: List<Gamepad>
 
     /**
-     * Returns true if the given keyboard [Key] is currently pressed.
+     * Returns true if the given keyboard [Key] is currently pressed and focus is acquired.
      */
     fun isPressed(key: Key): Boolean
 
     /**
-     * Returns True if the given [MouseButton] is currently pressed.
+     * Returns True if the given [MouseButton] is currently pressed and focus is acquired.
      */
     fun isPressed(btn: MouseButton): Boolean
 
     /**
-     * Returns True if the given keyboard [Key] was pressed this frame.
+     * Returns True if the given keyboard [Key] was pressed this frame and focus is acquired.
      */
     fun wasClicked(key: Key): Boolean
 
     /**
-     * Returns True if the given [MouseButton] was pressed this frame.
+     * Returns True if the given [MouseButton] was pressed this frame and focus is acquired.
      */
     fun wasClicked(btn: MouseButton): Boolean
 
     /**
-     * Returns True if the given keyboard [Key] was released this frame.
+     * Returns True if the given keyboard [Key] was released this frame and focus is acquired.
      */
     fun wasReleased(key: Key): Boolean
 
     /**
-     * Returns True if the given [MouseButton] was released this frame.
+     * Returns True if the given [MouseButton] was released this frame and focus is acquired.
      */
     fun wasReleased(btn: MouseButton): Boolean
 
@@ -84,31 +84,34 @@ interface Input
     fun getClipboard(): String
 
     /**
-     * Requests focus for the given [FocusArea].
-     * If this focus area is not currently focused, the engines [Input] module will be
-     * swapped with the [UnfocusedInput] implementation where no key or mouse presses are registered.
+     * Requests focus for the given [FocusArea] by registering it on this frames focus stack. Which area from the
+     * stack getting selected for focus the next frame is determined by the order in which they were requested and
+     * mouse preses within those areas. If this area is currently the focused one, the input module will transition
+     * to a focused state where all key and mouse presses will be registered. Otherwise, no keyboard or mouse presses
+     * will be visible.
      */
     fun requestFocus(focusArea: FocusArea)
 
     /**
-     * Acquires focus for the given [FocusArea].
-     * Makes this area the currently focused one and updates the input module to use the active implementation
-     * where all key and mouse presses are registered.
+     * Acquires focus for the given [FocusArea] by making it the currently focused one and transitions the input
+     * module to a focused state where all key and mouse presses will be registered.
      */
     fun acquireFocus(focusArea: FocusArea)
 
     /**
-     * Releases focus for the given [FocusArea] if it is focused and gives the previously focused area back its focus.
+     * Releases focus for the given [FocusArea] if it is the currently focused one and gives the previously
+     * focused area back its focus.
      */
     fun releaseFocus(focusArea: FocusArea)
 
     /**
-     * Returns true if the given [FocusArea] is currently focused.
+     * Returns true if the given [FocusArea] is the currently focused one.
      */
     fun hasFocus(focusArea: FocusArea): Boolean
 
     /**
-     * Returns true if the mouse is currently hovering over the given [FocusArea].
+     * Returns true if the mouse is currently hovering over the given [FocusArea] and it is not obstructed
+     * by another area above it.
      */
     fun hasHoverFocus(focusArea: FocusArea): Boolean
 
@@ -136,7 +139,6 @@ interface InputInternal : Input
     fun init(windowHandle: Long)
     fun destroy()
     fun pollEvents()
-    fun setOnFocusChanged(callback: (Boolean) -> Unit)
     fun createCursor(cursor: Cursor)
     fun deleteCursor(cursor: Cursor)
     fun getCursorsToLoad(): List<Cursor>
