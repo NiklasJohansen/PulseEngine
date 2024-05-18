@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.physics.bodies
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
@@ -163,7 +163,7 @@ interface PolygonBody : PhysicsBody
         }
     }
 
-    override fun render(engine: PulseEngine, surface: Surface2D)
+    override fun render(engine: PulseEngine, surface: Surface)
     {
         if (shape.isSleeping)
             surface.setDrawColor(1f, 0.3f, 0.3f)

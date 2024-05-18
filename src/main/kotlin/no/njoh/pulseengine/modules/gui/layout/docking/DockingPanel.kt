@@ -1,7 +1,8 @@
 package no.njoh.pulseengine.modules.gui.layout.docking
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.gui.Position.PositionType
 import no.njoh.pulseengine.modules.gui.Position.PositionType.*
 import no.njoh.pulseengine.modules.gui.Size.ValueType.*
@@ -24,10 +25,11 @@ class DockingPanel(
     height: Size = Size.auto()
 ) : UiElement(x, y, width, height) {
 
+    var viewport: Panel = WindowPanel()
+
     private var dockingPanel = this
     private val dockingButtons = DockingButtons()
-    private var viewPort = WindowPanel()
-    private var hoverTarget: UiElement = viewPort
+    private var hoverTarget: UiElement = viewport
     private var grabbed: WindowPanel? = null
     private var lastGrabbed: WindowPanel? = null
 
@@ -37,15 +39,13 @@ class DockingPanel(
         popup = dockingButtons
         popup?.hidden = true
 
-        viewPort.id = "viewport"
-        viewPort.focusable = false
-        viewPort.resizable = false
-        viewPort.movable = false
-        viewPort.clearChildren()
-        addChildren(viewPort)
+        viewport.id = "viewport"
+        viewport.focusable = false
+        viewport.clearChildren()
+        addChildren(viewport)
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D) { }
+    override fun onRender(engine: PulseEngine, surface: Surface) { }
 
     override fun onUpdate(engine: PulseEngine)
     {
@@ -53,10 +53,10 @@ class DockingPanel(
 
         if (grabbed != null)
         {
-            hoverTarget = findOnHoverTarget(this) ?: viewPort
+            hoverTarget = findOnHoverTarget(this) ?: viewport
 
             dockingButtons.targetPanel = hoverTarget
-            dockingButtons.showCenterButton = (hoverTarget == viewPort)
+            dockingButtons.showCenterButton = (hoverTarget == viewport)
 
             val panel = grabbed!!
 
@@ -89,7 +89,7 @@ class DockingPanel(
                 panel.removeFromParent()
                 addChildren(panel)
 
-                parent?.cleanup()
+                parent?.destroy()
                 parent?.setMinSizeFromChildren()
 
                 popup?.hidden = false
@@ -225,16 +225,16 @@ class DockingPanel(
 
     private fun UiElement.insertInsideCenter(panel: WindowPanel)
     {
-        if (this == viewPort)
+        if (this == viewport)
         {
             panel.removeFromParent()
             panel.setAuto()
-            viewPort.addChildren(panel)
-            if (viewPort.parent == dockingPanel)
+            viewport.addChildren(panel)
+            if (viewport.parent == dockingPanel)
             {
                 // Move viewport to the back
-                viewPort.parent?.children?.remove(viewPort)
-                viewPort.parent?.children?.add(0, viewPort)
+                viewport.parent?.children?.remove(viewport)
+                viewport.parent?.children?.add(0, viewport)
             }
         }
     }
@@ -242,13 +242,13 @@ class DockingPanel(
     //////////////////////////////////// UTIL ////////////////////////////////////
 
     private fun getDockedElements(): List<UiElement> =
-        this.children.filter { it !is WindowPanel || it === viewPort }
+        this.children.filter { it !is WindowPanel || it === viewport }
 
     private fun UiElement.removeFromParent()
     {
         this.parent?.children?.let {
             it.remove(this)
-            if (it.isEmpty() && this.parent != viewPort)
+            if (it.isEmpty() && this.parent != viewport)
                 this.parent?.removeFromParent()
         }
     }
@@ -261,7 +261,7 @@ class DockingPanel(
         this.height.type = AUTO
     }
 
-    private fun UiElement.cleanup()
+    private fun UiElement.destroy()
     {
         if (this.parent != null && this.children.size == 1 && (this is VerticalPanel || this is HorizontalPanel))
         {
@@ -269,7 +269,7 @@ class DockingPanel(
             child.width.setQuiet(this.width)
             child.height.setQuiet(this.height)
             this.parent?.replaceChild(this, child)
-            this.parent?.cleanup()
+            this.parent?.destroy()
         }
     }
 
@@ -283,7 +283,7 @@ class DockingPanel(
                 {
                     return child
                 }
-                else if (child === viewPort) // Search for maximized windows inside viewport
+                else if (child === viewport) // Search for maximized windows inside viewport
                 {
                     child.findGrabbed()?.let { return it }
                 }
@@ -331,24 +331,24 @@ class DockingPanel(
 
     private fun keepViewportAutoSize()
     {
-        if (viewPort.width.type != AUTO)
+        if (viewport.width.type != AUTO)
         {
-            viewPort.width.type = AUTO
-            if (viewPort.parent != dockingPanel)
+            viewport.width.type = AUTO
+            if (viewport.parent != dockingPanel)
             {
-                viewPort.parent?.children
-                    ?.firstOrNull { it != viewPort }
+                viewport.parent?.children
+                    ?.firstOrNull { it != viewport }
                     ?.let { it.width.type = ABSOLUTE }
             }
         }
 
-        if (viewPort.height.type != AUTO)
+        if (viewport.height.type != AUTO)
         {
-            viewPort.height.type = AUTO
-            if (viewPort.parent != dockingPanel)
+            viewport.height.type = AUTO
+            if (viewport.parent != dockingPanel)
             {
-                viewPort.parent?.children
-                    ?.firstOrNull { it != viewPort }
+                viewport.parent?.children
+                    ?.firstOrNull { it != viewport }
                     ?.let { it.height.type = ABSOLUTE }
             }
         }
@@ -369,9 +369,7 @@ class DockingPanel(
                 dockingPanel.clearChildren()
                 dockingPanel.addChildren(*newDockingPanel.children.toTypedArray())
                 dockingPanel.findElementById("viewport")?.let {
-                    viewPort = it as WindowPanel
-                    viewPort.resizable = false
-                    viewPort.movable = false
+                    viewport = it as Panel
                 }
             }
         }
@@ -387,7 +385,7 @@ class DockingPanel(
                     clearChildren() // Removes default viewport
                     node.children
                         .mapNotNull { rebuildLayoutFromGraph(root, it) }
-                        .forEach { addChildren(it) }
+                        .forEachFast { addChildren(it) }
                 }
             }
             HorizontalPanel::class.simpleName ->
@@ -400,7 +398,7 @@ class DockingPanel(
                     height.setQuiet(node.height)
                     node.children
                         .mapNotNull { rebuildLayoutFromGraph(root, it) }
-                        .forEach { addChildren(it) }
+                        .forEachFast { addChildren(it) }
                     setMinSizeFromChildren()
                 }
             }
@@ -413,7 +411,7 @@ class DockingPanel(
                     height.setQuiet(node.height)
                     node.children
                         .mapNotNull { rebuildLayoutFromGraph(root, it) }
-                        .forEach { addChildren(it) }
+                        .forEachFast { addChildren(it) }
 
                     setMinSizeFromChildren()
                 }

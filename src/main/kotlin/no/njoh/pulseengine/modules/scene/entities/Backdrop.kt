@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.scene.entities
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.AssetRef
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
@@ -23,7 +23,7 @@ open class Backdrop : StandardSceneEntity(), NormalMapped
 
     init { setNot(DISCOVERABLE) }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         surface.setDrawColor(color)
         surface.drawTexture(
@@ -32,7 +32,7 @@ open class Backdrop : StandardSceneEntity(), NormalMapped
             y = y,
             width = width,
             height = height,
-            rot = rotation,
+            angle = rotation,
             xOrigin = 0.5f,
             yOrigin = 0.5f,
             uTiling = xTiling,

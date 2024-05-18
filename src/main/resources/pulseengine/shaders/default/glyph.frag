@@ -3,13 +3,14 @@
 in vec4 vertexColor;
 in vec2 texCoord;
 in float texIndex;
+flat in uint samplerIndex;
 
 out vec4 fragColor;
 
-uniform sampler2DArray textureArray;
+uniform sampler2DArray textureArrays[16];
 
 void main() {
-    vec4 textureColor = texture(textureArray, vec3(texCoord, floor(texIndex)));
+    vec4 textureColor = texture(textureArrays[samplerIndex], vec3(texCoord, floor(texIndex)));
     float d = textureColor.a - 0.4;
     float w = clamp(d / fwidth(d) + 0.7, 0.0, 1.0);
 

@@ -4,22 +4,23 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.objects.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.renderers.FrameTextureRenderer
-import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.graphics.renderers.FullFrameRenderer
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
 interface PostProcessingEffect
 {
+    val name: String
     fun init()
     fun process(texture: Texture): Texture
     fun getTexture(): Texture?
-    fun cleanUp()
+    fun destroy()
 }
 
 abstract class SinglePassEffect : PostProcessingEffect
 {
     protected lateinit var fbo: FrameBufferObject
     protected lateinit var program: ShaderProgram
-    protected lateinit var renderer: FrameTextureRenderer
+    protected lateinit var renderer: FullFrameRenderer
 
     protected abstract fun loadShaderProgram(): ShaderProgram
     protected abstract fun applyEffect(texture: Texture): Texture
@@ -30,7 +31,7 @@ abstract class SinglePassEffect : PostProcessingEffect
             program = loadShaderProgram()
 
         if (!this::renderer.isInitialized)
-            renderer = FrameTextureRenderer(program)
+            renderer = FullFrameRenderer(program)
 
         renderer.init()
     }
@@ -56,10 +57,10 @@ abstract class SinglePassEffect : PostProcessingEffect
         }
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
         if (this::program.isInitialized) program.delete()
-        if (this::renderer.isInitialized) renderer.cleanUp()
+        if (this::renderer.isInitialized) renderer.destroy()
         if (this::fbo.isInitialized) fbo.delete()
     }
 }
@@ -67,7 +68,7 @@ abstract class SinglePassEffect : PostProcessingEffect
 abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProcessingEffect
 {
     protected val fbo = mutableListOf<FrameBufferObject>()
-    protected val renderers = mutableListOf<FrameTextureRenderer>()
+    protected val renderers = mutableListOf<FullFrameRenderer>()
     protected val programs = mutableListOf<ShaderProgram>()
 
     protected abstract fun loadShaderPrograms(): List<ShaderProgram>
@@ -79,9 +80,9 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
             programs.addAll(loadShaderPrograms())
 
         if (renderers.isEmpty())
-            renderers.addAll(programs.map { FrameTextureRenderer(it) })
+            renderers.addAll(programs.map { FullFrameRenderer(it) })
 
-        renderers.forEach { it.init() }
+        renderers.forEachFast { it.init() }
     }
 
     override fun process(texture: Texture): Texture
@@ -97,7 +98,7 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
 
         if (fbo.first().width != texture.width || fbo.first().height != texture.height)
         {
-            fbo.forEach { it.delete() }
+            fbo.forEachFast { it.delete() }
             fbo.clear()
             fbo.addAll(createNewFBOList(numberOfRenderPasses, texture.width, texture.height))
         }
@@ -108,10 +109,10 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
 
     override fun getTexture(): Texture? = fbo.lastOrNull()?.getTexture(0)
 
-    override fun cleanUp()
+    override fun destroy()
     {
-        programs.forEach { it.delete() }
-        renderers.forEach { it.cleanUp() }
-        fbo.forEach { it.delete() }
+        programs.forEachFast { it.delete() }
+        renderers.forEachFast { it.destroy() }
+        fbo.forEachFast { it.delete() }
     }
 }

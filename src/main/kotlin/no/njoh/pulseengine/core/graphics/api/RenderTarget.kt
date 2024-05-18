@@ -1,11 +1,7 @@
-package no.njoh.pulseengine.core.graphics
+package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
-import no.njoh.pulseengine.core.graphics.api.Attachment
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.objects.FrameBufferObject
 
 interface RenderTarget
@@ -14,13 +10,14 @@ interface RenderTarget
     var textureFormat: TextureFormat
     var textureFilter: TextureFilter
     var attachments: List<Attachment>
+    var fbo: FrameBufferObject
 
     fun init(width: Int, height: Int)
     fun begin()
     fun end()
     fun getTexture(index: Int = 0): Texture?
     fun getTextures(): List<Texture>
-    fun cleanUp()
+    fun destroy()
 }
 
 class OffScreenRenderTarget(
@@ -29,7 +26,8 @@ class OffScreenRenderTarget(
     override var textureFilter: TextureFilter,
     override var attachments: List<Attachment>
 ) : RenderTarget {
-    private lateinit var fbo: FrameBufferObject
+
+    override lateinit var fbo: FrameBufferObject
 
     override fun init(width: Int, height: Int)
     {
@@ -43,7 +41,7 @@ class OffScreenRenderTarget(
     override fun end() = fbo.release()
     override fun getTexture(index: Int) = fbo.getTexture(index)
     override fun getTextures() = fbo.getTextures()
-    override fun cleanUp() = fbo.delete()
+    override fun destroy() = fbo.delete()
 }
 
 class MultisampledOffScreenRenderTarget(
@@ -54,8 +52,8 @@ class MultisampledOffScreenRenderTarget(
     override var attachments: List<Attachment>
 ) : RenderTarget {
 
+    override lateinit var fbo: FrameBufferObject
     private lateinit var msFbo: FrameBufferObject
-    private lateinit var fbo: FrameBufferObject
 
     override fun init(width: Int, height: Int)
     {
@@ -84,7 +82,7 @@ class MultisampledOffScreenRenderTarget(
     override fun getTextures() =
         fbo.getTextures()
 
-    override fun cleanUp()
+    override fun destroy()
     {
         msFbo.delete()
         fbo.delete()

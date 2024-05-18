@@ -2,13 +2,11 @@ package no.njoh.pulseengine.modules.physics
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
-import no.njoh.pulseengine.core.scene.SceneManager
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
 
@@ -42,7 +40,7 @@ class PhysicsSystem : SceneSystem()
 
     override fun onStart(engine: PulseEngine)
     {
-        engine.scene.forEachPhysicsEntity { it.init(engine) }
+        engine.scene.forEachEntityOfType<PhysicsEntity> { it.init(engine) }
     }
 
     override fun onFixedUpdate(engine: PulseEngine)
@@ -50,11 +48,11 @@ class PhysicsSystem : SceneSystem()
         if (engine.scene.state != RUNNING)
             return
 
-        engine.scene.forEachPhysicsEntity { it.beginStep(engine, engine.data.fixedDeltaTime, gravity) }
+        engine.scene.forEachEntityOfType<PhysicsEntity> { it.beginStep(engine, engine.data.fixedDeltaTime, gravity) }
 
         val totalIterations = physicsIterations
         for (i in 0 until totalIterations)
-            engine.scene.forEachPhysicsEntity { it.iterateStep(engine, i, totalIterations, worldWidth, worldHeight) }
+            engine.scene.forEachEntityOfType<PhysicsEntity> { it.iterateStep(engine, i, totalIterations, worldWidth, worldHeight) }
 
         if (mousePicking)
             pickBody(engine)
@@ -68,12 +66,12 @@ class PhysicsSystem : SceneSystem()
             return
 
         val surface = engine.gfx.mainSurface
-        engine.scene.forEachPhysicsEntity { it.render(engine, surface) }
+        engine.scene.forEachEntityOfType<PhysicsEntity> { it.render(engine, surface) }
     }
 
     private fun pickBody(engine: PulseEngine)
     {
-        if (!engine.input.isPressed(Mouse.LEFT))
+        if (!engine.input.isPressed(MouseButton.LEFT))
         {
             pickedBody = null
             return
@@ -92,26 +90,17 @@ class PhysicsSystem : SceneSystem()
         {
             for (i in 0 until it.shape.getPointCount())
             {
-                it.shape.getPoint(i)?.let { point ->
-                    val xDelta = point.x - xMouse
-                    val yDelta = point.y - yMouse
-                    val dist = xDelta * xDelta + yDelta * yDelta
-                    if (dist < minDist)
-                    {
-                        pickedPointIndex = i
-                        pickedBody = it
-                        return
-                    }
+                val point = it.shape.getPoint(i)
+                val xDelta = point.x - xMouse
+                val yDelta = point.y - yMouse
+                val dist = xDelta * xDelta + yDelta * yDelta
+                if (dist < minDist)
+                {
+                    pickedPointIndex = i
+                    pickedBody = it
+                    return
                 }
             }
-        }
-    }
-
-    private inline fun SceneManager.forEachPhysicsEntity(block: (body: PhysicsEntity) -> Unit)
-    {
-        activeScene.entities.forEachFast { entities ->
-            if (entities.isNotEmpty() && entities[0] is PhysicsEntity)
-                entities.forEachFast { block(it as PhysicsEntity) }
         }
     }
 }

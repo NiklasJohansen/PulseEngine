@@ -1,10 +1,11 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
 import no.njoh.pulseengine.core.scene.SceneState.*
 import no.njoh.pulseengine.core.scene.systems.EntityUpdater
 import no.njoh.pulseengine.core.scene.systems.EntityRendererImpl
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.getClassesFromFullyQualifiedClassNames
@@ -113,8 +114,11 @@ open class SceneManagerImpl : SceneManagerInternal()
             if (scene.entities !== activeScene.entities)
                 activeScene.clearAll()
 
+            // Trigger garbage collection to remove unused resources
+            System.gc()
+
             // Missing system implementations gets deserialized to null and should be removed
-            scene.systems.removeIf { it == null }
+            scene.systems.removeWhen { it == null }
             activeScene = scene
 
             if (state != STOPPED)
@@ -217,7 +221,7 @@ open class SceneManagerImpl : SceneManagerInternal()
                 ?: engine.gfx.createSurface("scene_transition", zOrder = -99)
 
             surface.setDrawColor(0f, 0f, 0f, fade)
-            surface.drawQuad(0f, 0f, surface.width.toFloat(), surface.height.toFloat())
+            surface.drawQuad(0f, 0f, surface.config.width.toFloat(), surface.config.height.toFloat())
         }
     }
 
@@ -230,8 +234,8 @@ open class SceneManagerImpl : SceneManagerInternal()
             val classes = ReflectionUtil.getFullyQualifiedClassNames()
                 .getClassesFromFullyQualifiedClassNames()
 
-            classes.getClassesOfSuperType(SceneEntity::class).forEach { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
-            classes.getClassesOfSuperType(SceneSystem::class).forEach { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
+            classes.getClassesOfSuperType(SceneEntity::class).forEachFast { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
+            classes.getClassesOfSuperType(SceneSystem::class).forEachFast { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
 
             SceneEntity.REGISTERED_TYPES.remove(SceneEntity::class)
             SceneSystem.REGISTERED_TYPES.remove(SceneSystem::class)
@@ -243,9 +247,9 @@ open class SceneManagerImpl : SceneManagerInternal()
         }
     }
 
-    override fun cleanUp()
+    override fun destroy()
     {
-        Logger.info("Cleaning up scene (${this::class.simpleName})")
+        Logger.info("Destroying scene (${this::class.simpleName})")
         activeScene.stop(engine)
     }
 }

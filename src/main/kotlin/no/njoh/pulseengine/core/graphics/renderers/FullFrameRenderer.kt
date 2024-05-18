@@ -2,10 +2,11 @@ package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL30.*
 
-class FrameTextureRenderer(private val program: ShaderProgram)
+class FullFrameRenderer(private val program: ShaderProgram)
 {
     private var vaoId = -1
     private var vboId = -1
@@ -28,55 +29,43 @@ class FrameTextureRenderer(private val program: ShaderProgram)
         program.bind()
         program.setVertexAttributeLayout("position", 2, GL_FLOAT, 4 * FLOAT_BYTES, 0L)
         program.setVertexAttributeLayout("texCoord", 2, GL_FLOAT, 4 * FLOAT_BYTES, 2L * FLOAT_BYTES)
-
-        glBindVertexArray(0)
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
     }
 
     fun render(texture: Texture)
     {
         glBindVertexArray(vaoId)
-
         program.bind()
-
         glActiveTexture(GL_TEXTURE0)
-        glBindTexture(GL_TEXTURE_2D, texture.id)
-
+        glBindTexture(GL_TEXTURE_2D, texture.handle.textureIndex)
         glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
-
-        glBindTexture(GL_TEXTURE_2D, 0)
-        glBindVertexArray(0)
-        glActiveTexture(GL_TEXTURE0)
     }
 
-    fun render(vararg texture: Texture)
+    fun render(vararg textures: Texture)
     {
         glBindVertexArray(vaoId)
-
+        for (i in 0 until textures.size)
+        {
+            glActiveTexture(GL_TEXTURE0 + i)
+            glBindTexture(GL_TEXTURE_2D, textures[i].handle.textureIndex)
+        }
         program.bind()
-
-        for ((i, tex) in texture.withIndex())
-        {
-            glActiveTexture(GL_TEXTURE0 + i)
-            glBindTexture(GL_TEXTURE_2D, tex.id)
-        }
-
         glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
-
-        for (i in texture.indices)
-        {
-            glActiveTexture(GL_TEXTURE0 + i)
-            glBindTexture(GL_TEXTURE_2D, 0)
-        }
-
-        glBindVertexArray(0)
-        glActiveTexture(GL_TEXTURE0)
     }
 
-    fun cleanUp()
+    fun render(textureHandles: List<TextureHandle>)
     {
-        glDisableVertexAttribArray(0)
+        glBindVertexArray(vaoId)
+        for (i in 0 until textureHandles.size)
+        {
+            glActiveTexture(GL_TEXTURE0 + i)
+            glBindTexture(GL_TEXTURE_2D, textureHandles[i].textureIndex)
+        }
+        program.bind()
+        glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
+    }
 
+    fun destroy()
+    {
         // Delete the VBO
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glDeleteBuffers(vboId)
@@ -98,11 +87,6 @@ class FrameTextureRenderer(private val program: ShaderProgram)
              1f, -1f, 1f, 0f,  // v4 (top-right)
             -1f, -1f, 0f, 0f   // v1 (top-left)
         )
-        private val verticesBuffer = BufferUtils
-            .createFloatBuffer(vertices.size)
-            .also {
-                it.put(vertices)
-                it.flip()
-            }
+        private val verticesBuffer = BufferUtils.createFloatBuffer(vertices.size).put(vertices).also { it.flip() }
     }
 }

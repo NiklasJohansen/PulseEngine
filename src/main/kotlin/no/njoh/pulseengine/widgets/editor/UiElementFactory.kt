@@ -283,7 +283,7 @@ open class UiElementFactory(
             scrollbar.hidden = !showScrollbar
             scrollbar.cornerRadius = ScaledValue.of(2f)
             setOnItemToString { it.labelText }
-            menuBarButton.items.forEach { addItem(it) }
+            menuBarButton.items.forEachFast { addItem(it) }
             setOnItemChanged { _, item -> item.onClick() }
         }
     }
@@ -343,8 +343,8 @@ open class UiElementFactory(
         image.texture = engine.gfx.mainSurface.getTexture()
 
         val surfaceSelector = createItemSelectionDropdownUI(
-            selectedItem = engine.gfx.mainSurface.name,
-            items = engine.gfx.getAllSurfaces().flatMap { it.getTextures().mapIndexed { i, tex -> "${it.name}  (${tex.name})  #$i" } },
+            selectedItem = engine.gfx.mainSurface.config.name,
+            items = engine.gfx.getAllSurfaces().flatMap { it.getTextures().mapIndexed { i, tex -> "${it.config.name}  (${tex.name})  #$i" } },
             onItemToString = { it },
             onItemChanged = { _, surfaceName ->
                 val surface = surfaceName.substringBefore("  (")
@@ -363,7 +363,7 @@ open class UiElementFactory(
                 val selected = selectedItem
                 clearItems()
                 engine.gfx.getAllSurfaces().forEachFast { surface ->
-                    surface.getTextures().forEachIndexed { i, tex -> addItem("${surface.name}  (${tex.name})  #$i") }
+                    surface.getTextures().forEachIndexed { i, tex -> addItem("${surface.config.name}  (${tex.name})  #$i") }
                 }
                 selectedItem = selected
             }
@@ -503,7 +503,7 @@ open class UiElementFactory(
 
         val uiElements = listOf(headerButton).plus(props)
 
-        headerButton.setOnClicked { btn -> props.forEach { it.hidden = btn.isPressed } }
+        headerButton.setOnClicked { btn -> props.forEachFast { it.hidden = btn.isPressed } }
         exitButton.setOnClicked { onClose(uiElements) }
 
         return uiElements
@@ -624,7 +624,7 @@ open class UiElementFactory(
             searchInput.bgColorHover = style.getColor("BUTTON_HOVER")
             searchInput.strokeColor = Color.BLANK
 
-            PulseEngine.GLOBAL_INSTANCE.asset.getAllOfType(annotation.type).forEachFast { addAssetRow(it, style) }
+            PulseEngine.GLOBAL_INSTANCE.asset.getAllOfType(annotation.type.java).forEachFast { addAssetRow(it, style) }
 
             setOnValueChanged()
             {

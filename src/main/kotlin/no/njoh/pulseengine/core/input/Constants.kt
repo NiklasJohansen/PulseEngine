@@ -130,12 +130,13 @@ enum class Key(val code: Int)
     MENU(348),
     LAST(MENU.code);
 
-    companion object {
+    companion object
+    {
         val codes = TIntObjectHashMap<Key>().also { map -> values().forEachFast { map.put(it.code, it) } }
     }
 }
 
-enum class Mouse(val code: Int)
+enum class MouseButton(val code: Int)
 {
     LEFT(0),
     RIGHT(1),
@@ -151,7 +152,7 @@ enum class Mouse(val code: Int)
     BUTTON_MIDDLE(MIDDLE.code),
 }
 
-enum class Button(val code: Int)
+enum class GamepadButton(val code: Int)
 {
     A(0),
     B(1),
@@ -175,7 +176,7 @@ enum class Button(val code: Int)
     TRIANGLE(Y.code),
 }
 
-enum class Axis(val code: Int)
+enum class GamepadAxis(val code: Int)
 {
     LEFT_X(0),
     LEFT_Y(1),
@@ -197,4 +198,11 @@ enum class CursorType
     TOP_LEFT_RESIZE,
     TOP_RIGHT_RESIZE,
     ROTATE
+}
+
+enum class CursorMode
+{
+    NORMAL,
+    HIDDEN,
+    GRABBED
 }

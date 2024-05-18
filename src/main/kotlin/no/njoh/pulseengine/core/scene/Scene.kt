@@ -7,18 +7,16 @@ import gnu.trove.map.hash.TLongObjectHashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.data.FileFormat
 import no.njoh.pulseengine.core.data.FileFormat.*
-import no.njoh.pulseengine.core.shared.primitives.SwapList
-import no.njoh.pulseengine.core.shared.primitives.SwapList.Companion.swapListOf
-import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 
 @JsonAutoDetect(fieldVisibility = ANY)
 open class Scene(
     val name: String,
-    val entities: MutableList<SwapList<SceneEntity>> = mutableListOf(),
+    val entities: MutableList<SceneEntityList<SceneEntity>> = mutableListOf(),
     val systems: MutableList<SceneSystem> = mutableListOf()
 ) {
     @JsonIgnore
@@ -46,11 +44,12 @@ open class Scene(
     {
         entity.id = nextId
         entityIdMap.put(nextId, entity)
-        entityTypeMap[entity.typeName]
+        val type = entity::class.java
+        entityTypeMap[type]
             ?.add(entity)
             ?: run {
-                val list = swapListOf(entity)
-                entityTypeMap[entity.typeName] = list
+                val list = SceneEntityList.of(entity)
+                entityTypeMap[type] = list
                 entities.add(list)
             }
         spatialGrid.insert(entity)
@@ -83,7 +82,6 @@ open class Scene(
     {
         spatialGrid.update()
 
-        var deleteDeadEntities = true
         systems.forEachFiltered({ it.enabled || it.stateChanged })
         {
             if (!it.initialized)
@@ -95,24 +93,15 @@ open class Scene(
                 it.onStateChanged(engine)
             }
 
-            if (it.handlesEntityDeletion())
-                deleteDeadEntities = false
-
-            it.onUpdate(engine)
+            if (it.enabled)
+                it.onUpdate(engine)
         }
 
-        if (deleteDeadEntities)
-        {
-            engine.scene.forEachEntityTypeList { typeList ->
-                typeList.forEachFast { entity ->
-                    if (entity.isSet(DEAD))
-                    {
-                        entityIdMap[entity.parentId]?.removeChild(entity)
-                        entityIdMap.remove(entity.id)
-                    }
-                    else typeList.keep(entity)
-                }
-                typeList.swap()
+        engine.scene.forEachEntityTypeList { entityList ->
+            entityList.removeDeadEntities { deadEntity ->
+                entityIdMap.remove(deadEntity.id)
+                if (deadEntity.parentId != INVALID_ID)
+                    entityIdMap[deadEntity.parentId]?.removeChild(deadEntity)
             }
         }
     }
@@ -136,7 +125,7 @@ open class Scene(
     internal fun optimizeCollections()
     {
         entityTypeMap.values.removeIf { entities -> entities.isEmpty() }
-        entities.removeIf { it.isEmpty() }
+        entities.removeWhen { it.isEmpty() }
         entities.forEachFast { it.fitToSize() }
     }
 
@@ -150,17 +139,17 @@ open class Scene(
         spatialGrid.clear()
     }
 
-    private fun createEntityTypeMap(entities: MutableList<SwapList<SceneEntity>>) =
-        HashMap<String, SwapList<SceneEntity>>(entities.size).also { map ->
-            entities.forEachFast { list -> list.first()?.let { map[it.typeName] = list } }
+    private fun createEntityTypeMap(entities: MutableList<SceneEntityList<SceneEntity>>) =
+        HashMap<Class<*>, SceneEntityList<SceneEntity>>(entities.size).also { map ->
+            entities.forEachFast { list -> list.firstOrNull()?.let { map[it::class.java] = list } }
         }
 
-    private fun createEntityIdMap(entities: MutableList<SwapList<SceneEntity>>) =
+    private fun createEntityIdMap(entities: MutableList<SceneEntityList<SceneEntity>>) =
         TLongObjectHashMap<SceneEntity>().also { map ->
             entities.forEachFast { typeList -> typeList.forEachFast { map.put(it.id, it) } }
         }
 
-    private fun MutableList<SwapList<SceneEntity>>.onCreate()
+    private fun MutableList<SceneEntityList<SceneEntity>>.onCreate()
     {
         this.forEachFast()
         {
@@ -168,6 +157,3 @@ open class Scene(
         }
     }
 }
-
-@Target(AnnotationTarget.CLASS)
-annotation class SurfaceName(val name: String)

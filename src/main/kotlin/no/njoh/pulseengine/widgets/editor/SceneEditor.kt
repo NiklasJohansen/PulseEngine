@@ -2,16 +2,15 @@ package no.njoh.pulseengine.widgets.editor
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
-import no.njoh.pulseengine.core.graphics.Camera
+import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.Attachment
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.modules.gui.UiUtil.findElementById
 import no.njoh.pulseengine.modules.gui.elements.InputField
@@ -22,7 +21,7 @@ import no.njoh.pulseengine.modules.gui.layout.docking.DockingPanel
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.Key.*
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
@@ -41,6 +40,8 @@ import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.utils.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
+import no.njoh.pulseengine.core.shared.utils.Extensions.noneMatches
 import no.njoh.pulseengine.core.widget.Widget
 import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.gui.elements.Button
@@ -60,17 +61,19 @@ import kotlin.reflect.KVisibility
 import kotlin.reflect.full.*
 
 class SceneEditor(
-    val uiFactory: UiElementFactory = UiElementFactory()
+    val uiFactory: UiElementFactory = UiElementFactory(),
+    var enableViewportInteractions: Boolean = true
 ): Widget {
+
     override var isRunning = false
 
     // UI
-    private lateinit var rootUI: VerticalPanel
-    private lateinit var inspectorUI: RowPanel
-    private lateinit var systemPropertiesUI: RowPanel
-    private lateinit var dockingUI: DockingPanel
-    private lateinit var screenArea: FocusArea
-    private lateinit var dragAndDropArea: FocusArea
+    lateinit var viewportArea: FocusArea
+    lateinit var rootUI: VerticalPanel
+    lateinit var inspectorUI: RowPanel
+    lateinit var systemPropertiesUI: RowPanel
+    lateinit var dockingUI: DockingPanel
+
     private var entityPropertyUiRows = mutableMapOf<String, UiElement>()
     private var collapsedPropertyHeaders = mutableListOf<String>()
     private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
@@ -78,7 +81,7 @@ class SceneEditor(
     private var outliner: Outliner? = null
 
     // Camera
-    private val cameraController = Camera2DController(Mouse.MIDDLE, smoothing = 0f)
+    private val cameraController = Camera2DController(MouseButton.MIDDLE, smoothing = 0f)
     private lateinit var activeCamera: Camera
     private lateinit var storedCameraState: CameraState
 
@@ -126,11 +129,10 @@ class SceneEditor(
     {
         // Load editor config
         engine.config.load("/pulseengine/config/editor_default.cfg")
-        UI_SCALE = engine.config.getFloat("uiScale") ?: engine.window.scale
+        UI_SCALE = engine.window.scale
 
         // Set editor data
-        screenArea = FocusArea(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
-        dragAndDropArea = FocusArea(0f, 0f, 0f, 0f)
+        viewportArea = FocusArea(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
         activeCamera = engine.gfx.mainCamera
         storedCameraState = CameraState.from(activeCamera)
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
@@ -167,8 +169,8 @@ class SceneEditor(
         // Delete selected entities on key press
         engine.input.setOnKeyPressed()
         {
-            if (it == DELETE && isRunning && engine.input.hasFocus(screenArea))
-                deleteEntitySelection(engine)
+            if (it == DELETE && isRunning && engine.input.hasFocus(viewportArea))
+                deleteSelectedEntities(engine)
         }
 
         // React on scale changes
@@ -184,7 +186,7 @@ class SceneEditor(
     private fun createSceneEditorUI(engine: PulseEngine)
     {
         // Set UI scaling
-        UI_SCALE = engine.config.getFloat("uiScale") ?: engine.window.scale
+        UI_SCALE = engine.window.scale
         cameraController.scrollSpeed = 40f * UI_SCALE
 
         // Properties
@@ -278,7 +280,7 @@ class SceneEditor(
                     selectSingleEntity(engine, entitySelection.first())
             },
             onEntityCreated = { type -> createNewEntity(engine, type) },
-            onEntityDeleted = { deleteEntitySelection(engine) }
+            onEntityDeleted = { deleteSelectedEntities(engine) }
         )
         outliner!!.reloadEntitiesFromActiveScene()
 
@@ -334,8 +336,8 @@ class SceneEditor(
 
         if (engine.scene.state == SceneState.STOPPED)
         {
-            screenArea.update(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
-            engine.input.requestFocus(screenArea)
+            viewportArea.update(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
+            engine.input.requestFocus(viewportArea)
         }
 
         if (engine.scene.activeScene.hashCode() != lastSceneHashCode)
@@ -347,10 +349,17 @@ class SceneEditor(
             lastSceneHashCode = engine.scene.activeScene.hashCode()
         }
 
-        if (engine.scene.state == SceneState.STOPPED)
+        if (enableViewportInteractions && engine.scene.state == SceneState.STOPPED)
         {
-            engine.input.setCursor(ARROW)
-            cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(screenArea))
+            engine.input.setCursorType(ARROW)
+            cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(viewportArea))
+
+            if (entitySelection.size == 1)
+                entitySelection.first().handleEntityTransformation(engine)
+
+            handleEntityCopying(engine)
+            handleEntitySelection(engine)
+            handleEntityMoving(engine)
         }
 
         if (engine.input.wasClicked(F10))
@@ -366,13 +375,6 @@ class SceneEditor(
                 engine.scene.reload()
             }
         }
-
-        if (entitySelection.size == 1)
-            entitySelection.first().handleEntityTransformation(engine)
-
-        handleEntityCopying(engine)
-        handleEntitySelection(engine)
-        handleEntityMoving(engine)
 
         updateFooterCallback(
             engine.scene.getAllEntitiesByType().sumOf { it.size },
@@ -392,12 +394,17 @@ class SceneEditor(
             renderGrid(engine.gfx.getSurfaceOrDefault("scene_editor_background"))
 
         val foregroundSurface = engine.gfx.getSurfaceOrDefault("scene_editor_foreground")
-        renderEntityIconAndGizmo(foregroundSurface, engine)
-        renderSelectionRectangle(foregroundSurface)
+
+        if (enableViewportInteractions)
+        {
+            renderEntityIconAndGizmo(foregroundSurface, engine)
+            renderSelectionRectangle(foregroundSurface)
+        }
+
         rootUI.render(engine, foregroundSurface)
     }
 
-    private fun renderEntityIconAndGizmo(surface: Surface2D, engine: PulseEngine)
+    private fun renderEntityIconAndGizmo(surface: Surface, engine: PulseEngine)
     {
         val showResizeDots = (entitySelection.size == 1)
         entitySelection.forEachFast()
@@ -407,27 +414,27 @@ class SceneEditor(
         }
 
         engine.scene.forEachEntityTypeList { entities ->
-            entities[0]::class.findAnnotation<ScnIcon>()?.let { annotation ->
-                if (annotation.showInViewport && entities[0] is Spatial)
+            val firstEntity = entities.firstOrNull()
+            val annotation = firstEntity?.let { it::class.findAnnotation<ScnIcon>() }
+            if (annotation != null && annotation.showInViewport && firstEntity is Spatial)
+            {
+                val size = annotation.size
+                val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
+                val font = engine.asset.getOrNull<Font>(uiFactory.style.iconFontName)
+                val iconChar = uiFactory.style.icons[annotation.iconName]
+                if (texture != null || (font != null && iconChar != null))
                 {
-                    val size = annotation.size
-                    val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
-                    val font = engine.asset.getOrNull<Font>(uiFactory.style.iconFontName)
-                    val iconChar = uiFactory.style.icons[annotation.iconName]
-                    if (texture != null || (font != null && iconChar != null))
+                    surface.setDrawColor(Color.WHITE)
+                    entities.forEachFast()
                     {
-                        surface.setDrawColor(Color.WHITE)
-                        entities.forEachFast()
+                        if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
                         {
-                            if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
-                            {
-                                it as Spatial
-                                val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
-                                if (texture != null)
-                                    surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
-                                else if (iconChar != null)
-                                    surface.drawText(iconChar, pos.x, pos.y, font, size, xOrigin = 0.5f, yOrigin = 0.5f)
-                            }
+                            it as Spatial
+                            val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
+                            if (texture != null)
+                                surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
+                            else if (iconChar != null)
+                                surface.drawText(iconChar, pos.x, pos.y, font, size, xOrigin = 0.5f, yOrigin = 0.5f)
                         }
                     }
                 }
@@ -442,8 +449,9 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
-                sceneFileToSaveAs = filePath + if (!filePath.endsWith(".scn")) ".scn" else ""
+            FileChooser.showSaveFileDialog(engine.data.saveDirectory)
+            {
+                sceneFileToSaveAs = it + if (!it.endsWith(".scn")) ".scn" else ""
             }
         }
     }
@@ -455,8 +463,9 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showFileSelectionDialog("scn", engine.data.saveDirectory) { filePath ->
-                sceneFileToLoad = filePath
+            FileChooser.showFileSelectionDialog(engine.data.saveDirectory)
+            {
+                sceneFileToLoad = it
             }
         }
     }
@@ -471,8 +480,9 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showSaveFileDialog("scn", engine.data.saveDirectory) { filePath ->
-                sceneFileToCreate = filePath
+            FileChooser.showSaveFileDialog(engine.data.saveDirectory)
+            {
+                sceneFileToCreate = it
             }
         }
     }
@@ -487,7 +497,7 @@ class SceneEditor(
         prevSelectedEntityId = entitySelection.firstOrNull()?.id
 
         resetUI()
-        engine.input.setCursor(ARROW)
+        engine.input.setCursorType(ARROW)
 
         if (engine.scene.state == SceneState.STOPPED)
         {
@@ -510,17 +520,6 @@ class SceneEditor(
 
     ////////////////////////////// EDIT TOOLS  //////////////////////////////
 
-    private fun deleteEntitySelection(engine: PulseEngine)
-    {
-        if (entitySelection.isEmpty())
-            return
-
-        entitySelection.forEachFast { it.setDead(engine) }
-        outliner?.removeEntities(entitySelection)
-        isMoving = false
-        clearEntitySelection()
-    }
-
     private fun SceneEntity.setDead(engine: PulseEngine)
     {
         this.set(DEAD)
@@ -538,58 +537,8 @@ class SceneEditor(
         if (!isMoving || isCopying)
             return
 
-        val copies = entitySelection.map { it.createCopy() }.toMutableList()
-        val insertedCopies = mutableListOf<SceneEntity>()
-        val idMapping = mutableMapOf<Long, Long>()
+        duplicateSelectedEntities(engine)
 
-        // Insert copied entities in order of parents before children
-        while (copies.isNotEmpty())
-        {
-            val copiesLeft = copies.size
-            for (copy in copies)
-            {
-                if (copies.none { it.id == copy.parentId })
-                {
-                    copy.childIds = null
-                    copy.parentId = idMapping[copy.parentId] ?: copy.parentId
-                    copy.setNot(SELECTED)
-                    val lastId = copy.id
-                    val newId = engine.scene.addEntity(copy)
-                    idMapping[lastId] = newId
-                    copies.remove(copy)
-                    insertedCopies.add(copy)
-                    break
-                }
-            }
-
-            if (copiesLeft == copies.size)
-            {
-                Logger.error("Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}")
-                return
-            }
-        }
-
-        // Handle fields annotated with EntityRef
-        for (entity in insertedCopies)
-        {
-            for (prop in entity::class.memberProperties)
-            {
-                if (prop is KMutableProperty<*> && prop.name != "parent" && prop.name != "childIds" && prop.hasAnnotation<EntityRef>())
-                {
-                    val ref = prop.getter.call(entity)
-                    if (ref is Long)
-                    {
-                        idMapping[ref]?.let { newRef -> prop.setter.call(entity, newRef) }
-                    }
-                    else if (ref is LongArray && ref.isNotEmpty())
-                    {
-                        prop.setter.call(entity, LongArray(ref.size) { idMapping[ref[it]] ?: ref[it] })
-                    }
-                }
-            }
-        }
-
-        outliner?.addEntities(insertedCopies)
         isCopying = true
     }
 
@@ -611,7 +560,7 @@ class SceneEditor(
         val yMouse = engine.input.yWorldMouse
 
         // Select / deselect single entity
-        if (engine.input.wasClicked(Mouse.LEFT))
+        if (engine.input.wasClicked(MouseButton.LEFT))
         {
             // Select entity
             if (!isMoving && !isSelecting && !isRotating && !isResizingVertically && !isResizingHorizontally)
@@ -655,7 +604,7 @@ class SceneEditor(
         }
 
         // Start multi selection
-        if (engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(MouseButton.LEFT))
         {
             if (!isMoving && !isRotating && !isResizingVertically && !isResizingHorizontally)
             {
@@ -741,9 +690,9 @@ class SceneEditor(
 
         if (!isMoving) return
 
-        if (!engine.input.isPressed(Mouse.LEFT))
+        if (!engine.input.isPressed(MouseButton.LEFT))
         {
-            engine.input.setCursor(ARROW)
+            engine.input.setCursorType(ARROW)
             entitySelection.forEachFast { it.onMovedScaledOrRotated(engine) }
             isMoving = false
             return
@@ -790,7 +739,7 @@ class SceneEditor(
         val rotateTopRight = xMouse >= x + w && xMouse <= x + w + rotateArea && yMouse >= y - h - rotateArea && yMouse <= y - h
         val rotateBottomRight = xMouse >= x + w && xMouse <= x + w + rotateArea && yMouse >= y + h && yMouse <= y + h + rotateArea
 
-        if (engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(MouseButton.LEFT))
         {
             if (!isMoving && !isSelecting && !isRotating && !isResizingHorizontally && !isResizingVertically)
             {
@@ -903,7 +852,7 @@ class SceneEditor(
                 MOVE
             else null // ARROW
 
-        cursorType?.let { engine.input.setCursor(it) }
+        cursorType?.let { engine.input.setCursorType(it) }
 
         if (isRotating || isResizingHorizontally || isResizingVertically)
         {
@@ -954,7 +903,25 @@ class SceneEditor(
         selectSingleEntity(engine, entity)
     }
 
-    private fun selectSingleEntity(engine: PulseEngine, entity: SceneEntity)
+    fun selectEntities(engine: PulseEngine, entities: List<SceneEntity>)
+    {
+        if (entities.isEmpty())
+        {
+            clearEntitySelection()
+        }
+        else if (entities.size == 1)
+        {
+            selectSingleEntity(engine, entities[0])
+        }
+        else
+        {
+            clearEntitySelection()
+            entities.forEachFast { addEntityToSelection(it) }
+            outliner?.selectEntities(entities)
+        }
+    }
+
+    fun selectSingleEntity(engine: PulseEngine, entity: SceneEntity)
     {
         clearEntitySelection()
         addEntityToSelection(entity)
@@ -1019,6 +986,73 @@ class SceneEditor(
         inspectorUI.children.lastOrNull()?.let { it.padding.bottom = it.padding.top }
     }
 
+    fun duplicateSelectedEntities(engine: PulseEngine)
+    {
+        val copies = entitySelection.map { it.createCopy() }.toMutableList()
+        val insertedCopies = mutableListOf<SceneEntity>()
+        val idMapping = mutableMapOf<Long, Long>()
+
+        // Insert copied entities in order of parents before children
+        while (copies.isNotEmpty())
+        {
+            val copiesLeft = copies.size
+            for (copy in copies)
+            {
+                if (copies.noneMatches { it.id == copy.parentId })
+                {
+                    copy.childIds = null
+                    copy.parentId = idMapping[copy.parentId] ?: copy.parentId
+                    copy.setNot(SELECTED)
+                    val lastId = copy.id
+                    val newId = engine.scene.addEntity(copy)
+                    idMapping[lastId] = newId
+                    copies.remove(copy)
+                    insertedCopies.add(copy)
+                    break
+                }
+            }
+
+            if (copiesLeft == copies.size)
+            {
+                Logger.error("Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}")
+                return
+            }
+        }
+
+        // Handle fields annotated with EntityRef
+        for (entity in insertedCopies)
+        {
+            for (prop in entity::class.memberProperties)
+            {
+                if (prop is KMutableProperty<*> && prop.name != "parent" && prop.name != "childIds" && prop.hasAnnotation<EntityRef>())
+                {
+                    val ref = prop.getter.call(entity)
+                    if (ref is Long)
+                    {
+                        idMapping[ref]?.let { newRef -> prop.setter.call(entity, newRef) }
+                    }
+                    else if (ref is LongArray && ref.isNotEmpty())
+                    {
+                        prop.setter.call(entity, LongArray(ref.size) { idMapping[ref[it]] ?: ref[it] })
+                    }
+                }
+            }
+        }
+
+        outliner?.addEntities(insertedCopies)
+    }
+
+    fun deleteSelectedEntities(engine: PulseEngine)
+    {
+        if (entitySelection.isEmpty())
+            return
+
+        entitySelection.forEachFast { it.setDead(engine) }
+        outliner?.removeEntities(entitySelection)
+        isMoving = false
+        clearEntitySelection()
+    }
+
     private fun updateEntityPropertiesPanel(propName: String, value: Any)
     {
         (entityPropertyUiRows[propName] as? InputField)?.text = value.toString()
@@ -1034,7 +1068,7 @@ class SceneEditor(
         systemPropertiesUI.clearChildren()
         for (system in engine.scene.activeScene.systems)
         {
-            val isHidden = system::class.simpleName !in openSystems
+            val isHidden = system::class.simpleName isNotIn openSystems
             val props = uiFactory.createSystemProperties(system, isHidden = isHidden, onClose = { props ->
                 system.onDestroy(engine)
                 engine.scene.removeSystem(system)
@@ -1046,7 +1080,7 @@ class SceneEditor(
 
     ////////////////////////////// RENDERING  //////////////////////////////
 
-    private fun renderSelectionRectangle(surface: Surface2D)
+    private fun renderSelectionRectangle(surface: Surface)
     {
         if (isSelecting)
         {
@@ -1064,7 +1098,7 @@ class SceneEditor(
         }
     }
 
-    private fun SceneEntity.renderGizmo(surface: Surface2D, showResizeDots: Boolean)
+    private fun SceneEntity.renderGizmo(surface: Surface, showResizeDots: Boolean)
     {
         if (this !is Spatial) return
 
@@ -1119,7 +1153,7 @@ class SceneEditor(
         }
     }
 
-    private fun renderGrid(surface: Surface2D)
+    private fun renderGrid(surface: Surface)
     {
         val cellSize = 200
         val xStart = (activeCamera.topLeftWorldPosition.x.toInt() / cellSize - 2) * cellSize

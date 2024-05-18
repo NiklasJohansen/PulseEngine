@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.console.MessageType
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.widget.Widget
 import kotlin.math.max
 import kotlin.math.min
@@ -30,7 +30,7 @@ class CommandLine : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface("overlay", zOrder = -100)
+        engine.gfx.createSurface("cli", zOrder = -100)
         engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "cli_font")
         engine.console.registerCommand("showConsole") {
             isRunning = !isRunning
@@ -157,11 +157,12 @@ class CommandLine : Widget
             {
                 // Past text from clipboard into text box. Replaces selected text. (CTRL + V)
                 removeSelectedText()
-                val text = engine.input.getClipboard()
-                inputText.insert(inputCursor, text)
-                inputCursor += text.length
-                selectCursor = inputCursor
-                suggestionCursor = -1
+                engine.input.getClipboard { content ->
+                    inputText.insert(inputCursor, content)
+                    inputCursor += content.length
+                    selectCursor = inputCursor
+                    suggestionCursor = -1
+                }
             }
         }
 
@@ -303,7 +304,7 @@ class CommandLine : Widget
         }
 
         // Resize width of console window (MOUSE LEFT)
-        if (engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(MouseButton.LEFT))
         {
             widthFraction = max(0f, min(1f, widthFraction + engine.input.xdMouse / engine.window.width))
             heightFraction = max(0f, min(1f, heightFraction + engine.input.ydMouse / engine.window.height))
@@ -327,7 +328,7 @@ class CommandLine : Widget
         text = text.substring(max(inputTextOffset, 0), min(inputTextOffset + charsPerLine, text.length))
 
         // Render to the overlay layer
-        val surface = engine.gfx.getSurfaceOrDefault("overlay")
+        val surface = engine.gfx.getSurfaceOrDefault("cli")
 
         // Draw console rectangle
         surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)

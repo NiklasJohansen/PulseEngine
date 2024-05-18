@@ -168,7 +168,8 @@ data class Outliner(
 
             val button = MenuBarButton(labelText = "+", items = menuItems)
             val showScrollBar = menuItems.size > 8
-            val buttonUI = uiElementFactory.createMenuBarButtonUI(button, 18f, showScrollBar).apply {
+            val buttonUI = uiElementFactory.createMenuBarButtonUI(button, 18f, showScrollBar).apply()
+            {
                 width.setQuiet(Size.absolute(20f))
                 dropdown.height.setQuiet(Size.absolute(400f))
                 dropdown.resizable = true
@@ -470,7 +471,7 @@ data class Outliner(
                 color = style.getColor("LABEL")
             }
 
-            val typeLabel = Label("  " + entity.typeName, width = Size.absolute(120f)).apply()
+            val typeLabel = Label("  " + entity::class.java.simpleName, width = Size.absolute(120f)).apply()
             {
                 padding.left = ScaledValue.of(0f)
                 fontSize = ScaledValue.of(18f)
@@ -564,12 +565,12 @@ data class Outliner(
 
         private fun UiElement.getNameLabel() = this.children[0].children[4] as Label
 
-        private fun SceneEntity.createLabelText() = ((this as? Named)?.name?.takeIf { it.isNotEmpty() } ?: typeName)
+        private fun SceneEntity.createLabelText() = ((this as? Named)?.name?.takeIf { it.isNotEmpty() } ?: this::class.java.simpleName)
 
         private fun UiElement.isCollapsed() = this.getCollapseButton()?.isPressed == true
 
         private fun SceneEntity.matches(engine: PulseEngine, searchString: String): Boolean =
-            typeName.contains(searchString, ignoreCase = true) ||
+            this::class.java.simpleName.contains(searchString, ignoreCase = true) == true ||
             (this is Named && name.contains(searchString, ignoreCase = true)) ||
             id.toString().contains(searchString) ||
             childIds?.any { engine.scene.getEntity(it)?.matches(engine, searchString) == true } == true
@@ -621,7 +622,8 @@ data class Outliner(
             return children
         }
 
-        private fun RowPanel.restoreRowVisibility() {
+        private fun RowPanel.restoreRowVisibility()
+        {
             var isCollapsed = false
             var currentIndentation = 0f
             for (row in this.children)

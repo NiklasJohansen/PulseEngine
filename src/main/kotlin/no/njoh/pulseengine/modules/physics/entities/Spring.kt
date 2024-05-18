@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.physics.entities
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
@@ -80,9 +80,9 @@ open class Spring : StandardSceneEntity(), PhysicsEntity
         }
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D) { }
+    override fun onRender(engine: PulseEngine, surface: Surface) { }
 
-    override fun render(engine: PulseEngine, surface: Surface2D)
+    override fun render(engine: PulseEngine, surface: Surface)
     {
         getPoints(engine) { x0, y0, x1, y1 ->
             if (x0 == 0f || y0 == 0f || x1 == 0f || y1 == 0f )

@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.audio
 
 import no.njoh.pulseengine.core.asset.types.Sound
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.*
@@ -21,6 +23,7 @@ open class AudioImpl : AudioInternal
     private var context: Long = MemoryUtil.NULL
     private val sources = mutableListOf<Int>()
     private var outputChangedCallback: () -> Unit = { }
+    private var soundProvider: (String) -> Sound? = { null }
 
     override fun init()
     {
@@ -28,6 +31,11 @@ open class AudioImpl : AudioInternal
 
         // Use default output device
         setupDevice(alcOpenDevice(null as ByteBuffer?))
+    }
+
+    override fun enableInCurrentThread()
+    {
+        alcSetThreadContext(context)
     }
 
     private fun setupDevice(device: Long)
@@ -40,7 +48,7 @@ open class AudioImpl : AudioInternal
         context = alcCreateContext(device, null as IntBuffer?)
         check(context != MemoryUtil.NULL) { "Failed to create an OpenAL context" }
 
-        alcSetThreadContext(context)
+        enableInCurrentThread()
         createCapabilities(deviceCaps)
 
         val numHrtf = alcGetInteger(device, ALC_NUM_HRTF_SPECIFIERS_SOFT)
@@ -62,41 +70,56 @@ open class AudioImpl : AudioInternal
         this.device = device
     }
 
-    override fun createSource(sound: Sound, volume: Float, looping: Boolean): Int
+    override fun playSound(sound: Sound, volume: Float, pitch: Float, looping: Boolean)
+    {
+        playSource(sourceId = createSource(sound, volume, pitch, looping))
+    }
+
+    override fun playSound(soundAssetName: String, volume: Float, pitch: Float, looping: Boolean)
+    {
+        val sound = soundProvider(soundAssetName)
+        if (sound != null)
+            playSound(sound, volume, pitch, looping)
+        else
+            Logger.error("Failed to play sound - no asset with name: $soundAssetName was found")
+    }
+
+    override fun createSource(sound: Sound, volume: Float, pitch: Float, looping: Boolean): Int
     {
         val sourceId = alGenSources()
         alSourcei(sourceId, AL_SOURCE_RELATIVE, AL_TRUE) // Research AL_SOURCE_ABSOLUTE
-        alSourcei(sourceId, AL_BUFFER, sound.pointer)
-        setVolume(sourceId, volume)
-        setLooping(sourceId, looping)
+        alSourcei(sourceId, AL_BUFFER, sound.id)
+        setSourceVolume(sourceId, volume)
+        setSourcePitch(sourceId, pitch)
+        setSourceLooping(sourceId, looping)
         sources.add(sourceId)
         return sourceId
     }
 
-    override fun stop(sourceId: Int)
+    override fun stopSource(sourceId: Int)
     {
         sources.remove(sourceId)
         alSourceStop(sourceId)
         alDeleteSources(sourceId)
     }
 
-    override fun stopAll() = sources.toList().forEach { stop(it) }
+    override fun stopAllSources() = sources.toList().forEachFast { stopSource(it) }
 
-    override fun play(sourceId: Int) = alSourcePlay(sourceId)
+    override fun playSource(sourceId: Int) = alSourcePlay(sourceId)
 
-    override fun pause(sourceId: Int) = alSourcePause(sourceId)
+    override fun pauseSource(sourceId: Int) = alSourcePause(sourceId)
 
-    override fun isPlaying(sourceId: Int): Boolean = alGetSourcei(sourceId, AL_SOURCE_STATE) == AL_PLAYING
+    override fun isSourcePlaying(sourceId: Int): Boolean = alGetSourcei(sourceId, AL_SOURCE_STATE) == AL_PLAYING
 
-    override fun isPaused(sourceId: Int): Boolean = alGetSourcei(sourceId, AL_SOURCE_STATE) == AL_PAUSED
+    override fun isSourcePaused(sourceId: Int): Boolean = alGetSourcei(sourceId, AL_SOURCE_STATE) == AL_PAUSED
 
-    override fun setVolume(sourceId: Int, volume: Float) = alSourcef(sourceId, AL_GAIN, java.lang.Float.max(0.0f, volume))
+    override fun setSourceVolume(sourceId: Int, volume: Float) = alSourcef(sourceId, AL_GAIN, java.lang.Float.max(0.0f, volume))
 
-    override fun setPitch(sourceId: Int, pitch: Float) = alSourcef(sourceId, AL_PITCH, pitch)
+    override fun setSourcePitch(sourceId: Int, pitch: Float) = alSourcef(sourceId, AL_PITCH, pitch)
 
-    override fun setLooping(sourceId: Int, looping: Boolean) = alSourcei(sourceId, AL_LOOPING, if (looping) AL_TRUE else AL_FALSE)
+    override fun setSourceLooping(sourceId: Int, looping: Boolean) = alSourcei(sourceId, AL_LOOPING, if (looping) AL_TRUE else AL_FALSE)
 
-    override fun setPosition(sourceId: Int, x: Float, y: Float, z: Float) = alSource3f(sourceId, AL_POSITION, x, y, z)
+    override fun setSourcePosition(sourceId: Int, x: Float, y: Float, z: Float) = alSource3f(sourceId, AL_POSITION, x, y, z)
 
     override fun setListenerPosition(x: Float, y: Float, z: Float) = alListener3f(AL_POSITION, x, y, z)
 
@@ -125,14 +148,33 @@ open class AudioImpl : AudioInternal
         }
     }
 
-    override fun cleanSources()
+    override fun update()
     {
-       sources.removeIf {
-           val stopped = !isPlaying(it) && !isPaused(it)
+       sources.removeWhen()
+       {
+           val stopped = !isSourcePlaying(it) && !isSourcePaused(it)
            if (stopped)
                alDeleteSources(it)
            stopped
        }
+    }
+
+    override fun uploadSound(sound: Sound)
+    {
+        if (sound.buffer == null)
+        {
+            Logger.error("Failed to upload sound: ${sound.fileName} - buffer is null")
+            return
+        }
+
+        val id = alGenBuffers()
+        alBufferData(id, AL_FORMAT_MONO16, sound.buffer!!, sound.sampleRate)
+        sound.finalize(id)
+    }
+
+    override fun deleteSound(sound: Sound)
+    {
+        alDeleteBuffers(sound.id)
     }
 
     override fun setOnOutputDeviceChanged(callback: () -> Unit)
@@ -140,10 +182,15 @@ open class AudioImpl : AudioInternal
         this.outputChangedCallback = callback
     }
 
-    override fun cleanUp()
+    override fun setSoundProvider(soundProvider: (String) -> Sound?)
     {
-        Logger.info("Cleaning up audio (${this::class.simpleName})")
-        sources.forEach { alDeleteSources(it) }
+        this.soundProvider = soundProvider
+    }
+
+    override fun destroy()
+    {
+        Logger.info("Destroying audio (${this::class.simpleName})")
+        sources.forEachFast { alDeleteSources(it) }
         alcSetThreadContext(MemoryUtil.NULL)
         alcDestroyContext(context)
         alcCloseDevice(device)

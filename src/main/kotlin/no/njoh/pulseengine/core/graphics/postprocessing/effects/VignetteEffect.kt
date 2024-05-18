@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
 
 class VignetteEffect(
+    override val name: String,
     var strength: Float = 0.2f
 ) : SinglePassEffect() {
 

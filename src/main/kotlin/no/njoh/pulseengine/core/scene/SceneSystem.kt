@@ -9,7 +9,7 @@ abstract class SceneSystem
     var enabled = true
         set(value)
         {
-            stateChanged = (value != field)
+            stateChanged = (value != field && initialized)
             field = value
         }
 
@@ -64,11 +64,6 @@ abstract class SceneSystem
      * Called when the [enabled] flag changes
      */
     open fun onStateChanged(engine: PulseEngine) {  }
-
-    /**
-     * Whether or not this system takes the care of deleting dead entities
-     */
-    open fun handlesEntityDeletion(): Boolean = false
 
     companion object
     {

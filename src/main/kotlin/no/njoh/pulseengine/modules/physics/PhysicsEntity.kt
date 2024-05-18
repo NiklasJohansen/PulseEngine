@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.physics
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 
 /**
  * Base class for all physics entities.
@@ -30,5 +30,5 @@ interface PhysicsEntity
     /**
      * Called every frame if enabled by the physics system.
      */
-    fun render(engine: PulseEngine, surface: Surface2D)
+    fun render(engine: PulseEngine, surface: Surface)
 }

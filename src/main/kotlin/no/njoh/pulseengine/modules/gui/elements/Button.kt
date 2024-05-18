@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.*
 
 open class Button(
@@ -41,7 +41,7 @@ open class Button(
 
     override fun onMouseLeave(engine: PulseEngine)
     {
-        engine.input.setCursor(CursorType.ARROW)
+        engine.input.setCursorType(CursorType.ARROW)
     }
 
     override fun onMouseClicked(engine: PulseEngine)
@@ -58,7 +58,7 @@ open class Button(
 
         if (isMouseOver)
         {
-            engine.input.setCursor(CursorType.HAND)
+            engine.input.setCursorType(CursorType.HAND)
         }
     }
 
@@ -67,7 +67,7 @@ open class Button(
         this.onClickedCallback = callback
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         val bgColor = if (isMouseOver) bgHoverColor else bgColor
         val color = when {

@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.core.shared.utils
 
 import no.njoh.pulseengine.core.shared.primitives.Array2D
-import no.njoh.pulseengine.core.graphics.Camera
+import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.Graphics
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import org.joml.Vector2f
 import java.lang.IllegalStateException
 import kotlin.math.ceil
@@ -17,7 +17,7 @@ class ChunkManager <T: Chunk> (
     private lateinit var onChunkLoadCallback: (x: Int, y: Int) -> T
     private lateinit var onChunkSaveCallback: (chunk: T, x: Int, y: Int) -> Unit
     private lateinit var loadedChunks: Array2D<T>
-    private lateinit var debugSurface: Surface2D
+    private lateinit var debugSurface: Surface
 
     private var xOffsetIndex = 0
     private var yOffsetIndex = 0

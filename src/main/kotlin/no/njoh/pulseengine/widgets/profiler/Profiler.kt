@@ -3,12 +3,17 @@ package no.njoh.pulseengine.widgets.profiler
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.asset.types.Font
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.data.Metric
+import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.shared.utils.Extensions.append
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
+import no.njoh.pulseengine.core.shared.utils.Extensions.noneMatches
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.widget.Widget
-import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
@@ -34,54 +39,35 @@ class Profiler : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface("overlay", zOrder = -100)
+        engine.gfx.createSurface("profiler", zOrder = -101)
         engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "graph_font")
-        engine.console.registerCommand("showGraphs") {
+        engine.console.registerCommand("showProfiler") {
             isRunning = !isRunning
             CommandResult("", showCommand = false)
         }
-
-        graphs.addAll(listOf(
-            Graph("FRAMES PER SECOND", "") { engine.data.currentFps.toFloat() },
-            Graph("RENDER TIME", "MS") { engine.data.renderTimeMs },
-            Graph("UPDATE TIME", "MS") { engine.data.updateTimeMS },
-            Graph("FIXED UPDATE TIME", "MS") { engine.data.fixedUpdateTimeMS },
-            Graph("USED MEMORY", "MB") { engine.data.usedMemory.toFloat() },
-            Graph("MEMORY OF TOTAL", "%") { engine.data.usedMemory * 100f / engine.data.totalMemory }
-        ))
     }
 
     override fun onUpdate(engine: PulseEngine)
     {
-        for (metric in engine.data.metrics.values)
-        {
-            val graph = graphs.find { it.name == metric.name }
-            if (graph == null)
-            {
-                graphs.add(Graph(metric.name, metric.unit, metric.source))
-                break
-            } else if (!(graph.source === metric.source)) {
-                graphs.remove(graph)
-                graphs.add(Graph(metric.name, metric.unit, metric.source))
-                break
-            }
+        graphs.removeWhen { it.metric isNotIn engine.data.metrics }
+
+        engine.data.metrics.forEachFast { metric ->
+            if (graphs.noneMatches { it.metric === metric })
+                graphs.add(Graph(metric))
         }
 
         engine.input.requestFocus(area)
-
         val insideArea = area.isInside(engine.input.xMouse, engine.input.yMouse)
 
-        if (engine.input.isPressed(Mouse.RIGHT))
+        if (engine.input.isPressed(MouseButton.RIGHT))
         {
-            if (insideArea)
-                adjustingSize = true
+            if (insideArea) adjustingSize = true
         }
         else adjustingSize = false
 
-        if (engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(MouseButton.LEFT))
         {
-            if (insideArea)
-                grabbed = true
+            if (insideArea) grabbed = true
         }
         else grabbed = false
 
@@ -93,13 +79,12 @@ class Profiler : Widget
         else if (adjustingSize)
         {
             maxWidth = max(minWidth, maxWidth + engine.input.xdMouse * 5)
-
         }
         else engine.input.releaseFocus(area)
 
         if (System.currentTimeMillis() - lastTime > 1000 / TICK_RATE)
         {
-            graphs.forEach { it.update() }
+            graphs.forEachFast { it.update() }
             lastTime = System.currentTimeMillis()
         }
     }
@@ -120,12 +105,12 @@ class Profiler : Widget
             h *= scale
         }
 
-        val surface = engine.gfx.getSurfaceOrDefault("overlay")
+        val surface = engine.gfx.getSurfaceOrDefault("profiler")
         val font = engine.asset.getOrNull("graph_font") ?: Font.DEFAULT
 
-        for (graph in graphs)
+        graphs.forEachFast()
         {
-            graph.render(surface, font, x, y, w, h)
+            it.render(surface, font, x, y, w, h)
             xMax = max(xMax, x + w + graphPadding)
             yMax = max(yMax, y + h + graphPadding)
             x += w + graphPadding
@@ -150,54 +135,52 @@ class Profiler : Widget
 
     override fun onDestroy(engine: PulseEngine) {  }
 
-    class Graph(
-        val name: String,
-        val unit: String,
-        val source: () -> Float
-    ) : Iterable<Float> {
-        private var data: FloatArray = FloatArray(WINDOWS_LENGTH * 2)
-        private var taleCursor: Int = 0
-        private var headCursor: Int = 0
-        private var latestValue: Float = 0f
-        private var averageValue: Float = 0f
-        private val iterator = GraphDataIterator(data, taleCursor, headCursor)
+    class Graph(val metric: Metric)
+    {
+        private var data = FloatArray(WINDOWS_LENGTH * 2)
+        private var taleCursor = 0
+        private var headCursor = 0
+        private var latestValue = 0f
+        private var averageValue = 0f
 
-        fun size(): Int =
-            if (taleCursor > headCursor)
-                data.size - taleCursor + headCursor
-            else
-                headCursor - taleCursor
+        fun size(): Int = if (taleCursor > headCursor) data.size - taleCursor + headCursor else headCursor - taleCursor
 
         fun update()
         {
-            val value = source.invoke()
-            latestValue = value
-            data[headCursor] = value
+            metric.onSample(metric)
+
+            latestValue = metric.latestValue
+            data[headCursor] = latestValue
             headCursor = (headCursor + 1) % data.size
 
             if (size() >= WINDOWS_LENGTH)
                 taleCursor = (taleCursor + 1) % data.size
 
-            averageValue = data.average().toFloat()
+            var avg = 0f
+            forEachValue { avg += it }
+            averageValue = avg / max(size(), 1)
         }
 
-        fun render(surface: Surface2D, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
+        fun render(surface: Surface, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
         {
-            val headerText = name + if (unit.isNotEmpty()) " ($unit)" else ""
-
+            val headerText = newText(metric.name)
             surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)
-            surface.drawTexture(Texture.BLANK, xPos, yPos, width, height)
+            surface.drawTexture(Texture.BLANK, xPos, yPos, width, height, cornerRadius = 4f)
             surface.setDrawColor(1f,1f,1f,0.95f)
             surface.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 
-            val min = this.minOrNull() ?: 0f
-            val max = this.maxOrNull() ?: 0f
-            val valueRange = (max - min)
+            var minVal = if (size() > 0) Float.MAX_VALUE else 0f
+            var maxVal = if (size() > 0) Float.MIN_VALUE else 0f
+            forEachValue()
+            {
+                if (it < minVal) minVal = it
+                if (it > maxVal) maxVal = it
+            }
+            val valueRange = (maxVal - minVal)
             val nTicks = 4
             val tickLength = 8
-            val maxTickText = if (max < nTicks) "%.1f".format(Locale.US, max) else max.toInt().toString()
+            val maxTickText = newText().append(maxVal, decimals = if (maxVal < nTicks) 1 else 0)
             val tickTextSize = (2 + maxTickText.length) * (TICK_MARK_FONT_SIZE / 2f)
-
             val x = xPos + PADDING
             val y = yPos + TOP_PADDING
             val w = width - PADDING - tickTextSize
@@ -216,8 +199,8 @@ class Profiler : Widget
                 val fraction = (i.toFloat() / nTicks) * 2f - 1f
                 val xTick = x + w - tickLength / 2
                 val yTick = y + (h / 2) + (h / 2) * fraction
-                val tickValue = min + (valueRange / 2f) - (valueRange / 2f) * fraction
-                val tickValueText = if (max < nTicks) "%.1f".format(Locale.US, tickValue) else tickValue.toInt().toString()
+                val tickValue = minVal + (valueRange / 2f) - (valueRange / 2f) * fraction
+                val tickValueText = newText().append(tickValue, decimals = if (maxVal < nTicks) 1 else 0)
 
                 // Guide line
                 if (i % 2 != 0)
@@ -232,60 +215,57 @@ class Profiler : Widget
                 surface.drawLine(xTick, yTick, xTick + tickLength, yTick)
 
                 // Value text
-                surface.setDrawColor(1f, 1f, 1f, 0.95f)
-                surface.drawText(tickValueText, xTick + tickLength*1.5f, yTick, yOrigin = 0.5f, font = font, fontSize = TICK_MARK_FONT_SIZE)
+                if (maxVal != minVal || i == nTicks / 2)
+                {
+                    surface.setDrawColor(1f, 1f, 1f, 0.95f)
+                    surface.drawText(tickValueText, xTick + tickLength * 1.5f, yTick, yOrigin = 0.5f, font = font, fontSize = TICK_MARK_FONT_SIZE)
+                }
             }
 
             surface.setDrawColor(1f,1f,1f,0.95f)
 
+            var i = 0
+            val size = size()
             var xPlotLast = 0f
             var yPlotLast = 0f
-            var i = 0
-            for (value in this)
+            val range = (maxVal - minVal)
+            forEachValue()
             {
-                val fraction = (value - min) / (max - min)
-                val xPlot = x + w - (this.size() - i) * sampleWidth
+                val fraction = if (range == 0f) 0.5f else (it - minVal) / range
+                val xPlot = x + w - (size - i) * sampleWidth
                 val yPlot = y + (h / 2f) + (1f - fraction * 2f) * (h / 2f)
                 if (i > 0)
                     surface.drawLine(xPlot, yPlot, xPlotLast, yPlotLast)
-
                 xPlotLast = xPlot
                 yPlotLast = yPlot
                 i++
             }
 
-            val lastValueText = if (latestValue < 5) "%.2f".format(Locale.US, latestValue) else "(${latestValue.toInt()})"
-            val averageValueText = if (averageValue < 5) "(%.2f)".format(Locale.US, averageValue) else "(${averageValue.toInt()})"
+            val lastValueText = newText('(').append(latestValue, decimals = if (latestValue < 5) 2 else 0).append(')')
             surface.drawText(lastValueText, x + 5, y + 22f, font = font, fontSize = VALUE_FONT_SIZE, yOrigin = 0.5f)
+
+            val averageValueText = newText("(avg ").append(averageValue, decimals = if (averageValue < 5) 2 else 0).append(')')
             surface.drawText(averageValueText, x + 5, y + 50f, font = font, fontSize = AVG_VALUE_FONT_SIZE, yOrigin = 0.5f)
         }
 
-        override fun iterator(): Iterator<Float> =
-            iterator.reset(taleCursor, headCursor)
-
-        class GraphDataIterator(
-            private val data: FloatArray,
-            private var taleCursor: Int = 0,
-            private var headCursor: Int = 0
-        ): Iterator<Float> {
-            override fun hasNext(): Boolean = taleCursor != headCursor
-            override fun next(): Float
+        private inline fun forEachValue(action: (Float) -> Unit)
+        {
+            var i = taleCursor
+            while (i != headCursor)
             {
-                val value = data[taleCursor]
-                taleCursor = (taleCursor + 1) % data.size
-                return value
-            }
-            fun reset(taleCursor: Int, headCursor: Int): GraphDataIterator
-            {
-                this.taleCursor = taleCursor
-                this.headCursor = headCursor
-                return this
+                action(data[i])
+                i = (i + 1) % data.size
             }
         }
     }
 
     companion object
     {
+        private val sb = StringBuilder(150)
+        private fun newText() = sb.clear()
+        private fun newText(s: String) = newText().append(s)
+        private fun newText(c: Char) = newText().append(c)
+
         const val PADDING = 15f
         const val TOP_PADDING = 40f
         const val TICK_RATE = 100       // Update every 10 ms

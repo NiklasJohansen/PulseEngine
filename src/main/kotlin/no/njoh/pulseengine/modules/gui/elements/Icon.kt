@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.gui.elements
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.*
 
 open class Icon(
@@ -22,7 +22,7 @@ open class Icon(
 
     override fun onUpdate(engine: PulseEngine) { }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         val iconFont = engine.asset.getOrNull<Font>(iconFontName) ?: return
         surface.setDrawColor(color)

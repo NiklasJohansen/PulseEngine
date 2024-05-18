@@ -4,11 +4,12 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import de.undercouch.bson4jackson.BsonFactory
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
-import org.lwjgl.glfw.GLFW
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import java.io.File
 import java.io.FileNotFoundException
@@ -16,35 +17,48 @@ import kotlin.system.measureNanoTime
 
 open class DataImpl : Data()
 {
-    override var currentFps: Int = 0
-    override var renderTimeMs: Float = 0f
-    override var updateTimeMS: Float = 0f
-    override var fixedUpdateTimeMS: Float = 0f
-    override var fixedDeltaTime: Float = 0.017f
-    override var deltaTime: Float = 0.017f
-    override var interpolation: Float = 0f
-    override var usedMemory: Long = 0L
-    override var totalMemory: Long = 0L
-    override var metrics = mutableMapOf<String, Metric>()
-    override lateinit var saveDirectory: String
+    override var currentFps           = 0
+    override var totalFrameTimeMs     = 0f
+    override var gpuRenderTimeMs      = 0f
+    override var cpuRenderTimeMs      = 0f
+    override var cpuUpdateTimeMs      = 0f
+    override var cpuFixedUpdateTimeMs = 0f
+    override var fixedDeltaTime       = 0.017f
+    override var deltaTime            = 0.017f
+    override var interpolation        = 0f
+    override var usedMemoryKb         = 0L
+    override var totalMemoryKb        = 0L
+    override val metrics              = ArrayList<Metric>()
+    override var saveDirectory        = "NOT SET"
 
-    // Used by engine
-    private var fpsTimer = 0.0
-    private val fpsFilter = FloatArray(20)
-    private var frameCounter = 0
-    var lastFrameTime = 0.0
+    private val fpsFilter      = FloatArray(20)
+    private var fpsTimer       = 0.0
+    private var frameStartTime = 0.0
+    private var frameCounter   = 0
+
+    var lastFrameTime          = 0.0
     var fixedUpdateAccumulator = 0.0
-    var fixedUpdateLastTime = 0.0
+    var fixedUpdateLastTime    = 0.0
 
     fun init(gameName: String)
     {
         Logger.info("Initializing data (${this::class.simpleName})")
         updateSaveDirectory(gameName)
+
+        addMetric("FRAMES PER SECOND (FPS)")    { sample(currentFps.toFloat())                }
+        addMetric("FRAME TIME (MS)")            { sample(totalFrameTimeMs)                    }
+        addMetric("GPU RENDER TIME (MS)")       { sample(gpuRenderTimeMs)                     }
+        addMetric("CPU RENDER TIME (MS)")       { sample(cpuRenderTimeMs)                     }
+        addMetric("CPU UPDATE TIME (MS)")       { sample(cpuUpdateTimeMs)                     }
+        addMetric("CPU FIXED UPDATE TIME (MS)") { sample(cpuFixedUpdateTimeMs)                }
+        addMetric("USED MEMORY (KB)")           { sample(usedMemoryKb.toFloat())              }
+        addMetric("MEMORY OF TOTAL (%)")        { sample(usedMemoryKb * 100f / totalMemoryKb) }
     }
 
-    override fun addMetric(name: String, unit: String, source: () -> Float)
+    override fun addMetric(name: String, onSample: Metric.() -> Unit)
     {
-        metrics[name] = Metric(name, unit, source)
+        metrics.removeWhen { it.name == name }
+        metrics += Metric(name, onSample)
     }
 
     override fun exists(fileName: String): Boolean =
@@ -85,29 +99,33 @@ open class DataImpl : Data()
 
     override fun <T> saveObjectAsync(data: T, fileName: String, format: FileFormat, onComplete: (T) -> Unit)
     {
-        GlobalScope.launch {
-            saveObject(data, fileName, format)
-                .takeIf { it }
-                ?.let { onComplete.invoke(data) }
+        GlobalScope.launch(Dispatchers.IO)
+        {
+            saveObject(data, fileName, format).takeIf { it }?.let { onComplete.invoke(data) }
         }
     }
 
     override fun <T> loadObjectAsync(
-        fileName: String, type: Class<T>,
+        fileName: String,
+        type: Class<T>,
         fromClassPath: Boolean,
         onFail: () -> Unit,
         onComplete: (T) -> Unit
     ) {
-        GlobalScope.launch {
-            loadObject(fileName, type, fromClassPath)
-                ?.let(onComplete)
-                ?: onFail()
+        GlobalScope.launch(Dispatchers.IO)
+        {
+            loadObject(fileName, type, fromClassPath)?.let(onComplete) ?: onFail()
         }
     }
 
     fun updateSaveDirectory(gameName: String)
     {
         saveDirectory = File("$homeDir/$gameName").absolutePath
+    }
+
+    fun startFrameTimer()
+    {
+        frameStartTime = glfwGetTime()
     }
 
     inline fun measureAndUpdateTimeStats(block: () -> Unit)
@@ -118,23 +136,36 @@ open class DataImpl : Data()
         block.invoke()
 
         lastFrameTime = glfwGetTime()
-        updateTimeMS = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        cpuUpdateTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
     }
 
     fun updateMemoryStats()
     {
-        usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / MEGA_BYTE
-        totalMemory = runtime.maxMemory() / MEGA_BYTE
+        usedMemoryKb = (runtime.totalMemory() - runtime.freeMemory()) / KILO_BYTE
+        totalMemoryKb = runtime.maxMemory() / KILO_BYTE
     }
 
-    inline fun measureRenderTimeAndUpdateInterpolationValue(block: () -> Unit)
+    inline fun measureCpuRenderTime(block: () -> Unit)
     {
         val startTime = glfwGetTime()
-        interpolation = fixedUpdateAccumulator.toFloat() / fixedDeltaTime
 
         block.invoke()
 
-        renderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        cpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+    }
+
+    inline fun measureGpuRenderTime(block: () -> Unit)
+    {
+        val startTime = glfwGetTime()
+
+        block.invoke()
+
+        gpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+    }
+
+    fun updateInterpolationValue()
+    {
+        interpolation = fixedUpdateAccumulator.toFloat() / fixedDeltaTime
     }
 
     fun calculateFrameRate()
@@ -144,6 +175,7 @@ open class DataImpl : Data()
         frameCounter = (frameCounter + 1) % fpsFilter.size
         currentFps = fpsFilter.average().toInt()
         fpsTimer = nowTime
+        totalFrameTimeMs = ((nowTime - frameStartTime) * 1000.0).toFloat()
     }
 
     private fun getMapper(fileFormat: FileFormat) =
@@ -164,19 +196,19 @@ open class DataImpl : Data()
     companion object
     {
         private val bsonMapper = ObjectMapper(BsonFactory())
-            .registerModule(KotlinModule())
+            .registerModule(KotlinModule.Builder().build())
             .enableDefaultTyping()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)
 
         private val jsonMapper = ObjectMapper()
-            .registerModule(KotlinModule())
+            .registerModule(KotlinModule.Builder().build())
             .enableDefaultTyping()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)
 
-        private const val MEGA_BYTE = 1048576L
+        private const val KILO_BYTE = 1024L
         private val runtime = Runtime.getRuntime()
-        val homeDir = javax.swing.JFileChooser().fileSystemView.defaultDirectory.toString()
+        private val homeDir = System.getProperty("user.home")
     }
 }

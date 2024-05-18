@@ -3,9 +3,9 @@ package no.njoh.pulseengine.modules.gui.elements
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.input.CursorType
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.*
 import no.njoh.pulseengine.modules.gui.ScrollDirection.*
 import no.njoh.pulseengine.modules.gui.ScrollbarVisibility.ALWAYS_VISIBLE
@@ -78,7 +78,7 @@ class Scrollbar(
         isMouseOverSlider = (xMouse >= xSlider && xMouse < xSlider + sliderWidth && yMouse >= ySlider && yMouse < ySlider + sliderHeight)
 
         // Check if mouse is grabbing slider
-        if (engine.input.isPressed(Mouse.LEFT))
+        if (engine.input.isPressed(MouseButton.LEFT))
         {
             if (isMouseOverSlider)
                 sliderGrabbed = true
@@ -118,7 +118,7 @@ class Scrollbar(
         }
 
         if (isMouseOverSlider)
-            engine.input.setCursor(CursorType.ARROW)
+            engine.input.setCursorType(CursorType.ARROW)
     }
 
     private fun updateSliderFraction(mouseChange: Float, scroll: Float, sliderTravelDist: Float)
@@ -138,7 +138,7 @@ class Scrollbar(
         }
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         surface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue, bgColor.alpha)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)

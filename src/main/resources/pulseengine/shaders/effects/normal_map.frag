@@ -5,13 +5,14 @@ in vec2 texSize;
 in vec2 texCoord;
 in float texAngleRad;
 in vec2 texTiling;
-in float texIndex;
 in vec2 quadSize;
 in vec2 scale;
+in float texIndex;
+flat in uint samplerIndex;
 
 out vec4 fragColor;
 
-uniform sampler2DArray textureArray;
+uniform sampler2DArray textureArrays[16];
 
 vec2 rotate(vec2 v, float a) {
     float s = sin(a);
@@ -26,7 +27,7 @@ void main() {
     if (texIndex >= 0)
     {
         vec2 sampleCoord = texStart + texSize * (texTiling == 1.0 ? texCoord : fract(texCoord * texTiling));
-        normal = texture(textureArray, vec3(sampleCoord, floor(texIndex)));
+        normal = texture(textureArrays[samplerIndex], vec3(sampleCoord, floor(texIndex)));
 
         // Scale and rotate normal
         normal.xy = (rotate((normal.xy * 2.0 - 1.0) * scale, texAngleRad) + 1.0) * 0.5;

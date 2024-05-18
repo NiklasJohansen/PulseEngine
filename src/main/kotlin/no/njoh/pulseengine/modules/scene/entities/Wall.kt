@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.scene.entities
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.AssetRef
 import no.njoh.pulseengine.modules.lighting.LightOccluder
 import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
@@ -19,7 +19,7 @@ class Wall : Box(), LightOccluder, NormalMapped
     override var normalMapOrientation = Orientation.NORMAL
     override var castShadows: Boolean = true
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         val x = if (xInterpolated.isNaN()) x else xInterpolated
         val y = if (yInterpolated.isNaN()) y else yInterpolated

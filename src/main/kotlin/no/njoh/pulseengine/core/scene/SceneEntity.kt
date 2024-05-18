@@ -1,6 +1,5 @@
 package no.njoh.pulseengine.core.scene
 
-import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
 import no.njoh.pulseengine.core.shared.utils.Extensions.minus
@@ -23,9 +22,6 @@ abstract class SceneEntity
 
     @ScnProp(hidden = true)
     var flags = DISCOVERABLE or EDITABLE
-
-    @JsonIgnore
-    val typeName = this::class.simpleName ?: ""
 
     fun set(flag: Int) { flags = flags or flag }
     fun setNot(flag: Int) { flags = flags and flag.inv() }

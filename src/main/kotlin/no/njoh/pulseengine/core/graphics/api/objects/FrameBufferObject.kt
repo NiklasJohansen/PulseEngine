@@ -1,14 +1,11 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.Multisampling
+import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA_MAX
 import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
-import no.njoh.pulseengine.core.graphics.api.Attachment
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.NORMAL
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.lwjgl.opengl.GL14.GL_DEPTH_COMPONENT24
@@ -16,23 +13,24 @@ import org.lwjgl.opengl.GL20.glDrawBuffers
 import org.lwjgl.opengl.GL30.*
 import org.lwjgl.opengl.GL32.GL_TEXTURE_2D_MULTISAMPLE
 import org.lwjgl.opengl.GL32.glTexImage2DMultisample
+import java.nio.ByteBuffer
 import kotlin.math.min
 
 open class FrameBufferObject(
+    val id: Int,
     val width: Int,
     val height: Int,
-    private val frameBufferId: Int,
     private val renderBufferIds: List<Int>,
     private val textures: List<Texture>
 ) {
-    fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
+    fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, id)
     fun release() = glBindFramebuffer(GL_FRAMEBUFFER, 0)
     fun clear() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
     fun delete()
     {
-        textures.forEachFast { glDeleteTextures(it.id) }
+        textures.forEachFast { glDeleteTextures(it.handle.textureIndex) }
         renderBufferIds.forEachFast { glDeleteRenderbuffers(it) }
-        glDeleteFramebuffers(frameBufferId)
+        glDeleteFramebuffers(id)
     }
 
     fun getTexture(index: Int = 0): Texture? =
@@ -42,8 +40,8 @@ open class FrameBufferObject(
 
     fun resolveToFBO(destinationFbo: FrameBufferObject)
     {
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, this.frameBufferId)
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destinationFbo.frameBufferId)
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, this.id)
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destinationFbo.id)
 
         for (i in 0 until min(this.textures.size, destinationFbo.textures.size))
         {
@@ -68,7 +66,7 @@ open class FrameBufferObject(
             width: Int,
             height: Int,
             textureScale: Float = 1f,
-            textureFormat: TextureFormat = NORMAL,
+            textureFormat: TextureFormat = RGBA8,
             textureFilter: TextureFilter = LINEAR,
             multisampling: Multisampling = NONE,
             attachments: List<Attachment> = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER)
@@ -98,8 +96,9 @@ open class FrameBufferObject(
                 if (textureId != null)
                 {
                     val texture = Texture("", "fbo_${attachment.name.toLowerCase()}")
-                    texture.load(null, texWidth, texHeight, GL_RGBA8)
-                    texture.finalize(textureId, isBindless = false, attachment = attachment.value)
+                    val handle = TextureHandle.create(0, textureId)
+                    texture.stage(null as ByteBuffer?, texWidth, texHeight)
+                    texture.finalize(handle, isBindless = false, attachment = attachment.value)
                     textures.add(texture)
                 }
 
@@ -121,7 +120,7 @@ open class FrameBufferObject(
             // Unbind frame buffer (binds default buffer)
             glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
-            return FrameBufferObject(width, height, frameBufferId, bufferIds, textures)
+            return FrameBufferObject(frameBufferId, width, height, bufferIds, textures)
         }
 
         private fun createColorTextureAttachment(width: Int, height: Int, format: TextureFormat, filter: TextureFilter, attachment: Attachment, samples: Int): Int
@@ -173,7 +172,7 @@ open class FrameBufferObject(
             else
                 glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height)
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthBufferId)
-            glBindRenderbuffer(GL_FRAMEBUFFER, 0)
+            glBindRenderbuffer(GL_RENDERBUFFER, 0)
             return depthBufferId
         }
     }

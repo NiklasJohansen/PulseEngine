@@ -2,7 +2,7 @@ package no.njoh.pulseengine.modules.lighting.entities
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
@@ -62,5 +62,5 @@ open class Lamp : StandardSceneEntity(), LightSource
         }
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D) { }
+    override fun onRender(engine: PulseEngine, surface: Surface) { }
 }

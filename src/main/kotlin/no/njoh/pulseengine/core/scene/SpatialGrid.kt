@@ -10,7 +10,6 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.shared.primitives.HitResult
 import no.njoh.pulseengine.core.shared.primitives.Physical
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
-import no.njoh.pulseengine.core.shared.primitives.SwapList
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.GridUtil
@@ -18,7 +17,7 @@ import no.njoh.pulseengine.core.shared.utils.MathUtil
 import kotlin.math.*
 
 class SpatialGrid (
-    private val entities : List<SwapList<SceneEntity>>
+    private val entities : List<SceneEntityList<SceneEntity>>
 ) {
     var maxWidth = 100_000
     var maxHeight = 100_000
@@ -281,7 +280,7 @@ class SpatialGrid (
         val surface = engine.gfx.getSurface("spatial_grid") ?: engine.gfx.createSurface(
             name = "spatial_grid",
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.context.zOrder - 1
+            zOrder = engine.gfx.mainSurface.config.zOrder - 1
         )
 
         // Background rectangle

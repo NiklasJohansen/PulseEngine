@@ -138,9 +138,9 @@ open class WindowImpl : WindowInternal
 
     override fun isOpen(): Boolean = !glfwWindowShouldClose(windowHandle)
 
-    override fun cleanUp()
+    override fun destroy()
     {
-        Logger.info("Cleaning up window (${this::class.simpleName})")
+        Logger.info("Destroying window (${this::class.simpleName})")
         glfwSetErrorCallback(null)
         glfwDestroyWindow(windowHandle)
         glfwTerminate()

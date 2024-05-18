@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.gui.elements
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Font
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.*
 import no.njoh.pulseengine.modules.gui.elements.Label.TextSizeStrategy.*
 import kotlin.math.max
@@ -99,7 +99,7 @@ class Label(
 
     override fun onUpdate(engine: PulseEngine) { }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
         surface.drawText(

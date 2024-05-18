@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.console
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Logger
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -70,8 +71,10 @@ open class ConsoleImpl : ConsoleInternal
     {
         return commandString
             .splitIgnoreLiterals(";".toRegex())
-            .map { it.trimStart().trimEnd() }
-            .map { command ->
+            .mapNotNull {
+                val command = it.trimStart().trimEnd()
+                if (command.isBlank() || command.startsWith("//"))
+                    return@mapNotNull null
 
                 // Add command to history
                 val commandEntry = ConsoleEntry(command, showCommand, MessageType.COMMAND)
@@ -87,7 +90,7 @@ open class ConsoleImpl : ConsoleInternal
                 if (result.message.isNotEmpty())
                     history.add(ConsoleEntry(result.message, true, result.type))
 
-                return@map result
+                return@mapNotNull result
             }
     }
 
@@ -270,7 +273,7 @@ open class ConsoleImpl : ConsoleInternal
         this.length >= 2 && this.startsWith("\"") && this.endsWith("\"")
 
     private fun String.isVerboseArgument(command: Command): Boolean =
-        command.arguments.any { this.startsWith("${it.name}=") }
+        command.arguments.anyMatches { this.startsWith("${it.name}=") }
 
     private fun String.isArgumentTemplate(): Boolean =
         this.startsWith("{") && this.endsWith("}") && this.split(":").size == 2

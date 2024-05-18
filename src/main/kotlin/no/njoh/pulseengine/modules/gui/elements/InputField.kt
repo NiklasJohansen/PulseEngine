@@ -5,10 +5,10 @@ import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.input.Input
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.core.input.Key
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.gui.*
 import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
@@ -95,7 +95,7 @@ class InputField (
 
     override fun onMouseLeave(engine: PulseEngine)
     {
-        engine.input.setCursor(ARROW)
+        engine.input.setCursorType(ARROW)
     }
 
     override fun onUpdate(engine: PulseEngine)
@@ -128,7 +128,7 @@ class InputField (
             mouseInsideArea &&
             engine.input.xMouse > x.value + width.value - numberStepperWidth.value
 
-        if (engine.input.isPressed(Mouse.LEFT) && editable)
+        if (engine.input.isPressed(MouseButton.LEFT) && editable)
         {
             if (!isSteppingNumber && isMouseInsideNumberStepper)
             {
@@ -139,15 +139,15 @@ class InputField (
         }
         else if (isSteppingNumber)
         {
-            engine.input.setCursor(ARROW)
+            engine.input.setCursorType(ARROW)
             isSteppingNumber = false
         }
 
         when
         {
             !editable -> { }
-            isSteppingNumber || isMouseInsideNumberStepper -> engine.input.setCursor(VERTICAL_RESIZE)
-            mouseInsideArea -> engine.input.setCursor(IBEAM)
+            isSteppingNumber || isMouseInsideNumberStepper -> engine.input.setCursorType(VERTICAL_RESIZE)
+            mouseInsideArea -> engine.input.setCursorType(IBEAM)
         }
 
         if (isSteppingNumber)
@@ -286,11 +286,12 @@ class InputField (
             {
                 // Past text from clipboard into text box. Replaces selected text. (CTRL + V)
                 removeSelectedText()
-                val text = input.getClipboard()
-                inputText.insert(inputCursor, text)
-                inputCursor += text.length
-                selectCursor = inputCursor
-                suggestionCursor = -1
+                input.getClipboard { content ->
+                    inputText.insert(inputCursor, content)
+                    inputCursor += content.length
+                    selectCursor = inputCursor
+                    suggestionCursor = -1
+                }
             }
         }
 
@@ -451,7 +452,7 @@ class InputField (
         }
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         val charsPerLine = getNumberOfChars(width.value - leftTextPadding.value)
         val hasText = inputText.isNotEmpty()
@@ -534,7 +535,7 @@ class InputField (
         }
     }
 
-    private fun drawArrow(x: Float, y: Float, width: Float, height: Float, surface: Surface2D, color: Color, lengthFactor: Float = 2.5f)
+    private fun drawArrow(x: Float, y: Float, width: Float, height: Float, surface: Surface, color: Color, lengthFactor: Float = 2.5f)
     {
         surface.setDrawColor(color)
         surface.drawQuadVertex(x, y + height / lengthFactor)

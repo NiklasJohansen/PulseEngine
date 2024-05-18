@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.scene.entities
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.shared.annotations.ScnIcon
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
@@ -26,7 +26,7 @@ open class Camera : StandardSceneEntity()
     @JsonIgnore private var camSize = 100f
     @JsonIgnore private var zoom = targetZoom
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         if (engine.scene.state != SceneState.STOPPED)
             return
@@ -48,7 +48,6 @@ open class Camera : StandardSceneEntity()
         val r = -this.rotation / 180f * PI.toFloat()
         val c = cos(r) * 0.5f
         val s = sin(r) * 0.5f
-        val opacity = 0.8f
 
         // Outer rectangle points
         val x0 = -viewPortWidth * c - viewPortHeight * s
@@ -62,43 +61,14 @@ open class Camera : StandardSceneEntity()
         val x3 =  width * c - height * s
         val y3 =  width * s + height * c
 
-        // Top
-        surface.setDrawColor(0f, 0f, 0f, 0.5f * opacity)
-        surface.drawQuadVertex(x - x1, y - y1) // Left top
-        surface.drawQuadVertex(x - x0, y - y0) // Right top
-        surface.drawQuadVertex(x - x2, y - y2) // Right bottom
-        surface.drawQuadVertex(x - x3, y - y3) // Left bottom
-
-        // Right
-        surface.setDrawColor(0f, 0f, 0f, 0.3f * opacity)
-        surface.drawQuadVertex(x - x2, y - y2) // Left top
-        surface.drawQuadVertex(x - x0, y - y0) // Right top
-        surface.drawQuadVertex(x + x1, y + y1) // Right bottom
-        surface.drawQuadVertex(x + x3, y + y3) // Left bottom
-
-        // Bottom
-        surface.setDrawColor(0f, 0f, 0f, 0.25f * opacity)
-        surface.drawQuadVertex(x + x2, y + y2) // Left top
-        surface.drawQuadVertex(x + x3, y + y3) // Right top
-        surface.drawQuadVertex(x + x1, y + y1) // Right bottom
-        surface.drawQuadVertex(x + x0, y + y0) // Left bottom
-
-        // Left
-        surface.setDrawColor(0f, 0f, 0f, 0.4f * opacity)
-        surface.drawQuadVertex(x - x1, y - y1) // Left top
-        surface.drawQuadVertex(x - x3, y - y3) // Right top
-        surface.drawQuadVertex(x + x2, y + y2) // Right bottom
-        surface.drawQuadVertex(x + x0, y + y0) // Left bottom
-
         // Outer Rectangle lines
-        surface.setDrawColor(1f, 1f, 1f, 0.8f)
+        surface.setDrawColor(1f, 1f, 1f, 1f)
         surface.drawLine(x + x0, y + y0, x + x1, y + y1)
         surface.drawLine(x + x1, y + y1, x - x0, y - y0)
         surface.drawLine(x - x0, y - y0, x - x1, y - y1)
         surface.drawLine(x - x1, y - y1, x + x0, y + y0)
 
         // Diagonal lines
-        surface.setDrawColor(0f, 0f, 0f, 0.8f)
         surface.drawLine(x + x2, y + y2, x + x0, y + y0) // Left bottom
         surface.drawLine(x - x3, y - y3, x - x1, y - y1) // Left top
         surface.drawLine(x - x2, y - y2, x - x0, y - y0) // Right top
@@ -109,8 +79,8 @@ open class Camera : StandardSceneEntity()
     {
         engine.scene.getEntityOfType<Spatial>(targetEntityId)?.let { trackEntity(it) }
 
-        val surfaceWidth = engine.gfx.mainSurface.width
-        val surfaceHeight = engine.gfx.mainSurface.height
+        val surfaceWidth = engine.gfx.mainSurface.config.width
+        val surfaceHeight = engine.gfx.mainSurface.config.height
         val newScale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight) * zoom
         engine.gfx.mainCamera.apply()
         {

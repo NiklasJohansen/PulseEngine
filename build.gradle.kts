@@ -1,9 +1,8 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    java
     `maven-publish`
-    kotlin("jvm") version "1.6.10"
+    kotlin("jvm") version "1.9.23"
     id("me.champeau.jmh") version "0.6.6"
 }
 
@@ -31,9 +30,8 @@ repositories {
 
 dependencies {
     // Kotlin
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}")
     implementation("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
 
     // LWJGL
     implementation(platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
@@ -55,11 +53,10 @@ dependencies {
     }
 
     // Other
-    implementation("org.l33tlabs.twl:pngdecoder:1.0")
-    implementation("org.joml:joml:1.10.4")
+    implementation("org.joml:joml:1.10.5")
     implementation("net.sf.trove4j:trove4j:3.0.3")
-    implementation("de.undercouch:bson4jackson:2.13.1")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.3")
+    implementation("de.undercouch:bson4jackson:2.15.1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.1")
 
     // Java Microbenchmark Harness
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.35")
@@ -81,7 +78,7 @@ val jar by tasks.getting(Jar::class) {
     manifest {
         attributes["Main-Class"] = mainClass
     }
-    exclude("**/*.kotlin_module", "**/*.kotlin_metadata")
+    exclude("**/*.kotlin_module", "**/*.kotlin_metadata", "testbed/**")
     from({ configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) } })
 }
 
@@ -89,6 +86,7 @@ val jar by tasks.getting(Jar::class) {
 tasks.withType(KotlinCompile::class).all {
     kotlinOptions {
         freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
+        jvmTarget = "19"
     }
 }
 

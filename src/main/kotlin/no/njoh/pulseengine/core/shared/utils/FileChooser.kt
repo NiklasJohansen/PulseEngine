@@ -1,65 +1,55 @@
 package no.njoh.pulseengine.core.shared.utils
 
-import org.lwjgl.system.MemoryUtil
-import org.lwjgl.util.nfd.NFDPathSet
+import org.lwjgl.system.MemoryStack.stackPush
+import org.lwjgl.util.nfd.NFDFilterItem
 import org.lwjgl.util.nfd.NativeFileDialog.*
 
 object FileChooser
 {
-    fun showSaveFileDialog(fileTypes: String, defaultPath: String? = null, onFileChosen: (String) -> Unit)
+    fun showSaveFileDialog(defaultPath: String? = null, onFileChosen: (String) -> Unit)
     {
-        val savePath = MemoryUtil.memAllocPointer(1)
-        try
-        {
-            when (NFD_SaveDialog(fileTypes, defaultPath, savePath))
+        stackPush().use { stack ->
+
+            val savePath = stack.mallocPointer(1)
+            val filters = NFDFilterItem.malloc(1)
+            filters.get(0).name(stack.UTF8("Pulse Engine Scene")).spec(stack.UTF8("scn"))
+
+            try
             {
-                NFD_OKAY ->
+                when (NFD_SaveDialog(savePath, filters, defaultPath, null))
                 {
-                    onFileChosen(savePath.getStringUTF8(0))
-                    nNFD_Free(savePath[0])
+                    NFD_OKAY  -> onFileChosen(savePath.getStringUTF8(0))
+                    NFD_ERROR -> Logger.error("FileChooser error: ${NFD_GetError()}")
                 }
-                NFD_CANCEL -> { }
-                else -> Logger.error("FileChooser error: ${NFD_GetError()}")
+            }
+            finally
+            {
+                NFD_FreePath(savePath[0])
+                filters.free()
             }
         }
-        finally { MemoryUtil.memFree(savePath) }
     }
 
-    fun showFileSelectionDialog(fileTypes: String, defaultPath: String? = null, onFileChosen: (String) -> Unit)
+    fun showFileSelectionDialog(defaultPath: String? = null, onFileChosen: (String) -> Unit)
     {
-        val openPath = MemoryUtil.memAllocPointer(1)
-        try
-        {
-            when (NFD_OpenDialog(fileTypes, defaultPath, openPath))
+        stackPush().use { stack ->
+
+            val openPath = stack.mallocPointer(1)
+            val filters = NFDFilterItem.malloc(1)
+            filters.get(0).name(stack.UTF8("Pulse Engine Scene")).spec(stack.UTF8("scn"))
+
+            try
             {
-                NFD_OKAY ->
+                when (NFD_OpenDialog(openPath, filters, defaultPath))
                 {
-                    onFileChosen(openPath.getStringUTF8(0))
-                    nNFD_Free(openPath[0])
+                    NFD_OKAY  -> onFileChosen(openPath.getStringUTF8(0))
+                    NFD_ERROR -> Logger.error("FileChooser error: ${NFD_GetError()}")
                 }
-                NFD_CANCEL -> { }
-                else -> Logger.error("FileChooser error: ${NFD_GetError()}")
             }
-        }
-        finally { MemoryUtil.memFree(openPath) }
-    }
-
-    fun showMultiFileSelectionDialog(fileTypes: String, defaultPath: String? = null, onFilesChosen: (List<String>) -> Unit)
-    {
-        NFDPathSet.calloc().use { pathSet ->
-            when (NFD_OpenDialogMultiple(fileTypes, defaultPath, pathSet))
+            finally
             {
-                NFD_OKAY ->
-                {
-                    LongRange(0, NFD_PathSet_GetCount(pathSet))
-                        .mapNotNull { NFD_PathSet_GetPath(pathSet, it) }
-                        .let {
-                            onFilesChosen(it)
-                            NFD_PathSet_Free(pathSet)
-                        }
-                }
-                NFD_CANCEL -> { }
-                else -> System.err.format("Error: %s\n", NFD_GetError())
+                NFD_FreePath(openPath[0])
+                filters.free()
             }
         }
     }

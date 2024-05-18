@@ -2,9 +2,9 @@ package no.njoh.pulseengine.modules.gui.elements
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.CursorType.*
-import no.njoh.pulseengine.core.input.Mouse
+import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.Surface2D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.UiElement
@@ -26,25 +26,25 @@ class ResizeBarGizmo(
 
     override fun onUpdate(engine: PulseEngine)
     {
-        val mouseInside = area.isInside(engine.input.xMouse, engine.input.yMouse)
+        val mouseInside = area.isInside(engine.input.xMouse, engine.input.yMouse) && engine.input.hasHoverFocus(area)
         if (mouseInside)
         {
-            if (!resizing && engine.input.isPressed(Mouse.LEFT))
+            if (!resizing && engine.input.isPressed(MouseButton.LEFT))
                 resizing = true
 
             val cursor = if (isVertical) HORIZONTAL_RESIZE else VERTICAL_RESIZE
-            engine.input.setCursor(cursor)
+            engine.input.setCursorType(cursor)
             cursorSet = true
         }
-        else if (cursorSet && !engine.input.isPressed(Mouse.LEFT))
+        else if (cursorSet && !engine.input.isPressed(MouseButton.LEFT))
         {
-            engine.input.setCursor(ARROW)
+            engine.input.setCursorType(ARROW)
             cursorSet = false
         }
 
         if (resizing)
         {
-            if (!engine.input.isPressed(Mouse.LEFT))
+            if (!engine.input.isPressed(MouseButton.LEFT))
                 resizing = false
 
             positionDiff += if (isVertical) engine.input.xdMouse else engine.input.ydMouse
@@ -54,7 +54,7 @@ class ResizeBarGizmo(
         fade = (fade + (if (mouseInside || resizing) 0.08f else -0.08f)).coerceIn(0f, 1f)
     }
 
-    override fun onRender(engine: PulseEngine, surface: Surface2D)
+    override fun onRender(engine: PulseEngine, surface: Surface)
     {
         if (fade > 0f)
         {

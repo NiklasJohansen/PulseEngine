@@ -17,7 +17,7 @@ annotation class ScnIcon(
     {
         fun ScnIcon.getColor() =
             if (hexColor.isBlank()) null
-            else cache.getOrPut(hexColor) { Color().also { it.setFrom(hexColor) } }
+            else cache.getOrPut(hexColor) { Color().setFromHex(hexColor) }
 
         private val cache = mutableMapOf<String, Color>()
     }
