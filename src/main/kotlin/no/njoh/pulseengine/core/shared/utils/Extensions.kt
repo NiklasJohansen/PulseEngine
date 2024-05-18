@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.shared.utils
 import no.njoh.pulseengine.core.PulseEngine
 import org.joml.Vector2f
 import org.joml.Vector3f
+import org.joml.Vector4f
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -31,6 +32,17 @@ object Extensions
         this.x * t + last.x * (1f - t),
         this.y * t + last.y * (1f - t)
     )
+
+    // For destructuring vectors
+    operator fun Vector2f.component1() = x
+    operator fun Vector2f.component2() = y
+    operator fun Vector3f.component1() = x
+    operator fun Vector3f.component2() = y
+    operator fun Vector3f.component3() = z
+    operator fun Vector4f.component1() = x
+    operator fun Vector4f.component2() = y
+    operator fun Vector4f.component3() = z
+    operator fun Vector4f.component4() = w
 
     /**
      * Linearly interpolates from the [last] value to [this] value.

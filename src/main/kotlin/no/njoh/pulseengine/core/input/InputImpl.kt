@@ -7,9 +7,9 @@ import no.njoh.pulseengine.core.input.CursorMode.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.lastOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
+import no.njoh.pulseengine.core.shared.utils.Extensions.component1
+import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import no.njoh.pulseengine.core.shared.utils.Logger
-import no.njoh.pulseengine.core.shared.utils.component1
-import no.njoh.pulseengine.core.shared.utils.component2
 import org.joml.Vector2f
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*
