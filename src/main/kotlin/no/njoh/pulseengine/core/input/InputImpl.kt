@@ -8,6 +8,9 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.lastOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.shared.utils.component1
+import no.njoh.pulseengine.core.shared.utils.component2
+import org.joml.Vector2f
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWImage
@@ -45,11 +48,15 @@ open class InputImpl : InputInternal
     private var previousFocusArea  = null as FocusArea?
     private var hoverFocusArea     = null as FocusArea?
 
+    private var cursorPosToSet     = null as Vector2f?
     private var cursors            = mutableMapOf<CursorType, Cursor>()
     private var selectedCursorType = ARROW
     private var activeCursorType   = ARROW
     private var selectedCursorMode = NORMAL
     private var activeCursorMode   = NORMAL
+
+    private var setClipboardTo     = null as String?
+    private var onGetClipboard     = mutableListOf<(String) -> Unit>()
 
     override fun init(windowHandle: Long)
     {
@@ -145,11 +152,15 @@ open class InputImpl : InputInternal
     override fun wasReleased(key: Key) =
         isFocused && clicked[key.code] == RELEASED
 
-    override fun getClipboard() =
-        glfwGetClipboardString(windowHandle) ?: ""
+    override fun getClipboard(callback: (String) -> Unit)
+    {
+        onGetClipboard.add(callback)
+    }
 
-    override fun setClipboard(text: String) =
-        glfwSetClipboardString(windowHandle, text)
+    override fun setClipboard(text: String)
+    {
+        setClipboardTo = text
+    }
 
     override fun setOnKeyPressed(callback: (Key) -> Unit): Subscription
     {
@@ -210,11 +221,12 @@ open class InputImpl : InputInternal
 
     override fun setCursorPosition(x: Float, y: Float)
     {
-        glfwSetCursorPos(windowHandle, x.toDouble(), y.toDouble())
+        cursorPosToSet = cursorPos.set(x, y)
     }
 
     override fun pollEvents()
     {
+        // Reset
         isFocused = true
         xMouseLast = xMouse
         yMouseLast = yMouse
@@ -223,7 +235,11 @@ open class InputImpl : InputInternal
         textInput = ""
         clicked.fill(UNCHANGED)
         clickedKeys.clear()
+
+        // Poll all GLFW events
         glfwPollEvents()
+
+        // Update after polling
         gamepads.forEachFast { it.updateState() }
         if (focusStack.size == 1)
             currentFocusArea = focusStack.first()
@@ -231,6 +247,7 @@ open class InputImpl : InputInternal
         focusStack.clear()
         currentFrame++
         updateCursor()
+        updateClipboard()
     }
 
     private fun updateCursor()
@@ -256,6 +273,29 @@ open class InputImpl : InputInternal
             }
             glfwSetInputMode(windowHandle, GLFW_CURSOR, glfwMode)
             activeCursorMode = selectedCursorMode
+        }
+
+        if (cursorPosToSet != null)
+        {
+            val (x, y) = cursorPosToSet!!
+            glfwSetCursorPos(windowHandle, x.toDouble(), y.toDouble())
+            cursorPosToSet = null
+        }
+    }
+
+    private fun updateClipboard()
+    {
+        if (onGetClipboard.isNotEmpty())
+        {
+            val content = glfwGetClipboardString(windowHandle) ?: ""
+            onGetClipboard.forEachFast { it(content) }
+            onGetClipboard.clear()
+        }
+
+        if (setClipboardTo != null)
+        {
+            glfwSetClipboardString(windowHandle, setClipboardTo!!)
+            setClipboardTo = null
         }
     }
 
@@ -297,5 +337,6 @@ open class InputImpl : InputInternal
         private const val RELEASED: Byte = -1
         private const val UNCHANGED: Byte = 0
         private val NO_KEYS = mutableListOf<Key>()
+        private val cursorPos = Vector2f(0f, 0f)
     }
 }

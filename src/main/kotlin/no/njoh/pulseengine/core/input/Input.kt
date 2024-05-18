@@ -74,14 +74,14 @@ interface Input
     fun setOnKeyPressed(callback: (Key) -> Unit): Subscription
 
     /**
-     * Sets the clipboard content to the given text.
+     * Sets the clipboard content to the given text. The clipboard will be updated at the start of the next frame.
      */
     fun setClipboard(text: String)
 
     /**
-     * Returns the current clipboard content.
+     * Asynchronously calls the [callback] with the current clipboard content at next event poll (start of next frame).
      */
-    fun getClipboard(): String
+    fun getClipboard(callback: (String) -> Unit)
 
     /**
      * Requests focus for the given [FocusArea] by registering it on this frames focus stack. Which area from the

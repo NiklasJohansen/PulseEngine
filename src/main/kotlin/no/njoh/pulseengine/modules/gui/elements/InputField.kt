@@ -286,11 +286,12 @@ class InputField (
             {
                 // Past text from clipboard into text box. Replaces selected text. (CTRL + V)
                 removeSelectedText()
-                val text = input.getClipboard()
-                inputText.insert(inputCursor, text)
-                inputCursor += text.length
-                selectCursor = inputCursor
-                suggestionCursor = -1
+                input.getClipboard { content ->
+                    inputText.insert(inputCursor, content)
+                    inputCursor += content.length
+                    selectCursor = inputCursor
+                    suggestionCursor = -1
+                }
             }
         }
 
