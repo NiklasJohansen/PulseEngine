@@ -1,6 +1,6 @@
 # Pulse Engine
 
-[![Repsy](https://img.shields.io/badge/Repsy-0.9.0-3f3750)](https://repo.repsy.io/mvn/njoh/public/no/njoh/pulse-engine/0.9.0/)
+[![Repsy](https://img.shields.io/badge/latest-0.9.0-3f3750)](https://repo.repsy.io/mvn/njoh/public/no/njoh/pulse-engine/0.9.0/)
 [![Kotlin](https://img.shields.io/badge/kotlin-1.9.23-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![workflow](https://github.com/NiklasJohansen/PulseEngine/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/NiklasJohansen/PulseEngine/actions)
 
@@ -29,8 +29,8 @@ Its main purpose is to provide the tools needed to get going when game jamming.
 
 ## 🕹️ Built with Pulse Engine
 
-- [Botgang](https://github.com/NiklasJohansen/shotgang/tree/master/botgang) is a game where you program bots to compete in a top-down shooter
-- [Shotgang](https://github.com/NiklasJohansen/botgang/tree/master/shotgang) is a top-down competitive couch coop game
+- [Botgang](https://github.com/NiklasJohansen/botgang) is a game where you program bots to compete in a top-down shooter
+- [Shotgang](https://github.com/NiklasJohansen/shotgang) is a top-down competitive couch coop game
 - [capra-ml-talk](https://github.com/NiklasJohansen/capra-ml-talk) is an interactive presentation of neural networks
 
 ## 🛠️ Usage
