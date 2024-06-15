@@ -24,6 +24,7 @@ import no.njoh.pulseengine.core.shared.utils.MathUtil
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.lighting.LightType.*
 import kotlin.math.*
 
@@ -44,7 +45,8 @@ open class LightingSystem : SceneSystem()
     @ScnProp(i = 11)                       var useNormalMap = false
     @ScnProp(i = 12)                       var enableLightSpill = true
     @ScnProp(i = 13)                       var correctOffset = true
-    @ScnProp(i = 14)                       var drawDebug = false
+    @ScnProp(i = 14)                       var targetSurfaces = "main"
+    @ScnProp(i = 15)                       var drawDebug = false
 
     private var xMin = 0f
     private var yMin = 0f
@@ -57,6 +59,8 @@ open class LightingSystem : SceneSystem()
     private var gpuRenderTimeMs = 0f
     private var isUsingNormalMap = false
     private var isUsingOccluderMap = false
+    private var lastTargetSurfaces = ""
+    private var postEffectSurfaces = mutableListOf<String>()
 
     private val normalMapRenderPass = RenderPass(
         surfaceName = NORMAL_SURFACE_NAME,
@@ -88,17 +92,75 @@ open class LightingSystem : SceneSystem()
             configureOccluderMap(engine, it, enableLightSpill)
         }
 
-        // Add lighting as a post-processing effect to main surface
-        engine.gfx.mainSurface.addPostProcessingEffect(
-            LightBlendEffect(LIGHT_BLEND_EFFECT_NAME, ambientColor, engine.gfx.mainCamera)
-        )
-
         // Add metrics
         engine.data.addMetric("Lights")              { sample(lightCount.toFloat())        }
         engine.data.addMetric("Edges")               { sample(edgeCount.toFloat())         }
         engine.data.addMetric("Shadow casters")      { sample(shadowCasterCount.toFloat()) }
         engine.data.addMetric("Lighting CPU (MS)", ) { sample(cpuRenderTimeMs)             }
         engine.data.addMetric("Lighting GPU (MS)", ) { sample(gpuRenderTimeMs)             }
+    }
+
+    override fun onUpdate(engine: PulseEngine)
+    {
+        val lightSurface = engine.gfx.getSurface(LIGHT_SURFACE_NAME) ?: return
+        val lightRenderer = lightSurface.getRenderer<LightRenderer>() ?: return
+
+        lightSurface.setMultisampling(multisampling)
+        lightSurface.setTextureScale(textureScale)
+        lightSurface.setTextureFilter(textureFilter)
+        lightSurface.setTextureFormat(textureFormat)
+
+        lightRenderer.ambientColor = ambientColor
+        lightRenderer.normalMapTextureHandle = engine.gfx.getSurface(NORMAL_SURFACE_NAME)?.getTexture()?.handle
+        lightRenderer.occluderMapTextureHandle = engine.gfx.getSurface(OCCLUDER_SURFACE_NAME)?.getTexture()?.handle
+
+        updatePostEffect(engine, lightSurface)
+        configureNormalMap(engine, lightSurface, isEnabled = useNormalMap)
+        configureOccluderMap(engine, lightSurface, isEnabled = enableLightSpill)
+    }
+
+    override fun onRender(engine: PulseEngine)
+    {
+        val lightSurface = engine.gfx.getSurface(LIGHT_SURFACE_NAME) ?: return
+        val lightRenderer = lightSurface.getRenderer<LightRenderer>() ?: return
+        val startTime = System.nanoTime()
+
+        shadowCasterCount = 0
+        lightCount = 0
+        edgeCount = 0
+
+        updateLightMapPositionOffset(engine, lightSurface, lightRenderer)
+        updateBoundingRect(lightSurface)
+        engine.scene.forEachEntityOfType<LightSource>()
+        {
+            addLightsSources(it, lightRenderer, lightSurface, engine)
+        }
+
+        cpuRenderTimeMs = (System.nanoTime() - startTime) / 1_000_000f
+        gpuRenderTimeMs = lightRenderer.gpuRenderTimeMs
+    }
+
+    override fun onDestroy(engine: PulseEngine)
+    {
+        // Remove render passes
+        val renderer = engine.scene.getSystemOfType<EntityRenderer>()
+        renderer?.removeRenderPass(normalMapRenderPass)
+        renderer?.removeRenderPass(occluderRenderPass)
+
+        // Delete surfaces
+        engine.gfx.deleteSurface(LIGHT_SURFACE_NAME)
+        engine.gfx.deleteSurface(NORMAL_SURFACE_NAME)
+        engine.gfx.deleteSurface(OCCLUDER_SURFACE_NAME)
+
+        // Remove and delete post-processing effect
+        postEffectSurfaces.forEachFast { engine.gfx.getSurface(it)?.deletePostProcessingEffect(POST_EFFECT_NAME) }
+        postEffectSurfaces.clear()
+        lastTargetSurfaces = ""
+    }
+
+    override fun onStateChanged(engine: PulseEngine)
+    {
+        if (enabled) onCreate(engine) else onDestroy(engine)
     }
 
     private fun configureNormalMap(engine: PulseEngine, lightSurface: Surface, isEnabled: Boolean)
@@ -153,55 +215,35 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    override fun onUpdate(engine: PulseEngine)
+    private fun updatePostEffect(engine: PulseEngine, lightSurface: Surface)
     {
-        val lightSurface = engine.gfx.getSurface(LIGHT_SURFACE_NAME) ?: return
-        val lightRenderer = lightSurface.getRenderer<LightRenderer>() ?: return
-        val lightBlendEffect = engine.gfx.mainSurface.getPostProcessingEffect(LIGHT_BLEND_EFFECT_NAME) as? LightBlendEffect ?: return
-
-        lightSurface.setMultisampling(multisampling)
-        lightSurface.setTextureScale(textureScale)
-        lightSurface.setTextureFilter(textureFilter)
-        lightSurface.setTextureFormat(textureFormat)
-
-        lightRenderer.ambientColor = ambientColor
-        lightRenderer.normalMapTextureHandle = engine.gfx.getSurface(NORMAL_SURFACE_NAME)?.getTexture()?.handle
-        lightRenderer.occluderMapTextureHandle = engine.gfx.getSurface(OCCLUDER_SURFACE_NAME)?.getTexture()?.handle
-
-        lightBlendEffect.lightMapTextureHandle = lightSurface.getTexture().handle
-        lightBlendEffect.enableFxaa = enableFXAA
-        lightBlendEffect.dithering = dithering
-        lightBlendEffect.fogIntensity = fogIntensity
-        lightBlendEffect.fogTurbulence = fogTurbulence
-        lightBlendEffect.fogScale = fogScale
-
-        configureNormalMap(engine, lightSurface, isEnabled = useNormalMap)
-        configureOccluderMap(engine, lightSurface, isEnabled = enableLightSpill)
-    }
-
-    override fun onRender(engine: PulseEngine)
-    {
-        val lightSurface = engine.gfx.getSurface(LIGHT_SURFACE_NAME) ?: return
-        val lightRenderer = lightSurface.getRenderer<LightRenderer>() ?: return
-        val lightBlendEffect = engine.gfx.mainSurface.getPostProcessingEffect(LIGHT_BLEND_EFFECT_NAME) as? LightBlendEffect ?: return
-
-        val startTime = System.nanoTime()
-        shadowCasterCount = 0
-        lightCount = 0
-        edgeCount = 0
-
-        updateLightMapPositionOffset(lightSurface, lightRenderer, lightBlendEffect)
-        updateBoundingRect(lightSurface)
-        engine.scene.forEachEntityOfType<LightSource>()
+        if (targetSurfaces != lastTargetSurfaces)
         {
-            addLightsSources(it, lightRenderer, lightSurface, engine)
+            postEffectSurfaces.clear()
+            for (surface in engine.gfx.getSurfaces(lastTargetSurfaces))
+            {
+                surface.deletePostProcessingEffect(POST_EFFECT_NAME)
+            }
+            for (surface in engine.gfx.getSurfaces(targetSurfaces))
+            {
+                surface.addPostProcessingEffect(LightBlendEffect(POST_EFFECT_NAME, ambientColor, engine.gfx.mainCamera))
+                postEffectSurfaces.add(surface.config.name)
+            }
+             lastTargetSurfaces = targetSurfaces
         }
 
-        cpuRenderTimeMs = (System.nanoTime() - startTime) / 1_000_000f
-        gpuRenderTimeMs = lightRenderer.gpuRenderTimeMs
+        postEffectSurfaces.forEachPostEffect(engine)
+        {
+            it.lightMapTextureHandle = lightSurface.getTexture().handle
+            it.enableFxaa = enableFXAA
+            it.dithering = dithering
+            it.fogIntensity = fogIntensity
+            it.fogTurbulence = fogTurbulence
+            it.fogScale = fogScale
+        }
     }
 
-    private fun updateLightMapPositionOffset(lightSurface: Surface, lightRenderer: LightRenderer, lightBlendEffect: LightBlendEffect)
+    private fun updateLightMapPositionOffset(engine: PulseEngine, lightSurface: Surface, lightRenderer: LightRenderer)
     {
         var xOffset = 0f
         var yOffset = 0f
@@ -214,10 +256,15 @@ open class LightingSystem : SceneSystem()
             xOffset = xTranslation % pixelSize
             yOffset = yTranslation % pixelSize
         }
-        lightBlendEffect.xSamplingOffset = -xOffset / lightSurface.config.width
-        lightBlendEffect.ySamplingOffset = yOffset / lightSurface.config.height
+
         lightRenderer.xDrawOffset = xOffset
         lightRenderer.yDrawOffset = yOffset
+
+        postEffectSurfaces.forEachPostEffect(engine)
+        {
+            it.xSamplingOffset = -xOffset / lightSurface.config.width
+            it.ySamplingOffset = yOffset / lightSurface.config.height
+        }
     }
 
     private fun updateBoundingRect(lightSurface: Surface)
@@ -401,33 +448,18 @@ open class LightingSystem : SceneSystem()
         lightSurface.drawTexture(Texture.BLANK, light.x, light.y, width, height, light.rotation, 0.5f, 0.5f, cornerRadius = cornerRadius)
     }
 
-    override fun onDestroy(engine: PulseEngine)
-    {
-        // Remove render passes
-        val renderer = engine.scene.getSystemOfType<EntityRenderer>()
-        renderer?.removeRenderPass(normalMapRenderPass)
-        renderer?.removeRenderPass(occluderRenderPass)
+    private fun Graphics.getSurfaces(surfaceNames: String) =
+        surfaceNames.split(",").mapNotNull { getSurface(it.trim()) }
 
-        // Delete surfaces
-        engine.gfx.deleteSurface(LIGHT_SURFACE_NAME)
-        engine.gfx.deleteSurface(NORMAL_SURFACE_NAME)
-        engine.gfx.deleteSurface(OCCLUDER_SURFACE_NAME)
-
-        // Remove and delete post-processing effect
-        engine.gfx.mainSurface.deletePostProcessingEffect(LIGHT_BLEND_EFFECT_NAME)
-    }
-
-    override fun onStateChanged(engine: PulseEngine)
-    {
-        if (enabled) onCreate(engine) else onDestroy(engine)
-    }
+    private inline fun MutableList<String>.forEachPostEffect(engine: PulseEngine, action: (LightBlendEffect) -> Unit) =
+        this.forEachFast { (engine.gfx.getSurface(it)?.getPostProcessingEffect(POST_EFFECT_NAME) as? LightBlendEffect)?.let(action) }
 
     companion object
     {
-        private val LIGHT_BLEND_EFFECT_NAME = "light-system-blend-effect"
-        private val LIGHT_SURFACE_NAME = "light-system-surface"
-        private val NORMAL_SURFACE_NAME = "light-system-normal-map"
-        private val OCCLUDER_SURFACE_NAME = "light-system-occluder-map"
+        private const val POST_EFFECT_NAME = "light_post_effect"
+        private const val LIGHT_SURFACE_NAME = "light_surface"
+        private const val NORMAL_SURFACE_NAME = "light_normal_map"
+        private const val OCCLUDER_SURFACE_NAME = "light_occluder_map"
         private val BOUNDING_COORDS = listOf(0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f)
     }
 }
