@@ -187,6 +187,28 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun updateCameras() = surfaces.forEachCamera { it.updateLastState() }
 
+    override fun reloadAllShaders()
+    {
+        runOnInitFrame()
+        {
+            Shader.reloadAll()
+            ShaderProgram.reloadAll()
+        }
+    }
+
+    override fun reloadShader(fileName: String)
+    {
+        runOnInitFrame()
+        {
+            val shader = Shader.getShaderFromAbsolutePath(fileName)
+            val success = shader?.reload(fileName)
+            if (success == true)
+                ShaderProgram.reloadAll()
+            else
+                Logger.warn("Failed to reload shader: $fileName")
+        }
+    }
+
     override fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat)
     {
         textureBank.setTextureCapacity(maxCount, textureSize, format)

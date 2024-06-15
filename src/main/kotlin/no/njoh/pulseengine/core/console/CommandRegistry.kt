@@ -6,10 +6,7 @@ import no.njoh.pulseengine.core.window.ScreenMode.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import no.njoh.pulseengine.core.console.MessageType.WARN
-import no.njoh.pulseengine.core.graphics.api.Shader
-import no.njoh.pulseengine.core.graphics.api.Shader.Companion.getShaderFromAbsolutePath
-import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.GraphicsInternal
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
 import no.njoh.pulseengine.core.shared.utils.FileWatcher
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -253,24 +250,16 @@ object CommandRegistry
             "reloadAllShaders"
         ) {
             Logger.debug("\nReloading all shaders...")
-            Shader.reloadAll()
-            ShaderProgram.reloadAll()
-            CommandResult("Reloaded all shaders", showCommand = false)
+            (engine.gfx as? GraphicsInternal)?.reloadAllShaders()
+            CommandResult("Reloading all shaders...", showCommand = false)
         }
 
         engine.console.registerCommand(
             "reloadShader {fileName:String}"
         ) {
             val fileName = getString("fileName")
-            val shader = getShaderFromAbsolutePath(fileName)
-            if (shader != null)
-            {
-                val success = shader.reload(fileName)
-                if (success)
-                    ShaderProgram.reloadAll()
-                CommandResult("Reloaded shader: $fileName", showCommand = false)
-            }
-            else CommandResult("Found no shader with filename: $fileName", showCommand = false, type = WARN)
+            (engine.gfx as? GraphicsInternal)?.reloadShader(fileName)
+            CommandResult("Reloading shader: $fileName", showCommand = false)
         }
 
         ///////////////////////////////////////////// WATCH FILE CHANGES /////////////////////////////////////////////
