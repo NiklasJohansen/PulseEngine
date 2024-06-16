@@ -34,7 +34,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.shared.annotations.EntityRef
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
@@ -415,7 +415,7 @@ class SceneEditor(
 
         engine.scene.forEachEntityTypeList { entities ->
             val firstEntity = entities.firstOrNull()
-            val annotation = firstEntity?.let { it::class.findAnnotation<ScnIcon>() }
+            val annotation = firstEntity?.let { it::class.findAnnotation<Icon>() }
             if (annotation != null && annotation.showInViewport && firstEntity is Spatial)
             {
                 val size = annotation.size

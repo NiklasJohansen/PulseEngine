@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.EntityRef
-import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
@@ -14,20 +14,20 @@ import kotlin.math.sqrt
 open class Spring : StandardSceneEntity(), PhysicsEntity
 {
     @EntityRef
-    @ScnProp("Connection", 0)
+    @Prop("Connection", 0)
     var fromBodyId = INVALID_ID
 
-    @ScnProp("Connection", 1)
+    @Prop("Connection", 1)
     var fromBodyPointIndex = 0
 
     @EntityRef
-    @ScnProp("Connection", 2)
+    @Prop("Connection", 2)
     var toBodyId = INVALID_ID
 
-    @ScnProp("Connection", 3)
+    @Prop("Connection", 3)
     var toBodyPointIndex = 0
 
-    @ScnProp("Physics")
+    @Prop("Physics")
     var stiffness = 1f
 
     @JsonIgnore

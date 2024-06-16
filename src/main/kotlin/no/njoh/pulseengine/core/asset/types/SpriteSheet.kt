@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 
-@ScnIcon("IMAGE")
+@Icon("IMAGE")
 class SpriteSheet(
     fileName: String,
     name: String,

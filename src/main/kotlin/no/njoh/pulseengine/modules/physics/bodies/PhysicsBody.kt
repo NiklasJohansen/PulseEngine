@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.physics.bodies
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Physical
 import no.njoh.pulseengine.core.shared.primitives.Shape
 import no.njoh.pulseengine.modules.physics.BodyType
@@ -19,25 +19,25 @@ interface PhysicsBody : PhysicsEntity, Physical
     /** Contains data about the physical shape of the body. */
     override val shape: Shape
 
-    @get:ScnProp("Physics", 0, desc = "Determines how the body is affected by the physics system.")
+    @get:Prop("Physics", 0, desc = "Determines how the body is affected by the physics system.")
     var bodyType: BodyType
 
-    @get:ScnProp("Physics", 1, min = 0f, desc = "Bit mask where each bit represents a collision layer this body can be part of.")
+    @get:Prop("Physics", 1, min = 0f, desc = "Bit mask where each bit represents a collision layer this body can be part of.")
     var layerMask: Int
 
-    @get:ScnProp("Physics", 2, min = 0f, desc = "Bit mask where each bit represents a collision layer this body can collide with.")
+    @get:Prop("Physics", 2, min = 0f, desc = "Bit mask where each bit represents a collision layer this body can collide with.")
     var collisionMask: Int
 
-    @get:ScnProp("Physics", 3, min = 0f, max = 1f, desc = "Determines the amount of bounce in a collision. Range: 0.0 (inelastic) - 1.0 (perfectly elastic).")
+    @get:Prop("Physics", 3, min = 0f, max = 1f, desc = "Determines the amount of bounce in a collision. Range: 0.0 (inelastic) - 1.0 (perfectly elastic).")
     var restitution: Float
 
-    @get:ScnProp("Physics", 4, min = 0f, desc = "Density along with the shape size affects the mass of the body.")
+    @get:Prop("Physics", 4, min = 0f, desc = "Density along with the shape size affects the mass of the body.")
     var density: Float
 
-    @get:ScnProp("Physics", 5, min = 0f, max = 1f, desc = "Determines how easily bodies slide of each other on contact. Range: 0.0 (slippery) - 1.0 (rough).")
+    @get:Prop("Physics", 5, min = 0f, max = 1f, desc = "Determines how easily bodies slide of each other on contact. Range: 0.0 (slippery) - 1.0 (rough).")
     var friction: Float
 
-    @get:ScnProp("Physics", 6, min = 0f, max = 1f,  desc = "Determines how much dampening the bodies experiences from the air. Range: 0.0 (no dampening) - 1.0 (full stop).")
+    @get:Prop("Physics", 6, min = 0f, max = 1f,  desc = "Determines how much dampening the bodies experiences from the air. Range: 0.0 (no dampening) - 1.0 (full stop).")
     var drag: Float
 
     /**

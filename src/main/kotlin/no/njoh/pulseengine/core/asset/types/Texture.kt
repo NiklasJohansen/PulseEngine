@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.api.TextureHandle.Companion.INVALID
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
@@ -15,7 +15,7 @@ import org.lwjgl.stb.STBImage.*
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 
-@ScnIcon("IMAGE")
+@Icon("IMAGE")
 open class Texture(
     filename: String,
     override val name: String,

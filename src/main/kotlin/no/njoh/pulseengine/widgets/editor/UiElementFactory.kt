@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.AssetRef
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -429,7 +429,7 @@ open class UiElementFactory(
      */
     open fun createSystemProperties(system: SceneSystem, isHidden: Boolean, onClose: (props: List<UiElement>) -> Unit): List<UiElement>
     {
-        val icon = system::class.findAnnotation<ScnIcon>()
+        val icon = system::class.findAnnotation<Icon>()
         val headerIcon = Icon(width = Size.absolute(30f))
         headerIcon.iconFontName = style.iconFontName
         headerIcon.iconCharacter = style.getIcon(icon?.iconName ?: "COG")
@@ -596,7 +596,7 @@ open class UiElementFactory(
             initialAssetName = prop.getter.call(obj) as? String ?: ""
         ).apply {
             previewIconCharacter = style.iconFontName
-            previewIconCharacter = style.getIcon(annotation.type.findAnnotation<ScnIcon>()?.iconName ?: "BOX")
+            previewIconCharacter = style.getIcon(annotation.type.findAnnotation<Icon>()?.iconName ?: "BOX")
             nameInput.fontSize = ScaledValue.of(20f)
             nameInput.textColor = style.getColor("LABEL")
             nameInput.bgColorHover = style.getColor("BUTTON_HOVER")

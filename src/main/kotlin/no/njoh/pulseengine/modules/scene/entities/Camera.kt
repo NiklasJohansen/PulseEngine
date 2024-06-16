@@ -5,12 +5,12 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import kotlin.math.*
 
-@ScnIcon("CAMERA", size = 24f, showInViewport = true)
+@Icon("CAMERA", size = 24f, showInViewport = true)
 open class Camera : StandardSceneEntity()
 {
     var viewPortWidth = 1000f

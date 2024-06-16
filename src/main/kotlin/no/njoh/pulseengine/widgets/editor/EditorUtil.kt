@@ -2,7 +2,7 @@ package no.njoh.pulseengine.widgets.editor
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.shared.annotations.Name
-import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
 import kotlin.reflect.KClass
@@ -147,9 +147,9 @@ object EditorUtil
         }
 
     /**
-     * Returns the [ScnProp] annotations from the property if available, else null.
+     * Returns the [Prop] annotations from the property if available, else null.
      */
-    fun Any.getPropInfo(prop: KProperty<*>): ScnProp? = this::class.findPropertyAnnotation<ScnProp>(prop.name)
+    fun Any.getPropInfo(prop: KProperty<*>): Prop? = this::class.findPropertyAnnotation<Prop>(prop.name)
 
     /**
      * Returns the name of the class.

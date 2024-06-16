@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
-import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.degreesBetween
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.shapes.CircleShape
@@ -29,8 +29,8 @@ open class Wheel : StandardSceneEntity(), CircleBody
     override var density = 1f
     override var friction = 0.4f
     override var drag = 0.01f
-    @ScnProp("Physics", 7) var acceleration = 1f
-    @ScnProp("Physics", 8) var maxAngularVelocity = 0.3f
+    @Prop("Physics", 7) var acceleration = 1f
+    @Prop("Physics", 8) var maxAngularVelocity = 0.3f
 
     @JsonIgnore protected var xInterpolated = NaN
     @JsonIgnore protected var yInterpolated = NaN

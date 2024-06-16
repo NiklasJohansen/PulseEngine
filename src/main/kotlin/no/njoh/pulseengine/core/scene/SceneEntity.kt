@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.shared.annotations.EntityRef
-import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.minus
 import kotlin.reflect.KClass
 
@@ -10,17 +10,17 @@ import kotlin.reflect.KClass
  */
 abstract class SceneEntity
 {
-    @ScnProp(i = -3, editable = false)
+    @Prop(i = -3, editable = false)
     var id = INVALID_ID // ID gets assigned when entity is added to the scene
 
+    @Prop(i = -2)
     @EntityRef
-    @ScnProp(i = -2)
     var parentId = INVALID_ID
 
-    @ScnProp(hidden = true)
+    @Prop(hidden = true)
     var childIds: LongArray? = null
 
-    @ScnProp(hidden = true)
+    @Prop(hidden = true)
     var flags = DISCOVERABLE or EDITABLE
 
     fun set(flag: Int) { flags = flags or flag }

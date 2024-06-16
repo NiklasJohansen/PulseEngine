@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.modules.lighting.LightSource
 import no.njoh.pulseengine.modules.lighting.LightType
 import no.njoh.pulseengine.modules.lighting.ShadowType
@@ -16,7 +16,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-@ScnIcon("LIGHT_BULB", size = 24f, showInViewport = true)
+@Icon("LIGHT_BULB", size = 24f, showInViewport = true)
 open class Lamp : StandardSceneEntity(), LightSource
 {
     var trackParent = true

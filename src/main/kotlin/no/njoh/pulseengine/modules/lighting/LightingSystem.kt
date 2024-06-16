@@ -18,35 +18,35 @@ import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.lighting.ShadowType.NONE
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer.RenderPass
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.MathUtil
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.annotations.Name
-import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.lighting.LightType.*
 import kotlin.math.*
 
 @Name("Lighting")
-@ScnIcon("LIGHT_BULB")
+@Icon("LIGHT_BULB")
 open class LightingSystem : SceneSystem()
 {
-    @ScnProp(i = 1)                        var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
-    @ScnProp(i = 2, min = 0f, max = 10f)   var dithering = 0.7f
-    @ScnProp(i = 3, min = 0f, max = 100f)  var fogIntensity = 0f
-    @ScnProp(i = 4, min = 0f, max = 100f)  var fogTurbulence = 1.5f
-    @ScnProp(i = 5, min = 0f, max = 5f)    var fogScale = 0.3f
-    @ScnProp(i = 6, min = 0.01f, max = 5f) var textureScale = 0.4f
-    @ScnProp(i = 7)                        var textureFilter = TextureFilter.LINEAR
-    @ScnProp(i = 8)                        var textureFormat = TextureFormat.RGBA16F
-    @ScnProp(i = 9)                        var multisampling = Multisampling.NONE
-    @ScnProp(i = 10)                       var enableFXAA = true
-    @ScnProp(i = 11)                       var useNormalMap = false
-    @ScnProp(i = 12)                       var enableLightSpill = true
-    @ScnProp(i = 13)                       var correctOffset = true
-    @ScnProp(i = 14)                       var targetSurfaces = "main"
-    @ScnProp(i = 15)                       var drawDebug = false
+    @Prop(i = 1)                        var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
+    @Prop(i = 2, min = 0f, max = 10f)   var dithering = 0.7f
+    @Prop(i = 3, min = 0f, max = 100f)  var fogIntensity = 0f
+    @Prop(i = 4, min = 0f, max = 100f)  var fogTurbulence = 1.5f
+    @Prop(i = 5, min = 0f, max = 5f)    var fogScale = 0.3f
+    @Prop(i = 6, min = 0.01f, max = 5f) var textureScale = 0.4f
+    @Prop(i = 7)                        var textureFilter = TextureFilter.LINEAR
+    @Prop(i = 8)                        var textureFormat = TextureFormat.RGBA16F
+    @Prop(i = 9)                        var multisampling = Multisampling.NONE
+    @Prop(i = 10)                       var enableFXAA = true
+    @Prop(i = 11)                       var useNormalMap = false
+    @Prop(i = 12)                       var enableLightSpill = true
+    @Prop(i = 13)                       var correctOffset = true
+    @Prop(i = 14)                       var targetSurfaces = "main"
+    @Prop(i = 15)                       var drawDebug = false
 
     private var xMin = 0f
     private var yMin = 0f

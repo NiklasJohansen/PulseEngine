@@ -21,8 +21,7 @@ import no.njoh.pulseengine.modules.gui.elements.InputField
 import no.njoh.pulseengine.modules.gui.elements.Label
 import no.njoh.pulseengine.modules.gui.layout.*
 import kotlin.reflect.full.findAnnotation
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon.Companion.getColor
+import no.njoh.pulseengine.core.shared.annotations.Icon.Companion.getColor
 import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.gui.ScaledValue
 import no.njoh.pulseengine.modules.gui.ScrollbarVisibility.ALWAYS_VISIBLE
@@ -455,7 +454,7 @@ data class Outliner(
                 }
             }
 
-            val annotation = entity::class.findAnnotation<ScnIcon>()
+            val annotation = entity::class.findAnnotation<no.njoh.pulseengine.core.shared.annotations.Icon>()
             val icon = Icon(width = Size.absolute(25f)).apply()
             {
                 iconSize = ScaledValue.of(15f)

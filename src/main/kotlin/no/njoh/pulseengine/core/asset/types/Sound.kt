@@ -1,17 +1,16 @@
 package no.njoh.pulseengine.core.asset.types
 
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import org.lwjgl.BufferUtils
-import org.lwjgl.openal.AL10
 import org.lwjgl.stb.STBVorbis
 import org.lwjgl.stb.STBVorbisInfo
 import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
 import java.nio.ShortBuffer
 
-@ScnIcon("MUSIC")
+@Icon("MUSIC")
 class Sound(fileName: String, override val name: String) : Asset(name, fileName)
 {
     var id: Int = -1

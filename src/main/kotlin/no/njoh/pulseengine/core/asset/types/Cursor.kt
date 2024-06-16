@@ -1,14 +1,14 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.input.CursorType
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.stb.STBImage.*
 import java.nio.ByteBuffer
 
-@ScnIcon("CURSOR")
+@Icon("CURSOR")
 class Cursor(
     fileName: String,
     name: String,

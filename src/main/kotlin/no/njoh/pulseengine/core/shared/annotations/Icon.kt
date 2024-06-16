@@ -4,9 +4,9 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 
-@Target(CLASS)
+@Target(CLASS, ANNOTATION_CLASS)
 @Retention(RUNTIME)
-annotation class ScnIcon(
+annotation class Icon(
     val iconName: String,
     val size: Float = 64f,
     val hexColor: String = "",
@@ -15,7 +15,7 @@ annotation class ScnIcon(
 ) {
     companion object
     {
-        fun ScnIcon.getColor() =
+        fun Icon.getColor() =
             if (hexColor.isBlank()) null
             else cache.getOrPut(hexColor) { Color().setFromHex(hexColor) }
 

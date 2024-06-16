@@ -7,9 +7,9 @@ import kotlin.annotation.AnnotationTarget.*
  * This scene property annotation is used to provide meta-data to the scene editor.
  */
 @Repeatable
-@Target(PROPERTY, FUNCTION, PROPERTY_GETTER)
+@Target(PROPERTY, FUNCTION, PROPERTY_GETTER, ANNOTATION_CLASS)
 @Retention(RUNTIME)
-annotation class ScnProp(
+annotation class Prop(
     /** The name of the group this property belongs to. */
     val group: String = "",
 
