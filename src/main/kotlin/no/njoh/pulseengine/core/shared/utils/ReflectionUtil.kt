@@ -89,7 +89,7 @@ object ReflectionUtil
         val functionName = "get" + propertyName.capitalize()
         val foundAnnotations = functions
             .filter { it.name.startsWith(functionName) && it.name.getOrNull(functionName.length)?.isLetter() != true }
-            .flatMap { it.annotations.filterIsInstance<T>() }
+            .flatMap { f -> (f.annotations + f.annotations.flatMap { it.annotationClass.annotations }).filterIsInstance<T>() }
             .toMutableSet()
 
         // Add annotations to cache and return
