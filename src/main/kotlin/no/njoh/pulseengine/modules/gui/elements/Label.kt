@@ -92,6 +92,7 @@ class Label(
             textWidth = charWidths.sum()
             lastText = text
             lastFontSize = fontSize
+            visibleText = text
             true
         }
         else false

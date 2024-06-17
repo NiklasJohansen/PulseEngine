@@ -1,17 +1,19 @@
 package no.njoh.pulseengine.widgets.editor
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
+import no.njoh.pulseengine.core.shared.utils.Extensions.noneMatches
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KProperty
 import kotlin.reflect.KVisibility
-import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.isSubclassOf
-import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.*
 import kotlin.reflect.jvm.javaField
 
 /**
@@ -155,4 +157,99 @@ object EditorUtil
      * Returns the name of the class.
      */
     fun KClass<*>.getName() = this.findAnnotation<Name>()?.name ?: this.simpleName ?: "NO_NAME"
+
+    /**
+     * Creates a copy of each entity and inserts them into the active [Scene].
+     * Will preserve parent-child relationships and update fields annotated with [EntityRef].
+     */
+    fun duplicateAndInsertEntities(engine: PulseEngine, entities: List<SceneEntity>): List<SceneEntity>
+    {
+        val copies = entities.map { it.createCopy() }.toMutableList()
+        val insertedCopies = mutableListOf<SceneEntity>()
+        val idMapping = mutableMapOf<Long, Long>()
+
+        // Insert copied entities in order of parents before children
+        while (copies.isNotEmpty())
+        {
+            val copiesLeft = copies.size
+            for (copy in copies)
+            {
+                if (copies.noneMatches { it.id == copy.parentId })
+                {
+                    copy.childIds = null
+                    copy.parentId = idMapping[copy.parentId] ?: copy.parentId
+                    copy.setNot(SceneEntity.SELECTED)
+                    val lastId = copy.id
+                    val newId = engine.scene.addEntity(copy)
+                    idMapping[lastId] = newId
+                    copies.remove(copy)
+                    insertedCopies.add(copy)
+                    break
+                }
+            }
+
+            if (copiesLeft == copies.size)
+            {
+                Logger.error("Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}")
+                return emptyList()
+            }
+        }
+
+        // Handle fields annotated with EntityRef
+        for (entity in insertedCopies)
+        {
+            for (prop in entity::class.memberProperties)
+            {
+                if (prop is KMutableProperty<*> && prop.name != "parent" && prop.name != "childIds" && prop.hasAnnotation<EntityRef>())
+                {
+                    val ref = prop.getter.call(entity)
+                    if (ref is Long)
+                    {
+                        idMapping[ref]?.let { newRef -> prop.setter.call(entity, newRef) }
+                    }
+                    else if (ref is LongArray && ref.isNotEmpty())
+                    {
+                        prop.setter.call(entity, LongArray(ref.size) { idMapping[ref[it]] ?: ref[it] })
+                    }
+                }
+            }
+        }
+
+        return insertedCopies
+    }
+
+    /**
+     * Creates a copy of the [SceneEntity].
+     */
+    fun SceneEntity.createCopy(): SceneEntity
+    {
+        val entityCopy = this::class.constructors.first().call()
+        for (prop in this::class.members)
+        {
+            if (prop is KMutableProperty<*> && prop.visibility == KVisibility.PUBLIC)
+            {
+                prop.getter.call(this)?.also { propValue: Any ->
+
+                    if (propValue::class.isData)
+                    {
+                        // Use .copy() if parameter is a data class
+                        val copyFunc = propValue::class.memberFunctions.first { it.name == "copy" }
+                        val instanceParam = copyFunc.instanceParameter!!
+                        copyFunc.callBy(mapOf(instanceParam to propValue))?.let {
+                            entityCopy.setPrimitiveProperty(prop.name, it)
+                        }
+                    }
+                    else if (prop.isPrimitiveValue())
+                    {
+                        entityCopy.setPrimitiveProperty(prop.name, propValue)
+                    }
+                    else if (prop.isPrimitiveArray())
+                    {
+                        entityCopy.setArrayProperty(prop.name, propValue)
+                    }
+                }
+            }
+        }
+        return entityCopy
+    }
 }
