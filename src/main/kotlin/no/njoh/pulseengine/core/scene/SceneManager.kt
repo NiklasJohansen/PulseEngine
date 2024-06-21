@@ -116,6 +116,12 @@ abstract class SceneManager
         activeScene.entityTypeMap[T::class.java]?.firstOrNull() as T?
 
     /**
+     * Returns the first [SceneEntity] of type [T] matching the predicate.
+     */
+    inline fun <reified T: SceneEntity> getFirstEntityOfType(predicate: (T) -> Boolean): T? =
+        activeScene.entityTypeMap[T::class.java]?.firstOrNull { predicate(it as T) } as T?
+
+    /**
      * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity].
      */
     fun getFirstEntityAlongRay(x: Float, y: Float, angle: Float, rayLength: Float) : HitResult<SceneEntity>? =

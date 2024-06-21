@@ -75,7 +75,8 @@ open class ConfigurationImpl : ConfigurationInternal
     override fun getBool(name: String) =
         (properties[name] as? Boolean) ?: null.also { Logger.error("Config property: $name (Boolean) not found") }
 
-    override fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T? {
+    override fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T?
+    {
         val value = properties[name] ?: return null.also { Logger.error("Config property: $name (Enum) not found") }
         if (value::class == type)
             return value as T
@@ -137,7 +138,8 @@ open class ConfigurationImpl : ConfigurationInternal
             onChangeCallback.invoke(prop, value)
         }
 
-        operator fun getValue(thisRef: Any?, prop: KProperty<*>): T {
+        operator fun getValue(thisRef: Any?, prop: KProperty<*>): T
+        {
             val value = properties[prop.name]
             if (value != null && value::class == type)
                 return value as T
@@ -145,7 +147,10 @@ open class ConfigurationImpl : ConfigurationInternal
             var newValue = initValue
             if (value is String)
             {
-                try { newValue = java.lang.Enum.valueOf(type.java, value) }
+                try
+                {
+                    newValue = java.lang.Enum.valueOf(type.java, value)
+                }
                 catch (e: Exception)
                 {
                     Logger.warn("Config property: ${prop.name} (Enum) has unknown value: $value, using default: ${type.simpleName}.$newValue")

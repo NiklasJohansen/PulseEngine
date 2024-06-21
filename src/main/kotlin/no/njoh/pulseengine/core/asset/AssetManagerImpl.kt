@@ -11,8 +11,6 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadFileNames
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
-import kotlin.reflect.KClass
-import kotlin.reflect.safeCast
 
 open class AssetManagerImpl : AssetManagerInternal()
 {
@@ -23,7 +21,7 @@ open class AssetManagerImpl : AssetManagerInternal()
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : Asset> getOrNull(assetName: String, type: Class<T>): T? =
-        loadedAssets[assetName]?.takeIf { it.javaClass == type } as T?
+        loadedAssets[assetName]?.takeIf { it.javaClass == type || type.isAssignableFrom(it.javaClass) } as T?
 
     override fun <T : Asset> getAllOfType(type: Class<T>): List<T> =
         loadedAssets.values.filterIsInstance(type)

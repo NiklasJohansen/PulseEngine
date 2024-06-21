@@ -10,6 +10,11 @@ abstract class WidgetManager
     inline fun <reified T> get(): T? = get(T::class.java)
 
     /**
+     * Returns the first [Widget] of specified class type or null
+     */
+    abstract fun <T> get(type: Class<T>): T?
+
+    /**
      * Adds the specified [Widget]s to the manager
      */
     abstract fun add(vararg widgets: Widget)
@@ -18,9 +23,6 @@ abstract class WidgetManager
      * Removes the specified [Widget]s from the manager
      */
     abstract fun remove(widget: Widget)
-
-    // Internal function to get a widget based on Class type
-    @PublishedApi internal abstract fun <T> get(type: Class<T>): T?
 }
 
 abstract class WidgetManagerInternal : WidgetManager()
