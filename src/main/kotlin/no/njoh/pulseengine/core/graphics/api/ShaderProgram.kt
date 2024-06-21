@@ -124,7 +124,7 @@ class ShaderProgram(
     companion object
     {
         private val shaderPrograms = mutableListOf<ShaderProgram>()
-        private val errProgram = createProgram(Shader.errVertShader, Shader.errFragShader)
+        private var errProgram = null as ShaderProgram?
 
         fun reloadAll()
         {
@@ -166,13 +166,12 @@ class ShaderProgram(
             if (glGetProgrami(programId, GL_LINK_STATUS) != GL_TRUE)
             {
                 Logger.error("Failed to link shaders: ${shaders.joinToString { it.fileName }} \n${glGetProgramInfoLog(programId)}")
-                return errProgram
+                return errProgram ?: createProgram(Shader.getErrorShader(VERTEX), Shader.getErrorShader(FRAGMENT)).also { errProgram = it }
             }
 
             return ShaderProgram(programId, shaders.toMutableList())
         }
 
-        private fun linkedSuccessfully(program: ShaderProgram) =
-            program.id != errProgram.id
+        private fun linkedSuccessfully(program: ShaderProgram) = program.id != errProgram?.id
     }
 }

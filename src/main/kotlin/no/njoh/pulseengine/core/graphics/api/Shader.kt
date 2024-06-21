@@ -39,13 +39,10 @@ class Shader(
 
     companion object
     {
-        // Default error shaders
-        val errFragShader = createShader("/pulseengine/shaders/default/error.frag", FRAGMENT)
-        val errVertShader = createShader("/pulseengine/shaders/default/error.vert", VERTEX)
-        val errCompShader = createShader("/pulseengine/shaders/default/error.comp", COMPUTE)
-
-        // Cache of all loaded shaders
         private val cache = HashMap<String, Shader>()
+        private var errFragShader = null as Shader?
+        private var errVertShader = null as Shader?
+        private var errCompShader = null as Shader?
 
         /**
          * Loads the shader from the given file.
@@ -69,6 +66,16 @@ class Shader(
          * Reloads all cached shaders.
          */
         fun reloadAll() = cache.values.forEach { it.reload() }
+
+        /**
+         * Returns the default error shader for the given type.
+         */
+        fun getErrorShader(type: ShaderType) = when (type)
+        {
+            FRAGMENT -> errFragShader ?: createShader("/pulseengine/shaders/default/error.frag", type).also { errFragShader = it }
+            VERTEX   -> errVertShader ?: createShader("/pulseengine/shaders/default/error.vert", type).also { errVertShader = it }
+            COMPUTE  -> errCompShader ?: createShader("/pulseengine/shaders/default/error.comp", type).also { errCompShader = it }
+        }
 
         private fun createShader(fileName: String, type: ShaderType, transform: (source: String) -> String = { it }) : Shader
         {
@@ -95,17 +102,10 @@ class Shader(
             catch (e: Exception)
             {
                 Logger.error("Failed to load shader: $fileName - Error message: ${e.message}")
-                val errorShader = when (type)
-                {
-                    FRAGMENT -> errFragShader
-                    VERTEX -> errVertShader
-                    COMPUTE -> errCompShader
-                }
-                return Shader(errorShader.id, fileName, type, transform = { it })
+                return Shader(getErrorShader(type).id, fileName, type, transform = { it })
             }
         }
 
-        private fun loadedSuccessfully(shader: Shader) =
-            shader.id != errFragShader.id && shader.id != errVertShader.id && shader.id != errCompShader.id
+        private fun loadedSuccessfully(shader: Shader) = (shader.id != getErrorShader(shader.type).id)
     }
 }
