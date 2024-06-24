@@ -88,9 +88,9 @@ abstract class SceneManager
         fileName: String,
         fromClassPath: Boolean = false,
         transitionTimeMs: Long = 1000L,
-        onSceneLoaded: (PulseEngine) -> Unit = {},
-        onTransitionFinished: (PulseEngine) -> Unit = {},
-        onRender: (PulseEngine, Surface, t: Float) -> Unit = { _, _, _ -> }
+        onSceneLoaded: ((PulseEngine) -> Unit)? = null,
+        onTransitionFinished: ((PulseEngine) -> Unit)? = null,
+        onRender: ((PulseEngine, Surface, t: Float) -> Unit)? = null
     )
 
     /**

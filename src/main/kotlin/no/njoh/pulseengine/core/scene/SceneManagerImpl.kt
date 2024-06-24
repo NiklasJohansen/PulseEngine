@@ -99,9 +99,9 @@ open class SceneManagerImpl : SceneManagerInternal()
         fileName: String,
         fromClassPath: Boolean,
         transitionTimeMs: Long,
-        onSceneLoaded: (PulseEngine) -> Unit,
-        onTransitionFinished: (PulseEngine) -> Unit,
-        onRender: (PulseEngine, Surface, t: Float) -> Unit
+        onSceneLoaded: ((PulseEngine) -> Unit)?,
+        onTransitionFinished: ((PulseEngine) -> Unit)?,
+        onRender: ((PulseEngine, Surface, t: Float) -> Unit)?
     ) {
         if (fileName != nextSceneFileName)
         {
