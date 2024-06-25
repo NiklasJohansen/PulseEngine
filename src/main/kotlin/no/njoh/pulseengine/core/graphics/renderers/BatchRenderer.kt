@@ -16,6 +16,7 @@ abstract class BatchRenderer
     private var currentSize  = 0
     private var readOffset   = 0
     private var writeOffset  = MAX_BATCH_COUNT
+    private var hadContent   = false
     private var hasContent   = false
     private var wasUpdated   = false
 
@@ -28,6 +29,7 @@ abstract class BatchRenderer
         onInitFrame()
 
         readOffset = writeOffset.also { writeOffset = readOffset }
+        hadContent = hasContent || wasUpdated
         hasContent = wasUpdated
         wasUpdated = false
         currentBatch = 0
@@ -78,9 +80,11 @@ abstract class BatchRenderer
     }
 
     /**
-     * Checks if there are any batches to render.
+     * Checks if there are any batches to render. Will return true even if the current batch is
+     * empty, but last one was not. This is done to ensure that surfaces are cleared properly
+     * when there is no more content to render.
      */
-    fun hasContentToRender() = hasContent
+    fun hasContentToRender() = hadContent
 
     /**
      * Called once when the renderer is added to the [Surface]
