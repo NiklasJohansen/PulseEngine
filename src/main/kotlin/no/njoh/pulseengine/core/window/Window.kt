@@ -17,6 +17,9 @@ interface Window
     /** The current screen mode of the window */
     val screenMode: ScreenMode
 
+    /** True if the window is focused */
+    val isFocused: Boolean
+
     /** True if the window was resized since last frame */
     val wasResized: Boolean
 

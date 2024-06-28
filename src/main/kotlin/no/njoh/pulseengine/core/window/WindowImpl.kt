@@ -17,7 +17,8 @@ open class WindowImpl : WindowInternal
     override var width = 800
     override var height = 600
     override var scale = 1f
-    override var wasResized: Boolean = false
+    override var isFocused = false
+    override var wasResized = false
     override var title: String = ""
         set(value) {
             glfwSetWindowTitle(windowHandle, value)
@@ -75,6 +76,7 @@ open class WindowImpl : WindowInternal
         this.windowHandle = newWindowHandle
         this.title = gameName
         this.scale = getMonitorScaling()
+        this.isFocused = glfwGetWindowAttrib(windowHandle, GLFW_FOCUSED) == GLFW_TRUE
 
         if (screenMode == ScreenMode.WINDOWED)
         {
@@ -108,6 +110,8 @@ open class WindowImpl : WindowInternal
                 }
             }
         })
+
+        glfwSetWindowFocusCallback(windowHandle) { _, focused -> isFocused = focused }
 
         glfwMakeContextCurrent(windowHandle)
         glfwSwapInterval(0)
