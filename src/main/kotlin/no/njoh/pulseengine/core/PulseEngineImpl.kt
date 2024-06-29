@@ -295,7 +295,7 @@ class PulseEngineImpl(
     private fun destroy()
     {
         FileWatcher.shutdown()
-        gameThread?.interrupt()
+        runCatching { gameThread?.interrupt() }
         scene.destroy()
         widget.destroy(this)
         audio.destroy()
