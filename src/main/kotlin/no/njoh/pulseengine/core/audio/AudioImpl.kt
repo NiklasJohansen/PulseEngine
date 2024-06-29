@@ -9,13 +9,13 @@ import org.lwjgl.openal.*
 import org.lwjgl.openal.AL.createCapabilities
 import org.lwjgl.openal.AL10.*
 import org.lwjgl.openal.ALC.createCapabilities
-import org.lwjgl.system.MemoryUtil
-import java.nio.ByteBuffer
-import java.nio.IntBuffer
 import org.lwjgl.openal.ALC11.*
 import org.lwjgl.openal.ALUtil.*
 import org.lwjgl.openal.EXTThreadLocalContext.alcSetThreadContext
 import org.lwjgl.openal.SOFTHRTF.*
+import org.lwjgl.system.MemoryUtil
+import java.nio.ByteBuffer
+import java.nio.IntBuffer
 
 open class AudioImpl : AudioInternal
 {
@@ -87,7 +87,7 @@ open class AudioImpl : AudioInternal
     override fun createSource(sound: Sound, volume: Float, pitch: Float, looping: Boolean): Int
     {
         val sourceId = alGenSources()
-        alSourcei(sourceId, AL_SOURCE_RELATIVE, AL_TRUE) // Research AL_SOURCE_ABSOLUTE
+        alSourcei(sourceId, AL_SOURCE_RELATIVE, AL_FALSE) // Research AL_SOURCE_ABSOLUTE
         alSourcei(sourceId, AL_BUFFER, sound.id)
         setSourceVolume(sourceId, volume)
         setSourcePitch(sourceId, pitch)
@@ -95,6 +95,8 @@ open class AudioImpl : AudioInternal
         sources.add(sourceId)
         return sourceId
     }
+
+    override fun getSources(): List<Int> = sources
 
     override fun stopSource(sourceId: Int)
     {
@@ -121,13 +123,28 @@ open class AudioImpl : AudioInternal
 
     override fun setSourcePosition(sourceId: Int, x: Float, y: Float, z: Float) = alSource3f(sourceId, AL_POSITION, x, y, z)
 
+    override fun setSourceReferenceDistance(sourceId: Int, distance: Float) = alSourcef( sourceId, AL_REFERENCE_DISTANCE,  distance)
+
+    override fun setSourceMaxDistance(sourceId: Int, distance: Float) = alSourcef(sourceId, AL_MAX_DISTANCE,  distance)
+
+    override fun setSourceRolloffFactor(sourceId: Int, factor: Float) = alSourcef(sourceId, AL_ROLLOFF_FACTOR, factor)
+
     override fun setListenerPosition(x: Float, y: Float, z: Float) = alListener3f(AL_POSITION, x, y, z)
 
     override fun setListenerVelocity(x: Float, y: Float, z: Float) = alListener3f(AL_VELOCITY, x, y, z)
 
-    override fun setListenerOrientation(x: Float, y: Float, z: Float) = alListener3f(AL_ORIENTATION, x, y, z)
+    override fun setListenerOrientation(xAt: Float, yAt: Float, zAt: Float, xUp: Float, yUp: Float, zUp: Float)
+    {
+        ORIENTATION[0] = xAt
+        ORIENTATION[1] = yAt
+        ORIENTATION[2] = zAt
+        ORIENTATION[3] = xUp
+        ORIENTATION[4] = yUp
+        ORIENTATION[5] = zUp
+        alListenerfv(AL_ORIENTATION, ORIENTATION)
+    }
 
-    override fun getSources(): List<Int> = sources
+    override fun setDistanceModel(model: DistanceModel) = alDistanceModel(model.value)
 
     override fun getDefaultOutputDevice(): String = alcGetString(MemoryUtil.NULL, ALC_DEFAULT_DEVICE_SPECIFIER) ?: ""
 
@@ -194,5 +211,10 @@ open class AudioImpl : AudioInternal
         alcSetThreadContext(MemoryUtil.NULL)
         alcDestroyContext(context)
         alcCloseDevice(device)
+    }
+
+    companion object
+    {
+        private val ORIENTATION = FloatArray(6)
     }
 }
