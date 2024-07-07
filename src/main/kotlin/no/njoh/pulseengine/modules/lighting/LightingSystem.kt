@@ -26,6 +26,7 @@ import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.lighting.LightType.*
+import org.joml.Vector2f
 import kotlin.math.*
 
 @Name("Lighting")
@@ -52,6 +53,8 @@ open class LightingSystem : SceneSystem()
     private var yMin = 0f
     private var xMax = 0f
     private var yMax = 0f
+    private var xSamplingOffset = 0f
+    private var ySamplingOffset = 0f
     private var lightCount = 0
     private var shadowCasterCount = 0
     private var edgeCount = 0
@@ -259,11 +262,13 @@ open class LightingSystem : SceneSystem()
 
         lightRenderer.xDrawOffset = xOffset
         lightRenderer.yDrawOffset = yOffset
+        xSamplingOffset = xOffset / lightSurface.config.width
+        ySamplingOffset = yOffset / lightSurface.config.height
 
         postEffectSurfaces.forEachPostEffect(engine)
         {
-            it.xSamplingOffset = -xOffset / lightSurface.config.width
-            it.ySamplingOffset = yOffset / lightSurface.config.height
+            it.xSamplingOffset = xSamplingOffset
+            it.ySamplingOffset = ySamplingOffset
         }
     }
 
@@ -454,12 +459,16 @@ open class LightingSystem : SceneSystem()
     private inline fun MutableList<String>.forEachPostEffect(engine: PulseEngine, action: (LightBlendEffect) -> Unit) =
         this.forEachFast { (engine.gfx.getSurface(it)?.getPostProcessingEffect(POST_EFFECT_NAME) as? LightBlendEffect)?.let(action) }
 
+    fun getSamplingOffset() = SAMPLING_OFFSET.set(xSamplingOffset, ySamplingOffset)
+
     companion object
     {
-        private const val POST_EFFECT_NAME = "light_post_effect"
-        private const val LIGHT_SURFACE_NAME = "light_surface"
-        private const val NORMAL_SURFACE_NAME = "light_normal_map"
-        private const val OCCLUDER_SURFACE_NAME = "light_occluder_map"
+        const val POST_EFFECT_NAME = "light_post_effect"
+        const val LIGHT_SURFACE_NAME = "light_surface"
+        const val NORMAL_SURFACE_NAME = "light_normal_map"
+        const val OCCLUDER_SURFACE_NAME = "light_occluder_map"
+
         private val BOUNDING_COORDS = listOf(0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f)
+        private val SAMPLING_OFFSET = Vector2f()
     }
 }
