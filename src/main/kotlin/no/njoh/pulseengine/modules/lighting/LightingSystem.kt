@@ -262,8 +262,8 @@ open class LightingSystem : SceneSystem()
 
         lightRenderer.xDrawOffset = xOffset
         lightRenderer.yDrawOffset = yOffset
-        xSamplingOffset = xOffset / lightSurface.config.width
-        ySamplingOffset = yOffset / lightSurface.config.height
+        xSamplingOffset = -xOffset / lightSurface.config.width
+        ySamplingOffset =  yOffset / lightSurface.config.height
 
         postEffectSurfaces.forEachPostEffect(engine)
         {
