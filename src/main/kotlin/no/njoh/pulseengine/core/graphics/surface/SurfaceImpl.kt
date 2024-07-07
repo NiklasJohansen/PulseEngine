@@ -83,7 +83,7 @@ class SurfaceImpl(
     override fun renderToOffScreenTarget()
     {
         hasContent = renderers.anyMatches { it.hasContentToRender() }
-        if (!hasContent)
+        if (!hasContent && !config.drawWhenEmpty)
             return // No content to render
 
         renderTarget.begin()

@@ -55,6 +55,7 @@ interface Graphics
         zOrder: Int? = null,
         camera: Camera? = null,
         isVisible: Boolean = true,
+        drawWhenEmpty: Boolean = false,
         textureScale: Float = 1f,
         textureFormat: TextureFormat = RGBA8,
         textureFilter: TextureFilter = LINEAR,
