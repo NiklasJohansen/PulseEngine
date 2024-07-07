@@ -101,7 +101,7 @@ class SurfaceImpl(
 
     override fun runPostProcessingPipeline()
     {
-        if (!hasContent) return // Render target is blank
+        if (!hasContent()) return // Render target is blank
 
         var texture = renderTarget.getTexture() ?: return
         postEffects.forEachFast()
@@ -117,7 +117,7 @@ class SurfaceImpl(
         renderTarget.destroy()
     }
 
-    override fun hasContent() = hasContent
+    override fun hasContent() = hasContent || config.drawWhenEmpty
 
     // Exposed draw functions
     //------------------------------------------------------------------------------------------------
