@@ -196,7 +196,8 @@ open class SceneManagerImpl : SceneManagerInternal()
             }) { scene ->
                 loadingScene = false
                 nextStagedScene = scene
-                Logger.debug("Transitioning into scene: ${scene.name}")
+                scene.fileName = nextSceneFileName!!
+                Logger.debug("Transitioning into scene: $nextSceneFileName")
             }
         }
 
