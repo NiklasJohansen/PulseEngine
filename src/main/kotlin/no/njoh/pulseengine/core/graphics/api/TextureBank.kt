@@ -66,10 +66,16 @@ class TextureBank
             it.mipLevels == texture.mipLevels
         }
 
+        val isMoreTextureSlotsAvailable = textureArrays.size < MAX_TEXTURE_SLOTS
         if (textureArray != null)
-            return textureArray
+        {
+            val foundArrayHasAppropriateSize = textureSize > textureArray.textureSize / 2
+            val isTextureSmallerThanSmallestSpec = textureSize < capacitySpecs.first().texSize
+            if (foundArrayHasAppropriateSize || isTextureSmallerThanSmallestSpec || !isMoreTextureSlotsAvailable)
+                return textureArray
+        }
 
-        if (textureArrays.size >= MAX_TEXTURE_SLOTS)
+        if (!isMoreTextureSlotsAvailable)
         {
             Logger.error(
                 "Failed to load texture: name=${texture.name}, size=${textureSize}px, format=${texture.format}, " +
@@ -91,6 +97,7 @@ class TextureBank
 
         val newArray = TextureArray(textureArrays.size, spec.texSize, spec.capacity, texture.format, texture.filter, texture.mipLevels)
         textureArrays.add(newArray)
+        textureArrays.sortBy { it.textureSize }
         Logger.debug("New texture array created: $newArray")
 
         return newArray
