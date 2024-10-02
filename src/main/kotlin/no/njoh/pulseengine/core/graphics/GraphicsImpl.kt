@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
@@ -89,7 +90,7 @@ open class GraphicsImpl : GraphicsInternal
         }
     }
 
-    override fun drawFrame()
+    override fun drawFrame(engine: PulseEngine)
     {
         // Render all batched data to offscreen target
         surfaces.forEachFast { it.renderToOffScreenTarget() }
@@ -98,12 +99,15 @@ open class GraphicsImpl : GraphicsInternal
         BackBufferBaseState.apply(surfaces.firstOrNull() ?: mainSurface)
 
         // Run surfaces through their post-processing pipelines
-        surfaces.forEachFast { it.runPostProcessingPipeline() }
+        surfaces.forEachFast { it.runPostProcessingPipeline(engine) }
+
+        // Reset the viewport size to screen size (main surface is always the same size as the screen)
+        ViewportState.apply(mainSurface)
 
         // Draw visible surfaces with content to back-buffer
         surfaces.forEachFiltered({ it.config.isVisible && it.hasContent() })
         {
-            fullFrameRenderer.render(it.getTexture())
+            fullFrameRenderer.drawTexture(it.getTexture())
         }
     }
 

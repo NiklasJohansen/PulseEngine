@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
@@ -85,6 +86,6 @@ interface GraphicsInternal : Graphics
     fun reloadAllShaders()
     fun reloadShader(fileName: String)
     fun initFrame()
-    fun drawFrame()
+    fun drawFrame(engine: PulseEngine)
     fun destroy()
 }

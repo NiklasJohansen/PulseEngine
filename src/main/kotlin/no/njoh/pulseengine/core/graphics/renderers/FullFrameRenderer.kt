@@ -5,12 +5,14 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL30.*
+import kotlin.math.min
 
 class FullFrameRenderer(private val program: ShaderProgram)
 {
     private var vaoId = -1
     private var vboId = -1
     private var initialized = false
+    private var textureHandles = Array(4) { TextureHandle.NONE }
 
     fun init()
     {
@@ -31,16 +33,42 @@ class FullFrameRenderer(private val program: ShaderProgram)
         program.setVertexAttributeLayout("texCoord", 2, GL_FLOAT, 4 * FLOAT_BYTES, 2L * FLOAT_BYTES)
     }
 
-    fun render(texture: Texture)
+    fun drawTexture(texture: Texture)
     {
-        glBindVertexArray(vaoId)
-        program.bind()
-        glActiveTexture(GL_TEXTURE0)
-        glBindTexture(GL_TEXTURE_2D, texture.handle.textureIndex)
-        glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
+        drawTextureHandle(texture.handle)
     }
 
-    fun render(vararg textures: Texture)
+    fun drawTextureHandle(handle: TextureHandle)
+    {
+        textureHandles[0] = handle
+        drawTextureHandles(textureHandles, 1)
+    }
+
+    fun drawTextures(tex0: Texture, tex1: Texture)
+    {
+        textureHandles[0] = tex0.handle
+        textureHandles[1] = tex1.handle
+        drawTextureHandles(textureHandles, 2)
+    }
+
+    fun drawTextures(tex0: Texture, tex1: Texture, tex2: Texture)
+    {
+        textureHandles[0] = tex0.handle
+        textureHandles[1] = tex1.handle
+        textureHandles[2] = tex2.handle
+        drawTextureHandles(textureHandles, 3)
+    }
+
+    fun drawTextures(tex0: Texture, tex1: Texture, tex2: Texture, tex3: Texture)
+    {
+        textureHandles[0] = tex0.handle
+        textureHandles[1] = tex1.handle
+        textureHandles[2] = tex2.handle
+        textureHandles[3] = tex3.handle
+        drawTextureHandles(textureHandles, 4)
+    }
+
+    fun drawTextures(textures: List<Texture>)
     {
         glBindVertexArray(vaoId)
         for (i in 0 until textures.size)
@@ -52,10 +80,10 @@ class FullFrameRenderer(private val program: ShaderProgram)
         glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
     }
 
-    fun render(textureHandles: List<TextureHandle>)
+    fun drawTextureHandles(textureHandles: Array<TextureHandle>, count: Int = textureHandles.size)
     {
         glBindVertexArray(vaoId)
-        for (i in 0 until textureHandles.size)
+        for (i in 0 until min(count, textureHandles.size))
         {
             glActiveTexture(GL_TEXTURE0 + i)
             glBindTexture(GL_TEXTURE_2D, textureHandles[i].textureIndex)

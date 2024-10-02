@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.surface
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
@@ -99,15 +100,15 @@ class SurfaceImpl(
         renderTarget.end()
     }
 
-    override fun runPostProcessingPipeline()
+    override fun runPostProcessingPipeline(engine: PulseEngine)
     {
         if (!hasContent()) return // Render target is blank
 
-        var texture = renderTarget.getTexture() ?: return
-        postEffects.forEachFast()
-        {
-            texture = it.process(texture)
-        }
+        // Make sure the view port is set to the same size as the scaled surface texture
+        ViewportState.apply(this)
+
+        var textures = renderTarget.getTextures()
+        postEffects.forEachFast { textures = it.process(engine, textures) }
     }
 
     override fun destroy()
@@ -168,7 +169,7 @@ class SurfaceImpl(
 
     override fun getTexture(index: Int): Texture
     {
-        return postEffects.lastOrNull()?.getTexture()
+        return postEffects.lastOrNull()?.getTexture(index)
             ?: renderTarget.getTexture(index)
             ?: throw RuntimeException(
                 "Failed to get texture with index: $index from surface with name: ${config.name}. " +
@@ -302,6 +303,12 @@ class SurfaceImpl(
     override fun getPostProcessingEffect(name: String): PostProcessingEffect?
     {
         return postEffects.firstOrNullFast { it.name == name }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : PostProcessingEffect> getPostProcessingEffect(type: Class<T>): T?
+    {
+        return postEffects.firstOrNullFast { type.isAssignableFrom(it.javaClass) } as T?
     }
 
     override fun deletePostProcessingEffect(name: String)

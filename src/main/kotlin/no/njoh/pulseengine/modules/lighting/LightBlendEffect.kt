@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.lighting
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Camera
@@ -38,7 +39,7 @@ class LightBlendEffect(
     /** Determines the scale of the noise used to generate the fog  */
     var fogScale = 1f
 
-    private var textureHandles = mutableListOf(TextureHandle.NONE, TextureHandle.NONE)
+    private var textureHandles = arrayOf(TextureHandle.NONE, TextureHandle.NONE)
     private var camPos = Vector4f()
     private var camScale = Vector3f()
 
@@ -48,10 +49,11 @@ class LightBlendEffect(
             fragmentShaderFileName = "/pulseengine/shaders/effects/lighting_blend.frag"
         )
 
-    override fun applyEffect(texture: Texture): Texture
+    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
-        textureHandles[0] = texture.handle
-        textureHandles[1] = lightMapTextureHandle ?: return texture
+        val albedoTexture = inTextures[0]
+        textureHandles[0] = albedoTexture.handle
+        textureHandles[1] = lightMapTextureHandle ?: return inTextures
 
         camPos.set(1f).mul(camera.viewProjectionMatrix)
         camera.viewMatrix.getScale(camScale)
@@ -61,7 +63,7 @@ class LightBlendEffect(
         program.bind()
         program.setUniform("ambientColor", ambientColor)
         program.setUniform("samplingOffset", xSamplingOffset, ySamplingOffset)
-        program.setUniform("resolution", texture.width.toFloat(), texture.height.toFloat())
+        program.setUniform("resolution", albedoTexture.width.toFloat(), albedoTexture.height.toFloat())
         program.setUniform("enableFxaa", enableFxaa)
         program.setUniform("dithering", dithering)
         program.setUniform("fogIntensity", fogIntensity)
@@ -69,11 +71,11 @@ class LightBlendEffect(
         program.setUniform("camPos", camPos.x, camPos.y)
         program.setUniform("time", 0.001f * fogTurbulence * time++)
 
-        renderer.render(textureHandles)
+        renderer.drawTextureHandles(textureHandles)
 
         fbo.release()
 
-        return fbo.getTexture() ?: texture
+        return fbo.getTextures()
     }
 
     private var time = 0f

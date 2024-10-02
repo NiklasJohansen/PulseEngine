@@ -216,7 +216,7 @@ class PulseEngineImpl(
     {
         data.measureGpuRenderTime()
         {
-            gfx.drawFrame()
+            gfx.drawFrame(this)
             window.swapBuffers()
         }
     }

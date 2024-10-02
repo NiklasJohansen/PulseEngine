@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
@@ -28,22 +29,22 @@ class BloomEffect(
             fragmentShaderFileName = "/pulseengine/shaders/effects/textureAddBlend.frag"
         )
 
-    override fun applyEffect(texture: Texture): Texture
+    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
         thresholdEffect.brightnessThreshold = threshold
-        val brightTexture = thresholdEffect.process(texture)
+        val brightTextures = thresholdEffect.process(engine, inTextures)
 
         blurEffect.blurPasses = blurPasses
         blurEffect.radius = blurRadius
-        val blurredBrightPass = blurEffect.process(brightTexture)
+        val blurredBrightPass = blurEffect.process(engine, brightTextures)
 
         fbo.bind()
         fbo.clear()
         program.bind()
         program.setUniform("exposure", exposure)
-        renderer.render(texture, blurredBrightPass)
+        renderer.drawTextures(inTextures[0], blurredBrightPass[0])
         fbo.release()
 
-        return fbo.getTexture() ?: texture
+        return fbo.getTextures()
     }
 }

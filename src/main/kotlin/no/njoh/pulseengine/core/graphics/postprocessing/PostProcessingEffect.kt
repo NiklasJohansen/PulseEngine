@@ -1,9 +1,13 @@
 package no.njoh.pulseengine.core.graphics.postprocessing
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.objects.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.renderers.FullFrameRenderer
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
@@ -11,19 +15,24 @@ interface PostProcessingEffect
 {
     val name: String
     fun init()
-    fun process(texture: Texture): Texture
-    fun getTexture(): Texture?
+    fun process(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    fun getTexture(index: Int): Texture?
     fun destroy()
 }
 
-abstract class SinglePassEffect : PostProcessingEffect
-{
+abstract class SinglePassEffect(
+    private val textureFormat: TextureFormat = TextureFormat.RGBA8,
+    private val textureFilter: TextureFilter = TextureFilter.LINEAR,
+    val attachments: List<Attachment> = listOf(COLOR_TEXTURE_0)
+) : PostProcessingEffect {
+
     protected lateinit var fbo: FrameBufferObject
     protected lateinit var program: ShaderProgram
     protected lateinit var renderer: FullFrameRenderer
 
     protected abstract fun loadShaderProgram(): ShaderProgram
-    protected abstract fun applyEffect(texture: Texture): Texture
+
+    abstract fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
 
     override fun init()
     {
@@ -36,24 +45,26 @@ abstract class SinglePassEffect : PostProcessingEffect
         renderer.init()
     }
 
-    override fun process(texture: Texture): Texture
+    override fun process(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
-        updateFBO(texture)
-        return applyEffect(texture)
+        if (inTextures.isEmpty())
+            return inTextures
+
+        updateFBO(inTextures.first())
+        return applyEffect(engine, inTextures)
     }
 
-    override fun getTexture(): Texture? =
-        if (this::fbo.isInitialized) fbo.getTexture() else null
+    override fun getTexture(index: Int): Texture? = if (this::fbo.isInitialized) fbo.getTexture(index) else null
 
     private fun updateFBO(texture: Texture)
     {
         if (!this::fbo.isInitialized)
-            fbo = FrameBufferObject.create(texture.width, texture.height, attachments = listOf(COLOR_TEXTURE_0))
+            fbo = FrameBufferObject.create(texture.width, texture.height, textureFormat = textureFormat, textureFilter = textureFilter, attachments = attachments)
 
         if (fbo.width != texture.width || fbo.height != texture.height)
         {
             fbo.delete()
-            fbo = FrameBufferObject.create(texture.width, texture.height, attachments = listOf(COLOR_TEXTURE_0))
+            fbo = FrameBufferObject.create(texture.width, texture.height, textureFormat = textureFormat, textureFilter = textureFilter, attachments = attachments)
         }
     }
 
@@ -65,14 +76,20 @@ abstract class SinglePassEffect : PostProcessingEffect
     }
 }
 
-abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProcessingEffect
-{
+abstract class MultiPassEffect(
+    private val numberOfRenderPasses: Int,
+    private val textureFormat: TextureFormat = TextureFormat.RGBA8,
+    private val textureFilter: TextureFilter = TextureFilter.LINEAR,
+    private val attachments: List<Attachment> = listOf(COLOR_TEXTURE_0)
+) : PostProcessingEffect {
+
     protected val fbo = mutableListOf<FrameBufferObject>()
     protected val renderers = mutableListOf<FullFrameRenderer>()
     protected val programs = mutableListOf<ShaderProgram>()
 
     protected abstract fun loadShaderPrograms(): List<ShaderProgram>
-    protected abstract fun applyEffect(texture: Texture): Texture
+
+    abstract fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
 
     override fun init()
     {
@@ -85,10 +102,13 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
         renderers.forEachFast { it.init() }
     }
 
-    override fun process(texture: Texture): Texture
+    override fun process(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
-        updateFBO(texture)
-        return applyEffect(texture)
+        if (inTextures.isEmpty())
+            return inTextures
+
+        updateFBO(inTextures.first())
+        return applyEffect(engine, inTextures)
     }
 
     private fun updateFBO(texture: Texture)
@@ -105,9 +125,9 @@ abstract class MultiPassEffect(private val numberOfRenderPasses: Int) : PostProc
     }
 
     private fun createNewFBOList(amount: Int, width: Int, height: Int): List<FrameBufferObject> =
-        0.until(amount).map { FrameBufferObject.create(width, height, attachments = listOf(COLOR_TEXTURE_0)) }
+        0.until(amount).map { FrameBufferObject.create(width, height, textureFormat = textureFormat, textureFilter = textureFilter, attachments = attachments) }
 
-    override fun getTexture(): Texture? = fbo.lastOrNull()?.getTexture(0)
+    override fun getTexture(index: Int): Texture? = fbo.lastOrNull()?.getTexture(index)
 
     override fun destroy()
     {

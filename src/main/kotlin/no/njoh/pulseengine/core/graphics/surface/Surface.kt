@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.surface
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.StencilState.Action.CLEAR
@@ -151,15 +152,25 @@ abstract class Surface
     ///////////////////////////////////////// Post-Processing /////////////////////////////////////////
 
     /**
-     * Adds a named post-processing effect to the [Surface]. The effect will be initialized and
+     * Adds a named [PostProcessingEffect] to the [Surface]. The effect will be initialized and
      * ready at the start of the next frame.
      */
     abstract fun addPostProcessingEffect(effect: PostProcessingEffect)
 
     /**
-     * Gets a post-processing effect by name.
+     * Gets a [PostProcessingEffect] by name.
      */
     abstract fun getPostProcessingEffect(name: String): PostProcessingEffect?
+
+    /**
+     * Gets a [PostProcessingEffect] by type.
+     */
+    abstract fun <T: PostProcessingEffect> getPostProcessingEffect(type: Class<T>): T?
+
+    /**
+     * Gets a [PostProcessingEffect] by the inferred class type.
+     */
+    inline fun <reified T: PostProcessingEffect> getPostProcessingEffect(): T? = getPostProcessingEffect(T::class.java)
 
     /**
      * Deletes a post-processing effect by name. The effect will be removed at the start of the next frame.
@@ -209,7 +220,7 @@ abstract class SurfaceInternal : Surface()
     abstract fun init(width: Int, height: Int, glContextRecreated: Boolean)
     abstract fun initFrame()
     abstract fun renderToOffScreenTarget()
-    abstract fun runPostProcessingPipeline()
+    abstract fun runPostProcessingPipeline(engine: PulseEngine)
     abstract fun destroy()
     abstract fun hasContent(): Boolean
 }

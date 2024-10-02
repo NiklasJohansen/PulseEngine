@@ -41,6 +41,17 @@ object BackBufferBaseState : RenderState
 }
 
 /**
+ * Sets the view port size to the size of the scaled surface texture
+ */
+object ViewportState : RenderState
+{
+    override fun apply(surface: SurfaceInternal)
+    {
+        glViewport(0, 0, (surface.config.width * surface.config.textureScale).toInt(), (surface.config.height * surface.config.textureScale).toInt())
+    }
+}
+
+/**
  * Sets up the base OpenGL state before running all batch renderers for the given surface.
  */
 object BatchRenderBaseState : RenderState

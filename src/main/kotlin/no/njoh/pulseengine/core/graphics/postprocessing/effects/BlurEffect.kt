@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.postprocessing.MultiPassEffect
@@ -23,33 +24,33 @@ class BlurEffect(
             )
         )
 
-    override fun applyEffect(texture: Texture): Texture
+    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
         blurPasses = max(0,  blurPasses)
-        var tex = texture
+        var tex = inTextures
         for (i in 0 until blurPasses)
-            tex = applyBlurPass(tex,radius * (1f + i))
+            tex = applyBlurPass(tex, radius * (1f + i))
         return tex
     }
 
-    private fun applyBlurPass(texture: Texture, radius: Float): Texture
+    private fun applyBlurPass(textures: List<Texture>, radius: Float): List<Texture>
     {
         fbo[0].bind()
         fbo[0].clear()
         programs[0].bind()
         programs[0].setUniform("radius", radius)
-        renderers[0].render(texture)
+        renderers[0].drawTextures(textures)
         fbo[0].release()
 
-        val firstPassTexture = fbo[0].getTexture() ?: return texture
+        val firstPassTexture = fbo[0].getTextures()
 
         fbo[1].bind()
         fbo[1].clear()
         programs[1].bind()
         programs[1].setUniform("radius", radius)
-        renderers[1].render(firstPassTexture)
+        renderers[1].drawTextures(firstPassTexture)
         fbo[1].release()
 
-        return fbo[1].getTexture() ?: texture
+        return fbo[1].getTextures()
     }
 }

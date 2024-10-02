@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
+import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
@@ -15,16 +16,16 @@ class VignetteEffect(
             fragmentShaderFileName = "/pulseengine/shaders/effects/vignette.frag"
         )
 
-    override fun applyEffect(texture: Texture): Texture
+    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
         fbo.bind()
         fbo.clear()
         program.bind()
-        program.setUniform("resolution", texture.width.toFloat(), texture.height.toFloat())
+        program.setUniform("resolution", inTextures[0].width.toFloat(), inTextures[0].height.toFloat())
         program.setUniform("strength", strength)
-        renderer.render(texture)
+        renderer.drawTextures(inTextures)
         fbo.release()
 
-        return fbo.getTexture() ?: texture
+        return fbo.getTextures()
     }
 }
