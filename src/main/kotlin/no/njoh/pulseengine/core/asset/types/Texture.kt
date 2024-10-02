@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
@@ -56,12 +57,12 @@ open class Texture(
     var pixelsHDR: FloatBuffer? = null
         private set
 
-    var attachment: Int = -1
+    var attachment: Attachment? = null
         private set
 
     private var onFinalized: (Texture) -> Unit = { }
 
-    open fun finalize(handle: TextureHandle, isBindless: Boolean, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, attachment: Int = -1)
+    open fun finalize(handle: TextureHandle, isBindless: Boolean, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, attachment: Attachment? = null)
     {
         this.handle = handle
         this.isBindless = isBindless

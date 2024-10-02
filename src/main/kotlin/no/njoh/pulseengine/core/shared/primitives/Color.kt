@@ -117,6 +117,14 @@ data class Color(
         return hsb
     }
 
+    fun multiplyRgb(factor: Float): Color
+    {
+        red *= factor
+        green *= factor
+        blue *= factor
+        return this
+    }
+
     companion object
     {
         val BLANK = Color(0f, 0f, 0f, 0f)

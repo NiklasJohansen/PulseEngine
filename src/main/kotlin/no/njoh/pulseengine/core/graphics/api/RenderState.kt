@@ -68,9 +68,6 @@ object BatchRenderBaseState : RenderState
         }
         else glDisable(GL_BLEND)
 
-        // Set which attachments from the fragment shader data will be written to
-        glDrawBuffers(config.textureAttachments)
-
         // Set viewport size
         glViewport(0, 0, (surface.config.width * config.textureScale).toInt(), (surface.config.height * config.textureScale).toInt())
 

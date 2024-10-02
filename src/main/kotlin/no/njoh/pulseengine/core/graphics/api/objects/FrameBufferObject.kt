@@ -23,9 +23,18 @@ open class FrameBufferObject(
     private val renderBufferIds: List<Int>,
     private val textures: List<Texture>
 ) {
-    fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, id)
+    private val textureBuffers = textures.mapNotNull { it.attachment }.filter { it.isDrawable }.map { it.value }.toIntArray()
+
+    fun bind()
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, id)
+        glDrawBuffers(textureBuffers)
+    }
+
     fun release() = glBindFramebuffer(GL_FRAMEBUFFER, 0)
+
     fun clear() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+
     fun delete()
     {
         textures.forEachFast { glDeleteTextures(it.handle.textureIndex) }
@@ -33,8 +42,7 @@ open class FrameBufferObject(
         glDeleteFramebuffers(id)
     }
 
-    fun getTexture(index: Int = 0): Texture? =
-        textures.getOrNull(index)
+    fun getTexture(index: Int = 0) = textures.getOrNull(index)
 
     fun getTextures() = textures
 
@@ -47,8 +55,8 @@ open class FrameBufferObject(
         {
             val sourceTexture = textures[i]
             val destinationTexture = destinationFbo.textures[i]
-            glReadBuffer(sourceTexture.attachment)
-            glDrawBuffers(destinationTexture.attachment)
+            glReadBuffer(sourceTexture.attachment!!.value)
+            glDrawBuffers(destinationTexture.attachment!!.value)
             glBlitFramebuffer(
                 0, 0, sourceTexture.width, sourceTexture.height,
                 0, 0, destinationTexture.width, destinationTexture.height,
@@ -95,10 +103,10 @@ open class FrameBufferObject(
 
                 if (textureId != null)
                 {
-                    val texture = Texture("", "fbo_${attachment.name.toLowerCase()}")
+                    val texture = Texture("", name = "fbo_${attachment.name.toLowerCase()}", filter = textureFilter, mipLevels = 1)
                     val handle = TextureHandle.create(0, textureId)
                     texture.stage(null as ByteBuffer?, texWidth, texHeight)
-                    texture.finalize(handle, isBindless = false, attachment = attachment.value)
+                    texture.finalize(handle, isBindless = false, attachment = attachment)
                     textures.add(texture)
                 }
 

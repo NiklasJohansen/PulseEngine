@@ -39,7 +39,6 @@ class SurfaceConfigInternal(
 ) : SurfaceConfig {
 
     val hasDepthAttachment = attachments.anyMatches { it.hasDepth }
-    val textureAttachments = attachments.filter { it.isDrawable }.map { it.value }.toIntArray()
     var currentDrawColor   = 0f
     var currentDepth       = 0f
 

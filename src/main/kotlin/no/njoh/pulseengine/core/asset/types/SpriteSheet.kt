@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.shared.annotations.Icon
 
@@ -16,7 +17,7 @@ class SpriteSheet(
     var size = 0
         private set
 
-    override fun finalize(handle: TextureHandle, isBindless: Boolean, uMin: Float, vMin: Float, uMax: Float, vMax: Float, attachment: Int)
+    override fun finalize(handle: TextureHandle, isBindless: Boolean, uMin: Float, vMin: Float, uMax: Float, vMax: Float, attachment: Attachment?)
     {
         super.finalize(handle, isBindless, uMin, vMin, uMax, vMax, attachment)
 
