@@ -105,7 +105,7 @@ open class FrameBufferObject(
                 {
                     val texture = Texture("", name = "fbo_${attachment.name.toLowerCase()}", filter = textureFilter, mipLevels = 1)
                     val handle = TextureHandle.create(0, textureId)
-                    texture.stage(null as ByteBuffer?, texWidth, texHeight)
+                    texture.stage(null as ByteBuffer?, texWidth, texHeight, textureFormat)
                     texture.finalize(handle, isBindless = false, attachment = attachment)
                     textures.add(texture)
                 }
@@ -137,10 +137,10 @@ open class FrameBufferObject(
             val textureId = glGenTextures()
             glBindTexture(target, textureId)
             if (samples > 1)
-                glTexImage2DMultisample(target, samples, format.value, width, height, true)
+                glTexImage2DMultisample(target, samples, format.internalFormat, width, height, true)
             else
             {
-                glTexImage2D(target, 0, format.value, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, null as FloatArray?)
+                glTexImage2D(target, 0, format.internalFormat, width, height, 0, format.pixelFormat, GL_UNSIGNED_BYTE, null as FloatArray?)
                 glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter.value)
                 glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter.value)
                 glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)

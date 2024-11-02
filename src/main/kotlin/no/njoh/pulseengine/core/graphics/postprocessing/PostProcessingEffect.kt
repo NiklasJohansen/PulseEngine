@@ -21,8 +21,8 @@ interface PostProcessingEffect
 }
 
 abstract class SinglePassEffect(
-    private val textureFormat: TextureFormat = TextureFormat.RGBA8,
-    private val textureFilter: TextureFilter = TextureFilter.LINEAR,
+    var textureFormat: TextureFormat = TextureFormat.RGBA8,
+    var textureFilter: TextureFilter = TextureFilter.LINEAR,
     val attachments: List<Attachment> = listOf(COLOR_TEXTURE_0)
 ) : PostProcessingEffect {
 
@@ -56,15 +56,21 @@ abstract class SinglePassEffect(
 
     override fun getTexture(index: Int): Texture? = if (this::fbo.isInitialized) fbo.getTexture(index) else null
 
-    private fun updateFBO(texture: Texture)
+    private fun updateFBO(inTexture: Texture)
     {
         if (!this::fbo.isInitialized)
-            fbo = FrameBufferObject.create(texture.width, texture.height, textureFormat = textureFormat, textureFilter = textureFilter, attachments = attachments)
+            fbo = FrameBufferObject.create(inTexture.width, inTexture.height, textureFormat = textureFormat, textureFilter = textureFilter, attachments = attachments)
 
-        if (fbo.width != texture.width || fbo.height != texture.height)
-        {
+        val fboTex = fbo.getTextures().first()
+
+        if (
+            fboTex.width  != inTexture.width ||
+            fboTex.height != inTexture.height ||
+            fboTex.filter != textureFilter ||
+            fboTex.format != textureFormat
+        ) {
             fbo.delete()
-            fbo = FrameBufferObject.create(texture.width, texture.height, textureFormat = textureFormat, textureFilter = textureFilter, attachments = attachments)
+            fbo = FrameBufferObject.create(inTexture.width, inTexture.height, textureFormat = textureFormat, textureFilter = textureFilter, attachments = attachments)
         }
     }
 
@@ -77,10 +83,10 @@ abstract class SinglePassEffect(
 }
 
 abstract class MultiPassEffect(
-    private val numberOfRenderPasses: Int,
-    private val textureFormat: TextureFormat = TextureFormat.RGBA8,
-    private val textureFilter: TextureFilter = TextureFilter.LINEAR,
-    private val attachments: List<Attachment> = listOf(COLOR_TEXTURE_0)
+    val numberOfRenderPasses: Int,
+    var textureFormat: TextureFormat = TextureFormat.RGBA8,
+    var textureFilter: TextureFilter = TextureFilter.LINEAR,
+    var attachments: List<Attachment> = listOf(COLOR_TEXTURE_0)
 ) : PostProcessingEffect {
 
     protected val fbo = mutableListOf<FrameBufferObject>()
@@ -111,16 +117,21 @@ abstract class MultiPassEffect(
         return applyEffect(engine, inTextures)
     }
 
-    private fun updateFBO(texture: Texture)
+    private fun updateFBO(inTexture: Texture)
     {
         if (fbo.isEmpty())
-            fbo.addAll(createNewFBOList(numberOfRenderPasses, texture.width, texture.height))
+            fbo.addAll(createNewFBOList(numberOfRenderPasses, inTexture.width, inTexture.height))
 
-        if (fbo.first().width != texture.width || fbo.first().height != texture.height)
-        {
+        val fboTex = fbo.first().getTextures().first()
+
+        if (fboTex.width  != inTexture.width ||
+            fboTex.height != inTexture.height ||
+            fboTex.filter != textureFilter ||
+            fboTex.format != textureFormat
+        ) {
             fbo.forEachFast { it.delete() }
             fbo.clear()
-            fbo.addAll(createNewFBOList(numberOfRenderPasses, texture.width, texture.height))
+            fbo.addAll(createNewFBOList(numberOfRenderPasses, inTexture.width, inTexture.height))
         }
     }
 

@@ -114,10 +114,10 @@ open class Texture(
         }
     }
 
-    fun stage(pixels: ByteBuffer?, width: Int, height: Int)
+    fun stage(pixels: ByteBuffer?, width: Int, height: Int, format: TextureFormat = RGBA8)
     {
         this.pixelsLDR = pixels
-        this.format = RGBA8
+        this.format = format
         this.width = width
         this.height = height
     }

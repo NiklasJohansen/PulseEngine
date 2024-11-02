@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -52,7 +53,7 @@ class Font(
         rgbaBuffer.flip()
 
         charTexture = Texture("char_tex", "")
-        charTexture.stage(rgbaBuffer, BITMAP_W, BITMAP_H)
+        charTexture.stage(rgbaBuffer, BITMAP_W, BITMAP_H, TextureFormat.RGBA8)
     }
 
     override fun delete()

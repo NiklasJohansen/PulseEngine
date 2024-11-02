@@ -33,7 +33,7 @@ class TextureArray(
 
         textureArrayId = glGenTextures()
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
-        glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, textureFormat.value, textureSize, textureSize, maxCapacity)
+        glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, textureFormat.internalFormat, textureSize, textureSize, maxCapacity)
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, minFilter)
