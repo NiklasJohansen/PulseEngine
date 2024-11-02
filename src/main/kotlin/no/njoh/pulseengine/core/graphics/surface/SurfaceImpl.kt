@@ -286,6 +286,12 @@ class SurfaceImpl(
         return this
     }
 
+    override fun setDrawWhenEmpty(state: Boolean): Surface
+    {
+        config.drawWhenEmpty = state
+        return this
+    }
+
     override fun addPostProcessingEffect(effect: PostProcessingEffect)
     {
         runOnInitFrame()

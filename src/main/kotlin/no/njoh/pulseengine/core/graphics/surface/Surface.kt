@@ -136,6 +136,11 @@ abstract class Surface
      */
     abstract fun setTextureScale(scale: Float): Surface
 
+    /**
+     * Sets whether the [Surface] should be drawn when no content is present.
+     */
+    abstract fun setDrawWhenEmpty(state: Boolean): Surface
+
     ///////////////////////////////////////// Surface Textures /////////////////////////////////////////
 
     /**
