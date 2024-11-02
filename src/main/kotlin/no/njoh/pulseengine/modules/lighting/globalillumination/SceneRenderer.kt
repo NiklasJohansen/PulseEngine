@@ -19,6 +19,8 @@ class SceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
     private lateinit var program: ShaderProgram
 
+    var fixJitter = false
+
     override fun init()
     {
         if (!this::program.isInitialized)
@@ -67,8 +69,8 @@ class SceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
         }
 
         val (xPixelOffset, yPixelOffset) = calculatePixelOffset(surface)
-        val xDrawOffset = xPixelOffset / (surface.config.width  * 0.5f)
-        val yDrawOffset = yPixelOffset / (surface.config.height * 0.5f)
+        val xDrawOffset = if (fixJitter) xPixelOffset / (surface.config.width  * 0.5f) else 0f
+        val yDrawOffset = if (fixJitter) yPixelOffset / (surface.config.height * 0.5f) else 0f
 
         vao.bind()
         program.bind()

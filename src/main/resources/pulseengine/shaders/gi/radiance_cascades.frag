@@ -6,10 +6,13 @@
 in vec2 uv;
 out vec4 fragColor;
 
-layout(binding=0) uniform sampler2D sceneTexture;
-layout(binding=1) uniform sampler2D sceneMedatadaTexture;
-layout(binding=2) uniform sampler2D sceneSdf;
-layout(binding=3) uniform sampler2D upperCascadeTexture;
+layout(binding=0) uniform sampler2D screenRadianceTex;
+layout(binding=1) uniform sampler2D screenMedatadaTex;
+layout(binding=2) uniform sampler2D screenDistFieldTex;
+layout(binding=3) uniform sampler2D worldRadianceTex;
+layout(binding=4) uniform sampler2D worldMedatadaTex;
+layout(binding=5) uniform sampler2D worldDistFieldTex;
+layout(binding=6) uniform sampler2D upperCascadeTex;
 
 uniform vec4 skyColor;
 uniform vec4 sunColor;
@@ -22,11 +25,21 @@ uniform float cascadeCount;
 uniform bool bilinearFix;
 uniform bool forkFix;
 uniform float intervalLength;
+uniform float worldScale;
+uniform bool traceWorldRays;
 
 const float baseRayCount = 4.0;
+const float baseRayCountInt = 4;
 const float sqrtBase = sqrt(baseRayCount);
 
-vec4 raymarch(vec2 startPos, vec2 endPos)
+struct HitResult
+{
+    vec4 radiance;
+    vec2 pos;
+    bool outOfBounds;
+};
+
+HitResult raymarch(vec2 startPos, vec2 endPos, bool onScreen)
 {
     vec2 pos = startPos;
     float rayLength = distance(startPos, endPos);
@@ -36,21 +49,19 @@ vec4 raymarch(vec2 startPos, vec2 endPos)
     for (float traveledDist = 0; traveledDist < rayLength;)
     {
         // Move the ray along its direction by the distance to the closest non-empty space
-        float dist = texture(sceneSdf, pos).r;
-        pos += dist * rayDir;
+        float dist = texture(onScreen ? screenDistFieldTex : worldDistFieldTex, pos).r;
+        vec2 samplePos = pos + rayDir * dist;
         traveledDist += dist;
 
-        // Stop if we're out of bounds
-        if (pos.x < 0.0 || pos.x > 1.0 || pos.y < 0.0 || pos.y > 1.0)
-            break;
+        if (samplePos.x < 0.0 || samplePos.x > 1.0 || samplePos.y < 0.0 || samplePos.y > 1.0)
+            return HitResult(vec4(0), pos, true); // We're out of bounds
 
-        // Return the radiance if we're close enough to the surface
-        if (dist <= minStepSize)
+        if (dist <= minStepSize) // Return the radiance if we're close enough to the surface
         {
-            // Sample the scene texture at the hit position
-            vec4 radiance = texture(sceneTexture, pos);
-            vec4 metadata = texture(sceneMedatadaTexture, pos);
+            vec4 radiance = texture(onScreen ? screenRadianceTex : worldRadianceTex, samplePos);
+            vec4 metadata = texture(onScreen ? screenMedatadaTex : worldMedatadaTex, samplePos);
             float coneAngle = metadata.r * PI;
+            float sourceIntensity = metadata.b;
 
             if (coneAngle < PI)
             {
@@ -61,14 +72,33 @@ vec4 raymarch(vec2 startPos, vec2 endPos)
                 radiance.rgb *= clamp((dotK - d), 0, 1);
             }
 
-            radiance.rgb *= metadata.b; // sourceIntensity
-
             // Convert the color to linear space
-            return vec4(pow(radiance.rgb, vec3(SRGB)), radiance.a);
+            radiance = vec4(pow(radiance.rgb * sourceIntensity, vec3(SRGB)), radiance.a);
+
+            return HitResult(radiance, samplePos, false);
         }
+
+        pos = samplePos;
     }
 
-    return vec4(0); // No hit
+    return HitResult(vec4(0), pos, false); // No hit
+}
+
+vec4 raymarch(vec2 rayStart, vec2 rayEnd)
+{
+    // Ray march screen space distance field
+    HitResult hit = raymarch(rayStart, rayEnd, true);
+
+    // Ray marche world space distance field if the screen ray did not hit anything
+    if (hit.outOfBounds && traceWorldRays && cascadeIndex > 1.0)
+    {
+        float scale = 1.0 / max(1.0, worldScale);
+        vec2 worldRayStart = (hit.pos - vec2(0.5)) * scale + vec2(0.5);
+        vec2 worldRayEnd = (rayEnd - vec2(0.5)) * scale + vec2(0.5);
+        return raymarch(worldRayStart, worldRayEnd, false).radiance;
+    }
+
+    return hit.radiance;
 }
 
 vec4 fetchUpperCascadeRadiance(float rayIndex, vec2 probeIndex)
@@ -98,7 +128,7 @@ vec4 fetchUpperCascadeRadiance(float rayIndex, vec2 probeIndex)
     vec2 probePosUV = (quadrantTopLeftPos + probeIndexClamped) / resolution;
 
     // Sample the cascade texture
-    return texture(upperCascadeTexture, probePosUV);
+    return texture(upperCascadeTex, probePosUV);
 }
 
 vec4 merge(vec4 currentRadiance, float rayIndex, vec2 probeIndex)
@@ -205,7 +235,7 @@ void main()
         }
 
         // Mix in the sun and sky radiance if we're in the outermost cascade
-        if (isOutermostCascade)
+        if (isOutermostCascade && deltaRadiance.a == 0.0)
         {
             float angleToSun = mod(rayAngle - sunAngle, TAU);
             float sunIntensity = pow(max(0.0, cos(angleToSun)), 4.0 / sunDistance);

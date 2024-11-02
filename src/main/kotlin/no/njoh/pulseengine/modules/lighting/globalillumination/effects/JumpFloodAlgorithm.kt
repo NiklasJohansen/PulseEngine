@@ -54,7 +54,10 @@ class Jfa(override val name: String = "jfa") : MultiPassEffect(
     }
 }
 
-class JfaSeed(override val name: String = "jfa_seed") : SinglePassEffect(
+class JfaSeed(
+    private val sceneSurfaceName: String,
+    override val name: String = "jfa_seed"
+) : SinglePassEffect(
     textureFilter = NEAREST,
     textureFormat = RGBA32F
 ) {
@@ -65,8 +68,7 @@ class JfaSeed(override val name: String = "jfa_seed") : SinglePassEffect(
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
-        val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
-        val sceneSurface = lightSystem.getSceneSurface(engine) ?: return inTextures
+        val sceneSurface = engine.gfx.getSurface(sceneSurfaceName) ?: return inTextures
 
         fbo.bind()
         fbo.clear()

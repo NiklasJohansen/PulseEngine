@@ -11,10 +11,13 @@ import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
 import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
 import org.joml.Matrix4f
 
-class SceneBounce(override val name: String = "bounce") : SinglePassEffect(
+class SceneBounce(
+    private val lightSurfaceName: String,
+    override val name: String = "bounce"
+) : SinglePassEffect(
     textureFilter = NEAREST,
     textureFormat = RGBA16F,
-    attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1) // Scene color, Scene metadata
+    attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1) // Scene radiance, Scene metadata
 ) {
     private var lastViewProjectionMatrix = Matrix4f()
 
@@ -26,7 +29,7 @@ class SceneBounce(override val name: String = "bounce") : SinglePassEffect(
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
-        val lightSurface = lightSystem.getLightSurface(engine) ?: return inTextures
+        val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
 
         fbo.bind()
         fbo.clear()
@@ -36,8 +39,8 @@ class SceneBounce(override val name: String = "bounce") : SinglePassEffect(
         program.setUniform("currentViewProjectionMatrix", lightSurface.camera.viewProjectionMatrix)
         program.setUniform("resolution", fbo.width.toFloat(), fbo.height.toFloat())
         renderer.drawTextures(
-            inTextures[0], // Scene
-            inTextures[1], // Scene metadata
+            inTextures[0], // Radiance
+            inTextures[1], // Metadata
             lightSurface.getTexture(), // Light from previous frame
         )
         fbo.release()

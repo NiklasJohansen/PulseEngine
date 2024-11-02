@@ -3,14 +3,20 @@ package no.njoh.pulseengine.modules.lighting.globalillumination.effects
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.MultiPassEffect
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
 import kotlin.math.*
 
-class RadianceCascades(override val name: String = "rc") : MultiPassEffect(
+class RadianceCascades(
+    private val screenSurfaceName: String,
+    private val screenDistanceFieldSurfaceName: String,
+    private val worldSurfaceName: String,
+    private val worldDistanceFieldSurfaceName: String,
+    override val name: String = "rc"
+) : MultiPassEffect(
     numberOfRenderPasses = 2,
     textureFilter = LINEAR,
     textureFormat = RGBA16F
@@ -29,8 +35,10 @@ class RadianceCascades(override val name: String = "rc") : MultiPassEffect(
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
-        val sceneSurface = lightSystem.getSceneSurface(engine) ?: return inTextures
-        val sdfSurface = lightSystem.getSdfSurface(engine) ?: return inTextures
+        val screenSurface = engine.gfx.getSurface(screenSurfaceName) ?: return inTextures
+        val screenDistanceFieldSurface = engine.gfx.getSurface(screenDistanceFieldSurfaceName) ?: return inTextures
+        val worldSurface = engine.gfx.getSurface(worldSurfaceName) ?: return inTextures
+        val worldDistanceFieldSurface = engine.gfx.getSurface(worldDistanceFieldSurfaceName) ?: return inTextures
 
         val width = inTextures[0].width.toFloat()
         val height = inTextures[0].height.toFloat()
@@ -40,9 +48,12 @@ class RadianceCascades(override val name: String = "rc") : MultiPassEffect(
         var cascadeIndex = cascadeCount - 1
         val minStepSize = min(1f / width, 1f / height) * 0.5f
         val program = programs[0]
+        val skyLight = if (lightSystem.ambientLight) lightSystem.skyIntensity else 0f
+        val sunLight = if (lightSystem.ambientLight) lightSystem.sunIntensity else 0f
 
-        skyColor.setFrom(lightSystem.skyColor).multiplyRgb(lightSystem.skyIntensity)
-        sunColor.setFrom(lightSystem.sunColor).multiplyRgb(lightSystem.sunIntensity)
+        textureFilter = lightSystem.textureFilter
+        skyColor.setFrom(lightSystem.skyColor).multiplyRgb(skyLight)
+        sunColor.setFrom(lightSystem.sunColor).multiplyRgb(sunLight)
         outTextures = inTextures
 
         program.bind()
@@ -56,6 +67,8 @@ class RadianceCascades(override val name: String = "rc") : MultiPassEffect(
         program.setUniform("forkFix", lightSystem.forkFix)
         program.setUniform("intervalLength", lightSystem.intervalLength)
         program.setUniform("cascadeCount", cascadeCount.toFloat())
+        program.setUniform("worldScale", lightSystem.worldScale)
+        program.setUniform("traceWorldRays", lightSystem.traceWorldRays)
 
         while (cascadeIndex >= lightSystem.drawCascade)
         {
@@ -65,10 +78,13 @@ class RadianceCascades(override val name: String = "rc") : MultiPassEffect(
             program.setUniform("cascadeIndex", cascadeIndex.toFloat())
 
             renderers[0].drawTextures(
-                sceneSurface.getTexture(0), // Scene
-                sceneSurface.getTexture(1), // Scene metadata
-                sdfSurface.getTexture(),    // SDF
-                outTextures[0]              // Last cascade
+                screenSurface.getTexture(0),             // Screen radiance
+                screenSurface.getTexture(1),             // Screen metadata
+                screenDistanceFieldSurface.getTexture(), // Screen Distance field
+                worldSurface.getTexture(0),              // World radiance
+                worldSurface.getTexture(1),              // World metadata
+                worldDistanceFieldSurface.getTexture(),  // World Distance field
+                outTextures[0]                           // Last cascade
             )
 
             fbo.release()

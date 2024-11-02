@@ -11,7 +11,10 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
 import no.njoh.pulseengine.modules.lighting.globalillumination.SceneRenderer
 
-class Compose(override val name: String = "compose") : SinglePassEffect(
+class Compose(
+    private val lightSurfaceName: String,
+    override val name: String = "compose"
+) : SinglePassEffect(
     textureFilter = LINEAR,
     textureFormat = RGBA16F
 ) {
@@ -23,11 +26,13 @@ class Compose(override val name: String = "compose") : SinglePassEffect(
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
-        val lightSurface = lightSystem.getLightSurface(engine) ?: return inTextures
+        val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
 
         val (xPixelOffset, yPixelOffset) = SceneRenderer.calculatePixelOffset(lightSurface)
-        val xSampleOffset = xPixelOffset / lightSurface.config.width
-        val ySampleOffset = yPixelOffset / lightSurface.config.height
+        val xSampleOffset = if (lightSystem.fixJitter) xPixelOffset / lightSurface.config.width else 0f
+        val ySampleOffset = if (lightSystem.fixJitter) yPixelOffset / lightSurface.config.height else 0f
+
+        textureFilter = lightSystem.textureFilter
 
         fbo.bind()
         fbo.clear()

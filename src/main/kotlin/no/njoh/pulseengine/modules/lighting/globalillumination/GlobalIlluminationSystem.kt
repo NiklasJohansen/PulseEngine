@@ -25,6 +25,7 @@ import kotlin.math.*
 @Icon("LIGHT_BULB")
 open class GlobalIlluminationSystem : SceneSystem()
 {
+    @Prop(i = 0)                      var ambientLight = true
     @Prop(i = 1)                      var skyColor = Color(0.02f, 0.08f, 0.2f, 1f)
     @Prop(i = 2)                      var sunColor = Color(0.95f, 0.95f, 0.9f, 1f)
     @Prop(i = 3)                      var skyIntensity = 1f
@@ -32,18 +33,24 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 6)                      var sunDistance = 10f
     @Prop(i = 7)                      var sunAngle = 0f
     @Prop(i = 8)                      var dithering = 0f
-    @Prop(i = 9, min=0.01f, max=2f)   var textureScale = 1f
-    @Prop(i = 10, min=0f)             var drawCascade = 0
-    @Prop(i = 11, min=0f)             var maxCascades = 10
-    @Prop(i = 12)                     var intervalLength = 1f
-    @Prop(i = 13)                     var bilinearFix = true
-    @Prop(i = 14)                     var forkFix = true
-    @Prop(i = 15)                     var lightBounce = true
+    @Prop(i = 9)                      var textureFilter = LINEAR
+    @Prop(i = 10, min=0.01f, max=2f)  var textureScale = 1f
+    @Prop(i = 11, min=0f)             var drawCascade = 0
+    @Prop(i = 12, min=0f)             var maxCascades = 10
+    @Prop(i = 13)                     var intervalLength = 1f
+    @Prop(i = 14, min=1f)             var worldScale = 2f
+    @Prop(i = 15)                     var traceWorldRays = true
+    @Prop(i = 16)                     var bilinearFix = true
+    @Prop(i = 17)                     var forkFix = true
+    @Prop(i = 18)                     var lightBounce = true
+    @Prop(i = 19)                     var fixJitter = true
 
     override fun onCreate(engine: PulseEngine)
     {
+        // --------------------------------------- SCREEN SPACE SURFACE ---------------------------------------
+
         engine.gfx.createSurface(
-            name = SCENE_SURFACE_NAME,
+            name = SCREEN_SURFACE,
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 3,
             isVisible = false,
@@ -54,67 +61,129 @@ open class GlobalIlluminationSystem : SceneSystem()
             attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
         ).apply {
             addRenderer(SceneRenderer((this as SurfaceInternal).config))
-            addPostProcessingEffect(SceneBounce())
+            addPostProcessingEffect(SceneBounce(LIGHT_OUTPUT_SURFACE))
         }
 
         engine.gfx.createSurface(
-            name = DISTANCE_FIELD_SURFACE_NAME,
-            camera = engine.gfx.mainCamera,
+            name = SCREEN_DISTANCE_FIELD_SURFACE,
             zOrder = engine.gfx.mainSurface.config.zOrder + 2,
             isVisible = false,
             drawWhenEmpty = true,
             backgroundColor = Color.BLANK,
-            textureFormat = RGBA32F,
-            textureFilter = NEAREST,
-            blendFunction = NONE,
             textureScale =  textureScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(JfaSeed())
+            addPostProcessingEffect(JfaSeed(SCREEN_SURFACE))
             addPostProcessingEffect(Jfa())
             addPostProcessingEffect(DistanceField())
         }
 
+        // --------------------------------------- WORLD SPACE SURFACE ---------------------------------------
+
         engine.gfx.createSurface(
-            name = LIGHT_SURFACE_NAME,
+            name = WORLD_SURFACE,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 3,
+            isVisible = false,
+            backgroundColor = Color.BLANK,
+            textureFormat = RGBA16F,
+            blendFunction = NONE,
+            textureFilter = NEAREST,
+            attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
+        ).apply {
+            addRenderer(SceneRenderer((this as SurfaceInternal).config))
+        }
+
+        engine.gfx.createSurface(
+            name = WORLD_DIST_FIELD_SURFACE,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 2,
+            isVisible = false,
+            drawWhenEmpty = true,
+            backgroundColor = Color.BLANK,
+            textureScale =  textureScale,
+            attachments = listOf(COLOR_TEXTURE_0)
+        ).apply {
+            addPostProcessingEffect(JfaSeed(WORLD_SURFACE))
+            addPostProcessingEffect(Jfa())
+            addPostProcessingEffect(DistanceField())
+        }
+
+        // --------------------------------------- LIGHT OUTPUT SURFACE ---------------------------------------
+
+        engine.gfx.createSurface(
+            name = LIGHT_OUTPUT_SURFACE,
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 1,
             isVisible = false,
             drawWhenEmpty = true,
             backgroundColor = Color.BLANK,
-            textureFormat = RGBA16F,
-            textureFilter = LINEAR,
-            blendFunction = NONE,
             textureScale = textureScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(RadianceCascades())
+            addPostProcessingEffect(
+                RadianceCascades(
+                    SCREEN_SURFACE,
+                    SCREEN_DISTANCE_FIELD_SURFACE,
+                    WORLD_SURFACE,
+                    WORLD_DIST_FIELD_SURFACE
+                )
+            )
         }
 
-        engine.gfx.mainSurface.addPostProcessingEffect(Compose())
+        // Apply as post-processing effect to main surface
+        engine.gfx.mainSurface.addPostProcessingEffect(Compose(LIGHT_OUTPUT_SURFACE))
     }
 
     override fun onUpdate(engine: PulseEngine)
     {
-        engine.gfx.getSurface(SCENE_SURFACE_NAME)?.setTextureScale(textureScale)
-        engine.gfx.getSurface(DISTANCE_FIELD_SURFACE_NAME)?.setTextureScale(textureScale)
-        engine.gfx.getSurface(LIGHT_SURFACE_NAME)?.setTextureScale(textureScale)
+        engine.gfx.getSurface(SCREEN_SURFACE)?.setTextureScale(textureScale)
+        engine.gfx.getSurface(SCREEN_SURFACE)?.getRenderer<SceneRenderer>()?.fixJitter = fixJitter
+        engine.gfx.getSurface(SCREEN_DISTANCE_FIELD_SURFACE)?.setTextureScale(textureScale)
+
+        engine.gfx.getSurface(WORLD_SURFACE)?.setTextureScale(textureScale)
+        engine.gfx.getSurface(WORLD_SURFACE)?.getRenderer<SceneRenderer>()?.fixJitter = fixJitter
+        engine.gfx.getSurface(WORLD_DIST_FIELD_SURFACE)?.setTextureScale(textureScale)
+
+        engine.gfx.getSurface(LIGHT_OUTPUT_SURFACE)?.setTextureScale(textureScale)
+    }
+
+    override fun onFixedUpdate(engine: PulseEngine)
+    {
+        if (traceWorldRays)
+        {
+            val worldSurface = engine.gfx.getSurface(WORLD_SURFACE) ?: return
+            val cam = worldSurface.camera
+            val scale = 1f / max(1f, worldScale)
+
+            cam.position.set(engine.gfx.mainCamera.position)
+            cam.rotation.set(engine.gfx.mainCamera.rotation)
+            cam.origin.set(worldSurface.config.width * 0.5f, worldSurface.config.height * 0.5f, 1f)
+            cam.scale.set(engine.gfx.mainCamera.scale.x * scale, engine.gfx.mainCamera.scale.y * scale, engine.gfx.mainCamera.scale.z)
+        }
     }
 
     override fun onRender(engine: PulseEngine)
     {
-        val sceneSurface = engine.gfx.getSurface(SCENE_SURFACE_NAME) ?: return
-        val sourceRenderer = sceneSurface.getRenderer<SceneRenderer>() ?: return
+        val screenSurface = engine.gfx.getSurface(SCREEN_SURFACE) ?: return
+        val screenSourceRenderer = screenSurface.getRenderer<SceneRenderer>() ?: return
+        drawScene(engine, screenSurface, screenSourceRenderer)
 
-        drawScene(engine, sceneSurface, sourceRenderer)
+        val worldSurface = engine.gfx.getSurface(WORLD_SURFACE) ?: return
+        worldSurface.setDrawWhenEmpty(traceWorldRays) // Only draw world surface if we are tracing world rays
+        if (traceWorldRays)
+        {
+            val worldSourceRenderer = worldSurface.getRenderer<SceneRenderer>() ?: return
+            drawScene(engine, worldSurface, worldSourceRenderer)
+        }
     }
 
     override fun onDestroy(engine: PulseEngine)
     {
         engine.gfx.mainSurface.deletePostProcessingEffect("compose")
-        engine.gfx.deleteSurface(LIGHT_SURFACE_NAME)
-        engine.gfx.deleteSurface(DISTANCE_FIELD_SURFACE_NAME)
-        engine.gfx.deleteSurface(SCENE_SURFACE_NAME)
+        engine.gfx.deleteSurface(SCREEN_SURFACE)
+        engine.gfx.deleteSurface(WORLD_SURFACE)
+        engine.gfx.deleteSurface(SCREEN_DISTANCE_FIELD_SURFACE)
+        engine.gfx.deleteSurface(WORLD_DIST_FIELD_SURFACE)
+        engine.gfx.deleteSurface(LIGHT_OUTPUT_SURFACE)
     }
 
     override fun onStateChanged(engine: PulseEngine)
@@ -163,16 +232,12 @@ open class GlobalIlluminationSystem : SceneSystem()
         }
     }
 
-    fun getLightSurface(engine: PulseEngine) = engine.gfx.getSurface(LIGHT_SURFACE_NAME)
-
-    fun getSceneSurface(engine: PulseEngine) = engine.gfx.getSurface(SCENE_SURFACE_NAME)
-
-    fun getSdfSurface(engine: PulseEngine) = engine.gfx.getSurface(DISTANCE_FIELD_SURFACE_NAME)
-
     companion object
     {
-        private const val DISTANCE_FIELD_SURFACE_NAME = "sdf_surface"
-        private const val SCENE_SURFACE_NAME = "scene_surface"
-        private const val LIGHT_SURFACE_NAME = "light_surface"
+        private const val SCREEN_SURFACE                = "gi_screen"
+        private const val WORLD_SURFACE                 = "gi_world"
+        private const val SCREEN_DISTANCE_FIELD_SURFACE = "gi_screen_df"
+        private const val WORLD_DIST_FIELD_SURFACE      = "gi_world_df"
+        private const val LIGHT_OUTPUT_SURFACE          = "gi_light_output"
     }
 }

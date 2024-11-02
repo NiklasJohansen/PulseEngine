@@ -12,7 +12,7 @@ class FullFrameRenderer(private val program: ShaderProgram)
     private var vaoId = -1
     private var vboId = -1
     private var initialized = false
-    private var textureHandles = Array(4) { TextureHandle.NONE }
+    private var textureHandles = Array(7) { TextureHandle.NONE }
 
     fun init()
     {
@@ -44,28 +44,61 @@ class FullFrameRenderer(private val program: ShaderProgram)
         drawTextureHandles(textureHandles, 1)
     }
 
-    fun drawTextures(tex0: Texture, tex1: Texture)
+    fun drawTextures(t0: Texture, t1: Texture)
     {
-        textureHandles[0] = tex0.handle
-        textureHandles[1] = tex1.handle
+        textureHandles[0] = t0.handle
+        textureHandles[1] = t1.handle
         drawTextureHandles(textureHandles, 2)
     }
 
-    fun drawTextures(tex0: Texture, tex1: Texture, tex2: Texture)
+    fun drawTextures(t0: Texture, t1: Texture, t2: Texture)
     {
-        textureHandles[0] = tex0.handle
-        textureHandles[1] = tex1.handle
-        textureHandles[2] = tex2.handle
+        textureHandles[0] = t0.handle
+        textureHandles[1] = t1.handle
+        textureHandles[2] = t2.handle
         drawTextureHandles(textureHandles, 3)
     }
 
-    fun drawTextures(tex0: Texture, tex1: Texture, tex2: Texture, tex3: Texture)
+    fun drawTextures(t0: Texture, t1: Texture, t2: Texture, t3: Texture)
     {
-        textureHandles[0] = tex0.handle
-        textureHandles[1] = tex1.handle
-        textureHandles[2] = tex2.handle
-        textureHandles[3] = tex3.handle
+        textureHandles[0] = t0.handle
+        textureHandles[1] = t1.handle
+        textureHandles[2] = t2.handle
+        textureHandles[3] = t3.handle
         drawTextureHandles(textureHandles, 4)
+    }
+
+    fun drawTextures(t0: Texture, t1: Texture, t2: Texture, t3: Texture, t4: Texture)
+    {
+        textureHandles[0] = t0.handle
+        textureHandles[1] = t1.handle
+        textureHandles[2] = t2.handle
+        textureHandles[3] = t3.handle
+        textureHandles[4] = t4.handle
+        drawTextureHandles(textureHandles, 5)
+    }
+
+    fun drawTextures(t0: Texture, t1: Texture, t2: Texture, t3: Texture, t4: Texture, t5: Texture)
+    {
+        textureHandles[0] = t0.handle
+        textureHandles[1] = t1.handle
+        textureHandles[2] = t2.handle
+        textureHandles[3] = t3.handle
+        textureHandles[4] = t4.handle
+        textureHandles[5] = t5.handle
+        drawTextureHandles(textureHandles, 6)
+    }
+
+    fun drawTextures(t0: Texture, t1: Texture, t2: Texture, t3: Texture, t4: Texture, t5: Texture, t6: Texture)
+    {
+        textureHandles[0] = t0.handle
+        textureHandles[1] = t1.handle
+        textureHandles[2] = t2.handle
+        textureHandles[3] = t3.handle
+        textureHandles[4] = t4.handle
+        textureHandles[5] = t5.handle
+        textureHandles[6] = t6.handle
+        drawTextureHandles(textureHandles, 7)
     }
 
     fun drawTextures(textures: List<Texture>)
