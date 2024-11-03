@@ -10,36 +10,40 @@ layout(binding=0) uniform sampler2D sceneTex;
 layout(binding=1) uniform sampler2D sceneMetaTex;
 layout(binding=2) uniform sampler2D lightTex;
 
-uniform bool lightBounce;
+uniform float bounceAccumulation;
+uniform vec2 resolution;
+uniform float scale;
 
 void main()
 {
     vec4 scene = texture(sceneTex, uv);
     vec4 sceneMeta = texture(sceneMetaTex, uv);
-    float sourceIntensity = sceneMeta.b;
+    bool isWall = scene.a > 0.5;
+    bool isNotLightSource = sceneMeta.b < 0.1; // sourceIntensity < 0.1
 
-    float bounceIntensity = 1.2;
-    float bounceDecay = 0.5;
-    float bounceSampleRadius = 0.0005;
-
-    if (lightBounce && scene.a > 0.1 && sourceIntensity < 0.1)
+    if (bounceAccumulation > 0.0 && isWall && isNotLightSource)
     {
-        vec2 offset = vec2(bounceSampleRadius, 0);
-        vec4 lb0 = texture(lightTex, uvLastFrame + offset.xy);
-        vec4 lb1 = texture(lightTex, uvLastFrame - offset.xy);
-        vec4 lb2 = texture(lightTex, uvLastFrame + offset.yx);
-        vec4 lb3 = texture(lightTex, uvLastFrame - offset.yx);
-        vec4 lb4 = texture(lightTex, uvLastFrame + offset.xx);
-        vec4 lb5 = texture(lightTex, uvLastFrame - offset.xx);
-        vec4 lb6 = texture(lightTex, uvLastFrame + offset.yy);
-        vec4 lb7 = texture(lightTex, uvLastFrame - offset.yy);
+        vec2 p = (1.0 / resolution) * scale;
+        vec2 dir[8] = vec2[8](+p.xy, -p.xy, +p.yx, -p.yx, +p.xx, -p.xx, +p.yy, -p.yy);
+        vec3 lightAcc = vec3(0);
+        float n = 0;
 
-        vec4 lightBounceMax0 = max(max(lb0, lb1), max(lb2, lb3));
-        vec4 lightBounceMax1 = max(max(lb4, lb5), max(lb6, lb7));
-        vec4 lightBounce = max(lightBounceMax0, lightBounceMax1);
+        for (int i = 0; i < 8; i++)
+        {
+            bool isOpenSpace = texture(sceneTex, uv + dir[i]).a < 0.5;
+            if (isOpenSpace)
+            {
+                lightAcc += texture(lightTex, uvLastFrame + dir[i] * 5).rgb;
+                n++;
+            }
+        }
 
-        scene.rgb *= lightBounce.rgb * bounceDecay;
-        sceneMeta.b = bounceIntensity;
+        // Fade out bounce light near the edge of the screen
+        float edgeFade = 1.0 - smoothstep(0.45, 0.5, max(abs(uv.x - 0.5), abs(uv.y - 0.5)));
+        vec3 avgBounceLight = lightAcc / max(1.0, n);
+
+        scene.rgb *= avgBounceLight * bounceAccumulation * edgeFade;
+        sceneMeta.b = 1.0; // sourceIntensity = 1.0
     }
 
     sceneColor = scene;

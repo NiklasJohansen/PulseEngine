@@ -34,10 +34,12 @@ class SceneBounce(
         fbo.bind()
         fbo.clear()
         program.bind()
-        program.setUniform("lightBounce", lightSystem.lightBounce)
         program.setUniform("lastViewProjectionMatrix", lastViewProjectionMatrix)
         program.setUniform("currentViewProjectionMatrix", lightSurface.camera.viewProjectionMatrix)
+        program.setUniform("bounceAccumulation", lightSystem.bounceAccumulation)
         program.setUniform("resolution", fbo.width.toFloat(), fbo.height.toFloat())
+        program.setUniform("scale", lightSurface.camera.scale.x)
+
         renderer.drawTextures(
             inTextures[0], // Radiance
             inTextures[1], // Metadata

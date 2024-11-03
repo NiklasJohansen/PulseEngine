@@ -34,21 +34,12 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 7)                      var sunAngle = 0f
     @Prop(i = 8)                      var dithering = 0.7f
     @Prop(i = 9)                      var textureFilter = LINEAR
-    @Prop(i = 10, min=0.01f, max=2f)  var textureScale = 1f
-    @Prop(i = 11, min=0f)             var drawCascade = 0
-    @Prop(i = 12, min=0f)             var maxCascades = 10
-    @Prop(i = 13)                     var intervalLength = 1f
-    @Prop(i = 14, min=1f)             var worldScale = 2f
-    @Prop(i = 15)                     var traceWorldRays = true
-    @Prop(i = 16)                     var bilinearFix = true
-    @Prop(i = 17)                     var forkFix = true
-    @Prop(i = 18)                     var lightBounce = true
-    @Prop(i = 19)                     var fixJitter = true
     @Prop(i = 10, min=0.01f, max=2f)  var lightTextureScale = 0.5f
     @Prop(i = 11, min=0.01f, max=2f)  var sceneTextureScale = 0.5f
     @Prop(i = 12, min=0f)             var drawCascade = 0
     @Prop(i = 13, min=0f)             var maxCascades = 10
     @Prop(i = 14)                     var intervalLength = 1.5f
+    @Prop(i = 15, min=0f, max=1f)     var bounceAccumulation = 0.5f
     @Prop(i = 16, min=1f)             var worldScale = 4f
     @Prop(i = 17)                     var mergeCascades = true
     @Prop(i = 18)                     var traceWorldRays = true
