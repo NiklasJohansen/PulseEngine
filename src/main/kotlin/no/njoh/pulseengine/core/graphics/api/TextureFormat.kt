@@ -18,5 +18,7 @@ enum class TextureFormat(val internalFormat: Int, val pixelFormat: Int)
     @JsonAlias("HDR_32")
     RGBA32F(GL_RGBA32F, GL_RGBA),
 
-    R16F(GL_R16F, GL_RED)
+    R16F(GL_R16F, GL_RED),
+
+    RG16F(GL_RG16F, GL_RG)
 }

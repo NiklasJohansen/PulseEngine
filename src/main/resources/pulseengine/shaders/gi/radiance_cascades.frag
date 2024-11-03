@@ -6,13 +6,12 @@
 in vec2 uv;
 out vec4 fragColor;
 
-layout(binding=0) uniform sampler2D screenRadianceTex;
-layout(binding=1) uniform sampler2D screenMedatadaTex;
-layout(binding=2) uniform sampler2D screenDistFieldTex;
-layout(binding=3) uniform sampler2D worldRadianceTex;
-layout(binding=4) uniform sampler2D worldMedatadaTex;
-layout(binding=5) uniform sampler2D worldDistFieldTex;
-layout(binding=6) uniform sampler2D upperCascadeTex;
+layout(binding=0) uniform sampler2D localSceneTex;
+layout(binding=1) uniform sampler2D localMedatadaTex;
+layout(binding=2) uniform sampler2D globalSceneTex;
+layout(binding=3) uniform sampler2D globalMedatadaTex;
+layout(binding=4) uniform sampler2D distanceFieldTex;
+layout(binding=5) uniform sampler2D upperCascadeTex;
 
 uniform vec4 skyColor;
 uniform vec4 sunColor;
@@ -27,6 +26,7 @@ uniform bool forkFix;
 uniform float intervalLength;
 uniform float worldScale;
 uniform bool traceWorldRays;
+uniform bool mergeCascades;
 
 const float baseRayCount = 4.0;
 const float baseRayCountInt = 4;
@@ -49,19 +49,20 @@ HitResult raymarch(vec2 startPos, vec2 endPos, bool onScreen)
     for (float traveledDist = 0; traveledDist < rayLength;)
     {
         // Move the ray along its direction by the distance to the closest non-empty space
-        float dist = texture(onScreen ? screenDistFieldTex : worldDistFieldTex, pos).r;
+        vec2 field = texture(distanceFieldTex, pos).rg;
+        float dist = onScreen ? field.r : field.g;
         vec2 samplePos = pos + rayDir * dist;
         traveledDist += dist;
 
         if (samplePos.x < 0.0 || samplePos.x > 1.0 || samplePos.y < 0.0 || samplePos.y > 1.0)
-            return HitResult(vec4(0), pos, true); // We're out of bounds
+            return HitResult(vec4(0), pos, true);
 
-        if (dist <= minStepSize) // Return the radiance if we're close enough to the surface
+        if (dist <= minStepSize)
         {
-            vec4 radiance = texture(onScreen ? screenRadianceTex : worldRadianceTex, samplePos);
-            vec4 metadata = texture(onScreen ? screenMedatadaTex : worldMedatadaTex, samplePos);
-            float coneAngle = metadata.r * PI;
+            vec4 scene = texture(onScreen ? localSceneTex : globalSceneTex, samplePos);
+            vec4 metadata = texture(onScreen ? localMedatadaTex : globalMedatadaTex, samplePos);
             float sourceIntensity = metadata.b;
+            float coneAngle = metadata.r * PI;
 
             if (coneAngle < PI)
             {
@@ -69,13 +70,13 @@ HitResult raymarch(vec2 startPos, vec2 endPos, bool onScreen)
                 vec2 coneDir = vec2(cos(sourceAngle), sin(sourceAngle));
                 float dotK = max(dot(coneDir, -rayDir), 0.0);
                 float d = cos(coneAngle);
-                radiance.rgb *= clamp((dotK - d), 0, 1);
+                scene.rgb *= clamp((dotK - d), 0, 1);
             }
 
-            // Convert the color to linear space
-            radiance = vec4(pow(radiance.rgb * sourceIntensity, vec3(SRGB)), radiance.a);
+            // Convert color to linear space
+            scene = vec4(pow(scene.rgb * sourceIntensity, vec3(SRGB)), scene.a);
 
-            return HitResult(radiance, samplePos, false);
+            return HitResult(scene, samplePos, false);
         }
 
         pos = samplePos;
@@ -86,16 +87,21 @@ HitResult raymarch(vec2 startPos, vec2 endPos, bool onScreen)
 
 vec4 raymarch(vec2 rayStart, vec2 rayEnd)
 {
-    // Ray march screen space distance field
+    // Ray march local (screen space) distance field
     HitResult hit = raymarch(rayStart, rayEnd, true);
 
-    // Ray marche world space distance field if the screen ray did not hit anything
+    // Ray marche lobal (world space) distance field if the screen ray did not hit anything
     if (hit.outOfBounds && traceWorldRays && cascadeIndex > 1.0)
     {
         float scale = 1.0 / max(1.0, worldScale);
         vec2 worldRayStart = (hit.pos - vec2(0.5)) * scale + vec2(0.5);
         vec2 worldRayEnd = (rayEnd - vec2(0.5)) * scale + vec2(0.5);
-        return raymarch(worldRayStart, worldRayEnd, false).radiance;
+        HitResult worldHit = raymarch(worldRayStart, worldRayEnd, false);
+
+        // Fade out the radiance at the edge of the world
+        float edgeFade = 1.0 - smoothstep(0.45, 0.5, max(abs(worldHit.pos.x - 0.5), abs(worldHit.pos.y - 0.5)));
+
+        return worldHit.radiance * edgeFade;
     }
 
     return hit.radiance;
@@ -134,7 +140,7 @@ vec4 fetchUpperCascadeRadiance(float rayIndex, vec2 probeIndex)
 vec4 merge(vec4 currentRadiance, float rayIndex, vec2 probeIndex)
 {
     // If the current ray did not hit anything, we sample the ray in the cascade above this one (upper cascade)
-    if (currentRadiance.a == 0.0 && cascadeIndex < cascadeCount - 1.0)
+    if (mergeCascades && currentRadiance.a == 0.0 && cascadeIndex < cascadeCount - 1.0)
     {
         // Fetch the radiance from the upper cascade and merges it with the radiance from the current ray
         currentRadiance += fetchUpperCascadeRadiance(rayIndex, probeIndex);

@@ -12,6 +12,7 @@ import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminatio
 import no.njoh.pulseengine.modules.lighting.globalillumination.SceneRenderer
 
 class Compose(
+    private val localSceneSurfaceName: String,
     private val lightSurfaceName: String,
     override val name: String = "compose"
 ) : SinglePassEffect(
@@ -27,8 +28,9 @@ class Compose(
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
+        val sceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
 
-        val (xPixelOffset, yPixelOffset) = SceneRenderer.calculatePixelOffset(lightSurface)
+        val (xPixelOffset, yPixelOffset) = SceneRenderer.calculatePixelOffset(sceneSurface)
         val xSampleOffset = if (lightSystem.fixJitter) xPixelOffset / lightSurface.config.width else 0f
         val ySampleOffset = if (lightSystem.fixJitter) yPixelOffset / lightSurface.config.height else 0f
 
@@ -41,7 +43,7 @@ class Compose(
         program.setUniform("dithering", lightSystem.dithering)
         renderer.drawTextures(
             inTextures[0], // Albedo
-            lightSurface.getTexture()
+            lightSurface.getTexture() // Lighting
         )
         fbo.release()
 

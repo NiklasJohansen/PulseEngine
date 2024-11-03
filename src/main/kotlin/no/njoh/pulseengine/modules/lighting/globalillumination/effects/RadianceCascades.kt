@@ -11,10 +11,9 @@ import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminatio
 import kotlin.math.*
 
 class RadianceCascades(
-    private val screenSurfaceName: String,
-    private val screenDistanceFieldSurfaceName: String,
-    private val worldSurfaceName: String,
-    private val worldDistanceFieldSurfaceName: String,
+    private val localSceneSurfaceName: String,
+    private val globalSceneSurfaceName: String,
+    private val distanceFieldSurfaceName: String,
     override val name: String = "rc"
 ) : MultiPassEffect(
     numberOfRenderPasses = 2,
@@ -35,10 +34,9 @@ class RadianceCascades(
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
-        val screenSurface = engine.gfx.getSurface(screenSurfaceName) ?: return inTextures
-        val screenDistanceFieldSurface = engine.gfx.getSurface(screenDistanceFieldSurfaceName) ?: return inTextures
-        val worldSurface = engine.gfx.getSurface(worldSurfaceName) ?: return inTextures
-        val worldDistanceFieldSurface = engine.gfx.getSurface(worldDistanceFieldSurfaceName) ?: return inTextures
+        val localSceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
+        val globalSceneSurface = engine.gfx.getSurface(globalSceneSurfaceName) ?: return inTextures
+        val distanceFieldSurface = engine.gfx.getSurface(distanceFieldSurfaceName) ?: return inTextures
 
         val width = inTextures[0].width.toFloat()
         val height = inTextures[0].height.toFloat()
@@ -69,6 +67,7 @@ class RadianceCascades(
         program.setUniform("cascadeCount", cascadeCount.toFloat())
         program.setUniform("worldScale", lightSystem.worldScale)
         program.setUniform("traceWorldRays", lightSystem.traceWorldRays)
+        program.setUniform("mergeCascades", lightSystem.mergeCascades)
 
         while (cascadeIndex >= lightSystem.drawCascade)
         {
@@ -78,13 +77,12 @@ class RadianceCascades(
             program.setUniform("cascadeIndex", cascadeIndex.toFloat())
 
             renderers[0].drawTextures(
-                screenSurface.getTexture(0),             // Screen radiance
-                screenSurface.getTexture(1),             // Screen metadata
-                screenDistanceFieldSurface.getTexture(), // Screen Distance field
-                worldSurface.getTexture(0),              // World radiance
-                worldSurface.getTexture(1),              // World metadata
-                worldDistanceFieldSurface.getTexture(),  // World Distance field
-                outTextures[0]                           // Last cascade
+                localSceneSurface.getTexture(0),   // Local scene radiance
+                localSceneSurface.getTexture(1),   // Local scene metadata
+                globalSceneSurface.getTexture(0),  // Global scene radiance
+                globalSceneSurface.getTexture(1),  // Global scene metadata
+                distanceFieldSurface.getTexture(), // Distance field
+                outTextures[0]                     // Last cascade
             )
 
             fbo.release()

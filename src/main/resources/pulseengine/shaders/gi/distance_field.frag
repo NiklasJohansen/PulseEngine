@@ -3,11 +3,16 @@
 in vec2 uv;
 out vec4 fragColor;
 
-uniform sampler2D jfaTexture;
+uniform sampler2D jfaTex;
 
 void main()
 {
-    vec2 nearestSeed = texture(jfaTexture, uv).xy;
-    float distance = distance(uv, nearestSeed);
-    fragColor = vec4(distance, 0, 0, 1.0);
+    vec4 nearestSeed = texture(jfaTex, uv);
+    vec2 nearestLocalSeed = nearestSeed.xy;
+    vec2 nearestGlobalSeed = nearestSeed.zw;
+
+    float localDist = distance(uv, nearestLocalSeed);
+    float globalDist = distance(uv, nearestGlobalSeed);
+
+    fragColor = vec4(localDist, globalDist, 0, 1.0);
 }

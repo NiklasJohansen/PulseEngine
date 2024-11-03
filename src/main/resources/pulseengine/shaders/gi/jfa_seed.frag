@@ -1,12 +1,18 @@
-#version 150 core
+#version 420 core
 
 in vec2 uv;
 out vec4 fragColor;
 
-uniform sampler2D inputTexture;
+layout(binding=0) uniform sampler2D localSceneTex;
+layout(binding=1) uniform sampler2D globalSceneTex;
 
 void main()
 {
-    float alpha = texture(inputTexture, uv).a;
-    fragColor = vec4(uv * clamp(alpha, 0.0, 1.0), 0.0, 1.0);
+    float localAlpha = texture(localSceneTex, uv).a;
+    float globalAlpha = texture(globalSceneTex, uv).a;
+
+    fragColor = vec4(
+        uv * clamp(localAlpha, 0.0, 1.0),
+        uv * clamp(globalAlpha, 0.0, 1.0)
+    );
 }

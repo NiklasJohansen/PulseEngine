@@ -7,9 +7,9 @@ import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
 
-class DistanceField(override val name: String = "sdf") : SinglePassEffect(
+class DistanceField(override val name: String = "distance_field") : SinglePassEffect(
     textureFilter = NEAREST,
-    textureFormat = R16F
+    textureFormat = RG16F
 ) {
     override fun loadShaderProgram() = ShaderProgram.create(
         vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",

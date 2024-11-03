@@ -7,7 +7,6 @@ import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA32F
 import no.njoh.pulseengine.core.graphics.postprocessing.MultiPassEffect
 import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
-import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
 import kotlin.math.ceil
 import kotlin.math.log2
 import kotlin.math.max
@@ -55,7 +54,8 @@ class Jfa(override val name: String = "jfa") : MultiPassEffect(
 }
 
 class JfaSeed(
-    private val sceneSurfaceName: String,
+    private val screenSceneSurfaceName: String,
+    private val worldSceneSurfaceName: String,
     override val name: String = "jfa_seed"
 ) : SinglePassEffect(
     textureFilter = NEAREST,
@@ -68,13 +68,15 @@ class JfaSeed(
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
-        val sceneSurface = engine.gfx.getSurface(sceneSurfaceName) ?: return inTextures
+        val screenSurface = engine.gfx.getSurface(screenSceneSurfaceName) ?: return inTextures
+        val worldSurface = engine.gfx.getSurface(worldSceneSurfaceName) ?: return inTextures
 
         fbo.bind()
         fbo.clear()
         program.bind()
-        renderer.drawTexture(sceneSurface.getTexture())
+        renderer.drawTextures(screenSurface.getTexture(), worldSurface.getTexture())
         fbo.release()
+
         return fbo.getTextures()
     }
 }
