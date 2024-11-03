@@ -95,14 +95,14 @@ open class GraphicsImpl : GraphicsInternal
         // Render all batched data to offscreen target
         surfaces.forEachFast { it.renderToOffScreenTarget() }
 
-        // Set OpenGL state for rendering offscreen target textures to back-buffer
-        BackBufferBaseState.apply(surfaces.firstOrNull() ?: mainSurface)
+        // Set OpenGL state for rendering post-processing effects
+        PostProcessingBaseState.apply(mainSurface)
 
         // Run surfaces through their post-processing pipelines
         surfaces.forEachFast { it.runPostProcessingPipeline(engine) }
 
-        // Reset the viewport size to screen size (main surface is always the same size as the screen)
-        ViewportState.apply(mainSurface)
+        // Set OpenGL state for rendering offscreen target textures to back-buffer
+        BackBufferBaseState.apply(surfaces.firstOrNull() ?: mainSurface)
 
         // Draw visible surfaces with content to back-buffer
         surfaces.forEachFiltered({ it.config.isVisible && it.hasContent() })

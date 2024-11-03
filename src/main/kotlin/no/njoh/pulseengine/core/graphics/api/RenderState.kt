@@ -41,6 +41,25 @@ object BackBufferBaseState : RenderState
 }
 
 /**
+ * Sets the OpenGL state for rendering post-processing effects.
+ */
+object PostProcessingBaseState : RenderState
+{
+    override fun apply(surface: SurfaceInternal)
+    {
+        // Clear back-buffer
+        glClearColor(0f, 0f, 0f, 0f)
+        glClear(GL_COLOR_BUFFER_BIT)
+
+        // Disable depth testing
+        glDisable(GL_DEPTH_TEST)
+
+        // Disable blending
+        glDisable(GL_BLEND)
+    }
+}
+
+/**
  * Sets the view port size to the size of the scaled surface texture
  */
 object ViewportState : RenderState
