@@ -16,14 +16,14 @@ void main()
 {
     vec4 color = vertexColor;
 
-    if (quadCornerRadius > 0.0)
-    {
-        vec2 pos = texCoord * quadSize;
-        float border = clamp(quadCornerRadius, 0.0, 0.5 * min(quadSize.x, quadSize.y));
-        vec2 corner = clamp(pos, vec2(border), quadSize - border);
-        float distFromCorner = length(pos - corner) - border;
-        color.a *= 1.0f - smoothstep(0.0, EDGE_SOFTNESS, distFromCorner);
-    }
+//    if (quadCornerRadius > 0.0)
+//    {
+//        vec2 pos = texCoord * quadSize;
+//        float border = clamp(quadCornerRadius, 0.0, 0.5 * min(quadSize.x, quadSize.y));
+//        vec2 corner = clamp(pos, vec2(border), quadSize - border);
+//        float distFromCorner = length(pos - corner) - border;
+//        color.a *= 1.0f - smoothstep(0.0, EDGE_SOFTNESS, distFromCorner);
+//    }
 
     sceneColor = color;
     metadata = vec4(soureConeAngle / 360.0, sourceAngle / 360.0, sourceIntensity, 1);
