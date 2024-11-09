@@ -14,6 +14,7 @@ import no.njoh.pulseengine.modules.lighting.globalillumination.SceneRenderer
 
 class Compose(
     private val localSceneSurfaceName: String,
+    private val distanceFieldSurfaceName: String,
     private val lightSurfaceName: String,
     override val name: String = "compose"
 ) : BaseEffect(
@@ -28,26 +29,25 @@ class Compose(
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
+        val distFieldSurface = engine.gfx.getSurface(distanceFieldSurfaceName) ?: return inTextures
         val sceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
 
         val (xPixelOffset, yPixelOffset) = SceneRenderer.calculatePixelOffset(sceneSurface)
         val xSampleOffset = if (lightSystem.fixJitter) xPixelOffset / lightSurface.config.width else 0f
         val ySampleOffset = if (lightSystem.fixJitter) yPixelOffset / lightSurface.config.height else 0f
 
-        textureFilter = lightSystem.textureFilter
-
         fbo.bind()
         fbo.clear()
         program.bind()
         program.setUniform("sampleOffset", xSampleOffset, ySampleOffset)
         program.setUniform("dithering", lightSystem.dithering)
-        renderer.drawTextures(
-            inTextures[0], // Albedo
-            lightSurface.getTexture() // Lighting
-        )
-        program.setUniformSampler("sceneTex",         sceneSurface.getTexture(0, final = false))
+        program.setUniform("resolution", lightSurface.config.width.toFloat(), lightSurface.config.height.toFloat())
+        program.setUniform("scale", sceneSurface.camera.scale.x)
+        program.setUniform("edgeLighting", lightSystem.edgeLighting)
+        program.setUniform("sourceMultiplier", lightSystem.sourceMultiplier)
+        program.setUniformSampler("sceneTex", sceneSurface.getTexture(0, final = false))
         program.setUniformSampler("sceneMetadataTex", sceneSurface.getTexture(1, final = false))
-        program.setUniformSampler("lightTex",         lightSurface.getTexture())
+        program.setUniformSampler("lightTex", lightSurface.getTexture())
         program.setUniformSampler("distanceFieldTex", distFieldSurface.getTexture(1))
         renderer.draw()
         fbo.release()

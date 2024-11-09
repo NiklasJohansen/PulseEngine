@@ -128,6 +128,15 @@ object Extensions
     }
 
     /**
+     * Fast iteration of constant lookup lists with index.
+     */
+    inline fun <T> List<T>.forEachIndexedFast(action: (Int, T) -> Unit)
+    {
+        var i = 0
+        while (i < size) action(i, this[i++])
+    }
+
+    /**
      * Fast iteration of [Array].
      */
     inline fun <T> Array<T>.forEachFast(action: (T) -> Unit)

@@ -167,10 +167,11 @@ class SurfaceImpl(
     // Exposed getters
     //------------------------------------------------------------------------------------------------
 
-    override fun getTexture(index: Int): Texture
+    override fun getTexture(index: Int, final: Boolean): Texture
     {
-        return postEffects.lastOrNull()?.getTexture(index)
-            ?: renderTarget.getTexture(index)
+        if (final) postEffects.lastOrNull()?.getTexture(index)?.let { return it }
+
+        return renderTarget.getTexture(index)
             ?: throw RuntimeException(
                 "Failed to get texture with index: $index from surface with name: ${config.name}. " +
                     "Surface has the following output specification: ${config.attachments})"

@@ -27,9 +27,10 @@ uniform float intervalLength;
 uniform float worldScale;
 uniform bool traceWorldRays;
 uniform bool mergeCascades;
+uniform int maxSteps;
+uniform float camAngle;
 
 const float baseRayCount = 4.0;
-const float baseRayCountInt = 4;
 const float sqrtBase = sqrt(baseRayCount);
 
 struct HitResult
@@ -44,29 +45,29 @@ HitResult raymarch(vec2 startPos, vec2 endPos, bool onScreen)
     vec2 pos = startPos;
     float rayLength = distance(startPos, endPos);
     vec2 rayDir = (endPos - startPos) / rayLength;
+    float traveledDist = 0;
 
     // Ray march until we hit a surface or reach the end of the interval
-    for (float traveledDist = 0; traveledDist < rayLength;)
+    for (float steps = 0.0; steps < maxSteps && traveledDist < rayLength; steps++)
     {
         // Move the ray along its direction by the distance to the closest non-empty space
         vec2 field = texture(distanceFieldTex, pos).rg;
-        float dist = onScreen ? field.r : field.g;
-        vec2 samplePos = pos + rayDir * dist;
-        traveledDist += dist;
+        float stepSize = onScreen ? field.r : field.g;
+        vec2 samplePos = pos + rayDir * stepSize;
 
         if (samplePos.x < 0.0 || samplePos.x > 1.0 || samplePos.y < 0.0 || samplePos.y > 1.0)
             return HitResult(vec4(0), pos, true);
 
-        if (dist <= minStepSize)
+        if (stepSize <= minStepSize)
         {
             vec4 scene = texture(onScreen ? localSceneTex : globalSceneTex, samplePos);
-            vec4 metadata = texture(onScreen ? localMedatadaTex : globalMedatadaTex, samplePos);
+            vec4 metadata = texture(onScreen ? localMetadataTex : globalMetadataTex, samplePos);
             float sourceIntensity = metadata.b;
             float coneAngle = metadata.r * PI;
 
             if (coneAngle < PI)
             {
-                float sourceAngle = metadata.g * TAU;
+                float sourceAngle = camAngle + metadata.g * TAU;
                 vec2 coneDir = vec2(cos(sourceAngle), sin(sourceAngle));
                 float dotK = max(dot(coneDir, -rayDir), 0.0);
                 float d = cos(coneAngle);
@@ -79,6 +80,7 @@ HitResult raymarch(vec2 startPos, vec2 endPos, bool onScreen)
             return HitResult(scene, samplePos, false);
         }
 
+        traveledDist += stepSize;
         pos = samplePos;
     }
 
@@ -90,12 +92,12 @@ vec4 raymarch(vec2 rayStart, vec2 rayEnd)
     // Ray march local (screen space) distance field
     HitResult hit = raymarch(rayStart, rayEnd, true);
 
-    // Ray marche lobal (world space) distance field if the screen ray did not hit anything
+    // Ray marche global (world space) distance field if the screen ray did not hit anything
     if (hit.outOfBounds && traceWorldRays && cascadeIndex > 1.0)
     {
         float scale = 1.0 / max(1.0, worldScale);
         vec2 worldRayStart = (hit.pos - vec2(0.5)) * scale + vec2(0.5);
-        vec2 worldRayEnd = (rayEnd - vec2(0.5)) * scale + vec2(0.5);
+        vec2 worldRayEnd   = (rayEnd  - vec2(0.5)) * scale + vec2(0.5);
         HitResult worldHit = raymarch(worldRayStart, worldRayEnd, false);
 
         // Fade out the radiance at the edge of the world

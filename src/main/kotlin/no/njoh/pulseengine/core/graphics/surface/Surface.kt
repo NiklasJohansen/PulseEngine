@@ -146,8 +146,9 @@ abstract class Surface
     /**
      * Gets the texture of the off-screen render target. The render target can have multiple texture
      * attachments and the [index] can be used to get a specific one.
+     * @param final If true, the final post-processed texture is returned.
      */
-    abstract fun getTexture(index: Int = 0): Texture
+    abstract fun getTexture(index: Int = 0, final: Boolean = true): Texture
 
     /**
      * Gets all textures from the off-screen render target.
