@@ -34,7 +34,7 @@ class OffScreenRenderTarget(
         if (this::fbo.isInitialized)
             fbo.delete()
 
-        fbo = FrameBufferObject.create(width, height, textureScale, textureFormat, textureFilter, NONE, attachments)
+        fbo = FrameBufferObject.create(width, height, attachments.map { TextureDescriptor(textureFormat, textureFilter, NONE, it, textureScale) } )
     }
 
     override fun begin() = fbo.bind()
@@ -63,8 +63,8 @@ class MultisampledOffScreenRenderTarget(
         if (this::msFbo.isInitialized)
             msFbo.delete()
 
-        msFbo = FrameBufferObject.create(width, height, textureScale, textureFormat, textureFilter, multisampling, attachments)
-        fbo = FrameBufferObject.create(width, height, textureScale, textureFormat, textureFilter, NONE, attachments)
+        msFbo = FrameBufferObject.create(width, height, attachments.map { TextureDescriptor(textureFormat, textureFilter, multisampling, it, textureScale) })
+        fbo = FrameBufferObject.create(width, height, attachments.map { TextureDescriptor(textureFormat, textureFilter, NONE, it, textureScale) })
     }
 
     override fun begin() =
