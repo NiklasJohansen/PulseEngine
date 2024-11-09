@@ -3,9 +3,10 @@ package no.njoh.pulseengine.modules.lighting.globalillumination.effects
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
-import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 import no.njoh.pulseengine.core.shared.utils.Extensions.component1
 import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
@@ -15,9 +16,8 @@ class Compose(
     private val localSceneSurfaceName: String,
     private val lightSurfaceName: String,
     override val name: String = "compose"
-) : SinglePassEffect(
-    textureFilter = LINEAR,
-    textureFormat = RGBA16F
+) : BaseEffect(
+    TextureDescriptor(filter = LINEAR, format = RGBA16F)
 ) {
     override fun loadShaderProgram() = ShaderProgram.create(
         vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",
@@ -45,6 +45,11 @@ class Compose(
             inTextures[0], // Albedo
             lightSurface.getTexture() // Lighting
         )
+        program.setUniformSampler("sceneTex",         sceneSurface.getTexture(0, final = false))
+        program.setUniformSampler("sceneMetadataTex", sceneSurface.getTexture(1, final = false))
+        program.setUniformSampler("lightTex",         lightSurface.getTexture())
+        program.setUniformSampler("distanceFieldTex", distFieldSurface.getTexture(1))
+        renderer.draw()
         fbo.release()
 
         return fbo.getTextures()

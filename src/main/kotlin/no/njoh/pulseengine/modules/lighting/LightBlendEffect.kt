@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
-import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 import org.joml.Vector3f
 import org.joml.Vector4f
 import kotlin.math.max
@@ -15,7 +15,7 @@ class LightBlendEffect(
     override val name: String,
     private val ambientColor: Color,
     private val camera: Camera
-) : SinglePassEffect() {
+) : BaseEffect() {
 
     /** Handle to the light map texture */
     var lightMapTextureHandle: TextureHandle? = null
@@ -39,21 +39,18 @@ class LightBlendEffect(
     /** Determines the scale of the noise used to generate the fog  */
     var fogScale = 1f
 
-    private var textureHandles = arrayOf(TextureHandle.NONE, TextureHandle.NONE)
     private var camPos = Vector4f()
     private var camScale = Vector3f()
 
-    override fun loadShaderProgram(): ShaderProgram =
-        ShaderProgram.create(
-            vertexShaderFileName = "/pulseengine/shaders/effects/lighting_blend.vert",
-            fragmentShaderFileName = "/pulseengine/shaders/effects/lighting_blend.frag"
-        )
+    override fun loadShaderProgram() = ShaderProgram.create(
+        vertexShaderFileName = "/pulseengine/shaders/effects/lighting_blend.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/effects/lighting_blend.frag"
+    )
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
         val albedoTexture = inTextures[0]
-        textureHandles[0] = albedoTexture.handle
-        textureHandles[1] = lightMapTextureHandle ?: return inTextures
+        val lightMapTextureHandle = lightMapTextureHandle ?: return inTextures
 
         camPos.set(1f).mul(camera.viewProjectionMatrix)
         camera.viewMatrix.getScale(camScale)
@@ -70,9 +67,9 @@ class LightBlendEffect(
         program.setUniform("fogScale", max(0.01f, fogScale) * camScale.x)
         program.setUniform("camPos", camPos.x, camPos.y)
         program.setUniform("time", 0.001f * fogTurbulence * time++)
-
-        renderer.drawTextureHandles(textureHandles)
-
+        program.setUniformSampler("baseTex", albedoTexture.handle)
+        program.setUniformSampler("lightTex", lightMapTextureHandle)
+        renderer.draw()
         fbo.release()
 
         return fbo.getTextures()

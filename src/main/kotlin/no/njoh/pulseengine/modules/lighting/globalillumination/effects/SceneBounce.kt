@@ -5,19 +5,19 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_1
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
-import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
 import org.joml.Matrix4f
 
 class SceneBounce(
     private val lightSurfaceName: String,
     override val name: String = "bounce"
-) : SinglePassEffect(
-    textureFilter = NEAREST,
-    textureFormat = RGBA16F,
-    attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1) // Scene radiance, Scene metadata
+) : BaseEffect(
+    TextureDescriptor(filter = NEAREST, format = RGBA16F, attachment = COLOR_TEXTURE_0), // Scene radiance
+    TextureDescriptor(filter = NEAREST, format = RGBA16F, attachment = COLOR_TEXTURE_1)  // Scene metadata
 ) {
     private var lastViewProjectionMatrix = Matrix4f()
 
@@ -39,12 +39,10 @@ class SceneBounce(
         program.setUniform("bounceAccumulation", lightSystem.bounceAccumulation)
         program.setUniform("resolution", fbo.width.toFloat(), fbo.height.toFloat())
         program.setUniform("scale", lightSurface.camera.scale.x)
-
-        renderer.drawTextures(
-            inTextures[0], // Radiance
-            inTextures[1], // Metadata
-            lightSurface.getTexture(), // Light from previous frame
-        )
+        program.setUniformSampler("sceneTex", inTextures[0])
+        program.setUniformSampler("sceneMetaTex", inTextures[1])
+        program.setUniformSampler("lightTex", lightSurface.getTexture())
+        renderer.draw()
         fbo.release()
 
         lastViewProjectionMatrix.set(lightSurface.camera.viewProjectionMatrix)

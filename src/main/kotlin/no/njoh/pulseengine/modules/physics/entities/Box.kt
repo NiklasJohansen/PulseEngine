@@ -24,9 +24,9 @@ open class Box : StandardSceneEntity(), PolygonBody
     override var friction = 0.4f
     override var drag = 0.01f
 
-    protected var xInterpolated = NaN
-    protected var yInterpolated = NaN
-    protected var rotInterpolated = NaN
+    var xInterpolated = NaN
+    var yInterpolated = NaN
+    var rotInterpolated = NaN
 
     /** Initialize the shape once when the entity is created */
     override fun onCreate() = shape.init(x, y, width, height, rotation, density)

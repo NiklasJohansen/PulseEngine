@@ -3,8 +3,10 @@
 in vec2 uv;
 out vec4 fragColor;
 
-layout(binding=0) uniform sampler2D baseTex;
-layout(binding=1) uniform sampler2D lightTex;
+uniform sampler2D sceneTex;
+uniform sampler2D sceneMetadataTex;
+uniform sampler2D lightTex;
+uniform sampler2D distanceFieldTex;
 
 uniform vec2 sampleOffset;
 uniform float dithering;

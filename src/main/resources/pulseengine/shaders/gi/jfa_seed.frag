@@ -3,8 +3,8 @@
 in vec2 uv;
 out vec4 fragColor;
 
-layout(binding=0) uniform sampler2D localSceneTex;
-layout(binding=1) uniform sampler2D globalSceneTex;
+uniform sampler2D localSceneTex;
+uniform sampler2D globalSceneTex;
 
 void main()
 {

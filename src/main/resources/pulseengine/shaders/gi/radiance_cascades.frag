@@ -1,4 +1,4 @@
-#version 420 core
+#version 330 core
 #define TAU 6.28318530718
 #define PI 3.14159265359
 #define SRGB 2.2
@@ -6,12 +6,12 @@
 in vec2 uv;
 out vec4 fragColor;
 
-layout(binding=0) uniform sampler2D localSceneTex;
-layout(binding=1) uniform sampler2D localMedatadaTex;
-layout(binding=2) uniform sampler2D globalSceneTex;
-layout(binding=3) uniform sampler2D globalMedatadaTex;
-layout(binding=4) uniform sampler2D distanceFieldTex;
-layout(binding=5) uniform sampler2D upperCascadeTex;
+uniform sampler2D localSceneTex;
+uniform sampler2D localMetadataTex;
+uniform sampler2D globalSceneTex;
+uniform sampler2D globalMetadataTex;
+uniform sampler2D distanceFieldTex;
+uniform sampler2D upperCascadeTex;
 
 uniform vec4 skyColor;
 uniform vec4 sunColor;

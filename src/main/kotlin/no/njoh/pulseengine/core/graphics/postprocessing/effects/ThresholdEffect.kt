@@ -3,18 +3,17 @@ package no.njoh.pulseengine.core.graphics.postprocessing.effects
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 
 class ThresholdEffect(
     override val name: String,
     var brightnessThreshold: Float = 0.5f
-) : SinglePassEffect() {
+) : BaseEffect() {
 
-    override fun loadShaderProgram(): ShaderProgram =
-        ShaderProgram.create(
-            vertexShaderFileName = "/pulseengine/shaders/effects/brightnessThreshold.vert",
-            fragmentShaderFileName = "/pulseengine/shaders/effects/brightnessThreshold.frag"
-        )
+    override fun loadShaderProgram() = ShaderProgram.create(
+        vertexShaderFileName = "/pulseengine/shaders/effects/brightnessThreshold.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/effects/brightnessThreshold.frag"
+    )
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
@@ -22,9 +21,9 @@ class ThresholdEffect(
         fbo.clear()
         program.bind()
         program.setUniform("threshold", brightnessThreshold)
-        renderer.drawTextures(inTextures)
+        program.setUniformSampler("tex", inTextures[0])
+        renderer.draw()
         fbo.release()
-
         return fbo.getTextures()
     }
 }

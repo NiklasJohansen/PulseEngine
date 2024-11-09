@@ -2,27 +2,28 @@ package no.njoh.pulseengine.modules.lighting.globalillumination.effects
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA32F
-import no.njoh.pulseengine.core.graphics.postprocessing.MultiPassEffect
-import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 import kotlin.math.ceil
 import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.pow
 
-class Jfa(override val name: String = "jfa") : MultiPassEffect(
-    numberOfRenderPasses = 2,
-    textureFilter = NEAREST,
-    textureFormat = RGBA32F
+class Jfa(override val name: String = "jfa") : BaseEffect(
+    TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_0),
+    TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_1),
+    numFrameBufferObjects = 2
 ) {
     private var outputTextures: List<Texture> = emptyList()
 
-    override fun loadShaderPrograms() = listOf(ShaderProgram.create(
+    override fun loadShaderProgram() = ShaderProgram.create(
         vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",
         fragmentShaderFileName = "/pulseengine/shaders/gi/jfa.frag"
-    ))
+    )
 
     override fun getTexture(index: Int) = outputTextures.getOrNull(index)
 
@@ -33,18 +34,18 @@ class Jfa(override val name: String = "jfa") : MultiPassEffect(
         val height = inTextures[0].height.toFloat()
         val passes = ceil(log2(max(width, height))).toInt()
         val program = programs[0]
+        program.bind()
+        program.setUniform("resolution", width, height)
 
         for (i in 0 until passes)
         {
-            val fbo = fbo[i % 2]
+            val fbo = frameBuffers[i % 2]
             fbo.bind()
             fbo.clear()
-            program.bind()
             program.setUniform("uOffset", 2f.pow(passes - i - 1f))
-            program.setUniform("index", i)
-            program.setUniform("resolution", width, height)
-            renderers[0].drawTextures(outputTextures)
-            program.unbind()
+            program.setUniformSampler("outsideTex", outputTextures[0])
+            program.setUniformSampler("insideTex", outputTextures[1])
+            renderer.draw()
             fbo.release()
             outputTextures = fbo.getTextures()
         }
@@ -54,12 +55,12 @@ class Jfa(override val name: String = "jfa") : MultiPassEffect(
 }
 
 class JfaSeed(
-    private val screenSceneSurfaceName: String,
-    private val worldSceneSurfaceName: String,
+    private val localSceneSurfaceName: String,
+    private val globalSceneSurfaceName: String,
     override val name: String = "jfa_seed"
-) : SinglePassEffect(
-    textureFilter = NEAREST,
-    textureFormat = RGBA32F
+) : BaseEffect(
+    TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_0),
+    TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_1),
 ) {
     override fun loadShaderProgram() = ShaderProgram.create(
         vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",
@@ -68,13 +69,15 @@ class JfaSeed(
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
-        val screenSurface = engine.gfx.getSurface(screenSceneSurfaceName) ?: return inTextures
-        val worldSurface = engine.gfx.getSurface(worldSceneSurfaceName) ?: return inTextures
+        val localSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
+        val globalSurface = engine.gfx.getSurface(globalSceneSurfaceName) ?: return inTextures
 
         fbo.bind()
         fbo.clear()
         program.bind()
-        renderer.drawTextures(screenSurface.getTexture(), worldSurface.getTexture())
+        program.setUniformSampler("localSceneTex", localSurface.getTexture())
+        program.setUniformSampler("globalSceneTex", globalSurface.getTexture())
+        renderer.draw()
         fbo.release()
 
         return fbo.getTextures()

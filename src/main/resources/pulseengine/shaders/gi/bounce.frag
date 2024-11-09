@@ -1,4 +1,4 @@
-#version 420 core
+#version 330 core
 
 in vec2 uv;
 in vec2 uvLastFrame;
@@ -6,9 +6,9 @@ in vec2 uvLastFrame;
 layout(location=0) out vec4 sceneColor;
 layout(location=1) out vec4 sceneMetadata;
 
-layout(binding=0) uniform sampler2D sceneTex;
-layout(binding=1) uniform sampler2D sceneMetaTex;
-layout(binding=2) uniform sampler2D lightTex;
+uniform sampler2D sceneTex;
+uniform sampler2D sceneMetaTex;
+uniform sampler2D lightTex;
 
 uniform float bounceAccumulation;
 uniform vec2 resolution;

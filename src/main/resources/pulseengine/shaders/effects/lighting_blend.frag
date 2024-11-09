@@ -1,4 +1,4 @@
-#version 420 core
+#version 330 core
 
 #define FXAA_REDUCE_MIN (1.0 / 128.0)
 #define FXAA_REDUCE_MUL (1.0 / 8.0)
@@ -13,8 +13,8 @@ in vec2 baseTexCoord;
 
 out vec4 fragColor;
 
-layout(binding=0) uniform sampler2D baseTex;
-layout(binding=1) uniform sampler2D lightTex;
+uniform sampler2D baseTex;
+uniform sampler2D lightTex;
 
 uniform vec4 ambientColor;
 uniform vec2 resolution;

@@ -107,7 +107,9 @@ open class GraphicsImpl : GraphicsInternal
         // Draw visible surfaces with content to back-buffer
         surfaces.forEachFiltered({ it.config.isVisible && it.hasContent() })
         {
-            fullFrameRenderer.drawTexture(it.getTexture())
+            fullFrameRenderer.program.bind()
+            fullFrameRenderer.program.setUniformSampler("tex", it.getTexture())
+            fullFrameRenderer.draw()
         }
     }
 
