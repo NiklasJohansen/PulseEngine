@@ -44,6 +44,7 @@ class SceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
             .withAttribute("color", 1, GL_FLOAT, 1)
             .withAttribute("intensity", 1, GL_FLOAT, 1)
             .withAttribute("coneAngle", 1, GL_FLOAT, 1)
+            .withAttribute("radius", 1, GL_FLOAT, 1)
 
         vao = VertexArrayObject.createAndBind()
         program.bind()
@@ -88,9 +89,9 @@ class SceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
         vao.delete()
     }
 
-    fun drawTexture(x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float)
+    fun drawTexture(x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float, radius: Float)
     {
-        instanceBuffer.fill(10)
+        instanceBuffer.fill(11)
         {
             put(x, y, config.currentDepth)
             put(w, h)
@@ -99,6 +100,7 @@ class SceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
             put(config.currentDrawColor)
             put(intensity)
             put(coneAngle)
+            put(radius)
         }
         increaseBatchSize()
         config.increaseDepth()

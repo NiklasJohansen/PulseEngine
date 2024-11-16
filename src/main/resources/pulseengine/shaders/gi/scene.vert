@@ -12,6 +12,7 @@ in float cornerRadius;
 in uint color;
 in float intensity;
 in float coneAngle;
+in float radius;
 
 out vec4 vertexColor;
 out vec2 texCoord;
@@ -20,6 +21,7 @@ out float quadCornerRadius;
 out float sourceIntensity;
 out float sourceAngle;
 out float soureConeAngle;
+out float sourceRadius;
 
 uniform mat4 viewProjection;
 uniform vec2 drawOffset; // Used to prevent jitter when lightmap scale is below 1.0
@@ -47,6 +49,7 @@ void main()
     quadSize = size;
     quadCornerRadius = cornerRadius;
     sourceIntensity = intensity;
+    sourceRadius = radius;
 
     sourceAngle = int(angle) % 361;
     if (sourceAngle < 0) sourceAngle += 360;

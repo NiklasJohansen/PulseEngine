@@ -2,6 +2,9 @@
 #define TAU 6.28318530718
 #define PI 3.14159265359
 #define SRGB 2.2
+#define SCREEN 0.0
+#define WORLD 1.0
+#define NO_HIT -1.0
 
 in vec2 uv;
 out vec4 fragColor;
@@ -24,89 +27,95 @@ uniform float cascadeCount;
 uniform bool bilinearFix;
 uniform bool forkFix;
 uniform float intervalLength;
+uniform float intervalOverlap;
 uniform float worldScale;
+uniform float invWorldScale;
 uniform bool traceWorldRays;
 uniform bool mergeCascades;
 uniform int maxSteps;
 uniform float camAngle;
+uniform float camScale;
 
 const float baseRayCount = 4.0;
 const float sqrtBase = sqrt(baseRayCount);
 
-struct HitResult
+vec4 raymarch(vec2 rayOrigin, vec2 rayDir, float rayLen)
 {
-    vec4 radiance;
-    vec2 pos;
-    bool outOfBounds;
-};
+    vec2 pos = rayOrigin;
+    float traveledDist = 0.0;
+    float stepSizeScale = 1.0;
+    float space = SCREEN;
+    int steps = 0;
 
-HitResult raymarch(vec2 startPos, vec2 endPos, bool onScreen)
-{
-    vec2 pos = startPos;
-    float rayLength = distance(startPos, endPos);
-    vec2 rayDir = (endPos - startPos) / rayLength;
-    float traveledDist = 0;
-
-    // Ray march until we hit a surface or reach the end of the interval
-    for (float steps = 0.0; steps < maxSteps && traveledDist < rayLength; steps++)
+    while (steps < maxSteps && traveledDist < rayLen)
     {
-        // Move the ray along its direction by the distance to the closest non-empty space
-        vec2 field = texture(distanceFieldTex, pos).rg;
-        float stepSize = onScreen ? field.r : field.g;
+        vec2 fieldDist = texture(distanceFieldTex, pos).rg;
+        float stepSize = mix(fieldDist.r, fieldDist.g, space); // r=screen, g=world
         vec2 samplePos = pos + rayDir * stepSize;
 
         if (samplePos.x < 0.0 || samplePos.x > 1.0 || samplePos.y < 0.0 || samplePos.y > 1.0)
-            return HitResult(vec4(0), pos, true);
-
-        if (stepSize <= minStepSize)
         {
-            vec4 scene = texture(onScreen ? localSceneTex : globalSceneTex, samplePos);
-            vec4 metadata = texture(onScreen ? localMetadataTex : globalMetadataTex, samplePos);
-            float sourceIntensity = metadata.b;
-            float coneAngle = metadata.r * PI;
-
-            if (coneAngle < PI)
+            if (traceWorldRays && space == SCREEN)
             {
-                float sourceAngle = camAngle + metadata.g * TAU;
-                vec2 coneDir = vec2(cos(sourceAngle), sin(sourceAngle));
-                float dotK = max(dot(coneDir, -rayDir), 0.0);
-                float d = cos(coneAngle);
-                scene.rgb *= clamp((dotK - d), 0, 1);
+                pos = (pos - vec2(0.5)) * invWorldScale + vec2(0.5); // Remap position to world space
+                stepSizeScale = worldScale;
+                space = WORLD;
+                continue;
             }
-
-            // Convert color to linear space
-            scene = vec4(pow(scene.rgb * sourceIntensity, vec3(SRGB)), scene.a);
-
-            return HitResult(scene, samplePos, false);
+            else break;
         }
 
-        traveledDist += stepSize;
+        if (stepSize <= minStepSize)
+            return vec4(samplePos, space, steps); // Hit
+
         pos = samplePos;
+        traveledDist += stepSize * stepSizeScale;
+        steps++;
     }
 
-    return HitResult(vec4(0), pos, false); // No hit
+    return vec4(0, 0, NO_HIT, steps); // No hit
 }
 
-vec4 raymarch(vec2 rayStart, vec2 rayEnd)
+vec4 traceRay(vec2 probeCenter, vec2 rayStart, vec2 rayEnd)
 {
-    // Ray march local (screen space) distance field
-    HitResult hit = raymarch(rayStart, rayEnd, true);
+    float rayLen = distance(rayStart, rayEnd);
+    vec2 rayDir = (rayEnd - rayStart) / rayLen;
+    vec4 result = raymarch(rayStart, rayDir, rayLen);
+    float space = result.z; // 0=screen, 1=world, -1=no hit
 
-    // Ray marche global (world space) distance field if the screen ray did not hit anything
-    if (hit.outOfBounds && traceWorldRays && cascadeIndex > 1.0)
+    if (space == NO_HIT)
+        return vec4(0, 0, 0, result.w == maxSteps ? -1 : 0); // No hit, use a=-1 if max steps reached (prevent merge and sun/sky radiance)
+
+    vec4 scene = texture(space == SCREEN ? localSceneTex : globalSceneTex, result.xy);
+    vec4 metadata = texture(space == SCREEN ? localMetadataTex : globalMetadataTex, result.xy);
+    float sourceIntensity = metadata.b;
+    float sourceRadius = metadata.a;
+    float coneAngle = metadata.r * PI;
+
+    // Direcational lights
+    if (coneAngle < PI)
     {
-        float scale = 1.0 / max(1.0, worldScale);
-        vec2 worldRayStart = (hit.pos - vec2(0.5)) * scale + vec2(0.5);
-        vec2 worldRayEnd   = (rayEnd  - vec2(0.5)) * scale + vec2(0.5);
-        HitResult worldHit = raymarch(worldRayStart, worldRayEnd, false);
-
-        // Fade out the radiance at the edge of the world
-        float edgeFade = 1.0 - smoothstep(0.45, 0.5, max(abs(worldHit.pos.x - 0.5), abs(worldHit.pos.y - 0.5)));
-
-        return worldHit.radiance * edgeFade;
+        float sourceAngle = camAngle + metadata.g * TAU;
+        vec2 coneDir = vec2(cos(sourceAngle), sin(sourceAngle));
+        float dotK = max(dot(coneDir, -rayDir), 0.0);
+        float d = cos(coneAngle);
+        scene.rgb *= clamp((dotK - d), 0, 1);
     }
 
-    return hit.radiance;
+    // Lights with radius
+    if (sourceRadius > 0.0)
+    {
+        vec2 hitPos = (space == SCREEN) ? result.xy : (result.xy - vec2(0.5)) * worldScale + vec2(0.5);
+        float dist = length((hitPos - probeCenter) * resolution);
+        float radius = 0.5 * sourceRadius * camScale;
+        scene.rgb *= clamp(smoothstep(0.0, 1.0, radius / dist), 0.0, 1.0);
+    }
+
+    // Fade out radiance at the edge of the world to prevent popping when lights go out of global view
+    float edgeFade = 1.0 - space * smoothstep(0.45, 0.5, max(abs(result.x - 0.5), abs(result.y - 0.5)));
+
+    // Convert color to linear space
+    return vec4(pow(scene.rgb * sourceIntensity * edgeFade, vec3(SRGB)), scene.a);
 }
 
 vec4 fetchUpperCascadeRadiance(float rayIndex, vec2 probeIndex)
@@ -135,7 +144,7 @@ vec4 fetchUpperCascadeRadiance(float rayIndex, vec2 probeIndex)
     // The x/y position of the probe within the quadrant in uv space
     vec2 probePosUV = (quadrantTopLeftPos + probeIndexClamped) / resolution;
 
-    // Sample the cascade texture
+    // Sample the upper cascade texture
     return texture(upperCascadeTex, probePosUV);
 }
 
@@ -169,7 +178,9 @@ void main()
     float intervalStart = intervalLength * (isInnermostCascade ? 0.0 : pow(baseRayCount, cascadeIndex - 1.0)) / shortestSide;
 
     // The distance from probe center to where the ray ends in uv space
-    float intervalEnd = intervalLength * pow(baseRayCount, cascadeIndex) / shortestSide;
+    float probeSpacingUpperCascade = pow(sqrtBase, cascadeIndex + 1);
+    float overlap =  intervalOverlap * probeSpacingUpperCascade * sqrt(2);
+    float intervalEnd = intervalLength * (pow(baseRayCount, cascadeIndex) + overlap) / shortestSide;
 
     // The amount of space between each probe (1px in c0, 2px in c1, 4px in c2, etc.)
     float probeSpacing = pow(sqrtBase, cascadeIndex);
@@ -194,7 +205,7 @@ void main()
     float baseRayIndex = baseRayCount * (quadrantIndex.x + (probeSpacing * quadrantIndex.y));
 
     // The total radiance for the current probe
-    vec4 totalProbeRadiance = vec4(0.0);
+    vec3 totalProbeRadiance = vec3(0.0);
 
     // Gather radiance from each ray of the current probe
     for (int i = 0; i < int(baseRayCount); i++)
@@ -226,8 +237,8 @@ void main()
                 vec2 upperProbeCenterPosUv = upperProbePosClamped / resolution;
 
                 vec2 rayStart = probeCenterPosUV + startDir * intervalStart;
-                vec2 rayEnd = upperProbeCenterPosUv + endDir * (intervalStart + intervalEnd);
-                vec4 radiance = raymarch(rayStart, rayEnd);
+                vec2 rayEnd = upperProbeCenterPosUv + endDir * intervalEnd;
+                vec4 radiance = traceRay(probeCenterPosUV, rayStart, rayEnd);
                 radiances[j] = merge(radiance, rayIndex, upperProbeIndex);
             }
 
@@ -238,7 +249,7 @@ void main()
         {
             vec2 rayStart = probeCenterPosUV + intervalStart * startDir;
             vec2 rayEnd = probeCenterPosUV + intervalEnd * endDir;
-            vec4 radiance = raymarch(rayStart, rayEnd);
+            vec4 radiance = traceRay(probeCenterPosUV, rayStart, rayEnd);
             deltaRadiance = merge(radiance, rayIndex, probeIndex);
         }
 
@@ -252,7 +263,7 @@ void main()
         }
 
         // Accumulate the radiance from this ray
-        totalProbeRadiance += deltaRadiance;
+        totalProbeRadiance += deltaRadiance.rgb;
     }
 
     // Divide by the amount of rays to get the average incoming radiance

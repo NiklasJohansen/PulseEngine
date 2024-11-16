@@ -45,6 +45,7 @@ class RadianceCascades(
         val cascadeCount = min(ceil(log2(diagonalSize) / log2(baseRayCount)).toInt() + 1, lightSystem.maxCascades)
         var cascadeIndex = cascadeCount - 1
         val minStepSize = min(1f / width, 1f / height) * 0.5f
+        val worldScale = max(1f, lightSystem.worldScale)
         val program = programs[0]
         val skyLight = if (lightSystem.ambientLight) lightSystem.skyIntensity else 0f
         val sunLight = if (lightSystem.ambientLight) lightSystem.sunIntensity else 0f
@@ -65,12 +66,15 @@ class RadianceCascades(
         program.setUniform("bilinearFix", lightSystem.bilinearFix)
         program.setUniform("forkFix", lightSystem.forkFix)
         program.setUniform("intervalLength", lightSystem.intervalLength)
+        program.setUniform("intervalOverlap", lightSystem.intervalOverlap)
         program.setUniform("cascadeCount", cascadeCount.toFloat())
-        program.setUniform("worldScale", lightSystem.worldScale)
+        program.setUniform("worldScale", worldScale)
+        program.setUniform("invWorldScale", 1f / worldScale)
         program.setUniform("traceWorldRays", lightSystem.traceWorldRays)
         program.setUniform("mergeCascades", lightSystem.mergeCascades)
         program.setUniform("maxSteps", lightSystem.maxSteps)
         program.setUniform("camAngle", localSceneSurface.camera.rotation.z)
+        program.setUniform("camScale", localSceneSurface.camera.scale.x)
         program.setUniformSampler("localSceneTex", localSceneSurface.getTexture(0))
         program.setUniformSampler("localMetadataTex", localSceneSurface.getTexture(1))
         program.setUniformSampler("globalSceneTex", globalSceneSurface.getTexture(0))

@@ -39,17 +39,18 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 11, min=0.01f, max=2f)  var sceneTextureScale = 0.5f
     @Prop(i = 12, min=0f)             var drawCascade = 0
     @Prop(i = 13, min=0f)             var maxCascades = 10
-    @Prop(i = 14)                     var maxSteps = 30
-    @Prop(i = 15)                     var intervalLength = 1.5f
-    @Prop(i = 16, min=0f, max=1f)     var bounceAccumulation = 0.5f
-    @Prop(i = 17, min=0f)             var edgeLighting = 5f
-    @Prop(i = 18, min=0f)             var sourceMultiplier = 1f
-    @Prop(i = 19, min=1f)             var worldScale = 4f
-    @Prop(i = 20)                     var traceWorldRays = true
-    @Prop(i = 21)                     var mergeCascades = true
-    @Prop(i = 22)                     var bilinearFix = true
-    @Prop(i = 23)                     var forkFix = true
-    @Prop(i = 24)                     var fixJitter = true
+    @Prop(i = 14, min=0f)             var maxSteps = 30
+    @Prop(i = 15, min=0f)             var intervalLength = 1.5f
+    @Prop(i = 16, min=0f, max=1f)     var intervalOverlap = 1f
+    @Prop(i = 17, min=0f, max=1f)     var bounceAccumulation = 0.5f
+    @Prop(i = 18, min=0f)             var edgeLighting = 5f
+    @Prop(i = 19, min=0f)             var sourceMultiplier = 1f
+    @Prop(i = 20, min=1f)             var worldScale = 4f
+    @Prop(i = 21)                     var traceWorldRays = true
+    @Prop(i = 22)                     var mergeCascades = true
+    @Prop(i = 23)                     var bilinearFix = true
+    @Prop(i = 24)                     var forkFix = true
+    @Prop(i = 25)                     var fixJitter = true
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -200,7 +201,8 @@ open class GlobalIlluminationSystem : SceneSystem()
                     angle = it.rotation,
                     cornerRadius = min(w, h) * 0.5f,
                     intensity = it.intensity,
-                    coneAngle = it.coneAngle
+                    coneAngle = it.coneAngle,
+                    radius = it.radius
                 )
             }
         }
@@ -218,7 +220,8 @@ open class GlobalIlluminationSystem : SceneSystem()
                     angle = if (it.rotInterpolated.isNaN()) it.rotation else it.rotInterpolated,
                     cornerRadius = 0f,
                     intensity = 0f,
-                    coneAngle = 360f
+                    coneAngle = 360f,
+                    radius = 0f
                 )
             }
         }

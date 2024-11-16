@@ -39,11 +39,12 @@ void main()
         }
 
         // Fade out bounce light near the edge of the screen
-        float edgeFade = 1.0 - smoothstep(0.45, 0.5, max(abs(uv.x - 0.5), abs(uv.y - 0.5)));
+        float edgeFade = 1.0 - smoothstep(0.4, 0.5, max(abs(uv.x - 0.5), abs(uv.y - 0.5)));
         vec3 avgBounceLight = lightAcc / max(1.0, n);
 
         scene.rgb *= avgBounceLight * bounceAccumulation * edgeFade;
         sceneMeta.b = 1.0; // sourceIntensity = 1.0
+        sceneMeta.a = 0.0; // sourceRadius = unlimited
     }
 
     sceneColor = scene;
