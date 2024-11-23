@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.shared.utils
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
@@ -11,6 +12,8 @@ import java.nio.file.FileSystems
 import java.nio.file.Files
 import kotlin.collections.HashSet
 import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 object Extensions
 {
@@ -19,6 +22,12 @@ object Extensions
      */
     fun Float.interpolateFrom(last: Float, t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation): Float =
         this * t + last * (1f - t)
+
+    /**
+     * Linearly interpolates from [lastAngle] to [this] angle.
+     */
+    fun Float.interpolateAngleFrom(lastAngle: Float, t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation): Float =
+        this + this.degreesBetween(lastAngle).interpolateFrom(0f, t)
 
     /**
      * Linearly interpolates from the [last] value to [this] value.
@@ -31,17 +40,6 @@ object Extensions
         this.x * t + last.x * (1f - t),
         this.y * t + last.y * (1f - t)
     )
-
-    // For destructuring vectors
-    operator fun Vector2f.component1() = x
-    operator fun Vector2f.component2() = y
-    operator fun Vector3f.component1() = x
-    operator fun Vector3f.component2() = y
-    operator fun Vector3f.component3() = z
-    operator fun Vector4f.component1() = x
-    operator fun Vector4f.component2() = y
-    operator fun Vector4f.component3() = z
-    operator fun Vector4f.component4() = w
 
     /**
      * Linearly interpolates from the [last] value to [this] value.
@@ -71,9 +69,21 @@ object Extensions
      */
     fun Float.degreesBetween(angle: Float): Float
     {
-        val delta = this - angle
-        return delta + if (delta > 180) -360 else if (delta < -180) 360 else 0
+        val aRad = this.toRadians()
+        val bRad = angle.toRadians()
+        return MathUtil.atan2(sin(aRad - bRad), cos(aRad - bRad)).toDegrees()
     }
+
+    // For destructuring vectors
+    operator fun Vector2f.component1() = x
+    operator fun Vector2f.component2() = y
+    operator fun Vector3f.component1() = x
+    operator fun Vector3f.component2() = y
+    operator fun Vector3f.component3() = z
+    operator fun Vector4f.component1() = x
+    operator fun Vector4f.component2() = y
+    operator fun Vector4f.component3() = z
+    operator fun Vector4f.component4() = w
 
     /**
      * Fast iteration of a list without needing a new [Iterator] instance.

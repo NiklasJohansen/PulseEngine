@@ -7,12 +7,13 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.core.shared.utils.Extensions.degreesBetween
+import no.njoh.pulseengine.core.shared.annotations.TexRef
+import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateAngleFrom
+import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.shapes.CircleShape
 import no.njoh.pulseengine.modules.physics.bodies.CircleBody
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
-import kotlin.Float.Companion.NaN
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sign
@@ -32,11 +33,9 @@ open class Wheel : StandardSceneEntity(), CircleBody
     @Prop("Physics", 7) var acceleration = 1f
     @Prop("Physics", 8) var maxAngularVelocity = 0.3f
 
-    @JsonIgnore protected var xInterpolated = NaN
-    @JsonIgnore protected var yInterpolated = NaN
-    @JsonIgnore protected var rotInterpolated = NaN
     @JsonIgnore private var acc = 0f
 
+    @TexRef
     var textureName = ""
 
     /** Initialize the shape once when the entity is created */
@@ -49,11 +48,6 @@ open class Wheel : StandardSceneEntity(), CircleBody
 
         if (engine.input.isPressed(Key.LEFT) || engine.input.isPressed(Key.A))
             acc = -acceleration
-
-        val i = engine.data.interpolation
-        xInterpolated = x * i + (1f - i) * shape.xLast
-        yInterpolated = y * i + (1f - i) * shape.yLast
-        rotInterpolated = rotation + i * rotation.degreesBetween(shape.rotLast.toDegrees())
     }
 
     override fun onFixedUpdate(engine: PulseEngine)
@@ -72,12 +66,20 @@ open class Wheel : StandardSceneEntity(), CircleBody
 
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
-        val x = if (xInterpolated.isNaN()) x else xInterpolated
-        val y = if (yInterpolated.isNaN()) y else yInterpolated
-        val r = if (rotInterpolated.isNaN()) rotation else rotInterpolated
-        val texture = engine.asset.getOrNull(textureName) ?: Texture.BLANK
-
         surface.setDrawColor(1f, 1f, 1f)
-        surface.drawTexture(texture, x, y, width, height, r, 0.5f, 0.5f)
+        surface.drawTexture(
+            texture = engine.asset.getOrNull(textureName) ?: Texture.BLANK,
+            x = xInterpolated(),
+            y = yInterpolated(),
+            width = width,
+            height = height,
+            angle = rotationInterpolated(),
+            xOrigin = 0.5f,
+            yOrigin = 0.5f
+        )
     }
+
+    override fun xInterpolated() = x.interpolateFrom(shape.xLast)
+    override fun yInterpolated() = y.interpolateFrom(shape.yLast)
+    override fun rotationInterpolated() = rotation.interpolateAngleFrom(shape.rotLast.toDegrees())
 }

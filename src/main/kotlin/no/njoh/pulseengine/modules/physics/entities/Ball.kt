@@ -9,8 +9,8 @@ import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.shapes.CircleShape
 import no.njoh.pulseengine.modules.physics.bodies.CircleBody
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
-import no.njoh.pulseengine.core.shared.utils.Extensions.degreesBetween
-import kotlin.Float.Companion.NaN
+import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateAngleFrom
+import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import kotlin.math.max
 
 open class Ball : StandardSceneEntity(), CircleBody
@@ -26,29 +26,25 @@ open class Ball : StandardSceneEntity(), CircleBody
     override var friction = 0.4f
     override var drag = 0.01f
 
-    protected var xInterpolated = NaN
-    protected var yInterpolated = NaN
-    protected var rotInterpolated = NaN
-
     /** Initialize the shape once when the entity is created */
     override fun onCreate() = shape.init(x, y, max(width, height) * 0.5f, rotation, density)
 
-    override fun onUpdate(engine: PulseEngine)
-    {
-        val i = engine.data.interpolation
-        xInterpolated = x * i + (1f - i) * shape.xLast
-        yInterpolated = y * i + (1f - i) * shape.yLast
-        rotInterpolated = rotation + i * rotation.degreesBetween(shape.rotLast.toDegrees())
-    }
-
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
-        val x = if (xInterpolated.isNaN()) x else xInterpolated
-        val y = if (yInterpolated.isNaN()) y else yInterpolated
-        val r = if (rotInterpolated.isNaN()) rotation else rotInterpolated
         val size = max(width, height)
-
         surface.setDrawColor(1f, 1f, 1f)
-        surface.drawTexture(Texture.BLANK, x, y, size, size, r, 0.5f, 0.5f, cornerRadius = size * 0.5f)
+        surface.drawTexture(
+            texture = Texture.BLANK,
+            x = xInterpolated(),
+            y = yInterpolated(),
+            width = size,
+            height = size,
+            angle = rotationInterpolated(),
+            xOrigin = 0.5f,
+            yOrigin = 0.5f, cornerRadius = size * 0.5f)
     }
+
+    override fun xInterpolated() = x.interpolateFrom(shape.xLast)
+    override fun yInterpolated() = y.interpolateFrom(shape.yLast)
+    override fun rotationInterpolated() = rotation.interpolateAngleFrom(shape.rotLast.toDegrees())
 }
