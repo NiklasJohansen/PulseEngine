@@ -3,7 +3,6 @@ package no.njoh.pulseengine.core.graphics.postprocessing.effects
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 
 class BloomEffect(
     override val name: String,
