@@ -9,6 +9,8 @@ import no.njoh.pulseengine.modules.lighting.LightOccluder
 import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
 import no.njoh.pulseengine.modules.lighting.NormalMapped
 import no.njoh.pulseengine.modules.lighting.direct.DirectLightOccluder
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer.Orientation
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapped
 import no.njoh.pulseengine.modules.physics.entities.Box
 
 class Wall : Box(), DirectLightOccluder, GiOccluder, NormalMapped

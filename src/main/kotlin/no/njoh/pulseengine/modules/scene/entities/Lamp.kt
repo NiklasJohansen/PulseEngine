@@ -1,11 +1,11 @@
-package no.njoh.pulseengine.modules.lighting.entities
+package no.njoh.pulseengine.modules.scene.entities
 
+import com.fasterxml.jackson.annotation.JsonAlias
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
-import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.modules.lighting.direct.DirectLightSource
 import no.njoh.pulseengine.modules.lighting.direct.DirectLightType

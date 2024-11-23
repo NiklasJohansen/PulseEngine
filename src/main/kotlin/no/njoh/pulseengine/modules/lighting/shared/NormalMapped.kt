@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting
+package no.njoh.pulseengine.modules.lighting.shared
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -8,10 +8,10 @@ import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.scene.systems.CustomRenderPassTarget
 import no.njoh.pulseengine.core.shared.annotations.AssetRef
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer.Orientation
 
 /**
- * Rendered by the [LightingSystem] to a separate normal map [Surface] for deferred lighting calculations.
+ * Rendered by the [DirectLightingSystem] to a separate normal map [Surface] for deferred lighting calculations.
  */
 interface NormalMapped : CustomRenderPassTarget
 {
