@@ -8,7 +8,7 @@ in float quadCornerRadius;
 in float sourceIntensity;
 in float sourceAngle;
 in float soureConeAngle;
-in float sourceRadius;
+in float sourceRadius; // light radius / occluder edge light
 
 out vec4 sceneColor;
 out vec4 metadata;

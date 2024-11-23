@@ -6,12 +6,12 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
-import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
 import kotlin.math.*
 
-class RadianceCascades(
+class GiRadianceCascades(
     private val localSceneSurfaceName: String,
     private val globalSceneSurfaceName: String,
     private val distanceFieldSurfaceName: String,

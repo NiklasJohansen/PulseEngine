@@ -9,20 +9,15 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.MultiplyEffect
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
-import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.modules.scene.entities.Wall
-import no.njoh.pulseengine.modules.lighting.LightOccluder
-import no.njoh.pulseengine.modules.lighting.LightSource
 import no.njoh.pulseengine.modules.lighting.globalillumination.effects.*
 
 import kotlin.math.*
 
-@Name("Global Illumination (RC)")
+@Name("Global Illumination")
 @Icon("LIGHT_BULB")
 open class GlobalIlluminationSystem : SceneSystem()
 {
@@ -55,7 +50,7 @@ open class GlobalIlluminationSystem : SceneSystem()
     override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface(
-            name = LOCAL_SCENE_SURFACE,
+            name = GI_LOCAL_SCENE,
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 5,
             isVisible = false,
@@ -66,12 +61,12 @@ open class GlobalIlluminationSystem : SceneSystem()
             textureScale = sceneTextureScale,
             attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
         ).apply {
-            addRenderer(SceneRenderer((this as SurfaceInternal).config))
-            addPostProcessingEffect(SceneBounce(LIGHT_RAW_SURFACE))
+            addRenderer(GiSceneRenderer((this as SurfaceInternal).config))
+            addPostProcessingEffect(GiSceneBounce(GI_LIGHT_RAW))
         }
 
         engine.gfx.createSurface(
-            name = GLOBAL_SCENE_SURFACE,
+            name = GI_GLOBAL_SCENE,
             zOrder = engine.gfx.mainSurface.config.zOrder + 4,
             isVisible = false,
             backgroundColor = Color.BLANK,
@@ -81,11 +76,11 @@ open class GlobalIlluminationSystem : SceneSystem()
             textureScale = sceneTextureScale,
             attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
         ).apply {
-            addRenderer(SceneRenderer((this as SurfaceInternal).config))
+            addRenderer(GiSceneRenderer((this as SurfaceInternal).config))
         }
 
         engine.gfx.createSurface(
-            name = DISTANCE_FIELD_SURFACE,
+            name = GI_DISTANCE_FIELD,
             zOrder = engine.gfx.mainSurface.config.zOrder + 3,
             isVisible = false,
             drawWhenEmpty = true,
@@ -94,13 +89,13 @@ open class GlobalIlluminationSystem : SceneSystem()
             textureScale = sceneTextureScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(JfaSeed(LOCAL_SCENE_SURFACE, GLOBAL_SCENE_SURFACE))
-            addPostProcessingEffect(Jfa())
-            addPostProcessingEffect(DistanceField())
+            addPostProcessingEffect(GiJfaSeed(GI_LOCAL_SCENE, GI_GLOBAL_SCENE))
+            addPostProcessingEffect(GiJfa())
+            addPostProcessingEffect(GiDistanceField())
         }
 
         engine.gfx.createSurface(
-            name = LIGHT_RAW_SURFACE,
+            name = GI_LIGHT_RAW,
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 2,
             isVisible = false,
@@ -109,11 +104,11 @@ open class GlobalIlluminationSystem : SceneSystem()
             textureScale = lightTextureScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(RadianceCascades(LOCAL_SCENE_SURFACE, GLOBAL_SCENE_SURFACE, DISTANCE_FIELD_SURFACE))
+            addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_DISTANCE_FIELD))
         }
 
         val finalLightSurface = engine.gfx.createSurface(
-            name = LIGHT_FINAL_SURFACE,
+            name = GI_LIGHT_FINAL,
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 1,
             isVisible = false,
@@ -122,7 +117,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             textureScale = 1f,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(Compose(LOCAL_SCENE_SURFACE, DISTANCE_FIELD_SURFACE, LIGHT_RAW_SURFACE))
+            addPostProcessingEffect(GiCompose(GI_LOCAL_SCENE, GI_DISTANCE_FIELD, GI_LIGHT_RAW))
         }
 
         // Apply as post-processing effect to main surface
@@ -131,19 +126,19 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     override fun onUpdate(engine: PulseEngine)
     {
-        engine.gfx.getSurface(LOCAL_SCENE_SURFACE)?.setTextureScale(sceneTextureScale)
-        engine.gfx.getSurface(LOCAL_SCENE_SURFACE)?.getRenderer<SceneRenderer>()?.fixJitter = fixJitter
-        engine.gfx.getSurface(GLOBAL_SCENE_SURFACE)?.setTextureScale(sceneTextureScale)
-        engine.gfx.getSurface(GLOBAL_SCENE_SURFACE)?.getRenderer<SceneRenderer>()?.fixJitter = fixJitter
-        engine.gfx.getSurface(LIGHT_RAW_SURFACE)?.setTextureScale(lightTextureScale)
-        engine.gfx.getSurface(DISTANCE_FIELD_SURFACE)?.setTextureScale(sceneTextureScale)
+        engine.gfx.getSurface(GI_LOCAL_SCENE)?.setTextureScale(sceneTextureScale)
+        engine.gfx.getSurface(GI_LOCAL_SCENE)?.getRenderer<GiSceneRenderer>()?.fixJitter = fixJitter
+        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.setTextureScale(sceneTextureScale)
+        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.getRenderer<GiSceneRenderer>()?.fixJitter = fixJitter
+        engine.gfx.getSurface(GI_LIGHT_RAW)?.setTextureScale(lightTextureScale)
+        engine.gfx.getSurface(GI_DISTANCE_FIELD)?.setTextureScale(sceneTextureScale)
     }
 
     override fun onFixedUpdate(engine: PulseEngine)
     {
         if (traceWorldRays)
         {
-            val worldSurface = engine.gfx.getSurface(GLOBAL_SCENE_SURFACE) ?: return
+            val worldSurface = engine.gfx.getSurface(GI_GLOBAL_SCENE) ?: return
             val cam = worldSurface.camera
             val scale = 1f / max(1f, worldScale)
 
@@ -156,27 +151,23 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     override fun onRender(engine: PulseEngine)
     {
-        val localSceneSurface = engine.gfx.getSurface(LOCAL_SCENE_SURFACE) ?: return
-        val localSceneSourceRenderer = localSceneSurface.getRenderer<SceneRenderer>() ?: return
-        drawScene(engine, localSceneSurface, localSceneSourceRenderer)
+        val localSceneSurface = engine.gfx.getSurface(GI_LOCAL_SCENE) ?: return
+        drawScene(engine, localSceneSurface)
 
-        val globalSceneSurface = engine.gfx.getSurface(GLOBAL_SCENE_SURFACE) ?: return
+        val globalSceneSurface = engine.gfx.getSurface(GI_GLOBAL_SCENE) ?: return
         globalSceneSurface.setDrawWhenEmpty(traceWorldRays) // Only draw global surface if we are tracing world rays
         if (traceWorldRays)
-        {
-            val globalSceneSourceRenderer = globalSceneSurface.getRenderer<SceneRenderer>() ?: return
-            drawScene(engine, globalSceneSurface, globalSceneSourceRenderer)
-        }
+            drawScene(engine, globalSceneSurface)
     }
 
     override fun onDestroy(engine: PulseEngine)
     {
         engine.gfx.mainSurface.deletePostProcessingEffect("light_blend")
-        engine.gfx.deleteSurface(LOCAL_SCENE_SURFACE)
-        engine.gfx.deleteSurface(GLOBAL_SCENE_SURFACE)
-        engine.gfx.deleteSurface(LIGHT_RAW_SURFACE)
-        engine.gfx.deleteSurface(LIGHT_FINAL_SURFACE)
-        engine.gfx.deleteSurface(DISTANCE_FIELD_SURFACE)
+        engine.gfx.deleteSurface(GI_LOCAL_SCENE)
+        engine.gfx.deleteSurface(GI_GLOBAL_SCENE)
+        engine.gfx.deleteSurface(GI_LIGHT_RAW)
+        engine.gfx.deleteSurface(GI_LIGHT_FINAL)
+        engine.gfx.deleteSurface(GI_DISTANCE_FIELD)
     }
 
     override fun onStateChanged(engine: PulseEngine)
@@ -184,56 +175,18 @@ open class GlobalIlluminationSystem : SceneSystem()
         if (enabled) onCreate(engine) else onDestroy(engine)
     }
 
-    private fun drawScene(engine: PulseEngine, surface: Surface, renderer: SceneRenderer)
+    private fun drawScene(engine: PulseEngine, surface: Surface)
     {
-        engine.scene.forEachEntityOfType<LightSource>()
-        {
-            val w = (it as? Spatial)?.width ?: (it.radius * 2f)
-            val h = (it as? Spatial)?.height ?: (it.radius * 2f)
-            if (it is SceneEntity && it.isNot(SceneEntity.HIDDEN))
-            {
-                surface.setDrawColor(it.color)
-                renderer.drawTexture(
-                    x = it.x,
-                    y = it.y,
-                    w = w,
-                    h = h,
-                    angle = it.rotation,
-                    cornerRadius = min(w, h) * 0.5f,
-                    intensity = it.intensity,
-                    coneAngle = it.coneAngle,
-                    radius = it.radius
-                )
-            }
-        }
-
-        engine.scene.forEachEntityOfType<LightOccluder>
-        {
-            if (it is Wall && it.castShadows) // TODO: don't use wall, make new LightOccluder interface for this
-            {
-                surface.setDrawColor(it.color)
-                renderer.drawTexture(
-                    x = if (it.xInterpolated.isNaN()) it.x else it.xInterpolated,
-                    y = if (it.yInterpolated.isNaN()) it.y else it.yInterpolated,
-                    w = it.width,
-                    h = it.height,
-                    angle = if (it.rotInterpolated.isNaN()) it.rotation else it.rotInterpolated,
-                    cornerRadius = 0f,
-                    intensity = 0f,
-                    coneAngle = 360f,
-                    radius = 0f,
-                    edgeLight = it.edgeLight
-                )
-            }
-        }
+        engine.scene.forEachEntityOfType<GiLightSource> { it.drawLightSource(engine, surface) }
+        engine.scene.forEachEntityOfType<GiOccluder> { it.drawOccluder(engine, surface) }
     }
 
     companion object
     {
-        private const val LOCAL_SCENE_SURFACE    = "gi_local_scene"
-        private const val GLOBAL_SCENE_SURFACE   = "gi_global_scene"
-        private const val DISTANCE_FIELD_SURFACE = "gi_distance_field"
-        private const val LIGHT_RAW_SURFACE      = "gi_light_raw"
-        private const val LIGHT_FINAL_SURFACE    = "gi_light_final"
+        private const val GI_LOCAL_SCENE    = "gi_local_scene"
+        private const val GI_GLOBAL_SCENE   = "gi_global_scene"
+        private const val GI_DISTANCE_FIELD = "gi_distance_field"
+        private const val GI_LIGHT_RAW      = "gi_light_raw"
+        private const val GI_LIGHT_FINAL    = "gi_light_final"
     }
 }

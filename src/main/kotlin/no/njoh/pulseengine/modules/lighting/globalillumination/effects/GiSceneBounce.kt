@@ -8,11 +8,11 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
-import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
 import org.joml.Matrix4f
 
-class SceneBounce(
+class GiSceneBounce(
     private val lightSurfaceName: String,
     override val name: String = "bounce"
 ) : BaseEffect(

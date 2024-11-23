@@ -12,6 +12,7 @@ import no.njoh.pulseengine.modules.lighting.direct.DirectLightType
 import no.njoh.pulseengine.modules.lighting.direct.DirectShadowType
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.MathUtil
+import no.njoh.pulseengine.modules.lighting.globalillumination.GiLightSource
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -21,7 +22,8 @@ open class Lamp : StandardSceneEntity(), DirectLightSource, GiLightSource
 {
     var trackParent = true
 
-    override var color: Color = Color(1f, 0.92f, 0.75f)
+    @JsonAlias("color")
+    override var lightColor = Color(1f, 0.92f, 0.75f)
     override var intensity = 4f
     override var radius: Float = 800f
     override var size = 100f

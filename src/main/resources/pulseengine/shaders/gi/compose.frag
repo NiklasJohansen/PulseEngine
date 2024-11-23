@@ -10,7 +10,6 @@ uniform sampler2D internalDistanceFieldTex;
 
 uniform vec2 sampleOffset;
 uniform float dithering;
-uniform vec2 resolution;
 uniform float scale;
 uniform float sourceMultiplier;
 uniform vec4 occluderAmbientLight;

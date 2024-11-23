@@ -107,8 +107,8 @@ vec4 traceRay(vec2 probeCenter, vec2 rayStart, vec2 rayEnd)
     {
         vec2 hitPos = (space == SCREEN) ? result.xy : (result.xy - vec2(0.5)) * worldScale + vec2(0.5);
         float dist = length((hitPos - probeCenter) * resolution);
-        float radius = 0.5 * sourceRadius * camScale;
-        scene.rgb *= clamp(smoothstep(0.0, 1.0, radius / dist), 0.0, 1.0);
+        float radius = 0.2 * sourceRadius * camScale;
+        scene.rgb *= clamp(radius / (dist * dist), 0.0, 1.0);
     }
 
     // Fade out radiance at the edge of the world to prevent popping when lights go out of global view

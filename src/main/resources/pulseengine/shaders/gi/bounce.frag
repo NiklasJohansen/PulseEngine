@@ -18,10 +18,10 @@ void main()
 {
     vec4 scene = texture(sceneTex, uv);
     vec4 sceneMeta = texture(sceneMetaTex, uv);
-    bool isSolid = scene.a > 0.5;
-    bool isLightSource = sceneMeta.b > 0; // sourceIntensity < 0.1
+    bool isOccluder = scene.a > 0.5;
+    bool isLightSource = sceneMeta.b > 0; // sourceIntensity > 0
 
-    if (bounceAccumulation > 0.0 && isSolid && !isLightSource)
+    if (bounceAccumulation > 0.0 && isOccluder && !isLightSource)
     {
         vec2 p = (1.0 / resolution) * scale;
         vec2 dir[8] = vec2[8](+p.xy, -p.xy, +p.yx, -p.yx, +p.xx, -p.xx, +p.yy, -p.yy);

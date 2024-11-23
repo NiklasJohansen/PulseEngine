@@ -7,11 +7,11 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
-import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 
-class DistanceField(override val name: String = "distance_field") : BaseEffect(
-    TextureDescriptor(format = RG16F, filter = NEAREST, attachment = COLOR_TEXTURE_0),
-    TextureDescriptor(format = RG16F, filter = NEAREST, attachment = COLOR_TEXTURE_1)
+class GiDistanceField(override val name: String = "distance_field") : BaseEffect(
+    TextureDescriptor(format = RG16F, filter = NEAREST, attachment = COLOR_TEXTURE_0), // External distance field
+    TextureDescriptor(format = RG16F, filter = NEAREST, attachment = COLOR_TEXTURE_1) // Internal distance field
 ) {
     override fun loadShaderProgram() = ShaderProgram.create(
         vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",

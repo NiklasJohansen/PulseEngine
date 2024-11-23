@@ -6,13 +6,13 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
-import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.core.shared.utils.Extensions.component1
 import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
-import no.njoh.pulseengine.modules.lighting.globalillumination.SceneRenderer
+import no.njoh.pulseengine.modules.lighting.globalillumination.GiSceneRenderer
 
-class Compose(
+class GiCompose(
     private val localSceneSurfaceName: String,
     private val distanceFieldSurfaceName: String,
     private val lightSurfaceName: String,
@@ -32,7 +32,7 @@ class Compose(
         val distFieldSurface = engine.gfx.getSurface(distanceFieldSurfaceName) ?: return inTextures
         val sceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
 
-        val (xPixelOffset, yPixelOffset) = SceneRenderer.calculatePixelOffset(sceneSurface)
+        val (xPixelOffset, yPixelOffset) = GiSceneRenderer.calculatePixelOffset(sceneSurface)
         val xSampleOffset = if (lightSystem.fixJitter) xPixelOffset / lightSurface.config.width else 0f
         val ySampleOffset = if (lightSystem.fixJitter) yPixelOffset / lightSurface.config.height else 0f
 
@@ -41,7 +41,6 @@ class Compose(
         program.bind()
         program.setUniform("sampleOffset", xSampleOffset, ySampleOffset)
         program.setUniform("dithering", lightSystem.dithering)
-        program.setUniform("resolution", lightSurface.config.width.toFloat(), lightSurface.config.height.toFloat())
         program.setUniform("scale", sceneSurface.camera.scale.x)
         program.setUniform("sourceMultiplier", lightSystem.sourceMultiplier)
         program.setUniform("occluderAmbientLight", lightSystem.occluderAmbientLight)

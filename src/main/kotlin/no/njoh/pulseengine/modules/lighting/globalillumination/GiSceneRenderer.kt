@@ -12,7 +12,7 @@ import org.joml.Vector2f
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
 
-class SceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
 {
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
@@ -89,7 +89,7 @@ class SceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
         vao.delete()
     }
 
-    fun drawTexture(x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float, radius: Float, edgeLight: Float = 0f)
+    fun drawLight(x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float, radius: Float)
     {
         instanceBuffer.fill(11)
         {
@@ -100,7 +100,24 @@ class SceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
             put(config.currentDrawColor)
             put(intensity)
             put(coneAngle)
-            put(if (intensity == 0f) edgeLight else radius)
+            put(radius)
+        }
+        increaseBatchSize()
+        config.increaseDepth()
+    }
+
+    fun drawOccluder(x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, edgeLight: Float)
+    {
+        instanceBuffer.fill(11)
+        {
+            put(x, y, config.currentDepth)
+            put(w, h)
+            put(angle)
+            put(cornerRadius)
+            put(config.currentDrawColor)
+            put(0f)
+            put(360f)
+            put(edgeLight)
         }
         increaseBatchSize()
         config.increaseDepth()

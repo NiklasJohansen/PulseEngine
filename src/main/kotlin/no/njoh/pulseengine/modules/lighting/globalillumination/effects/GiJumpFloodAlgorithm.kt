@@ -7,13 +7,13 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA32F
-import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import kotlin.math.ceil
 import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.pow
 
-class Jfa(override val name: String = "jfa") : BaseEffect(
+class GiJfa(override val name: String = "jfa") : BaseEffect(
     TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_0),
     TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_1),
     numFrameBufferObjects = 2
@@ -54,7 +54,7 @@ class Jfa(override val name: String = "jfa") : BaseEffect(
     }
 }
 
-class JfaSeed(
+class GiJfaSeed(
     private val localSceneSurfaceName: String,
     private val globalSceneSurfaceName: String,
     override val name: String = "jfa_seed"
