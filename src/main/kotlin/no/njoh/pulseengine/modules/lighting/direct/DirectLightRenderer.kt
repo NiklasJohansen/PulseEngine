@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting
+package no.njoh.pulseengine.modules.lighting.direct
 
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
@@ -14,7 +14,7 @@ import org.lwjgl.opengl.GL30.GL_TEXTURE0
 import org.lwjgl.opengl.GL31.*
 import kotlin.math.max
 
-class LightRenderer : BatchRenderer()
+class DirectLightRenderer : BatchRenderer()
 {
     var ambientColor = Color(0.1f, 0.1f, 0.1f)
     var normalMapTextureHandle: TextureHandle? = null
@@ -191,13 +191,13 @@ class LightRenderer : BatchRenderer()
         red: Float,
         green: Float,
         blue: Float,
-        lightType: LightType,
-        shadowType: ShadowType,
+        lightType: DirectLightType,
+        shadowType: DirectShadowType,
         spill: Float,
         edgeIndex: Int,
         edgeCount: Int
     ) {
-        val shadowType = if (edgeCount == 0) ShadowType.NONE else shadowType
+        val shadowType = if (edgeCount == 0) DirectShadowType.NONE else shadowType
         val r = (red * 255).toInt()
         val g = (green * 255).toInt()
         val b = (blue * 255).toInt()

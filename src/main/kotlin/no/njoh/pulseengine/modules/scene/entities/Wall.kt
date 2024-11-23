@@ -8,9 +8,10 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.lighting.LightOccluder
 import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
 import no.njoh.pulseengine.modules.lighting.NormalMapped
+import no.njoh.pulseengine.modules.lighting.direct.DirectLightOccluder
 import no.njoh.pulseengine.modules.physics.entities.Box
 
-class Wall : Box(), LightOccluder, NormalMapped
+class Wall : Box(), DirectLightOccluder, GiOccluder, NormalMapped
 {
     @TexRef
     var textureName: String = ""

@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting
+package no.njoh.pulseengine.modules.lighting.direct
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -6,12 +6,12 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
-import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import org.joml.Vector3f
 import org.joml.Vector4f
 import kotlin.math.max
 
-class LightBlendEffect(
+class DirectLightBlendEffect(
     override val name: String,
     private val ambientColor: Color,
     private val camera: Camera

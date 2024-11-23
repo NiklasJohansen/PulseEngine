@@ -1,13 +1,13 @@
-package no.njoh.pulseengine.modules.lighting
+package no.njoh.pulseengine.modules.lighting.direct
 
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Physical
 import no.njoh.pulseengine.core.shared.primitives.Shape
 
 /**
- * Will cast shadows behind the shape and is handled by the [LightingSystem].
+ * Will cast shadows behind the shape and is handled by the [DirectLightingSystem].
  */
-interface LightOccluder : Physical
+interface DirectLightOccluder : Physical
 {
     override val shape: Shape
 

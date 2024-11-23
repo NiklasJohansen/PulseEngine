@@ -7,9 +7,9 @@ import no.njoh.pulseengine.core.scene.SceneState.RUNNING
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Icon
-import no.njoh.pulseengine.modules.lighting.LightSource
-import no.njoh.pulseengine.modules.lighting.LightType
-import no.njoh.pulseengine.modules.lighting.ShadowType
+import no.njoh.pulseengine.modules.lighting.direct.DirectLightSource
+import no.njoh.pulseengine.modules.lighting.direct.DirectLightType
+import no.njoh.pulseengine.modules.lighting.direct.DirectShadowType
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.MathUtil
 import kotlin.math.cos
@@ -17,7 +17,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 @Icon("LIGHT_BULB", size = 24f, showInViewport = true)
-open class Lamp : StandardSceneEntity(), LightSource
+open class Lamp : StandardSceneEntity(), DirectLightSource, GiLightSource
 {
     var trackParent = true
 
@@ -27,8 +27,8 @@ open class Lamp : StandardSceneEntity(), LightSource
     override var size = 100f
     override var coneAngle = 360f
     override var spill: Float = 0.95f
-    override var type = LightType.RADIAL
-    override var shadowType = ShadowType.SOFT
+    override var type = DirectLightType.RADIAL
+    override var shadowType = DirectShadowType.SOFT
 
     protected var initLength   = -1f // Length from light position to center of target entity
     protected var initAngle    = -1f // Angle between light position and center of target entity

@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting
+package no.njoh.pulseengine.modules.lighting.direct
 
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -7,12 +7,12 @@ private const val GROUP = "Lighting"
 
 /**
  * Defines the properties of a light source.
- * Handled by the [LightingSystem]
+ * Handled by the [DirectLightingSystem]
  */
-interface LightSource
+interface DirectLightSource
 {
     @get:Prop(GROUP, 0, desc = "RGB-color of the light")
-    var color: Color
+    var lightColor: Color
 
     @get:Prop(GROUP, 1, min = 0f, desc = "Light intensity multiplier")
     var intensity: Float
@@ -30,10 +30,10 @@ interface LightSource
     var spill: Float
 
     @get:Prop(GROUP, 6, desc = "Type of light source")
-    var type: LightType
+    var type: DirectLightType
 
     @get:Prop(GROUP, 7, desc = "The type of shadow the light will cast")
-    var shadowType: ShadowType
+    var shadowType: DirectShadowType
 
     @get:Prop(GROUP, 8, desc = "X-position in world space")
     var x: Float

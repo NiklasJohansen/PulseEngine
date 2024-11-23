@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting
+package no.njoh.pulseengine.modules.lighting.direct
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -15,7 +15,7 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.modules.lighting.ShadowType.NONE
+import no.njoh.pulseengine.modules.lighting.direct.DirectShadowType.NONE
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer.RenderPass
 import no.njoh.pulseengine.core.shared.annotations.Icon
@@ -25,13 +25,15 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import no.njoh.pulseengine.modules.lighting.LightType.*
+import no.njoh.pulseengine.modules.lighting.direct.DirectLightType.*
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapped
 import org.joml.Vector2f
 import kotlin.math.*
 
-@Name("Lighting")
+@Name("Direct Lighting")
 @Icon("LIGHT_BULB")
-open class LightingSystem : SceneSystem()
+open class DirectLightingSystem : SceneSystem()
 {
     @Prop(i = 1)                        var ambientColor = Color(0.01f, 0.01f, 0.02f, 0.8f)
     @Prop(i = 2, min = 0f, max = 10f)   var dithering = 0.7f
@@ -72,8 +74,8 @@ open class LightingSystem : SceneSystem()
 
     private val occluderRenderPass = RenderPass(
         surfaceName = OCCLUDER_SURFACE_NAME,
-        targetType = LightOccluder::class.java,
-        drawCondition = { (it as? LightOccluder)?.castShadows ?: true }
+        targetType = DirectLightOccluder::class.java,
+        drawCondition = { (it as? DirectLightOccluder)?.castShadows ?: true }
     )
 
     override fun onCreate(engine: PulseEngine)
@@ -90,7 +92,7 @@ open class LightingSystem : SceneSystem()
             blendFunction = ADDITIVE,
             attachments = listOf(COLOR_TEXTURE_0)
         ).also {
-            it.addRenderer(LightRenderer())
+            it.addRenderer(DirectLightRenderer())
             configureNormalMap(engine, it, useNormalMap)
             configureOccluderMap(engine, it, enableLightSpill)
         }
@@ -106,7 +108,7 @@ open class LightingSystem : SceneSystem()
     override fun onUpdate(engine: PulseEngine)
     {
         val lightSurface = engine.gfx.getSurface(LIGHT_SURFACE_NAME) ?: return
-        val lightRenderer = lightSurface.getRenderer<LightRenderer>() ?: return
+        val lightRenderer = lightSurface.getRenderer<DirectLightRenderer>() ?: return
 
         lightSurface.setMultisampling(multisampling)
         lightSurface.setTextureScale(textureScale)
@@ -125,7 +127,7 @@ open class LightingSystem : SceneSystem()
     override fun onRender(engine: PulseEngine)
     {
         val lightSurface = engine.gfx.getSurface(LIGHT_SURFACE_NAME) ?: return
-        val lightRenderer = lightSurface.getRenderer<LightRenderer>() ?: return
+        val lightRenderer = lightSurface.getRenderer<DirectLightRenderer>() ?: return
         val startTime = System.nanoTime()
 
         shadowCasterCount = 0
@@ -134,7 +136,7 @@ open class LightingSystem : SceneSystem()
 
         updateLightMapPositionOffset(engine, lightSurface, lightRenderer)
         updateBoundingRect(lightSurface)
-        engine.scene.forEachEntityOfType<LightSource>()
+        engine.scene.forEachEntityOfType<DirectLightSource>()
         {
             addLightsSources(it, lightRenderer, lightSurface, engine)
         }
@@ -229,7 +231,7 @@ open class LightingSystem : SceneSystem()
             }
             for (surface in engine.gfx.getSurfaces(targetSurfaces))
             {
-                surface.addPostProcessingEffect(LightBlendEffect(POST_EFFECT_NAME, ambientColor, engine.gfx.mainCamera))
+                surface.addPostProcessingEffect(DirectLightBlendEffect(POST_EFFECT_NAME, ambientColor, engine.gfx.mainCamera))
                 postEffectSurfaces.add(surface.config.name)
             }
              lastTargetSurfaces = targetSurfaces
@@ -246,7 +248,7 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun updateLightMapPositionOffset(engine: PulseEngine, lightSurface: Surface, lightRenderer: LightRenderer)
+    private fun updateLightMapPositionOffset(engine: PulseEngine, lightSurface: Surface, lightRenderer: DirectLightRenderer)
     {
         var xOffset = 0f
         var yOffset = 0f
@@ -289,7 +291,7 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun addLightsSources(light: LightSource, lightRenderer: LightRenderer, lightSurface: Surface, engine: PulseEngine)
+    private fun addLightsSources(light: DirectLightSource, lightRenderer: DirectLightRenderer, lightSurface: Surface, engine: PulseEngine)
     {
         if ((light as SceneEntity).isSet(HIDDEN) || light.intensity == 0f || !isInsideBoundingRectangle(light))
             return
@@ -297,7 +299,7 @@ open class LightingSystem : SceneSystem()
         val edgeIndex = edgeCount
         if (light.shadowType != NONE)
         {
-            engine.scene.forEachEntityNearbyOfType<LightOccluder>(
+            engine.scene.forEachEntityNearbyOfType<DirectLightOccluder>(
                 x = light.x,
                 y = light.y,
                 width = light.radius * 1.7f + if (light.type == LINEAR) light.size * 2 else 0f,
@@ -322,9 +324,9 @@ open class LightingSystem : SceneSystem()
             coneAngle = 0.5f * light.coneAngle.toRadians(),
             sourceSize = light.size,
             intensity = light.intensity,
-            red = light.color.red,
-            green = light.color.green,
-            blue = light.color.blue,
+            red = light.lightColor.red,
+            green = light.lightColor.green,
+            blue = light.lightColor.blue,
             lightType = light.type,
             shadowType = light.shadowType,
             spill = light.spill,
@@ -336,7 +338,7 @@ open class LightingSystem : SceneSystem()
             drawDebugOutline(light, lightSurface)
     }
 
-    private fun isInsideBoundingRectangle(light: LightSource) =
+    private fun isInsideBoundingRectangle(light: DirectLightSource) =
         when (light.type)
         {
             RADIAL ->
@@ -366,7 +368,7 @@ open class LightingSystem : SceneSystem()
             }
         }
 
-    private fun addOccluderEdges(shape: Shape, lightRenderer: LightRenderer, lightSurface: Surface)
+    private fun addOccluderEdges(shape: Shape, lightRenderer: DirectLightRenderer, lightSurface: Surface)
     {
         val pointCount = shape.getPointCount()
         if (pointCount == 1)
@@ -409,7 +411,7 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun addEdge(x0: Float, y0: Float, x1: Float, y1: Float, lightRenderer: LightRenderer, lightSurface: Surface)
+    private fun addEdge(x0: Float, y0: Float, x1: Float, y1: Float, lightRenderer: DirectLightRenderer, lightSurface: Surface)
     {
         lightRenderer.addEdge(x0, y0, x1, y1)
         edgeCount++
@@ -421,9 +423,9 @@ open class LightingSystem : SceneSystem()
         }
     }
 
-    private fun drawDebugOutline(light: LightSource, lightSurface: Surface)
+    private fun drawDebugOutline(light: DirectLightSource, lightSurface: Surface)
     {
-        lightSurface.setDrawColor(light.color.red, light.color.green, light.color.blue, 0.3f)
+        lightSurface.setDrawColor(light.lightColor.red, light.lightColor.green, light.lightColor.blue, 0.3f)
 
         // Draw outline
         val size = if (light.type == LINEAR) light.size else 0f
@@ -449,15 +451,15 @@ open class LightingSystem : SceneSystem()
         val width = light.radius * 2 + if (light.type == LINEAR) light.size * 2 else 0f
         val height = light.radius * 2
         val cornerRadius = min(width, height)
-        lightSurface.setDrawColor(light.color.red, light.color.green, light.color.blue, 0.02f)
+        lightSurface.setDrawColor(light.lightColor.red, light.lightColor.green, light.lightColor.blue, 0.02f)
         lightSurface.drawTexture(Texture.BLANK, light.x, light.y, width, height, light.rotation, 0.5f, 0.5f, cornerRadius = cornerRadius)
     }
 
     private fun Graphics.getSurfaces(surfaceNames: String) =
         surfaceNames.split(",").mapNotNull { getSurface(it.trim()) }
 
-    private inline fun MutableList<String>.forEachPostEffect(engine: PulseEngine, action: (LightBlendEffect) -> Unit) =
-        this.forEachFast { (engine.gfx.getSurface(it)?.getPostProcessingEffect(POST_EFFECT_NAME) as? LightBlendEffect)?.let(action) }
+    private inline fun MutableList<String>.forEachPostEffect(engine: PulseEngine, action: (DirectLightBlendEffect) -> Unit) =
+        this.forEachFast { (engine.gfx.getSurface(it)?.getPostProcessingEffect(POST_EFFECT_NAME) as? DirectLightBlendEffect)?.let(action) }
 
     fun getSamplingOffset() = SAMPLING_OFFSET.set(xSamplingOffset, ySamplingOffset)
 
