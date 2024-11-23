@@ -92,7 +92,7 @@ vec4 traceRay(vec2 probeCenter, vec2 rayStart, vec2 rayEnd)
     float sourceRadius = metadata.a;
     float coneAngle = metadata.r * PI;
 
-    // Direcational lights
+    // Directional lights
     if (coneAngle < PI)
     {
         float sourceAngle = camAngle + metadata.g * TAU;
@@ -178,8 +178,8 @@ void main()
     float intervalStart = intervalLength * (isInnermostCascade ? 0.0 : pow(baseRayCount, cascadeIndex - 1.0)) / shortestSide;
 
     // The distance from probe center to where the ray ends in uv space
-    float probeSpacingUpperCascade = pow(sqrtBase, cascadeIndex + 1);
-    float overlap =  intervalOverlap * probeSpacingUpperCascade * sqrt(2);
+    float probeSpacingUpperCascade = pow(sqrtBase, cascadeIndex + 1.0);
+    float overlap = isInnermostCascade ? 0.0 : intervalOverlap * probeSpacingUpperCascade * sqrt(2);
     float intervalEnd = intervalLength * (pow(baseRayCount, cascadeIndex) + overlap) / shortestSide;
 
     // The amount of space between each probe (1px in c0, 2px in c1, 4px in c2, etc.)

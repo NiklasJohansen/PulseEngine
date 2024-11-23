@@ -2,24 +2,25 @@
 
 in vec2 uv;
 
-layout(location=0) out vec4 outside;
-layout(location=1) out vec4 inside;
+layout(location=0) out vec4 externalOut;
+layout(location=1) out vec4 internalOut;
 
-uniform sampler2D jfaTex;
-uniform sampler2D jfaTexInside;
+uniform sampler2D jfaExternalTex;
+uniform sampler2D jfaInternalTex;
 
 void main()
 {
-    vec4 nearestSeed = texture(jfaTex, uv);
-    vec4 nearestSeedInside = texture(jfaTexInside, uv);
-    vec2 nearestLocalSeed = nearestSeed.xy;
-    vec2 nearestGlobalSeed = nearestSeed.zw;
-    vec2 nearestLocalSeedInside = nearestSeedInside.xy;
+    vec4 nearestSeedInternal = texture(jfaInternalTex, uv);
+    vec4 nearestSeedExternal = texture(jfaExternalTex, uv);
 
-    float localDist = distance(uv, nearestLocalSeed);
-    float globalDist = distance(uv, nearestGlobalSeed);
-    vec2 localDistInsideVector = nearestLocalSeedInside - uv;
+    vec2 nearestLocalSeedInternal  = nearestSeedInternal.xy;
+    vec2 nearestLocalSeedExternal  = nearestSeedExternal.xy;
+    vec2 nearestGlobalSeedExternal = nearestSeedExternal.zw;
 
-    outside = vec4(localDist, globalDist, 0.0, 1.0);
-    inside = vec4(localDistInsideVector, 0.0, 1.0);
+    vec2 localDistVectorInternal = nearestLocalSeedInternal - uv;
+    float localDistExternal  = distance(uv, nearestLocalSeedExternal);
+    float globalDistExternal = distance(uv, nearestGlobalSeedExternal);
+
+    externalOut = vec4(localDistExternal, globalDistExternal, 0.0, 1.0);
+    internalOut = vec4(localDistVectorInternal, 0.0, 1.0);
 }

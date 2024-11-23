@@ -1,25 +1,24 @@
 #version 330 core
 
 in vec2 uv;
-layout(location=0) out vec4 outside;
-layout(location=1) out vec4 inside;
+layout(location=0) out vec4 externalOut;
+layout(location=1) out vec4 internalOut;
 
-uniform sampler2D outsideTex;
-uniform sampler2D insideTex;
+uniform sampler2D externalTex;
+uniform sampler2D internalTex;
 
 uniform vec2 resolution;
 uniform float uOffset;
 
 void main()
 {
-    vec2 nearestLocalSeedInside = vec2(0.0);
-    float nearestLocalDistInside = 9999.0;
+    vec2 nearestLocalSeedInternal = vec2(0.0);
+    vec2 nearestLocalSeedExternal = vec2(0.0);
+    vec2 nearestGlobalSeedExternal = vec2(0.0);
 
-    vec2 nearestLocalSeed = vec2(0.0);
-    float nearestLocalDist = 9999.0;
-
-    vec2 nearestGlobalSeed = vec2(0.0);
-    float nearestGlobalDist = 9999.0;
+    float nearestLocalDistInternal = 9999.0;
+    float nearestLocalDistExternal = 9999.0;
+    float nearestGlobalDistExternal = 9999.0;
 
     vec2 invRes = 1.0 / resolution;
 
@@ -32,46 +31,46 @@ void main()
             if (samplePos.x < 0.0 || samplePos.x > 1.0 || samplePos.y < 0.0 || samplePos.y > 1.0)
                 continue;
 
-            vec4 uvSample = texture(outsideTex, samplePos);
-            vec2 localSample = uvSample.xy;
-            vec2 globalSample = uvSample.zw;
-            vec2 localSampleInside = texture(insideTex, samplePos).xy;
+            vec4 sampleInternal = texture(externalTex, samplePos);
+            vec2 localSampleExternal = sampleInternal.xy;
+            vec2 globalSampleExternal = sampleInternal.zw;
+            vec2 localSampleInternal = texture(internalTex, samplePos).xy;
 
-            if (localSample.x != 0.0 || localSample.y != 0.0)
+            if (localSampleExternal.x != 0.0 || localSampleExternal.y != 0.0)
             {
-                vec2 diff = localSample - uv;
+                vec2 diff = localSampleExternal - uv;
                 float dist = dot(diff, diff);
-                if (dist < nearestLocalDist)
+                if (dist < nearestLocalDistExternal)
                 {
-                    nearestLocalDist = dist;
-                    nearestLocalSeed = localSample;
+                    nearestLocalDistExternal = dist;
+                    nearestLocalSeedExternal = localSampleExternal;
                 }
             }
 
-            if (localSampleInside.x != 0.0 || localSampleInside.y != 0.0)
+            if (localSampleInternal.x != 0.0 || localSampleInternal.y != 0.0)
             {
-                vec2 diff = localSampleInside - uv;
+                vec2 diff = localSampleInternal - uv;
                 float dist = dot(diff, diff);
-                if (dist < nearestLocalDistInside)
+                if (dist < nearestLocalDistInternal)
                 {
-                    nearestLocalDistInside = dist;
-                    nearestLocalSeedInside = localSampleInside;
+                    nearestLocalDistInternal = dist;
+                    nearestLocalSeedInternal = localSampleInternal;
                 }
             }
 
-            if (globalSample.x != 0.0 || globalSample.y != 0.0)
+            if (globalSampleExternal.x != 0.0 || globalSampleExternal.y != 0.0)
             {
-                vec2 diff = globalSample - uv;
+                vec2 diff = globalSampleExternal - uv;
                 float dist = dot(diff, diff);
-                if (dist < nearestGlobalDist)
+                if (dist < nearestGlobalDistExternal)
                 {
-                    nearestGlobalDist = dist;
-                    nearestGlobalSeed = globalSample;
+                    nearestGlobalDistExternal = dist;
+                    nearestGlobalSeedExternal = globalSampleExternal;
                 }
             }
         }
     }
 
-    outside = vec4(nearestLocalSeed, nearestGlobalSeed);
-    inside = vec4(nearestLocalSeedInside, 0.0, 1.0);
+    externalOut = vec4(nearestLocalSeedExternal, nearestGlobalSeedExternal);
+    internalOut = vec4(nearestLocalSeedInternal, 0.0, 1.0);
 }

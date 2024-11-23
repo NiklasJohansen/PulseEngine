@@ -26,7 +26,7 @@ import kotlin.math.*
 @Icon("LIGHT_BULB")
 open class GlobalIlluminationSystem : SceneSystem()
 {
-    @Prop(i = 0)                      var ambientLight = true
+    @Prop(i = 0)                      var skyLight = true
     @Prop(i = 1)                      var skyColor = Color(0.02f, 0.08f, 0.2f, 1f)
     @Prop(i = 2)                      var sunColor = Color(0.95f, 0.95f, 0.9f, 1f)
     @Prop(i = 3)                      var skyIntensity = 0.1f
@@ -43,14 +43,14 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 15, min=0f)             var intervalLength = 1.5f
     @Prop(i = 16, min=0f, max=1f)     var intervalOverlap = 1f
     @Prop(i = 17, min=0f, max=1f)     var bounceAccumulation = 0.5f
-    @Prop(i = 18, min=0f)             var edgeLighting = 5f
     @Prop(i = 19, min=0f)             var sourceMultiplier = 1f
-    @Prop(i = 20, min=1f)             var worldScale = 4f
-    @Prop(i = 21)                     var traceWorldRays = true
-    @Prop(i = 22)                     var mergeCascades = true
-    @Prop(i = 23)                     var bilinearFix = true
-    @Prop(i = 24)                     var forkFix = true
-    @Prop(i = 25)                     var fixJitter = true
+    @Prop(i = 20)                     var occluderAmbientLight = Color(0f, 0f, 0f, 1f)
+    @Prop(i = 21, min=1f)             var worldScale = 4f
+    @Prop(i = 22)                     var traceWorldRays = true
+    @Prop(i = 23)                     var mergeCascades = true
+    @Prop(i = 24)                     var bilinearFix = true
+    @Prop(i = 25)                     var forkFix = true
+    @Prop(i = 26)                     var fixJitter = true
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -209,7 +209,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.scene.forEachEntityOfType<LightOccluder>
         {
-            if (it is Wall) // TODO: don't use wall, make new LightOccluder interface for this
+            if (it is Wall && it.castShadows) // TODO: don't use wall, make new LightOccluder interface for this
             {
                 surface.setDrawColor(it.color)
                 renderer.drawTexture(
@@ -221,7 +221,8 @@ open class GlobalIlluminationSystem : SceneSystem()
                     cornerRadius = 0f,
                     intensity = 0f,
                     coneAngle = 360f,
-                    radius = 0f
+                    radius = 0f,
+                    edgeLight = it.edgeLight
                 )
             }
         }

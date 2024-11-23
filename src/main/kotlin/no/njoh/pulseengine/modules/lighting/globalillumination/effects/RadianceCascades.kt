@@ -47,8 +47,8 @@ class RadianceCascades(
         val minStepSize = min(1f / width, 1f / height) * 0.5f
         val worldScale = max(1f, lightSystem.worldScale)
         val program = programs[0]
-        val skyLight = if (lightSystem.ambientLight) lightSystem.skyIntensity else 0f
-        val sunLight = if (lightSystem.ambientLight) lightSystem.sunIntensity else 0f
+        val skyLight = if (lightSystem.skyLight) lightSystem.skyIntensity else 0f
+        val sunLight = if (lightSystem.skyLight) lightSystem.sunIntensity else 0f
 
         textureDescriptors[0].filter = lightSystem.textureFilter
 

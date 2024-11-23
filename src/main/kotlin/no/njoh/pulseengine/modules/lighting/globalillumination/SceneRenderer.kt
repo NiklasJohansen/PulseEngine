@@ -89,7 +89,7 @@ class SceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
         vao.delete()
     }
 
-    fun drawTexture(x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float, radius: Float)
+    fun drawTexture(x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float, radius: Float, edgeLight: Float = 0f)
     {
         instanceBuffer.fill(11)
         {
@@ -100,7 +100,7 @@ class SceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
             put(config.currentDrawColor)
             put(intensity)
             put(coneAngle)
-            put(radius)
+            put(if (intensity == 0f) edgeLight else radius)
         }
         increaseBatchSize()
         config.increaseDepth()
