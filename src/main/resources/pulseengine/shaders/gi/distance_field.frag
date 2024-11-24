@@ -8,6 +8,8 @@ layout(location=1) out vec4 internalOut;
 uniform sampler2D jfaExternalTex;
 uniform sampler2D jfaInternalTex;
 
+const float sdfEncodeScale = 65000 / sqrt(2);
+
 void main()
 {
     vec4 nearestSeedInternal = texture(jfaInternalTex, uv);
@@ -18,8 +20,8 @@ void main()
     vec2 nearestGlobalSeedExternal = nearestSeedExternal.zw;
 
     vec2 localDistVectorInternal = nearestLocalSeedInternal - uv;
-    float localDistExternal  = distance(uv, nearestLocalSeedExternal);
-    float globalDistExternal = distance(uv, nearestGlobalSeedExternal);
+    float localDistExternal  = distance(nearestLocalSeedExternal, uv) * sdfEncodeScale;
+    float globalDistExternal = distance(nearestGlobalSeedExternal, uv) * sdfEncodeScale;
 
     externalOut = vec4(localDistExternal, globalDistExternal, 0.0, 1.0);
     internalOut = vec4(localDistVectorInternal, 0.0, 1.0);

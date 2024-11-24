@@ -77,6 +77,9 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniform("drawOffset", xDrawOffset, yDrawOffset)
+        program.setUniform("resolution", surface.config.width.toFloat() * surface.config.textureScale, surface.config.height.toFloat() * surface.config.textureScale)
+        program.setUniform("camScale", surface.camera.scale.x)
+
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
     }

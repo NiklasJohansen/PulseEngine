@@ -20,11 +20,13 @@ out vec2 quadSize;
 out float quadCornerRadius;
 out float sourceIntensity;
 out float sourceAngle;
-out float soureConeAngle;
+out float sourceConeAngle;
 out float sourceRadius;
 
 uniform mat4 viewProjection;
 uniform vec2 drawOffset; // Used to prevent jitter when lightmap scale is below 1.0
+uniform vec2 resolution;
+uniform float camScale;
 
 vec4 getColor(uint rgba)
 {
@@ -54,10 +56,15 @@ void main()
     sourceAngle = int(angle) % 361;
     if (sourceAngle < 0) sourceAngle += 360;
 
-    soureConeAngle = int(coneAngle) % 361;
-    if (soureConeAngle < 0) soureConeAngle += 360;
+    sourceConeAngle = int(coneAngle) % 361;
+    if (sourceConeAngle < 0) sourceConeAngle += 360;
 
-    vec2 offset = (vertexPos - vec2(0.5)) * size * rotate(radians(angle));
+    // Adjust size to make sure it covers at least one pixel
+    vec4 screenSpacePos = viewProjection * vec4(worldPos, 1.0);
+    float pixelSizeInWorld = screenSpacePos.w / resolution.y;
+    vec2 adjustedSize = max(size, vec2(pixelSizeInWorld * 1500.0 / camScale));
+
+    vec2 offset = (vertexPos - vec2(0.5)) * adjustedSize * rotate(radians(angle));
     vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);
 
     gl_Position = viewProjection * vertexPos + vec4(drawOffset, 0, 0);

@@ -7,7 +7,7 @@ in vec2 quadSize;
 in float quadCornerRadius;
 in float sourceIntensity;
 in float sourceAngle;
-in float soureConeAngle;
+in float sourceConeAngle;
 in float sourceRadius; // light radius / occluder edge light
 
 out vec4 sceneColor;
@@ -27,5 +27,5 @@ void main()
 //    }
 
     sceneColor = color;
-    metadata = vec4(soureConeAngle / 360.0, sourceAngle / 360.0, sourceIntensity, sourceRadius);
+    metadata = vec4(sourceConeAngle / 360.0, sourceAngle / 360.0, sourceIntensity, sourceRadius);
 }
