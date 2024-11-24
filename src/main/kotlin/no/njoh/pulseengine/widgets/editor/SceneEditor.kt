@@ -680,6 +680,7 @@ class SceneEditor(
                     it.x += xMove
                     it.y += yMove
                     it.set(POSITION_UPDATED)
+                    it.onMovedScaledOrRotated(engine)
                     updateEntityPropertiesPanel(it::x.name, it.x)
                     updateEntityPropertiesPanel(it::y.name, it.y)
                 }
@@ -691,7 +692,6 @@ class SceneEditor(
         if (!engine.input.isPressed(MouseButton.LEFT))
         {
             engine.input.setCursorType(ARROW)
-            entitySelection.forEachFast { it.onMovedScaledOrRotated(engine) }
             isMoving = false
             return
         }
@@ -700,12 +700,17 @@ class SceneEditor(
         {
             if (entity !is Spatial) continue
 
-            entity.x += engine.input.xdMouse / activeCamera.scale.x
-            entity.y += engine.input.ydMouse / activeCamera.scale.y
-            entity.set(POSITION_UPDATED)
-
-            updateEntityPropertiesPanel(entity::x.name, entity.x)
-            updateEntityPropertiesPanel(entity::y.name, entity.y)
+            val xDelta = engine.input.xdMouse / activeCamera.scale.x
+            val yDelta = engine.input.ydMouse / activeCamera.scale.y
+            if (xDelta != 0f || yDelta != 0f)
+            {
+                entity.x += xDelta
+                entity.y += yDelta
+                entity.set(POSITION_UPDATED)
+                entity.onMovedScaledOrRotated(engine)
+                updateEntityPropertiesPanel(entity::x.name, entity.x)
+                updateEntityPropertiesPanel(entity::y.name, entity.y)
+            }
         }
     }
 
