@@ -85,7 +85,7 @@ class TextRenderer(
         vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        textureBank.bindAllTexturesTo(program)
+        program.setUniformSamplerArrays(textureBank.getTextureArrays())
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
     }

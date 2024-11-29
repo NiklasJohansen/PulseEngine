@@ -11,6 +11,7 @@ import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL20.*
+import org.lwjgl.opengl.GL30.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.GL33.glVertexAttribDivisor
 
 class ShaderProgram(
@@ -137,6 +138,18 @@ class ShaderProgram(
         TextureSampler.getFor(filter).bind(unit)
     }
 
+    fun setUniformSamplerArrays(textureArrays: List<TextureArray>, filter: TextureFilter? = null) =
+        textureArrays.forEachFast { setUniformSamplerArray(it, filter ?: it.textureFilter) }
+
+    fun setUniformSamplerArray(textureArray: TextureArray, filter: TextureFilter = textureArray.textureFilter)
+    {
+        val unit = textureArray.samplerIndex
+        glActiveTexture(GL_TEXTURE0 + unit)
+        glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)
+        setUniform(textureArrayNames[unit], unit)
+        TextureSampler.getFor(filter).bind(unit)
+    }
+
     fun assignUniformBlockBinding(blockName: String, blockBinding: Int): Int
     {
         val index = glGetUniformBlockIndex(id, blockName)
@@ -146,6 +159,7 @@ class ShaderProgram(
 
     companion object
     {
+        private val textureArrayNames = Array(64) { "textureArrays[$it]" }
         private val shaderPrograms = mutableListOf<ShaderProgram>()
         private var errProgram = null as ShaderProgram?
 

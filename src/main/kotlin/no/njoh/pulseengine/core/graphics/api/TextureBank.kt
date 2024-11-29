@@ -29,13 +29,8 @@ class TextureBank
             )
         }
 
-        // Fall back to no texture if the upload fails
+        // Fall back to no texture if the upload failed
         texture.finalize(handle = TextureHandle.NONE, isBindless = true)
-    }
-
-    fun bindAllTexturesTo(shaderProgram: ShaderProgram)
-    {
-        textureArrays.forEachFast { it.bind(shaderProgram) }
     }
 
     fun delete(texture: Texture)
@@ -56,10 +51,13 @@ class TextureBank
         capacitySpecs.sortBy { it.texSize }
     }
 
+    fun getTextureArrays(): List<TextureArray> = textureArrays
+
     private fun getTextureArrayFor(texture: Texture): TextureArray?
     {
         val textureSize = max(texture.width, texture.height)
-        val textureArray = textureArrays.find {
+        val textureArray = textureArrays.find()
+        {
             it.textureSize >= textureSize &&
             it.textureFormat == texture.format &&
             it.textureFilter == texture.filter &&

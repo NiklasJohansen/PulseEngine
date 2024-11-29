@@ -74,7 +74,7 @@ class NormalMapRenderer(
         program.bind()
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", surface.camera.viewMatrix)
-        textureBank.bindAllTexturesTo(program)
+        program.setUniformSamplerArrays(textureBank.getTextureArrays())
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
     }

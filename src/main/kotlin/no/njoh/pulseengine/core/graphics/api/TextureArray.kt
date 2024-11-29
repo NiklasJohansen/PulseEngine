@@ -8,8 +8,6 @@ import org.lwjgl.opengl.ARBInternalformatQuery2.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.ARBTextureStorage.glTexStorage3D
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL12.glTexSubImage3D
-import org.lwjgl.opengl.GL13.GL_TEXTURE0
-import org.lwjgl.opengl.GL13.glActiveTexture
 
 class TextureArray(
     val samplerIndex: Int,
@@ -19,9 +17,8 @@ class TextureArray(
     val textureFilter: TextureFilter,
     val mipLevels: Int
 ) {
-    private var textureArrayId = -1
-    var size = 0
-        private set
+    var id  = -1; private set
+    var size = 0; private set
 
     private fun init()
     {
@@ -31,8 +28,8 @@ class TextureArray(
             NEAREST -> Pair(GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST)
         }
 
-        textureArrayId = glGenTextures()
-        glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
+        id = glGenTextures()
+        glBindTexture(GL_TEXTURE_2D_ARRAY, id)
         glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, textureFormat.internalFormat, textureSize, textureSize, maxCapacity)
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT)
@@ -46,14 +43,14 @@ class TextureArray(
         check(texture.width <= textureSize) { "Texture width (${texture.width} px) cannot be larger than $textureSize px" }
         check(texture.height <= textureSize) { "Texture width (${texture.height} px) cannot be larger than $textureSize px" }
 
-        if (textureArrayId == -1)
+        if (id == -1)
             init()
 
         val texIndex = size++
         if (texIndex >= maxCapacity)
             throw RuntimeException("Texture array with capacity: $maxCapacity is full!")
 
-        glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
+        glBindTexture(GL_TEXTURE_2D_ARRAY, id)
 
         if (textureFormat == RGBA8 && texture.pixelsLDR != null)
         {
@@ -82,19 +79,7 @@ class TextureArray(
         // glDeleteTextures(texture.id)
     }
 
-    fun bind(program: ShaderProgram)
-    {
-        glActiveTexture(GL_TEXTURE0 + samplerIndex)
-        glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId)
-        program.setUniform(textureArrayNames[samplerIndex], samplerIndex)
-    }
-
-    fun destroy() = glDeleteTextures(textureArrayId)
+    fun destroy() = glDeleteTextures(id)
 
     override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$textureFormat, filter=$textureFilter, mips=$mipLevels"
-
-    companion object
-    {
-        private val textureArrayNames = Array(64) { "textureArrays[$it]" }
-    }
 }
