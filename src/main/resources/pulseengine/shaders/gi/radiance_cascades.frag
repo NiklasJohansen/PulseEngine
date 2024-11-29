@@ -42,7 +42,6 @@ const float sdfDecodeScale = sqrt(2.0) / 65000.0;
 
 vec4 raymarch(vec2 rayOrigin, vec2 rayDir, float rayLen)
 {
-    vec2 pos = rayOrigin;
     float traveledDist = 0.0;
     float stepSizeScale = 1.0;
     float space = SCREEN;
@@ -50,15 +49,15 @@ vec4 raymarch(vec2 rayOrigin, vec2 rayDir, float rayLen)
 
     while (steps < maxSteps && traveledDist < rayLen)
     {
-        vec2 fieldDist = texture(distanceFieldTex, pos).rg;
+        vec2 fieldDist = texture(distanceFieldTex, rayOrigin).rg;
         float stepSize = mix(fieldDist.r, fieldDist.g, space) * sdfDecodeScale; // r=screen, g=world
-        vec2 samplePos = pos + rayDir * stepSize;
+        vec2 samplePos = rayOrigin + rayDir * stepSize;
 
         if (samplePos.x < 0.0 || samplePos.x > 1.0 || samplePos.y < 0.0 || samplePos.y > 1.0)
         {
             if (traceWorldRays && space == SCREEN)
             {
-                pos = (pos - vec2(0.5)) * invWorldScale + vec2(0.5); // Remap position to world space
+                rayOrigin = (rayOrigin - vec2(0.5)) * invWorldScale + vec2(0.5); // Remap position to world space
                 stepSizeScale = worldScale;
                 space = WORLD;
                 continue;
@@ -69,7 +68,7 @@ vec4 raymarch(vec2 rayOrigin, vec2 rayDir, float rayLen)
         if (stepSize <= minStepSize)
             return vec4(samplePos, space, steps); // Hit
 
-        pos = samplePos;
+        rayOrigin = samplePos;
         traveledDist += stepSize * stepSizeScale;
         steps++;
     }
@@ -79,14 +78,6 @@ vec4 raymarch(vec2 rayOrigin, vec2 rayDir, float rayLen)
 
 vec4 traceRay(vec2 probeCenter, vec2 rayStart, vec2 rayEnd)
 {
-//    vec4 scene0 = texture(localSceneTex, rayStart);
-//    if (scene0.a > 0)
-//    {
-//        vec4 metadata = texture(localMetadataTex, rayStart);
-//        float sourceIntensity = metadata.b;
-//        return vec4(pow(scene0.rgb * sourceIntensity, vec3(SRGB)), scene0.a);
-//    }
-
     float rayLen = distance(rayStart, rayEnd);
     vec2 rayDir = (rayEnd - rayStart) / rayLen;
     vec4 result = raymarch(rayStart, rayDir, rayLen);
@@ -188,7 +179,7 @@ void main()
 
     // The distance from probe center to where the ray ends in uv space
     float probeSpacingUpperCascade = pow(sqrtBase, cascadeIndex + 1.0);
-    float overlap = isInnermostCascade ? 0.0 : intervalOverlap * probeSpacingUpperCascade * sqrtBase;
+    float overlap = intervalOverlap * probeSpacingUpperCascade * sqrtBase * (isInnermostCascade ? 0.1 : 1.0);
     float intervalEnd = intervalLength * (pow(baseRayCount, cascadeIndex) + overlap) / shortestSide;
 
     // The amount of space between each probe (1px in c0, 2px in c1, 4px in c2, etc.)
