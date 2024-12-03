@@ -410,10 +410,4 @@ object Extensions
         }
         return this
     }
-
-    operator fun StringBuilder.plus(s: String): StringBuilder = append(s)
-    operator fun StringBuilder.plus(l: Long): StringBuilder = append(l)
-    operator fun StringBuilder.plus(f: Float): StringBuilder = append(f)
-    operator fun StringBuilder.plus(i: Int): StringBuilder = append(i)
-    operator fun StringBuilder.plus(c: Char): StringBuilder = append(c)
 }

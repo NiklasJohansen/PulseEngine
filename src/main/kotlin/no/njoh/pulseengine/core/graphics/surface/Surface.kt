@@ -9,6 +9,8 @@ import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.AbstractTextBuilderContext
+import no.njoh.pulseengine.core.shared.utils.TextBuilder
 
 typealias Degrees = Float
 
@@ -63,11 +65,11 @@ abstract class Surface
 
     /**
      * Draws text at a given position with a given font, size, rotation and origin.
-     * Supports building the text with a [StringBuilder] to avoid allocating new [String] objects and excessive garbage.
-     * Example: drawText(textBuilder = { it.append("Hello, ").append("World!") }, ..., ...)
+     * Supports building the text with a [TextBuilder] to avoid allocating new [String] objects and excessive garbage.
+     * Example: drawText(text = { "Hello, " plus "World!" }, ..., ...)
      */
-    inline fun drawText(textBuilder: (builder: StringBuilder) -> CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f) =
-        drawText(textBuilder(sb.clear()), x, y, font, fontSize, angle, xOrigin, yOrigin)
+    inline fun drawText(text: TextBuilder, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f) =
+        drawText(context.build(text), x, y, font, fontSize, angle, xOrigin, yOrigin)
 
     /**
      * Defines a clipping area for all drawing operations performed within the [drawFunc].
@@ -135,11 +137,6 @@ abstract class Surface
      * Default scale is 1.0. Higher values will increase the resolution of the surface and wise versa.
      */
     abstract fun setTextureScale(scale: Float): Surface
-
-    /**
-     * Sets whether the [Surface] should be drawn when no content is present.
-     */
-    abstract fun setDrawWhenEmpty(state: Boolean): Surface
 
     ///////////////////////////////////////// Surface Textures /////////////////////////////////////////
 
@@ -214,6 +211,8 @@ abstract class Surface
 
     // Reusable StringBuilder for text drawing
     @PublishedApi internal val sb = StringBuilder(1000)
+
+    @PublishedApi internal val context = object : AbstractTextBuilderContext() {}
 }
 
 abstract class SurfaceInternal : Surface()
@@ -229,4 +228,5 @@ abstract class SurfaceInternal : Surface()
     abstract fun runPostProcessingPipeline(engine: PulseEngine)
     abstract fun destroy()
     abstract fun hasContent(): Boolean
+    abstract fun hasPostProcessingEffects(): Boolean
 }
