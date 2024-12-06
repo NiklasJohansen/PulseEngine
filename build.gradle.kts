@@ -1,16 +1,14 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     `maven-publish`
-    kotlin("jvm") version "1.9.23"
-    id("me.champeau.jmh") version "0.6.6"
+    kotlin("jvm") version "2.1.0"
+    kotlin("kapt") version "2.1.0"
+    id("me.champeau.jmh") version "0.7.2"
 }
 
 val version: String by project
 val group: String by project
 val artifact: String by project
-val lwjglVersion: String by project
-val kotlinVersion: String by project
 val mainClass: String by project
 
 enum class Platform(val classifier: String) {
@@ -30,11 +28,11 @@ repositories {
 
 dependencies {
     // Kotlin
-    implementation("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.1.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
 
     // LWJGL
-    implementation(platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
+    implementation(platform("org.lwjgl:lwjgl-bom:3.3.4"))
     implementation("org.lwjgl", "lwjgl")
     implementation("org.lwjgl", "lwjgl-glfw")
     implementation("org.lwjgl", "lwjgl-jemalloc")
@@ -59,10 +57,9 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.1")
 
     // Java Microbenchmark Harness
-    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.35")
-    jmh("org.openjdk.jmh:jmh-core:1.35")
-    jmh("org.openjdk.jmh:jmh-generator-annprocess:1.34")
-    jmh("com.github.biboudis:jmh-profilers:0.1.4")
+    kapt("org.openjdk.jmh:jmh-generator-annprocess:1.37")
+    implementation("org.openjdk.jmh:jmh-core:1.37")
+    implementation("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }
 
 val sourcesJar by tasks.creating(Jar::class) {
@@ -82,11 +79,10 @@ val jar by tasks.getting(Jar::class) {
     from({ configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) } })
 }
 
-// Disable null checks at runtime
-tasks.withType(KotlinCompile::class).all {
-    kotlinOptions {
+kotlin {
+    jvmToolchain(21)
+    compilerOptions {
         freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
-        jvmTarget = "19"
     }
 }
 
@@ -114,9 +110,4 @@ publishing {
     }
 }
 
-jmh {
-    duplicateClassesStrategy.set(DuplicatesStrategy.INCLUDE)
-    warmupIterations.set(2)
-    iterations.set(2)
-    fork.set(2)
-}
+jmh { profilers.set(listOf("gc")) }
