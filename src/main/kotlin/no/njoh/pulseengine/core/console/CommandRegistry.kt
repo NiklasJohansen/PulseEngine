@@ -194,7 +194,7 @@ object CommandRegistry
             val keyString = getString("key")
             val keys = keyString
                 .split("+")
-                .map { it.trim().toUpperCase() }
+                .map { it.trim().uppercase() }
                 .map {
                     try { Key.valueOf(it) }
                     catch (e :Exception) { return@registerCommand CommandResult("No key with name $it. Did you mean any of these: ${Key.values().filter { k -> k.toString().contains(it) }}", MessageType.ERROR) }
@@ -220,7 +220,7 @@ object CommandRegistry
             val keyString = getString("key")
             val keys = keyString
                 .split("+")
-                .map { it.trim().toUpperCase() }
+                .map { it.trim().uppercase() }
                 .map {
                     try { Key.valueOf(it) }
                     catch (e :Exception) { return@registerCommand CommandResult("No key with name $it. Did you mean any of these: " +
