@@ -9,7 +9,7 @@ import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.shared.utils.AbstractTextBuilderContext
+import no.njoh.pulseengine.core.shared.utils.TextBuilderContext
 import no.njoh.pulseengine.core.shared.utils.TextBuilder
 
 typealias Degrees = Float
@@ -212,7 +212,7 @@ abstract class Surface
     // Reusable StringBuilder for text drawing
     @PublishedApi internal val sb = StringBuilder(1000)
 
-    @PublishedApi internal val context = object : AbstractTextBuilderContext() {}
+    @PublishedApi internal val context = TextBuilderContext()
 }
 
 abstract class SurfaceInternal : Surface()

@@ -1,6 +1,7 @@
 package benchmarks
 
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.TextBuilderContext
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -20,23 +21,26 @@ import java.util.concurrent.TimeUnit.SECONDS
 @Warmup(iterations = 5, time = 2, timeUnit = SECONDS)
 @Measurement(iterations = 5, time = 2, timeUnit = SECONDS)
 @State(Scope.Benchmark)
-open class ForEachBenchmark
+open class TextBuilderBenchmark
 {
     private var numbers = (0 .. 1000).shuffled()
+    private var context = TextBuilderContext()
 
     @Benchmark
-    fun benchmarkForEachFast(bh: Blackhole)
+    fun benchmarkStringConcatenation(bh: Blackhole)
     {
-        var sum = 0
-        numbers.forEachFast { sum += it }
-        bh.consume(sum)
+        numbers.forEachFast()
+        {
+            bh.consume("Length: ${it}m, Area: ${it * it}m2")
+        }
     }
 
     @Benchmark
-    fun benchmarkForEach(bh: Blackhole)
+    fun benchmarkTextBuilder(bh: Blackhole)
     {
-        var sum = 0
-        numbers.forEach { sum += it }
-        bh.consume(sum)
+        numbers.forEachFast()
+        {
+            bh.consume(context.build { "Length: " plus it plus "m, Area: " plus (it * it) plus "m2" })
+        }
     }
 }

@@ -3,7 +3,7 @@ package no.njoh.pulseengine.core.shared.utils
 /**
  * Text builder lambda used create concatenated strings without excessive memory allocations.
  */
-typealias TextBuilder = AbstractTextBuilderContext.() -> Any
+typealias TextBuilder = TextBuilderContext.() -> Any
 
 /**
  * Utility class for building concatenated strings without allocating memory for new String objects.
@@ -11,7 +11,7 @@ typealias TextBuilder = AbstractTextBuilderContext.() -> Any
  *   val context = object : AbstractTextBuilderContext() {} // Create a context once and reuse it
  *   val text = context.build { "Example value:" plus valueVariable plus " unit" }
  */
-abstract class AbstractTextBuilderContext
+open class TextBuilderContext
 {
     val content = StringBuilder(100)
 
