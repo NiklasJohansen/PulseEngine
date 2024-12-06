@@ -57,7 +57,7 @@ class PulseEngineImpl(
     private var gameThread       = null as Thread?
     private var running          = true
 
-    init { PulseEngine.GLOBAL_INSTANCE = this }
+    init { PulseEngine.INSTANCE = this }
 
     fun run(game: PulseEngineGame)
     {

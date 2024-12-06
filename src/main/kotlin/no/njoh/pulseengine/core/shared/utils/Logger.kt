@@ -49,7 +49,7 @@ object Logger
             ERROR -> MessageType.ERROR
             else -> MessageType.INFO
         }
-        PulseEngine.GLOBAL_INSTANCE.console.log("$levelText [$time]  $text", messageType)
+        PulseEngine.INSTANCE.console.log("$levelText [$time]  $text", messageType)
     }
 
     private fun logToStandardOut(text: String, level: LogLevel)

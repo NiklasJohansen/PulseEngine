@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.core.shared.utils
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
@@ -10,7 +9,6 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.nio.file.FileSystems
 import java.nio.file.Files
-import kotlin.collections.HashSet
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -20,13 +18,13 @@ object Extensions
     /**
      * Linearly interpolates from the [last] value to [this] value.
      */
-    fun Float.interpolateFrom(last: Float, t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation): Float =
+    fun Float.interpolateFrom(last: Float, t: Float = PulseEngine.INSTANCE.data.interpolation): Float =
         this * t + last * (1f - t)
 
     /**
      * Linearly interpolates from [lastAngle] to [this] angle.
      */
-    fun Float.interpolateAngleFrom(lastAngle: Float, t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation): Float =
+    fun Float.interpolateAngleFrom(lastAngle: Float, t: Float = PulseEngine.INSTANCE.data.interpolation): Float =
         this + this.degreesBetween(lastAngle).interpolateFrom(0f, t)
 
     /**
@@ -35,7 +33,7 @@ object Extensions
     fun Vector2f.interpolateFrom(
         last: Vector2f,
         dest: Vector2f = Vector2f(),
-        t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation
+        t: Float = PulseEngine.INSTANCE.data.interpolation
     ): Vector2f = dest.set(
         this.x * t + last.x * (1f - t),
         this.y * t + last.y * (1f - t)
@@ -47,7 +45,7 @@ object Extensions
     fun Vector3f.interpolateFrom(
         last: Vector3f,
         destination: Vector3f = Vector3f(),
-        t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation
+        t: Float = PulseEngine.INSTANCE.data.interpolation
     ): Vector3f = destination.set(
         this.x * t + last.x * (1f - t),
         this.y * t + last.y * (1f - t),

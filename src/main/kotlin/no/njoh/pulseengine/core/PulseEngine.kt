@@ -54,7 +54,7 @@ interface PulseEngine
             PulseEngineImpl().run(game.createInstance())
 
         /** Holds a global reference to the engine */
-        internal lateinit var GLOBAL_INSTANCE: PulseEngine
+        lateinit var INSTANCE: PulseEngine; internal set
     }
 }
 
