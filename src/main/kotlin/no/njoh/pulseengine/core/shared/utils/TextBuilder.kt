@@ -22,12 +22,12 @@ open class TextBuilderContext
     infix fun String.plus(l: Long): StringBuilder     = content.append(this).append(l)
     infix fun String.plus(b: Boolean): StringBuilder  = content.append(this).append(b)
 
-    infix fun StringBuilder.plus(s: String): StringBuilder  = append(s)
-    infix fun StringBuilder.plus(c: Char): StringBuilder    = append(c)
-    infix fun StringBuilder.plus(b: Int): StringBuilder     = append(b)
-    infix fun StringBuilder.plus(f: Float): StringBuilder   = append(f)
-    infix fun StringBuilder.plus(l: Long): StringBuilder    = append(l)
-    infix fun StringBuilder.plus(b: Boolean): StringBuilder = append(b)
+    infix fun StringBuilder.plus(s: String): StringBuilder  = if (this !== content) content.append(this).append(s) else append(s)
+    infix fun StringBuilder.plus(c: Char): StringBuilder    = if (this !== content) content.append(this).append(c) else append(c)
+    infix fun StringBuilder.plus(b: Int): StringBuilder     = if (this !== content) content.append(this).append(b) else append(b)
+    infix fun StringBuilder.plus(f: Float): StringBuilder   = if (this !== content) content.append(this).append(f) else append(f)
+    infix fun StringBuilder.plus(l: Long): StringBuilder    = if (this !== content) content.append(this).append(l) else append(l)
+    infix fun StringBuilder.plus(b: Boolean): StringBuilder = if (this !== content) content.append(this).append(b) else append(b)
 
     inline fun build(builder: TextBuilder): CharSequence
     {
