@@ -8,6 +8,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA32F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import kotlin.math.ceil
 import kotlin.math.log2
 import kotlin.math.max
@@ -39,6 +40,8 @@ class GiJfa(override val name: String = "jfa") : BaseEffect(
 
         for (i in 0 until passes)
         {
+            GpuProfiler.beginMeasure { "Pass #" plus i }
+
             val fbo = frameBuffers[i % 2]
             fbo.bind()
             fbo.clear()
@@ -48,6 +51,8 @@ class GiJfa(override val name: String = "jfa") : BaseEffect(
             renderer.draw()
             fbo.release()
             outputTextures = fbo.getTextures()
+
+            GpuProfiler.endMeasure()
         }
 
         return outputTextures

@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
 import kotlin.math.*
@@ -15,7 +16,7 @@ class GiRadianceCascades(
     private val localSceneSurfaceName: String,
     private val globalSceneSurfaceName: String,
     private val distanceFieldSurfaceName: String,
-    override val name: String = "rc"
+    override val name: String = "Radiance Cascades"
 ) : BaseEffect(
     TextureDescriptor(filter = LINEAR, format = RGBA16F),
     numFrameBufferObjects = 2
@@ -83,6 +84,8 @@ class GiRadianceCascades(
 
         while (cascadeIndex >= lightSystem.drawCascade)
         {
+            GpuProfiler.beginMeasure { "C" plus cascadeIndex }
+
             val fbo = frameBuffers[cascadeIndex % 2]
             fbo.bind()
             fbo.clear()
@@ -92,6 +95,8 @@ class GiRadianceCascades(
             fbo.release()
             outTextures = fbo.getTextures()
             cascadeIndex--
+
+            GpuProfiler.endMeasure()
         }
 
         return outTextures
