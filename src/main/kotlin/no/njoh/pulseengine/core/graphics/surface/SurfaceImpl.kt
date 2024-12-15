@@ -14,7 +14,6 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
-import java.lang.RuntimeException
 
 class SurfaceImpl(
     override val camera: CameraInternal,
@@ -24,7 +23,6 @@ class SurfaceImpl(
 
     override var renderTarget           = createRenderTarget(config)
     private var initialized             = false
-    private var hasContent              = false
     private val onInitFrame             = ArrayList<() -> Unit>()
     private var readRenderStates        = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private var writeRenderStates       = ArrayList<RenderState>(MAX_BATCH_COUNT)
@@ -84,10 +82,6 @@ class SurfaceImpl(
 
     override fun renderToOffScreenTarget()
     {
-        hasContent = renderers.anyMatches { it.hasContentToRender() }
-        if (!hasContent && !config.drawWhenEmpty)
-            return // No content to render
-
         renderTarget.begin()
 
         var batchNum = 0
@@ -103,7 +97,7 @@ class SurfaceImpl(
 
     override fun runPostProcessingPipeline(engine: PulseEngine)
     {
-        if (!hasContent()) return // Render target is blank
+        if (postEffects.isEmpty()) return // No post-processing effects to run
 
         // Make sure the view port is set to the same size as the scaled surface texture
         ViewportState.apply(this)
@@ -125,7 +119,9 @@ class SurfaceImpl(
         renderTarget.destroy()
     }
 
-    override fun hasContent() = hasContent || config.drawWhenEmpty
+    override fun hasContent() = renderers.anyMatches { it.hasContentToRender() }
+
+    override fun hasPostProcessingEffects() = postEffects.isNotEmpty()
 
     // Exposed draw functions
     //------------------------------------------------------------------------------------------------
@@ -291,12 +287,6 @@ class SurfaceImpl(
             renderTarget.textureScale = scale
             runOnInitFrame { renderTarget.init(config.width, config.height) }
         }
-        return this
-    }
-
-    override fun setDrawWhenEmpty(state: Boolean): Surface
-    {
-        config.drawWhenEmpty = state
         return this
     }
 

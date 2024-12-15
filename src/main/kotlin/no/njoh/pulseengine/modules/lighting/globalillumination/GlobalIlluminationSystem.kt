@@ -83,7 +83,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             name = GI_DISTANCE_FIELD,
             zOrder = engine.gfx.mainSurface.config.zOrder + 3,
             isVisible = false,
-            drawWhenEmpty = true,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
             textureScale = sceneTextureScale,
@@ -99,7 +98,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 2,
             isVisible = false,
-            drawWhenEmpty = true,
             backgroundColor = Color.BLANK,
             textureScale = lightTextureScale,
             attachments = listOf(COLOR_TEXTURE_0)
@@ -112,7 +110,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 1,
             isVisible = false,
-            drawWhenEmpty = true,
             backgroundColor = Color.BLANK,
             textureScale = 1f,
             attachments = listOf(COLOR_TEXTURE_0)
@@ -155,7 +152,6 @@ open class GlobalIlluminationSystem : SceneSystem()
         drawScene(engine, localSceneSurface)
 
         val globalSceneSurface = engine.gfx.getSurface(GI_GLOBAL_SCENE) ?: return
-        globalSceneSurface.setDrawWhenEmpty(traceWorldRays) // Only draw global surface if we are tracing world rays
         if (traceWorldRays)
             drawScene(engine, globalSceneSurface)
     }

@@ -12,7 +12,6 @@ interface SurfaceConfig
     val height: Int
     val zOrder: Int
     val isVisible: Boolean
-    val drawWhenEmpty: Boolean
     val textureScale: Float
     val textureFormat: TextureFormat
     val textureFilter: TextureFilter
@@ -28,7 +27,6 @@ class SurfaceConfigInternal(
     override var height: Int,
     override var zOrder: Int,
     override var isVisible: Boolean,
-    override var drawWhenEmpty: Boolean,
     override var textureScale: Float,
     override var textureFormat: TextureFormat,
     override var textureFilter: TextureFilter,
