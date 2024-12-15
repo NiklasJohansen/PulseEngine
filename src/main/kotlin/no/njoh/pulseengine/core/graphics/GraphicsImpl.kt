@@ -18,7 +18,6 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL
-import org.lwjgl.opengl.GL11.*
 
 open class GraphicsImpl : GraphicsInternal
 {
@@ -27,10 +26,10 @@ open class GraphicsImpl : GraphicsInternal
     override lateinit var textureBank: TextureBank
     private  lateinit var fullFrameRenderer: FullFrameRenderer
 
-    private val onInitFrame       = ArrayList<() -> Unit>()
-    private val surfaceMap        = HashMap<String, SurfaceInternal>()
-    private val surfaces          = ArrayList<SurfaceInternal>()
-    private var lastZOrder        = 0
+    private val onInitFrame = ArrayList<() -> Unit>()
+    private val surfaceMap  = HashMap<String, SurfaceInternal>()
+    private val surfaces    = ArrayList<SurfaceInternal>()
+    private var lastZOrder  = 0
 
     override fun init(config: ConfigurationInternal, viewPortWidth: Int, viewPortHeight: Int)
     {
@@ -80,11 +79,13 @@ open class GraphicsImpl : GraphicsInternal
         surfaces.forEachCamera { it.updateProjection(width, height) }
 
         // Set viewport size
-        glViewport(0, 0, width, height)
+        ViewportState.apply(mainSurface)
     }
 
     override fun initFrame()
     {
+        GpuProfiler.startFrame()
+
         onInitFrame.forEachFast { it.invoke() }
         onInitFrame.clear()
 
@@ -99,13 +100,25 @@ open class GraphicsImpl : GraphicsInternal
     override fun drawFrame(engine: PulseEngine)
     {
         // Render all batched data to offscreen target
-        surfaces.forEachFast { it.renderToOffScreenTarget() }
+        surfaces.forEachFiltered({ it.hasContent() })
+        {
+            GpuProfiler.measure(label = { "Draw Surface: " plus it.config.name })
+            {
+                it.renderToOffScreenTarget()
+            }
+        }
 
         // Set OpenGL state for rendering post-processing effects
         PostProcessingBaseState.apply(mainSurface)
 
         // Run surfaces through their post-processing pipelines
-        surfaces.forEachFast { it.runPostProcessingPipeline(engine) }
+        surfaces.forEachFiltered({ it.hasPostProcessingEffects() })
+        {
+            GpuProfiler.measure(label = { "Post Process Surface: " plus it.config.name })
+            {
+                it.runPostProcessingPipeline(engine)
+            }
+        }
 
         // Set OpenGL state for rendering offscreen target textures to back-buffer
         BackBufferBaseState.apply(surfaces.firstOrNull() ?: mainSurface)
@@ -113,10 +126,15 @@ open class GraphicsImpl : GraphicsInternal
         // Draw visible surfaces with content to back-buffer
         surfaces.forEachFiltered({ it.config.isVisible && it.hasContent() })
         {
-            fullFrameRenderer.program.bind()
-            fullFrameRenderer.program.setUniformSampler("tex", it.getTexture())
-            fullFrameRenderer.draw()
+            GpuProfiler.measure(label = { "Draw BackBuffer: " plus it.config.name })
+            {
+                fullFrameRenderer.program.bind()
+                fullFrameRenderer.program.setUniformSampler("tex", it.getTexture())
+                fullFrameRenderer.draw()
+            }
         }
+
+        GpuProfiler.endFrame()
     }
 
     override fun createSurface(

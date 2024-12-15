@@ -60,17 +60,6 @@ object PostProcessingBaseState : RenderState
 }
 
 /**
- * Sets the view port size to the size of the scaled surface texture
- */
-object ViewportState : RenderState
-{
-    override fun apply(surface: SurfaceInternal)
-    {
-        glViewport(0, 0, (surface.config.width * surface.config.textureScale).toInt(), (surface.config.height * surface.config.textureScale).toInt())
-    }
-}
-
-/**
  * Sets up the base OpenGL state before running all batch renderers for the given surface.
  */
 object BatchRenderBaseState : RenderState
@@ -105,6 +94,17 @@ object BatchRenderBaseState : RenderState
         val c = config.backgroundColor
         glClearColor(c.red, c.green, c.blue, c.alpha)
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+    }
+}
+
+/**
+ * Sets the view port size to the size of the scaled surface texture
+ */
+object ViewportState : RenderState
+{
+    override fun apply(surface: SurfaceInternal)
+    {
+        glViewport(0, 0, (surface.config.width * surface.config.textureScale).toInt(), (surface.config.height * surface.config.textureScale).toInt())
     }
 }
 

@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer.Companion.MAX_BATCH_COUNT
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
@@ -108,7 +109,13 @@ class SurfaceImpl(
         ViewportState.apply(this)
 
         var textures = renderTarget.getTextures()
-        postEffects.forEachFast { textures = it.process(engine, textures) }
+        postEffects.forEachFast()
+        {
+            GpuProfiler.measure(label = { "Effect: " plus it.name })
+            {
+                textures = it.process(engine, textures)
+            }
+        }
     }
 
     override fun destroy()
