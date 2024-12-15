@@ -8,7 +8,8 @@ import no.njoh.pulseengine.core.shared.utils.TextBuilder
  */
 object GpuProfiler
 {
-    @PublishedApi internal var ENABLED = true
+    var ENABLED = true
+
     @PublishedApi internal val context = TextBuilderContext()
 
     /**
@@ -86,9 +87,4 @@ object GpuProfiler
      * Safe to call from the game thread.
      */
     fun getMeasurements() = GpuTimer.getAllResults()
-
-    /**
-     * Used to enable or disable GPU profiling.
-     */
-    fun setEnabled(state: Boolean) { ENABLED = state }
 }

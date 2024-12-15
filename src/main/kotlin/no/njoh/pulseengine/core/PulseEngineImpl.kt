@@ -14,6 +14,7 @@ import no.njoh.pulseengine.core.console.ConsoleImpl
 import no.njoh.pulseengine.core.console.ConsoleInternal
 import no.njoh.pulseengine.core.data.DataImpl
 import no.njoh.pulseengine.core.graphics.*
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.InputImpl
 import no.njoh.pulseengine.core.input.InputInternal
@@ -82,8 +83,8 @@ class PulseEngineImpl(
         // Initialize engine components
         config.init()
         data.init(config.gameName)
-        window.init(config.windowWidth, config.windowHeight, config.screenMode, config.gameName)
-        gfx.init(window.width, window.height)
+        window.init(config)
+        gfx.init(config, window.width, window.height)
         input.init(window.windowHandle)
         audio.init()
         console.init(this)
@@ -134,6 +135,9 @@ class PulseEngineImpl(
             when (property.name)
             {
                 config::gameName.name -> data.updateSaveDirectory(config.gameName)
+                config::logLevel.name -> Logger.LEVEL = config.logLevel
+                config::gpuLogLevel.name -> gfx.setGpuLogLevel(config.gpuLogLevel)
+                config::gpuProfiling.name -> GpuProfiler.ENABLED = config.gpuProfiling
             }
         }
 

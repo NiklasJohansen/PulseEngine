@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.config.ConfigurationInternal
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
@@ -9,9 +10,12 @@ import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.surface.*
+import no.njoh.pulseengine.core.graphics.util.GpuLogger
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
+import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.*
@@ -28,7 +32,7 @@ open class GraphicsImpl : GraphicsInternal
     private val surfaces          = ArrayList<SurfaceInternal>()
     private var lastZOrder        = 0
 
-    override fun init(viewPortWidth: Int, viewPortHeight: Int)
+    override fun init(config: ConfigurationInternal, viewPortWidth: Int, viewPortHeight: Int)
     {
         Logger.info("Initializing graphics (${this::class.simpleName})")
 
@@ -47,6 +51,8 @@ open class GraphicsImpl : GraphicsInternal
         )
 
         updateViewportSize(viewPortWidth, viewPortHeight, true)
+
+        GpuLogger.setLogLevel(config.getEnum("gpuLogLevel", LogLevel::class) ?: LogLevel.OFF)
     }
 
     override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
@@ -215,6 +221,11 @@ open class GraphicsImpl : GraphicsInternal
             else
                 Logger.warn("Failed to reload shader: $fileName")
         }
+    }
+
+    override fun setGpuLogLevel(logLevel: LogLevel)
+    {
+        runOnInitFrame { GpuLogger.setLogLevel(logLevel) }
     }
 
     override fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat)

@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.graphics
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.config.ConfigurationInternal
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
@@ -12,6 +13,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.CameraInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.shared.utils.LogLevel
 
 interface Graphics
 {
@@ -56,7 +58,6 @@ interface Graphics
         zOrder: Int? = null,
         camera: Camera? = null,
         isVisible: Boolean = true,
-        drawWhenEmpty: Boolean = false,
         textureScale: Float = 1f,
         textureFormat: TextureFormat = RGBA8,
         textureFilter: TextureFilter = LINEAR,
@@ -78,7 +79,7 @@ interface GraphicsInternal : Graphics
     override val mainCamera: CameraInternal
     val textureBank: TextureBank
 
-    fun init(viewPortWidth: Int, viewPortHeight: Int)
+    fun init(config: ConfigurationInternal, viewPortWidth: Int, viewPortHeight: Int)
     fun uploadTexture(texture: Texture)
     fun deleteTexture(texture: Texture)
     fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
@@ -87,5 +88,6 @@ interface GraphicsInternal : Graphics
     fun reloadShader(fileName: String)
     fun initFrame()
     fun drawFrame(engine: PulseEngine)
+    fun setGpuLogLevel(logLevel: LogLevel)
     fun destroy()
 }
