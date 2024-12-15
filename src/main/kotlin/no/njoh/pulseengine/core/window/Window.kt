@@ -1,9 +1,11 @@
 package no.njoh.pulseengine.core.window
 
+import no.njoh.pulseengine.core.config.ConfigurationInternal
+
 interface Window
 {
     /** The text displayed in the title bar */
-    var title: String
+    val title: String
 
     /** The horizontal pixel width of the window */
     val width: Int
@@ -35,6 +37,11 @@ interface Window
     fun updateScreenMode(mode: ScreenMode)
 
     /**
+     * Updates the window title text.
+     */
+    fun updateTitle(tile: String)
+
+    /**
      * Closes the window and the whole application.
      */
     fun close()
@@ -45,7 +52,7 @@ interface WindowInternal : Window
     override var wasResized: Boolean
     val windowHandle: Long
 
-    fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
+    fun init(config: ConfigurationInternal)
     fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit)
     fun swapBuffers()
     fun isOpen(): Boolean

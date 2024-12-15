@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.window
 
+import no.njoh.pulseengine.core.config.ConfigurationInternal
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWErrorCallback
@@ -11,58 +13,59 @@ import kotlin.math.max
 
 open class WindowImpl : WindowInternal
 {
-    // Exposed properties
-    override var windowHandle : Long = MemoryUtil.NULL
-    override var screenMode: ScreenMode = ScreenMode.WINDOWED
+    override var windowHandle = MemoryUtil.NULL
+    override var screenMode = ScreenMode.WINDOWED
     override var width = 800
     override var height = 600
     override var scale = 1f
     override var isFocused = false
     override var wasResized = false
-    override var title: String = ""
-        set(value) {
-            glfwSetWindowTitle(windowHandle, value)
-            field = value
-        }
+    override var title = ""
 
-    // Internal properties
     private var scaleChangeCallbacks = mutableListOf<(Float) -> Unit>()
     private var resizeCallBack: (width: Int, height: Int, windowRecreated: Boolean) -> Unit = { _, _, _ -> }
     private var windowedWidth = 800
     private var windowedHeight = 600
 
-    override fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
+    override fun init(config: ConfigurationInternal)
     {
         Logger.info("Initializing window (${this::class.simpleName})")
 
-        if (!glfwInit())
-            throw IllegalStateException("Unable to initialize GLFW")
+        if (!glfwInit()) throw IllegalStateException("Unable to initialize GLFW")
 
         GLFWErrorCallback.createPrint(System.err).set()
+
         glfwDefaultWindowHints()
         glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE)
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE)
-
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3)
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
-        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE)
-        glfwWindowHint(GLFW_DEPTH_BITS, 24)
 
-        this.screenMode = screenMode
-        this.windowedWidth = initWidth
-        this.windowedHeight = initHeight
-        this.width = initWidth
-        this.height = initHeight
+        if (config.getEnum("gpuLogLevel", LogLevel::class) != LogLevel.OFF)
+            glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE)
+
+        this.title          = config.gameName
+        this.screenMode     = config.screenMode
+        this.windowedWidth  = config.windowWidth
+        this.windowedHeight = config.windowHeight
+
+        createWindow()
+    }
+
+    private fun createWindow()
+    {
+        width  = windowedWidth
+        height = windowedHeight
 
         var monitor = MemoryUtil.NULL
         if (screenMode == ScreenMode.FULLSCREEN)
         {
             monitor = getWindowMonitor()
             val videoMode = glfwGetVideoMode(monitor)
-            width = videoMode?.width() ?: width
-            height = videoMode?.height() ?: height
+            width = videoMode?.width() ?: windowedWidth
+            height = videoMode?.height() ?: windowedHeight
         }
 
         val newWindowHandle = glfwCreateWindow(width, height, title, monitor, windowHandle)
@@ -74,7 +77,6 @@ open class WindowImpl : WindowInternal
             glfwDestroyWindow(windowHandle)
 
         this.windowHandle = newWindowHandle
-        this.title = gameName
         this.scale = getMonitorScaling()
         this.isFocused = glfwGetWindowAttrib(windowHandle, GLFW_FOCUSED) == GLFW_TRUE
 
@@ -113,22 +115,33 @@ open class WindowImpl : WindowInternal
 
         glfwSetWindowFocusCallback(windowHandle) { _, focused -> isFocused = focused }
 
+        updateTitle(title)
         glfwMakeContextCurrent(windowHandle)
         glfwSwapInterval(0)
         glfwShowWindow(windowHandle)
     }
 
-    override fun updateScreenMode(mode: ScreenMode)
+    override fun updateScreenMode(screenMode: ScreenMode)
     {
-        if (mode == this.screenMode)
+        if (screenMode == this.screenMode)
             return
 
         // Create new window
-        init(windowedWidth, windowedHeight, mode, title)
+        this.screenMode = screenMode
+        createWindow()
 
         // Notify observers
         resizeCallBack(width, height, true)
         wasResized = true
+    }
+
+    override fun updateTitle(title: String)
+    {
+        if (title == this.title)
+            return
+
+        this.title = title
+        glfwSetWindowTitle(windowHandle, title)
     }
 
     override fun close()
