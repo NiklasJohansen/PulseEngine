@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.core.graphics.util
 
 import gnu.trove.list.array.TIntArrayList
-import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL33.*
 
 /**
@@ -13,6 +12,7 @@ class GpuTimer
     private var startQueryId = -1
     private var endQueryId = -1
     private var depth = 0
+    private var framesWithoutResult = 0
 
     private fun start(label: CharSequence, depth: Int)
     {
@@ -28,7 +28,15 @@ class GpuTimer
         glQueryCounter(endQueryId, GL_TIMESTAMP)
     }
 
-    private fun isResultReady(): Boolean = glGetQueryObjectui(endQueryId, GL_QUERY_RESULT_AVAILABLE) == GL_TRUE
+    private fun isResultReady(): Boolean
+    {
+        val hasResult = glGetQueryObjectui(endQueryId, GL_QUERY_RESULT_AVAILABLE) == GL_TRUE
+        if (!hasResult)
+           framesWithoutResult++
+        return hasResult
+    }
+
+    private fun isStale() = (framesWithoutResult > 3)
 
     private fun getResult(): GpuTimerResult
     {
@@ -47,18 +55,25 @@ class GpuTimer
         queryIdPool.add(endQueryId)
         startQueryId = -1
         endQueryId = -1
+        framesWithoutResult = 0
         timerPool.add(this)
+    }
+
+    private fun destroy()
+    {
+        glDeleteQueries(startQueryId)
+        glDeleteQueries(endQueryId)
     }
 
     companion object
     {
         private val queryIdPool  = TIntArrayList(1000)
+        private val timerPool    = ArrayList<GpuTimer>()
+        private val resultPool   = ArrayList<GpuTimerResult>()
         private val timerStack   = ArrayDeque<GpuTimer>()
-        private val timerPool    = mutableListOf<GpuTimer>()
-        private val resultPool   = mutableListOf<GpuTimerResult>()
         private val activeTimers = ArrayDeque<GpuTimer>()
-        private val readyResults = mutableListOf<GpuTimerResult>()
-        private val writeResults = mutableListOf<GpuTimerResult>()
+        private val writeResults = ArrayList<GpuTimerResult>()
+        private val readyResults = ArrayList<GpuTimerResult>()
 
         /**
          * Returns all ready results. Safe to call from game thread.
@@ -74,18 +89,26 @@ class GpuTimer
             while (activeTimers.size > 0)
             {
                 val timer = activeTimers.first()
-                if (!timer.isResultReady()) break
-
-                if (timer.depth == 0) // Frame timer
+                if (timer.isResultReady())
                 {
-                    resultPool.addAll(readyResults)
-                    readyResults.clear()
-                    readyResults += writeResults
-                    writeResults.clear()
+                    if (timer.depth == 0) // This is the 'Frame' timer, flush results
+                    {
+                        resultPool.addAll(readyResults)
+                        readyResults.clear()
+                        readyResults += writeResults
+                        writeResults.clear()
+                    }
+                    activeTimers.removeFirst()
+                    writeResults.add(timer.getResult())
+                    timer.recycle()
                 }
-                activeTimers.removeFirst()
-                writeResults.add(timer.getResult())
-                timer.recycle()
+                else if (timer.isStale())
+                {
+                    timer.destroy()
+                    activeTimers.removeFirst()
+                    continue // to next active timer
+                }
+                else return // Stop polling, check timer again next frame
             }
         }
 
@@ -94,12 +117,6 @@ class GpuTimer
          */
         fun start(label: CharSequence)
         {
-            if (activeTimers.size >= 200)
-            {
-                Logger.error("GpuTimer: Too many active timers! ${activeTimers.size}")
-                return
-            }
-
             val timer = timerPool.removeLastOrNull() ?: GpuTimer()
             timer.start(label, depth = timerStack.size)
             timerStack += timer
