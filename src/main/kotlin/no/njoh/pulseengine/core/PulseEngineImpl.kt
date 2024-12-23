@@ -206,6 +206,7 @@ class PulseEngineImpl(
         asset.update()
         audio.update()
         gfx.initFrame()
+        console.update()
         updateInput()
     }
 
@@ -237,7 +238,6 @@ class PulseEngineImpl(
         data.updateMemoryStats()
         data.measureAndUpdateTimeStats()
         {
-            console.update()
             game.onUpdate()
             scene.update()
             widget.update(this)
