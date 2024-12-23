@@ -18,6 +18,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL
+import org.lwjgl.opengl.GL11.*
 
 open class GraphicsImpl : GraphicsInternal
 {
@@ -60,6 +61,7 @@ open class GraphicsImpl : GraphicsInternal
         {
             // Create OpenGL context in current thread
             GL.createCapabilities()
+            Logger.debug("Running OpenGL on GPU: ${glGetString(GL_RENDERER)}")
 
             // Create and initialize full frame renderer
             if (!this::fullFrameRenderer.isInitialized)
