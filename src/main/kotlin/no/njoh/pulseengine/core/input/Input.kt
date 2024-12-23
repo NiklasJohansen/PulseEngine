@@ -136,7 +136,7 @@ interface InputInternal : Input
     override var xWorldMouse: Float
     override var yWorldMouse: Float
 
-    fun init(windowHandle: Long)
+    fun init(windowHandle: Long, cursorPosScale: Float)
     fun destroy()
     fun pollEvents()
     fun createCursor(cursor: Cursor)

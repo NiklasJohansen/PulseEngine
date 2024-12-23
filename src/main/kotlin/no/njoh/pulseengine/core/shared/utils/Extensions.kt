@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.shared.utils
 
 import no.njoh.pulseengine.core.PulseEngine
 import org.joml.Vector2f
+import org.joml.Vector2i
 import org.joml.Vector3f
 import org.joml.Vector4f
 import java.io.BufferedReader
@@ -73,6 +74,8 @@ object Extensions
     }
 
     // For destructuring vectors
+    operator fun Vector2i.component1() = x
+    operator fun Vector2i.component2() = y
     operator fun Vector2f.component1() = x
     operator fun Vector2f.component2() = y
     operator fun Vector3f.component1() = x

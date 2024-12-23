@@ -124,7 +124,7 @@ class SceneEditor(
     {
         // Load editor config
         engine.config.load("/pulseengine/config/editor_default.cfg")
-        UI_SCALE = engine.window.scale
+        UI_SCALE = engine.window.contentScale
 
         // Set editor data
         viewportArea = FocusArea(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
@@ -171,7 +171,7 @@ class SceneEditor(
         }
 
         // React on scale changes
-        engine.window.setOnScaleChanged()
+        engine.window.setOnContentScaleChanged()
         {
             createSceneEditorUI(engine)
         }
@@ -183,7 +183,7 @@ class SceneEditor(
     private fun createSceneEditorUI(engine: PulseEngine)
     {
         // Set UI scaling
-        UI_SCALE = engine.window.scale
+        UI_SCALE = engine.window.contentScale
         cameraController.scrollSpeed = 40f * UI_SCALE
 
         // Properties
