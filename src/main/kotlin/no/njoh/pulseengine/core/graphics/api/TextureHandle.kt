@@ -15,7 +15,7 @@ value class TextureHandle private constructor(private val handle: Int)
         fun create(samplerIndex: Int, texIndex: Int) =
             TextureHandle((samplerIndex shl 16) or texIndex)
 
-        val NONE = create(0, 1000)
-        val INVALID = create(0, 1001)
+        val NONE = create(0, 65534)
+        val INVALID = create(0, 65534)
     }
 }
