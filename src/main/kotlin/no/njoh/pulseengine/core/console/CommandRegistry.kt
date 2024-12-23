@@ -194,15 +194,21 @@ object CommandRegistry
             val keyString = getString("key")
             val keys = keyString
                 .split("+")
-                .map { it.trim().uppercase() }
                 .map {
-                    try { Key.valueOf(it) }
-                    catch (e :Exception) { return@registerCommand CommandResult("No key with name $it. Did you mean any of these: ${Key.values().filter { k -> k.toString().contains(it) }}", MessageType.ERROR) }
+                    try { Key.valueOf(it.trim().uppercase()) }
+                    catch (e: Exception) { return@registerCommand CommandResult("No key with name $it. Did you mean any of these: ${Key.values().filter { k -> k.toString().contains(it) }}", MessageType.ERROR) }
                 }
 
-            val subscription = engine.input.setOnKeyPressed {
-                if (it == keys.last() && keys.dropLast(1).all { engine.input.isPressed(it) })
-                    engine.console.run(command, showCommand = true)
+            val subscription = engine.input.setOnKeyPressed()
+            {
+                if (it != keys.last()) return@setOnKeyPressed
+
+                for (i in 0 until keys.size - 1)
+                {
+                    if (!engine.input.isPressed(keys[i])) return@setOnKeyPressed
+                }
+
+                engine.console.runLater(command, showCommand = true)
             }
 
             // Unsubscribe previous and add new unsub callback
@@ -220,9 +226,8 @@ object CommandRegistry
             val keyString = getString("key")
             val keys = keyString
                 .split("+")
-                .map { it.trim().uppercase() }
                 .map {
-                    try { Key.valueOf(it) }
+                    try { Key.valueOf(it.trim().uppercase()) }
                     catch (e :Exception) { return@registerCommand CommandResult("No key with name $it. Did you mean any of these: " +
                         "${Key.values().filter { k -> k.toString().contains(it) }}", MessageType.ERROR) }
                 }

@@ -17,8 +17,8 @@ import org.lwjgl.glfw.GLFWImage
 
 open class InputImpl : InputInternal
 {
-    override val xdMouse get() = xMouse - xMouseLast
-    override val ydMouse get() = yMouse - yMouseLast
+    override val xdMouse get() = (xMouse - xMouseLast)
+    override val ydMouse get() = (yMouse - yMouseLast)
 
     override var textInput: String = ""
         get() = if (isFocused) field else ""
@@ -37,6 +37,7 @@ open class InputImpl : InputInternal
     private var xMouseLast         = 0f
     private var yMouseLast         = 0f
     private var windowHandle       = -1L
+    private var cursorPosScale     = 1f
     private val clicked            = ByteArray(Key.LAST.code + 1)
     private val pressed            = ByteArray(Key.LAST.code + 1)
     private val onKeyPressed       = mutableListOf<(Key) -> Unit>()
@@ -58,11 +59,12 @@ open class InputImpl : InputInternal
     private var setClipboardTo     = null as String?
     private var onGetClipboard     = mutableListOf<(String) -> Unit>()
 
-    override fun init(windowHandle: Long)
+    override fun init(windowHandle: Long, cursorPosScale: Float)
     {
         Logger.info("Initializing input (${this::class.simpleName})")
 
         this.windowHandle = windowHandle
+        this.cursorPosScale = cursorPosScale
 
         glfwSetKeyCallback(windowHandle) { _, keyCode, _, action, _ ->
             if (keyCode >= 0)
@@ -86,8 +88,8 @@ open class InputImpl : InputInternal
         glfwSetCursorPosCallback(windowHandle) { _, xPos, yPos ->
             xMouseLast = xMouse
             yMouseLast = yMouse
-            xMouse = xPos.toFloat()
-            yMouse = yPos.toFloat()
+            xMouse = xPos.toFloat() * cursorPosScale
+            yMouse = yPos.toFloat() * cursorPosScale
         }
 
         glfwSetScrollCallback(windowHandle) { _, xOffset, yOffset ->

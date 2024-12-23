@@ -13,7 +13,7 @@ import kotlin.reflect.KClass
 object ReflectionUtil
 {
     val STRINGS_TO_IGNORE_IN_CLASS_SEARCH = mutableListOf(
-        "$", "/kotlin", "/org/joml", "/org/lwjgl", "/jetbrains", "/intellij"
+        "$", "/org/joml", "/org/lwjgl", "/jetbrains", "/intellij"
     )
 
     val classCache = mutableMapOf<String, Class<*>>()

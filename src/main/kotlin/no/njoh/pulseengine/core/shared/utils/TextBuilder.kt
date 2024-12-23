@@ -8,7 +8,7 @@ typealias TextBuilder = TextBuilderContext.() -> Any
 /**
  * Utility class for building concatenated strings without allocating memory for new String objects.
  * Usage:
- *   val context = object : AbstractTextBuilderContext() {} // Create a context once and reuse it
+ *   val context = TextBuilderContext() // Create a context once and reuse it
  *   val text = context.build { "Example value:" plus valueVariable plus " unit" }
  */
 open class TextBuilderContext

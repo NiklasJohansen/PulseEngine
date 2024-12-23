@@ -85,7 +85,7 @@ class PulseEngineImpl(
         data.init(config.gameName)
         window.init(config)
         gfx.init(config, window.width, window.height)
-        input.init(window.windowHandle)
+        input.init(window.windowHandle, window.cursorPosScale)
         audio.init()
         console.init(this)
         scene.init(this)
@@ -99,7 +99,7 @@ class PulseEngineImpl(
             gfx.updateViewportSize(w, h, windowRecreated)
             focusArea.update(0f, 0f, w.toFloat(), h.toFloat())
             if (windowRecreated)
-                input.init(window.windowHandle)
+                input.init(window.windowHandle, window.cursorPosScale)
         }
 
         // Let Audio module get sound assets based on name
@@ -206,6 +206,7 @@ class PulseEngineImpl(
         asset.update()
         audio.update()
         gfx.initFrame()
+        console.update()
         updateInput()
     }
 
@@ -237,7 +238,6 @@ class PulseEngineImpl(
         data.updateMemoryStats()
         data.measureAndUpdateTimeStats()
         {
-            console.update()
             game.onUpdate()
             scene.update()
             widget.update(this)
