@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.profiler
+package no.njoh.pulseengine.widgets.metrics
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.FocusArea
@@ -17,7 +17,10 @@ import no.njoh.pulseengine.core.widget.Widget
 import kotlin.math.max
 import kotlin.math.min
 
-class Profiler : Widget
+/**
+ * Widget to view all registered [Metric]s in the Data module.
+ */
+class MetricViewer : Widget
 {
     override var isRunning = false
 

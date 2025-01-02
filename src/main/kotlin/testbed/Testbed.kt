@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.scene.SceneState.STOPPED
 import no.njoh.pulseengine.core.PulseEngineGame
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.widgets.cli.CommandLine
-import no.njoh.pulseengine.widgets.profiler.Profiler
+import no.njoh.pulseengine.widgets.metrics.MetricViewer
 import no.njoh.pulseengine.widgets.editor.SceneEditor
 
 fun main() = PulseEngine.run(Testbed::class)
@@ -16,6 +16,7 @@ class Testbed : PulseEngineGame()
     {
         engine.config.gameName = "Testbed"
         engine.widget.add(SceneEditor(), CommandLine(), Profiler())
+        engine.widget.add(SceneEditor(), CommandLine(), MetricViewer(), GpuMonitor())
         engine.console.runScript("testbed/startup.ps")
         engine.asset.loadAllTextures("testbed/images")
         engine.scene.reload()
