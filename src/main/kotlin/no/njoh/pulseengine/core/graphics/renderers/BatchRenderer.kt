@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 
 /**
  * Used to batch up vertex data into separate draw calls.
@@ -19,6 +20,7 @@ abstract class BatchRenderer
     private var hadContent   = false
     private var hasContent   = false
     private var wasUpdated   = false
+    private var name         = this::class.java.simpleName
 
     /**
      * Called once at the beginning of every frame.
@@ -71,12 +73,14 @@ abstract class BatchRenderer
      */
     fun renderBatch(surface: Surface, batchNum: Int)
     {
+        if (hasContentToRender()) GpuProfiler.beginMeasure { "RENDER (" plus name plus " #" plus batchNum plus ")" }
+
         val i = readOffset + batchNum
         val drawCount = batchSize[i]
-        if (drawCount == 0)
-            return
+        if (drawCount > 0)
+            onRenderBatch(surface, batchStart[i], drawCount)
 
-        onRenderBatch(surface, batchStart[i], drawCount)
+        if (hasContentToRender()) GpuProfiler.endMeasure()
     }
 
     /**

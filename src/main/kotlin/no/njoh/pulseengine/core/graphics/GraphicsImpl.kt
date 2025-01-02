@@ -86,7 +86,7 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun initFrame()
     {
-        GpuProfiler.startFrame()
+        GpuProfiler.initFrame()
 
         onInitFrame.forEachFast { it.invoke() }
         onInitFrame.clear()
@@ -104,7 +104,7 @@ open class GraphicsImpl : GraphicsInternal
         // Render all batched data to offscreen target
         surfaces.forEachFiltered({ it.hasContent() })
         {
-            GpuProfiler.measure(label = { "Draw Surface: " plus it.config.name })
+            GpuProfiler.measure(label = { "SURFACE (" plus it.config.name plus ")" })
             {
                 it.renderToOffScreenTarget()
             }
@@ -116,7 +116,7 @@ open class GraphicsImpl : GraphicsInternal
         // Run surfaces through their post-processing pipelines
         surfaces.forEachFiltered({ it.hasPostProcessingEffects() })
         {
-            GpuProfiler.measure(label = { "Post Process Surface: " plus it.config.name })
+            GpuProfiler.measure(label = { "POST_PROCESS (" plus it.config.name plus ")" })
             {
                 it.runPostProcessingPipeline(engine)
             }
@@ -128,7 +128,7 @@ open class GraphicsImpl : GraphicsInternal
         // Draw visible surfaces with content to back-buffer
         surfaces.forEachFiltered({ it.config.isVisible && it.hasContent() })
         {
-            GpuProfiler.measure(label = { "Draw BackBuffer: " plus it.config.name })
+            GpuProfiler.measure(label = { "BACK_BUFFER_DRAW (" plus it.config.name plus ")" })
             {
                 fullFrameRenderer.program.bind()
                 fullFrameRenderer.program.setUniformSampler("tex", it.getTexture())

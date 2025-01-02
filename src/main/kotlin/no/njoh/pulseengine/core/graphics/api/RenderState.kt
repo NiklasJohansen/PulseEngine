@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.api.StencilState.Action.CLEAR
 import no.njoh.pulseengine.core.graphics.api.StencilState.Action.SET
 import no.njoh.pulseengine.core.graphics.renderers.StencilRenderer
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import org.lwjgl.opengl.GL20.*
 
 /**
@@ -14,6 +15,16 @@ interface RenderState
 {
     /** Called by the graphics pipeline before rendering the next batch. */
     fun apply(surface: SurfaceInternal)
+    {
+        GpuProfiler.measure({ "STATE (" plus getName() plus ")" })
+        {
+            onApply(surface)
+        }
+    }
+
+    fun onApply(surface: SurfaceInternal)
+
+    fun getName(): CharSequence = this@RenderState::class.java.simpleName
 }
 
 /**
@@ -21,7 +32,7 @@ interface RenderState
  */
 object BackBufferBaseState : RenderState
 {
-    override fun apply(surface: SurfaceInternal)
+    override fun onApply(surface: SurfaceInternal)
     {
         // Clear back-buffer with color of given surface
         val c = surface.config.backgroundColor
@@ -45,7 +56,7 @@ object BackBufferBaseState : RenderState
  */
 object PostProcessingBaseState : RenderState
 {
-    override fun apply(surface: SurfaceInternal)
+    override fun onApply(surface: SurfaceInternal)
     {
         // Clear back-buffer
         glClearColor(0f, 0f, 0f, 0f)
@@ -64,7 +75,7 @@ object PostProcessingBaseState : RenderState
  */
 object BatchRenderBaseState : RenderState
 {
-    override fun apply(surface: SurfaceInternal)
+    override fun onApply(surface: SurfaceInternal)
     {
         val config = surface.config
 
@@ -102,7 +113,7 @@ object BatchRenderBaseState : RenderState
  */
 object ViewportState : RenderState
 {
-    override fun apply(surface: SurfaceInternal)
+    override fun onApply(surface: SurfaceInternal)
     {
         glViewport(0, 0, (surface.config.width * surface.config.textureScale).toInt(), (surface.config.height * surface.config.textureScale).toInt())
     }
@@ -121,7 +132,7 @@ open class StencilState(
 
     enum class Action { SET, CLEAR }
 
-    override fun apply(surface: SurfaceInternal)
+    override fun onApply(surface: SurfaceInternal)
     {
         val renderer = surface.getRenderer<StencilRenderer>() ?: return
         if (action == SET) setStencil(surface, renderer)
@@ -173,8 +184,12 @@ open class StencilState(
         glStencilFunc(GL_EQUAL, layer, 0xff) // Stencil test will only pass if stencil value is equal to layer
     }
 
+    override fun getName(): CharSequence =
+        name.clear().append(super.getName()).append(" [").append(action.name).append(']')
+
     companion object
     {
         private var layer = 0
+        private var name = StringBuilder(100)
     }
 }

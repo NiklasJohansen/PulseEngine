@@ -8,31 +8,20 @@ import no.njoh.pulseengine.core.shared.utils.TextBuilder
  */
 object GpuProfiler
 {
-    var ENABLED = true
-
+    @PublishedApi internal var enabled = false; private set
     @PublishedApi internal val context = TextBuilderContext()
 
-    /**
-     * Starts measuring the frame time and polls the results from the previous frame.
-     * Called by the engine form the graphics thread.
-     */
-    internal fun startFrame()
-    {
-        if (!ENABLED) return
-
-        GpuTimer.pollResults()
-        GpuTimer.start(context.build { "Frame" })
-    }
+    private var shouldBeEnabled = false
 
     /**
-     * Ends the frame time measure.
-     * Called by the engine form the graphics thread.
+     * Measures the time it takes to execute the given [action].
+     * Only call this on the graphics thread.
      */
-    internal fun endFrame()
+    inline fun measure(label: TextBuilder, action: () -> Unit)
     {
-        if (!ENABLED) return
-
-        GpuTimer.end() // End the "Frame" timer
+        beginMeasure(label)
+        action()
+        endMeasure()
     }
 
     /**
@@ -41,10 +30,10 @@ object GpuProfiler
      */
     inline fun beginMeasure(label: TextBuilder)
     {
-        if (!ENABLED) return
+        if (!enabled) return
 
         val labelText = context.build(label)
-        GpuTimer.start(labelText)
+        GpuTimeQuery.start(labelText)
         GpuLogger.beginGroup(labelText)
     }
 
@@ -54,37 +43,49 @@ object GpuProfiler
      */
     fun endMeasure()
     {
-        if (!ENABLED) return
+        if (!enabled) return
 
         GpuLogger.endGroup()
-        GpuTimer.end()
-    }
-
-    /**
-     * Measures the time it takes to execute the given [action].
-     * Only call this on the graphics thread.
-     */
-    inline fun measure(label: TextBuilder, action: () -> Unit)
-    {
-        if (!ENABLED)
-        {
-            action()
-            return
-        }
-
-        val text = context.build(label)
-        GpuTimer.start(text)
-        GpuLogger.beginGroup(text)
-
-        action()
-
-        GpuLogger.endGroup()
-        GpuTimer.end()
+        GpuTimeQuery.end()
     }
 
     /**
      * Returns all time measurements that have been collected from the previous frame.
      * Safe to call from the game thread.
      */
-    fun getMeasurements() = GpuTimer.getAllResults()
+    fun getMeasurements() = GpuTimeQuery.getAllResults()
+
+    /**
+     * Enables/disables the GPU Profiler.
+     * Safe to call from the game thread as the state is changes at the beginning of the next frame.
+     */
+    fun setEnabled(enabled: Boolean)
+    {
+        shouldBeEnabled = enabled
+    }
+
+    /**
+     * Starts measuring the frame time and polls the results from the previous frame.
+     * Called by the engine form the graphics thread.
+     */
+    internal fun initFrame()
+    {
+        enabled = shouldBeEnabled
+
+        if (!enabled) return
+
+        GpuTimeQuery.pollResults()
+        GpuTimeQuery.start("FRAME")
+    }
+
+    /**
+     * Ends the frame time measure.
+     * Called by the engine form the graphics thread.
+     */
+    internal fun endFrame()
+    {
+        if (!enabled) return
+
+        GpuTimeQuery.end() // End the "Frame" timer
+    }
 }

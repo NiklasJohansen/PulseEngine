@@ -137,7 +137,7 @@ class PulseEngineImpl(
                 config::gameName.name -> data.updateSaveDirectory(config.gameName)
                 config::logLevel.name -> Logger.LEVEL = config.logLevel
                 config::gpuLogLevel.name -> gfx.setGpuLogLevel(config.gpuLogLevel)
-                config::gpuProfiling.name -> GpuProfiler.ENABLED = config.gpuProfiling
+                config::gpuProfiling.name -> GpuProfiler.setEnabled(config.gpuProfiling)
             }
         }
 

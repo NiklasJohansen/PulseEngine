@@ -15,19 +15,29 @@ open class TextBuilderContext
 {
     val content = StringBuilder(100)
 
-    infix fun String.plus(s: String): StringBuilder   = content.append(this).append(s)
-    infix fun String.plus(c: Char): StringBuilder     = content.append(this).append(c)
-    infix fun String.plus(b: Int): StringBuilder      = content.append(this).append(b)
-    infix fun String.plus(f: Float): StringBuilder    = content.append(this).append(f)
-    infix fun String.plus(l: Long): StringBuilder     = content.append(this).append(l)
-    infix fun String.plus(b: Boolean): StringBuilder  = content.append(this).append(b)
+    infix fun CharSequence.plus(s: String): StringBuilder       = content.append(this).append(s)
+    infix fun CharSequence.plus(c: CharSequence): StringBuilder = content.append(this).append(c)
+    infix fun CharSequence.plus(c: Char): StringBuilder         = content.append(this).append(c)
+    infix fun CharSequence.plus(b: Int): StringBuilder          = content.append(this).append(b)
+    infix fun CharSequence.plus(f: Float): StringBuilder        = content.append(this).append(f)
+    infix fun CharSequence.plus(l: Long): StringBuilder         = content.append(this).append(l)
+    infix fun CharSequence.plus(b: Boolean): StringBuilder      = content.append(this).append(b)
 
-    infix fun StringBuilder.plus(s: String): StringBuilder  = if (this !== content) content.append(this).append(s) else append(s)
-    infix fun StringBuilder.plus(c: Char): StringBuilder    = if (this !== content) content.append(this).append(c) else append(c)
-    infix fun StringBuilder.plus(b: Int): StringBuilder     = if (this !== content) content.append(this).append(b) else append(b)
-    infix fun StringBuilder.plus(f: Float): StringBuilder   = if (this !== content) content.append(this).append(f) else append(f)
-    infix fun StringBuilder.plus(l: Long): StringBuilder    = if (this !== content) content.append(this).append(l) else append(l)
-    infix fun StringBuilder.plus(b: Boolean): StringBuilder = if (this !== content) content.append(this).append(b) else append(b)
+    infix fun StringBuilder.plus(s: String): StringBuilder       = if (this !== content) content.append(this).append(s) else append(s)
+    infix fun StringBuilder.plus(c: CharSequence): StringBuilder = if (this !== content) content.append(this).append(c) else append(c)
+    infix fun StringBuilder.plus(c: Char): StringBuilder         = if (this !== content) content.append(this).append(c) else append(c)
+    infix fun StringBuilder.plus(b: Int): StringBuilder          = if (this !== content) content.append(this).append(b) else append(b)
+    infix fun StringBuilder.plus(f: Float): StringBuilder        = if (this !== content) content.append(this).append(f) else append(f)
+    infix fun StringBuilder.plus(l: Long): StringBuilder         = if (this !== content) content.append(this).append(l) else append(l)
+    infix fun StringBuilder.plus(b: Boolean): StringBuilder      = if (this !== content) content.append(this).append(b) else append(b)
+
+    infix fun Int.plus(s: String): StringBuilder       = content.append(this).append(s)
+    infix fun Int.plus(c: CharSequence): StringBuilder = content.append(this).append(c)
+    infix fun Int.plus(c: Char): StringBuilder         = content.append(this).append(c)
+    infix fun Int.plus(b: Int): StringBuilder          = content.append(this).append(b)
+    infix fun Int.plus(f: Float): StringBuilder        = content.append(this).append(f)
+    infix fun Int.plus(l: Long): StringBuilder         = content.append(this).append(l)
+    infix fun Int.plus(b: Boolean): StringBuilder      = content.append(this).append(b)
 
     inline fun build(builder: TextBuilder): CharSequence
     {
@@ -36,8 +46,10 @@ open class TextBuilderContext
         return when (result)
         {
             is CharSequence -> result
+            is Char -> content.append(result)
             is Int -> content.append(result)
             is Float -> content.append(result)
+            is Double -> content.append(result)
             is Long -> content.append(result)
             is Boolean -> content.append(result)
             else -> content.append(result.toString())

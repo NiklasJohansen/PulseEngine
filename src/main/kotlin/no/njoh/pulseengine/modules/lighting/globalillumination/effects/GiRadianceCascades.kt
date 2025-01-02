@@ -84,7 +84,7 @@ class GiRadianceCascades(
 
         while (cascadeIndex >= lightSystem.drawCascade)
         {
-            GpuProfiler.beginMeasure { "C" plus cascadeIndex }
+            GpuProfiler.beginMeasure { "Cascade #" plus cascadeIndex }
 
             val fbo = frameBuffers[cascadeIndex % 2]
             fbo.bind()

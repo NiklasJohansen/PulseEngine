@@ -23,7 +23,7 @@ class Font(
 
     private val advanceWidth = IntArray(1)
     private val leftSideBearing = IntArray(1)
-    private val textWidthCache = mutableMapOf<String, MutableMap<Float, FloatArray>>()
+    private val textWidthCache = mutableMapOf<CharSequence, MutableMap<Float, FloatArray>>()
 
     override fun load()
     {
@@ -77,7 +77,7 @@ class Font(
         return textWidthLength * stbtt_ScaleForPixelHeight(info, fontSize)
     }
 
-    fun getCharacterWidths(text: String, fontSize: Float = this.fontSize, useCache: Boolean = false): FloatArray
+    fun getCharacterWidths(text: CharSequence, fontSize: Float = this.fontSize, useCache: Boolean = false): FloatArray
     {
         if (useCache) textWidthCache[text]?.get(fontSize)?.let { return it }
 
@@ -97,7 +97,8 @@ class Font(
         return widths
     }
 
-    object CodePoint {
+    object CodePoint
+    {
         var code = 0
             private set
         var advanceCount = 0

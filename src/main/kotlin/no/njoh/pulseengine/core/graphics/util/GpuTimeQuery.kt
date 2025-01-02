@@ -6,7 +6,7 @@ import org.lwjgl.opengl.GL33.*
 /**
  * Utility class for measuring the time between two specific points in the GPU pipeline.
  */
-class GpuTimer
+class GpuTimeQuery
 {
     private var label = StringBuilder(100)
     private var startQueryId = -1
@@ -38,11 +38,11 @@ class GpuTimer
 
     private fun isStale() = (framesWithoutResult > 3)
 
-    private fun getResult(): GpuTimerResult
+    private fun getResult(): GpuTimeQueryResult
     {
         val startTime = glGetQueryObjectui64(startQueryId, GL_QUERY_RESULT)
         val endTime = glGetQueryObjectui64(endQueryId, GL_QUERY_RESULT)
-        val result = resultPool.removeLastOrNull() ?: GpuTimerResult()
+        val result = resultPool.removeLastOrNull() ?: GpuTimeQueryResult()
         result.label.clear().append(label)
         result.depth = depth
         result.timeNanoSec = endTime - startTime
@@ -68,17 +68,17 @@ class GpuTimer
     companion object
     {
         private val queryIdPool  = TIntArrayList(1000)
-        private val timerPool    = ArrayList<GpuTimer>()
-        private val resultPool   = ArrayList<GpuTimerResult>()
-        private val timerStack   = ArrayDeque<GpuTimer>()
-        private val activeTimers = ArrayDeque<GpuTimer>()
-        private val writeResults = ArrayList<GpuTimerResult>()
-        private val readyResults = ArrayList<GpuTimerResult>()
+        private val timerPool    = ArrayList<GpuTimeQuery>()
+        private val resultPool   = ArrayList<GpuTimeQueryResult>()
+        private val timerStack   = ArrayDeque<GpuTimeQuery>()
+        private val activeTimers = ArrayDeque<GpuTimeQuery>()
+        private val writeResults = ArrayList<GpuTimeQueryResult>()
+        private val readyResults = ArrayList<GpuTimeQueryResult>()
 
         /**
          * Returns all ready results. Safe to call from game thread.
          */
-        fun getAllResults(): List<GpuTimerResult> = readyResults
+        fun getAllResults(): List<GpuTimeQueryResult> = readyResults
 
         /**
          * Polls the results of all ready timers and moves them to the ready results list.
@@ -117,7 +117,7 @@ class GpuTimer
          */
         fun start(label: CharSequence)
         {
-            val timer = timerPool.removeLastOrNull() ?: GpuTimer()
+            val timer = timerPool.removeLastOrNull() ?: GpuTimeQuery()
             timer.start(label, depth = timerStack.size)
             timerStack += timer
             activeTimers += timer
@@ -132,7 +132,7 @@ class GpuTimer
     }
 }
 
-data class GpuTimerResult(
+data class GpuTimeQueryResult(
     var label: StringBuilder = StringBuilder(50),
     var depth: Int = -1,
     var timeNanoSec: Long = -1L

@@ -105,7 +105,7 @@ class SurfaceImpl(
         var textures = renderTarget.getTextures()
         postEffects.forEachFast()
         {
-            GpuProfiler.measure(label = { "Effect: " plus it.name })
+            GpuProfiler.measure(label = { "EFFECT (" plus it.name plus ")" })
             {
                 textures = it.process(engine, textures)
             }
