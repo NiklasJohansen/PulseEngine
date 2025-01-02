@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.widgets.cli.CommandLine
 import no.njoh.pulseengine.widgets.metrics.MetricViewer
 import no.njoh.pulseengine.widgets.editor.SceneEditor
+import no.njoh.pulseengine.widgets.metrics.GpuMonitor
 
 fun main() = PulseEngine.run(Testbed::class)
 
