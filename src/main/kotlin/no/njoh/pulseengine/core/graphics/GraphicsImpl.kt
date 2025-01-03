@@ -104,7 +104,7 @@ open class GraphicsImpl : GraphicsInternal
         // Render all batched data to offscreen target
         surfaces.forEachFiltered({ it.hasContent() })
         {
-            GpuProfiler.measure(label = { "SURFACE (" plus it.config.name plus ")" })
+            GpuProfiler.measure(label = { "DRAW_SURFACE (" plus it.config.name plus ")" })
             {
                 it.renderToOffScreenTarget()
             }

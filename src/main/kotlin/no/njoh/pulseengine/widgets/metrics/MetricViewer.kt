@@ -42,9 +42,10 @@ class MetricViewer : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface("profiler", zOrder = -101)
+        engine.gfx.createSurface("metric_viewer", zOrder = -101)
         engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "graph_font")
-        engine.console.registerCommand("showProfiler") {
+        engine.console.registerCommand("showMetricViewer")
+        {
             isRunning = !isRunning
             CommandResult("", showCommand = false)
         }
@@ -108,7 +109,7 @@ class MetricViewer : Widget
             h *= scale
         }
 
-        val surface = engine.gfx.getSurfaceOrDefault("profiler")
+        val surface = engine.gfx.getSurfaceOrDefault("metric_viewer")
         val font = engine.asset.getOrNull("graph_font") ?: Font.DEFAULT
 
         graphs.forEachFast()

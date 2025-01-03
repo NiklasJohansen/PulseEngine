@@ -77,7 +77,7 @@ class GpuMonitor : Widget
             engine.gfx.createSurface(
                 name = SURFACE,
                 zOrder = engine.gfx.getAllSurfaces().minOf { it.config.zOrder } - 1,
-                multisampling = Multisampling.MSAA4
+                multisampling = Multisampling.MSAA16
             )
         }
 
@@ -105,17 +105,18 @@ class GpuMonitor : Widget
         width = Size.auto(),
         height = Size.absolute(25f)
     ) {
-        init { padding.setAll(10f); padding.bottom = ScaledValue.of(5f) }
+        init { padding.setAll(10f); padding.bottom = ScaledValue.of(0f) }
 
         override fun onUpdate(engine: PulseEngine) { }
 
         override fun onRender(engine: PulseEngine, surface: Surface)
         {
+            var x = x.value
             val xm = engine.input.xMouse
             val ym = engine.input.yMouse
-            val mouseOver = (ym > y.value && ym < y.value + height.value)
+            val mouseOver = (xm > x && xm < x + width.value && ym > y.value && ym < y.value + height.value)
             var isHighlighted = !mouseOver
-            var x = x.value
+
             measurements.forEachFast()
             {
                 if (it.depth == 1)
@@ -127,7 +128,7 @@ class GpuMonitor : Widget
                         texture = Texture.BLANK,
                         x = x,
                         y = y.value,
-                        width = w - 2f,
+                        width = max(2f, w - 2f),
                         height = height.value,
                         cornerRadius = 2f
                     )
@@ -147,12 +148,12 @@ class GpuMonitor : Widget
             width = width?.let { Size.relative(it) } ?: Size.auto()
         ).apply {
             this.textResizeStrategy = if (cropText) CROP_TEXT else NONE
-            this.fontSize = ScaledValue.of(20f)
+            this.fontSize = ScaledValue.of(17f)
             this.padding.left = ScaledValue.of(5f)
             this.color = color
         }
 
-        rows += HorizontalPanel(height = Size.absolute(25f)).apply()
+        rows += HorizontalPanel(height = Size.absolute(23f)).apply()
         {
             addChildren(
                 createLabel("Measurement", color = WHITE, cropText = true),
@@ -165,16 +166,14 @@ class GpuMonitor : Widget
 
         measurements.forEachFast()
         {
-            rows += HorizontalPanel(height = Size.absolute(25f)).apply()
+            rows += HorizontalPanel(height = Size.absolute(23f)).apply()
             {
-                val label = (0 until it.depth).joinToString("") { "   " } + it.name
-
                 addChildren(
-                    createLabel(label,       color = it.highlightColor, cropText = true),
-                    createLabel(it.avgText,  color = it.highlightColor, width = 0.15f),
-                    createLabel(it.minText,  color = it.highlightColor, width = 0.15f),
-                    createLabel(it.maxText,  color = it.highlightColor, width = 0.15f),
-                    createLabel(it.fracText, color = it.fracColor,      width = 0.10f),
+                    createLabel(it.labelText, color = it.highlightColor, cropText = true),
+                    createLabel(it.avgText,   color = it.highlightColor, width = 0.15f),
+                    createLabel(it.minText,   color = it.highlightColor, width = 0.15f),
+                    createLabel(it.maxText,   color = it.highlightColor, width = 0.15f),
+                    createLabel(it.fracText,  color = it.fracColor,      width = 0.10f),
                 )
 
                 color = if (rows.size % 2 == 0) uiFactory.style.getColor("BUTTON") else Color.BLANK
@@ -187,33 +186,37 @@ class GpuMonitor : Widget
 
     private fun updateMeasurements()
     {
-        var currentLabel: CharSequence = ""
-        var updateUi = false
         var i = 0
-
+        var startSize = measurements.size
         GpuProfiler.getMeasurements().forEachFast()
         {
-            if (it.depth <= 1) currentLabel = it.label
-
             if (i > measurements.lastIndex)
-            {
-                measurements.add(Measurement(it.label.toString(), Color(nextColor(currentLabel)), it.depth))
-                updateUi = true
-            }
+                measurements += Measurement()
 
             val measurement = measurements[i]
-            if (!it.label.contentEquals(measurement.name) || measurement.depth != it.depth)
-            {
-                measurements.clear() // Clear and recreate all measurements when changes are detected
-                return
-            }
-
-            measurement.update(it.timeNanoSec / 1_000_000f)
+            measurement.setTime(it.timeNanoSec / 1_000f)
+            measurement.setLabel(it.label, it.depth)
             measurement.calculateFraction(totalAvg = measurements[0].avg)
             i++
         }
 
-        if (updateUi) timeRows.createEntries()
+        while (measurements.size > i)
+            measurements.removeLast()
+
+        if (measurements.size != startSize)
+        {
+            var i = 0
+            var currentLabel: CharSequence = ""
+            GpuProfiler.getMeasurements().forEachFast()
+            {
+                if (it.depth <= 1)
+                    currentLabel = it.label.toString()
+                val measurement = measurements[i++]
+                measurement.color.setFrom(nextColor(currentLabel))
+                measurement.resetHistory()
+            }
+            timeRows.createEntries()
+        }
     }
 
     companion object
@@ -232,18 +235,16 @@ class GpuMonitor : Widget
         }
     }
 
-    private class Measurement(
-        var name: CharSequence,
-        var color: Color,
-        var depth: Int,
-        historyLength: Int = 200
-    ) {
-        var value = 0f
+    private class Measurement(historyLength: Int = 200)
+    {
+        val color = Color()
+        var depth = 0
         var avg   = 0f
         var frac  = 0f // Fraction of total
         var min   = Float.MAX_VALUE
         var max   = Float.MIN_VALUE
 
+        val labelText = StringBuilder()
         val avgText  = StringBuilder()
         val fracText = StringBuilder()
         val minText  = StringBuilder()
@@ -256,7 +257,7 @@ class GpuMonitor : Widget
         private var total = 0f
         private var count = 0
 
-        fun update(newValue: Float)
+        fun setTime(newValue: Float)
         {
             val lastValue = history[head]
             history[head] = newValue
@@ -266,11 +267,10 @@ class GpuMonitor : Widget
             avg = total / count
             min = min(min, newValue)
             max = max(max, newValue)
-            value = newValue
 
-            avgText.clear().append(avg, decimals = 3).append(" ms")
-            minText.clear().append(min, decimals = 3).append(" ms")
-            maxText.clear().append(max, decimals = 3).append(" ms")
+            avgText.clear().append(avg, decimals = 1).append(" µs")
+            minText.clear().append(min, decimals = 1).append(" µs")
+            maxText.clear().append(max, decimals = 1).append(" µs")
         }
 
         fun calculateFraction(totalAvg: Float)
@@ -282,12 +282,30 @@ class GpuMonitor : Widget
             fracColor.setFromRgba(1f, f, f)
         }
 
+        fun setLabel(label: CharSequence, depth: Int)
+        {
+            this.depth = depth
+            labelText.clear()
+            repeat(depth) { labelText.append("   ") }
+            labelText.append(label)
+        }
+
         fun setHighlighted(isHighlighted: Boolean)
         {
             if (isHighlighted)
                 highlightColor.setFrom(color)
             else
                 highlightColor.setFromRgba(0.3f, 0.3f, 0.3f, 1f)
+        }
+
+        fun resetHistory()
+        {
+            total = 0f
+            avg = 0f
+            min = Float.MAX_VALUE
+            max = Float.MIN_VALUE
+            history.fill(0f)
+            count = 0
         }
     }
 }

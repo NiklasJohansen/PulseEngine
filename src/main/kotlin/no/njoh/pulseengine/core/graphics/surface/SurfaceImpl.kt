@@ -88,7 +88,10 @@ class SurfaceImpl(
         while (batchNum < readRenderStates.size)
         {
             readRenderStates[batchNum].apply(this)
-            renderers.forEachFast { it.renderBatch(this, batchNum) }
+            GpuProfiler.measure({ "RENDER_BATCH " plus " (#" plus batchNum plus ")" })
+            {
+                renderers.forEachFast { it.renderBatch(this, batchNum) }
+            }
             batchNum++
         }
 

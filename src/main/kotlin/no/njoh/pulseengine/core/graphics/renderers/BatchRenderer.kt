@@ -73,14 +73,15 @@ abstract class BatchRenderer
      */
     fun renderBatch(surface: Surface, batchNum: Int)
     {
-        if (hasContentToRender()) GpuProfiler.beginMeasure { "RENDER (" plus name plus " #" plus batchNum plus ")" }
-
         val i = readOffset + batchNum
         val drawCount = batchSize[i]
-        if (drawCount > 0)
-            onRenderBatch(surface, batchStart[i], drawCount)
+        if (drawCount == 0)
+            return // Skip empty batches
 
-        if (hasContentToRender()) GpuProfiler.endMeasure()
+        GpuProfiler.measure({ name plus " (" plus drawCount plus ")" })
+        {
+            onRenderBatch(surface, batchStart[i], drawCount)
+        }
     }
 
     /**

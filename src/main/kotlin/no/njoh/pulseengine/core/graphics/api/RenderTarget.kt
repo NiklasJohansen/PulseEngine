@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.graphics.api
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.api.objects.FrameBufferObject
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 
 interface RenderTarget
 {
@@ -72,8 +73,11 @@ class MultisampledOffScreenRenderTarget(
 
     override fun end()
     {
-        msFbo.release()
-        msFbo.resolveToFBO(fbo)
+        GpuProfiler.measure({ "RESOLVE_FBO (" plus multisampling.name plus ")" })
+        {
+            msFbo.release()
+            msFbo.resolveToFBO(fbo)
+        }
     }
 
     override fun getTexture(index: Int) =
