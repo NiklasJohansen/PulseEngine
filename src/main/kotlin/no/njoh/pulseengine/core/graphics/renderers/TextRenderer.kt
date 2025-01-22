@@ -15,7 +15,6 @@ import org.joml.Math.cos
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.GL_FLOAT
 import org.lwjgl.opengl.GL20.GL_TRIANGLE_STRIP
-import org.lwjgl.stb.STBTTAlignedQuad
 import org.lwjgl.stb.STBTruetype.*
 import kotlin.math.max
 import kotlin.math.sin
@@ -29,10 +28,6 @@ class TextRenderer(
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
     private lateinit var program: ShaderProgram
-
-    private val xb = FloatArray(1) { 0f }
-    private val yb = FloatArray(1) { 0f }
-    private val quad = STBTTAlignedQuad.malloc()
     private val glyphData = FloatArray(GLYPH_STRIDE * 1024)
 
     override fun init()
@@ -102,38 +97,29 @@ class TextRenderer(
     {
         if (text.isEmpty()) return
 
+        val glyphData = glyphData
         val scale = fontSize / font.fontSize
-        val width = font.charTexture.width
-        val height = font.charTexture.height
-        val uMax = font.charTexture.uMax
-        val vMax = font.charTexture.vMax
-        val texHandle = font.charTexture.handle.toFloat()
-        val charData = font.charData
-        xb[0] = -getLeftSideBearing(text, font, fontSize) // Compensate for space before first character
-        yb[0] = 0f
-
-        var i = 0
+        var xAdvance = -getLeftSideBearing(text[0], font, fontSize)
         var charIndex = 0
+        var glyphIndex = 0
+
         while (charIndex < text.length)
         {
             val cp = CodePoint.of(text, charIndex)
             val charCode = cp.code - 32
             if (charCode >= 0 && charCode < MAX_CHAR_COUNT)
             {
-                stbtt_GetBakedQuad(charData, width, height, charCode, xb, yb, quad, false)
-                val x0 = quad.x0() * scale
-                val y0 = quad.y0() * scale
-                val x1 = quad.x1() * scale
-                val y1 = quad.y1() * scale
-                glyphData[X(i)] = x0
-                glyphData[Y(i)] = y0
-                glyphData[W(i)] = x1 - x0
-                glyphData[H(i)] = y1 - y0
-                glyphData[U_MIN(i)] = quad.s0() * uMax
-                glyphData[V_MIN(i)] = quad.t0() * vMax
-                glyphData[U_MAX(i)] = quad.s1() * uMax
-                glyphData[V_MAX(i)] = quad.t1() * vMax
-                i += GLYPH_STRIDE
+                val quad = font.getQuad(charCode)
+                glyphData[X(glyphIndex)]     = quad.x * scale + xAdvance
+                glyphData[Y(glyphIndex)]     = quad.y * scale
+                glyphData[W(glyphIndex)]     = quad.w * scale
+                glyphData[H(glyphIndex)]     = quad.h * scale
+                glyphData[U_MIN(glyphIndex)] = quad.u0
+                glyphData[V_MIN(glyphIndex)] = quad.v0
+                glyphData[U_MAX(glyphIndex)] = quad.u1
+                glyphData[V_MAX(glyphIndex)] = quad.v1
+                xAdvance += quad.advance * scale
+                glyphIndex += GLYPH_STRIDE
             }
             charIndex += cp.advanceCount
         }
@@ -153,6 +139,7 @@ class TextRenderer(
         val xOffset = textWidth * xOrigin
         val yOffset = textHeight * (1f - yOrigin)
 
+        val texHandle = font.charTexture.handle.toFloat()
         if (angle == 0f)
             drawAxisAlignedGlyphs(text.length, texHandle, x, y, xOffset, yOffset)
         else
@@ -233,12 +220,10 @@ class TextRenderer(
         config.increaseDepth()
     }
 
-    private val advanceWidth = IntArray(1)
-    private val leftSideBearing = IntArray(1)
-    private fun getLeftSideBearing(text: CharSequence, font: Font, fontSize: Float): Float
+    private fun getLeftSideBearing(char: Char, font: Font, fontSize: Float): Float
     {
-        stbtt_GetCodepointHMetrics(font.info, text[0].code, advanceWidth, leftSideBearing)
-        return leftSideBearing[0] * stbtt_ScaleForPixelHeight(font.info, fontSize)
+        val scale = fontSize / font.fontSize
+        return font.getLeftSideBearing(char) * stbtt_ScaleForPixelHeight(font.info, fontSize) * scale
     }
 
     @Suppress("NOTHING_TO_INLINE", "FunctionName")
