@@ -3,23 +3,12 @@ package benchmarks
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.TextBuilderContext
 import org.openjdk.jmh.annotations.Benchmark
-import org.openjdk.jmh.annotations.BenchmarkMode
-import org.openjdk.jmh.annotations.Fork
-import org.openjdk.jmh.annotations.Measurement
-import org.openjdk.jmh.annotations.Mode.Throughput
-import org.openjdk.jmh.annotations.OutputTimeUnit
 import org.openjdk.jmh.annotations.Scope
 import org.openjdk.jmh.annotations.State
-import org.openjdk.jmh.annotations.Warmup
 import org.openjdk.jmh.infra.Blackhole
-import java.util.concurrent.TimeUnit.MILLISECONDS
-import java.util.concurrent.TimeUnit.SECONDS
 
-@Fork(2)
-@BenchmarkMode(Throughput)
-@OutputTimeUnit(MILLISECONDS)
-@Warmup(iterations = 5, time = 2, timeUnit = SECONDS)
-@Measurement(iterations = 5, time = 2, timeUnit = SECONDS)
+fun main() = runBenchmark<TextBuilderBenchmark>()
+
 @State(Scope.Benchmark)
 open class TextBuilderBenchmark
 {
@@ -27,7 +16,7 @@ open class TextBuilderBenchmark
     private var context = TextBuilderContext()
 
     @Benchmark
-    fun benchmarkStringConcatenation(bh: Blackhole)
+    fun stringConcatenation(bh: Blackhole)
     {
         numbers.forEachFast()
         {
@@ -36,7 +25,7 @@ open class TextBuilderBenchmark
     }
 
     @Benchmark
-    fun benchmarkTextBuilder(bh: Blackhole)
+    fun textBuilder(bh: Blackhole)
     {
         numbers.forEachFast()
         {
