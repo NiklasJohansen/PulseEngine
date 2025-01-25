@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.util
 
 import gnu.trove.list.array.TIntArrayList
+import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import org.lwjgl.opengl.GL33.*
 
 /**
@@ -56,7 +57,7 @@ class GpuTimeQuery
         startQueryId = -1
         endQueryId = -1
         framesWithoutResult = 0
-        timerPool.add(this)
+        timerPool += this
     }
 
     private fun destroy()
@@ -68,17 +69,17 @@ class GpuTimeQuery
     companion object
     {
         private val queryIdPool  = TIntArrayList(1000)
-        private val timerPool    = ArrayList<GpuTimeQuery>()
-        private val resultPool   = ArrayList<GpuTimeQueryResult>()
+        private val timerPool    = DynamicList<GpuTimeQuery>()
+        private val resultPool   = DynamicList<GpuTimeQueryResult>()
         private val timerStack   = ArrayDeque<GpuTimeQuery>()
         private val activeTimers = ArrayDeque<GpuTimeQuery>()
-        private val writeResults = ArrayList<GpuTimeQueryResult>()
-        private val readyResults = ArrayList<GpuTimeQueryResult>()
+        private val writeResults = DynamicList<GpuTimeQueryResult>()
+        private val readyResults = DynamicList<GpuTimeQueryResult>()
 
         /**
          * Returns all ready results. Safe to call from game thread.
          */
-        fun getAllResults(): List<GpuTimeQueryResult> = readyResults
+        fun getAllResults(): DynamicList<GpuTimeQueryResult> = readyResults
 
         /**
          * Polls the results of all ready timers and moves them to the ready results list.
@@ -86,20 +87,20 @@ class GpuTimeQuery
          */
         fun pollResults()
         {
-            while (activeTimers.size > 0)
+            while (activeTimers.isNotEmpty())
             {
                 val timer = activeTimers.first()
                 if (timer.isResultReady())
                 {
                     if (timer.depth == 0) // This is the 'Frame' timer, flush results
                     {
-                        resultPool.addAll(readyResults)
+                        resultPool += readyResults
                         readyResults.clear()
                         readyResults += writeResults
                         writeResults.clear()
                     }
                     activeTimers.removeFirst()
-                    writeResults.add(timer.getResult())
+                    writeResults += timer.getResult()
                     timer.recycle()
                 }
                 else if (timer.isStale())

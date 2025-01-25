@@ -188,7 +188,7 @@ class GpuMonitor : Widget
     {
         var i = 0
         var startSize = measurements.size
-        GpuProfiler.getMeasurements().forEachFast()
+        GpuProfiler.getMeasurements().forEach()
         {
             if (i > measurements.lastIndex)
                 measurements += Measurement()
@@ -207,7 +207,7 @@ class GpuMonitor : Widget
         {
             var i = 0
             var currentLabel: CharSequence = ""
-            GpuProfiler.getMeasurements().forEachFast()
+            GpuProfiler.getMeasurements().forEach()
             {
                 if (it.depth <= 1)
                     currentLabel = it.label.toString()
