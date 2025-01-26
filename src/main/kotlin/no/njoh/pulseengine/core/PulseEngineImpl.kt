@@ -26,12 +26,12 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
 import no.njoh.pulseengine.core.shared.utils.FileWatcher
 import no.njoh.pulseengine.core.shared.utils.FpsLimiter
 import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.shared.utils.ThreadBarrier
 import no.njoh.pulseengine.core.widget.WidgetManagerImpl
 import no.njoh.pulseengine.core.widget.WidgetManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
 import org.lwjgl.glfw.GLFW.*
-import java.util.concurrent.CyclicBarrier
 import kotlin.math.min
 
 /**
@@ -52,8 +52,8 @@ class PulseEngineImpl(
 
     private val engineStartTime  = System.nanoTime()
     private val fpsLimiter       = FpsLimiter()
-    private val beginFrame       = CyclicBarrier(2)
-    private val endFrame         = CyclicBarrier(2)
+    private val beginFrame       = ThreadBarrier(2)
+    private val endFrame         = ThreadBarrier(2)
     private val focusArea        = FocusArea(0f, 0f, 0f, 0f)
     private var gameThread       = null as Thread?
     private var running          = true
