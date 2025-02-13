@@ -16,6 +16,6 @@ value class TextureHandle private constructor(private val handle: Int)
             TextureHandle((samplerIndex shl 16) or texIndex)
 
         val NONE = create(0, 65534)
-        val INVALID = create(0, 65534)
+        val INVALID = create(0, 65535) // 16-bit, max value = 65535
     }
 }
