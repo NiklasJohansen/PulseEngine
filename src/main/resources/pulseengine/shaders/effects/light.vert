@@ -43,7 +43,8 @@ uniform float textureScale;
 uniform vec2 drawOffset;
 uniform float zRotation;
 
-vec4 getColor(uint rgba) {
+vec4 getColor(uint rgba)
+{
     uint r = ((rgba >> uint(24)) & uint(255));
     uint g = ((rgba >> uint(16)) & uint(255));
     uint b = ((rgba >> uint(8))  & uint(255));
@@ -51,7 +52,8 @@ vec4 getColor(uint rgba) {
     return vec4(r, g, b, a) / 254.0f;
 }
 
-mat2 rotateZ(float angle) {
+mat2 rotateZ(float angle)
+{
     float c = cos(angle);
     float s = sin(angle);
     return mat2(
@@ -60,8 +62,8 @@ mat2 rotateZ(float angle) {
     );
 }
 
-void main() {
-
+void main()
+{
     // Scale light radius and size to screen space
     float m00 = view[0][0];
     float m01 = view[0][1];

@@ -34,7 +34,8 @@ uniform float hasOccluderMap;
 uniform vec2 drawOffset;
 uniform float textureScale;
 
-struct Mask {
+struct Mask
+{
     int m0;
     int m1;
     int m2;

@@ -16,9 +16,12 @@ void main(void)
 
     vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
     if ((int(px.x / GRID_SIZE) + int(px.y / GRID_SIZE)) % 2 == 0)
+    {
         color = vec4(1.0, 0.5, 0.0, 1.0);
+    }
     else
+    {
         color = vec4(0.0, 0.0, 0.0, 1.0);
-
+    }
     imageStore(framebufferImage, px, color);
 }

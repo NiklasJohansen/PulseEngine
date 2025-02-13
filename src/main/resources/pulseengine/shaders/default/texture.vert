@@ -13,7 +13,8 @@ uniform vec2 origin;
 uniform float angle;
 uniform int color;
 
-vec4 getColor(uint rgba) {
+vec4 getColor(uint rgba)
+{
     uint r = ((rgba >> uint(24)) & uint(255));
     uint g = ((rgba >> uint(16)) & uint(255));
     uint b = ((rgba >> uint(8))  & uint(255));
@@ -21,7 +22,8 @@ vec4 getColor(uint rgba) {
     return vec4(r, g, b, a) / 255.0f;
 }
 
-mat2 rotate(float angle) {
+mat2 rotate(float angle)
+{
     float c = cos(angle);
     float s = sin(angle);
     return mat2(
@@ -30,7 +32,8 @@ mat2 rotate(float angle) {
     );
 }
 
-void main() {
+void main()
+{
     textureCoord = vec2(vertexPos.x, 1.0 - vertexPos.y);
     vertexColor = getColor(uint(color));
 

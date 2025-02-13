@@ -13,7 +13,8 @@ out vec2 baseTexCoord;
 uniform vec2 resolution;
 uniform vec2 samplingOffset; // Used to prevent jitter when lightmap scale is below 1.0
 
-void main() {
+void main()
+{
     vec2 fragCoord = texCoord * resolution;
     vec2 invRes = 1.0 / resolution;
 

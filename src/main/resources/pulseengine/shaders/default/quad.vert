@@ -7,7 +7,8 @@ out vec4 vertexColor;
 
 uniform mat4 viewProjection;
 
-vec4 getColor(uint rgba) {
+vec4 getColor(uint rgba)
+{
     float r = ((rgba >> uint(24)) & uint(255));
     float g = ((rgba >> uint(16)) & uint(255));
     float b = ((rgba >> uint(8))  & uint(255));
@@ -15,7 +16,8 @@ vec4 getColor(uint rgba) {
     return vec4(r, g, b, a) / 255.0f;
 }
 
-void main() {
+void main()
+{
     vertexColor = getColor(color);
     gl_Position = viewProjection * vec4(position, 1.0);
 }

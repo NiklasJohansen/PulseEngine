@@ -8,8 +8,8 @@ uniform sampler2D tex1;
 
 uniform float exposure;
 
-void main() {
-
+void main()
+{
     vec4 tex0Color = texture(tex0, textureCoord);
     vec4 tex1Color = texture(tex1, textureCoord);
 

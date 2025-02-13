@@ -8,7 +8,8 @@ uniform sampler2D tex;
 uniform vec2 resolution;
 uniform float strength;
 
-void main() {
+void main()
+{
     vec4 texColor = texture(tex, textureCoord);
 
     vec2 uv = gl_FragCoord.xy / resolution.xy;

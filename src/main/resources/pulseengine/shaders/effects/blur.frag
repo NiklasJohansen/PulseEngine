@@ -25,7 +25,6 @@ void main()
 	color += texture(s_texture, v_blurTexCoords[11]) * 0.0215963866053;
 	color += texture(s_texture, v_blurTexCoords[12]) * 0.00895781211794;
 	color += texture(s_texture, v_blurTexCoords[13]) * 0.0044299121055113265;
-	//color *= 1.35;
 
 	fragColor = color;
 }

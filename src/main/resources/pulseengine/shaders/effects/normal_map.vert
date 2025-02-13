@@ -27,15 +27,18 @@ out float texIndex;
 uniform mat4 view;
 uniform mat4 projection;
 
-uint getSamplerIndex(uint textureHandle) {
+uint getSamplerIndex(uint textureHandle)
+{
     return (textureHandle >> uint(16)) & ((uint(1) << uint(16)) - uint(1));
 }
 
-float getTexIndex(uint textureHandle) {
+float getTexIndex(uint textureHandle)
+{
     return float(textureHandle & ((uint(1) << uint(16)) - uint(1)));
 }
 
-mat2 rotate(float angle) {
+mat2 rotate(float angle)
+{
     float c = cos(angle);
     float s = sin(angle);
     return mat2(
@@ -44,7 +47,8 @@ mat2 rotate(float angle) {
     );
 }
 
-void main() {
+void main()
+{
     texStart = uvMin;
     texSize = uvMax - uvMin;
     texCoord = vertexPos;
