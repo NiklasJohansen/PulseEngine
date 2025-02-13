@@ -3,11 +3,10 @@ package no.njoh.pulseengine.core.graphics.postprocessing.effects
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.surface.Surface
 
 class MultiplyEffect(
     override val name: String,
-    private val surface: Surface
+    private val surfaceName: String
 ) : BaseEffect() {
 
     override fun loadShaderProgram() = ShaderProgram.create(
@@ -17,6 +16,8 @@ class MultiplyEffect(
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
+        val surface = engine.gfx.getSurface(surfaceName) ?: return inTextures
+
         fbo.bind()
         fbo.clear()
         program.bind()

@@ -46,6 +46,9 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 24)                     var bilinearFix = true
     @Prop(i = 25)                     var forkFix = true
     @Prop(i = 26)                     var fixJitter = true
+    @Prop(i = 27)                     var targetSurface = "main"
+
+    private var lastTargetSurface = ""
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -105,7 +108,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_DISTANCE_FIELD))
         }
 
-        val finalLightSurface = engine.gfx.createSurface(
+        engine.gfx.createSurface(
             name = GI_LIGHT_FINAL,
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 1,
@@ -116,9 +119,6 @@ open class GlobalIlluminationSystem : SceneSystem()
         ).apply {
             addPostProcessingEffect(GiCompose(GI_LOCAL_SCENE, GI_DISTANCE_FIELD, GI_LIGHT_RAW))
         }
-
-        // Apply as post-processing effect to main surface
-        engine.gfx.mainSurface.addPostProcessingEffect(MultiplyEffect("light_blend", finalLightSurface))
     }
 
     override fun onUpdate(engine: PulseEngine)
@@ -129,6 +129,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.getSurface(GI_GLOBAL_SCENE)?.getRenderer<GiSceneRenderer>()?.fixJitter = fixJitter
         engine.gfx.getSurface(GI_LIGHT_RAW)?.setTextureScale(lightTextureScale)
         engine.gfx.getSurface(GI_DISTANCE_FIELD)?.setTextureScale(sceneTextureScale)
+        setTargetSurface(engine)
     }
 
     override fun onFixedUpdate(engine: PulseEngine)
@@ -158,7 +159,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     override fun onDestroy(engine: PulseEngine)
     {
-        engine.gfx.mainSurface.deletePostProcessingEffect("light_blend")
+        engine.gfx.mainSurface.deletePostProcessingEffect(GI_BLEND_EFFECT)
         engine.gfx.deleteSurface(GI_LOCAL_SCENE)
         engine.gfx.deleteSurface(GI_GLOBAL_SCENE)
         engine.gfx.deleteSurface(GI_LIGHT_RAW)
@@ -177,12 +178,24 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.scene.forEachEntityOfType<GiOccluder> { it.drawOccluder(engine, surface) }
     }
 
+    private fun setTargetSurface(engine: PulseEngine)
+    {
+        if (targetSurface == lastTargetSurface)
+            return
+
+        engine.gfx.getSurface(lastTargetSurface)?.deletePostProcessingEffect(GI_BLEND_EFFECT)
+        engine.gfx.getSurface(targetSurface)?.addPostProcessingEffect(MultiplyEffect(GI_BLEND_EFFECT, GI_LIGHT_FINAL))
+
+        lastTargetSurface = targetSurface
+    }
+
     companion object
     {
-        private const val GI_LOCAL_SCENE    = "gi_local_scene"
-        private const val GI_GLOBAL_SCENE   = "gi_global_scene"
-        private const val GI_DISTANCE_FIELD = "gi_distance_field"
-        private const val GI_LIGHT_RAW      = "gi_light_raw"
-        private const val GI_LIGHT_FINAL    = "gi_light_final"
+        const val GI_LOCAL_SCENE    = "gi_local_scene"
+        const val GI_GLOBAL_SCENE   = "gi_global_scene"
+        const val GI_DISTANCE_FIELD = "gi_distance_field"
+        const val GI_LIGHT_RAW      = "gi_light_raw"
+        const val GI_LIGHT_FINAL    = "gi_light_final"
+        const val GI_BLEND_EFFECT   = "gi_blend_effect"
     }
 }
