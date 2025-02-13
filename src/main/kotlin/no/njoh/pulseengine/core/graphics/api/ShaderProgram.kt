@@ -4,7 +4,9 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.emptyObjectIntHashMap
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.getOrPut
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
 import org.joml.Vector3f
@@ -22,10 +24,10 @@ class ShaderProgram(
     var id = id; private set
 
     /** Cache of uniform locations */
-    private var uniformLocations = HashMap<String, Int>() // Uniform name -> location
+    private var uniformLocations = emptyObjectIntHashMap<String>(16) // Uniform name -> location
 
     /** Used for setting texture sampler bindings */
-    private val textureUnits = HashMap<String, Int>() // Sampler name -> texture unit
+    private val textureUnits = emptyObjectIntHashMap<String>(32) // Sampler name -> texture unit
 
     /** Used for getting matrix data as an array */
     private val floatArray16 = FloatArray(16)
@@ -63,13 +65,7 @@ class ShaderProgram(
         glGetAttribLocation(id, name)
 
     fun uniformLocationOf(name: String): Int =
-        uniformLocations.getOrPut(name)
-        {
-            glGetUniformLocation(id, name).also()
-            {
-                if (it == -1) Logger.error("Uniform '$name' not found in shader program: $id (${shaders.joinToString { it.fileName }})")
-            }
-        }
+        uniformLocations.getOrPut(name) { getUniformLocation(name) }
 
     fun setUniform(name: String, vec3: Vector3f) =
         glUniform3f(uniformLocationOf(name), vec3[0], vec3[1], vec3[2])
@@ -131,7 +127,7 @@ class ShaderProgram(
 
     fun setUniformSampler(samplerName: String, textureHandle: TextureHandle, filter: TextureFilter = LINEAR)
     {
-        val unit = textureUnits.getOrPut(samplerName) { textureUnits.size }
+        val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D, textureHandle.textureIndex)
         glUniform1i(uniformLocationOf(samplerName), unit)
@@ -156,6 +152,9 @@ class ShaderProgram(
         glUniformBlockBinding(id, index, blockBinding)
         return index
     }
+
+    private fun getUniformLocation(name: String): Int =
+        glGetUniformLocation(id, name).also { if (it == -1) Logger.error("Uniform '$name' not found in shader program: $id (${shaders.joinToString { it.fileName }})") }
 
     companion object
     {
