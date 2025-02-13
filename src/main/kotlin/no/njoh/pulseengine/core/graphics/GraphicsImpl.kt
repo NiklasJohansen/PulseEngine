@@ -126,7 +126,7 @@ open class GraphicsImpl : GraphicsInternal
         BackBufferBaseState.apply(surfaces.firstOrNull() ?: mainSurface)
 
         // Draw visible surfaces with content to back-buffer
-        surfaces.forEachFiltered({ it.config.isVisible && it.hasContent() })
+        surfaces.forEachFiltered({ it.config.isVisible && (it.hasContent() || it.hasPostProcessingEffects()) })
         {
             GpuProfiler.measure(label = { "BACK_BUFFER_DRAW (" plus it.config.name plus ")" })
             {
