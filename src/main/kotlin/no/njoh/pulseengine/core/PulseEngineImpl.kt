@@ -179,12 +179,12 @@ class PulseEngineImpl(
         {
             runInSeparateGameThread()
             {
-                while (running) runSyncronized { tick(game) }
+                while (running) runSynchronized { tick(game) }
             }
             while (running)
             {
                 beginFrame()
-                runSyncronized { drawFrame() }
+                runSynchronized { drawFrame() }
                 endFrame()
             }
         }
@@ -319,7 +319,7 @@ class PulseEngineImpl(
         gameThread = Thread(runnable, "game").apply { start() }
     }
 
-    private inline fun runSyncronized(action: () -> Unit)
+    private inline fun runSynchronized(action: () -> Unit)
     {
         beginFrame.await() // Waits for all threads to be ready
         action()           // Runs the action
