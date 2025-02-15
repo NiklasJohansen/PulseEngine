@@ -130,22 +130,6 @@ class DirectLightRenderer : BatchRenderer()
         lightBuffer.submit()
         lightBuffer.release()
 
-        // Bind normal map texture if available
-        var hasNormalMap = 0f
-        normalMapTextureHandle?.let {
-            glActiveTexture(GL_TEXTURE0)
-            glBindTexture(GL_TEXTURE_2D, it.textureIndex)
-            hasNormalMap = 1f
-        }
-
-        // Bind occluder map texture if available
-        var hasOccluderMap = 0f
-        occluderMapTextureHandle?.let {
-            glActiveTexture(GL_TEXTURE1)
-            glBindTexture(GL_TEXTURE_2D, it.textureIndex)
-            hasOccluderMap = 1f
-        }
-
         // Set up VAO, shader program and uniforms
         vao.bind()
         program.bind()
@@ -156,16 +140,24 @@ class DirectLightRenderer : BatchRenderer()
         program.setUniform("resolution", surface.config.width * texScale, surface.config.height * texScale)
         program.setUniform("textureScale", texScale)
         program.setUniform("drawOffset", xDrawOffset, yDrawOffset)
-        program.setUniform("hasNormalMap", hasNormalMap)
-        program.setUniform("hasOccluderMap", hasOccluderMap)
         program.setUniform("zRotation", zRotCamera)
+
+        // Bind normal map texture if available
+        normalMapTextureHandle?.let {
+            program.setUniformSampler("normalMap", it)
+            program.setUniform("hasNormalMap", 1f)
+        } ?: program.setUniform("hasNormalMap", 0f)
+
+        // Bind occluder map texture if available
+        occluderMapTextureHandle?.let {
+            program.setUniformSampler("occluderMap", it)
+            program.setUniform("hasOccluderMap", 1f)
+        } ?: program.setUniform("hasOccluderMap", 0f)
 
         // Perform draw call
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, readLights)
 
         // Reset
-        glActiveTexture(GL_TEXTURE0)
-        glBindTexture(GL_TEXTURE_2D, 0)
         vao.release()
         gpuRenderTimeMs = (System.nanoTime() - renderStartTime) / 1_000_000f
     }

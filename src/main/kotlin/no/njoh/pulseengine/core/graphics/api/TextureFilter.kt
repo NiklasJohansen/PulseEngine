@@ -14,7 +14,7 @@ enum class TextureFilter(val minValue: Int, val magValue: Int)
     LINEAR_MIPMAP(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR),
 
     /** Nearest neighbour */
-    NEAREST(GL_NEAREST, GL_NEAREST_MIPMAP_NEAREST),
+    NEAREST(GL_NEAREST, GL_NEAREST),
 
     /** Nearest neighbour with mipmapping */
     NEAREST_MIPMAP(GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST)

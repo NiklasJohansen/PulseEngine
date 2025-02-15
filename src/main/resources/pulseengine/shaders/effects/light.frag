@@ -23,8 +23,8 @@ flat in int lastEdgeIndex;
 
 out vec4 fragColor;
 
-layout(binding=0) uniform sampler2D normalMap;
-layout(binding=1) uniform sampler2D occluderMap;
+uniform sampler2D normalMap;
+uniform sampler2D occluderMap;
 
 uniform int edgeCount;
 uniform vec4 ambientColor;

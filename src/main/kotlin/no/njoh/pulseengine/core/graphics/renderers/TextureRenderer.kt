@@ -85,7 +85,7 @@ class TextureRenderer(
 
             // Bind texture
             if (textureId != TextureHandle.NONE.textureIndex)
-                glBindTexture(GL_TEXTURE_2D, textureId)
+                program.setUniformSampler("tex", TextureHandle.create(0, textureId))
 
             // Set uniforms
             program.setUniform("position", x, y, z)
