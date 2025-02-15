@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.graphics.api.Attachment
+import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.shared.annotations.Icon
 
@@ -8,9 +9,11 @@ import no.njoh.pulseengine.core.shared.annotations.Icon
 class SpriteSheet(
     fileName: String,
     name: String,
+    filter: TextureFilter,
+    mipLevels: Int,
     private val horizontalCells: Int,
-    private val verticalCells: Int
-) : Texture(fileName, name), Iterable<Texture> {
+    private val verticalCells: Int,
+) : Texture(fileName, name, filter, mipLevels), Iterable<Texture> {
 
     private lateinit var textures: Array<Texture>
 
@@ -29,7 +32,7 @@ class SpriteSheet(
         this.size = horizontalCells * verticalCells
         this.textures = Array(size) { index ->
 
-            val texture = Texture(fileName, name)
+            val texture = Texture(fileName, name, filter, mipLevels)
             val xIndex = index % horizontalCells
             val yIndex = index / horizontalCells
             val uMinCell = uMin + xIndex * uCellSize * uTexSize
@@ -55,7 +58,8 @@ class SpriteSheet(
 
     override fun iterator(): Iterator<Texture> = TextureIterator()
 
-    inner class TextureIterator : Iterator<Texture> {
+    inner class TextureIterator : Iterator<Texture>
+    {
         var index = 0
         override fun hasNext(): Boolean = index < size
         override fun next(): Texture = textures[index++]

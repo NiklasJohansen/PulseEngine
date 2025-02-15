@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
 import org.lwjgl.opengl.ARBInternalformatQuery2.GL_TEXTURE_2D_ARRAY
@@ -22,19 +21,13 @@ class TextureArray(
 
     private fun init()
     {
-        val (minFilter, magFilter) = when (textureFilter)
-        {
-            LINEAR -> Pair(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR)
-            NEAREST -> Pair(GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST)
-        }
-
         id = glGenTextures()
         glBindTexture(GL_TEXTURE_2D_ARRAY, id)
         glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, textureFormat.internalFormat, textureSize, textureSize, maxCapacity)
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT)
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, minFilter)
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, magFilter)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, textureFilter.minValue)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, textureFilter.magValue)
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
     }
 

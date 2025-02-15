@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.asset
 
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR_MIPMAP
 import no.njoh.pulseengine.core.input.CursorType
 
 abstract class AssetManager
@@ -45,12 +45,12 @@ abstract class AssetManager
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Texture].
      */
-    abstract fun loadTexture(fileName: String, assetName: String, filter: TextureFilter = LINEAR, mipLevels: Int = 5)
+    abstract fun loadTexture(fileName: String, assetName: String, filter: TextureFilter = LINEAR_MIPMAP, mipLevels: Int = 5)
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [SpriteSheet].
      */
-    abstract fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int)
+    abstract fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int, filter: TextureFilter = LINEAR_MIPMAP, mipLevels: Int = 5)
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Font].

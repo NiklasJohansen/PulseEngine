@@ -29,8 +29,8 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun loadTexture(fileName: String, assetName: String, filter: TextureFilter, mipLevels: Int) =
         load(Texture(fileName, assetName, filter, mipLevels))
 
-    override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int) =
-        load(SpriteSheet(fileName, assetName, horizontalCells, verticalCells))
+    override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int, filter: TextureFilter, mipLevels: Int) =
+        load(SpriteSheet(fileName, assetName, filter, mipLevels, horizontalCells, verticalCells))
 
     override fun loadFont(fileName: String, assetName: String, fontSize: Float) =
         load(Font(fileName, assetName, fontSize))

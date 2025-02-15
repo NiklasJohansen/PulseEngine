@@ -20,8 +20,8 @@ import java.nio.FloatBuffer
 open class Texture(
     filename: String,
     override val name: String,
-    val filter: TextureFilter = LINEAR,
-    val mipLevels: Int = 5
+    val filter: TextureFilter,
+    val mipLevels: Int
 ) : Asset(name, filename) {
 
     var handle: TextureHandle = INVALID
@@ -127,10 +127,10 @@ open class Texture(
     companion object
     {
         val SUPPORTED_FORMATS = listOf("png", "jpg", "jpeg", "hdr")
-        val BLANK = Texture("", "BLANK").apply {
+        val BLANK = Texture(filename = "", name = "BLANK", filter = LINEAR, mipLevels = 0).apply {
             finalize(handle = TextureHandle.NONE, isBindless = true, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
-        val BLANK_BINDABLE = Texture("", "BLANK_BINDABLE").apply {
+        val BLANK_BINDABLE = Texture(filename = "", name = "BLANK_BINDABLE", filter = LINEAR, mipLevels = 0).apply {
             finalize(handle = TextureHandle.NONE, isBindless = false, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
     }

@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
@@ -59,7 +60,7 @@ class Font(
         }
         rgbaBuffer.flip()
 
-        charTexture = Texture("char_tex", "")
+        charTexture = Texture(filename = "", name = "char_tex_$name", filter = LINEAR_MIPMAP, mipLevels = 3)
         charTexture.stage(rgbaBuffer, BITMAP_W, BITMAP_H, TextureFormat.RGBA8)
     }
 

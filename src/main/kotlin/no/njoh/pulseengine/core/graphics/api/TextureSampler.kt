@@ -17,8 +17,8 @@ data class TextureSampler(
         fun create(filter: TextureFilter): TextureSampler
         {
             val id = glGenSamplers()
-            glSamplerParameteri(id, GL_TEXTURE_MIN_FILTER, filter.value)
-            glSamplerParameteri(id, GL_TEXTURE_MAG_FILTER, filter.value)
+            glSamplerParameteri(id, GL_TEXTURE_MIN_FILTER, filter.minValue)
+            glSamplerParameteri(id, GL_TEXTURE_MAG_FILTER, filter.magValue)
             return TextureSampler(id, filter)
         }
     }

@@ -147,8 +147,8 @@ open class FrameBufferObject(
             else
             {
                 glTexImage2D(target, 0, format.internalFormat, width, height, 0, format.pixelFormat, GL_UNSIGNED_BYTE, null as FloatArray?)
-                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter.value)
-                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter.value)
+                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter.minValue)
+                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter.magValue)
                 glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
                 glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
             }
