@@ -13,6 +13,7 @@ import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.LogLevel
@@ -111,7 +112,8 @@ open class GraphicsImpl : GraphicsInternal
         }
 
         // Set OpenGL state for rendering post-processing effects
-        PostProcessingBaseState.apply(mainSurface)
+        if (surfaces.anyMatches { it.hasPostProcessingEffects() })
+            PostProcessingBaseState.apply(mainSurface)
 
         // Run surfaces through their post-processing pipelines
         surfaces.forEachFiltered({ it.hasPostProcessingEffects() })
