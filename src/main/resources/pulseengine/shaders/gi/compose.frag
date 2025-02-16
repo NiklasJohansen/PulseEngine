@@ -16,8 +16,7 @@ uniform vec4 occluderAmbientLight;
 
 void main()
 {
-    vec2 offsetUv = uv + sampleOffset;
-
+    vec2 offsetUv = clamp(uv + sampleOffset, 0.0, 1.0);
     vec3 light = texture(lightTex, offsetUv).rgb;
     vec4 scene = texture(sceneTex, offsetUv);
     vec4 sceneMeta = texture(sceneMetadataTex, offsetUv);
@@ -41,11 +40,11 @@ void main()
 
             for (int i = 0; i < 8; i++)
             {
-                vec2 dist = texture(internalDistanceFieldTex, offsetUv + offset[i]).xy;
+                vec2 dist = texture(internalDistanceFieldTex, clamp(offsetUv + offset[i], 0.0, 1.0)).xy;
                 float falloff = (edgeLightStrengt * 0.01) / (1.0 + length(dist / scale) * 100.0);
                 falloff = clamp(falloff, 0.0, 1.0);
                 falloff = pow(falloff, 3.0);
-                light += texture(lightTex, offsetUv + dist * 1.2).rgb * falloff * 0.125;
+                light += texture(lightTex, clamp(offsetUv + dist * 1.2, 0.0, 1.0)).rgb * falloff * 0.125;
             }
         }
     }

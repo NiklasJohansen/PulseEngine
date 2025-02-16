@@ -136,13 +136,12 @@ open class GlobalIlluminationSystem : SceneSystem()
     {
         if (traceWorldRays)
         {
-            val worldSurface = engine.gfx.getSurface(GI_GLOBAL_SCENE) ?: return
-            val cam = worldSurface.camera
+            val globalSurface = engine.gfx.getSurface(GI_GLOBAL_SCENE) ?: return
+            val cam = globalSurface.camera
             val scale = 1f / max(1f, worldScale)
-
             cam.position.set(engine.gfx.mainCamera.position)
             cam.rotation.set(engine.gfx.mainCamera.rotation)
-            cam.origin.set(worldSurface.config.width * 0.5f, worldSurface.config.height * 0.5f, 1f)
+            cam.origin.set(engine.gfx.mainCamera.origin)
             cam.scale.set(engine.gfx.mainCamera.scale.x * scale, engine.gfx.mainCamera.scale.y * scale, engine.gfx.mainCamera.scale.z)
         }
     }

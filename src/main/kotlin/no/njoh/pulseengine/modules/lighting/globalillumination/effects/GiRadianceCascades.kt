@@ -47,6 +47,8 @@ class GiRadianceCascades(
         var cascadeIndex = cascadeCount - 1
         val minStepSize = min(1f / width, 1f / height) * 0.5f
         val worldScale = max(1f, lightSystem.worldScale)
+        val xCamOrigin = localSceneSurface.camera.origin.x / localSceneSurface.config.width
+        val yCamOrigin = 1f - (localSceneSurface.camera.origin.y / localSceneSurface.config.height)
         val program = programs[0]
         val skyLight = if (lightSystem.skyLight) lightSystem.skyIntensity else 0f
         val sunLight = if (lightSystem.skyLight) lightSystem.sunIntensity else 0f
@@ -76,6 +78,7 @@ class GiRadianceCascades(
         program.setUniform("maxSteps", lightSystem.maxSteps)
         program.setUniform("camAngle", localSceneSurface.camera.rotation.z)
         program.setUniform("camScale", localSceneSurface.camera.scale.x)
+        program.setUniform("camOrigin", xCamOrigin, yCamOrigin)
         program.setUniformSampler("localSceneTex", localSceneSurface.getTexture(0))
         program.setUniformSampler("localMetadataTex", localSceneSurface.getTexture(1))
         program.setUniformSampler("globalSceneTex", globalSceneSurface.getTexture(0))

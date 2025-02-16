@@ -35,12 +35,13 @@ uniform bool mergeCascades;
 uniform int maxSteps;
 uniform float camAngle;
 uniform float camScale;
+uniform vec2 camOrigin;
 
 const float baseRayCount = 4.0;
 const float sqrtBase = sqrt(baseRayCount);
 const float sdfDecodeScale = sqrt(2.0) / 65000.0;
 
-vec4 raymarch(vec2 rayOrigin, vec2 rayDir, float rayLen)
+vec4 raymarch(vec2 rayPos, vec2 rayDir, float rayLen)
 {
     float traveledDist = 0.0;
     float stepSizeScale = 1.0;
@@ -49,15 +50,15 @@ vec4 raymarch(vec2 rayOrigin, vec2 rayDir, float rayLen)
 
     while (steps < maxSteps && traveledDist < rayLen)
     {
-        vec2 fieldDist = texture(distanceFieldTex, rayOrigin).rg;
+        vec2 fieldDist = texture(distanceFieldTex, rayPos).rg;
         float stepSize = mix(fieldDist.r, fieldDist.g, space) * sdfDecodeScale; // r=screen, g=world
-        vec2 samplePos = rayOrigin + rayDir * stepSize;
+        vec2 samplePos = rayPos + rayDir * stepSize;
 
         if (samplePos.x < 0.0 || samplePos.x > 1.0 || samplePos.y < 0.0 || samplePos.y > 1.0)
         {
             if (traceWorldRays && space == SCREEN)
             {
-                rayOrigin = (rayOrigin - vec2(0.5)) * invWorldScale + vec2(0.5); // Remap position to world space
+                rayPos = (rayPos - camOrigin) * invWorldScale + camOrigin; // Remap position to world space
                 stepSizeScale = worldScale;
                 space = WORLD;
                 continue;
@@ -68,7 +69,7 @@ vec4 raymarch(vec2 rayOrigin, vec2 rayDir, float rayLen)
         if (stepSize <= minStepSize)
             return vec4(samplePos, space, steps); // Hit
 
-        rayOrigin = samplePos;
+        rayPos = samplePos;
         traveledDist += stepSize * stepSizeScale;
         steps++;
     }
