@@ -257,7 +257,7 @@ void main()
         // Mix in the sun and sky radiance if we're in the outermost cascade
         if (isOutermostCascade && deltaRadiance.a == 0.0)
         {
-            float angleToSun = mod(rayAngle - sunAngle, TAU);
+            float angleToSun = mod(rayAngle - (sunAngle - camAngle), TAU);
             float sunIntensity = pow(max(0.0, cos(angleToSun)), 4.0 / sunDistance);
             vec3 sunAndSkyRandiance = mix(sunColor.rgb * sunIntensity, skyColor.rgb, 0.3);
             deltaRadiance.rgb = max(sunAndSkyRandiance, deltaRadiance.rgb);
