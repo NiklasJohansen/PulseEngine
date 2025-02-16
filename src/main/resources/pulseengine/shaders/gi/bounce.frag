@@ -30,10 +30,10 @@ void main()
 
         for (int i = 0; i < 8; i++)
         {
-            bool isOpenSpace = texture(sceneTex, uv + dir[i]).a < 0.5;
+            bool isOpenSpace = texture(sceneTex, clamp(uv + dir[i], 0, 1)).a < 0.5;
             if (isOpenSpace)
             {
-                lightAcc += texture(lightTex, uvLastFrame + dir[i] * 5).rgb;
+                lightAcc += texture(lightTex, clamp(uvLastFrame + dir[i] * 5, 0, 1)).rgb;
                 n++;
             }
         }
