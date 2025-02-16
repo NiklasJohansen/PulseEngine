@@ -1,13 +1,11 @@
 package no.njoh.pulseengine.core.asset.types
 
-import no.njoh.pulseengine.core.graphics.api.Attachment
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
-import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.api.TextureHandle.Companion.INVALID
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -21,6 +19,7 @@ open class Texture(
     filename: String,
     override val name: String,
     val filter: TextureFilter,
+    val wrapping: TextureWrapping,
     val mipLevels: Int
 ) : Asset(name, filename) {
 
@@ -127,10 +126,10 @@ open class Texture(
     companion object
     {
         val SUPPORTED_FORMATS = listOf("png", "jpg", "jpeg", "hdr")
-        val BLANK = Texture(filename = "", name = "BLANK", filter = LINEAR, mipLevels = 1).apply {
+        val BLANK = Texture(filename = "", name = "BLANK", filter = LINEAR, wrapping = CLAMP, mipLevels = 1).apply {
             finalize(handle = TextureHandle.NONE, isBindless = true, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
-        val BLANK_BINDABLE = Texture(filename = "", name = "BLANK_BINDABLE", filter = LINEAR, mipLevels = 1).apply {
+        val BLANK_BINDABLE = Texture(filename = "", name = "BLANK_BINDABLE", filter = LINEAR, wrapping = CLAMP, mipLevels = 1).apply {
             finalize(handle = TextureHandle.NONE, isBindless = false, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
     }

@@ -12,8 +12,9 @@ class TextureArray(
     val samplerIndex: Int,
     val textureSize: Int,
     val maxCapacity: Int,
-    val textureFormat: TextureFormat,
-    val textureFilter: TextureFilter,
+    val format: TextureFormat,
+    val filter: TextureFilter,
+    val wrapping: TextureWrapping,
     val mipLevels: Int
 ) {
     var id  = -1; private set
@@ -23,11 +24,11 @@ class TextureArray(
     {
         id = glGenTextures()
         glBindTexture(GL_TEXTURE_2D_ARRAY, id)
-        glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, textureFormat.internalFormat, textureSize, textureSize, maxCapacity)
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT)
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT)
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, textureFilter.minValue)
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, textureFilter.magValue)
+        glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, format.internalFormat, textureSize, textureSize, maxCapacity)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, wrapping.value)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, wrapping.value)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, filter.minValue)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, filter.magValue)
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
     }
 
@@ -45,7 +46,7 @@ class TextureArray(
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, id)
 
-        if (textureFormat == RGBA8 && texture.pixelsLDR != null)
+        if (format == RGBA8 && texture.pixelsLDR != null)
         {
             glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, texIndex, texture.width, texture.height, 1, GL_RGBA, GL_UNSIGNED_BYTE, texture.pixelsLDR!!)
         }
@@ -74,5 +75,5 @@ class TextureArray(
 
     fun destroy() = glDeleteTextures(id)
 
-    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$textureFormat, filter=$textureFilter, mips=$mipLevels"
+    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, mips=$mipLevels"
 }

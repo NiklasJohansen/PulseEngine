@@ -24,7 +24,7 @@ class TextureBank
             }
             else Logger.error(
                 "Failed to load texture: ${texture.fileName}. Texture array for " +
-                "textureSize=${array.textureSize}px and format=${array.textureFormat} is full " +
+                "textureSize=${array.textureSize}px and format=${array.format} is full " +
                 "(${array.size}/${array.maxCapacity}). Consider increasing its capacity."
             )
         }
@@ -59,8 +59,9 @@ class TextureBank
         val textureArray = textureArrays.find()
         {
             it.textureSize >= textureSize &&
-            it.textureFormat == texture.format &&
-            it.textureFilter == texture.filter &&
+            it.format == texture.format &&
+            it.filter == texture.filter &&
+            it.wrapping == texture.wrapping &&
             it.mipLevels == texture.mipLevels
         }
 
@@ -77,7 +78,7 @@ class TextureBank
         {
             Logger.error(
                 "Failed to load texture: name=${texture.name}, size=${textureSize}px, format=${texture.format}, " +
-                "filter=${texture.filter} and mipLevels=${texture.mipLevels}.\n" +
+                "filter=${texture.filter}, wrapping=${texture.wrapping} and mipLevels=${texture.mipLevels}.\n" +
                 "All $MAX_TEXTURE_SLOTS texture array slots are in use:\n\n" +
                 textureArrays.joinToString("\n") { "  $it" } +
                 "\n\nConsider reducing the number of texture sampler permutations."
@@ -93,7 +94,7 @@ class TextureBank
             return null
         }
 
-        val newArray = TextureArray(textureArrays.size, spec.texSize, spec.capacity, texture.format, texture.filter, texture.mipLevels)
+        val newArray = TextureArray(textureArrays.size, spec.texSize, spec.capacity, texture.format, texture.filter, texture.wrapping, texture.mipLevels)
         textureArrays.add(newArray)
         textureArrays.sortBy { it.textureSize }
         Logger.debug("New texture array created: $newArray")

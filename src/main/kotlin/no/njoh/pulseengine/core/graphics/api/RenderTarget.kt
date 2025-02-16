@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.graphics.api.objects.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 
@@ -35,7 +36,7 @@ class OffScreenRenderTarget(
         if (this::fbo.isInitialized)
             fbo.delete()
 
-        fbo = FrameBufferObject.create(width, height, attachments.map { TextureDescriptor(textureFormat, textureFilter, NONE, it, textureScale) } )
+        fbo = FrameBufferObject.create(width, height, attachments.map { TextureDescriptor(textureFormat, textureFilter, CLAMP, NONE, it, textureScale) } )
     }
 
     override fun begin() = fbo.bind()
@@ -64,8 +65,8 @@ class MultisampledOffScreenRenderTarget(
         if (this::msFbo.isInitialized)
             msFbo.delete()
 
-        msFbo = FrameBufferObject.create(width, height, attachments.map { TextureDescriptor(textureFormat, textureFilter, multisampling, it, textureScale) })
-        fbo = FrameBufferObject.create(width, height, attachments.map { TextureDescriptor(textureFormat, textureFilter, NONE, it, textureScale) })
+        msFbo = FrameBufferObject.create(width, height, attachments.map { TextureDescriptor(textureFormat, textureFilter, CLAMP, multisampling, it, textureScale) })
+        fbo = FrameBufferObject.create(width, height, attachments.map { TextureDescriptor(textureFormat, textureFilter, CLAMP, NONE, it, textureScale) })
     }
 
     override fun begin() =

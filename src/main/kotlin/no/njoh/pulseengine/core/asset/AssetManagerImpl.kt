@@ -5,6 +5,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -26,11 +27,11 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun <T : Asset> getAllOfType(type: Class<T>): List<T> =
         loadedAssets.values.filterIsInstance(type)
 
-    override fun loadTexture(fileName: String, assetName: String, filter: TextureFilter, mipLevels: Int) =
-        load(Texture(fileName, assetName, filter, mipLevels))
+    override fun loadTexture(fileName: String, assetName: String, filter: TextureFilter, wrapping: TextureWrapping, mipLevels: Int) =
+        load(Texture(fileName, assetName, filter, wrapping, mipLevels))
 
-    override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int, filter: TextureFilter, mipLevels: Int) =
-        load(SpriteSheet(fileName, assetName, filter, mipLevels, horizontalCells, verticalCells))
+    override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int, filter: TextureFilter, wrapping: TextureWrapping, mipLevels: Int) =
+        load(SpriteSheet(fileName, assetName, filter, wrapping, mipLevels, horizontalCells, verticalCells))
 
     override fun loadFont(fileName: String, assetName: String, fontSize: Float) =
         load(Font(fileName, assetName, fontSize))

@@ -99,7 +99,7 @@ open class FrameBufferObject(
                 val textureId = when (tex.attachment)
                 {
                     COLOR_TEXTURE_0, COLOR_TEXTURE_1, COLOR_TEXTURE_2, COLOR_TEXTURE_3, COLOR_TEXTURE_4 ->
-                        createColorTextureAttachment(texWidth, texHeight, tex.format, tex.filter, tex.attachment, samples)
+                        createColorTextureAttachment(texWidth, texHeight, tex.format, tex.filter, tex.wrapping, tex.attachment, samples)
                     DEPTH_TEXTURE ->
                         createDepthTextureAttachment(texWidth, texHeight, samples)
                     else -> null
@@ -107,7 +107,7 @@ open class FrameBufferObject(
 
                 if (textureId != null)
                 {
-                    val texture = Texture("", name = "fbo_${tex.attachment.name.lowercase()}", filter = tex.filter, mipLevels = 1)
+                    val texture = Texture("", name = "fbo_${tex.attachment.name.lowercase()}", tex.filter, tex.wrapping, mipLevels = 1)
                     val handle = TextureHandle.create(0, textureId)
                     texture.stage(null as ByteBuffer?, texWidth, texHeight, tex.format)
                     texture.finalize(handle, isBindless = false, attachment = tex.attachment)
@@ -135,7 +135,7 @@ open class FrameBufferObject(
             return FrameBufferObject(frameBufferId, width, height, bufferIds, textures, textureDescriptors.map { it.copy() })
         }
 
-        private fun createColorTextureAttachment(width: Int, height: Int, format: TextureFormat, filter: TextureFilter, attachment: Attachment, samples: Int): Int
+        private fun createColorTextureAttachment(width: Int, height: Int, format: TextureFormat, filter: TextureFilter, wrapping: TextureWrapping, attachment: Attachment, samples: Int): Int
         {
             val target = if (samples > 1) GL_TEXTURE_2D_MULTISAMPLE else GL_TEXTURE_2D
             val textureId = glGenTextures()
@@ -149,8 +149,8 @@ open class FrameBufferObject(
                 glTexImage2D(target, 0, format.internalFormat, width, height, 0, format.pixelFormat, GL_UNSIGNED_BYTE, null as FloatArray?)
                 glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter.minValue)
                 glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter.magValue)
-                glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
-                glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+                glTexParameteri(target, GL_TEXTURE_WRAP_S, wrapping.value)
+                glTexParameteri(target, GL_TEXTURE_WRAP_T, wrapping.value)
             }
             glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.value, target, textureId, 0)
             glBindTexture(target, 0)
