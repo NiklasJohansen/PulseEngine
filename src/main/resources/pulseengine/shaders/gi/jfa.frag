@@ -1,24 +1,20 @@
 #version 330 core
 
 in vec2 uv;
-layout(location=0) out vec4 externalOut;
-layout(location=1) out vec4 internalOut;
 
-uniform sampler2D externalTex;
-uniform sampler2D internalTex;
+out vec4 fragColor;
+
+uniform sampler2D seedTex;
 
 uniform vec2 resolution;
 uniform float uOffset;
 
 void main()
 {
-    vec2 nearestLocalSeedInternal = vec2(0.0);
-    vec2 nearestLocalSeedExternal = vec2(0.0);
-    vec2 nearestGlobalSeedExternal = vec2(0.0);
-
-    float nearestLocalDistInternal = 9999.0;
-    float nearestLocalDistExternal = 9999.0;
-    float nearestGlobalDistExternal = 9999.0;
+    vec2 nearestOutsideSeed = vec2(0.0);
+    vec2 nearestInsideSeed = vec2(0.0);
+    float nearestOutsideDist = 9999.0;
+    float nearestInsideDist = 9999.0;
 
     vec2 invRes = 1.0 / resolution;
 
@@ -31,46 +27,33 @@ void main()
             if (samplePos.x < 0.0 || samplePos.x > 1.0 || samplePos.y < 0.0 || samplePos.y > 1.0)
                 continue;
 
-            vec4 sampleInternal = texture(externalTex, samplePos);
-            vec2 localSampleExternal = sampleInternal.xy;
-            vec2 globalSampleExternal = sampleInternal.zw;
-            vec2 localSampleInternal = texture(internalTex, samplePos).xy;
+            vec4 seed = texture(seedTex, samplePos);
+            vec2 outsideSeed = seed.xy;
+            vec2 insideSeed = seed.zw;
 
-            if (localSampleExternal.x != 0.0 || localSampleExternal.y != 0.0)
+            if (outsideSeed.x != 0.0 || outsideSeed.y != 0.0)
             {
-                vec2 diff = localSampleExternal - uv;
+                vec2 diff = outsideSeed - uv;
                 float dist = dot(diff, diff);
-                if (dist < nearestLocalDistExternal)
+                if (dist < nearestOutsideDist)
                 {
-                    nearestLocalDistExternal = dist;
-                    nearestLocalSeedExternal = localSampleExternal;
+                    nearestOutsideDist = dist;
+                    nearestOutsideSeed = outsideSeed;
                 }
             }
 
-            if (localSampleInternal.x != 0.0 || localSampleInternal.y != 0.0)
+            if (insideSeed.x != 0.0 || insideSeed.y != 0.0)
             {
-                vec2 diff = localSampleInternal - uv;
+                vec2 diff = insideSeed - uv;
                 float dist = dot(diff, diff);
-                if (dist < nearestLocalDistInternal)
+                if (dist < nearestInsideDist)
                 {
-                    nearestLocalDistInternal = dist;
-                    nearestLocalSeedInternal = localSampleInternal;
-                }
-            }
-
-            if (globalSampleExternal.x != 0.0 || globalSampleExternal.y != 0.0)
-            {
-                vec2 diff = globalSampleExternal - uv;
-                float dist = dot(diff, diff);
-                if (dist < nearestGlobalDistExternal)
-                {
-                    nearestGlobalDistExternal = dist;
-                    nearestGlobalSeedExternal = globalSampleExternal;
+                    nearestInsideDist = dist;
+                    nearestInsideSeed = insideSeed;
                 }
             }
         }
     }
 
-    externalOut = vec4(nearestLocalSeedExternal, nearestGlobalSeedExternal);
-    internalOut = vec4(nearestLocalSeedInternal, 0.0, 1.0);
+    fragColor = vec4(nearestOutsideSeed, nearestInsideSeed);
 }

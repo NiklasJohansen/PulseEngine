@@ -31,22 +31,23 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 8)                      var dithering = 0.7f
     @Prop(i = 9)                      var textureFilter = LINEAR
     @Prop(i = 10, min=0.01f, max=2f)  var lightTextureScale = 0.5f
-    @Prop(i = 11, min=0.01f, max=2f)  var sceneTextureScale = 0.5f
-    @Prop(i = 12, min=0f)             var drawCascade = 0
-    @Prop(i = 13, min=0f)             var maxCascades = 10
-    @Prop(i = 14, min=0f)             var maxSteps = 30
-    @Prop(i = 15, min=0f)             var intervalLength = 1.5f
-    @Prop(i = 16, min=0f, max=1f)     var intervalOverlap = 1f
-    @Prop(i = 17, min=0f, max=1f)     var bounceAccumulation = 0.5f
-    @Prop(i = 19, min=0f)             var sourceMultiplier = 1f
-    @Prop(i = 20)                     var occluderAmbientLight = Color(0f, 0f, 0f, 1f)
-    @Prop(i = 21, min=1f)             var worldScale = 4f
-    @Prop(i = 22)                     var traceWorldRays = true
-    @Prop(i = 23)                     var mergeCascades = true
-    @Prop(i = 24)                     var bilinearFix = true
-    @Prop(i = 25)                     var forkFix = true
-    @Prop(i = 26)                     var fixJitter = true
-    @Prop(i = 27)                     var targetSurface = "main"
+    @Prop(i = 11, min=0.01f, max=2f)  var localSceneTextureScale = 0.4f
+    @Prop(i = 12, min=0.01f, max=4f)  var globalSceneTextureScale = 0.8f
+    @Prop(i = 13, min=0f)             var drawCascade = 0
+    @Prop(i = 14, min=0f)             var maxCascades = 10
+    @Prop(i = 15, min=0f)             var maxSteps = 30
+    @Prop(i = 16, min=0f)             var intervalLength = 1.5f
+    @Prop(i = 17, min=0f, max=1f)     var intervalOverlap = 1f
+    @Prop(i = 19, min=0f, max=1f)     var bounceAccumulation = 0.5f
+    @Prop(i = 20, min=0f)             var sourceMultiplier = 1f
+    @Prop(i = 21)                     var occluderAmbientLight = Color(0f, 0f, 0f, 1f)
+    @Prop(i = 22, min=1f)             var worldScale = 4f
+    @Prop(i = 23)                     var traceWorldRays = true
+    @Prop(i = 24)                     var mergeCascades = true
+    @Prop(i = 25)                     var bilinearFix = true
+    @Prop(i = 26)                     var forkFix = true
+    @Prop(i = 27)                     var fixJitter = true
+    @Prop(i = 28)                     var targetSurface = "main"
 
     private var lastTargetSurface = ""
 
@@ -61,7 +62,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             blendFunction = NONE,
             textureFormat = RGBA16F,
             textureFilter = NEAREST,
-            textureScale = sceneTextureScale,
+            textureScale = localSceneTextureScale,
             attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
         ).apply {
             addRenderer(GiSceneRenderer((this as SurfaceInternal).config))
@@ -76,24 +77,38 @@ open class GlobalIlluminationSystem : SceneSystem()
             blendFunction = NONE,
             textureFormat = RGBA16F,
             textureFilter = NEAREST,
-            textureScale = sceneTextureScale,
+            textureScale = globalSceneTextureScale,
             attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
         ).apply {
             addRenderer(GiSceneRenderer((this as SurfaceInternal).config))
         }
 
         engine.gfx.createSurface(
-            name = GI_DISTANCE_FIELD,
+            name = GI_LOCAL_SDF,
             zOrder = engine.gfx.mainSurface.config.zOrder + 3,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
-            textureScale = sceneTextureScale,
+            textureScale = localSceneTextureScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(GiJfaSeed(GI_LOCAL_SCENE, GI_GLOBAL_SCENE))
+            addPostProcessingEffect(GiJfaSeed(GI_LOCAL_SCENE))
             addPostProcessingEffect(GiJfa())
-            addPostProcessingEffect(GiDistanceField())
+            addPostProcessingEffect(GiSdf())
+        }
+
+        engine.gfx.createSurface(
+            name = GI_GLOBAL_SDF,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 3,
+            isVisible = false,
+            backgroundColor = Color.BLANK,
+            blendFunction = NONE,
+            textureScale = globalSceneTextureScale,
+            attachments = listOf(COLOR_TEXTURE_0)
+        ).apply {
+            addPostProcessingEffect(GiJfaSeed(GI_GLOBAL_SCENE))
+            addPostProcessingEffect(GiJfa())
+            addPostProcessingEffect(GiSdf())
         }
 
         engine.gfx.createSurface(
@@ -105,7 +120,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             textureScale = lightTextureScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_DISTANCE_FIELD))
+            addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_LOCAL_SDF, GI_GLOBAL_SDF))
         }
 
         engine.gfx.createSurface(
@@ -117,18 +132,19 @@ open class GlobalIlluminationSystem : SceneSystem()
             textureScale = 1f,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(GiCompose(GI_LOCAL_SCENE, GI_DISTANCE_FIELD, GI_LIGHT_RAW))
+            addPostProcessingEffect(GiCompose(GI_LOCAL_SCENE, GI_LOCAL_SDF, GI_LIGHT_RAW))
         }
     }
 
     override fun onUpdate(engine: PulseEngine)
     {
-        engine.gfx.getSurface(GI_LOCAL_SCENE)?.setTextureScale(sceneTextureScale)
+        engine.gfx.getSurface(GI_LOCAL_SCENE)?.setTextureScale(localSceneTextureScale)
         engine.gfx.getSurface(GI_LOCAL_SCENE)?.getRenderer<GiSceneRenderer>()?.fixJitter = fixJitter
-        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.setTextureScale(sceneTextureScale)
+        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.setTextureScale(globalSceneTextureScale)
         engine.gfx.getSurface(GI_GLOBAL_SCENE)?.getRenderer<GiSceneRenderer>()?.fixJitter = fixJitter
         engine.gfx.getSurface(GI_LIGHT_RAW)?.setTextureScale(lightTextureScale)
-        engine.gfx.getSurface(GI_DISTANCE_FIELD)?.setTextureScale(sceneTextureScale)
+        engine.gfx.getSurface(GI_LOCAL_SDF)?.setTextureScale(localSceneTextureScale)
+        engine.gfx.getSurface(GI_GLOBAL_SDF)?.setTextureScale(globalSceneTextureScale)
         setTargetSurface(engine)
     }
 
@@ -163,7 +179,8 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.deleteSurface(GI_GLOBAL_SCENE)
         engine.gfx.deleteSurface(GI_LIGHT_RAW)
         engine.gfx.deleteSurface(GI_LIGHT_FINAL)
-        engine.gfx.deleteSurface(GI_DISTANCE_FIELD)
+        engine.gfx.deleteSurface(GI_LOCAL_SDF)
+        engine.gfx.deleteSurface(GI_GLOBAL_SDF)
     }
 
     override fun onStateChanged(engine: PulseEngine)
@@ -192,7 +209,8 @@ open class GlobalIlluminationSystem : SceneSystem()
     {
         const val GI_LOCAL_SCENE    = "gi_local_scene"
         const val GI_GLOBAL_SCENE   = "gi_global_scene"
-        const val GI_DISTANCE_FIELD = "gi_distance_field"
+        const val GI_LOCAL_SDF      = "gi_local_sdf"
+        const val GI_GLOBAL_SDF     = "gi_global_sdf"
         const val GI_LIGHT_RAW      = "gi_light_raw"
         const val GI_LIGHT_FINAL    = "gi_light_final"
         const val GI_BLEND_EFFECT   = "gi_blend_effect"

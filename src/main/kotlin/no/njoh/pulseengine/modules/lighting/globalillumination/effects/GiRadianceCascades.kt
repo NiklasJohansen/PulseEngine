@@ -15,8 +15,9 @@ import kotlin.math.*
 class GiRadianceCascades(
     private val localSceneSurfaceName: String,
     private val globalSceneSurfaceName: String,
-    private val distanceFieldSurfaceName: String,
-    override val name: String = "Radiance Cascades"
+    private val localSdfSurfaceName: String,
+    private val globalSdfSurfaceName: String,
+    override val name: String = "radiance_cascades"
 ) : BaseEffect(
     TextureDescriptor(filter = LINEAR, format = RGBA16F),
     numFrameBufferObjects = 2
@@ -37,7 +38,8 @@ class GiRadianceCascades(
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val localSceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
         val globalSceneSurface = engine.gfx.getSurface(globalSceneSurfaceName) ?: return inTextures
-        val distanceFieldSurface = engine.gfx.getSurface(distanceFieldSurfaceName) ?: return inTextures
+        val localSdfSurface = engine.gfx.getSurface(localSdfSurfaceName) ?: return inTextures
+        val globalSdfSurface = engine.gfx.getSurface(globalSdfSurfaceName) ?: return inTextures
 
         val width = inTextures[0].width.toFloat()
         val height = inTextures[0].height.toFloat()
@@ -45,10 +47,13 @@ class GiRadianceCascades(
         val diagonalSize = sqrt(width * width + height * height)
         val cascadeCount = min(ceil(log2(diagonalSize) / log2(baseRayCount)).toInt() + 1, lightSystem.maxCascades)
         var cascadeIndex = cascadeCount - 1
-        val minStepSize = min(1f / width, 1f / height) * 0.5f
+        val sceneWidth = max(localSceneSurface.config.width, globalSceneSurface.config.width)
+        val sceneHeight = max(localSceneSurface.config.height, globalSceneSurface.config.height)
+        val minStepSize = min(1f / sceneWidth, 1f / sceneHeight) * 0.5f
         val worldScale = max(1f, lightSystem.worldScale)
-        val xCamOrigin = localSceneSurface.camera.origin.x / localSceneSurface.config.width
-        val yCamOrigin = 1f - (localSceneSurface.camera.origin.y / localSceneSurface.config.height)
+        val xCamOrigin = globalSceneSurface.camera.origin.x / globalSceneSurface.config.width
+        val yCamOrigin = 1f - (globalSceneSurface.camera.origin.y / globalSceneSurface.config.height)
+
         val program = programs[0]
         val skyLight = if (lightSystem.skyLight) lightSystem.skyIntensity else 0f
         val sunLight = if (lightSystem.skyLight) lightSystem.sunIntensity else 0f
@@ -83,7 +88,8 @@ class GiRadianceCascades(
         program.setUniformSampler("localMetadataTex", localSceneSurface.getTexture(1))
         program.setUniformSampler("globalSceneTex", globalSceneSurface.getTexture(0))
         program.setUniformSampler("globalMetadataTex", globalSceneSurface.getTexture(1))
-        program.setUniformSampler("distanceFieldTex", distanceFieldSurface.getTexture(0))
+        program.setUniformSampler("localSdfTex", localSdfSurface.getTexture())
+        program.setUniformSampler("globalSdfTex", globalSdfSurface.getTexture())
 
         while (cascadeIndex >= lightSystem.drawCascade)
         {

@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA32F
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import kotlin.math.ceil
@@ -16,7 +16,6 @@ import kotlin.math.pow
 
 class GiJfa(override val name: String = "jfa") : BaseEffect(
     TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_0),
-    TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_1),
     numFrameBufferObjects = 2
 ) {
     private var outputTextures: List<Texture> = emptyList()
@@ -46,8 +45,7 @@ class GiJfa(override val name: String = "jfa") : BaseEffect(
             fbo.bind()
             fbo.clear()
             program.setUniform("uOffset", 2f.pow(passes - i - 1f))
-            program.setUniformSampler("externalTex", outputTextures[0])
-            program.setUniformSampler("internalTex", outputTextures[1])
+            program.setUniformSampler("seedTex", outputTextures[0])
             renderer.draw()
             fbo.release()
             outputTextures = fbo.getTextures()
@@ -60,12 +58,10 @@ class GiJfa(override val name: String = "jfa") : BaseEffect(
 }
 
 class GiJfaSeed(
-    private val localSceneSurfaceName: String,
-    private val globalSceneSurfaceName: String,
+    private val sceneSurfaceName: String,
     override val name: String = "jfa_seed"
 ) : BaseEffect(
     TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_0),
-    TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_1),
 ) {
     override fun loadShaderProgram() = ShaderProgram.create(
         vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",
@@ -74,17 +70,13 @@ class GiJfaSeed(
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
     {
-        val localSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
-        val globalSurface = engine.gfx.getSurface(globalSceneSurfaceName) ?: return inTextures
-
+        val sceneSurface = engine.gfx.getSurface(sceneSurfaceName) ?: return inTextures
         fbo.bind()
         fbo.clear()
         program.bind()
-        program.setUniformSampler("localSceneTex", localSurface.getTexture())
-        program.setUniformSampler("globalSceneTex", globalSurface.getTexture())
+        program.setUniformSampler("sceneTex", sceneSurface.getTexture())
         renderer.draw()
         fbo.release()
-
         return fbo.getTextures()
     }
 }

@@ -14,7 +14,7 @@ import no.njoh.pulseengine.modules.lighting.globalillumination.GiSceneRenderer
 
 class GiCompose(
     private val localSceneSurfaceName: String,
-    private val distanceFieldSurfaceName: String,
+    private val localSdfSurfaceName: String,
     private val lightSurfaceName: String,
     override val name: String = "compose"
 ) : BaseEffect(
@@ -29,7 +29,7 @@ class GiCompose(
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
-        val distFieldSurface = engine.gfx.getSurface(distanceFieldSurfaceName) ?: return inTextures
+        val localSdfSurface = engine.gfx.getSurface(localSdfSurfaceName) ?: return inTextures
         val sceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
 
         val (xPixelOffset, yPixelOffset) = GiSceneRenderer.calculatePixelOffset(sceneSurface)
@@ -47,7 +47,7 @@ class GiCompose(
         program.setUniformSampler("sceneTex", sceneSurface.getTexture(0, final = false), filter = LINEAR)
         program.setUniformSampler("sceneMetadataTex", sceneSurface.getTexture(1, final = false), filter = LINEAR)
         program.setUniformSampler("lightTex", lightSurface.getTexture())
-        program.setUniformSampler("internalDistanceFieldTex", distFieldSurface.getTexture(1))
+        program.setUniformSampler("localSdfTex", localSdfSurface.getTexture())
         renderer.draw()
         fbo.release()
 

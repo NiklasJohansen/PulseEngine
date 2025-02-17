@@ -13,7 +13,8 @@ uniform sampler2D localSceneTex;
 uniform sampler2D localMetadataTex;
 uniform sampler2D globalSceneTex;
 uniform sampler2D globalMetadataTex;
-uniform sampler2D distanceFieldTex;
+uniform sampler2D localSdfTex;
+uniform sampler2D globalSdfTex;
 uniform sampler2D upperCascadeTex;
 
 uniform vec4 skyColor;
@@ -50,8 +51,8 @@ vec4 raymarch(vec2 rayPos, vec2 rayDir, float rayLen)
 
     while (steps < maxSteps && traveledDist < rayLen)
     {
-        vec2 fieldDist = texture(distanceFieldTex, rayPos).rg;
-        float stepSize = mix(fieldDist.r, fieldDist.g, space) * sdfDecodeScale; // r=screen, g=world
+        float fieldDist = texture(space == SCREEN ? localSdfTex : globalSdfTex, rayPos).r;
+        float stepSize = max(fieldDist, 0.0) * sdfDecodeScale;
         vec2 samplePos = rayPos + rayDir * stepSize;
 
         if (samplePos.x < 0.0 || samplePos.x > 1.0 || samplePos.y < 0.0 || samplePos.y > 1.0)

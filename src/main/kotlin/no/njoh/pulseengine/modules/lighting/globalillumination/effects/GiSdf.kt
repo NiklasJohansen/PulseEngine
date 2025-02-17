@@ -9,13 +9,12 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 
-class GiDistanceField(override val name: String = "distance_field") : BaseEffect(
-    TextureDescriptor(format = RG16F, filter = NEAREST, attachment = COLOR_TEXTURE_0), // External distance field
-    TextureDescriptor(format = RG16F, filter = NEAREST, attachment = COLOR_TEXTURE_1) // Internal distance field
+class GiSdf(override val name: String = "sdf") : BaseEffect(
+    TextureDescriptor(format = R16F, filter = NEAREST, attachment = COLOR_TEXTURE_0)
 ) {
     override fun loadShaderProgram() = ShaderProgram.create(
         vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/gi/distance_field.frag"
+        fragmentShaderFileName = "/pulseengine/shaders/gi/sdf.frag"
     )
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
@@ -23,8 +22,7 @@ class GiDistanceField(override val name: String = "distance_field") : BaseEffect
         fbo.bind()
         fbo.clear()
         program.bind()
-        program.setUniformSampler("jfaExternalTex", inTextures[0])
-        program.setUniformSampler("jfaInternalTex", inTextures[1])
+        program.setUniformSampler("jfaTex", inTextures[0])
         renderer.draw()
         fbo.release()
         return fbo.getTextures()
