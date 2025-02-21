@@ -21,6 +21,8 @@ class Camera2DController(
     fun update(engine: PulseEngine, camera: Camera? = null, enableScrolling: Boolean = true)
     {
         val cam = camera ?: engine.gfx.mainCamera
+        val xCenter = engine.window.width * 0.5f
+        val yCenter = engine.window.height * 0.5f
 
         if (enableScrolling)
         {
@@ -41,13 +43,9 @@ class Camera2DController(
             val yScale = min(maxScale, max(minScale, cam.scale.y + scaleChangeRate))
             val xScaleDiff = xScale - cam.scale.x
             val yScaleDiff = yScale - cam.scale.y
-            val xCenter = engine.window.width * 0.5f
-            val yCenter = engine.window.height * 0.5f
 
             cam.scale.x = xScale
             cam.scale.y = yScale
-            cam.origin.x = xCenter
-            cam.origin.y = yCenter
             cam.position.x -= (engine.input.xMouse - xCenter) * xScaleDiff / (xScale * xScale)
             cam.position.y -= (engine.input.yMouse - yCenter) * yScaleDiff / (yScale * yScale)
         }
@@ -58,6 +56,8 @@ class Camera2DController(
             yPosChangeRate += engine.input.ydMouse / cam.scale.y * (1f - smoothing)
         }
 
+        cam.origin.x = xCenter
+        cam.origin.y = yCenter
         cam.position.x += xPosChangeRate
         cam.position.y += yPosChangeRate
 
