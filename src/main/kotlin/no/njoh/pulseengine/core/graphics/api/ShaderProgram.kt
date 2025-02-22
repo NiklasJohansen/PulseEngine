@@ -155,7 +155,7 @@ class ShaderProgram(
     }
 
     private fun getUniformLocation(name: String): Int =
-        glGetUniformLocation(id, name).also { if (it == -1) Logger.error("Uniform '$name' not found in shader program: $id (${shaders.joinToString { it.fileName }})") }
+        glGetUniformLocation(id, name).also { if (it == -1) Logger.warn("Uniform '$name' not found in shader program: $id (${shaders.joinToString { it.fileName }})") }
 
     companion object
     {
