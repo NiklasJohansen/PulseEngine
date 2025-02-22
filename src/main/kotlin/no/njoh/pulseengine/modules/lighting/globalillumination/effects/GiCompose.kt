@@ -44,6 +44,7 @@ class GiCompose(
         program.setUniform("scale", sceneSurface.camera.scale.x)
         program.setUniform("sourceMultiplier", lightSystem.sourceMultiplier)
         program.setUniform("occluderAmbientLight", lightSystem.occluderAmbientLight)
+        program.setUniform("resolution", inTextures[0].width.toFloat(), inTextures[0].height.toFloat())
         program.setUniformSampler("sceneTex", sceneSurface.getTexture(0, final = false), filter = LINEAR)
         program.setUniformSampler("sceneMetadataTex", sceneSurface.getTexture(1, final = false), filter = LINEAR)
         program.setUniformSampler("lightTex", lightSurface.getTexture())

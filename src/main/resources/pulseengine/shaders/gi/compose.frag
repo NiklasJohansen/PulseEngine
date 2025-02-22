@@ -14,6 +14,7 @@ uniform float dithering;
 uniform float scale;
 uniform float sourceMultiplier;
 uniform vec4 occluderAmbientLight;
+uniform vec2 resolution;
 
 const float sdfDecodeScale = sqrt(2.0) / 65000.0;
 
@@ -47,19 +48,20 @@ void main()
         {
             light = occluderAmbientLight.rgb;
 
-            float o = 0.002 * scale;
-            vec2 offset[9] = vec2[9](vec2(0,0), vec2(o,0), vec2(-o,0), vec2(0,o), vec2(0,-o), vec2(o,o), vec2(-o,o), vec2(o,-o), vec2(-o,-o));
-            float edgeLightStrengt = sceneMeta.a;
+            vec2 o = (1.0 / resolution) * scale;
+            vec2 offset[9] = vec2[9](vec2(0,0), vec2(o.x,0), vec2(-o.x,0), vec2(0,o.y), vec2(0,-o.y), vec2(o.x,o.y), vec2(-o.x,o.y), vec2(o.x,-o.y), vec2(-o.x,-o.y));
+            float edgeLightStrengt = sceneMeta.a * 0.01;
 
             for (int i = 0; i < 9; i++)
             {
                 vec2 pos = clamp(offsetUv + offset[i], 0.0, 1.0);
                 float dist = -texture(localSdfTex, pos).x * sdfDecodeScale;
                 vec2 dir = getSdfDirection(pos);
-                float falloff = (edgeLightStrengt * 0.01) / (1.0 + (dist / scale) * 100.0);
+                vec2 lightSamplePos = clamp(offsetUv + dir * dist * 1.3, 0.0, 1.0);
+                float falloff = edgeLightStrengt / (1.0 + (dist / scale) * 100.0);
                 falloff = clamp(falloff, 0.0, 1.0);
                 falloff = pow(falloff, 3.0);
-                light += texture(lightTex, clamp(offsetUv + dir * dist * 1.3, 0.0, 1.0)).rgb * falloff / 9.0;
+                light += texture(lightTex, lightSamplePos).rgb * falloff / 9.0;
             }
         }
     }

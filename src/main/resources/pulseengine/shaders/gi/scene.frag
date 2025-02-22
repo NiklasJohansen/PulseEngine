@@ -23,12 +23,8 @@ void main()
         float border = clamp(quadCornerRadius, 0.0, 0.5 * min(quadSize.x, quadSize.y));
         vec2 corner = clamp(pos, vec2(border), quadSize - border);
         float distFromCorner = length(pos - corner) - border;
-        float alpha = 1.0f - clamp(distFromCorner, 0.0, 1.0);
-
-        if (alpha < 0.8) discard;
-
-        color.a *= alpha;
-        intensity * alpha;
+        if (distFromCorner > 0.0)
+            discard;
     }
 
     sceneColor = color;
