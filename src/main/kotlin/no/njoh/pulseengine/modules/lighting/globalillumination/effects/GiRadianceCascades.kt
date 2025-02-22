@@ -58,11 +58,10 @@ class GiRadianceCascades(
         val skyLight = if (lightSystem.skyLight) lightSystem.skyIntensity else 0f
         val sunLight = if (lightSystem.skyLight) lightSystem.sunIntensity else 0f
 
-        textureDescriptors[0].filter = lightSystem.textureFilter
-
         skyColor.setFrom(lightSystem.skyColor).multiplyRgb(skyLight)
         sunColor.setFrom(lightSystem.sunColor).multiplyRgb(sunLight)
         outTextures = inTextures
+        textureDescriptors[0].filter = lightSystem.textureFilter
 
         program.bind()
         program.setUniform("resolution", width, height)

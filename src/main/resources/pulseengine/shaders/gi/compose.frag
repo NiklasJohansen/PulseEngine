@@ -13,19 +13,27 @@ uniform vec2 sampleOffset;
 uniform float dithering;
 uniform float scale;
 uniform float sourceMultiplier;
-uniform vec4 occluderAmbientLight;
+uniform vec4 ambientLight;
+uniform vec4 ambientOccluderLight;
 uniform vec2 resolution;
 
 const float sdfDecodeScale = sqrt(2.0) / 65000.0;
 
-vec2 getSdfDirection(vec2 uv)
+float getSdfDistance(vec2 p)
 {
-    float texelSize = 0.002 * scale;
-    float x1 = texture(localSdfTex, clamp(uv + vec2(texelSize, 0.0), 0, 1)).r * sdfDecodeScale;
-    float x2 = texture(localSdfTex, clamp(uv - vec2(texelSize, 0.0), 0, 1)).r * sdfDecodeScale;
-    float y1 = texture(localSdfTex, clamp(uv + vec2(0.0, texelSize), 0, 1)).r * sdfDecodeScale;
-    float y2 = texture(localSdfTex, clamp(uv - vec2(0.0, texelSize), 0, 1)).r * sdfDecodeScale;
-    return normalize(vec2(x1 - x2, y1 - y2));
+    return -texture(localSdfTex, clamp(p, 0, 1)).r * sdfDecodeScale;
+}
+
+vec2 getSdfDirection(vec2 p)
+{
+    float h = 0.002 * scale;
+    const vec2 k = vec2(1, -1);
+    return normalize(
+        k.xy * texture(localSdfTex, clamp(p + k.xy * h, 0, 1)).r * sdfDecodeScale +
+        k.yx * texture(localSdfTex, clamp(p + k.yx * h, 0, 1)).r * sdfDecodeScale +
+        k.xx * texture(localSdfTex, clamp(p + k.xx * h, 0, 1)).r * sdfDecodeScale +
+        k.yy * texture(localSdfTex, clamp(p + k.yy * h, 0, 1)).r * sdfDecodeScale
+    );
 }
 
 void main()
@@ -46,25 +54,30 @@ void main()
         }
         else
         {
-            light = occluderAmbientLight.rgb;
+            light = ambientOccluderLight.rgb;
 
-            vec2 o = (1.0 / resolution) * scale;
-            vec2 offset[9] = vec2[9](vec2(0,0), vec2(o.x,0), vec2(-o.x,0), vec2(0,o.y), vec2(0,-o.y), vec2(o.x,o.y), vec2(-o.x,o.y), vec2(o.x,-o.y), vec2(-o.x,-o.y));
+            float o = 0.002 * scale;
+            vec2 offset[9] = vec2[9](vec2(0,0), vec2(o,0), vec2(-o,0), vec2(0,o), vec2(0,-o), vec2(o,o), vec2(-o,o), vec2(o,-o), vec2(-o,-o));
             float edgeLightStrengt = sceneMeta.a * 0.01;
 
             for (int i = 0; i < 9; i++)
             {
                 vec2 pos = clamp(offsetUv + offset[i], 0.0, 1.0);
-                float dist = -texture(localSdfTex, pos).x * sdfDecodeScale;
                 vec2 dir = getSdfDirection(pos);
-                vec2 lightSamplePos = clamp(offsetUv + dir * dist * 1.3, 0.0, 1.0);
+                float dist = getSdfDistance(pos);
+
                 float falloff = edgeLightStrengt / (1.0 + (dist / scale) * 100.0);
                 falloff = clamp(falloff, 0.0, 1.0);
                 falloff = pow(falloff, 3.0);
-                light += texture(lightTex, lightSamplePos).rgb * falloff / 9.0;
+
+                vec2 samplePos = clamp(offsetUv + dir * dist * 1.3, 0.0, 1.0);
+                light += texture(lightTex, samplePos).rgb * falloff / 9.0;
             }
         }
     }
+
+    // Ambient light
+    light += ambientLight.rgb;
 
     // Add some dithering to prevent color banding
     float noise = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);

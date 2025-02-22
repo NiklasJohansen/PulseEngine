@@ -234,7 +234,7 @@ open class DirectLightingSystem : SceneSystem()
                 surface.addPostProcessingEffect(DirectLightBlendEffect(POST_EFFECT_NAME, ambientColor, engine.gfx.mainCamera))
                 postEffectSurfaces.add(surface.config.name)
             }
-             lastTargetSurfaces = targetSurfaces
+            lastTargetSurfaces = targetSurfaces
         }
 
         postEffectSurfaces.forEachPostEffect(engine)

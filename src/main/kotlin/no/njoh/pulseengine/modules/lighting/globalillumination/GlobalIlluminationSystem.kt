@@ -21,35 +21,36 @@ import kotlin.math.*
 @Icon("LIGHT_BULB")
 open class GlobalIlluminationSystem : SceneSystem()
 {
-    @Prop(i = 0)                      var skyLight = true
-    @Prop(i = 1)                      var skyColor = Color(0.02f, 0.08f, 0.2f, 1f)
-    @Prop(i = 2)                      var sunColor = Color(0.95f, 0.95f, 0.9f, 1f)
-    @Prop(i = 3)                      var skyIntensity = 0.1f
-    @Prop(i = 5)                      var sunIntensity = 0.01f
-    @Prop(i = 6)                      var sunDistance = 10f
-    @Prop(i = 7)                      var sunAngle = 0f
-    @Prop(i = 8)                      var dithering = 0.7f
-    @Prop(i = 9)                      var textureFilter = LINEAR
-    @Prop(i = 10, min=0.01f, max=2f)  var lightTextureScale = 0.5f
-    @Prop(i = 11, min=0.01f, max=2f)  var localSceneTextureScale = 0.4f
-    @Prop(i = 12, min=0.01f, max=4f)  var globalSceneTextureScale = 0.8f
-    @Prop(i = 13, min=0f)             var drawCascade = 0
-    @Prop(i = 14, min=0f)             var maxCascades = 10
-    @Prop(i = 15, min=0f)             var maxSteps = 30
-    @Prop(i = 16, min=0f)             var intervalLength = 1.5f
-    @Prop(i = 17, min=0f, max=1f)     var intervalOverlap = 1f
-    @Prop(i = 19, min=0f, max=1f)     var bounceAccumulation = 0.5f
-    @Prop(i = 20, min=0f)             var bounceRadius = 0f // 0=infinite
-    @Prop(i = 21, min=0f, max=1f)     var bounceEdgeFade = 0.2f
-    @Prop(i = 22, min=0f)             var sourceMultiplier = 1f
-    @Prop(i = 23)                     var occluderAmbientLight = Color(0f, 0f, 0f, 1f)
-    @Prop(i = 24, min=1f)             var worldScale = 4f
-    @Prop(i = 25)                     var traceWorldRays = true
-    @Prop(i = 26)                     var mergeCascades = true
-    @Prop(i = 27)                     var bilinearFix = true
-    @Prop(i = 28)                     var forkFix = true
-    @Prop(i = 29)                     var fixJitter = true
-    @Prop(i = 30)                     var targetSurface = "main"
+    @Prop(i = 0)                      var ambientLight = Color(0f, 0f, 0f, 1f)
+    @Prop(i = 1)                      var ambientOccluderLight = Color(0f, 0f, 0f, 1f)
+    @Prop(i = 2)                      var skyLight = true
+    @Prop(i = 3)                      var skyColor = Color(0.02f, 0.08f, 0.2f, 1f)
+    @Prop(i = 5)                      var sunColor = Color(0.95f, 0.95f, 0.9f, 1f)
+    @Prop(i = 6)                      var skyIntensity = 0.1f
+    @Prop(i = 7)                      var sunIntensity = 0.01f
+    @Prop(i = 8)                      var sunDistance = 10f
+    @Prop(i = 9)                      var sunAngle = 0f
+    @Prop(i = 10)                     var dithering = 0.7f
+    @Prop(i = 11)                     var textureFilter = LINEAR
+    @Prop(i = 12, min=0.01f, max=2f)  var lightTextureScale = 0.5f
+    @Prop(i = 13, min=0.01f, max=2f)  var localSceneTextureScale = 0.4f
+    @Prop(i = 14, min=0.01f, max=4f)  var globalSceneTextureScale = 0.8f
+    @Prop(i = 15, min=0f)             var drawCascade = 0
+    @Prop(i = 16, min=0f)             var maxCascades = 10
+    @Prop(i = 17, min=0f)             var maxSteps = 30
+    @Prop(i = 19, min=0f)             var intervalLength = 1.5f
+    @Prop(i = 20, min=0f, max=1f)     var intervalOverlap = 1f
+    @Prop(i = 21, min=0f, max=1f)     var bounceAccumulation = 0.5f
+    @Prop(i = 22, min=0f)             var bounceRadius = 0f // 0=infinite
+    @Prop(i = 23, min=0f, max=1f)     var bounceEdgeFade = 0.2f
+    @Prop(i = 24, min=0f)             var sourceMultiplier = 1f
+    @Prop(i = 25, min=1f)             var worldScale = 4f
+    @Prop(i = 26)                     var traceWorldRays = true
+    @Prop(i = 27)                     var mergeCascades = true
+    @Prop(i = 28)                     var bilinearFix = true
+    @Prop(i = 29)                     var forkFix = true
+    @Prop(i = 30)                     var fixJitter = true
+    @Prop(i = 31)                     var targetSurface = "main"
 
     private var lastTargetSurface = ""
 
@@ -58,7 +59,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.createSurface(
             name = GI_LOCAL_SCENE,
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 5,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 6,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -73,7 +74,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.gfx.createSurface(
             name = GI_GLOBAL_SCENE,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 4,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 5,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -87,7 +88,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.gfx.createSurface(
             name = GI_LOCAL_SDF,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 3,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 4,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -179,10 +180,10 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.mainSurface.deletePostProcessingEffect(GI_BLEND_EFFECT)
         engine.gfx.deleteSurface(GI_LOCAL_SCENE)
         engine.gfx.deleteSurface(GI_GLOBAL_SCENE)
-        engine.gfx.deleteSurface(GI_LIGHT_RAW)
-        engine.gfx.deleteSurface(GI_LIGHT_FINAL)
         engine.gfx.deleteSurface(GI_LOCAL_SDF)
         engine.gfx.deleteSurface(GI_GLOBAL_SDF)
+        engine.gfx.deleteSurface(GI_LIGHT_RAW)
+        engine.gfx.deleteSurface(GI_LIGHT_FINAL)
     }
 
     override fun onStateChanged(engine: PulseEngine)
