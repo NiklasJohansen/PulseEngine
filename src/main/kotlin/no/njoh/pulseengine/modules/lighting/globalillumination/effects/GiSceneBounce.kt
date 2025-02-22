@@ -37,6 +37,8 @@ class GiSceneBounce(
         program.setUniform("lastViewProjectionMatrix", lastViewProjectionMatrix)
         program.setUniform("currentViewProjectionMatrix", lightSurface.camera.viewProjectionMatrix)
         program.setUniform("bounceAccumulation", lightSystem.bounceAccumulation)
+        program.setUniform("bounceRadius", lightSystem.bounceRadius)
+        program.setUniform("bounceEdgeFade", lightSystem.bounceEdgeFade)
         program.setUniform("resolution", fbo.width.toFloat(), fbo.height.toFloat())
         program.setUniform("scale", lightSurface.camera.scale.x)
         program.setUniformSampler("sceneTex", inTextures[0])

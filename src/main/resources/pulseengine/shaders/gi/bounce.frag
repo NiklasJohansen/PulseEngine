@@ -11,6 +11,8 @@ uniform sampler2D sceneMetaTex;
 uniform sampler2D lightTex;
 
 uniform float bounceAccumulation;
+uniform float bounceEdgeFade;
+uniform float bounceRadius;
 uniform vec2 resolution;
 uniform float scale;
 
@@ -39,12 +41,12 @@ void main()
         }
 
         // Fade out bounce light near the edge of the screen
-        float edgeFade = 1.0 - smoothstep(0.4, 0.5, max(abs(uv.x - 0.5), abs(uv.y - 0.5)));
+        float edgeFade = 1.0 - smoothstep(0.5 * (1.0 - bounceEdgeFade), 0.5, max(abs(uv.x - 0.5), abs(uv.y - 0.5)));
         vec3 avgBounceLight = lightAcc / max(1.0, n);
 
         scene.rgb *= avgBounceLight * bounceAccumulation * edgeFade;
+        sceneMeta.a = bounceRadius; // sourceRadius
         sceneMeta.b = 1.0; // sourceIntensity = 1.0
-        sceneMeta.a = 0.0; // sourceRadius = unlimited
     }
 
     sceneColor = scene;

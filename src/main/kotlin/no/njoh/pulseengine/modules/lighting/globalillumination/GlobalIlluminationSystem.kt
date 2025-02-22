@@ -39,15 +39,17 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 16, min=0f)             var intervalLength = 1.5f
     @Prop(i = 17, min=0f, max=1f)     var intervalOverlap = 1f
     @Prop(i = 19, min=0f, max=1f)     var bounceAccumulation = 0.5f
-    @Prop(i = 20, min=0f)             var sourceMultiplier = 1f
-    @Prop(i = 21)                     var occluderAmbientLight = Color(0f, 0f, 0f, 1f)
-    @Prop(i = 22, min=1f)             var worldScale = 4f
-    @Prop(i = 23)                     var traceWorldRays = true
-    @Prop(i = 24)                     var mergeCascades = true
-    @Prop(i = 25)                     var bilinearFix = true
-    @Prop(i = 26)                     var forkFix = true
-    @Prop(i = 27)                     var fixJitter = true
-    @Prop(i = 28)                     var targetSurface = "main"
+    @Prop(i = 20, min=0f)             var bounceRadius = 0f // 0=infinite
+    @Prop(i = 21, min=0f, max=1f)     var bounceEdgeFade = 0.2f
+    @Prop(i = 22, min=0f)             var sourceMultiplier = 1f
+    @Prop(i = 23)                     var occluderAmbientLight = Color(0f, 0f, 0f, 1f)
+    @Prop(i = 24, min=1f)             var worldScale = 4f
+    @Prop(i = 25)                     var traceWorldRays = true
+    @Prop(i = 26)                     var mergeCascades = true
+    @Prop(i = 27)                     var bilinearFix = true
+    @Prop(i = 28)                     var forkFix = true
+    @Prop(i = 29)                     var fixJitter = true
+    @Prop(i = 30)                     var targetSurface = "main"
 
     private var lastTargetSurface = ""
 

@@ -1,4 +1,5 @@
 #version 330 core
+#define PI 3.14159265359
 
 in vec2 uv;
 out vec4 fragColor;
@@ -33,7 +34,7 @@ void main()
     vec4 scene = texture(sceneTex, offsetUv);
     vec4 sceneMeta = texture(sceneMetadataTex, offsetUv);
 
-    bool isOccluder = scene.a > 0.5;
+    bool isOccluder = scene.a > 0.8;
     bool isLightSource = sceneMeta.b > 0.0; // sourceIntensity > 0.0
 
     if (isOccluder)
