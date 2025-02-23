@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.lighting.globalillumination
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
+import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.NONE
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
@@ -132,6 +133,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             zOrder = engine.gfx.mainSurface.config.zOrder + 1,
             isVisible = false,
             backgroundColor = Color.BLANK,
+            blendFunction = ADDITIVE,
             textureScale = 1f,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {

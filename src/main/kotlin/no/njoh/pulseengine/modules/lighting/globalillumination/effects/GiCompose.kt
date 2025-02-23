@@ -30,9 +30,9 @@ class GiCompose(
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
         val localSdfSurface = engine.gfx.getSurface(localSdfSurfaceName) ?: return inTextures
-        val sceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
+        val localSceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
 
-        val (xPixelOffset, yPixelOffset) = GiSceneRenderer.calculatePixelOffset(sceneSurface)
+        val (xPixelOffset, yPixelOffset) = GiSceneRenderer.calculatePixelOffset(localSceneSurface)
         val xSampleOffset = if (lightSystem.fixJitter) xPixelOffset / lightSurface.config.width else 0f
         val ySampleOffset = if (lightSystem.fixJitter) yPixelOffset / lightSurface.config.height else 0f
 
@@ -41,13 +41,13 @@ class GiCompose(
         program.bind()
         program.setUniform("sampleOffset", xSampleOffset, ySampleOffset)
         program.setUniform("dithering", lightSystem.dithering)
-        program.setUniform("scale", sceneSurface.camera.scale.x)
+        program.setUniform("scale", localSceneSurface.camera.scale.x)
         program.setUniform("sourceMultiplier", lightSystem.sourceMultiplier)
         program.setUniform("ambientLight", lightSystem.ambientLight)
         program.setUniform("ambientOccluderLight", lightSystem.ambientOccluderLight)
-        program.setUniform("resolution", inTextures[0].width.toFloat(), inTextures[0].height.toFloat())
-        program.setUniformSampler("sceneTex", sceneSurface.getTexture(0, final = false), filter = LINEAR)
-        program.setUniformSampler("sceneMetadataTex", sceneSurface.getTexture(1, final = false), filter = LINEAR)
+        program.setUniformSampler("baseTex", inTextures[0])
+        program.setUniformSampler("localSceneTex", localSceneSurface.getTexture(0, final = false), filter = LINEAR)
+        program.setUniformSampler("localSceneMetadataTex", localSceneSurface.getTexture(1, final = false), filter = LINEAR)
         program.setUniformSampler("lightTex", lightSurface.getTexture())
         program.setUniformSampler("localSdfTex", localSdfSurface.getTexture())
         renderer.draw()

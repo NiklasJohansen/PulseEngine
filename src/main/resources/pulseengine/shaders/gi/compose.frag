@@ -4,8 +4,9 @@
 in vec2 uv;
 out vec4 fragColor;
 
-uniform sampler2D sceneTex;
-uniform sampler2D sceneMetadataTex;
+uniform sampler2D baseTex;
+uniform sampler2D localSceneTex;
+uniform sampler2D localSceneMetadataTex;
 uniform sampler2D lightTex;
 uniform sampler2D localSdfTex;
 
@@ -15,7 +16,6 @@ uniform float scale;
 uniform float sourceMultiplier;
 uniform vec4 ambientLight;
 uniform vec4 ambientOccluderLight;
-uniform vec2 resolution;
 
 const float sdfDecodeScale = sqrt(2.0) / 65000.0;
 
@@ -39,9 +39,10 @@ vec2 getSdfDirection(vec2 p)
 void main()
 {
     vec2 offsetUv = clamp(uv + sampleOffset, 0.0, 1.0);
+    vec3 base = texture(baseTex, uv).rgb;
     vec3 light = texture(lightTex, offsetUv).rgb;
-    vec4 scene = texture(sceneTex, offsetUv);
-    vec4 sceneMeta = texture(sceneMetadataTex, offsetUv);
+    vec4 scene = texture(localSceneTex, offsetUv);
+    vec4 sceneMeta = texture(localSceneMetadataTex, offsetUv);
 
     bool isOccluder = scene.a > 0.8;
     bool isLightSource = sceneMeta.b > 0.0; // sourceIntensity > 0.0
@@ -83,5 +84,5 @@ void main()
     float noise = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
     light += mix(-dithering / 255.0, dithering / 255.0, noise);
 
-    fragColor = vec4(light, 1.0);
+    fragColor = vec4(base + light, 1.0);
 }
