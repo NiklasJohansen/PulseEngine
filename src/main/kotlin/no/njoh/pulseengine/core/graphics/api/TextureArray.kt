@@ -2,11 +2,13 @@ package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
+import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
 import org.lwjgl.opengl.ARBInternalformatQuery2.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.ARBTextureStorage.glTexStorage3D
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL12.glTexSubImage3D
+import org.lwjgl.opengl.GL21.GL_SRGB8_ALPHA8
 
 class TextureArray(
     val samplerIndex: Int,
@@ -46,13 +48,18 @@ class TextureArray(
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, id)
 
-        if (format == RGBA8 && texture.pixelsLDR != null)
+        if ((format == RGBA8 || format == SRGBA8) && texture.pixelsLDR != null)
         {
             glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, texIndex, texture.width, texture.height, 1, GL_RGBA, GL_UNSIGNED_BYTE, texture.pixelsLDR!!)
         }
-        else if (texture.pixelsHDR != null)
+        else if ((format == RGBA16F || format == RGBA32F) && texture.pixelsHDR != null)
         {
             glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, texIndex, texture.width, texture.height, 1, GL_RGBA, GL_FLOAT, texture.pixelsHDR!!)
+        }
+        else
+        {
+            Logger.error("Failed to upload texture to texture array. Unsupported texture format: $format")
+            return
         }
 
         glGenerateMipmap(GL_TEXTURE_2D_ARRAY)

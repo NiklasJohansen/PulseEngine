@@ -95,8 +95,11 @@ class ShaderProgram(
     fun setUniform(name: String, value1: Float, value2: Float, value3: Float, value4: Float) =
         glUniform4f(uniformLocationOf(name), value1, value2, value3, value4)
 
-    fun setUniform(name: String, color: Color) =
-        glUniform4f(uniformLocationOf(name), color.red, color.green, color.blue, color.alpha)
+    fun setUniform(name: String, color: Color, convertFromSRgbToLinear: Boolean = true)
+    {
+        val c = if (convertFromSRgbToLinear) color.asLinear() else color
+        glUniform4f(uniformLocationOf(name), c.red, c.green, c.blue, c.alpha)
+    }
 
     fun setVertexAttributeLayout(name: String, count: Int, type: Int, stride: Int, offset: Long, divisor: Int = 0, normalized: Boolean = false)
     {

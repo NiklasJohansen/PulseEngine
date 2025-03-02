@@ -13,13 +13,14 @@ uniform vec2 origin;
 uniform float angle;
 uniform int color;
 
-vec4 getColor(uint rgba)
+vec4 unpackAndConvert(uint rgba)
 {
-    uint r = ((rgba >> uint(24)) & uint(255));
-    uint g = ((rgba >> uint(16)) & uint(255));
-    uint b = ((rgba >> uint(8))  & uint(255));
-    uint a = (rgba & uint(255));
-    return vec4(r, g, b, a) / 255.0f;
+    // Unpack the rgba color and convert it from sRGB to linear space
+    vec4 sRgba = vec4((rgba >> 24u) & 255u, (rgba >> 16u) & 255u, (rgba >> 8u) & 255u, rgba & 255u) / 255.0;
+    vec3 lowRange = sRgba.rgb / 12.92;
+    vec3 highRange = pow((sRgba.rgb + 0.055) / 1.055, vec3(2.4));
+    vec3 linearRgb = mix(highRange, lowRange, lessThanEqual(sRgba.rgb, vec3(0.0031308)));
+    return vec4(linearRgb, sRgba.a);
 }
 
 mat2 rotate(float angle)
@@ -35,7 +36,7 @@ mat2 rotate(float angle)
 void main()
 {
     textureCoord = vec2(vertexPos.x, 1.0 - vertexPos.y);
-    vertexColor = getColor(uint(color));
+    vertexColor = unpackAndConvert(uint(color));
 
     vec2 offset = (vertexPos - origin) * size * rotate(radians(angle));
     vec4 vertexPos = vec4(position, 1.0) + vec4(offset, 0.0, 0.0);

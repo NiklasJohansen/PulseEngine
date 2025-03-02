@@ -12,6 +12,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.CameraInternal
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 
@@ -59,7 +60,7 @@ interface Graphics
         camera: Camera? = null,
         isVisible: Boolean = true,
         textureScale: Float = 1f,
-        textureFormat: TextureFormat = RGBA8,
+        textureFormat: TextureFormat = RGBA16F,
         textureFilter: TextureFilter = LINEAR,
         multisampling: Multisampling = NONE,
         blendFunction: BlendFunction = BlendFunction.NORMAL,

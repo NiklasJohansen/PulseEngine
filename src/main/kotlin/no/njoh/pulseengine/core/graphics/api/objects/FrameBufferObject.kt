@@ -107,9 +107,9 @@ open class FrameBufferObject(
 
                 if (textureId != null)
                 {
-                    val texture = Texture("", name = "fbo_${tex.attachment.name.lowercase()}", tex.filter, tex.wrapping, mipLevels = 1)
+                    val texture = Texture("", name = "fbo_${tex.attachment.name.lowercase()}", tex.filter, tex.wrapping, tex.format, mipLevels = 1)
                     val handle = TextureHandle.create(0, textureId)
-                    texture.stage(null as ByteBuffer?, texWidth, texHeight, tex.format)
+                    texture.stage(null as ByteBuffer?, texWidth, texHeight)
                     texture.finalize(handle, isBindless = false, attachment = tex.attachment)
                     textures.add(texture)
                 }

@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.graphics.api.StencilState.Action.SET
 import no.njoh.pulseengine.core.graphics.renderers.StencilRenderer
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import org.lwjgl.opengl.GL20.*
+import org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_SRGB
 
 /**
  * Base interface for all render states.
@@ -48,6 +49,9 @@ object BackBufferBaseState : RenderState
 
         // Set viewport size
         glViewport(0, 0, surface.config.width, surface.config.height)
+
+        // Enable sRGB color space
+        glEnable(GL_FRAMEBUFFER_SRGB)
     }
 }
 
@@ -67,6 +71,9 @@ object PostProcessingBaseState : RenderState
 
         // Disable blending
         glDisable(GL_BLEND)
+
+        // Disable sRGB color space
+        glDisable(GL_FRAMEBUFFER_SRGB)
     }
 }
 
@@ -105,6 +112,9 @@ object BatchRenderBaseState : RenderState
         val c = config.backgroundColor
         glClearColor(c.red, c.green, c.blue, c.alpha)
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+
+        // Disable sRGB color space
+        glDisable(GL_FRAMEBUFFER_SRGB)
     }
 }
 

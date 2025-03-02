@@ -3,6 +3,8 @@ package no.njoh.pulseengine.core.asset
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR_MIPMAP
+import no.njoh.pulseengine.core.graphics.api.TextureFormat
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.SRGBA8
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.REPEAT
 import no.njoh.pulseengine.core.input.CursorType
@@ -42,17 +44,39 @@ abstract class AssetManager
     /**
      * Loads all [Texture]s in the given [directory].
      */
-    abstract fun loadAllTextures(directory: String)
+    abstract fun loadAllTextures(
+        directory: String,
+        filter: TextureFilter = LINEAR_MIPMAP,
+        wrapping: TextureWrapping = REPEAT,
+        format: TextureFormat = SRGBA8,
+        mipLevels: Int = 5,
+    )
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Texture].
      */
-    abstract fun loadTexture(fileName: String, assetName: String, filter: TextureFilter = LINEAR_MIPMAP, wrapping: TextureWrapping = REPEAT, mipLevels: Int = 5)
+    abstract fun loadTexture(
+        fileName: String,
+        assetName: String,
+        filter: TextureFilter = LINEAR_MIPMAP,
+        wrapping: TextureWrapping = REPEAT,
+        format: TextureFormat = SRGBA8,
+        mipLevels: Int = 5,
+    )
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [SpriteSheet].
      */
-    abstract fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int, filter: TextureFilter = LINEAR_MIPMAP, wrapping: TextureWrapping = REPEAT, mipLevels: Int = 5)
+    abstract fun loadSpriteSheet(
+        fileName: String,
+        assetName: String,
+        horizontalCells: Int,
+        verticalCells: Int,
+        filter: TextureFilter = LINEAR_MIPMAP,
+        wrapping: TextureWrapping = REPEAT,
+        format: TextureFormat = SRGBA8,
+        mipLevels: Int = 5,
+    )
 
     /**
      * Loads the file with given [fileName] and ads it to the [AssetManager] as a [Font].

@@ -2,8 +2,7 @@ package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureHandle.Companion.INVALID
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.shared.annotations.Icon
@@ -20,7 +19,8 @@ open class Texture(
     override val name: String,
     val filter: TextureFilter,
     val wrapping: TextureWrapping,
-    val mipLevels: Int
+    val format: TextureFormat,
+    val mipLevels: Int,
 ) : Asset(name, filename) {
 
     var handle: TextureHandle = INVALID
@@ -45,9 +45,6 @@ open class Texture(
         private set
 
     var isBindless: Boolean = false
-        private set
-
-    var format: TextureFormat = RGBA8
         private set
 
     var pixelsLDR: ByteBuffer? = null
@@ -88,17 +85,22 @@ open class Texture(
 
             stbi_info_from_memory(buffer, width, height, components)
 
-            if (stbi_is_hdr_from_memory(buffer))
+            when (format)
             {
-                this.format = RGBA16F
-                this.pixelsHDR = stbi_loadf_from_memory(buffer, width, height, components, STBI_rgb_alpha)
-                    ?: throw RuntimeException("Could not load HDR image into memory: " + stbi_failure_reason())
-            }
-            else
-            {
-                this.format = RGBA8
-                this.pixelsLDR = stbi_load_from_memory(buffer, width, height, components, STBI_rgb_alpha)
-                    ?: throw RuntimeException("Could not load image into memory: " + stbi_failure_reason())
+                SRGBA8, RGBA8 ->
+                {
+                    if (stbi_is_hdr_from_memory(buffer))
+                        Logger.warn("Loading HDR texture: $fileName into LDR format: $format")
+
+                    this.pixelsLDR = stbi_load_from_memory(buffer, width, height, components, STBI_rgb_alpha)
+                        ?: throw RuntimeException("Could not load image into memory: " + stbi_failure_reason())
+                }
+                RGBA16F, RGBA32F ->
+                {
+                    this.pixelsHDR = stbi_loadf_from_memory(buffer, width, height, components, STBI_rgb_alpha)
+                        ?: throw RuntimeException("Could not load HDR image into memory: " + stbi_failure_reason())
+                }
+                else -> throw RuntimeException("Unsupported texture format: $format")
             }
             this.width = width[0]
             this.height = height[0]
@@ -113,10 +115,9 @@ open class Texture(
         }
     }
 
-    fun stage(pixels: ByteBuffer?, width: Int, height: Int, format: TextureFormat = RGBA8)
+    fun stage(pixels: ByteBuffer?, width: Int, height: Int)
     {
         this.pixelsLDR = pixels
-        this.format = format
         this.width = width
         this.height = height
     }
@@ -126,10 +127,10 @@ open class Texture(
     companion object
     {
         val SUPPORTED_FORMATS = listOf("png", "jpg", "jpeg", "hdr")
-        val BLANK = Texture(filename = "", name = "BLANK", filter = LINEAR, wrapping = CLAMP, mipLevels = 1).apply {
+        val BLANK = Texture(filename = "", name = "BLANK", filter = LINEAR, wrapping = CLAMP, format = SRGBA8, mipLevels = 1).apply {
             finalize(handle = TextureHandle.NONE, isBindless = true, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
-        val BLANK_BINDABLE = Texture(filename = "", name = "BLANK_BINDABLE", filter = LINEAR, wrapping = CLAMP, mipLevels = 1).apply {
+        val BLANK_BINDABLE = Texture(filename = "", name = "BLANK_BINDABLE", filter = LINEAR, wrapping = CLAMP, format = RGBA8, mipLevels = 1).apply {
             finalize(handle = TextureHandle.NONE, isBindless = false, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
     }

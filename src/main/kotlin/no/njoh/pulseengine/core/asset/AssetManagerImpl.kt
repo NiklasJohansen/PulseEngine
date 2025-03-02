@@ -5,6 +5,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -27,11 +28,11 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun <T : Asset> getAllOfType(type: Class<T>): List<T> =
         loadedAssets.values.filterIsInstance(type)
 
-    override fun loadTexture(fileName: String, assetName: String, filter: TextureFilter, wrapping: TextureWrapping, mipLevels: Int) =
-        load(Texture(fileName, assetName, filter, wrapping, mipLevels))
+    override fun loadTexture(fileName: String, assetName: String, filter: TextureFilter, wrapping: TextureWrapping, format: TextureFormat, mipLevels: Int) =
+        load(Texture(fileName, assetName, filter, wrapping, format, mipLevels))
 
-    override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int, filter: TextureFilter, wrapping: TextureWrapping, mipLevels: Int) =
-        load(SpriteSheet(fileName, assetName, filter, wrapping, mipLevels, horizontalCells, verticalCells))
+    override fun loadSpriteSheet(fileName: String, assetName: String, horizontalCells: Int, verticalCells: Int, filter: TextureFilter, wrapping: TextureWrapping, format: TextureFormat, mipLevels: Int) =
+        load(SpriteSheet(fileName, assetName, filter, wrapping, format, mipLevels, horizontalCells, verticalCells))
 
     override fun loadFont(fileName: String, assetName: String, fontSize: Float) =
         load(Font(fileName, assetName, fontSize))
@@ -48,7 +49,7 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun loadCursor(fileName: String, assetName: String, type: CursorType, xHotSpot: Int, yHotSpot: Int) =
         load(Cursor(fileName, assetName, type, xHotSpot, yHotSpot))
 
-    override fun loadAllTextures(directory: String)
+    override fun loadAllTextures(directory: String, filter: TextureFilter, wrapping: TextureWrapping, format: TextureFormat, mipLevels: Int)
     {
         for (fileName in directory.loadFileNames())
         {
@@ -57,7 +58,7 @@ open class AssetManagerImpl : AssetManagerInternal()
 
             val assetName = fileName.substringAfterLast("/").substringBeforeLast(".")
             if (loadedAssets.none { it.value.name == assetName } && assetsToLoad.none { it.name == assetName })
-                loadTexture(fileName, assetName)
+                loadTexture(fileName, assetName, filter, wrapping, format, mipLevels)
         }
     }
 

@@ -1,7 +1,6 @@
 #version 330 core
 #define TAU 6.28318530718
 #define PI 3.14159265359
-#define SRGB 2.2
 #define SCREEN 0.0
 #define WORLD 1.0
 #define NO_HIT -1.0
@@ -116,8 +115,7 @@ vec4 traceRay(vec2 probeCenter, vec2 rayStart, vec2 rayEnd)
     // Fade out radiance at the edge of the world to prevent popping when lights go out of global view
     float edgeFade = 1.0 - space * smoothstep(0.45, 0.5, max(abs(result.x - 0.5), abs(result.y - 0.5)));
 
-    // Convert color to linear space
-    return vec4(pow(scene.rgb * sourceIntensity * edgeFade, vec3(SRGB)), scene.a);
+    return vec4(scene.rgb * sourceIntensity * edgeFade, scene.a);
 }
 
 vec4 fetchUpperCascadeRadiance(float rayIndex, vec2 probeIndex)
@@ -269,8 +267,5 @@ void main()
     }
 
     // Divide by the amount of rays to get the average incoming radiance
-    vec3 avgRadiance = totalProbeRadiance.rgb / baseRayCount;
-
-    // Convert to sRGB if we're in the inner most cascade
-    fragColor = vec4(isInnermostCascade ? pow(avgRadiance.rgb, vec3(1.0 / SRGB)) : avgRadiance.rgb, 1.0);
+    fragColor = vec4(totalProbeRadiance.rgb / baseRayCount, 1.0);
 }

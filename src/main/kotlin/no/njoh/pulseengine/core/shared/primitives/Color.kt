@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.shared.utils.Logger
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 
 data class Color(
     var red: Float = 1f,
@@ -125,10 +126,28 @@ data class Color(
         return this
     }
 
+    /**
+     * Converts the color to linear space and returns a copy.
+     * Does not modify the original color.
+     */
+    fun asLinear(): Color
+    {
+        REUSABLE_INSTANCE.red   = if (red   <= 0.04045f) red   / 12.92f else ((red   + 0.055f) / 1.055f).pow(2.4f)
+        REUSABLE_INSTANCE.green = if (green <= 0.04045f) green / 12.92f else ((green + 0.055f) / 1.055f).pow(2.4f)
+        REUSABLE_INSTANCE.blue  = if (blue  <= 0.04045f) blue  / 12.92f else ((blue  + 0.055f) / 1.055f).pow(2.4f)
+        REUSABLE_INSTANCE.alpha = alpha
+        return REUSABLE_INSTANCE
+    }
+
     companion object
     {
         val BLANK = Color(0f, 0f, 0f, 0f)
         val BLACK = Color(0f, 0f, 0f, 1f)
         val WHITE = Color(1f, 1f, 1f, 1f)
+        val RED   = Color(1f, 0f, 0f, 1f)
+        val GREEN = Color(0f, 1f, 0f, 1f)
+        val BLUE  = Color(0f, 0f, 1f, 1f)
+
+        private val REUSABLE_INSTANCE = Color()
     }
 }

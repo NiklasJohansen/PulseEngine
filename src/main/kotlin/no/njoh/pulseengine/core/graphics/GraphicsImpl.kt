@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
@@ -19,7 +19,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL
-import org.lwjgl.opengl.GL11.*
+import org.lwjgl.opengl.GL30.*
 
 open class GraphicsImpl : GraphicsInternal
 {
@@ -45,7 +45,7 @@ open class GraphicsImpl : GraphicsInternal
             height = viewPortHeight,
             camera = mainCamera,
             multisampling = MSAA4,
-            textureFormat = RGBA8,
+            textureFormat = RGBA16F,
             textureFilter = LINEAR,
             backgroundColor = defaultClearColor.copy(),
             attachments = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
