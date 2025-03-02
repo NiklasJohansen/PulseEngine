@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.graphics.api
 
 data class TextureDescriptor(
-    var format: TextureFormat = TextureFormat.RGBA8,
+    var format: TextureFormat = TextureFormat.RGBA16F,
     var filter: TextureFilter = TextureFilter.LINEAR,
     var wrapping: TextureWrapping = TextureWrapping.CLAMP,
     var multisampling: Multisampling = Multisampling.NONE,
