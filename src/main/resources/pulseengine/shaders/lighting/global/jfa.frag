@@ -6,8 +6,8 @@ out vec4 fragColor;
 
 uniform sampler2D seedTex;
 
-uniform vec2 resolution;
 uniform float uOffset;
+uniform vec2 resolution;
 
 void main()
 {

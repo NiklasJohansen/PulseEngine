@@ -1,25 +1,26 @@
 #version 330 core
 
-uniform sampler2D srcTexture;
-uniform sampler2D bloomTexture;
-uniform sampler2DArray textureArray;
-
-uniform vec2  dirtTextureUv;
-uniform float dirtTextureIndex;
-uniform float dirtTextureIntensity;
-
 in vec2 uv;
+
 out vec4 fragColor;
+
+uniform sampler2D srcTex;
+uniform sampler2D bloomTex;
+uniform sampler2DArray texArray;
+
+uniform vec2  dirtTexUv;
+uniform float dirtTexIndex;
+uniform float dirtTexIntensity;
 
 void main()
 {
-    vec4 srcColor = texture(srcTexture, uv);
-    vec3 bloomColor = texture(bloomTexture, uv).rgb;
+    vec4 srcColor = texture(srcTex, uv);
+    vec3 bloomColor = texture(bloomTex, uv).rgb;
 
-    if (dirtTextureIntensity > 0)
+    if (dirtTexIntensity > 0)
     {
-        vec3 dirtColor = texture(textureArray, vec3(uv * dirtTextureUv, dirtTextureIndex)).rgb;
-        bloomColor += bloomColor * dirtColor * dirtTextureIntensity;
+        vec3 dirtColor = texture(texArray, vec3(uv * dirtTexUv, dirtTexIndex)).rgb;
+        bloomColor += bloomColor * dirtColor * dirtTexIntensity;
     }
 
     fragColor = vec4(srcColor.rgb + bloomColor, srcColor.a);

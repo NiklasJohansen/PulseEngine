@@ -20,7 +20,6 @@ in int flags;
 in float edgeIndex;
 in float edgeCount;
 
-// Outputs to fragment shader
 out vec2 lightPos0;
 out vec2 lightPos1;
 out float lightDepth;
@@ -35,7 +34,6 @@ flat out int lightFlags;
 flat out int firstEdgeIndex;
 flat out int lastEdgeIndex;
 
-// Uniforms
 uniform mat4 view;
 uniform mat4 projection;
 uniform vec2 resolution;

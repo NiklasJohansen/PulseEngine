@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 class ThresholdEffect(
     override val name: String,
     override val order: Int,
-    var brightnessThreshold: Float = 0.5f
+    var threshold: Float = 0.5f
 ) : BaseEffect() {
 
     override fun loadShaderProgram() = ShaderProgram.create(
@@ -20,7 +20,7 @@ class ThresholdEffect(
         fbo.bind()
         fbo.clear()
         program.bind()
-        program.setUniform("threshold", brightnessThreshold)
+        program.setUniform("threshold", threshold)
         program.setUniformSampler("tex", inTextures[0])
         renderer.draw()
         fbo.release()

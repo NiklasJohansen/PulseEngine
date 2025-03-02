@@ -3,7 +3,7 @@
 in vec2 vertexPos;
 in vec2 texCoord;
 
-out vec2 textureCoord;
+out vec2 uv;
 out vec4 vertexColor;
 
 uniform mat4 viewProjection;
@@ -27,15 +27,12 @@ mat2 rotate(float angle)
 {
     float c = cos(angle);
     float s = sin(angle);
-    return mat2(
-        c, s,
-        -s,	c
-    );
+    return mat2(c, s, -s, c);
 }
 
 void main()
 {
-    textureCoord = vec2(vertexPos.x, 1.0 - vertexPos.y);
+    uv = vec2(vertexPos.x, 1.0 - vertexPos.y);
     vertexColor = unpackAndConvert(uint(color));
 
     vec2 offset = (vertexPos - origin) * size * rotate(radians(angle));

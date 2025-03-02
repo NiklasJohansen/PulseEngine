@@ -6,6 +6,7 @@
 #define NO_HIT -1.0
 
 in vec2 uv;
+
 out vec4 fragColor;
 
 uniform sampler2D localSceneTex;

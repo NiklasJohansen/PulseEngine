@@ -64,7 +64,7 @@ class BloomEffect(
         program.setUniform("prefilterEnabled", true)
         program.setUniform("prefilterParams", threshold, threshold - knee, 2f * knee, 0.25f / (knee + 0.00001f))
         program.setUniform("resolution", srcTexture.width.toFloat(), srcTexture.height.toFloat())
-        program.setUniformSampler("srcTexture", srcTexture)
+        program.setUniformSampler("srcTex", srcTexture)
 
         for (i in 1 until textures.size)
         {
@@ -75,7 +75,7 @@ class BloomEffect(
 
             program.setUniform("resolution", texture.width.toFloat(), texture.height.toFloat())
             program.setUniform("prefilterEnabled", false)
-            program.setUniformSampler("srcTexture", texture)
+            program.setUniformSampler("srcTex", texture)
         }
     }
 
@@ -92,7 +92,7 @@ class BloomEffect(
         {
             val texture = textures[i]
             val nextTexture = textures[i - 1]
-            program.setUniformSampler("srcTexture", texture)
+            program.setUniformSampler("srcTex", texture)
             setViewportSizeToFit(nextTexture)
             fbo.attachOutputTexture(nextTexture)
             renderer.draw()
@@ -111,16 +111,16 @@ class BloomEffect(
         val textureArray = textureBank.getTextureArrayFor(dirtTexture)?: textureBank.getTextureArrays().firstOrNull() ?: return
 
         program.bind()
-        program.setUniform("dirtTextureIntensity", 0f)
-        program.setUniformSampler("srcTexture", srcTexture)
-        program.setUniformSampler("bloomTexture", bloomTexture)
-        program.setUniformSamplerArray("textureArray", textureArray)
+        program.setUniform("dirtTexIntensity", 0f)
+        program.setUniformSampler("srcTex", srcTexture)
+        program.setUniformSampler("bloomTex", bloomTexture)
+        program.setUniformSamplerArray("texArray", textureArray)
 
         if (dirtTexture != null)
         {
-            program.setUniform("dirtTextureIndex", dirtTexture.handle.textureIndex.toFloat())
-            program.setUniform("dirtTextureUv", dirtTexture.uMax, dirtTexture.vMax)
-            program.setUniform("dirtTextureIntensity", dirtIntensity)
+            program.setUniform("dirtTexUv", dirtTexture.uMax, dirtTexture.vMax)
+            program.setUniform("dirtTexIndex", dirtTexture.handle.textureIndex.toFloat())
+            program.setUniform("dirtTexIntensity", dirtIntensity)
         }
 
         setViewportSizeToFit(outputTexture)

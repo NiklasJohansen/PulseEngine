@@ -2,6 +2,7 @@
 #define PI 3.14159265359
 
 in vec2 uv;
+
 out vec4 fragColor;
 
 uniform sampler2D baseTex;
@@ -10,10 +11,10 @@ uniform sampler2D localSceneMetadataTex;
 uniform sampler2D lightTex;
 uniform sampler2D localSdfTex;
 
-uniform vec2 sampleOffset;
 uniform float dithering;
 uniform float scale;
 uniform float sourceMultiplier;
+uniform vec2 sampleOffset;
 uniform vec4 ambientLight;
 uniform vec4 ambientOccluderLight;
 

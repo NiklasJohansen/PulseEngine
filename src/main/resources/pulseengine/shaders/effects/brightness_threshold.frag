@@ -1,14 +1,16 @@
 #version 150 core
 
-in vec2 textureCoord;
+in vec2 uv;
+
 out vec4 fragColor;
 
 uniform sampler2D tex;
+
 uniform float threshold;
 
 void main()
 {
-    vec4 textureColor = texture(tex, textureCoord);
+    vec4 textureColor = texture(tex, uv);
     float brightness = dot(textureColor.rgb, vec3(0.2126, 0.7152, 0.0722));
 
     if (brightness > threshold)

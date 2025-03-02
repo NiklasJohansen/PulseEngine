@@ -1,6 +1,6 @@
 #version 150 core
 
-in vec2 textureCoord;
+in vec2 uv;
 in vec4 vertexColor;
 
 out vec4 fragColor;
@@ -12,6 +12,6 @@ void main()
 {
     vec4 textureColor = vec4(1.0, 1.0, 1.0, 1.0);
     if (sampleTexture)
-        textureColor = texture(tex, textureCoord);
+        textureColor = texture(tex, uv);
     fragColor = vertexColor * textureColor;
 }
