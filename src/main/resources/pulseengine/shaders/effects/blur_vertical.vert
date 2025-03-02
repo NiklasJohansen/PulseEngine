@@ -3,28 +3,28 @@
 in vec2 position;
 in vec2 texCoord;
 
-out vec2 v_texCoord;
-out vec2 v_blurTexCoords[14];
+out vec2 uv;
+out vec2 blurUvs[14];
 
 uniform float radius; 
 
 void main()
 {
-    gl_Position = vec4(position, 0.0, 1.0);
-    v_texCoord = texCoord;
+    blurUvs[0]  = texCoord + vec2(0.0, -0.028 * radius);
+    blurUvs[1]  = texCoord + vec2(0.0, -0.024 * radius);
+    blurUvs[2]  = texCoord + vec2(0.0, -0.020 * radius);
+    blurUvs[3]  = texCoord + vec2(0.0, -0.016 * radius);
+    blurUvs[4]  = texCoord + vec2(0.0, -0.012 * radius);
+    blurUvs[5]  = texCoord + vec2(0.0, -0.008 * radius);
+    blurUvs[6]  = texCoord + vec2(0.0, -0.004 * radius);
+    blurUvs[7]  = texCoord + vec2(0.0,  0.004 * radius);
+    blurUvs[8]  = texCoord + vec2(0.0,  0.008 * radius);
+    blurUvs[9]  = texCoord + vec2(0.0,  0.012 * radius);
+    blurUvs[10] = texCoord + vec2(0.0,  0.016 * radius);
+    blurUvs[11] = texCoord + vec2(0.0,  0.020 * radius);
+    blurUvs[12] = texCoord + vec2(0.0,  0.024 * radius);
+    blurUvs[13] = texCoord + vec2(0.0,  0.028 * radius);
 
-    v_blurTexCoords[ 0] = v_texCoord + vec2(0.0, -0.028 * radius);
-    v_blurTexCoords[ 1] = v_texCoord + vec2(0.0, -0.024 * radius);
-    v_blurTexCoords[ 2] = v_texCoord + vec2(0.0, -0.020 * radius);
-    v_blurTexCoords[ 3] = v_texCoord + vec2(0.0, -0.016 * radius);
-    v_blurTexCoords[ 4] = v_texCoord + vec2(0.0, -0.012 * radius);
-    v_blurTexCoords[ 5] = v_texCoord + vec2(0.0, -0.008 * radius);
-    v_blurTexCoords[ 6] = v_texCoord + vec2(0.0, -0.004 * radius);
-    v_blurTexCoords[ 7] = v_texCoord + vec2(0.0,  0.004 * radius);
-    v_blurTexCoords[ 8] = v_texCoord + vec2(0.0,  0.008 * radius);
-    v_blurTexCoords[ 9] = v_texCoord + vec2(0.0,  0.012 * radius);
-    v_blurTexCoords[10] = v_texCoord + vec2(0.0,  0.016 * radius);
-    v_blurTexCoords[11] = v_texCoord + vec2(0.0,  0.020 * radius);
-    v_blurTexCoords[12] = v_texCoord + vec2(0.0,  0.024 * radius);
-    v_blurTexCoords[13] = v_texCoord + vec2(0.0,  0.028 * radius);
+    uv = texCoord;
+    gl_Position = vec4(position, 0.0, 1.0);
 }
