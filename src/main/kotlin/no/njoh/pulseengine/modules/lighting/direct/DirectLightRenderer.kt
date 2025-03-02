@@ -9,8 +9,6 @@ import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.graphics.api.CameraInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
-import org.lwjgl.opengl.GL13.glActiveTexture
-import org.lwjgl.opengl.GL30.GL_TEXTURE0
 import org.lwjgl.opengl.GL31.*
 import kotlin.math.max
 
@@ -48,8 +46,8 @@ class DirectLightRenderer : BatchRenderer()
                 1f, 1f  // Bottom-right vertex
             ))
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/effects/light.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/effects/light.frag"
+                vertexShaderFileName = "/pulseengine/shaders/lighting/direct/light.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/lighting/direct/light.frag"
             )
         }
 

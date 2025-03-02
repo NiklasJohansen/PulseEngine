@@ -11,8 +11,8 @@ class MultiplyEffect(
 ) : BaseEffect() {
 
     override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/effects/textureMultiplyBlend.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/effects/textureMultiplyBlend.frag"
+        vertexShaderFileName = "/pulseengine/shaders/effects/texture_multiply_blend.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/effects/texture_multiply_blend.frag"
     )
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>

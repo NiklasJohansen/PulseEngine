@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting.globalillumination.effects
+package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -16,8 +16,8 @@ class GiSdf(
     TextureDescriptor(format = R16F, filter = NEAREST, attachment = COLOR_TEXTURE_0)
 ) {
     override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/gi/sdf.frag"
+        vertexShaderFileName = "/pulseengine/shaders/lighting/global/default.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/lighting/global/sdf.frag"
     )
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>

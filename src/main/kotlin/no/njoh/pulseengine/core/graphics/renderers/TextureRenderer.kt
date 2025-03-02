@@ -35,8 +35,8 @@ class TextureRenderer(
             data = FloatArray(capacity * stride * 2)
             vbo = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/texture.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/texture.frag"
+                vertexShaderFileName = "/pulseengine/shaders/renderers/texture.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/renderers/texture.frag"
             )
         }
 

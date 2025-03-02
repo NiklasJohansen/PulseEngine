@@ -15,7 +15,7 @@ class BlurEffect(
     override fun loadShaderPrograms(): List<ShaderProgram> =
         listOf(
             ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/effects/blurVertical.vert",
+                vertexShaderFileName = "/pulseengine/shaders/effects/blur_vertical.vert",
                 fragmentShaderFileName = "/pulseengine/shaders/effects/blur.frag"
             ),
             ShaderProgram.create(

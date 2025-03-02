@@ -11,8 +11,8 @@ class ThresholdEffect(
 ) : BaseEffect() {
 
     override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/effects/brightnessThreshold.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/effects/brightnessThreshold.frag"
+        vertexShaderFileName = "/pulseengine/shaders/effects/brightness_threshold.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/effects/brightness_threshold.frag"
     )
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>

@@ -72,9 +72,9 @@ class Shader(
          */
         fun getErrorShader(type: ShaderType) = when (type)
         {
-            FRAGMENT -> errFragShader ?: createShader("/pulseengine/shaders/default/error.frag", type).also { errFragShader = it }
-            VERTEX   -> errVertShader ?: createShader("/pulseengine/shaders/default/error.vert", type).also { errVertShader = it }
-            COMPUTE  -> errCompShader ?: createShader("/pulseengine/shaders/default/error.comp", type).also { errCompShader = it }
+            FRAGMENT -> errFragShader ?: createShader("/pulseengine/shaders/error/error.frag", type).also { errFragShader = it }
+            VERTEX   -> errVertShader ?: createShader("/pulseengine/shaders/error/error.vert", type).also { errVertShader = it }
+            COMPUTE  -> errCompShader ?: createShader("/pulseengine/shaders/error/error.comp", type).also { errCompShader = it }
         }
 
         private fun createShader(fileName: String, type: ShaderType, transform: (source: String) -> String = { it }) : Shader

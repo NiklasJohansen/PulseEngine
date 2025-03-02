@@ -12,7 +12,7 @@ import no.njoh.pulseengine.modules.lighting.direct.DirectLightType
 import no.njoh.pulseengine.modules.lighting.direct.DirectShadowType
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.MathUtil
-import no.njoh.pulseengine.modules.lighting.globalillumination.GiLightSource
+import no.njoh.pulseengine.modules.lighting.global.GiLightSource
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt

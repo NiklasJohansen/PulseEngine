@@ -23,8 +23,8 @@ class LineRenderer(
         {
             vbo = DoubleBufferedFloatObject.createArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/line.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/line.frag"
+                vertexShaderFileName = "/pulseengine/shaders/renderers/line.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/renderers/line.frag"
             )
         }
 

@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting.globalillumination.effects
+package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -24,8 +24,8 @@ class GiJfa(
     private var outputTextures: List<Texture> = emptyList()
 
     override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/gi/jfa.frag"
+        vertexShaderFileName = "/pulseengine/shaders/lighting/global/default.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/lighting/global/jfa.frag"
     )
 
     override fun getTexture(index: Int) = outputTextures.getOrNull(index)
@@ -68,8 +68,8 @@ class GiJfaSeed(
     TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_0),
 ) {
     override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/gi/jfa_seed.frag"
+        vertexShaderFileName = "/pulseengine/shaders/lighting/global/default.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/lighting/global/jfa_seed.frag"
     )
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>

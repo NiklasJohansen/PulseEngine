@@ -27,8 +27,8 @@ class BindlessTextureRenderer(
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/texture_bindless.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/texture_bindless.frag"
+                vertexShaderFileName = "/pulseengine/shaders/renderers/texture_bindless.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/renderers/texture_bindless.frag"
             )
         }
 

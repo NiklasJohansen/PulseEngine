@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting.globalillumination
+package no.njoh.pulseengine.modules.lighting.global
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -14,7 +14,7 @@ import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.modules.lighting.globalillumination.effects.*
+import no.njoh.pulseengine.modules.lighting.global.effects.*
 
 import kotlin.math.*
 
@@ -27,15 +27,15 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 2)                      var skyLight = true
     @Prop(i = 3)                      var skyColor = Color(0.02f, 0.08f, 0.2f, 1f)
     @Prop(i = 5)                      var sunColor = Color(0.95f, 0.95f, 0.9f, 1f)
-    @Prop(i = 6)                      var skyIntensity = 0.1f
-    @Prop(i = 7)                      var sunIntensity = 0.01f
-    @Prop(i = 8)                      var sunDistance = 10f
-    @Prop(i = 9)                      var sunAngle = 0f
-    @Prop(i = 10)                     var dithering = 0.7f
+    @Prop(i = 6, min=0f)              var skyIntensity = 0.1f
+    @Prop(i = 7, min=0f)              var sunIntensity = 0.01f
+    @Prop(i = 8, min=0.001f)          var sunDistance = 10f
+    @Prop(i = 9, min=0f, max=360f)    var sunAngle = 0f
+    @Prop(i = 10, min=0f)             var dithering = 0.7f
     @Prop(i = 11)                     var textureFilter = LINEAR
-    @Prop(i = 12, min=0.01f, max=2f)  var lightTextureScale = 0.5f
+    @Prop(i = 12, min=0.01f, max=2f)  var lightTextureScale = 0.3f
     @Prop(i = 13, min=0.01f, max=2f)  var localSceneTextureScale = 0.4f
-    @Prop(i = 14, min=0.01f, max=4f)  var globalSceneTextureScale = 0.8f
+    @Prop(i = 14, min=0.01f, max=4f)  var globalSceneTextureScale = 0.6f
     @Prop(i = 15, min=0f)             var drawCascade = 0
     @Prop(i = 16, min=0f)             var maxCascades = 10
     @Prop(i = 17, min=0f)             var maxSteps = 30

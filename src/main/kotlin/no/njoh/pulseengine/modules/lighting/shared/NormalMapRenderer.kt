@@ -28,8 +28,8 @@ class NormalMapRenderer(
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/effects/normal_map.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/effects/normal_map.frag"
+                vertexShaderFileName = "/pulseengine/shaders/lighting/normal_map.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/lighting/normal_map.frag"
             )
         }
 

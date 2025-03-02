@@ -44,8 +44,8 @@ class DirectLightBlendEffect(
     private var camScale = Vector3f()
 
     override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/effects/lighting_blend.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/effects/lighting_blend.frag"
+        vertexShaderFileName = "/pulseengine/shaders/lighting/direct/lighting_blend.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/lighting/direct/lighting_blend.frag"
     )
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>

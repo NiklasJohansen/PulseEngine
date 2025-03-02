@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting.globalillumination
+package no.njoh.pulseengine.modules.lighting.global
 
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
@@ -28,8 +28,8 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/gi/scene.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/gi/scene.frag"
+                vertexShaderFileName = "/pulseengine/shaders/lighting/global/scene.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/lighting/global/scene.frag"
             )
         }
 

@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting.globalillumination.effects
+package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -9,8 +9,8 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.core.shared.utils.Extensions.component1
 import no.njoh.pulseengine.core.shared.utils.Extensions.component2
-import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
-import no.njoh.pulseengine.modules.lighting.globalillumination.GiSceneRenderer
+import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
+import no.njoh.pulseengine.modules.lighting.global.GiSceneRenderer
 
 class GiCompose(
     private val localSceneSurfaceName: String,
@@ -22,8 +22,8 @@ class GiCompose(
     TextureDescriptor(filter = LINEAR, format = RGBA16F)
 ) {
     override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/gi/compose.frag"
+        vertexShaderFileName = "/pulseengine/shaders/lighting/global/default.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/lighting/global/compose.frag"
     )
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>

@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting.globalillumination.effects
+package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -9,7 +9,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
-import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
+import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
 import org.joml.Matrix4f
 
 class GiSceneBounce(
@@ -23,8 +23,8 @@ class GiSceneBounce(
     private var lastViewProjectionMatrix = Matrix4f()
 
     override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/gi/bounce.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/gi/bounce.frag"
+        vertexShaderFileName = "/pulseengine/shaders/lighting/global/bounce.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/lighting/global/bounce.frag"
     )
 
     override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>

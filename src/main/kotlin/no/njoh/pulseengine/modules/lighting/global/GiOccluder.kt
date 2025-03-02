@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting.globalillumination
+package no.njoh.pulseengine.modules.lighting.global
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.surface.Surface

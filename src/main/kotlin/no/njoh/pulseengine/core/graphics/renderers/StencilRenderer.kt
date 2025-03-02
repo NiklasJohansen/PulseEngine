@@ -18,8 +18,8 @@ class StencilRenderer : BatchRenderer()
         {
             vbo = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/stencil.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/stencil.frag"
+                vertexShaderFileName = "/pulseengine/shaders/renderers/stencil.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/renderers/stencil.frag"
             )
         }
 

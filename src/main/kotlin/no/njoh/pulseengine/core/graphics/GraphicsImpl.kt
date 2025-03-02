@@ -67,8 +67,8 @@ open class GraphicsImpl : GraphicsInternal
             // Create and initialize full frame renderer
             if (!this::fullFrameRenderer.isInitialized)
             {
-                val vertex = "/pulseengine/shaders/default/surface.vert"
-                val fragment = "/pulseengine/shaders/default/surface.frag"
+                val vertex = "/pulseengine/shaders/renderers/surface.vert"
+                val fragment = "/pulseengine/shaders/renderers/surface.frag"
                 val shaderProgram = ShaderProgram.create(vertex, fragment)
                 fullFrameRenderer = FullFrameRenderer(shaderProgram)
             }

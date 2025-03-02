@@ -26,8 +26,8 @@ class QuadRenderer(
             vbo = DoubleBufferedFloatObject.createArrayBuffer()
             ebo = DoubleBufferedIntObject.createElementBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/quad.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/quad.frag"
+                vertexShaderFileName = "/pulseengine/shaders/renderers/quad.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/renderers/quad.frag"
             )
         }
 

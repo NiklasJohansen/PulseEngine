@@ -38,8 +38,8 @@ class TextRenderer(
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/glyph.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/glyph.frag"
+                vertexShaderFileName = "/pulseengine/shaders/renderers/glyph.vert",
+                fragmentShaderFileName = "/pulseengine/shaders/renderers/glyph.frag"
             )
         }
 

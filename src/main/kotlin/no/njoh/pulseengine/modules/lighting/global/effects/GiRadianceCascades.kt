@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.lighting.globalillumination.effects
+package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -9,7 +9,8 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.modules.lighting.globalillumination.GlobalIlluminationSystem
+import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
+import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
 import kotlin.math.*
 
 class GiRadianceCascades(
@@ -28,8 +29,8 @@ class GiRadianceCascades(
     private var outTextures = emptyList<Texture>()
 
     override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/gi/default.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/gi/radiance_cascades.frag"
+        vertexShaderFileName = "/pulseengine/shaders/lighting/global/default.vert",
+        fragmentShaderFileName = "/pulseengine/shaders/lighting/global/radiance_cascades.frag"
     )
 
     override fun getTexture(index: Int) = outTextures.getOrNull(index)
@@ -68,7 +69,7 @@ class GiRadianceCascades(
         program.setUniform("resolution", width, height)
         program.setUniform("skyColor", skyColor)
         program.setUniform("sunColor", sunColor)
-        program.setUniform("sunAngle", lightSystem.sunAngle)
+        program.setUniform("sunAngle", -lightSystem.sunAngle.toRadians())
         program.setUniform("sunDistance", lightSystem.sunDistance)
         program.setUniform("minStepSize", minStepSize)
         program.setUniform("bilinearFix", lightSystem.bilinearFix)
