@@ -3,10 +3,10 @@
 in vec2 position;
 in vec2 texCoord;
 
-out vec2 textureCoord;
+out vec2 uv;
 
 void main()
 {
-    textureCoord = texCoord;
+    uv = texCoord;
     gl_Position = vec4(position, 0.0, 1.0);
 }

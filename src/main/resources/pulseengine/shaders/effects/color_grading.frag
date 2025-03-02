@@ -1,13 +1,15 @@
 #version 330 core
 
-in vec2 textureCoord;
+in vec2 uv;
 out vec4 fragColor;
 
 uniform sampler2D tex;
+
+uniform int toneMapper;
 uniform float exposure;
 uniform float contrast;
 uniform float saturation;
-uniform int toneMapper;
+uniform float vignette;
 
 // Narkowicz 2015, "ACES Filmic Tone Mapping Curve"
 vec3 aces(vec3 x)
@@ -71,18 +73,18 @@ vec3 lottes(vec3 x)
 
 void main()
 {
-    vec4 color = texture(tex, textureCoord);
+    vec4 color = texture(tex, uv);
 
     // Exposure
     color.rgb = 1.0 - exp(-color.rgb * exposure);
 
     // Contrast
-    color.rgb = ((color.rgb - 0.5f) * max(contrast, 0)) + 0.5f;
+    color.rgb = ((color.rgb - 0.5f) * max(contrast > 1.0 ? (1.0 + 0.005 * contrast) : contrast, 0)) + 0.5f;
 
     // Saturation
     vec3 weights   = vec3(0.2125, 0.7154, 0.0721);
     vec3 intensity = vec3(dot(color.rgb, weights));
-    color.rgb = mix(intensity, color.rgb, saturation);
+    color.rgb = mix(intensity, color.rgb, saturation > 1.0 ? (1.0 + 0.1 * saturation) : saturation);
 
     // Tone mapping
     switch (toneMapper)
@@ -103,6 +105,10 @@ void main()
             color.rgb = lottes(color.rgb);
             break;
     }
+
+    // Vignette
+    vec2 v = uv * (1.0 - uv.yx);
+    color.rgb *= pow(v.x * v.y * 15.0, vignette);
 
     fragColor = color;
 }

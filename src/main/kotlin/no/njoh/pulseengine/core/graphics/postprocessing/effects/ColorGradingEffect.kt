@@ -11,7 +11,8 @@ class ColorGradingEffect(
     var toneMapper: ToneMapper = ACES,
     var exposure: Float = 1.0f,
     var contrast: Float = 1f,
-    var saturation: Float = 0.5f
+    var saturation: Float = 0.5f,
+    var vignette: Float = 0f
 ) : BaseEffect() {
 
     override fun loadShaderProgram() = ShaderProgram.create(
@@ -29,6 +30,7 @@ class ColorGradingEffect(
         program.setUniform("exposure", exposure)
         program.setUniform("contrast", contrast)
         program.setUniform("saturation", saturation)
+        program.setUniform("vignette", vignette)
         renderer.draw()
         fbo.release()
         return fbo.getTextures()
