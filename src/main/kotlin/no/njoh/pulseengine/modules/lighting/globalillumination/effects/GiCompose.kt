@@ -16,7 +16,8 @@ class GiCompose(
     private val localSceneSurfaceName: String,
     private val localSdfSurfaceName: String,
     private val lightSurfaceName: String,
-    override val name: String = "compose"
+    override val name: String = "compose",
+    override val order: Int = 0
 ) : BaseEffect(
     TextureDescriptor(filter = LINEAR, format = RGBA16F)
 ) {

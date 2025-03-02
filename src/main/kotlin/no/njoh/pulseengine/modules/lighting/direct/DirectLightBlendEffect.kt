@@ -13,6 +13,7 @@ import kotlin.math.max
 
 class DirectLightBlendEffect(
     override val name: String,
+    override val order: Int,
     private val ambientColor: Color,
     private val camera: Camera
 ) : BaseEffect() {

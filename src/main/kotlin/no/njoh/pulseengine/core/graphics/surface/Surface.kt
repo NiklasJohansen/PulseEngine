@@ -161,6 +161,11 @@ abstract class Surface
     abstract fun addPostProcessingEffect(effect: PostProcessingEffect)
 
     /**
+     * Gets all [PostProcessingEffect]s.
+     */
+    abstract fun getPostProcessingEffects(): List<PostProcessingEffect>
+
+    /**
      * Gets a [PostProcessingEffect] by name.
      */
     abstract fun getPostProcessingEffect(name: String): PostProcessingEffect?

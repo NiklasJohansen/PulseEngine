@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 
 class ThresholdEffect(
     override val name: String,
+    override val order: Int,
     var brightnessThreshold: Float = 0.5f
 ) : BaseEffect() {
 

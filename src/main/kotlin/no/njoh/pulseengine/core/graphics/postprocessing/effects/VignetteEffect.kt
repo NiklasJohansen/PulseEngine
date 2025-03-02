@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 
 class VignetteEffect(
     override val name: String,
+    override val order: Int,
     var strength: Float = 0.2f
 ) : BaseEffect() {
 

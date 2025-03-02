@@ -17,7 +17,8 @@ class GiRadianceCascades(
     private val globalSceneSurfaceName: String,
     private val localSdfSurfaceName: String,
     private val globalSdfSurfaceName: String,
-    override val name: String = "radiance_cascades"
+    override val name: String = "radiance_cascades",
+    override val order: Int = 0
 ) : BaseEffect(
     TextureDescriptor(filter = LINEAR, format = RGBA16F),
     numFrameBufferObjects = 2

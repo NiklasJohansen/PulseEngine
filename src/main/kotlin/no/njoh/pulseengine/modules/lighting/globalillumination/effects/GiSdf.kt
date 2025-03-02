@@ -9,7 +9,10 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 
-class GiSdf(override val name: String = "sdf") : BaseEffect(
+class GiSdf(
+    override val name: String = "sdf",
+    override val order: Int
+) : BaseEffect(
     TextureDescriptor(format = R16F, filter = NEAREST, attachment = COLOR_TEXTURE_0)
 ) {
     override fun loadShaderProgram() = ShaderProgram.create(

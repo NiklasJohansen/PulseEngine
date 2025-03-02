@@ -96,9 +96,9 @@ open class GlobalIlluminationSystem : SceneSystem()
             textureScale = localSceneTextureScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(GiJfaSeed(GI_LOCAL_SCENE))
-            addPostProcessingEffect(GiJfa())
-            addPostProcessingEffect(GiSdf())
+            addPostProcessingEffect(GiJfaSeed(GI_LOCAL_SCENE, order = 1))
+            addPostProcessingEffect(GiJfa(order = 2))
+            addPostProcessingEffect(GiSdf(order = 3))
         }
 
         engine.gfx.createSurface(
@@ -110,9 +110,9 @@ open class GlobalIlluminationSystem : SceneSystem()
             textureScale = globalSceneTextureScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(GiJfaSeed(GI_GLOBAL_SCENE))
-            addPostProcessingEffect(GiJfa())
-            addPostProcessingEffect(GiSdf())
+            addPostProcessingEffect(GiJfaSeed(GI_GLOBAL_SCENE, order = 1))
+            addPostProcessingEffect(GiJfa(order = 2))
+            addPostProcessingEffect(GiSdf(order = 3))
         }
 
         engine.gfx.createSurface(
@@ -179,13 +179,14 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     override fun onDestroy(engine: PulseEngine)
     {
-        engine.gfx.mainSurface.deletePostProcessingEffect(GI_BLEND_EFFECT)
+        engine.gfx.getSurface(targetSurface)?.deletePostProcessingEffect(GI_BLEND_EFFECT)
         engine.gfx.deleteSurface(GI_LOCAL_SCENE)
         engine.gfx.deleteSurface(GI_GLOBAL_SCENE)
         engine.gfx.deleteSurface(GI_LOCAL_SDF)
         engine.gfx.deleteSurface(GI_GLOBAL_SDF)
         engine.gfx.deleteSurface(GI_LIGHT_RAW)
         engine.gfx.deleteSurface(GI_LIGHT_FINAL)
+        lastTargetSurface = ""
     }
 
     override fun onStateChanged(engine: PulseEngine)
@@ -205,7 +206,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             return
 
         engine.gfx.getSurface(lastTargetSurface)?.deletePostProcessingEffect(GI_BLEND_EFFECT)
-        engine.gfx.getSurface(targetSurface)?.addPostProcessingEffect(MultiplyEffect(GI_BLEND_EFFECT, GI_LIGHT_FINAL))
+        engine.gfx.getSurface(targetSurface)?.addPostProcessingEffect(MultiplyEffect(GI_BLEND_EFFECT, order = 15, GI_LIGHT_FINAL))
 
         lastTargetSurface = targetSurface
     }

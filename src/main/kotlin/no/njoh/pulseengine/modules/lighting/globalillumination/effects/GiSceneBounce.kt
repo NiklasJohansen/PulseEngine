@@ -14,7 +14,8 @@ import org.joml.Matrix4f
 
 class GiSceneBounce(
     private val lightSurfaceName: String,
-    override val name: String = "bounce"
+    override val name: String = "bounce",
+    override val order: Int = 0
 ) : BaseEffect(
     TextureDescriptor(filter = NEAREST, format = RGBA16F, attachment = COLOR_TEXTURE_0), // Scene radiance
     TextureDescriptor(filter = NEAREST, format = RGBA16F, attachment = COLOR_TEXTURE_1)  // Scene metadata

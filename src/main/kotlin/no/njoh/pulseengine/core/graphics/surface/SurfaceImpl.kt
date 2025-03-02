@@ -12,6 +12,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachReversed
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 
@@ -175,7 +176,7 @@ class SurfaceImpl(
 
     override fun getTexture(index: Int, final: Boolean): Texture
     {
-        if (final) postEffects.lastOrNull()?.getTexture(index)?.let { return it }
+        if (final) postEffects.forEachReversed { effect -> effect.getTexture(index)?.let { return it } }
 
         return renderTarget.getTexture(index)
             ?: throw RuntimeException(
@@ -304,7 +305,13 @@ class SurfaceImpl(
             }
             effect.init()
             postEffects.add(effect)
+            postEffects.sortBy { it.order }
         }
+    }
+
+    override fun getPostProcessingEffects(): List<PostProcessingEffect>
+    {
+        return postEffects
     }
 
     override fun getPostProcessingEffect(name: String): PostProcessingEffect?

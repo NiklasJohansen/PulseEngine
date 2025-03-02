@@ -7,6 +7,7 @@ import kotlin.math.max
 
 class BlurEffect(
     override val name: String,
+    override val order: Int,
     var radius: Float = 0.5f,
     var blurPasses: Int = 2
 ) : BaseEffect(numFrameBufferObjects = 2) {

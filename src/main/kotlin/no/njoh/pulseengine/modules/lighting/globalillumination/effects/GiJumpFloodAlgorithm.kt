@@ -14,7 +14,10 @@ import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.pow
 
-class GiJfa(override val name: String = "jfa") : BaseEffect(
+class GiJfa(
+    override val name: String = "jfa",
+    override val order: Int
+) : BaseEffect(
     TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_0),
     numFrameBufferObjects = 2
 ) {
@@ -59,7 +62,8 @@ class GiJfa(override val name: String = "jfa") : BaseEffect(
 
 class GiJfaSeed(
     private val sceneSurfaceName: String,
-    override val name: String = "jfa_seed"
+    override val name: String = "jfa_seed",
+    override val order: Int
 ) : BaseEffect(
     TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_0),
 ) {

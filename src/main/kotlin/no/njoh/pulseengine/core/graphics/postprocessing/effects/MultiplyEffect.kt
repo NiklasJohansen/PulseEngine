@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 
 class MultiplyEffect(
     override val name: String,
+    override val order: Int,
     private val surfaceName: String
 ) : BaseEffect() {
 
