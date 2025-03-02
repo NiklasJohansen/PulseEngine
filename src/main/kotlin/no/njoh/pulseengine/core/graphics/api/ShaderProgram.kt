@@ -150,6 +150,15 @@ class ShaderProgram(
         TextureSampler.getFor(filter, wrapping).bind(unit)
     }
 
+    fun setUniformSamplerArray(samplerName: String, textureArray: TextureArray, filter: TextureFilter = textureArray.filter, wrapping: TextureWrapping = textureArray.wrapping)
+    {
+        val unit = textureArray.samplerIndex
+        glActiveTexture(GL_TEXTURE0 + unit)
+        glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)
+        setUniform(samplerName, unit)
+        TextureSampler.getFor(filter, wrapping).bind(unit)
+    }
+
     fun assignUniformBlockBinding(blockName: String, blockBinding: Int): Int
     {
         val index = glGetUniformBlockIndex(id, blockName)

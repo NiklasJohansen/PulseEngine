@@ -23,7 +23,7 @@ open class FrameBufferObject(
     private val textures: List<Texture>,
     private val textureDescriptors: List<TextureDescriptor>
 ) {
-    private val textureBuffers = textures.mapNotNull { it.attachment }.filter { it.isDrawable }.map { it.value }.toIntArray()
+    private val textureBuffers = textures.mapNotNull { it.attachment }.distinct().filter { it.isDrawable }.map { it.value }.toIntArray()
 
     fun bind()
     {
@@ -45,6 +45,14 @@ open class FrameBufferObject(
     fun getTexture(index: Int = 0) = textures.getOrNull(index)
 
     fun getTextures() = textures
+
+    fun attachOutputTexture(
+        texture: Texture,
+        attachment: Attachment = texture.attachment ?: throw IllegalArgumentException("Texture cannot be used as an FBO attachment"),
+    ) {
+        // TODO: Can be other that GL_TEXTURE_2D, e.g GL_TEXTURE_2D_MULTISAMPLE. Create RenderTexture child of Texture with this data?
+        glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.value, GL_TEXTURE_2D, texture.handle.textureIndex, 0)
+    }
 
     fun resolveToFBO(destinationFbo: FrameBufferObject)
     {
@@ -93,8 +101,8 @@ open class FrameBufferObject(
             for (tex in textureDescriptors)
             {
                 val samples = if (tex.multisampling == MSAA_MAX) glGetInteger(GL_MAX_SAMPLES) else tex.multisampling.samples
-                val texWidth = (width * tex.scale).toInt()
-                val texHeight = (height * tex.scale).toInt()
+                val texWidth = (width * tex.scale).toInt().coerceAtLeast(1)
+                val texHeight = (height * tex.scale).toInt().coerceAtLeast(1)
 
                 val textureId = when (tex.attachment)
                 {

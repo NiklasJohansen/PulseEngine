@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
+import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -14,7 +15,7 @@ class TextureBank
 
     fun upload(texture: Texture)
     {
-        val array = getTextureArrayFor(texture)
+        val array = getOrCreateTextureArrayFor(texture)
         if (array != null)
         {
             if (!array.isFull())
@@ -53,7 +54,10 @@ class TextureBank
 
     fun getTextureArrays(): List<TextureArray> = textureArrays
 
-    private fun getTextureArrayFor(texture: Texture): TextureArray?
+    fun getTextureArrayFor(texture: Texture?): TextureArray? =
+        textureArrays.firstOrNullFast { it.samplerIndex == texture?.handle?.samplerIndex }
+
+    private fun getOrCreateTextureArrayFor(texture: Texture): TextureArray?
     {
         val textureSize = max(texture.width, texture.height)
         val textureArray = textureArrays.find()
