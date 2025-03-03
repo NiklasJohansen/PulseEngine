@@ -134,7 +134,7 @@ class ShaderProgram(
         val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D, textureHandle.textureIndex)
-        glUniform1i(uniformLocationOf(samplerName), unit)
+        setUniform(samplerName, unit)
         TextureSampler.getFor(filter, wrapping).bind(unit)
     }
 
@@ -152,7 +152,7 @@ class ShaderProgram(
 
     fun setUniformSamplerArray(samplerName: String, textureArray: TextureArray, filter: TextureFilter = textureArray.filter, wrapping: TextureWrapping = textureArray.wrapping)
     {
-        val unit = textureArray.samplerIndex
+        val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)
         setUniform(samplerName, unit)
