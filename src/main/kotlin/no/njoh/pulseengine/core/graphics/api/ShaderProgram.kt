@@ -129,7 +129,7 @@ class ShaderProgram(
     fun setUniformSampler(samplerName: String, texture: Texture, filter: TextureFilter = texture.filter, wrapping: TextureWrapping = texture.wrapping) =
         setUniformSampler(samplerName, texture.handle, filter, wrapping)
 
-    fun setUniformSampler(samplerName: String, textureHandle: TextureHandle, filter: TextureFilter = LINEAR, wrapping: TextureWrapping = CLAMP)
+    fun setUniformSampler(samplerName: String, textureHandle: TextureHandle, filter: TextureFilter = LINEAR, wrapping: TextureWrapping = CLAMP_TO_EDGE)
     {
         val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
         glActiveTexture(GL_TEXTURE0 + unit)

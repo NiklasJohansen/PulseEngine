@@ -22,14 +22,14 @@ class BloomEffect(
     var dirtIntensity: Float = 1f,
     var dirtTextureName: String = ""
 ) : BaseEffect(
-    TextureDescriptor(filter = LINEAR, wrapping = CLAMP, format = RGBA16F, scale = 1f / 1f), // Output texture
-    TextureDescriptor(filter = LINEAR, wrapping = CLAMP, format = RGB16F,  scale = 1f / 2f), // Final bloom texture
-    TextureDescriptor(filter = LINEAR, wrapping = CLAMP, format = RGB16F,  scale = 1f / 4f),
-    TextureDescriptor(filter = LINEAR, wrapping = CLAMP, format = RGB16F,  scale = 1f / 8f),
-    TextureDescriptor(filter = LINEAR, wrapping = CLAMP, format = RGB16F,  scale = 1f / 16f),
-    TextureDescriptor(filter = LINEAR, wrapping = CLAMP, format = RGB16F,  scale = 1f / 32f),
-    TextureDescriptor(filter = LINEAR, wrapping = CLAMP, format = RGB16F,  scale = 1f / 64f),
-    TextureDescriptor(filter = LINEAR, wrapping = CLAMP, format = RGB16F,  scale = 1f / 128f)
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGBA16F, scale = 1f / 1f), // Output texture
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 2f), // Final bloom texture
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 4f),
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 8f),
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 16f),
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 32f),
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 64f),
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 128f)
 ) {
 
     override fun loadShaderPrograms() = listOf(

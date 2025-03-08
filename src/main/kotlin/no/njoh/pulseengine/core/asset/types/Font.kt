@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.SRGBA8
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -61,7 +61,7 @@ class Font(
         }
         rgbaBuffer.flip()
 
-        charTexture = Texture(filename = "", name = "char_tex_$name", filter = LINEAR_MIPMAP, wrapping = CLAMP, format = SRGBA8, mipLevels = 3)
+        charTexture = Texture(filename = "", name = "char_tex_$name", filter = LINEAR_MIPMAP, wrapping = CLAMP_TO_EDGE, format = SRGBA8, mipLevels = 3)
         charTexture.stage(rgbaBuffer, BITMAP_W, BITMAP_H)
     }
 
