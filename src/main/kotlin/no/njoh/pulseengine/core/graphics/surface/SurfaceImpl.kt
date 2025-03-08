@@ -99,7 +99,7 @@ class SurfaceImpl(
         renderTarget.end()
     }
 
-    override fun runPostProcessingPipeline(engine: PulseEngine)
+    override fun runPostProcessingPipeline(engine: PulseEngineInternal)
     {
         if (postEffects.isEmpty()) return // No post-processing effects to run
 

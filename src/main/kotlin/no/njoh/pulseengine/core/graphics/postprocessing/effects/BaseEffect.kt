@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
@@ -27,7 +28,7 @@ abstract class BaseEffect(
     open fun loadShaderProgram(): ShaderProgram = throw NotImplementedError("You must override either loadShaderProgram or loadShaderPrograms")
     open fun loadShaderPrograms(): List<ShaderProgram> = listOf(loadShaderProgram())
 
-    abstract fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    abstract fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
 
     override fun init()
     {
@@ -40,7 +41,7 @@ abstract class BaseEffect(
         renderers.forEachFast { it.init() }
     }
 
-    override fun process(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    override fun process(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
         if (inTextures.isEmpty())
             return inTextures

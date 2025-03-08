@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Font.*
 import no.njoh.pulseengine.core.asset.types.Font.Companion.MAX_CHAR_COUNT
@@ -69,7 +70,7 @@ class TextRenderer(
         instanceBuffer.swapBuffers()
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {

@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.lighting.global.effects
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
@@ -35,7 +35,7 @@ class GiRadianceCascades(
 
     override fun getTexture(index: Int) = outTextures.getOrNull(index)
 
-    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val localSceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures

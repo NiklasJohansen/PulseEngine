@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
@@ -44,7 +45,7 @@ class LineRenderer(
         vbo.swapBuffers()
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {

@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
@@ -7,10 +8,8 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.GL11.*
 
-class QuadRenderer(
-    private val config: SurfaceConfigInternal
-) : BatchRenderer() {
-
+class QuadRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+{
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: DoubleBufferedFloatObject
     private lateinit var ebo: DoubleBufferedIntObject
@@ -50,7 +49,7 @@ class QuadRenderer(
         vertexCount = 0
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {

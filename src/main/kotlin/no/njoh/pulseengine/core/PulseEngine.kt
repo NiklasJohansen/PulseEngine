@@ -1,18 +1,30 @@
 package no.njoh.pulseengine.core
 
 import no.njoh.pulseengine.core.asset.AssetManager
+import no.njoh.pulseengine.core.asset.AssetManagerInternal
 import no.njoh.pulseengine.core.audio.Audio
+import no.njoh.pulseengine.core.audio.AudioInternal
 import no.njoh.pulseengine.core.config.Configuration
+import no.njoh.pulseengine.core.config.ConfigurationInternal
 import no.njoh.pulseengine.core.console.Console
+import no.njoh.pulseengine.core.console.ConsoleInternal
 import no.njoh.pulseengine.core.data.Data
 import no.njoh.pulseengine.core.graphics.Graphics
+import no.njoh.pulseengine.core.graphics.GraphicsInternal
 import no.njoh.pulseengine.core.input.Input
+import no.njoh.pulseengine.core.input.InputInternal
 import no.njoh.pulseengine.core.scene.SceneManager
+import no.njoh.pulseengine.core.scene.SceneManagerInternal
 import no.njoh.pulseengine.core.widget.WidgetManager
+import no.njoh.pulseengine.core.widget.WidgetManagerInternal
 import no.njoh.pulseengine.core.window.Window
+import no.njoh.pulseengine.core.window.WindowInternal
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 
+/**
+ * The public, game facing, interface of the engine.
+ */
 interface PulseEngine
 {
     /** Handles configuration files and engine config properties */
@@ -53,8 +65,24 @@ interface PulseEngine
         fun run(game: KClass<out PulseEngineGame>) =
             PulseEngineImpl().run(game.createInstance())
 
-        /** Holds a global reference to the engine */
+        /** Holds a global reference to the current engine instance */
         lateinit var INSTANCE: PulseEngine; internal set
     }
 }
 
+/**
+ * The internal engine interface.
+ */
+interface PulseEngineInternal : PulseEngine
+{
+    override val config: ConfigurationInternal
+    override val window: WindowInternal
+    override val gfx: GraphicsInternal
+    override val audio: AudioInternal
+    override val input: InputInternal
+    override val data: Data
+    override val console: ConsoleInternal
+    override val asset: AssetManagerInternal
+    override val scene: SceneManagerInternal
+    override val widget: WidgetManagerInternal
+}

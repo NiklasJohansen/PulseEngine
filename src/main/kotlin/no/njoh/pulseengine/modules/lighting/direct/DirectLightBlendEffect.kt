@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.lighting.direct
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Camera
@@ -48,7 +48,7 @@ class DirectLightBlendEffect(
         fragmentShaderFileName = "/pulseengine/shaders/lighting/direct/lighting_blend.frag"
     )
 
-    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
         val albedoTexture = inTextures[0]
         val lightMapTextureHandle = lightMapTextureHandle ?: return inTextures

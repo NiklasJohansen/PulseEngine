@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.GraphicsInternal
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
@@ -38,7 +38,7 @@ class BloomEffect(
         ShaderProgram.create("/pulseengine/shaders/effects/bloom.vert", "/pulseengine/shaders/effects/bloom_final.frag")
     )
 
-    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
         val srcTexture = inTextures[0]
 
@@ -101,7 +101,7 @@ class BloomEffect(
         disableBlend()
     }
 
-    private fun compose(engine: PulseEngine, srcTexture: Texture)
+    private fun compose(engine: PulseEngineInternal, srcTexture: Texture)
     {
         val program = programs[2] // bloom_final
         val bloomTexture = fbo.getTexture(1) ?: srcTexture

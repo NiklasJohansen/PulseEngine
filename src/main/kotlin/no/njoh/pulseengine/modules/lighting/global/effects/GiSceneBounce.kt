@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.lighting.global.effects
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_1
@@ -27,7 +27,7 @@ class GiSceneBounce(
         fragmentShaderFileName = "/pulseengine/shaders/lighting/global/bounce.frag"
     )
 
-    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures

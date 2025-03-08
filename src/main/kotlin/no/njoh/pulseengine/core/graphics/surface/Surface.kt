@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.surface
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.StencilState.Action.CLEAR
@@ -229,8 +229,8 @@ abstract class SurfaceInternal : Surface()
 
     abstract fun init(width: Int, height: Int, glContextRecreated: Boolean)
     abstract fun initFrame()
-    abstract fun renderToOffScreenTarget()
-    abstract fun runPostProcessingPipeline(engine: PulseEngine)
+    abstract fun renderToOffScreenTarget(engine: PulseEngineInternal)
+    abstract fun runPostProcessingPipeline(engine: PulseEngineInternal)
     abstract fun destroy()
     abstract fun hasContent(): Boolean
     abstract fun hasPostProcessingEffects(): Boolean

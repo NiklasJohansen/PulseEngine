@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.ColorGradingEffect.ToneMapper.ACES
@@ -20,7 +20,7 @@ class ColorGradingEffect(
         fragmentShaderFileName = "/pulseengine/shaders/effects/color_grading.frag"
     )
 
-    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
         fbo.bind()
         fbo.clear()

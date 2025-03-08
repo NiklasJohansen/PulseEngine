@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.config.ConfigurationInternal
@@ -88,7 +88,7 @@ interface GraphicsInternal : Graphics
     fun reloadAllShaders()
     fun reloadShader(fileName: String)
     fun initFrame()
-    fun drawFrame(engine: PulseEngine)
+    fun drawFrame(engine: PulseEngineInternal)
     fun setGpuLogLevel(logLevel: LogLevel)
     fun destroy()
 }

@@ -48,7 +48,7 @@ class PulseEngineImpl(
     override val asset: AssetManagerInternal    = AssetManagerImpl(),
     override val scene: SceneManagerInternal    = SceneManagerImpl(),
     override val widget: WidgetManagerInternal  = WidgetManagerImpl()
-) : PulseEngine {
+) : PulseEngineInternal {
 
     private val engineStartTime  = System.nanoTime()
     private val fpsLimiter       = FpsLimiter()

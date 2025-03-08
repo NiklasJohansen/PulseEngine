@@ -100,7 +100,7 @@ open class GraphicsImpl : GraphicsInternal
         }
     }
 
-    override fun drawFrame(engine: PulseEngine)
+    override fun drawFrame(engine: PulseEngineInternal)
     {
         // Render all batched data to offscreen target
         surfaces.forEachFiltered({ it.hasContent() })

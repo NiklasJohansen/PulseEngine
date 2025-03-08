@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
@@ -21,7 +21,7 @@ class BlurEffect(
         ShaderProgram.create("/pulseengine/shaders/effects/blur_horizontal.vert", "/pulseengine/shaders/effects/blur.frag")
     )
 
-    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
         val vProgram = programs[0]
         val hProgram = programs[1]

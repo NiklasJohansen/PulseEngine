@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 
@@ -71,7 +72,7 @@ abstract class BatchRenderer
     /**
      * Renders the numbered batch if it is not empty.
      */
-    fun renderBatch(surface: Surface, batchNum: Int)
+    fun renderBatch(engine: PulseEngineInternal, surface: Surface, batchNum: Int)
     {
         val i = readOffset + batchNum
         val drawCount = batchSize[i]
@@ -80,7 +81,7 @@ abstract class BatchRenderer
 
         GpuProfiler.measure({ name plus " (" plus drawCount plus ")" })
         {
-            onRenderBatch(surface, batchStart[i], drawCount)
+            onRenderBatch(engine, surface, batchStart[i], drawCount)
         }
     }
 
@@ -104,7 +105,7 @@ abstract class BatchRenderer
     /**
      * Called every frame on every none-empty batch.
      */
-    abstract fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    abstract fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
 
     /**
      * Called once when the [Surface] is destroyed.

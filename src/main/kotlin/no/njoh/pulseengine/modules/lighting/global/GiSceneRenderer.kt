@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.lighting.global
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
@@ -60,7 +61,7 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         instanceBuffer.swapBuffers()
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {

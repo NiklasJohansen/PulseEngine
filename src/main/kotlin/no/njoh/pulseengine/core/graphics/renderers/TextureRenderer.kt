@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
@@ -56,7 +57,7 @@ class TextureRenderer(
         readCount = writeCount.also { writeCount = 0 }
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         // Bind VAO and shader program
         vao.bind()

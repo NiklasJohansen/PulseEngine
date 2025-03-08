@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.lighting.shared
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureBank
@@ -61,7 +62,7 @@ class NormalMapRenderer(
         instanceBuffer.swapBuffers()
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {

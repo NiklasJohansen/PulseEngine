@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.lighting.direct
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
@@ -85,7 +86,7 @@ class DirectLightRenderer : BatchRenderer()
         readEdges = writeEdges.also { writeEdges = 0 }
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (readLights == 0)
         {

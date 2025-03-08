@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.lighting.global.effects
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
@@ -30,7 +30,7 @@ class GiJfa(
 
     override fun getTexture(index: Int) = outputTextures.getOrNull(index)
 
-    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
         outputTextures = inTextures
         val width = inTextures[0].width.toFloat()
@@ -72,7 +72,7 @@ class GiJfaSeed(
         fragmentShaderFileName = "/pulseengine/shaders/lighting/global/jfa_seed.frag"
     )
 
-    override fun applyEffect(engine: PulseEngine, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
         val sceneSurface = engine.gfx.getSurface(sceneSurfaceName) ?: return inTextures
         fbo.bind()
