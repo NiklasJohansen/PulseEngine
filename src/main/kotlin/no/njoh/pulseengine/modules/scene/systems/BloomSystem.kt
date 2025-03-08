@@ -14,8 +14,8 @@ class BloomSystem : SceneSystem()
     @Prop(i=1, min=0f)          var threshold         = 1.3f
     @Prop(i=2, min=0f, max=1f)  var thresholdSoftness = 0.7f
     @Prop(i=3, min=0f, max=1f)  var radius            = 0.001f
-    @Prop(i=4, min=0f)          var dirtIntensity     = 1f
-    @Prop(i=5) @TexRef          var dirtTexture       = ""
+    @Prop(i=4, min=0f)          var lensDirtIntensity = 1f
+    @Prop(i=5) @TexRef          var lensDirtTexture   = ""
     @Prop(i=6)                  var targetSurface     = "main"
 
     private var lastTargetSurface = targetSurface
@@ -47,8 +47,8 @@ class BloomSystem : SceneSystem()
         effect.thresholdSoftness = thresholdSoftness
         effect.intensity = intensity
         effect.radius = radius
-        effect.dirtIntensity = dirtIntensity
-        effect.dirtTextureName = dirtTexture
+        effect.lensDirtIntensity = lensDirtIntensity
+        effect.lensDirtTexture = lensDirtTexture
     }
 
     override fun onStateChanged(engine: PulseEngine)

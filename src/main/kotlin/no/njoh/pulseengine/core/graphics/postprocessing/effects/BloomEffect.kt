@@ -2,7 +2,6 @@ package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.GraphicsInternal
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
@@ -19,8 +18,8 @@ class BloomEffect(
     var threshold: Float = 1.3f,
     var thresholdSoftness: Float = 0.7f,
     var radius: Float = 0.015f,
-    var dirtIntensity: Float = 1f,
-    var dirtTextureName: String = ""
+    var lensDirtIntensity: Float = 1f,
+    var lensDirtTexture: String = ""
 ) : BaseEffect(
     TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGBA16F, scale = 1f / 1f), // Output texture
     TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 2f), // Final bloom texture
@@ -106,22 +105,16 @@ class BloomEffect(
         val program = programs[2] // bloom_final
         val bloomTexture = fbo.getTexture(1) ?: srcTexture
         val outputTexture = fbo.getTexture(0) ?: srcTexture
-        val dirtTexture = engine.asset.getOrNull<Texture>(dirtTextureName)
-        val textureBank = (engine.gfx as GraphicsInternal).textureBank
-        val textureArray = textureBank.getTextureArrayFor(dirtTexture)?: textureBank.getTextureArrays().firstOrNull() ?: return
+        val lensDirtTex = engine.asset.getOrNull<Texture>(lensDirtTexture)
+        val lensDirtTexArray = engine.gfx.textureBank.getTextureArrayOrDefault(lensDirtTex)
+        val lensDirtTexIndex = lensDirtTex?.handle?.textureIndex?.toFloat() ?: -1f
 
         program.bind()
-        program.setUniform("dirtTexIntensity", 0f)
         program.setUniformSampler("srcTex", srcTexture)
         program.setUniformSampler("bloomTex", bloomTexture)
-        program.setUniformSamplerArray("texArray", textureArray)
-
-        if (dirtTexture != null)
-        {
-            program.setUniform("dirtTexUv", dirtTexture.uMax, dirtTexture.vMax)
-            program.setUniform("dirtTexIndex", dirtTexture.handle.textureIndex.toFloat())
-            program.setUniform("dirtTexIntensity", dirtIntensity)
-        }
+        program.setUniform("lensDirtIntensity", lensDirtIntensity)
+        program.setUniform("lensDirtTexCoord", lensDirtTex?.uMax ?: 0f, lensDirtTex?.vMax ?: 0f, lensDirtTexIndex)
+        program.setUniformSamplerArray("lensDirtTexArray", lensDirtTexArray)
 
         setViewportSizeToFit(outputTexture)
         fbo.attachOutputTexture(outputTexture)
