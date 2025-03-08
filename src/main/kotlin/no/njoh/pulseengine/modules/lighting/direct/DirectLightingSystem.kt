@@ -183,8 +183,7 @@ open class DirectLightingSystem : SceneSystem()
                 isVisible = false
             )
             val surfaceConfig = (surface as SurfaceInternal).config
-            val textureBank = (engine.gfx as GraphicsInternal).textureBank
-            surface.addRenderer(NormalMapRenderer(surfaceConfig, textureBank))
+            surface.addRenderer(NormalMapRenderer(surfaceConfig))
             isUsingNormalMap = true
         }
         else if (!isEnabled && isUsingNormalMap)

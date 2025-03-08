@@ -3,7 +3,6 @@ package no.njoh.pulseengine.modules.lighting.shared
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureBank
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
@@ -12,11 +11,8 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
 
-class NormalMapRenderer(
-    private val config: SurfaceConfigInternal,
-    private val textureBank: TextureBank
-) : BatchRenderer() {
-
+class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+{
     private lateinit var vao: VertexArrayObject
     private lateinit var program: ShaderProgram
     private lateinit var vertexBuffer: StaticBufferObject
@@ -75,7 +71,7 @@ class NormalMapRenderer(
         program.bind()
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", surface.camera.viewMatrix)
-        program.setUniformSamplerArrays(textureBank.getTextureArrays())
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
     }

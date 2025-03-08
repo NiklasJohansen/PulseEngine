@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.config.ConfigurationInternal
 import no.njoh.pulseengine.core.graphics.api.*
@@ -37,7 +37,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         Logger.info("Initializing graphics (${this::class.simpleName})")
 
-        textureBank = TextureBank()
+        textureBank = TextureBank().apply { init() }
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",
@@ -107,7 +107,7 @@ open class GraphicsImpl : GraphicsInternal
         {
             GpuProfiler.measure(label = { "DRAW_SURFACE (" plus it.config.name plus ")" })
             {
-                it.renderToOffScreenTarget()
+                it.renderToOffScreenTarget(engine)
             }
         }
 
@@ -162,7 +162,6 @@ open class GraphicsImpl : GraphicsInternal
         val newCamera = (camera ?: DefaultCamera.createOrthographic(surfaceWidth, surfaceHeight)) as CameraInternal
         val newSurface = SurfaceImpl(
             camera = newCamera,
-            textureBank = textureBank,
             config = SurfaceConfigInternal(
                 name = name,
                 width = surfaceWidth,

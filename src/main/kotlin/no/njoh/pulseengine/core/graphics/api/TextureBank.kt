@@ -13,6 +13,12 @@ class TextureBank
     private val textureArrays = mutableListOf<TextureArray>()
     private val capacitySpecs = mutableListOf<TextureCapacitySpec>().apply { addAll(DEFAULT_CAPACITIES) }
 
+    fun init()
+    {
+        if (TextureArray.EMPTY.id == -1)
+            TextureArray.EMPTY.init()
+    }
+
     fun upload(texture: Texture)
     {
         val array = getOrCreateTextureArrayFor(texture)
@@ -52,10 +58,13 @@ class TextureBank
         capacitySpecs.sortBy { it.texSize }
     }
 
-    fun getTextureArrays(): List<TextureArray> = textureArrays
-
-    fun getTextureArrayFor(texture: Texture?): TextureArray? =
+    fun getTextureArray(texture: Texture?): TextureArray? =
         textureArrays.firstOrNullFast { it.samplerIndex == texture?.handle?.samplerIndex }
+
+    fun getTextureArrayOrDefault(texture: Texture?): TextureArray =
+        getTextureArray(texture) ?: TextureArray.EMPTY
+
+    fun getAllTextureArrays(): List<TextureArray> = textureArrays
 
     private fun getOrCreateTextureArrayFor(texture: Texture): TextureArray?
     {
@@ -120,26 +129,32 @@ class TextureBank
             TextureCapacitySpec(texSize = 128,  capacity = 100, format = RGBA8),
             TextureCapacitySpec(texSize = 128,  capacity = 70,  format = RGBA16F),
             TextureCapacitySpec(texSize = 128,  capacity = 50,  format = RGBA32F),
+
             TextureCapacitySpec(texSize = 256,  capacity = 100, format = SRGBA8),
             TextureCapacitySpec(texSize = 256,  capacity = 100, format = RGBA8),
             TextureCapacitySpec(texSize = 256,  capacity = 70,  format = RGBA16F),
             TextureCapacitySpec(texSize = 256,  capacity = 50,  format = RGBA32F),
+
             TextureCapacitySpec(texSize = 512,  capacity = 50,  format = SRGBA8),
             TextureCapacitySpec(texSize = 512,  capacity = 50,  format = RGBA8),
             TextureCapacitySpec(texSize = 512,  capacity = 30,  format = RGBA16F),
             TextureCapacitySpec(texSize = 512,  capacity = 20,  format = RGBA32F),
+
             TextureCapacitySpec(texSize = 1024, capacity = 50,  format = SRGBA8),
             TextureCapacitySpec(texSize = 1024, capacity = 50,  format = RGBA8),
             TextureCapacitySpec(texSize = 1024, capacity = 30,  format = RGBA16F),
             TextureCapacitySpec(texSize = 1024, capacity = 20,  format = RGBA32F),
+
             TextureCapacitySpec(texSize = 2048, capacity = 15,  format = SRGBA8),
             TextureCapacitySpec(texSize = 2048, capacity = 15,  format = RGBA8),
             TextureCapacitySpec(texSize = 2048, capacity = 10,  format = RGBA16F),
             TextureCapacitySpec(texSize = 2048, capacity = 5,   format = RGBA32F),
+
             TextureCapacitySpec(texSize = 4096, capacity = 10,  format = SRGBA8),
             TextureCapacitySpec(texSize = 4096, capacity = 10,  format = RGBA8),
             TextureCapacitySpec(texSize = 4096, capacity = 5,   format = RGBA16F),
             TextureCapacitySpec(texSize = 4096, capacity = 5,   format = RGBA32F),
+
             TextureCapacitySpec(texSize = 8192, capacity = 5,   format = SRGBA8),
             TextureCapacitySpec(texSize = 8192, capacity = 5,   format = RGBA8),
             TextureCapacitySpec(texSize = 8192, capacity = 3,   format = RGBA16F),

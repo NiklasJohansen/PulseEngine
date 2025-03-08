@@ -11,10 +11,8 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.GL20.*
 import java.lang.Float.floatToRawIntBits
 
-class TextureRenderer(
-    private val config: SurfaceConfigInternal
-) : BatchRenderer() {
-
+class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+{
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram

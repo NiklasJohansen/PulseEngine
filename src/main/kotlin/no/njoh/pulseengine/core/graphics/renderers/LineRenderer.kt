@@ -9,10 +9,8 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.GL11.*
 
-class LineRenderer(
-    private val config: SurfaceConfigInternal
-) : BatchRenderer() {
-
+class LineRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+{
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: DoubleBufferedFloatObject
     private lateinit var program: ShaderProgram

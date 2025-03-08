@@ -10,11 +10,8 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
 
-class BindlessTextureRenderer(
-    private val config: SurfaceConfigInternal,
-    private val textureBank: TextureBank
-) : BatchRenderer() {
-
+class BindlessTextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+{
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
@@ -73,7 +70,7 @@ class BindlessTextureRenderer(
         vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        program.setUniformSamplerArrays(textureBank.getTextureArrays())
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
     }

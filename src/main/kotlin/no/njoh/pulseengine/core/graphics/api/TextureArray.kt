@@ -8,7 +8,6 @@ import org.lwjgl.opengl.ARBInternalformatQuery2.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.ARBTextureStorage.glTexStorage3D
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL12.glTexSubImage3D
-import org.lwjgl.opengl.GL21.GL_SRGB8_ALPHA8
 
 class TextureArray(
     val samplerIndex: Int,
@@ -22,7 +21,7 @@ class TextureArray(
     var id  = -1; private set
     var size = 0; private set
 
-    private fun init()
+    fun init()
     {
         id = glGenTextures()
         glBindTexture(GL_TEXTURE_2D_ARRAY, id)
@@ -83,4 +82,9 @@ class TextureArray(
     fun destroy() = glDeleteTextures(id)
 
     override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, mips=$mipLevels"
+
+    companion object
+    {
+        val EMPTY = TextureArray(0, 0, 0, RGBA8, TextureFilter.LINEAR, TextureWrapping.CLAMP_TO_EDGE, 1)
+    }
 }

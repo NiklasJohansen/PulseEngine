@@ -21,11 +21,8 @@ import org.lwjgl.stb.STBTruetype.*
 import kotlin.math.max
 import kotlin.math.sin
 
-class TextRenderer(
-    private val config: SurfaceConfigInternal,
-    private val textureBank: TextureBank
-) : BatchRenderer() {
-
+class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+{
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
@@ -82,7 +79,7 @@ class TextRenderer(
         vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        program.setUniformSamplerArrays(textureBank.getTextureArrays())
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
     }

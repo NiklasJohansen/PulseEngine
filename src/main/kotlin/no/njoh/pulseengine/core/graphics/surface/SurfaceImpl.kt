@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.surface
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
@@ -19,7 +19,6 @@ import no.njoh.pulseengine.core.shared.utils.Logger
 class SurfaceImpl(
     override val camera: CameraInternal,
     override val config: SurfaceConfigInternal,
-    val textureBank: TextureBank
 ): SurfaceInternal() {
 
     override var renderTarget           = createRenderTarget(config)
@@ -47,12 +46,12 @@ class SurfaceImpl(
 
         if (!initialized)
         {
-            textRenderer            = TextRenderer(config, textureBank)
+            textRenderer            = TextRenderer(config)
             quadRenderer            = QuadRenderer(config)
             lineRenderer            = LineRenderer(config)
             textureRenderer         = TextureRenderer(config)
             stencilRenderer         = StencilRenderer()
-            bindlessTextureRenderer = BindlessTextureRenderer(config, textureBank)
+            bindlessTextureRenderer = BindlessTextureRenderer(config)
             renderers               += listOfNotNull(textRenderer, quadRenderer, lineRenderer, textureRenderer, stencilRenderer, bindlessTextureRenderer)
 
             renderers.forEachFast { rendererMap[it::class.java] = it }
@@ -81,7 +80,7 @@ class SurfaceImpl(
         applyRenderState(BatchRenderBaseState)
     }
 
-    override fun renderToOffScreenTarget()
+    override fun renderToOffScreenTarget(engine: PulseEngineInternal)
     {
         renderTarget.begin()
 
@@ -91,7 +90,7 @@ class SurfaceImpl(
             readRenderStates[batchNum].apply(this)
             GpuProfiler.measure({ "RENDER_BATCH " plus " (#" plus batchNum plus ")" })
             {
-                renderers.forEachFast { it.renderBatch(this, batchNum) }
+                renderers.forEachFast { it.renderBatch(engine, this, batchNum) }
             }
             batchNum++
         }
