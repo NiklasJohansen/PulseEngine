@@ -6,16 +6,19 @@ import no.njoh.pulseengine.core.graphics.postprocessing.effects.ColorGradingEffe
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
+import no.njoh.pulseengine.core.shared.annotations.TexRef
 
 @Name("Color Grading")
 class ColorGradingSystem : SceneSystem()
 {
-    @Prop(i=0)         var toneMapper    = ACES
-    @Prop(i=1, min=0f) var exposure      = 1f
-    @Prop(i=2, min=0f) var contrast      = 1f
-    @Prop(i=3, min=0f) var saturation    = 1f
-    @Prop(i=4, min=0f) var vignette      = 0f
-    @Prop(i=5)         var targetSurface = "main"
+    @Prop(i=0)                 var toneMapper    = ACES
+    @Prop(i=1) @TexRef         var lutTexture    = ""
+    @Prop(i=2, min=0f, max=1f) var lutIntensity  = 1f
+    @Prop(i=3, min=0f)         var exposure      = 1f
+    @Prop(i=4)                 var contrast      = 1f
+    @Prop(i=5, min=0f)         var saturation    = 1f
+    @Prop(i=6, min=0f)         var vignette      = 0f
+    @Prop(i=7)                 var targetSurface = "main"
 
     private var lastTargetSurface = targetSurface
 
@@ -42,11 +45,13 @@ class ColorGradingSystem : SceneSystem()
             return
         }
 
-        effect.toneMapper = toneMapper
-        effect.exposure = exposure
-        effect.contrast = contrast
-        effect.saturation = saturation
-        effect.vignette = vignette
+        effect.lutTexture   = lutTexture
+        effect.lutIntensity = lutIntensity
+        effect.toneMapper   = toneMapper
+        effect.exposure     = exposure
+        effect.contrast     = contrast
+        effect.saturation   = saturation
+        effect.vignette     = vignette
     }
 
     override fun onStateChanged(engine: PulseEngine)
