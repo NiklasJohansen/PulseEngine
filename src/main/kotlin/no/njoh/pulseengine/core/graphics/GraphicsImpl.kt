@@ -37,7 +37,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         Logger.info("Initializing graphics (${this::class.simpleName})")
 
-        textureBank = TextureBank().apply { init() }
+        textureBank = TextureBank()
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",

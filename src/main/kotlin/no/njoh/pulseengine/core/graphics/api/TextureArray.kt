@@ -82,9 +82,4 @@ class TextureArray(
     fun destroy() = glDeleteTextures(id)
 
     override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, mips=$mipLevels"
-
-    companion object
-    {
-        val EMPTY = TextureArray(0, 0, 0, RGBA8, TextureFilter.LINEAR, TextureWrapping.CLAMP_TO_EDGE, 1)
-    }
 }

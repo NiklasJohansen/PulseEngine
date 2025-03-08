@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
@@ -10,14 +12,9 @@ import kotlin.math.max
 
 class TextureBank
 {
-    private val textureArrays = mutableListOf<TextureArray>()
     private val capacitySpecs = mutableListOf<TextureCapacitySpec>().apply { addAll(DEFAULT_CAPACITIES) }
-
-    fun init()
-    {
-        if (TextureArray.EMPTY.id == -1)
-            TextureArray.EMPTY.init()
-    }
+    private val textureArrays = mutableListOf<TextureArray>()
+    private val emptyTextureArray = TextureArray(0, 0, 0, RGBA8, LINEAR, CLAMP_TO_EDGE, 1)
 
     fun upload(texture: Texture)
     {
@@ -62,7 +59,7 @@ class TextureBank
         textureArrays.firstOrNullFast { it.samplerIndex == texture?.handle?.samplerIndex }
 
     fun getTextureArrayOrDefault(texture: Texture?): TextureArray =
-        getTextureArray(texture) ?: TextureArray.EMPTY
+        getTextureArray(texture) ?: emptyTextureArray.also { if (it.id == -1) it.init() }
 
     fun getAllTextureArrays(): List<TextureArray> = textureArrays
 
