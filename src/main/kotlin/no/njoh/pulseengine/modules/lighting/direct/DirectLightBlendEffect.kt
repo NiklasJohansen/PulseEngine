@@ -1,8 +1,10 @@
 package no.njoh.pulseengine.modules.lighting.direct
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
@@ -43,9 +45,9 @@ class DirectLightBlendEffect(
     private var camPos = Vector4f()
     private var camScale = Vector3f()
 
-    override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/lighting/direct/lighting_blend.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/lighting/direct/lighting_blend.frag"
+    override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/direct/lighting_blend.vert")),
+        engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/direct/lighting_blend.frag"))
     )
 
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>

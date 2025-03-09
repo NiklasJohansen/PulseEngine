@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
@@ -21,9 +23,9 @@ class GiCompose(
 ) : BaseEffect(
     TextureDescriptor(filter = LINEAR, format = RGBA16F)
 ) {
-    override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/lighting/global/default.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/lighting/global/compose.frag"
+    override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
+        engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/compose.frag"))
     )
 
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>

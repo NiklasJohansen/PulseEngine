@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
@@ -31,10 +33,19 @@ class BloomEffect(
     TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 128f)
 ) {
 
-    override fun loadShaderPrograms() = listOf(
-        ShaderProgram.create("/pulseengine/shaders/effects/bloom.vert", "/pulseengine/shaders/effects/bloom_downsample.frag"),
-        ShaderProgram.create("/pulseengine/shaders/effects/bloom.vert", "/pulseengine/shaders/effects/bloom_upsample.frag"),
-        ShaderProgram.create("/pulseengine/shaders/effects/bloom.vert", "/pulseengine/shaders/effects/bloom_final.frag")
+    override fun loadShaderPrograms(engine: PulseEngineInternal) = listOf(
+        ShaderProgram.create(
+            engine.asset.loadNow(VertexShader("/pulseengine/shaders/effects/bloom.vert")),
+            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/bloom_downsample.frag"))
+        ),
+        ShaderProgram.create(
+            engine.asset.loadNow(VertexShader("/pulseengine/shaders/effects/bloom.vert")),
+            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/bloom_upsample.frag"))
+        ),
+        ShaderProgram.create(
+            engine.asset.loadNow(VertexShader("/pulseengine/shaders/effects/bloom.vert")),
+            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/bloom_final.frag"))
+        )
     )
 
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>

@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import kotlin.math.max
@@ -15,10 +17,15 @@ class BlurEffect(
     TextureDescriptor(), // Horizontal blur
     TextureDescriptor()  // Vertical blur
 ) {
-
-    override fun loadShaderPrograms() = listOf(
-        ShaderProgram.create("/pulseengine/shaders/effects/blur_vertical.vert", "/pulseengine/shaders/effects/blur.frag"),
-        ShaderProgram.create("/pulseengine/shaders/effects/blur_horizontal.vert", "/pulseengine/shaders/effects/blur.frag")
+    override fun loadShaderPrograms(engine: PulseEngineInternal) = listOf(
+        ShaderProgram.create(
+            engine.asset.loadNow(VertexShader("/pulseengine/shaders/effects/blur_vertical.vert")),
+            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/blur.frag"))
+        ),
+        ShaderProgram.create(
+            engine.asset.loadNow(VertexShader("/pulseengine/shaders/effects/blur_horizontal.vert")),
+            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/blur.frag"))
+        )
     )
 
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>

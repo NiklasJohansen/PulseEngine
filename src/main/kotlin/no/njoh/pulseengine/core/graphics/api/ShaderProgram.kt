@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.graphics.api
 
+import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -19,7 +19,7 @@ import org.lwjgl.opengl.GL33.glVertexAttribDivisor
 
 class ShaderProgram(
     id: Int,
-    private val shaders: MutableList<Shader>
+    private val shaders: List<Shader>,
 ) {
     /** Locally mutable program ID */
     var id = id; private set
@@ -30,36 +30,21 @@ class ShaderProgram(
     /** Used for setting texture sampler bindings */
     private val textureUnits = emptyObjectIntHashMap<String>(32) // Sampler name -> texture unit
 
-    /** Used for getting matrix data as an array */
-    private val floatArray16 = FloatArray(16)
+    /** Hash of the last time the shaders were compiled */
+    private var shaderCompileHash = 0L
 
-    fun bind() = glUseProgram(id)
+    fun bind()
+    {
+        glUseProgram(id)
+        linkProgramIfNecessary()
+    }
 
     fun unbind() = glUseProgram(0)
 
-    fun reload()
-    {
-        val newProgram = createProgram(*shaders.toTypedArray())
-        if (linkedSuccessfully(newProgram))
-        {
-            delete()
-            id = newProgram.id
-            shaders.clear()
-            shaders.addAll(newProgram.shaders)
-            shaderPrograms.add(this)
-            uniformLocations.clear()
-            textureUnits.clear()
-        }
-    }
-
     fun delete()
     {
-        if (linkedSuccessfully(this))
-        {
-            unbind()
-            glDeleteProgram(id)
-            shaderPrograms.remove(this)
-        }
+        unbind()
+        glDeleteProgram(id)
     }
 
     fun attributeLocationOf(name: String): Int =
@@ -167,60 +152,45 @@ class ShaderProgram(
     }
 
     private fun getUniformLocation(name: String): Int =
-        glGetUniformLocation(id, name).also { if (it == -1) Logger.warn("Uniform '$name' not found in shader program: $id (${shaders.joinToString { it.fileName }})") }
+        glGetUniformLocation(id, name).also { if (it == -1) Logger.warn("Uniform '$name' not found in shader program #$id (${shaders.joinToString { it.filePath }})") }
+
+    private fun linkProgramIfNecessary()
+    {
+        var hash = 1L
+        shaders.forEachFast { hash = hash * 31 + it.compileTimestamp }
+        if (hash == shaderCompileHash)
+            return // No need to relink program if the shaders have not been recompiled
+
+        Logger.debug("Linking program #$id (shaders: ${shaders.joinToString { "#${it.getId()}" }})")
+
+        reattachShaders()
+        glLinkProgram(id)
+        if (glGetProgrami(id, GL_LINK_STATUS) != GL_TRUE)
+            throw RuntimeException("Failed to link shaders: ${shaders.joinToString { it.filePath }} \n${glGetProgramInfoLog(id)}")
+
+        uniformLocations.clear()
+        textureUnits.clear()
+        shaderCompileHash = hash
+    }
+
+    private fun reattachShaders()
+    {
+        // Detach all shaders in case recompiled shaders have gotten new IDs
+        glGetAttachedShaders(id, shaderCount, shaderIds)
+        for (i in 0 until shaderCount[0])
+            glDetachShader(id, shaderIds[i])
+
+        // Reattach all shaders again
+        shaders.forEachFast { glAttachShader(id, it.getId()) }
+    }
 
     companion object
     {
+        private val shaderIds = IntArray(5)
+        private val shaderCount = IntArray(1)
+        private val floatArray16 = FloatArray(16)
         private val textureArrayNames = Array(64) { "textureArrays[$it]" }
-        private val shaderPrograms = mutableListOf<ShaderProgram>()
-        private var errProgram = null as ShaderProgram?
 
-        fun reloadAll()
-        {
-            shaderPrograms.toList().forEachFast { it.reload() }
-        }
-
-        fun create(vertexShaderFileName: String, fragmentShaderFileName: String) = create(
-            vertexShader = Shader.getOrLoad(vertexShaderFileName, VERTEX),
-            fragmentShader = Shader.getOrLoad(fragmentShaderFileName, FRAGMENT)
-        )
-
-        fun create(vertexShader: Shader, fragmentShader: Shader): ShaderProgram
-        {
-            val program = createProgram(vertexShader, fragmentShader)
-            if (linkedSuccessfully(program))
-                shaderPrograms.add(program)
-            return program
-        }
-
-        fun createCompute(computeShaderFileName: String): ShaderProgram =
-            createCompute(Shader.getOrLoad(computeShaderFileName, COMPUTE))
-
-        fun createCompute(computeShader: Shader): ShaderProgram
-        {
-            val program = createProgram(computeShader)
-            if (linkedSuccessfully(program))
-                shaderPrograms.add(program)
-            return program
-        }
-
-        private fun createProgram(vararg shaders: Shader): ShaderProgram
-        {
-            val programId = glCreateProgram()
-            for (shader in shaders)
-                glAttachShader(programId, shader.id)
-
-            glLinkProgram(programId)
-
-            if (glGetProgrami(programId, GL_LINK_STATUS) != GL_TRUE)
-            {
-                Logger.error("Failed to link shaders: ${shaders.joinToString { it.fileName }} \n${glGetProgramInfoLog(programId)}")
-                return errProgram ?: createProgram(Shader.getErrorShader(VERTEX), Shader.getErrorShader(FRAGMENT)).also { errProgram = it }
-            }
-
-            return ShaderProgram(programId, shaders.toMutableList())
-        }
-
-        private fun linkedSuccessfully(program: ShaderProgram) = program.id != errProgram?.id
+        fun create(vararg shaders: Shader) = ShaderProgram(glCreateProgram(), shaders.toList())
     }
 }

@@ -23,7 +23,7 @@ class SurfaceImpl(
 
     override var renderTarget           = createRenderTarget(config)
     private var initialized             = false
-    private val onInitFrame             = ArrayList<() -> Unit>()
+    private val onInitFrame             = ArrayList<(PulseEngineInternal) -> Unit>()
     private var readRenderStates        = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private var writeRenderStates       = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private val postEffects             = ArrayList<PostProcessingEffect>()
@@ -39,7 +39,7 @@ class SurfaceImpl(
     // Internal functions
     //--------------------------------------------------------------------------------------------
 
-    override fun init(width: Int, height: Int, glContextRecreated: Boolean)
+    override fun init(engine: PulseEngineInternal, width: Int, height: Int, glContextRecreated: Boolean)
     {
         config.width = width
         config.height = height
@@ -59,20 +59,20 @@ class SurfaceImpl(
 
         if (glContextRecreated || !initialized)
         {
-            renderers.forEachFast { it.init() }
-            postEffects.forEachFast { it.init() }
+            renderers.forEachFast { it.init(engine) }
+            postEffects.forEachFast { it.init(engine) }
         }
 
         renderTarget.init(width, height)
         initialized = true
     }
 
-    override fun initFrame()
+    override fun initFrame(engine: PulseEngineInternal)
     {
         readRenderStates = writeRenderStates.also { writeRenderStates = readRenderStates }
         writeRenderStates.clear()
 
-        onInitFrame.forEachFast { it.invoke() }
+        onInitFrame.forEachFast { it.invoke(engine) }
         onInitFrame.clear()
 
         renderers.forEachFast { it.initFrame() }
@@ -248,7 +248,7 @@ class SurfaceImpl(
             {
                 renderTarget.destroy()
                 renderTarget = createRenderTarget(config)
-                renderTarget.init(config.width, config.height)
+                renderTarget.init(this@SurfaceImpl.config.width, config.height)
             }
         }
         return this
@@ -295,14 +295,14 @@ class SurfaceImpl(
 
     override fun addPostProcessingEffect(effect: PostProcessingEffect)
     {
-        runOnInitFrame()
-        {
+        runOnInitFrame { engine ->
+
             getPostProcessingEffect(effect.name)?.let()
             {
                 Logger.warn("Replacing existing post processing effect with same name: ${it.name}")
                 deletePostProcessingEffect(it.name)
             }
-            effect.init()
+            effect.init(engine)
             postEffects.add(effect)
             postEffects.sortBy { it.order }
         }
@@ -347,15 +347,15 @@ class SurfaceImpl(
 
         writeRenderStates.add(state)
     }
+
     override fun addRenderer(renderer: BatchRenderer)
     {
-        runOnInitFrame()
-        {
-            renderer.init()
+        runOnInitFrame { engine ->
+            renderer.init(engine)
             renderers.add(renderer)
             rendererMap[renderer.javaClass] = renderer
         }
     }
 
-    private fun runOnInitFrame(command: () -> Unit) { onInitFrame.add(command) }
+    private fun runOnInitFrame(command: (PulseEngineInternal) -> Unit) { onInitFrame.add(command) }
 }

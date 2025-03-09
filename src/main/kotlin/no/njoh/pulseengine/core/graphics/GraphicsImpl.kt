@@ -1,11 +1,12 @@
 package no.njoh.pulseengine.core.graphics
 
 import no.njoh.pulseengine.core.PulseEngineInternal
-import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.config.ConfigurationInternal
+import no.njoh.pulseengine.core.asset.types.*
+import no.njoh.pulseengine.core.asset.types.Shader.Companion.INVALID_ID
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
+import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.renderers.*
@@ -28,14 +29,17 @@ open class GraphicsImpl : GraphicsInternal
     override lateinit var textureBank: TextureBank
     private  lateinit var fullFrameRenderer: FullFrameRenderer
 
-    private val onInitFrame = ArrayList<() -> Unit>()
-    private val surfaceMap  = HashMap<String, SurfaceInternal>()
-    private val surfaces    = ArrayList<SurfaceInternal>()
-    private var lastZOrder  = 0
+    private val onInitFrame  = ArrayList<PulseEngineInternal.() -> Unit>()
+    private val surfaceMap   = HashMap<String, SurfaceInternal>()
+    private val surfaces     = ArrayList<SurfaceInternal>()
+    private val errorShaders = HashMap<ShaderType, Shader>()
+    private var lastZOrder   = 0
 
-    override fun init(config: ConfigurationInternal, viewPortWidth: Int, viewPortHeight: Int)
+    override fun init(engine: PulseEngineInternal)
     {
         Logger.info("Initializing graphics (${this::class.simpleName})")
+        val viewPortWidth = engine.window.width
+        val viewPortHeight = engine.window.height
 
         textureBank = TextureBank()
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
@@ -51,12 +55,12 @@ open class GraphicsImpl : GraphicsInternal
             attachments = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
         )
 
-        updateViewportSize(viewPortWidth, viewPortHeight, true)
+        onWindowChanged(engine, viewPortWidth, viewPortHeight, windowRecreated = true)
 
-        GpuLogger.setLogLevel(config.getEnum("gpuLogLevel", LogLevel::class) ?: LogLevel.OFF)
+        GpuLogger.setLogLevel(engine.config.getEnum("gpuLogLevel", LogLevel::class) ?: LogLevel.OFF)
     }
 
-    override fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
+    override fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean)
     {
         if (windowRecreated)
         {
@@ -64,19 +68,25 @@ open class GraphicsImpl : GraphicsInternal
             GL.createCapabilities()
             Logger.debug("Running OpenGL on GPU: ${glGetString(GL_RENDERER)}")
 
+            // Load error shaders
+            errorShaders[VERTEX]   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/error/error.vert"))
+            errorShaders[COMPUTE]  = engine.asset.loadNow(ComputeShader("/pulseengine/shaders/error/error.comp"))
+            errorShaders[FRAGMENT] = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/error/error.frag"))
+
             // Create and initialize full frame renderer
             if (!this::fullFrameRenderer.isInitialized)
             {
-                val vertex = "/pulseengine/shaders/renderers/surface.vert"
-                val fragment = "/pulseengine/shaders/renderers/surface.frag"
-                val shaderProgram = ShaderProgram.create(vertex, fragment)
+                val shaderProgram = ShaderProgram.create(
+                    engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/surface.vert")),
+                    engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/surface.frag"))
+                )
                 fullFrameRenderer = FullFrameRenderer(shaderProgram)
             }
             fullFrameRenderer.init()
         }
 
         // Initialize surfaces
-        surfaces.forEachFast { it.init(width, height, windowRecreated) }
+        surfaces.forEachFast { it.init(engine, width, height, windowRecreated) }
 
         // Update camera projection
         surfaces.forEachCamera { it.updateProjection(width, height) }
@@ -85,14 +95,14 @@ open class GraphicsImpl : GraphicsInternal
         ViewportState.apply(mainSurface)
     }
 
-    override fun initFrame()
+    override fun initFrame(engine: PulseEngineInternal)
     {
         GpuProfiler.initFrame()
 
-        onInitFrame.forEachFast { it.invoke() }
+        onInitFrame.forEachFast { it.invoke(engine) }
         onInitFrame.clear()
 
-        surfaces.forEachFast { it.initFrame() }
+        surfaces.forEachFast { it.initFrame(engine) }
         surfaces.forEachCamera()
         {
             it.updateViewMatrix()
@@ -186,7 +196,7 @@ open class GraphicsImpl : GraphicsInternal
                 surfaces.remove(it)
                 it.destroy()
             }
-            newSurface.init(surfaceWidth, surfaceHeight, true)
+            newSurface.init(this, surfaceWidth, surfaceHeight, true)
             surfaceMap[name] = newSurface
             surfaces.add(newSurface)
             surfaces.sortBy { -it.config.zOrder }
@@ -220,26 +230,23 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun updateCameras() = surfaces.forEachCamera { it.updateLastState() }
 
-    override fun reloadAllShaders()
+    override fun compileShader(shader: Shader)
     {
-        runOnInitFrame()
-        {
-            Shader.reloadAll()
-            ShaderProgram.reloadAll()
-        }
-    }
+        val id = shader.currentId.takeIf { it != INVALID_ID } ?: glCreateShader(shader.type.value)
 
-    override fun reloadShader(fileName: String)
-    {
-        runOnInitFrame()
+        Logger.debug("Compiling shader #$id (${shader.filePath})")
+        glShaderSource(id, shader.transform(shader.sourceCode))
+        glCompileShader(id)
+
+        if (glGetShaderi(id, GL_COMPILE_STATUS) != GL_TRUE)
         {
-            val shader = Shader.getShaderFromAbsolutePath(fileName)
-            val success = shader?.reload(fileName)
-            if (success == true)
-                ShaderProgram.reloadAll()
-            else
-                Logger.warn("Failed to reload shader: $fileName")
+            val info = glGetShaderInfoLog(id).removeSuffix("\n")
+            Logger.error("Failed to compile shader #$id (${shader.filePath}) \n$info")
+            shader.setId(INVALID_ID)
+            shader.setErrorId(errorShaders[shader.type]!!.currentId)
+            glDeleteShader(id)
         }
+        else shader.setId(id)
     }
 
     override fun setGpuLogLevel(logLevel: LogLevel)
@@ -277,5 +284,5 @@ open class GraphicsImpl : GraphicsInternal
         private var defaultClearColor = Color(0.043f, 0.047f, 0.054f, 0f)
     }
 
-    private fun runOnInitFrame(command: () -> Unit) { onInitFrame.add(command) }
+    private fun runOnInitFrame(command: PulseEngineInternal.() -> Unit) { onInitFrame.add(command) }
 }

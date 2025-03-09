@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
@@ -28,9 +30,9 @@ class GiRadianceCascades(
     private var sunColor = Color()
     private var outTextures = emptyList<Texture>()
 
-    override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/lighting/global/default.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/lighting/global/radiance_cascades.frag"
+    override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
+        engine.asset.loadNow(FragmentShader( "/pulseengine/shaders/lighting/global/radiance_cascades.frag"))
     )
 
     override fun getTexture(index: Int) = outTextures.getOrNull(index)

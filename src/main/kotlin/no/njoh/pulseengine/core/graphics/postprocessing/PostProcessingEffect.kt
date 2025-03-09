@@ -7,7 +7,7 @@ interface PostProcessingEffect
 {
     val name: String
     val order: Int
-    fun init()
+    fun init(engine: PulseEngineInternal)
     fun process(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     fun getTexture(index: Int): Texture?
     fun destroy()

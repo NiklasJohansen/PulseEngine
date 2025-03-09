@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.modules.lighting.shared
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
@@ -18,15 +20,15 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/lighting/normal_map.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/lighting/normal_map.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/normal_map.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/normal_map.frag"))
             )
         }
 

@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 
 class MultiplyEffect(
@@ -10,9 +12,9 @@ class MultiplyEffect(
     private val surfaceName: String
 ) : BaseEffect() {
 
-    override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/effects/texture_multiply_blend.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/effects/texture_multiply_blend.frag"
+    override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/effects/texture_multiply_blend.vert")),
+        engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/texture_multiply_blend.frag"))
     )
 
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>

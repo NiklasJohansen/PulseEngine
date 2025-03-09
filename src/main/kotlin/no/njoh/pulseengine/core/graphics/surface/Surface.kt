@@ -227,8 +227,8 @@ abstract class SurfaceInternal : Surface()
 
     abstract val renderTarget: RenderTarget
 
-    abstract fun init(width: Int, height: Int, glContextRecreated: Boolean)
-    abstract fun initFrame()
+    abstract fun init(engine: PulseEngineInternal, width: Int, height: Int, glContextRecreated: Boolean)
+    abstract fun initFrame(engine: PulseEngineInternal)
     abstract fun renderToOffScreenTarget(engine: PulseEngineInternal)
     abstract fun runPostProcessingPipeline(engine: PulseEngineInternal)
     abstract fun destroy()

@@ -2,10 +2,7 @@ package no.njoh.pulseengine.core
 
 import no.njoh.pulseengine.core.asset.AssetManagerImpl
 import no.njoh.pulseengine.core.asset.AssetManagerInternal
-import no.njoh.pulseengine.core.asset.types.Cursor
-import no.njoh.pulseengine.core.asset.types.Font
-import no.njoh.pulseengine.core.asset.types.Sound
-import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.audio.AudioImpl
 import no.njoh.pulseengine.core.audio.AudioInternal
 import no.njoh.pulseengine.core.config.ConfigurationImpl
@@ -80,23 +77,13 @@ class PulseEngineImpl(
         printLogo()
         Logger.info("Initializing engine (${this::class.simpleName})")
 
-        // Initialize engine components
-        config.init()
-        data.init(config.gameName)
-        window.init(config)
-        gfx.init(config, window.width, window.height)
-        input.init(window.windowHandle, window.cursorPosScale)
-        audio.init()
-        console.init(this)
-        scene.init(this)
-
         // Create focus area for game
         focusArea.update(0f, 0f, window.width.toFloat(), window.height.toFloat())
         input.acquireFocus(focusArea)
 
         // Set up window resize event handler
         window.setOnResizeEvent { w, h, windowRecreated ->
-            gfx.updateViewportSize(w, h, windowRecreated)
+            gfx.onWindowChanged(this, w, h, windowRecreated)
             focusArea.update(0f, 0f, w.toFloat(), h.toFloat())
             if (windowRecreated)
                 input.init(window.windowHandle, window.cursorPosScale)
@@ -113,20 +100,21 @@ class PulseEngineImpl(
             when (it)
             {
                 is Texture -> gfx.uploadTexture(it)
-                is Font -> gfx.uploadTexture(it.charTexture)
-                is Sound -> audio.uploadSound(it)
-                is Cursor -> input.createCursor(it)
+                is Font    -> gfx.uploadTexture(it.charTexture)
+                is Shader  -> gfx.compileShader(it)
+                is Sound   -> audio.uploadSound(it)
+                is Cursor  -> input.createCursor(it)
             }
         }
 
-        // Notify gfx and audio implementation about deleted textures and sounds
-        asset.setOnAssetRemoved {
+        // Notify gfx and audio implementation about unloaded textures and sounds
+        asset.setOnAssetUnloaded {
             when (it)
             {
                 is Texture -> gfx.deleteTexture(it)
-                is Font -> gfx.deleteTexture(it.charTexture)
-                is Sound -> audio.deleteSound(it)
-                is Cursor -> input.deleteCursor(it)
+                is Font    -> gfx.deleteTexture(it.charTexture)
+                is Sound   -> audio.deleteSound(it)
+                is Cursor  -> input.deleteCursor(it)
             }
         }
 
@@ -143,6 +131,16 @@ class PulseEngineImpl(
 
         // Load custom cursors
         input.getCursorsToLoad().forEachFast { asset.load(it) }
+
+        // Initialize engine components
+        config.init()
+        data.init(config.gameName)
+        window.init(config)
+        gfx.init(this)
+        input.init(window.windowHandle, window.cursorPosScale)
+        audio.init()
+        console.init(this)
+        scene.init(this)
     }
 
     private fun initGame(game: PulseEngineGame)
@@ -205,7 +203,7 @@ class PulseEngineImpl(
         data.startFrameTimer()
         asset.update()
         audio.update()
-        gfx.initFrame()
+        gfx.initFrame(this)
         console.update()
         updateInput()
     }

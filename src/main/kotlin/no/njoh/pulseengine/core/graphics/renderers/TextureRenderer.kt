@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
@@ -25,7 +27,7 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
     private val capacity = 50
     private val stride = 10
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
@@ -34,8 +36,8 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             data = FloatArray(capacity * stride * 2)
             vbo = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/renderers/texture.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/renderers/texture.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/texture.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/texture.frag"))
             )
         }
 

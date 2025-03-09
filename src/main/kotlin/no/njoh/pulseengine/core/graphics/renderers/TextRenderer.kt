@@ -4,9 +4,10 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Font.*
 import no.njoh.pulseengine.core.asset.types.Font.Companion.MAX_CHAR_COUNT
+import no.njoh.pulseengine.core.asset.types.FragmentShader
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.core.graphics.api.TextureBank
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
@@ -29,15 +30,15 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
     private lateinit var program: ShaderProgram
     private val glyphBuffer = GlyphBuffer()
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/renderers/glyph.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/renderers/glyph.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/glyph.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/glyph.frag"))
             )
         }
 

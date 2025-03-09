@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.modules.lighting.direct
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
@@ -34,7 +36,7 @@ class DirectLightRenderer : BatchRenderer()
     private var writeLights = 0
     private var writeEdges = 0
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
@@ -47,8 +49,8 @@ class DirectLightRenderer : BatchRenderer()
                 1f, 1f  // Bottom-right vertex
             ))
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/lighting/direct/light.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/lighting/direct/light.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/direct/light.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/direct/light.frag"))
             )
         }
 

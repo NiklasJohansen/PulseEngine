@@ -1,11 +1,11 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.ColorGradingEffect.ToneMapper.ACES
 
@@ -21,9 +21,9 @@ class ColorGradingEffect(
     var vignette: Float = 0f
 ) : BaseEffect() {
 
-    override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/effects/color_grading.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/effects/color_grading.frag"
+    override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/effects/color_grading.vert")),
+        engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/color_grading.frag"))
     )
 
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>

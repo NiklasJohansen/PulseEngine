@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
@@ -18,15 +20,15 @@ class QuadRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
     private var vertexCount = 0
     private var singleVertexCount = 0
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
             vbo = DoubleBufferedFloatObject.createArrayBuffer()
             ebo = DoubleBufferedIntObject.createElementBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/renderers/quad.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/renderers/quad.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/quad.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/quad.frag"))
             )
         }
 

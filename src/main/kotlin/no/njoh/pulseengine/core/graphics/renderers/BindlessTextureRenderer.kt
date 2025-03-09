@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
@@ -17,15 +19,15 @@ class BindlessTextureRenderer(private val config: SurfaceConfigInternal) : Batch
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
     private lateinit var program: ShaderProgram
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/renderers/texture_bindless.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/renderers/texture_bindless.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/texture_bindless.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/texture_bindless.frag"))
             )
         }
 

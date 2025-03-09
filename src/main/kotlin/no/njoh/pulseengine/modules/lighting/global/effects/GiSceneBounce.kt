@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_1
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
@@ -22,9 +24,9 @@ class GiSceneBounce(
 ) {
     private var lastViewProjectionMatrix = Matrix4f()
 
-    override fun loadShaderProgram() = ShaderProgram.create(
-        vertexShaderFileName = "/pulseengine/shaders/lighting/global/bounce.vert",
-        fragmentShaderFileName = "/pulseengine/shaders/lighting/global/bounce.frag"
+    override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/bounce.vert")),
+        engine.asset.loadNow(FragmentShader( "/pulseengine/shaders/lighting/global/bounce.frag"))
     )
 
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>

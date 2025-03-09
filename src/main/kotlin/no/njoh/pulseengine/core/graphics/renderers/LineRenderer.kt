@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
@@ -16,14 +18,14 @@ class LineRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
     private lateinit var program: ShaderProgram
     private var vertices = 0
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
             vbo = DoubleBufferedFloatObject.createArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/renderers/line.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/renderers/line.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/line.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/line.frag"))
             )
         }
 

@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.core.graphics
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.config.ConfigurationInternal
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
@@ -80,14 +80,13 @@ interface GraphicsInternal : Graphics
     override val mainCamera: CameraInternal
     val textureBank: TextureBank
 
-    fun init(config: ConfigurationInternal, viewPortWidth: Int, viewPortHeight: Int)
+    fun init(engine: PulseEngineInternal)
     fun uploadTexture(texture: Texture)
     fun deleteTexture(texture: Texture)
-    fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
+    fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean)
     fun updateCameras()
-    fun reloadAllShaders()
-    fun reloadShader(fileName: String)
-    fun initFrame()
+    fun compileShader(shader: Shader)
+    fun initFrame(engine: PulseEngineInternal)
     fun drawFrame(engine: PulseEngineInternal)
     fun setGpuLogLevel(logLevel: LogLevel)
     fun destroy()
