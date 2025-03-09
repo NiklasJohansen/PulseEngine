@@ -431,28 +431,28 @@ object Extensions
      */
     fun pathToAsset(path: String): Asset?
     {
-        val assetName = path.substringAfterLast("/").substringBeforeLast(".")
+        val name = path.substringAfterLast("/").substringBeforeLast(".")
         return when
         {
-            path.endsWith(".ogg")  -> Sound(path, assetName)
-            path.endsWith(".ttf")  -> Font(path, assetName)
-            path.endsWith(".txt")  -> Text(path, assetName)
-            path.endsWith(".dat")  -> Binary(path, assetName)
-            path.endsWith(".hdr")  -> Texture(path, assetName, format = RGBA32F)
+            path.endsWith(".ogg")  -> Sound(path, name)
+            path.endsWith(".ttf")  -> Font(path, name)
+            path.endsWith(".txt")  -> Text(path, name)
+            path.endsWith(".dat")  -> Binary(path, name)
+            path.endsWith(".hdr")  -> Texture(path, name, format = RGBA32F)
             path.endsWith(".jpg")  ||
             path.endsWith(".jpeg") ||
             path.endsWith(".png")  ->
             {
-                val format = if ("lut" in path || "linear" in path || "normal" in path || "norm" in path) RGBA8 else SRGBA8
+                val format = if ("_lut" in name || "_linear" in name || "_normal" in name) RGBA8 else SRGBA8
                 val mips = if (format == RGBA8) 1 else 5
                 spriteSheetRegex.find(path)?.let { SpriteSheet(
                     filePath = path,
-                    name = assetName.substringBeforeLast("_"),
+                    name = name.substringBeforeLast("_"),
                     format = format,
                     mipLevels = mips,
                     horizontalCells = it.groupValues[1].toInt(),
-                    verticalCells = it.groupValues[1].toInt()
-                ) } ?: Texture(path, assetName, format = format, mipLevels = mips)
+                    verticalCells = it.groupValues[2].toInt()
+                ) } ?: Texture(path, name, format = format, mipLevels = mips)
             }
             else -> null
         }
