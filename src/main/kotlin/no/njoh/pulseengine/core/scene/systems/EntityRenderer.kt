@@ -8,7 +8,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.scene.interfaces.Renderable
 import no.njoh.pulseengine.core.shared.annotations.Name
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import java.util.*
@@ -53,7 +53,7 @@ interface CustomRenderPassTarget
 }
 
 @Name("Entity Renderer")
-@ScnIcon("MONITOR")
+@Icon("MONITOR")
 open class EntityRendererImpl : EntityRenderer()
 {
     private val renderQueue = mutableListOf<RenderTask>()

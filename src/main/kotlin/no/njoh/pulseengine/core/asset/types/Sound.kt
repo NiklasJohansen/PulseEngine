@@ -1,18 +1,17 @@
 package no.njoh.pulseengine.core.asset.types
 
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
 import no.njoh.pulseengine.core.shared.utils.Logger
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import org.lwjgl.BufferUtils
-import org.lwjgl.openal.AL10
 import org.lwjgl.stb.STBVorbis
 import org.lwjgl.stb.STBVorbisInfo
 import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
 import java.nio.ShortBuffer
 
-@ScnIcon("MUSIC")
-class Sound(fileName: String, override val name: String) : Asset(name, fileName)
+@Icon("MUSIC")
+class Sound(filePath: String, name: String) : Asset(filePath, name)
 {
     var id: Int = -1
         private set
@@ -27,20 +26,20 @@ class Sound(fileName: String, override val name: String) : Asset(name, fileName)
     {
         STBVorbisInfo.malloc().use()
         {
-            buffer = readVorbis(fileName, it)
+            buffer = readVorbis(filePath, it)
             sampleRate = it.sample_rate()
         }
     }
 
-    override fun delete()
+    override fun unload()
     {
         buffer = null
     }
 
-    private fun readVorbis(fileName: String, info: STBVorbisInfo): ShortBuffer
+    private fun readVorbis(filePath: String, info: STBVorbisInfo): ShortBuffer
     {
-        val bytes = fileName.loadBytes() ?: run {
-            Logger.error("Failed to find and load Sound asset: ${this.fileName}")
+        val bytes = filePath.loadBytesFromDisk() ?: run {
+            Logger.error("Failed to find and load Sound asset: $filePath")
             return ShortBuffer.allocate(0)
         }
 

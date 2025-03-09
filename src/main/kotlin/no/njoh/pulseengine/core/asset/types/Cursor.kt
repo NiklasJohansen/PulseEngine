@@ -1,21 +1,22 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.input.CursorType
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
+import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.stb.STBImage.*
+import java.io.FileNotFoundException
 import java.nio.ByteBuffer
 
-@ScnIcon("CURSOR")
+@Icon("CURSOR")
 class Cursor(
-    fileName: String,
+    filePath: String,
     name: String,
     val type: CursorType,
     val xHotspot: Int,
     val yHotspot: Int
-) : Asset(name, fileName) {
+) : Asset(filePath, name) {
 
     var handle: Long = -1
         private set
@@ -32,7 +33,7 @@ class Cursor(
     override fun load()
     {
         try {
-            val bytes = fileName.loadBytes() ?: throw RuntimeException("No such file")
+            val bytes = filePath.loadBytesFromDisk() ?: throw FileNotFoundException("File not found: $filePath")
             val buffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer
             val width = IntArray(1)
             val height = IntArray(1)
@@ -46,11 +47,11 @@ class Cursor(
         }
         catch (e: Exception)
         {
-            Logger.error("Failed to load cursor $fileName: ${e.message}")
+            Logger.error("Failed to load cursor $filePath: ${e.message}")
         }
     }
 
-    override fun delete() { }
+    override fun unload() { }
 
     fun finalize(handle: Long)
     {

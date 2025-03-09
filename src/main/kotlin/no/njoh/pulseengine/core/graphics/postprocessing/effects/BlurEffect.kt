@@ -1,55 +1,65 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
+import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.postprocessing.MultiPassEffect
+import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import kotlin.math.max
 
 class BlurEffect(
     override val name: String,
+    override val order: Int,
     var radius: Float = 0.5f,
     var blurPasses: Int = 2
-) : MultiPassEffect(2) {
-
-    override fun loadShaderPrograms(): List<ShaderProgram> =
-        listOf(
-            ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/effects/blurVertical.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/effects/blur.frag"
-            ),
-            ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/effects/blurHorizontal.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/effects/blur.frag"
-            )
+) : BaseEffect(
+    TextureDescriptor(), // Horizontal blur
+    TextureDescriptor()  // Vertical blur
+) {
+    override fun loadShaderPrograms(engine: PulseEngineInternal) = listOf(
+        ShaderProgram.create(
+            engine.asset.loadNow(VertexShader("/pulseengine/shaders/effects/blur_vertical.vert")),
+            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/blur.frag"))
+        ),
+        ShaderProgram.create(
+            engine.asset.loadNow(VertexShader("/pulseengine/shaders/effects/blur_horizontal.vert")),
+            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/blur.frag"))
         )
+    )
 
-    override fun applyEffect(texture: Texture): Texture
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
-        blurPasses = max(0,  blurPasses)
-        var tex = texture
-        for (i in 0 until blurPasses)
-            tex = applyBlurPass(tex,radius * (1f + i))
-        return tex
-    }
+        val vProgram = programs[0]
+        val hProgram = programs[1]
+        val vTex = fbo.getTexture(1)!!
+        val hTex = fbo.getTexture(0)!!
+        var currentTex = inTextures[0]
 
-    private fun applyBlurPass(texture: Texture, radius: Float): Texture
-    {
-        fbo[0].bind()
-        fbo[0].clear()
-        programs[0].bind()
-        programs[0].setUniform("radius", radius)
-        renderers[0].render(texture)
-        fbo[0].release()
+        fbo.bind()
+        fbo.clear()
 
-        val firstPassTexture = fbo[0].getTexture() ?: return texture
+        for (i in 0 until max(0,  blurPasses))
+        {
+            val radius = radius * (1f + i)
 
-        fbo[1].bind()
-        fbo[1].clear()
-        programs[1].bind()
-        programs[1].setUniform("radius", radius)
-        renderers[1].render(firstPassTexture)
-        fbo[1].release()
+            vProgram.bind()
+            vProgram.setUniform("radius", radius)
+            vProgram.setUniformSampler("tex", currentTex)
+            fbo.attachOutputTexture(vTex)
+            renderer.draw()
 
-        return fbo[1].getTexture() ?: texture
+            hProgram.bind()
+            hProgram.setUniform("radius", radius)
+            hProgram.setUniformSampler("tex", vTex)
+            fbo.attachOutputTexture(hTex)
+            renderer.draw()
+
+            currentTex = hTex
+        }
+
+        fbo.release()
+
+        return fbo.getTextures()
     }
 }

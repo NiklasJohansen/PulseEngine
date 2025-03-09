@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
  * Lets the editor know that the fields refers to other entities and handles
  * the ID mapping when copying a cluster of related entities.
  */
-@Target(PROPERTY, FUNCTION, PROPERTY_GETTER)
+@Target(PROPERTY, FUNCTION, PROPERTY_GETTER, ANNOTATION_CLASS)
 @Retention(RUNTIME)
 annotation class EntityRef(
     val type: KClass<out SceneEntity> = SceneEntity::class

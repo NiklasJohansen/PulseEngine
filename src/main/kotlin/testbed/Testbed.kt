@@ -5,8 +5,9 @@ import no.njoh.pulseengine.core.scene.SceneState.STOPPED
 import no.njoh.pulseengine.core.PulseEngineGame
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.widgets.cli.CommandLine
-import no.njoh.pulseengine.widgets.profiler.Profiler
+import no.njoh.pulseengine.widgets.metrics.MetricViewer
 import no.njoh.pulseengine.widgets.editor.SceneEditor
+import no.njoh.pulseengine.widgets.metrics.GpuMonitor
 
 fun main() = PulseEngine.run(Testbed::class)
 
@@ -14,10 +15,11 @@ class Testbed : PulseEngineGame()
 {
     override fun onCreate()
     {
-        engine.config.gameName = "Testbed"
-        engine.widget.add(SceneEditor(), CommandLine(), Profiler())
+        engine.config.gameName = "Testbed 0.10.0-SNAPSHOT"
+        engine.widget.add(SceneEditor(), CommandLine(), MetricViewer(), GpuMonitor())
         engine.console.runScript("testbed/startup.ps")
-        engine.asset.loadAllTextures("testbed/images")
+        engine.asset.loadAll("testbed/images")
+        engine.asset.loadAll("testbed/images/lut")
         engine.scene.reload()
         engine.scene.start()
     }
@@ -28,7 +30,7 @@ class Testbed : PulseEngineGame()
     {
         engine.gfx.mainSurface.setDrawColor(Color.WHITE)
         engine.gfx.mainSurface.drawText(
-            text = "PulseEngine 0.9.0 - Testbed",
+            text = "PulseEngine 0.10.0 - Testbed",
             x = engine.window.width * 0.5f,
             y = engine.window.height * 0.5f,
             xOrigin = 0.5f,

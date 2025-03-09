@@ -5,7 +5,7 @@ abstract class PulseEngineGame
     /**
      * Main reference to the [PulseEngine]
      */
-    val engine: PulseEngine = PulseEngine.GLOBAL_INSTANCE
+    val engine: PulseEngine = PulseEngine.INSTANCE
 
     /**
      * Runs one time at startup

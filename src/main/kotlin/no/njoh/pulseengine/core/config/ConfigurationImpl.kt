@@ -2,10 +2,10 @@ package no.njoh.pulseengine.core.config
 
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode.*
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadStreamFromDisk
 import no.njoh.pulseengine.core.window.ScreenMode
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadStream
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
 import no.njoh.pulseengine.core.window.ScreenMode.*
 import java.io.FileNotFoundException
@@ -23,6 +23,9 @@ open class ConfigurationImpl : ConfigurationInternal
     override var windowHeight: Int          by IntConfig(800)
     override var screenMode: ScreenMode     by EnumConfig(WINDOWED, ScreenMode::class)
     override var gameLoopMode: GameLoopMode by EnumConfig(MULTITHREADED, GameLoopMode::class)
+    override var logLevel: LogLevel         by EnumConfig(LogLevel.INFO, LogLevel::class)
+    override var gpuLogLevel: LogLevel      by EnumConfig(LogLevel.OFF, LogLevel::class)
+    override var gpuProfiling: Boolean      by BoolConfig(false)
 
     private val properties = Properties()
     private var onChangeCallback = { prop: KProperty<*>, value: Any -> }
@@ -32,14 +35,14 @@ open class ConfigurationImpl : ConfigurationInternal
         Logger.info("Initializing configuration (${this::class.simpleName})")
         load("/pulseengine/config/engine_default.cfg")
         load("application.cfg")
-        Logger.logLevel = getEnum("logLevel", LogLevel::class) ?: LogLevel.INFO
+        Logger.LEVEL = logLevel
     }
 
-    override fun load(fileName: String) =
+    override fun load(filePath: String) =
         try
         {
             val startTime = System.nanoTime()
-            val stream = fileName.loadStream() ?: throw FileNotFoundException("file not found")
+            val stream = filePath.loadStreamFromDisk() ?: throw FileNotFoundException("File not found: $filePath")
             properties.load(stream)
             for ((key, value) in properties)
             {
@@ -51,11 +54,11 @@ open class ConfigurationImpl : ConfigurationInternal
                     else -> value
                 }
             }
-            Logger.debug("Loaded configuration file: $fileName in ${startTime.toNowFormatted()}")
+            Logger.debug("Loaded configuration file: $filePath in ${startTime.toNowFormatted()}")
         }
         catch (e: Exception)
         {
-            Logger.error("Failed to load configuration: $fileName, reason: ${e.message}")
+            Logger.error("Failed to load configuration: $filePath, reason: ${e.message}")
         }
 
     override fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
@@ -75,7 +78,8 @@ open class ConfigurationImpl : ConfigurationInternal
     override fun getBool(name: String) =
         (properties[name] as? Boolean) ?: null.also { Logger.error("Config property: $name (Boolean) not found") }
 
-    override fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T? {
+    override fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T?
+    {
         val value = properties[name] ?: return null.also { Logger.error("Config property: $name (Enum) not found") }
         if (value::class == type)
             return value as T
@@ -129,6 +133,27 @@ open class ConfigurationImpl : ConfigurationInternal
         }
     }
 
+    inner class BoolConfig(private val initValue: Boolean)
+    {
+        operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: Boolean)
+        {
+            properties[prop.name] = value
+            onChangeCallback.invoke(prop, value)
+        }
+
+        operator fun getValue(thisRef: Any?, prop: KProperty<*>): Boolean
+        {
+            val value = properties[prop.name]
+            return if (value is Boolean) value else
+            {
+                if (value != null)
+                    Logger.warn("Config property: ${prop.name} (Boolean) has value: $value (${value::class.simpleName}), using default: $initValue")
+                properties[prop.name] = initValue
+                initValue
+            }
+        }
+    }
+
     inner class EnumConfig <T : Enum<T>> (private val initValue: T, private val type: KClass<T>)
     {
         operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: T)
@@ -137,7 +162,8 @@ open class ConfigurationImpl : ConfigurationInternal
             onChangeCallback.invoke(prop, value)
         }
 
-        operator fun getValue(thisRef: Any?, prop: KProperty<*>): T {
+        operator fun getValue(thisRef: Any?, prop: KProperty<*>): T
+        {
             val value = properties[prop.name]
             if (value != null && value::class == type)
                 return value as T
@@ -145,7 +171,10 @@ open class ConfigurationImpl : ConfigurationInternal
             var newValue = initValue
             if (value is String)
             {
-                try { newValue = java.lang.Enum.valueOf(type.java, value) }
+                try
+                {
+                    newValue = java.lang.Enum.valueOf(type.java, value)
+                }
                 catch (e: Exception)
                 {
                     Logger.warn("Config property: ${prop.name} (Enum) has unknown value: $value, using default: ${type.simpleName}.$newValue")

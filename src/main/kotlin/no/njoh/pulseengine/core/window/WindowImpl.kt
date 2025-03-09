@@ -1,114 +1,122 @@
 package no.njoh.pulseengine.core.window
 
+import no.njoh.pulseengine.core.config.ConfigurationInternal
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.component1
+import no.njoh.pulseengine.core.shared.utils.Extensions.component2
+import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.window.ScreenMode.*
+import org.joml.Vector2i
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWErrorCallback
-import org.lwjgl.glfw.GLFWWindowContentScaleCallback
-import org.lwjgl.glfw.GLFWWindowSizeCallback
 import org.lwjgl.system.MemoryUtil
 import kotlin.math.max
 
 open class WindowImpl : WindowInternal
 {
-    // Exposed properties
-    override var windowHandle : Long = MemoryUtil.NULL
-    override var screenMode: ScreenMode = ScreenMode.WINDOWED
+    override var windowHandle = MemoryUtil.NULL
+    override var screenMode = WINDOWED
     override var width = 800
     override var height = 600
-    override var scale = 1f
-    override var wasResized: Boolean = false
-    override var title: String = ""
-        set(value) {
-            glfwSetWindowTitle(windowHandle, value)
-            field = value
-        }
+    override var contentScale = 1f
+    override var cursorPosScale = 1f
+    override var isFocused = false
+    override var wasResized = false
+    override var title = ""
 
-    // Internal properties
-    private var scaleChangeCallbacks = mutableListOf<(Float) -> Unit>()
+    private var contentScaleChangedCallbacks = mutableListOf<(Float) -> Unit>()
     private var resizeCallBack: (width: Int, height: Int, windowRecreated: Boolean) -> Unit = { _, _, _ -> }
-    private var windowedWidth = 800
-    private var windowedHeight = 600
+    private var initWidth = 800
+    private var initHeight = 600
 
-    override fun init(initWidth: Int, initHeight: Int, screenMode: ScreenMode, gameName: String)
+    override fun init(config: ConfigurationInternal)
     {
         Logger.info("Initializing window (${this::class.simpleName})")
 
-        if (!glfwInit())
-            throw IllegalStateException("Unable to initialize GLFW")
+        if (!glfwInit()) throw IllegalStateException("Unable to initialize GLFW")
 
         GLFWErrorCallback.createPrint(System.err).set()
+
         glfwDefaultWindowHints()
         glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE)
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE)
-
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3)
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
-        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE)
-        glfwWindowHint(GLFW_DEPTH_BITS, 24)
+        glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE)
 
-        this.screenMode = screenMode
-        this.windowedWidth = initWidth
-        this.windowedHeight = initHeight
-        this.width = initWidth
-        this.height = initHeight
+        if (config.getEnum("gpuLogLevel", LogLevel::class) != LogLevel.OFF)
+            glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE)
 
+        this.title      = config.gameName
+        this.screenMode = config.screenMode
+        this.initWidth  = config.windowWidth
+        this.initHeight = config.windowHeight
+
+        createWindow()
+    }
+
+    private fun createWindow()
+    {
+        var windowWidth  = initWidth
+        var windowHeight = initHeight
         var monitor = MemoryUtil.NULL
-        if (screenMode == ScreenMode.FULLSCREEN)
+
+        if (screenMode == FULLSCREEN)
         {
             monitor = getWindowMonitor()
             val videoMode = glfwGetVideoMode(monitor)
-            width = videoMode?.width() ?: width
-            height = videoMode?.height() ?: height
+            windowWidth = videoMode?.width() ?: initWidth
+            windowHeight = videoMode?.height() ?: initHeight
         }
 
-        val newWindowHandle = glfwCreateWindow(width, height, title, monitor, windowHandle)
-        if (newWindowHandle == MemoryUtil.NULL)
+        val prevWindowHandle = windowHandle
+        windowHandle = glfwCreateWindow(windowWidth, windowHeight, title, monitor, prevWindowHandle)
+        if (windowHandle == MemoryUtil.NULL)
             throw RuntimeException("Failed to create the GLFW windowHandle")
 
         // Destroy previous window if it existed
-        if (windowHandle != MemoryUtil.NULL)
-            glfwDestroyWindow(windowHandle)
+        if (prevWindowHandle != MemoryUtil.NULL)
+            glfwDestroyWindow(prevWindowHandle)
 
-        this.windowHandle = newWindowHandle
-        this.title = gameName
-        this.scale = getMonitorScaling()
+        val (fbWidth, fbHeight) = getFramebufferSize(windowHandle)
+        width = fbWidth
+        height = fbHeight
+        isFocused = glfwGetWindowAttrib(windowHandle, GLFW_FOCUSED) == GLFW_TRUE
+        contentScale = getWindowContentScaling(windowHandle)
+        updateCursorPosScale()
 
-        if (screenMode == ScreenMode.WINDOWED)
+        if (screenMode == WINDOWED)
         {
             val mode = glfwGetVideoMode(getWindowMonitor())!!
-            glfwSetWindowPos(windowHandle, (mode.width() - width) / 2, (mode.height() - height) / 2)
+            glfwSetWindowPos(windowHandle, (mode.width() - windowWidth) / 2, (mode.height() - windowHeight) / 2)
         }
 
-        glfwSetWindowSizeCallback(windowHandle, object : GLFWWindowSizeCallback()
-        {
-            override fun invoke(window: Long, width: Int, height: Int)
+        glfwSetFramebufferSizeCallback(windowHandle) { _, w, h ->
+            if (w != 0 && h != 0)
             {
-                if (width != 0 && height != 0)
-                {
-                    this@WindowImpl.width = width
-                    this@WindowImpl.height = height
-                    resizeCallBack(width, height, false)
-                    wasResized = true
-                }
+                width = w
+                height = h
+                resizeCallBack(w, h, false)
+                wasResized = true
             }
-        })
+        }
 
-        glfwSetWindowContentScaleCallback(windowHandle, object : GLFWWindowContentScaleCallback()
-        {
-            override fun invoke(window: Long, xScale: Float, yScale: Float)
+        glfwSetWindowContentScaleCallback(windowHandle) { _, xScale, yScale ->
+            val newScale = max(xScale, yScale)
+            if (newScale != contentScale)
             {
-                val newScale = max(xScale, yScale)
-                if (newScale != scale)
-                {
-                    scale = newScale
-                    scaleChangeCallbacks.forEachFast { it(newScale) }
-                }
+                contentScale = newScale
+                updateCursorPosScale()
+                contentScaleChangedCallbacks.forEachFast { it(newScale) }
             }
-        })
+        }
 
+        glfwSetWindowFocusCallback(windowHandle) { _, focused -> isFocused = focused }
+
+        updateTitle(title)
         glfwMakeContextCurrent(windowHandle)
         glfwSwapInterval(0)
         glfwShowWindow(windowHandle)
@@ -120,11 +128,21 @@ open class WindowImpl : WindowInternal
             return
 
         // Create new window
-        init(windowedWidth, windowedHeight, mode, title)
+        screenMode = mode
+        createWindow()
 
         // Notify observers
         resizeCallBack(width, height, true)
         wasResized = true
+    }
+
+    override fun updateTitle(title: String)
+    {
+        if (title == this.title)
+            return
+
+        this.title = title
+        glfwSetWindowTitle(windowHandle, title)
     }
 
     override fun close()
@@ -146,9 +164,18 @@ open class WindowImpl : WindowInternal
         glfwTerminate()
     }
 
-    override fun setOnScaleChanged(callback: (scale: Float) -> Unit)
+    override fun setOnContentScaleChanged(callback: (scale: Float) -> Unit)
     {
-        scaleChangeCallbacks.add(callback)
+        contentScaleChangedCallbacks.add(callback)
+    }
+
+    private fun updateCursorPosScale()
+    {
+        cursorPosScale = when (glfwGetPlatform())
+        {
+            GLFW_PLATFORM_WAYLAND -> contentScale
+            else -> 1f
+        }
     }
 
     private fun getWindowMonitor(): Long
@@ -186,10 +213,17 @@ open class WindowImpl : WindowInternal
             monitors -> 0.until(monitors.limit()).mapNotNull { monitors[it] }
         } ?: emptyList()
 
-    private fun getMonitorScaling(): Float {
+    private fun getWindowContentScaling(windowHandle: Long): Float {
         val xScale = FloatArray(1)
         val yScale = FloatArray(1)
-        glfwGetMonitorContentScale(getWindowMonitor(), xScale, yScale)
+        glfwGetWindowContentScale(windowHandle, xScale, yScale)
         return max(xScale[0], yScale[0])
+    }
+
+    private fun getFramebufferSize(windowHandle: Long): Vector2i {
+        val fbWidth = IntArray(1)
+        val fbHeight = IntArray(1)
+        glfwGetFramebufferSize(windowHandle, fbWidth, fbHeight)
+        return Vector2i(fbWidth[0], fbHeight[0])
     }
 }

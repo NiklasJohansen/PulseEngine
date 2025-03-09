@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.surface
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.StencilState.Action.CLEAR
@@ -8,6 +9,8 @@ import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.TextBuilderContext
+import no.njoh.pulseengine.core.shared.utils.TextBuilder
 
 typealias Degrees = Float
 
@@ -62,11 +65,11 @@ abstract class Surface
 
     /**
      * Draws text at a given position with a given font, size, rotation and origin.
-     * Supports building the text with a [StringBuilder] to avoid allocating new [String] objects and excessive garbage.
-     * Example: drawText(textBuilder = { it.append("Hello, ").append("World!") }, ..., ...)
+     * Supports building the text with a [TextBuilder] to avoid allocating new [String] objects and excessive garbage.
+     * Example: drawText(text = { "Hello, " plus "World!" }, ..., ...)
      */
-    inline fun drawText(textBuilder: (builder: StringBuilder) -> CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f) =
-        drawText(textBuilder(sb.clear()), x, y, font, fontSize, angle, xOrigin, yOrigin)
+    inline fun drawText(text: TextBuilder, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f) =
+        drawText(context.build(text), x, y, font, fontSize, angle, xOrigin, yOrigin)
 
     /**
      * Defines a clipping area for all drawing operations performed within the [drawFunc].
@@ -140,8 +143,9 @@ abstract class Surface
     /**
      * Gets the texture of the off-screen render target. The render target can have multiple texture
      * attachments and the [index] can be used to get a specific one.
+     * @param final If true, the final post-processed texture is returned.
      */
-    abstract fun getTexture(index: Int = 0): Texture
+    abstract fun getTexture(index: Int = 0, final: Boolean = true): Texture
 
     /**
      * Gets all textures from the off-screen render target.
@@ -151,15 +155,30 @@ abstract class Surface
     ///////////////////////////////////////// Post-Processing /////////////////////////////////////////
 
     /**
-     * Adds a named post-processing effect to the [Surface]. The effect will be initialized and
+     * Adds a named [PostProcessingEffect] to the [Surface]. The effect will be initialized and
      * ready at the start of the next frame.
      */
     abstract fun addPostProcessingEffect(effect: PostProcessingEffect)
 
     /**
-     * Gets a post-processing effect by name.
+     * Gets all [PostProcessingEffect]s.
+     */
+    abstract fun getPostProcessingEffects(): List<PostProcessingEffect>
+
+    /**
+     * Gets a [PostProcessingEffect] by name.
      */
     abstract fun getPostProcessingEffect(name: String): PostProcessingEffect?
+
+    /**
+     * Gets a [PostProcessingEffect] by type.
+     */
+    abstract fun <T: PostProcessingEffect> getPostProcessingEffect(type: Class<T>): T?
+
+    /**
+     * Gets a [PostProcessingEffect] by the inferred class type.
+     */
+    inline fun <reified T: PostProcessingEffect> getPostProcessingEffect(): T? = getPostProcessingEffect(T::class.java)
 
     /**
      * Deletes a post-processing effect by name. The effect will be removed at the start of the next frame.
@@ -197,6 +216,8 @@ abstract class Surface
 
     // Reusable StringBuilder for text drawing
     @PublishedApi internal val sb = StringBuilder(1000)
+
+    @PublishedApi internal val context = TextBuilderContext()
 }
 
 abstract class SurfaceInternal : Surface()
@@ -206,10 +227,11 @@ abstract class SurfaceInternal : Surface()
 
     abstract val renderTarget: RenderTarget
 
-    abstract fun init(width: Int, height: Int, glContextRecreated: Boolean)
-    abstract fun initFrame()
-    abstract fun renderToOffScreenTarget()
-    abstract fun runPostProcessingPipeline()
+    abstract fun init(engine: PulseEngineInternal, width: Int, height: Int, glContextRecreated: Boolean)
+    abstract fun initFrame(engine: PulseEngineInternal)
+    abstract fun renderToOffScreenTarget(engine: PulseEngineInternal)
+    abstract fun runPostProcessingPipeline(engine: PulseEngineInternal)
     abstract fun destroy()
     abstract fun hasContent(): Boolean
+    abstract fun hasPostProcessingEffects(): Boolean
 }

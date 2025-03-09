@@ -4,7 +4,9 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.api.StencilState.Action.CLEAR
 import no.njoh.pulseengine.core.graphics.api.StencilState.Action.SET
 import no.njoh.pulseengine.core.graphics.renderers.StencilRenderer
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import org.lwjgl.opengl.GL20.*
+import org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_SRGB
 
 /**
  * Base interface for all render states.
@@ -14,6 +16,16 @@ interface RenderState
 {
     /** Called by the graphics pipeline before rendering the next batch. */
     fun apply(surface: SurfaceInternal)
+    {
+        GpuProfiler.measure({ "SET_STATE (" plus getName() plus ")" })
+        {
+            onApply(surface)
+        }
+    }
+
+    fun onApply(surface: SurfaceInternal)
+
+    fun getName(): CharSequence = this@RenderState::class.java.simpleName
 }
 
 /**
@@ -21,7 +33,7 @@ interface RenderState
  */
 object BackBufferBaseState : RenderState
 {
-    override fun apply(surface: SurfaceInternal)
+    override fun onApply(surface: SurfaceInternal)
     {
         // Clear back-buffer with color of given surface
         val c = surface.config.backgroundColor
@@ -37,6 +49,31 @@ object BackBufferBaseState : RenderState
 
         // Set viewport size
         glViewport(0, 0, surface.config.width, surface.config.height)
+
+        // Enable sRGB color space
+        glEnable(GL_FRAMEBUFFER_SRGB)
+    }
+}
+
+/**
+ * Sets the OpenGL state for rendering post-processing effects.
+ */
+object PostProcessingBaseState : RenderState
+{
+    override fun onApply(surface: SurfaceInternal)
+    {
+        // Clear back-buffer
+        glClearColor(0f, 0f, 0f, 0f)
+        glClear(GL_COLOR_BUFFER_BIT)
+
+        // Disable depth testing
+        glDisable(GL_DEPTH_TEST)
+
+        // Disable blending
+        glDisable(GL_BLEND)
+
+        // Disable sRGB color space
+        glDisable(GL_FRAMEBUFFER_SRGB)
     }
 }
 
@@ -45,7 +82,7 @@ object BackBufferBaseState : RenderState
  */
 object BatchRenderBaseState : RenderState
 {
-    override fun apply(surface: SurfaceInternal)
+    override fun onApply(surface: SurfaceInternal)
     {
         val config = surface.config
 
@@ -68,9 +105,6 @@ object BatchRenderBaseState : RenderState
         }
         else glDisable(GL_BLEND)
 
-        // Set which attachments from the fragment shader data will be written to
-        glDrawBuffers(config.textureAttachments)
-
         // Set viewport size
         glViewport(0, 0, (surface.config.width * config.textureScale).toInt(), (surface.config.height * config.textureScale).toInt())
 
@@ -78,6 +112,20 @@ object BatchRenderBaseState : RenderState
         val c = config.backgroundColor
         glClearColor(c.red, c.green, c.blue, c.alpha)
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+
+        // Disable sRGB color space
+        glDisable(GL_FRAMEBUFFER_SRGB)
+    }
+}
+
+/**
+ * Sets the view port size to the size of the scaled surface texture
+ */
+object ViewportState : RenderState
+{
+    override fun onApply(surface: SurfaceInternal)
+    {
+        glViewport(0, 0, (surface.config.width * surface.config.textureScale).toInt(), (surface.config.height * surface.config.textureScale).toInt())
     }
 }
 
@@ -94,7 +142,7 @@ open class StencilState(
 
     enum class Action { SET, CLEAR }
 
-    override fun apply(surface: SurfaceInternal)
+    override fun onApply(surface: SurfaceInternal)
     {
         val renderer = surface.getRenderer<StencilRenderer>() ?: return
         if (action == SET) setStencil(surface, renderer)
@@ -146,8 +194,12 @@ open class StencilState(
         glStencilFunc(GL_EQUAL, layer, 0xff) // Stencil test will only pass if stencil value is equal to layer
     }
 
+    override fun getName(): CharSequence =
+        name.clear().append(super.getName()).append(" - ").append(action.name)
+
     companion object
     {
         private var layer = 0
+        private var name = StringBuilder(100)
     }
 }

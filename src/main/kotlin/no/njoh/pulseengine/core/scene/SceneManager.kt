@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SpatialGrid.Companion.nextQueryId
 import no.njoh.pulseengine.core.shared.primitives.HitResult
@@ -78,9 +79,19 @@ abstract class SceneManager
      * Fades the screen to black while loading, and then back into the new [Scene] when ready.
      * @param fileName Name of file. If it is not an absolute path, the configured Data.saveDirectory will be used.
      * @param fromClassPath True if the file should be loaded from classpath.
-     * @param fadeTimeMs The number of milliseconds to use when fading to and from black screen.
+     * @param transitionTimeMs The number of milliseconds to use when fading to and from black screen.
+     * @param onSceneLoaded called when the scene is loaded and ready.
+     * @param onTransitionFinished called when the transition is finished.
+     * @param onRender called every frame during the transition. t goes from 0.0 - 1.0 during the transition.
      */
-    abstract fun transitionInto(fileName: String, fromClassPath: Boolean = false, fadeTimeMs: Long = 1000L)
+    abstract fun transitionInto(
+        fileName: String,
+        fromClassPath: Boolean = false,
+        transitionTimeMs: Long = 1000L,
+        onSceneLoaded: ((PulseEngine) -> Unit)? = null,
+        onTransitionFinished: ((PulseEngine) -> Unit)? = null,
+        onRender: ((PulseEngine, Surface, t: Float) -> Unit)? = null
+    )
 
     /**
      * Sets the given [scene] to be the new active [Scene].
@@ -114,6 +125,12 @@ abstract class SceneManager
      */
     inline fun <reified T: SceneEntity> getFirstEntityOfType(): T? =
         activeScene.entityTypeMap[T::class.java]?.firstOrNull() as T?
+
+    /**
+     * Returns the first [SceneEntity] of type [T] matching the predicate.
+     */
+    inline fun <reified T: SceneEntity> getFirstEntityOfType(predicate: (T) -> Boolean): T? =
+        activeScene.entityTypeMap[T::class.java]?.firstOrNull { predicate(it as T) } as T?
 
     /**
      * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity].

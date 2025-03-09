@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.console
 
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Logger
 import java.util.concurrent.ConcurrentHashMap
@@ -14,7 +14,7 @@ open class ConsoleImpl : ConsoleInternal
     private val commandJobs = ConcurrentLinkedQueue<CommandJob>()
     private val history = mutableListOf<ConsoleEntry>()
 
-    override fun init(engine: PulseEngine)
+    override fun init(engine: PulseEngineInternal)
     {
         Logger.info("Initializing console (${this::class.simpleName})")
 
@@ -29,7 +29,7 @@ open class ConsoleImpl : ConsoleInternal
             val commandName = getOptionalString("command")
             if (commandName != null)
             {
-                val command = commandMap[commandName.toLowerCase()]
+                val command = commandMap[commandName.lowercase()]
                     ?: return@registerCommand CommandResult("No command with name: $commandName", MessageType.ERROR)
                 CommandResult("${command.template}${if (command.description.isNotEmpty()) " - " else ""}${command.description}")
             }
@@ -206,14 +206,14 @@ open class ConsoleImpl : ConsoleInternal
 
             val value = this.cleanStringLiteral().trim()
 
-            return when (type.toLowerCase())
+            return when (type.lowercase())
             {
                 "string" -> value
                 "int" -> value.toInt()
                 "float" -> value.toFloat()
                 "double" -> value.toDouble()
                 "long" -> value.toLong()
-                "boolean" -> value.toLowerCase() == "true" || value == "1"
+                "boolean" -> value.lowercase() == "true" || value == "1"
                 else -> ArgumentParseError("$type not recognised as a Kotlin type")
             }
         }
@@ -267,7 +267,7 @@ open class ConsoleImpl : ConsoleInternal
     }
 
     private fun String.getCleanBaseCommand(): String =
-        this.trim().split("\\s".toRegex()).first().toLowerCase()
+        this.trim().split("\\s".toRegex()).first().lowercase()
 
     private fun String.isStringLiteral(): Boolean =
         this.length >= 2 && this.startsWith("\"") && this.endsWith("\"")

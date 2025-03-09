@@ -23,11 +23,15 @@ interface Audio
     fun setSourcePitch(sourceId: Int, pitch: Float)
     fun setSourceLooping(sourceId: Int, looping: Boolean)
     fun setSourcePosition(sourceId: Int, x: Float, y: Float, z: Float = -1.0f)
+    fun setSourceReferenceDistance(sourceId: Int, distance: Float)
+    fun setSourceMaxDistance(sourceId: Int, distance: Float)
+    fun setSourceRolloffFactor(sourceId: Int, factor: Float)
 
     // Listener properties
     fun setListenerPosition(x: Float, y: Float, z: Float = -1.0f)
     fun setListenerVelocity(x: Float, y: Float, z: Float = 0.0f)
-    fun setListenerOrientation(x: Float, y: Float, z: Float)
+    fun setListenerOrientation(xAt: Float, yAt: Float, zAt: Float, xUp: Float, yUp: Float, zUp: Float)
+    fun setDistanceModel(model: DistanceModel)
 
     // Output devices
     fun getDefaultOutputDevice(): String

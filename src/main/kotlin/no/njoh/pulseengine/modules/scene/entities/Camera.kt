@@ -5,16 +5,18 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import kotlin.math.*
 
-@ScnIcon("CAMERA", size = 24f, showInViewport = true)
+@Icon("CAMERA", size = 24f, showInViewport = true)
 open class Camera : StandardSceneEntity()
 {
     var viewPortWidth = 1000f
     var viewPortHeight = 800f
+    var xOrigin = 0.5f
+    var yOrigin = 0.5f
     var targetEntityId = INVALID_ID
     var trackRotation = false
     var smoothing = 0.1f
@@ -85,11 +87,11 @@ open class Camera : StandardSceneEntity()
         engine.gfx.mainCamera.apply()
         {
             scale.set(newScale)
-            rotation.z = -super.rotation / 180f * PI.toFloat()
-            origin.x = surfaceWidth * 0.5f
-            origin.y = surfaceHeight * 0.5f
-            position.x = surfaceWidth * 0.5f - x
-            position.y = surfaceHeight * 0.5f - y
+            rotation.z = -super.rotation.toRadians()
+            origin.x = surfaceWidth * xOrigin
+            origin.y = surfaceHeight * yOrigin
+            position.x = surfaceWidth * xOrigin - x
+            position.y = surfaceHeight * yOrigin - y
         }
     }
 

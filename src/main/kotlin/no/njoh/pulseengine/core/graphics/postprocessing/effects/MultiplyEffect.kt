@@ -1,28 +1,33 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
+import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.core.graphics.postprocessing.SinglePassEffect
 
 class MultiplyEffect(
     override val name: String,
-    private val surface: Surface
-) : SinglePassEffect() {
-    override fun loadShaderProgram(): ShaderProgram =
-        ShaderProgram.create(
-            vertexShaderFileName = "/pulseengine/shaders/effects/textureMultiplyBlend.vert",
-            fragmentShaderFileName = "/pulseengine/shaders/effects/textureMultiplyBlend.frag"
-        )
+    override val order: Int,
+    private val surfaceName: String
+) : BaseEffect() {
 
-    override fun applyEffect(texture: Texture): Texture
+    override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/effects/texture_multiply_blend.vert")),
+        engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/texture_multiply_blend.frag"))
+    )
+
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
+        val surface = engine.gfx.getSurface(surfaceName) ?: return inTextures
+
         fbo.bind()
         fbo.clear()
         program.bind()
-        renderer.render(texture, surface.getTexture())
+        program.setUniformSampler("tex0", inTextures[0])
+        program.setUniformSampler("tex1", surface.getTexture())
+        renderer.draw()
         fbo.release()
-
-        return fbo.getTexture() ?: texture
+        return fbo.getTextures()
     }
 }

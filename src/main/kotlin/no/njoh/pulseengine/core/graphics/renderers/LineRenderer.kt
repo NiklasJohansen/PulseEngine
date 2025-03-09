@@ -1,5 +1,8 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
@@ -8,23 +11,21 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.GL11.*
 
-class LineRenderer(
-    private val config: SurfaceConfigInternal
-) : BatchRenderer() {
-
+class LineRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+{
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: DoubleBufferedFloatObject
     private lateinit var program: ShaderProgram
     private var vertices = 0
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
             vbo = DoubleBufferedFloatObject.createArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/line.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/line.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/line.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/line.frag"))
             )
         }
 
@@ -44,7 +45,7 @@ class LineRenderer(
         vbo.swapBuffers()
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {

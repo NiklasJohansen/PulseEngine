@@ -1,8 +1,10 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureBank
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
@@ -10,25 +12,22 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
 
-class BindlessTextureRenderer(
-    private val config: SurfaceConfigInternal,
-    private val textureBank: TextureBank
-) : BatchRenderer() {
-
+class BindlessTextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+{
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
     private lateinit var program: ShaderProgram
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/texture_bindless.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/texture_bindless.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/texture_bindless.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/texture_bindless.frag"))
             )
         }
 
@@ -61,7 +60,7 @@ class BindlessTextureRenderer(
         instanceBuffer.swapBuffers()
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {
@@ -73,7 +72,7 @@ class BindlessTextureRenderer(
         vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        textureBank.bindAllTexturesTo(program)
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
     }

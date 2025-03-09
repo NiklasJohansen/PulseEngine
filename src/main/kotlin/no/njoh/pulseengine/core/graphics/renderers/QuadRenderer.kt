@@ -1,5 +1,8 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
@@ -7,10 +10,8 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.GL11.*
 
-class QuadRenderer(
-    private val config: SurfaceConfigInternal
-) : BatchRenderer() {
-
+class QuadRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+{
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: DoubleBufferedFloatObject
     private lateinit var ebo: DoubleBufferedIntObject
@@ -19,15 +20,15 @@ class QuadRenderer(
     private var vertexCount = 0
     private var singleVertexCount = 0
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
             vbo = DoubleBufferedFloatObject.createArrayBuffer()
             ebo = DoubleBufferedIntObject.createElementBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/quad.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/quad.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/quad.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/quad.frag"))
             )
         }
 
@@ -50,7 +51,7 @@ class QuadRenderer(
         vertexCount = 0
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {

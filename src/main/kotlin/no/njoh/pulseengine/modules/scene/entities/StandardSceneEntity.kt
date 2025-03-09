@@ -8,32 +8,32 @@ import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.scene.interfaces.Renderable
-import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.scene.interfaces.Updatable
 import kotlin.math.max
 
 abstract class StandardSceneEntity : SceneEntity(), Initiable, Updatable, Renderable, Spatial, Named
 {
-    @ScnProp(i = -1)
+    @Prop(i = -1)
     override var name = ""
 
-    @ScnProp("Transform", 0)
+    @Prop("Transform", 0)
     override var x = 0f
 
-    @ScnProp("Transform", 1)
+    @Prop("Transform", 1)
     override var y = 0f
 
-    @ScnProp("Transform", 2)
+    @Prop("Transform", 2)
     override var z = -0.1f
 
-    @ScnProp("Transform", 3)
+    @Prop("Transform", 3)
     override var width = 100f
 
-    @ScnProp("Transform", 4)
+    @Prop("Transform", 4)
     override var height = 100f
 
-    @ScnProp("Transform", 5)
+    @Prop("Transform", 5)
     override var rotation = 0f
 
     override fun onCreate() { }

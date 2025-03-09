@@ -1,25 +1,33 @@
 package no.njoh.pulseengine.core.shared.utils
 
+import gnu.trove.map.hash.TObjectIntHashMap
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.types.*
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import org.joml.Vector2f
+import org.joml.Vector2i
 import org.joml.Vector3f
 import org.joml.Vector4f
-import java.io.BufferedReader
-import java.io.InputStream
-import java.io.InputStreamReader
+import java.io.*
 import java.nio.file.FileSystems
 import java.nio.file.Files
-import java.util.*
-import kotlin.collections.HashSet
 import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 object Extensions
 {
     /**
      * Linearly interpolates from the [last] value to [this] value.
      */
-    fun Float.interpolateFrom(last: Float, t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation): Float =
+    fun Float.interpolateFrom(last: Float, t: Float = PulseEngine.INSTANCE.data.interpolation): Float =
         this * t + last * (1f - t)
+
+    /**
+     * Linearly interpolates from [lastAngle] to [this] angle.
+     */
+    fun Float.interpolateAngleFrom(lastAngle: Float, t: Float = PulseEngine.INSTANCE.data.interpolation): Float =
+        this + this.degreesBetween(lastAngle).interpolateFrom(0f, t)
 
     /**
      * Linearly interpolates from the [last] value to [this] value.
@@ -27,22 +35,11 @@ object Extensions
     fun Vector2f.interpolateFrom(
         last: Vector2f,
         dest: Vector2f = Vector2f(),
-        t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation
+        t: Float = PulseEngine.INSTANCE.data.interpolation
     ): Vector2f = dest.set(
         this.x * t + last.x * (1f - t),
         this.y * t + last.y * (1f - t)
     )
-
-    // For destructuring vectors
-    operator fun Vector2f.component1() = x
-    operator fun Vector2f.component2() = y
-    operator fun Vector3f.component1() = x
-    operator fun Vector3f.component2() = y
-    operator fun Vector3f.component3() = z
-    operator fun Vector4f.component1() = x
-    operator fun Vector4f.component2() = y
-    operator fun Vector4f.component3() = z
-    operator fun Vector4f.component4() = w
 
     /**
      * Linearly interpolates from the [last] value to [this] value.
@@ -50,7 +47,7 @@ object Extensions
     fun Vector3f.interpolateFrom(
         last: Vector3f,
         destination: Vector3f = Vector3f(),
-        t: Float = PulseEngine.GLOBAL_INSTANCE.data.interpolation
+        t: Float = PulseEngine.INSTANCE.data.interpolation
     ): Vector3f = destination.set(
         this.x * t + last.x * (1f - t),
         this.y * t + last.y * (1f - t),
@@ -72,9 +69,23 @@ object Extensions
      */
     fun Float.degreesBetween(angle: Float): Float
     {
-        val delta = this - angle
-        return delta + if (delta > 180) -360 else if (delta < -180) 360 else 0
+        val aRad = this.toRadians()
+        val bRad = angle.toRadians()
+        return MathUtil.atan2(sin(aRad - bRad), cos(aRad - bRad)).toDegrees()
     }
+
+    // For destructuring vectors
+    operator fun Vector2i.component1() = x
+    operator fun Vector2i.component2() = y
+    operator fun Vector2f.component1() = x
+    operator fun Vector2f.component2() = y
+    operator fun Vector3f.component1() = x
+    operator fun Vector3f.component2() = y
+    operator fun Vector3f.component3() = z
+    operator fun Vector4f.component1() = x
+    operator fun Vector4f.component2() = y
+    operator fun Vector4f.component3() = z
+    operator fun Vector4f.component4() = w
 
     /**
      * Fast iteration of a list without needing a new [Iterator] instance.
@@ -126,6 +137,15 @@ object Extensions
     {
         var i = 0
         while (i < size) action(this[i++])
+    }
+
+    /**
+     * Fast iteration of constant lookup lists with index.
+     */
+    inline fun <T> List<T>.forEachIndexedFast(action: (Int, T) -> Unit)
+    {
+        var i = 0
+        while (i < size) action(i, this[i++])
     }
 
     /**
@@ -286,6 +306,28 @@ object Extensions
         return destination
     }
 
+    /** Default return value from Trove hash maps when no entry was found */
+    const val TROVE_NO_ENTRY = -2
+
+    /**
+     * Creates a new [TObjectIntHashMap] with the given [capacity].
+     */
+    inline fun <reified T> emptyObjectIntHashMap(capacity: Int = 10, noEntryValue: Int = TROVE_NO_ENTRY) =
+        TObjectIntHashMap<T>(capacity, 0.5f, noEntryValue)
+
+    /**
+     * Gets the element associated with the given key, or inserts and returns the result of the [defaultValue] function.
+     */
+    inline fun <K> TObjectIntHashMap<K>.getOrPut(key: K, noEntryValue: Int = TROVE_NO_ENTRY, defaultValue: (key: K) -> Int): Int
+    {
+        val value = get(key)
+        if (value != noEntryValue)
+            return value
+        val answer = defaultValue(key)
+        put(key, answer)
+        return answer
+    }
+
     /**
      * Returns a new [LongArray] with the first occurrence of [value] removed.
      * Returns null if the result is empty.
@@ -330,19 +372,33 @@ object Extensions
     fun String.toClassPath(): String = this.takeIf { it.startsWith("/") } ?: "/$this"
 
     /**
-     * Loads the file as a [InputStream] from class path
+     * Loads the file as a [InputStream] from disk or from class path, if not found
      */
-    fun String.loadStream(): InputStream? = Extensions::class.java.getResourceAsStream(this.toClassPath())
+    fun String.loadStreamFromDisk() = File(this).let()
+    {
+        if (it.isFile && it.isAbsolute) it.inputStream() else Extensions::class.java.getResourceAsStream(this.toClassPath())
+    }
 
     /**
-     * Loads the file as a [ByteArray] from class path
+     * Loads the text content from the given file in disk or from class path, if not found
      */
-    fun String.loadBytes(): ByteArray? = Extensions::class.java.getResource(this.toClassPath())?.readBytes()
+    fun String.loadTextFromDisk() = File(this).let()
+    {
+        if (it.isFile && it.isAbsolute) it.readText() else Extensions::class.java.getResource(this.toClassPath())?.readText()
+    }
 
     /**
-     * Loads the text content from the given file in class path
+     * Loads the bytes from the given file or from class path, if not found
      */
-    fun String.loadText(): String? = Extensions::class.java.getResource(this.toClassPath())?.readText()
+    fun String.loadBytesFromDisk() = File(this).let()
+    {
+        if (it.isFile && it.isAbsolute) it.readBytes() else loadBytesFromClassPath()
+    }
+
+    /**
+     * Loads the bytes from class path
+     */
+    fun String.loadBytesFromClassPath() = Extensions::class.java.getResource(this.toClassPath())?.readBytes()
 
     /**
      * Loads all file names in the given directory
@@ -362,9 +418,43 @@ object Extensions
         }
         else
         {
-            this.loadStream()
+            this.loadStreamFromDisk()
                 ?.let { stream -> BufferedReader(InputStreamReader(stream)).readLines().map { "$this/$it" } }
                 ?: emptyList()
+        }
+    }
+
+    private val spriteSheetRegex = "_([0-9]{1,3})x([0-9]{1,3})\\.".toRegex() // Matches _1x2.
+
+    /**
+     * Default function for creating assets from file paths.
+     */
+    fun pathToAsset(path: String): Asset?
+    {
+        val name = path.substringAfterLast("/").substringBeforeLast(".")
+        return when
+        {
+            path.endsWith(".ogg")  -> Sound(path, name)
+            path.endsWith(".ttf")  -> Font(path, name)
+            path.endsWith(".txt")  -> Text(path, name)
+            path.endsWith(".dat")  -> Binary(path, name)
+            path.endsWith(".hdr")  -> Texture(path, name, format = RGBA32F)
+            path.endsWith(".jpg")  ||
+            path.endsWith(".jpeg") ||
+            path.endsWith(".png")  ->
+            {
+                val format = if ("_lut" in name || "_linear" in name || "_normal" in name) RGBA8 else SRGBA8
+                val mips = if (format == RGBA8) 1 else 5
+                spriteSheetRegex.find(path)?.let { SpriteSheet(
+                    filePath = path,
+                    name = name.substringBeforeLast("_"),
+                    format = format,
+                    mipLevels = mips,
+                    horizontalCells = it.groupValues[1].toInt(),
+                    verticalCells = it.groupValues[2].toInt()
+                ) } ?: Texture(path, name, format = format, mipLevels = mips)
+            }
+            else -> null
         }
     }
 
@@ -392,10 +482,4 @@ object Extensions
         }
         return this
     }
-
-    operator fun StringBuilder.plus(s: String): StringBuilder = append(s)
-    operator fun StringBuilder.plus(l: Long): StringBuilder = append(l)
-    operator fun StringBuilder.plus(f: Float): StringBuilder = append(f)
-    operator fun StringBuilder.plus(i: Int): StringBuilder = append(i)
-    operator fun StringBuilder.plus(c: Char): StringBuilder = append(c)
 }

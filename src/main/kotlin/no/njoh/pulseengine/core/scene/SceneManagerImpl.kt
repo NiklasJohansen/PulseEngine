@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneState.*
 import no.njoh.pulseengine.core.scene.systems.EntityUpdater
 import no.njoh.pulseengine.core.scene.systems.EntityRendererImpl
@@ -26,9 +27,12 @@ open class SceneManagerImpl : SceneManagerInternal()
     private var nextSceneFileName: String? = null
     private var nextSceneFromClassPath = false
 
-    private var transitionFade = 0f
-    private var fadeTimeMs = 0L
     private var loadingScene = false
+    private var transitionFade = 0f
+    private var transitionTimeMs = 0L
+    private var onSceneLoaded: ((PulseEngine) -> Unit)? = null
+    private var onTransitionFinished: ((PulseEngine) -> Unit)? = null
+    private var onRender: ((PulseEngine, Surface, Float) -> Unit)? = null
 
     override fun init(engine: PulseEngine)
     {
@@ -91,14 +95,23 @@ open class SceneManagerImpl : SceneManagerInternal()
         else Logger.error("Cannot load scene: ${activeScene.name} - fileName is not set!")
     }
 
-    override fun transitionInto(fileName: String, fromClassPath: Boolean, fadeTimeMs: Long)
-    {
+    override fun transitionInto(
+        fileName: String,
+        fromClassPath: Boolean,
+        transitionTimeMs: Long,
+        onSceneLoaded: ((PulseEngine) -> Unit)?,
+        onTransitionFinished: ((PulseEngine) -> Unit)?,
+        onRender: ((PulseEngine, Surface, t: Float) -> Unit)?
+    ) {
         if (fileName != nextSceneFileName)
         {
-            this.transitionFade = 1f
             this.nextSceneFileName = fileName
             this.nextSceneFromClassPath = fromClassPath
-            this.fadeTimeMs = fadeTimeMs
+            this.transitionTimeMs = transitionTimeMs
+            this.transitionFade = 1f
+            this.onSceneLoaded = onSceneLoaded
+            this.onTransitionFinished = onTransitionFinished
+            this.onRender = onRender
         }
     }
 
@@ -183,13 +196,16 @@ open class SceneManagerImpl : SceneManagerInternal()
             }) { scene ->
                 loadingScene = false
                 nextStagedScene = scene
-                Logger.debug("Transitioning into scene: ${scene.name}")
+                scene.fileName = nextSceneFileName!!
+                Logger.debug("Transitioning into scene: $nextSceneFileName")
             }
         }
 
         if (nextStagedScene != null && !loadingScene && transitionFade <= 0.5)
         {
             setActive(nextStagedScene!!)
+            onSceneLoaded?.invoke(engine)
+            onSceneLoaded = null
             nextSceneFileName = null
             nextStagedScene = null
         }
@@ -201,10 +217,15 @@ open class SceneManagerImpl : SceneManagerInternal()
     {
         if (transitionFade > 0)
         {
-            transitionFade -= (1000f / fadeTimeMs * 0.5f) * engine.data.fixedDeltaTime
+            transitionFade -= (1000f / transitionTimeMs * 0.5f) * engine.data.fixedDeltaTime
             // Don't go past 0.5 before scene is loaded
             if (loadingScene)
                 transitionFade = max(transitionFade, 0.5f)
+        }
+        else if (onTransitionFinished != null)
+        {
+            onTransitionFinished?.invoke(engine)
+            onTransitionFinished = null
         }
 
         activeScene.fixedUpdate(engine)
@@ -216,13 +237,21 @@ open class SceneManagerImpl : SceneManagerInternal()
 
         if (transitionFade > 0f)
         {
-            val fade = (cos(transitionFade * PI * 2f + PI).toFloat() + 1f) / 2f
             val surface = engine.gfx.getSurface("scene_transition")
                 ?: engine.gfx.createSurface("scene_transition", zOrder = -99)
 
-            surface.setDrawColor(0f, 0f, 0f, fade)
-            surface.drawQuad(0f, 0f, surface.config.width.toFloat(), surface.config.height.toFloat())
+            if (onRender != null)
+            {
+                onRender?.invoke(engine, surface, (1f - transitionFade).coerceIn(0f, 1f))
+            }
+            else
+            {
+                val fade = 0.5f * (1f + cos(PI + transitionFade * PI * 2f).toFloat())
+                surface.setDrawColor(0f, 0f, 0f, fade)
+                surface.drawQuad(0f, 0f, surface.config.width.toFloat(), surface.config.height.toFloat())
+            }
         }
+        else onRender = null
     }
 
     override fun registerSystemsAndEntityClasses()

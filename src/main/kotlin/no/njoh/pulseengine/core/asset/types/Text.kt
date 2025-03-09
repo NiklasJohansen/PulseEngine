@@ -1,22 +1,22 @@
 package no.njoh.pulseengine.core.asset.types
 
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadTextFromDisk
 import no.njoh.pulseengine.core.shared.utils.Logger
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadText
 
-@ScnIcon("TEXT")
-class Text(fileName: String, override val name: String) : Asset(name, fileName)
+@Icon("TEXT")
+class Text(filePath: String, name: String) : Asset(filePath, name)
 {
     lateinit var text: String
         private set
 
     override fun load()
     {
-        this.text = fileName.loadText() ?: run {
-            Logger.error("Failed to find and load Text asset: ${this.fileName}")
+        this.text = filePath.loadTextFromDisk() ?: run {
+            Logger.error("Failed to find and load Text asset: $filePath")
             ""
         }
     }
 
-    override fun delete() { }
+    override fun unload() { }
 }

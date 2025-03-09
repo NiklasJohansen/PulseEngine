@@ -1,12 +1,10 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
-import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL30.*
 
-class FullFrameRenderer(private val program: ShaderProgram)
+class FullFrameRenderer(val program: ShaderProgram)
 {
     private var vaoId = -1
     private var vboId = -1
@@ -31,36 +29,9 @@ class FullFrameRenderer(private val program: ShaderProgram)
         program.setVertexAttributeLayout("texCoord", 2, GL_FLOAT, 4 * FLOAT_BYTES, 2L * FLOAT_BYTES)
     }
 
-    fun render(texture: Texture)
+    fun draw()
     {
         glBindVertexArray(vaoId)
-        program.bind()
-        glActiveTexture(GL_TEXTURE0)
-        glBindTexture(GL_TEXTURE_2D, texture.handle.textureIndex)
-        glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
-    }
-
-    fun render(vararg textures: Texture)
-    {
-        glBindVertexArray(vaoId)
-        for (i in 0 until textures.size)
-        {
-            glActiveTexture(GL_TEXTURE0 + i)
-            glBindTexture(GL_TEXTURE_2D, textures[i].handle.textureIndex)
-        }
-        program.bind()
-        glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
-    }
-
-    fun render(textureHandles: List<TextureHandle>)
-    {
-        glBindVertexArray(vaoId)
-        for (i in 0 until textureHandles.size)
-        {
-            glActiveTexture(GL_TEXTURE0 + i)
-            glBindTexture(GL_TEXTURE_2D, textureHandles[i].textureIndex)
-        }
-        program.bind()
         glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)
     }
 

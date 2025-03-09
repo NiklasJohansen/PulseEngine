@@ -1,29 +1,29 @@
 package no.njoh.pulseengine.core.graphics.surface
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer.Companion.MAX_BATCH_COUNT
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachReversed
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
-import java.lang.RuntimeException
 
 class SurfaceImpl(
     override val camera: CameraInternal,
     override val config: SurfaceConfigInternal,
-    val textureBank: TextureBank
 ): SurfaceInternal() {
 
     override var renderTarget           = createRenderTarget(config)
     private var initialized             = false
-    private var hasContent              = false
-    private val onInitFrame             = ArrayList<() -> Unit>()
+    private val onInitFrame             = ArrayList<(PulseEngineInternal) -> Unit>()
     private var readRenderStates        = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private var writeRenderStates       = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private val postEffects             = ArrayList<PostProcessingEffect>()
@@ -39,19 +39,19 @@ class SurfaceImpl(
     // Internal functions
     //--------------------------------------------------------------------------------------------
 
-    override fun init(width: Int, height: Int, glContextRecreated: Boolean)
+    override fun init(engine: PulseEngineInternal, width: Int, height: Int, glContextRecreated: Boolean)
     {
         config.width = width
         config.height = height
 
         if (!initialized)
         {
-            textRenderer            = TextRenderer(config, textureBank)
+            textRenderer            = TextRenderer(config)
             quadRenderer            = QuadRenderer(config)
             lineRenderer            = LineRenderer(config)
             textureRenderer         = TextureRenderer(config)
             stencilRenderer         = StencilRenderer()
-            bindlessTextureRenderer = BindlessTextureRenderer(config, textureBank)
+            bindlessTextureRenderer = BindlessTextureRenderer(config)
             renderers               += listOfNotNull(textRenderer, quadRenderer, lineRenderer, textureRenderer, stencilRenderer, bindlessTextureRenderer)
 
             renderers.forEachFast { rendererMap[it::class.java] = it }
@@ -59,20 +59,20 @@ class SurfaceImpl(
 
         if (glContextRecreated || !initialized)
         {
-            renderers.forEachFast { it.init() }
-            postEffects.forEachFast { it.init() }
+            renderers.forEachFast { it.init(engine) }
+            postEffects.forEachFast { it.init(engine) }
         }
 
         renderTarget.init(width, height)
         initialized = true
     }
 
-    override fun initFrame()
+    override fun initFrame(engine: PulseEngineInternal)
     {
         readRenderStates = writeRenderStates.also { writeRenderStates = readRenderStates }
         writeRenderStates.clear()
 
-        onInitFrame.forEachFast { it.invoke() }
+        onInitFrame.forEachFast { it.invoke(engine) }
         onInitFrame.clear()
 
         renderers.forEachFast { it.initFrame() }
@@ -80,33 +80,38 @@ class SurfaceImpl(
         applyRenderState(BatchRenderBaseState)
     }
 
-    override fun renderToOffScreenTarget()
+    override fun renderToOffScreenTarget(engine: PulseEngineInternal)
     {
-        hasContent = renderers.anyMatches { it.hasContentToRender() }
-        if (!hasContent)
-            return // No content to render
-
         renderTarget.begin()
 
         var batchNum = 0
         while (batchNum < readRenderStates.size)
         {
             readRenderStates[batchNum].apply(this)
-            renderers.forEachFast { it.renderBatch(this, batchNum) }
+            GpuProfiler.measure({ "RENDER_BATCH " plus " (#" plus batchNum plus ")" })
+            {
+                renderers.forEachFast { it.renderBatch(engine, this, batchNum) }
+            }
             batchNum++
         }
 
         renderTarget.end()
     }
 
-    override fun runPostProcessingPipeline()
+    override fun runPostProcessingPipeline(engine: PulseEngineInternal)
     {
-        if (!hasContent) return // Render target is blank
+        if (postEffects.isEmpty()) return // No post-processing effects to run
 
-        var texture = renderTarget.getTexture() ?: return
+        // Make sure the view port is set to the same size as the scaled surface texture
+        ViewportState.apply(this)
+
+        var textures = renderTarget.getTextures()
         postEffects.forEachFast()
         {
-            texture = it.process(texture)
+            GpuProfiler.measure(label = { "EFFECT (" plus it.name plus ")" })
+            {
+                textures = it.process(engine, textures)
+            }
         }
     }
 
@@ -117,7 +122,9 @@ class SurfaceImpl(
         renderTarget.destroy()
     }
 
-    override fun hasContent() = hasContent
+    override fun hasContent() = renderers.anyMatches { it.hasContentToRender() }
+
+    override fun hasPostProcessingEffects() = postEffects.isNotEmpty()
 
     // Exposed draw functions
     //------------------------------------------------------------------------------------------------
@@ -166,10 +173,11 @@ class SurfaceImpl(
     // Exposed getters
     //------------------------------------------------------------------------------------------------
 
-    override fun getTexture(index: Int): Texture
+    override fun getTexture(index: Int, final: Boolean): Texture
     {
-        return postEffects.lastOrNull()?.getTexture()
-            ?: renderTarget.getTexture(index)
+        if (final) postEffects.forEachReversed { effect -> effect.getTexture(index)?.let { return it } }
+
+        return renderTarget.getTexture(index)
             ?: throw RuntimeException(
                 "Failed to get texture with index: $index from surface with name: ${config.name}. " +
                     "Surface has the following output specification: ${config.attachments})"
@@ -240,7 +248,7 @@ class SurfaceImpl(
             {
                 renderTarget.destroy()
                 renderTarget = createRenderTarget(config)
-                renderTarget.init(config.width, config.height)
+                renderTarget.init(this@SurfaceImpl.config.width, config.height)
             }
         }
         return this
@@ -287,21 +295,33 @@ class SurfaceImpl(
 
     override fun addPostProcessingEffect(effect: PostProcessingEffect)
     {
-        runOnInitFrame()
-        {
+        runOnInitFrame { engine ->
+
             getPostProcessingEffect(effect.name)?.let()
             {
                 Logger.warn("Replacing existing post processing effect with same name: ${it.name}")
                 deletePostProcessingEffect(it.name)
             }
-            effect.init()
+            effect.init(engine)
             postEffects.add(effect)
+            postEffects.sortBy { it.order }
         }
+    }
+
+    override fun getPostProcessingEffects(): List<PostProcessingEffect>
+    {
+        return postEffects
     }
 
     override fun getPostProcessingEffect(name: String): PostProcessingEffect?
     {
         return postEffects.firstOrNullFast { it.name == name }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : PostProcessingEffect> getPostProcessingEffect(type: Class<T>): T?
+    {
+        return postEffects.firstOrNullFast { type.isAssignableFrom(it.javaClass) } as T?
     }
 
     override fun deletePostProcessingEffect(name: String)
@@ -327,15 +347,15 @@ class SurfaceImpl(
 
         writeRenderStates.add(state)
     }
+
     override fun addRenderer(renderer: BatchRenderer)
     {
-        runOnInitFrame()
-        {
-            renderer.init()
+        runOnInitFrame { engine ->
+            renderer.init(engine)
             renderers.add(renderer)
             rendererMap[renderer.javaClass] = renderer
         }
     }
 
-    private fun runOnInitFrame(command: () -> Unit) { onInitFrame.add(command) }
+    private fun runOnInitFrame(command: (PulseEngineInternal) -> Unit) { onInitFrame.add(command) }
 }

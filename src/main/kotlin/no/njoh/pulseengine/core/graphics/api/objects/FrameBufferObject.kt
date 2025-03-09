@@ -3,11 +3,10 @@ package no.njoh.pulseengine.core.graphics.api.objects
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA_MAX
-import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
+import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachIndexedFast
 import org.lwjgl.opengl.GL14.GL_DEPTH_COMPONENT24
 import org.lwjgl.opengl.GL20.glDrawBuffers
 import org.lwjgl.opengl.GL30.*
@@ -21,11 +20,21 @@ open class FrameBufferObject(
     val width: Int,
     val height: Int,
     private val renderBufferIds: List<Int>,
-    private val textures: List<Texture>
+    private val textures: List<Texture>,
+    private val textureDescriptors: List<TextureDescriptor>
 ) {
-    fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, id)
+    private val textureBuffers = textures.mapNotNull { it.attachment }.distinct().filter { it.isDrawable }.map { it.value }.toIntArray()
+
+    fun bind()
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, id)
+        glDrawBuffers(textureBuffers)
+    }
+
     fun release() = glBindFramebuffer(GL_FRAMEBUFFER, 0)
+
     fun clear() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+
     fun delete()
     {
         textures.forEachFast { glDeleteTextures(it.handle.textureIndex) }
@@ -33,10 +42,17 @@ open class FrameBufferObject(
         glDeleteFramebuffers(id)
     }
 
-    fun getTexture(index: Int = 0): Texture? =
-        textures.getOrNull(index)
+    fun getTexture(index: Int = 0) = textures.getOrNull(index)
 
     fun getTextures() = textures
+
+    fun attachOutputTexture(
+        texture: Texture,
+        attachment: Attachment = texture.attachment ?: throw IllegalArgumentException("Texture cannot be used as an FBO attachment"),
+    ) {
+        // TODO: Can be other that GL_TEXTURE_2D, e.g GL_TEXTURE_2D_MULTISAMPLE. Create RenderTexture child of Texture with this data?
+        glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.value, GL_TEXTURE_2D, texture.handle.textureIndex, 0)
+    }
 
     fun resolveToFBO(destinationFbo: FrameBufferObject)
     {
@@ -47,8 +63,8 @@ open class FrameBufferObject(
         {
             val sourceTexture = textures[i]
             val destinationTexture = destinationFbo.textures[i]
-            glReadBuffer(sourceTexture.attachment)
-            glDrawBuffers(destinationTexture.attachment)
+            glReadBuffer(sourceTexture.attachment!!.value)
+            glDrawBuffers(destinationTexture.attachment!!.value)
             glBlitFramebuffer(
                 0, 0, sourceTexture.width, sourceTexture.height,
                 0, 0, destinationTexture.width, destinationTexture.height,
@@ -60,34 +76,38 @@ open class FrameBufferObject(
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
     }
 
+    fun matches(width: Int, height: Int, descriptors: List<TextureDescriptor>): Boolean
+    {
+        if (width != this.width || height != this.height)
+            return false
+
+        if (textureDescriptors.size != descriptors.size)
+            return false
+
+        textureDescriptors.forEachIndexedFast { i, desc -> if (desc != descriptors[i]) return false }
+
+        return true
+    }
+
     companion object
     {
-        fun create(
-            width: Int,
-            height: Int,
-            textureScale: Float = 1f,
-            textureFormat: TextureFormat = RGBA8,
-            textureFilter: TextureFilter = LINEAR,
-            multisampling: Multisampling = NONE,
-            attachments: List<Attachment> = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER)
-        ): FrameBufferObject {
-            // Generate and bind frame buffer
+        fun create(width: Int, height: Int, textureDescriptors: List<TextureDescriptor>): FrameBufferObject
+        {
+            val textures = mutableListOf<Texture>()
+            val bufferIds = mutableListOf<Int>()
             val frameBufferId = glGenFramebuffers()
             glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
 
-            val samples = if (multisampling == MSAA_MAX) glGetInteger(GL_MAX_SAMPLES) else multisampling.samples
-            val texWidth = (width * textureScale).toInt()
-            val texHeight = (height * textureScale).toInt()
-            val textures = mutableListOf<Texture>()
-            val bufferIds = mutableListOf<Int>()
-
-            // Create attachments
-            for (attachment in attachments)
+            for (tex in textureDescriptors)
             {
-                val textureId = when (attachment)
+                val samples = if (tex.multisampling == MSAA_MAX) glGetInteger(GL_MAX_SAMPLES) else tex.multisampling.samples
+                val texWidth = (width * tex.scale).toInt().coerceAtLeast(1)
+                val texHeight = (height * tex.scale).toInt().coerceAtLeast(1)
+
+                val textureId = when (tex.attachment)
                 {
                     COLOR_TEXTURE_0, COLOR_TEXTURE_1, COLOR_TEXTURE_2, COLOR_TEXTURE_3, COLOR_TEXTURE_4 ->
-                        createColorTextureAttachment(texWidth, texHeight, textureFormat, textureFilter, attachment, samples)
+                        createColorTextureAttachment(texWidth, texHeight, tex.format, tex.filter, tex.wrapping, tex.attachment, samples)
                     DEPTH_TEXTURE ->
                         createDepthTextureAttachment(texWidth, texHeight, samples)
                     else -> null
@@ -95,14 +115,14 @@ open class FrameBufferObject(
 
                 if (textureId != null)
                 {
-                    val texture = Texture("", "fbo_${attachment.name.toLowerCase()}")
+                    val texture = Texture("", name = "fbo_${tex.attachment.name.lowercase()}", tex.filter, tex.wrapping, tex.format, mipLevels = 1)
                     val handle = TextureHandle.create(0, textureId)
                     texture.stage(null as ByteBuffer?, texWidth, texHeight)
-                    texture.finalize(handle, isBindless = false, attachment = attachment.value)
+                    texture.finalize(handle, isBindless = false, attachment = tex.attachment)
                     textures.add(texture)
                 }
 
-                val bufferId = when (attachment)
+                val bufferId = when (tex.attachment)
                 {
                     DEPTH_STENCIL_BUFFER -> createDepthBufferAttachment(texWidth, texHeight, samples)
                     else -> null
@@ -120,23 +140,25 @@ open class FrameBufferObject(
             // Unbind frame buffer (binds default buffer)
             glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
-            return FrameBufferObject(frameBufferId, width, height, bufferIds, textures)
+            return FrameBufferObject(frameBufferId, width, height, bufferIds, textures, textureDescriptors.map { it.copy() })
         }
 
-        private fun createColorTextureAttachment(width: Int, height: Int, format: TextureFormat, filter: TextureFilter, attachment: Attachment, samples: Int): Int
+        private fun createColorTextureAttachment(width: Int, height: Int, format: TextureFormat, filter: TextureFilter, wrapping: TextureWrapping, attachment: Attachment, samples: Int): Int
         {
             val target = if (samples > 1) GL_TEXTURE_2D_MULTISAMPLE else GL_TEXTURE_2D
             val textureId = glGenTextures()
             glBindTexture(target, textureId)
             if (samples > 1)
-                glTexImage2DMultisample(target, samples, format.value, width, height, true)
+            {
+                glTexImage2DMultisample(target, samples, format.internalFormat, width, height, true)
+            }
             else
             {
-                glTexImage2D(target, 0, format.value, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, null as FloatArray?)
-                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter.value)
-                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter.value)
-                glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
-                glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+                glTexImage2D(target, 0, format.internalFormat, width, height, 0, format.pixelFormat, GL_UNSIGNED_BYTE, null as FloatArray?)
+                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter.minValue)
+                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter.magValue)
+                glTexParameteri(target, GL_TEXTURE_WRAP_S, wrapping.value)
+                glTexParameteri(target, GL_TEXTURE_WRAP_T, wrapping.value)
             }
             glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.value, target, textureId, 0)
             glBindTexture(target, 0)

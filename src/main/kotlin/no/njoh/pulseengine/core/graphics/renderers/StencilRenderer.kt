@@ -1,5 +1,8 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
@@ -12,14 +15,14 @@ class StencilRenderer : BatchRenderer()
     private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
             vbo = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/stencil.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/stencil.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/stencil.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/stencil.frag"))
             )
         }
 
@@ -45,7 +48,7 @@ class StencilRenderer : BatchRenderer()
         vao.release()
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int) { }
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int) { }
 
     override fun destroy()
     {

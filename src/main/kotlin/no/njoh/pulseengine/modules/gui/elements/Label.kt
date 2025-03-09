@@ -9,7 +9,7 @@ import no.njoh.pulseengine.modules.gui.elements.Label.TextSizeStrategy.*
 import kotlin.math.max
 
 class Label(
-    text: String,
+    text: CharSequence,
     x: Position = Position.auto(),
     y: Position = Position.auto(),
     width: Size = Size.auto(),
@@ -24,7 +24,7 @@ class Label(
     var centerVertically = true
     var textResizeStrategy = CROP_TEXT
     var fontSize = ScaledValue.of(24f)
-    var text = text
+    var text: CharSequence = text
         set (value)
         {
             if (value != field)
@@ -92,6 +92,7 @@ class Label(
             textWidth = charWidths.sum()
             lastText = text
             lastFontSize = fontSize
+            visibleText = text
             true
         }
         else false

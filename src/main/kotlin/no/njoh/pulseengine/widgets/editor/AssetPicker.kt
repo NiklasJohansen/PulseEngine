@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Asset
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.gui.*
 import no.njoh.pulseengine.modules.gui.UiUtil.firstElementOrNull
@@ -172,7 +172,7 @@ class AssetPicker(
 
     fun addAssetRow(asset: Asset, style: EditorStyle)
     {
-        val rowIconCharacter = style.getIcon(asset::class.findAnnotation<ScnIcon>()?.iconName ?: "BOX")
+        val rowIconCharacter = style.getIcon(asset::class.findAnnotation<Icon>()?.iconName ?: "BOX")
 
         val icon = Icon(width = Size.absolute(rowHeight)).apply()
         {

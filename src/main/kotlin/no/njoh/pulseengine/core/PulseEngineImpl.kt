@@ -2,10 +2,7 @@ package no.njoh.pulseengine.core
 
 import no.njoh.pulseengine.core.asset.AssetManagerImpl
 import no.njoh.pulseengine.core.asset.AssetManagerInternal
-import no.njoh.pulseengine.core.asset.types.Cursor
-import no.njoh.pulseengine.core.asset.types.Font
-import no.njoh.pulseengine.core.asset.types.Sound
-import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.audio.AudioImpl
 import no.njoh.pulseengine.core.audio.AudioInternal
 import no.njoh.pulseengine.core.config.ConfigurationImpl
@@ -14,6 +11,7 @@ import no.njoh.pulseengine.core.console.ConsoleImpl
 import no.njoh.pulseengine.core.console.ConsoleInternal
 import no.njoh.pulseengine.core.data.DataImpl
 import no.njoh.pulseengine.core.graphics.*
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.InputImpl
 import no.njoh.pulseengine.core.input.InputInternal
@@ -25,12 +23,12 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
 import no.njoh.pulseengine.core.shared.utils.FileWatcher
 import no.njoh.pulseengine.core.shared.utils.FpsLimiter
 import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.shared.utils.ThreadBarrier
 import no.njoh.pulseengine.core.widget.WidgetManagerImpl
 import no.njoh.pulseengine.core.widget.WidgetManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
 import org.lwjgl.glfw.GLFW.*
-import java.util.concurrent.CyclicBarrier
 import kotlin.math.min
 
 /**
@@ -47,17 +45,17 @@ class PulseEngineImpl(
     override val asset: AssetManagerInternal    = AssetManagerImpl(),
     override val scene: SceneManagerInternal    = SceneManagerImpl(),
     override val widget: WidgetManagerInternal  = WidgetManagerImpl()
-) : PulseEngine {
+) : PulseEngineInternal {
 
     private val engineStartTime  = System.nanoTime()
     private val fpsLimiter       = FpsLimiter()
-    private val beginFrame       = CyclicBarrier(2)
-    private val endFrame         = CyclicBarrier(2)
+    private val beginFrame       = ThreadBarrier(2)
+    private val endFrame         = ThreadBarrier(2)
     private val focusArea        = FocusArea(0f, 0f, 0f, 0f)
     private var gameThread       = null as Thread?
     private var running          = true
 
-    init { PulseEngine.GLOBAL_INSTANCE = this }
+    init { PulseEngine.INSTANCE = this }
 
     fun run(game: PulseEngineGame)
     {
@@ -79,26 +77,16 @@ class PulseEngineImpl(
         printLogo()
         Logger.info("Initializing engine (${this::class.simpleName})")
 
-        // Initialize engine components
-        config.init()
-        data.init(config.gameName)
-        window.init(config.windowWidth, config.windowHeight, config.screenMode, config.gameName)
-        gfx.init(window.width, window.height)
-        input.init(window.windowHandle)
-        audio.init()
-        console.init(this)
-        scene.init(this)
-
         // Create focus area for game
         focusArea.update(0f, 0f, window.width.toFloat(), window.height.toFloat())
         input.acquireFocus(focusArea)
 
         // Set up window resize event handler
         window.setOnResizeEvent { w, h, windowRecreated ->
-            gfx.updateViewportSize(w, h, windowRecreated)
+            gfx.onWindowChanged(this, w, h, windowRecreated)
             focusArea.update(0f, 0f, w.toFloat(), h.toFloat())
             if (windowRecreated)
-                input.init(window.windowHandle)
+                input.init(window.windowHandle, window.cursorPosScale)
         }
 
         // Let Audio module get sound assets based on name
@@ -112,20 +100,21 @@ class PulseEngineImpl(
             when (it)
             {
                 is Texture -> gfx.uploadTexture(it)
-                is Font -> gfx.uploadTexture(it.charTexture)
-                is Sound -> audio.uploadSound(it)
-                is Cursor -> input.createCursor(it)
+                is Font    -> gfx.uploadTexture(it.charTexture)
+                is Shader  -> gfx.compileShader(it)
+                is Sound   -> audio.uploadSound(it)
+                is Cursor  -> input.createCursor(it)
             }
         }
 
-        // Notify gfx and audio implementation about deleted textures and sounds
-        asset.setOnAssetRemoved {
+        // Notify gfx and audio implementation about unloaded textures and sounds
+        asset.setOnAssetUnloaded {
             when (it)
             {
                 is Texture -> gfx.deleteTexture(it)
-                is Font -> gfx.deleteTexture(it.charTexture)
-                is Sound -> audio.deleteSound(it)
-                is Cursor -> input.deleteCursor(it)
+                is Font    -> gfx.deleteTexture(it.charTexture)
+                is Sound   -> audio.deleteSound(it)
+                is Cursor  -> input.deleteCursor(it)
             }
         }
 
@@ -134,11 +123,24 @@ class PulseEngineImpl(
             when (property.name)
             {
                 config::gameName.name -> data.updateSaveDirectory(config.gameName)
+                config::logLevel.name -> Logger.LEVEL = config.logLevel
+                config::gpuLogLevel.name -> gfx.setGpuLogLevel(config.gpuLogLevel)
+                config::gpuProfiling.name -> GpuProfiler.setEnabled(config.gpuProfiling)
             }
         }
 
         // Load custom cursors
         input.getCursorsToLoad().forEachFast { asset.load(it) }
+
+        // Initialize engine components
+        config.init()
+        data.init(config.gameName)
+        window.init(config)
+        gfx.init(this)
+        input.init(window.windowHandle, window.cursorPosScale)
+        audio.init()
+        console.init(this)
+        scene.init(this)
     }
 
     private fun initGame(game: PulseEngineGame)
@@ -175,12 +177,12 @@ class PulseEngineImpl(
         {
             runInSeparateGameThread()
             {
-                while (running) runSyncronized { tick(game) }
+                while (running) runSynchronized { tick(game) }
             }
             while (running)
             {
                 beginFrame()
-                runSyncronized { drawFrame() }
+                runSynchronized { drawFrame() }
                 endFrame()
             }
         }
@@ -201,7 +203,8 @@ class PulseEngineImpl(
         data.startFrameTimer()
         asset.update()
         audio.update()
-        gfx.initFrame()
+        gfx.initFrame(this)
+        console.update()
         updateInput()
     }
 
@@ -216,7 +219,7 @@ class PulseEngineImpl(
     {
         data.measureGpuRenderTime()
         {
-            gfx.drawFrame()
+            gfx.drawFrame(this)
             window.swapBuffers()
         }
     }
@@ -233,7 +236,6 @@ class PulseEngineImpl(
         data.updateMemoryStats()
         data.measureAndUpdateTimeStats()
         {
-            console.update()
             game.onUpdate()
             scene.update()
             widget.update(this)
@@ -295,7 +297,7 @@ class PulseEngineImpl(
     private fun destroy()
     {
         FileWatcher.shutdown()
-        gameThread?.interrupt()
+        runCatching { gameThread?.interrupt() }
         scene.destroy()
         widget.destroy(this)
         audio.destroy()
@@ -315,7 +317,7 @@ class PulseEngineImpl(
         gameThread = Thread(runnable, "game").apply { start() }
     }
 
-    private inline fun runSyncronized(action: () -> Unit)
+    private inline fun runSynchronized(action: () -> Unit)
     {
         beginFrame.await() // Waits for all threads to be ready
         action()           // Runs the action

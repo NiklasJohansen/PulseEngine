@@ -5,31 +5,31 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.core.shared.annotations.ScnIcon
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.annotations.Name
-import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.annotations.Prop
 
 @Name("Physics")
-@ScnIcon("SHAPES")
+@Icon("SHAPES")
 class PhysicsSystem : SceneSystem()
 {
-    @ScnProp(i = 1)
+    @Prop(i = 1)
     var gravity = 1500f
 
-    @ScnProp(i = 2, min = 0f, max = 50f)
+    @Prop(i = 2, min = 0f, max = 50f)
     var physicsIterations = 4
 
-    @ScnProp(i = 3, min = 0f, max = 100_000_000f)
+    @Prop(i = 3, min = 0f, max = 100_000_000f)
     var worldWidth = 100_000
 
-    @ScnProp(i = 4, min = 0f, max = 100_000_000f)
+    @Prop(i = 4, min = 0f, max = 100_000_000f)
     var worldHeight = 100_000
 
-    @ScnProp(i = 5)
+    @Prop(i = 5)
     var mousePicking = false
 
-    @ScnProp(i = 6)
+    @Prop(i = 6)
     var drawShapes = false
 
     @JsonIgnore

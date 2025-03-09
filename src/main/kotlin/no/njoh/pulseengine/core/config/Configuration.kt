@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.config
 
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode
+import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.window.ScreenMode
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
@@ -19,10 +20,19 @@ interface Configuration
     /** Defines whether the game loop should be multithreaded or not */
     var gameLoopMode: GameLoopMode
 
+    /** The general level for all logging */
+    var logLevel: LogLevel
+
+    /** The level for logging GPU related messages */
+    var gpuLogLevel: LogLevel
+
+    /** Enables measuring of GPU operations if true */
+    var gpuProfiling: Boolean
+
     /**
-     * Loads a configuration file with the given [fileName] from classpath
+     * Loads a configuration file with the given [filePath]
      */
-    fun load(fileName: String)
+    fun load(filePath: String)
 
     /**
      * Returns the named config property as a [String] or null if not found

@@ -4,14 +4,14 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
-import no.njoh.pulseengine.core.shared.annotations.ScnProp
+import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.scene.interfaces.Updatable
 
 @Name("Entity Updater")
 open class EntityUpdater : SceneSystem()
 {
-    @ScnProp(min = 1f, max = 100000f)
+    @Prop(min = 1f, max = 100000f)
     var tickRate = -1
 
     override fun onCreate(engine: PulseEngine)

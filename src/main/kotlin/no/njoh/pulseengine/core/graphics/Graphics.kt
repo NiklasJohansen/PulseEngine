@@ -1,5 +1,7 @@
 package no.njoh.pulseengine.core.graphics
 
+import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
@@ -10,7 +12,9 @@ import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.CameraInternal
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.shared.utils.LogLevel
 
 interface Graphics
 {
@@ -56,7 +60,7 @@ interface Graphics
         camera: Camera? = null,
         isVisible: Boolean = true,
         textureScale: Float = 1f,
-        textureFormat: TextureFormat = RGBA8,
+        textureFormat: TextureFormat = RGBA16F,
         textureFilter: TextureFilter = LINEAR,
         multisampling: Multisampling = NONE,
         blendFunction: BlendFunction = BlendFunction.NORMAL,
@@ -76,12 +80,14 @@ interface GraphicsInternal : Graphics
     override val mainCamera: CameraInternal
     val textureBank: TextureBank
 
-    fun init(viewPortWidth: Int, viewPortHeight: Int)
+    fun init(engine: PulseEngineInternal)
     fun uploadTexture(texture: Texture)
     fun deleteTexture(texture: Texture)
-    fun updateViewportSize(width: Int, height: Int, windowRecreated: Boolean)
+    fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean)
     fun updateCameras()
-    fun initFrame()
-    fun drawFrame()
+    fun compileShader(shader: Shader)
+    fun initFrame(engine: PulseEngineInternal)
+    fun drawFrame(engine: PulseEngineInternal)
+    fun setGpuLogLevel(logLevel: LogLevel)
     fun destroy()
 }

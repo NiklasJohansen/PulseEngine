@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 
 /**
  * Used to batch up vertex data into separate draw calls.
@@ -16,8 +18,10 @@ abstract class BatchRenderer
     private var currentSize  = 0
     private var readOffset   = 0
     private var writeOffset  = MAX_BATCH_COUNT
+    private var hadContent   = false
     private var hasContent   = false
     private var wasUpdated   = false
+    private var name         = this::class.java.simpleName
 
     /**
      * Called once at the beginning of every frame.
@@ -28,6 +32,7 @@ abstract class BatchRenderer
         onInitFrame()
 
         readOffset = writeOffset.also { writeOffset = readOffset }
+        hadContent = hasContent || wasUpdated
         hasContent = wasUpdated
         wasUpdated = false
         currentBatch = 0
@@ -67,25 +72,30 @@ abstract class BatchRenderer
     /**
      * Renders the numbered batch if it is not empty.
      */
-    fun renderBatch(surface: Surface, batchNum: Int)
+    fun renderBatch(engine: PulseEngineInternal, surface: Surface, batchNum: Int)
     {
         val i = readOffset + batchNum
         val drawCount = batchSize[i]
         if (drawCount == 0)
-            return
+            return // Skip empty batches
 
-        onRenderBatch(surface, batchStart[i], drawCount)
+        GpuProfiler.measure({ name plus " (" plus drawCount plus ")" })
+        {
+            onRenderBatch(engine, surface, batchStart[i], drawCount)
+        }
     }
 
     /**
-     * Checks if there are any batches to render.
+     * Checks if there are any batches to render. Will return true even if the current batch is
+     * empty, but last one was not. This is done to ensure that surfaces are cleared properly
+     * when there is no more content to render.
      */
-    fun hasContentToRender() = hasContent
+    fun hasContentToRender() = hadContent
 
     /**
      * Called once when the renderer is added to the [Surface]
      */
-    abstract fun init()
+    abstract fun init(engine: PulseEngineInternal)
 
     /**
      * Called once at the start of every frame.
@@ -95,7 +105,7 @@ abstract class BatchRenderer
     /**
      * Called every frame on every none-empty batch.
      */
-    abstract fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    abstract fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
 
     /**
      * Called once when the [Surface] is destroyed.

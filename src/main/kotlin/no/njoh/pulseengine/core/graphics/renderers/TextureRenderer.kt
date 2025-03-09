@@ -1,6 +1,9 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
@@ -10,10 +13,8 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import org.lwjgl.opengl.GL20.*
 import java.lang.Float.floatToRawIntBits
 
-class TextureRenderer(
-    private val config: SurfaceConfigInternal
-) : BatchRenderer() {
-
+class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+{
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram
@@ -26,7 +27,7 @@ class TextureRenderer(
     private val capacity = 50
     private val stride = 10
 
-    override fun init()
+    override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
@@ -35,8 +36,8 @@ class TextureRenderer(
             data = FloatArray(capacity * stride * 2)
             vbo = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
-                vertexShaderFileName = "/pulseengine/shaders/default/texture.vert",
-                fragmentShaderFileName = "/pulseengine/shaders/default/texture.frag"
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/texture.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/texture.frag"))
             )
         }
 
@@ -56,7 +57,7 @@ class TextureRenderer(
         readCount = writeCount.also { writeCount = 0 }
     }
 
-    override fun onRenderBatch(surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
         // Bind VAO and shader program
         vao.bind()
@@ -85,7 +86,7 @@ class TextureRenderer(
 
             // Bind texture
             if (textureId != TextureHandle.NONE.textureIndex)
-                glBindTexture(GL_TEXTURE_2D, textureId)
+                program.setUniformSampler("tex", TextureHandle.create(0, textureId))
 
             // Set uniforms
             program.setUniform("position", x, y, z)

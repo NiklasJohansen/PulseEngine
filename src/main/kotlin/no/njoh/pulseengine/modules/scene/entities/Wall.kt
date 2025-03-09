@@ -3,29 +3,40 @@ package no.njoh.pulseengine.modules.scene.entities
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.core.shared.annotations.AssetRef
-import no.njoh.pulseengine.modules.lighting.LightOccluder
-import no.njoh.pulseengine.modules.lighting.NormalMapRenderer.Orientation
-import no.njoh.pulseengine.modules.lighting.NormalMapped
+import no.njoh.pulseengine.core.shared.annotations.TexRef
+import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.modules.lighting.direct.DirectLightOccluder
+import no.njoh.pulseengine.modules.lighting.global.GiOccluder
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer.Orientation
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapped
 import no.njoh.pulseengine.modules.physics.entities.Box
 
-class Wall : Box(), LightOccluder, NormalMapped
+class Wall : Box(), DirectLightOccluder, GiOccluder, NormalMapped
 {
-    @AssetRef(Texture::class)
+    @TexRef
     var textureName: String = ""
+    var color = Color(1f, 1f, 1f)
+
+    override var bounceColor = Color(1f, 1f, 1f)
+    override var castShadows = true
+    override var edgeLight = 100f
 
     override var normalMapName: String = ""
     override var normalMapIntensity = 1f
     override var normalMapOrientation = Orientation.NORMAL
-    override var castShadows: Boolean = true
 
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
-        val x = if (xInterpolated.isNaN()) x else xInterpolated
-        val y = if (yInterpolated.isNaN()) y else yInterpolated
-        val r = if (rotInterpolated.isNaN()) rotation else rotInterpolated
-
-        surface.setDrawColor(1f, 1f, 1f)
-        surface.drawTexture(engine.asset.getOrNull(textureName) ?: Texture.BLANK, x, y, width, height, r, xOrigin = 0.5f, yOrigin = 0.5f)
+        surface.setDrawColor(color)
+        surface.drawTexture(
+            texture = engine.asset.getOrNull(textureName) ?: Texture.BLANK,
+            x = xInterpolated(),
+            y = yInterpolated(),
+            width = width,
+            height = height,
+            angle = rotationInterpolated(),
+            xOrigin = 0.5f,
+            yOrigin = 0.5f
+        )
     }
 }

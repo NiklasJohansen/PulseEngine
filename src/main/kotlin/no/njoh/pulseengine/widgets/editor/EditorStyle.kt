@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.widgets.editor
 
-import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Font
+import no.njoh.pulseengine.core.shared.primitives.Color
 
 class EditorStyle
 {
@@ -19,22 +19,22 @@ class EditorStyle
     init
     {
         // Set default colors
-        colors["LABEL"] = Color(1.0f, 1.0f, 1.0f, 1.0f)
-        colors["LABEL_DARK"] = Color(0.5f, 0.5f, 0.5f, 1.0f)
-        colors["LIGHT_BG"] = Color(14, 14, 14)
-        colors["DARK_BG"] = Color(10, 10, 11)
-        colors["STROKE"] = Color(0.03612247f, 0.038525835f, 0.04285717f, 1.0f)
-        colors["HEADER"] = Color(19, 19, 21)
-        colors["HEADER_HOVER"] = Color(32, 42, 59)
-        colors["BUTTON"] = Color(8, 8, 9)
-        colors["BUTTON_HOVER"] = Color(12, 12, 13)
-        colors["BUTTON_EXIT"] = Color(0.7642857f, 0.3603061f, 0.3603061f, 0.69803923f)
-        colors["SCROLLBAR_BG"] = Color(6, 6, 7)
-        colors["SCROLLBAR"] = Color(19, 19, 21)
-        colors["SCROLLBAR_HOVER"] = Color(32, 42, 59)
-        colors["INPUT_BG"] = Color(3, 3, 3)
-        colors["HEADER_FOOTER"] = Color(12, 12, 13)
-        colors["WINDOW_HEADER"] = Color(32, 42, 59)
+        colors["LABEL"] = Color(255,255,255)
+        colors["LABEL_DARK"] = Color(127,127,127)
+        colors["LIGHT_BG"] = Color(14,14,14)
+        colors["DARK_BG"] = Color(22,22,23)
+        colors["STROKE"] = Color(9,9,10)
+        colors["HEADER"] = Color(37,37,40)
+        colors["HEADER_HOVER"] = Color(32,42,59)
+        colors["BUTTON"] = Color(26,26,28)
+        colors["BUTTON_HOVER"] = Color(12,12,13)
+        colors["BUTTON_EXIT"] = Color(194,91,91)
+        colors["SCROLLBAR_BG"] = Color(16,16,17)
+        colors["SCROLLBAR"] = Color(29,29,31)
+        colors["SCROLLBAR_HOVER"] = Color(32,42,59)
+        colors["INPUT_BG"] = Color(7,7,7)
+        colors["HEADER_FOOTER"] = Color(22,22,23)
+        colors["WINDOW_HEADER"] = Color(32,42,59)
 
         // Set default sizes
         sizes["PROP_ROW_HEIGHT"] = 25f
