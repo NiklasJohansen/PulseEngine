@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.SRGBA8
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.shared.annotations.Icon
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.stb.*
@@ -13,10 +13,10 @@ import java.nio.ByteBuffer
 
 @Icon("FONT")
 class Font(
-    fileName: String,
-    override val name: String,
-    val fontSize: Float
-) : Asset(name, fileName) {
+    filePath: String,
+    name: String,
+    val fontSize: Float = 80f
+) : Asset(filePath, name) {
 
     lateinit var charTexture: Texture
     lateinit var charData: STBTTBakedChar.Buffer
@@ -36,8 +36,8 @@ class Font(
 
     override fun load()
     {
-        val fontData: ByteArray = fileName.loadBytes() ?: run {
-            Logger.error("Failed to find and load Font asset: $fileName")
+        val fontData: ByteArray = filePath.loadBytesFromDisk() ?: run {
+            Logger.error("Failed to find and load Font asset: $filePath")
             return
         }
 
@@ -61,14 +61,12 @@ class Font(
         }
         rgbaBuffer.flip()
 
-        charTexture = Texture(filename = "", name = "char_tex_$name", filter = LINEAR_MIPMAP, wrapping = CLAMP_TO_EDGE, format = SRGBA8, mipLevels = 3)
+        charTexture = Texture(filePath = "", name = "char_tex_$name", filter = LINEAR_MIPMAP, wrapping = CLAMP_TO_EDGE, format = SRGBA8, mipLevels = 3)
         charTexture.stage(rgbaBuffer, BITMAP_W, BITMAP_H)
     }
 
-    override fun delete()
+    override fun unload()
     {
-        // TODO: Fix deleting/freeing of texture slots
-        // glDeleteTextures(charTexture.id)
         charData.free()
     }
 
@@ -190,7 +188,7 @@ class Font(
         private const val QUAD_STRIDE = 9
         const val MAX_CHAR_COUNT = 256
         val DEFAULT: Font = Font(
-            fileName = "/pulseengine/assets/FiraSans-Regular.ttf",
+            filePath = "/pulseengine/assets/FiraSans-Regular.ttf",
             name = "default_font",
             fontSize = 80f
         )

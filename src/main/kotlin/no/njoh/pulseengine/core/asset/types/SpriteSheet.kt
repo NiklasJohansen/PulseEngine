@@ -1,19 +1,22 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.graphics.api.*
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR_MIPMAP
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.SRGBA8
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.REPEAT
 import no.njoh.pulseengine.core.shared.annotations.Icon
 
 @Icon("IMAGE")
 class SpriteSheet(
-    fileName: String,
+    filePath: String,
     name: String,
-    filter: TextureFilter,
-    wrapping: TextureWrapping,
-    format: TextureFormat,
-    mipLevels: Int,
+    filter: TextureFilter = LINEAR_MIPMAP,
+    wrapping: TextureWrapping = REPEAT,
+    format: TextureFormat = SRGBA8,
+    mipLevels: Int = 5,
     private val horizontalCells: Int,
     private val verticalCells: Int,
-) : Texture(fileName, name, filter, wrapping, format, mipLevels), Iterable<Texture> {
+) : Texture(filePath, name, filter, wrapping, format, mipLevels), Iterable<Texture> {
 
     private lateinit var textures: Array<Texture>
 
@@ -32,7 +35,7 @@ class SpriteSheet(
         this.size = horizontalCells * verticalCells
         this.textures = Array(size) { index ->
 
-            val texture = Texture(fileName, name, filter, wrapping, format, mipLevels)
+            val texture = Texture(filePath, name, filter, wrapping, format, mipLevels)
             val xIndex = index % horizontalCells
             val yIndex = index / horizontalCells
             val uMinCell = uMin + xIndex * uCellSize * uTexSize

@@ -6,22 +6,23 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureHandle.Companion.INVALID
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.shared.annotations.Icon
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.stb.STBImage.*
+import java.io.FileNotFoundException
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 
 @Icon("IMAGE")
 open class Texture(
-    filename: String,
-    override val name: String,
-    val filter: TextureFilter,
-    val wrapping: TextureWrapping,
-    val format: TextureFormat,
-    val mipLevels: Int,
-) : Asset(name, filename) {
+    filePath: String,
+    name: String,
+    val filter: TextureFilter = LINEAR_MIPMAP,
+    val wrapping: TextureWrapping = REPEAT,
+    val format: TextureFormat = SRGBA8,
+    val mipLevels: Int = 5,
+) : Asset(filePath, name) {
 
     var handle: TextureHandle = INVALID
         private set
@@ -74,10 +75,10 @@ open class Texture(
 
     override fun load()
     {
-        if (fileName.isBlank()) return
+        if (filePath.isBlank()) return
 
         try {
-            val bytes = fileName.loadBytes() ?: throw RuntimeException("No such file")
+            val bytes = filePath.loadBytesFromDisk() ?: throw FileNotFoundException("File not found: $filePath")
             val buffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer
             val width = IntArray(1)
             val height = IntArray(1)
@@ -90,7 +91,7 @@ open class Texture(
                 SRGBA8, RGBA8 ->
                 {
                     if (stbi_is_hdr_from_memory(buffer))
-                        Logger.warn("Loading HDR texture: $fileName into LDR format: $format")
+                        Logger.warn("Loading HDR texture: $filePath into LDR format: $format")
 
                     this.pixelsLDR = stbi_load_from_memory(buffer, width, height, components, STBI_rgb_alpha)
                         ?: throw RuntimeException("Could not load image into memory: " + stbi_failure_reason())
@@ -111,7 +112,7 @@ open class Texture(
         }
         catch (e: Exception)
         {
-            Logger.error("Failed to load image $fileName: ${e.message}")
+            Logger.error("Failed to load image $filePath: ${e.message}")
         }
     }
 
@@ -122,15 +123,15 @@ open class Texture(
         this.height = height
     }
 
-    override fun delete() { }
+    override fun unload() { }
 
     companion object
     {
         val SUPPORTED_FORMATS = listOf("png", "jpg", "jpeg", "hdr")
-        val BLANK = Texture(filename = "", name = "BLANK", filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = SRGBA8, mipLevels = 1).apply {
+        val BLANK = Texture(filePath = "", name = "BLANK", filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = SRGBA8, mipLevels = 1).apply {
             finalize(handle = TextureHandle.NONE, isBindless = true, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
-        val BLANK_BINDABLE = Texture(filename = "", name = "BLANK_BINDABLE", filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGBA8, mipLevels = 1).apply {
+        val BLANK_BINDABLE = Texture(filePath = "", name = "BLANK_BINDABLE", filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGBA8, mipLevels = 1).apply {
             finalize(handle = TextureHandle.NONE, isBindless = false, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
     }

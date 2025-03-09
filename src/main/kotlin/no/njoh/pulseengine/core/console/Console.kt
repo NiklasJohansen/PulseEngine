@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.console
 
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 
 interface Console
 {
@@ -59,7 +59,7 @@ interface Console
 
 interface ConsoleInternal : Console
 {
-    fun init(engine: PulseEngine)
+    fun init(engine: PulseEngineInternal)
     fun update()
 }
 

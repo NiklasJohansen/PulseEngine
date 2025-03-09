@@ -17,17 +17,17 @@ object FileWatcher
      * @param path The absolute path of the file or directory to watch for file changes.
      * @param fileTypes The file types/extensions for the files being watched.
      * @param maxSearchDepth Max amount of directories to recursively search in.
-     * @param intervalInSeconds The number of seconds between each file is checked. Minimum 1 second.
+     * @param intervalMillis The number of milliseconds between each file is checked. Minimum 100 ms.
      * @param callback The callback lambda triggered when a file changes.
      */
     fun setOnFileChanged(
         path: String,
         fileTypes: List<String> = emptyList(),
         maxSearchDepth: Int = 5,
-        intervalInSeconds: Int = 10,
-        callback: (fileName: String) -> Unit
+        intervalMillis: Int = 5_000,
+        callback: (filePath: String) -> Unit
     ) {
-        watcherTask.watchers.add(Watcher(path, fileTypes, maxSearchDepth, intervalInSeconds, callback))
+        watcherTask.watchers.add(Watcher(path, fileTypes, maxSearchDepth, intervalMillis, callback))
     }
 
     /**
@@ -63,7 +63,7 @@ object FileWatcher
             while (running)
             {
                 val now = System.currentTimeMillis()
-                watchers.forEachFiltered({ it.lastCheckTimeMillis + it.checkIntervalSeconds * 1000 < now })
+                watchers.forEachFiltered({ it.lastCheckTimeMillis + it.checkIntervalMillis < now })
                 {
                     getFiles(it.path, it.fileTypes, it.maxSearchDepth).forEachFast { file ->
                         if (it.lastModifiedTimes[file] != file.lastModified())
@@ -74,7 +74,7 @@ object FileWatcher
                     }
                     it.lastCheckTimeMillis = now
                 }
-                Thread.sleep(1000)
+                Thread.sleep(100)
             }
         }
     }
@@ -83,8 +83,8 @@ object FileWatcher
         val path: String,
         val fileTypes: List<String>,
         val maxSearchDepth: Int,
-        val checkIntervalSeconds: Int,
-        val onFileChanged: (fileName: String) -> Unit,
+        val checkIntervalMillis: Int,
+        val onFileChanged: (filePath: String) -> Unit,
     ) {
         var lastCheckTimeMillis: Long = 0
         val lastModifiedTimes = getFiles(path, fileTypes, maxSearchDepth)

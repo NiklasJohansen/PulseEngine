@@ -27,7 +27,7 @@ class TextureBank
                 return
             }
             else Logger.error(
-                "Failed to load texture: ${texture.fileName}. Texture array for " +
+                "Failed to load texture: ${texture.filePath}. Texture array for " +
                 "textureSize=${array.textureSize}px and format=${array.format} is full " +
                 "(${array.size}/${array.maxCapacity}). Consider increasing its capacity."
             )
@@ -100,7 +100,7 @@ class TextureBank
         val spec = capacitySpecs.find { it.texSize == closestTextureSize && it.format == texture.format }
         if (spec == null)
         {
-            Logger.error("Failed to load texture: ${texture.fileName}. No texture capacity set for textures with size=${textureSize}px and format ${texture.format}.")
+            Logger.error("Failed to load texture: ${texture.filePath}. No texture capacity set for textures with size=${textureSize}px and format ${texture.format}.")
             return null
         }
 

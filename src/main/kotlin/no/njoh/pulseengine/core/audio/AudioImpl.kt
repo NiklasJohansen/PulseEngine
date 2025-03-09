@@ -180,7 +180,7 @@ open class AudioImpl : AudioInternal
     {
         if (sound.buffer == null)
         {
-            Logger.error("Failed to upload sound: ${sound.fileName} - buffer is null")
+            Logger.error("Failed to upload sound: ${sound.filePath} - buffer is null")
             return
         }
 

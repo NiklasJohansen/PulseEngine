@@ -18,7 +18,8 @@ class Testbed : PulseEngineGame()
         engine.config.gameName = "Testbed 0.10.0-SNAPSHOT"
         engine.widget.add(SceneEditor(), CommandLine(), MetricViewer(), GpuMonitor())
         engine.console.runScript("testbed/startup.ps")
-        engine.asset.loadAllTextures("testbed/images")
+        engine.asset.loadAll("testbed/images")
+        engine.asset.loadAll("testbed/images/lut")
         engine.scene.reload()
         engine.scene.start()
     }

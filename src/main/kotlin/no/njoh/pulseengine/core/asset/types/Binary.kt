@@ -1,22 +1,25 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
 import no.njoh.pulseengine.core.shared.utils.Logger
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 
 @Icon("FILE")
-class Binary(fileName: String, override val name: String) : Asset(name, fileName)
+class Binary(filePath: String, name: String) : Asset(filePath, name)
 {
     lateinit var bytes: ByteArray
         private set
 
     override fun load()
     {
-        this.bytes = fileName.loadBytes() ?: run {
-            Logger.error("Failed to find and load Binary file: $fileName")
+        this.bytes = filePath.loadBytesFromDisk() ?: run {
+            Logger.error("Failed to find and load Binary file: $filePath")
             ByteArray(0)
         }
     }
 
-    override fun delete() { }
+    override fun unload()
+    {
+        bytes = ByteArray(0)
+    }
 }

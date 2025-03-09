@@ -43,7 +43,7 @@ class MetricViewer : Widget
     override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface("metric_viewer", zOrder = -101)
-        engine.asset.loadFont("/pulseengine/assets/clacon.ttf", "graph_font")
+        engine.asset.load(Font("/pulseengine/assets/clacon.ttf", "graph_font"))
         engine.console.registerCommand("showMetricViewer")
         {
             isRunning = !isRunning

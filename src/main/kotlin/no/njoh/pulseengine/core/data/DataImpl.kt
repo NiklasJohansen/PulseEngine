@@ -7,8 +7,8 @@ import de.undercouch.bson4jackson.BsonFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromClassPath
 import no.njoh.pulseengine.core.shared.utils.Logger
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytes
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import org.lwjgl.glfw.GLFW.glfwGetTime
 import java.io.File
@@ -61,52 +61,52 @@ open class DataImpl : Data()
         metrics += Metric(name, onSample)
     }
 
-    override fun exists(fileName: String): Boolean =
-        getFile(fileName).let { it.exists() || it.isDirectory }
+    override fun exists(filePath: String): Boolean =
+        getFile(filePath).let { it.exists() || it.isDirectory }
 
-    override fun <T> saveObject(data: T, fileName: String, format: FileFormat): Boolean =
+    override fun <T> saveObject(data: T, filePath: String, format: FileFormat): Boolean =
         runCatching {
             val nanoTime = measureNanoTime {
-                val file = getFile(fileName)
+                val file = getFile(filePath)
                 if (!file.parentFile.exists())
                     file.parentFile.mkdirs()
                 file.writeBytes(getMapper(format).writeValueAsBytes(data))
             }
-            Logger.debug("Saved state into $fileName in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
+            Logger.debug("Saved state into $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
             true
         }
-        .onFailure { Logger.error("Failed to save file: $fileName - reason: ${it.message}"); }
+        .onFailure { Logger.error("Failed to save file: $filePath - reason: ${it.message}"); }
         .getOrDefault(false)
 
-    override fun <T> loadObject(fileName: String, type: Class<T>, fromClassPath: Boolean): T? =
+    override fun <T> loadObject(filePath: String, type: Class<T>, fromClassPath: Boolean): T? =
         runCatching {
             var state: T? = null
             val nanoTime = measureNanoTime {
                 state = if (fromClassPath)
-                    fileName.loadBytes()
+                    filePath.loadBytesFromClassPath()
                         ?.let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
-                        ?: throw FileNotFoundException("File not found!")
+                        ?: throw FileNotFoundException("File not found: $filePath")
                 else
-                    getFile(fileName)
+                    getFile(filePath)
                         .readBytes()
                         .let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
             }
-            Logger.debug("Loaded state from $fileName in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
+            Logger.debug("Loaded state from $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
             state
         }
-        .onFailure { Logger.error("Failed to load state (fromClassPath=$fromClassPath): $fileName - reason: ${it.message}") }
+        .onFailure { Logger.error("Failed to load state (fromClassPath=$fromClassPath): $filePath - reason: ${it.message}") }
         .getOrNull()
 
-    override fun <T> saveObjectAsync(data: T, fileName: String, format: FileFormat, onComplete: (T) -> Unit)
+    override fun <T> saveObjectAsync(data: T, filePath: String, format: FileFormat, onComplete: (T) -> Unit)
     {
         GlobalScope.launch(Dispatchers.IO)
         {
-            saveObject(data, fileName, format).takeIf { it }?.let { onComplete.invoke(data) }
+            saveObject(data, filePath, format).takeIf { it }?.let { onComplete.invoke(data) }
         }
     }
 
     override fun <T> loadObjectAsync(
-        fileName: String,
+        filePath: String,
         type: Class<T>,
         fromClassPath: Boolean,
         onFail: () -> Unit,
@@ -114,7 +114,7 @@ open class DataImpl : Data()
     ) {
         GlobalScope.launch(Dispatchers.IO)
         {
-            loadObject(fileName, type, fromClassPath)?.let(onComplete) ?: onFail()
+            loadObject(filePath, type, fromClassPath)?.let(onComplete) ?: onFail()
         }
     }
 
@@ -188,10 +188,8 @@ open class DataImpl : Data()
     private fun getFormat(byteArray: ByteArray) =
         if (byteArray.firstOrNull() == '{'.toByte()) FileFormat.JSON else FileFormat.BINARY
 
-    private fun getFile(fileName: String): File =
-        File(fileName)
-            .takeIf { it.isAbsolute }
-            ?: File("$saveDirectory/$fileName")
+    private fun getFile(filePath: String): File =
+        File(filePath).takeIf { it.isAbsolute } ?: File("$saveDirectory/$filePath")
 
     companion object
     {

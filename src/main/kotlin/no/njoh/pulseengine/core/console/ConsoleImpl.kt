@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.console
 
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Logger
 import java.util.concurrent.ConcurrentHashMap
@@ -14,7 +14,7 @@ open class ConsoleImpl : ConsoleInternal
     private val commandJobs = ConcurrentLinkedQueue<CommandJob>()
     private val history = mutableListOf<ConsoleEntry>()
 
-    override fun init(engine: PulseEngine)
+    override fun init(engine: PulseEngineInternal)
     {
         Logger.info("Initializing console (${this::class.simpleName})")
 

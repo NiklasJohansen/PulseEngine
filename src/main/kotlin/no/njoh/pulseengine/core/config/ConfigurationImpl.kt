@@ -2,10 +2,10 @@ package no.njoh.pulseengine.core.config
 
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode.*
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadStreamFromDisk
 import no.njoh.pulseengine.core.window.ScreenMode
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadStream
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
 import no.njoh.pulseengine.core.window.ScreenMode.*
 import java.io.FileNotFoundException
@@ -38,11 +38,11 @@ open class ConfigurationImpl : ConfigurationInternal
         Logger.LEVEL = logLevel
     }
 
-    override fun load(fileName: String) =
+    override fun load(filePath: String) =
         try
         {
             val startTime = System.nanoTime()
-            val stream = fileName.loadStream() ?: throw FileNotFoundException("file not found")
+            val stream = filePath.loadStreamFromDisk() ?: throw FileNotFoundException("File not found: $filePath")
             properties.load(stream)
             for ((key, value) in properties)
             {
@@ -54,11 +54,11 @@ open class ConfigurationImpl : ConfigurationInternal
                     else -> value
                 }
             }
-            Logger.debug("Loaded configuration file: $fileName in ${startTime.toNowFormatted()}")
+            Logger.debug("Loaded configuration file: $filePath in ${startTime.toNowFormatted()}")
         }
         catch (e: Exception)
         {
-            Logger.error("Failed to load configuration: $fileName, reason: ${e.message}")
+            Logger.error("Failed to load configuration: $filePath, reason: ${e.message}")
         }
 
     override fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)

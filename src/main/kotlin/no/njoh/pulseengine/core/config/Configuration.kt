@@ -30,9 +30,9 @@ interface Configuration
     var gpuProfiling: Boolean
 
     /**
-     * Loads a configuration file with the given [fileName] from classpath
+     * Loads a configuration file with the given [filePath]
      */
-    fun load(fileName: String)
+    fun load(filePath: String)
 
     /**
      * Returns the named config property as a [String] or null if not found

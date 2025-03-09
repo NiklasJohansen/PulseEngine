@@ -4,9 +4,9 @@ import no.njoh.pulseengine.core.shared.annotations.Icon
 
 @Icon("BOX")
 abstract class Asset(
-    open val name: String,
-    open val fileName: String
+    open var filePath: String,
+    open val name: String
 ) {
     abstract fun load()
-    abstract fun delete()
+    abstract fun unload()
 }

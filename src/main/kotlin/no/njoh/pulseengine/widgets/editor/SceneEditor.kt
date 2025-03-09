@@ -151,7 +151,7 @@ class SceneEditor(
         )
 
         // Load editor icon font
-        engine.asset.loadFont("/pulseengine/assets/editor_icons.ttf", uiFactory.style.iconFontName)
+        engine.asset.load(Font("/pulseengine/assets/editor_icons.ttf", uiFactory.style.iconFontName))
 
         // Register a console command to toggle editor visibility
         engine.console.registerCommand("showSceneEditor")

@@ -2,13 +2,13 @@ package no.njoh.pulseengine.core.shared.utils
 
 import gnu.trove.map.hash.TObjectIntHashMap
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.types.*
+import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import org.joml.Vector2f
 import org.joml.Vector2i
 import org.joml.Vector3f
 import org.joml.Vector4f
-import java.io.BufferedReader
-import java.io.InputStream
-import java.io.InputStreamReader
+import java.io.*
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import kotlin.math.PI
@@ -372,19 +372,33 @@ object Extensions
     fun String.toClassPath(): String = this.takeIf { it.startsWith("/") } ?: "/$this"
 
     /**
-     * Loads the file as a [InputStream] from class path
+     * Loads the file as a [InputStream] from disk or from class path, if not found
      */
-    fun String.loadStream(): InputStream? = Extensions::class.java.getResourceAsStream(this.toClassPath())
+    fun String.loadStreamFromDisk() = File(this).let()
+    {
+        if (it.isFile && it.isAbsolute) it.inputStream() else Extensions::class.java.getResourceAsStream(this.toClassPath())
+    }
 
     /**
-     * Loads the file as a [ByteArray] from class path
+     * Loads the text content from the given file in disk or from class path, if not found
      */
-    fun String.loadBytes(): ByteArray? = Extensions::class.java.getResource(this.toClassPath())?.readBytes()
+    fun String.loadTextFromDisk() = File(this).let()
+    {
+        if (it.isFile && it.isAbsolute) it.readText() else Extensions::class.java.getResource(this.toClassPath())?.readText()
+    }
 
     /**
-     * Loads the text content from the given file in class path
+     * Loads the bytes from the given file or from class path, if not found
      */
-    fun String.loadText(): String? = Extensions::class.java.getResource(this.toClassPath())?.readText()
+    fun String.loadBytesFromDisk() = File(this).let()
+    {
+        if (it.isFile && it.isAbsolute) it.readBytes() else loadBytesFromClassPath()
+    }
+
+    /**
+     * Loads the bytes from class path
+     */
+    fun String.loadBytesFromClassPath() = Extensions::class.java.getResource(this.toClassPath())?.readBytes()
 
     /**
      * Loads all file names in the given directory
@@ -404,9 +418,43 @@ object Extensions
         }
         else
         {
-            this.loadStream()
+            this.loadStreamFromDisk()
                 ?.let { stream -> BufferedReader(InputStreamReader(stream)).readLines().map { "$this/$it" } }
                 ?: emptyList()
+        }
+    }
+
+    private val spriteSheetRegex = "_([0-9]{1,3})x([0-9]{1,3})\\.".toRegex() // Matches _1x2.
+
+    /**
+     * Default function for creating assets from file paths.
+     */
+    fun pathToAsset(path: String): Asset?
+    {
+        val assetName = path.substringAfterLast("/").substringBeforeLast(".")
+        return when
+        {
+            path.endsWith(".ogg")  -> Sound(path, assetName)
+            path.endsWith(".ttf")  -> Font(path, assetName)
+            path.endsWith(".txt")  -> Text(path, assetName)
+            path.endsWith(".dat")  -> Binary(path, assetName)
+            path.endsWith(".hdr")  -> Texture(path, assetName, format = RGBA32F)
+            path.endsWith(".jpg")  ||
+            path.endsWith(".jpeg") ||
+            path.endsWith(".png")  ->
+            {
+                val format = if ("lut" in path || "linear" in path || "normal" in path || "norm" in path) RGBA8 else SRGBA8
+                val mips = if (format == RGBA8) 1 else 5
+                spriteSheetRegex.find(path)?.let { SpriteSheet(
+                    filePath = path,
+                    name = assetName.substringBeforeLast("_"),
+                    format = format,
+                    mipLevels = mips,
+                    horizontalCells = it.groupValues[1].toInt(),
+                    verticalCells = it.groupValues[1].toInt()
+                ) } ?: Texture(path, assetName, format = format, mipLevels = mips)
+            }
+            else -> null
         }
     }
 

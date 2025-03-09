@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api
 
+import gnu.trove.list.array.TIntArrayList
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -21,6 +22,8 @@ class TextureArray(
     var id  = -1; private set
     var size = 0; private set
 
+    private var freeSlots = TIntArrayList()
+
     fun init()
     {
         id = glGenTextures()
@@ -41,7 +44,7 @@ class TextureArray(
         if (id == -1)
             init()
 
-        val texIndex = size++
+        val texIndex = if (freeSlots.isEmpty) size++ else freeSlots.removeAt(freeSlots.size() - 1)
         if (texIndex >= maxCapacity)
             throw RuntimeException("Texture array with capacity: $maxCapacity is full!")
 
@@ -75,8 +78,9 @@ class TextureArray(
 
     fun delete(texture: Texture)
     {
-        // TODO: Fix deleting/freeing of texture slots
-        // glDeleteTextures(texture.id)
+        val texIndex = texture.handle.textureIndex
+        if (texture.handle.samplerIndex == samplerIndex && !freeSlots.contains(texIndex))
+            freeSlots.add(texIndex)
     }
 
     fun destroy() = glDeleteTextures(id)

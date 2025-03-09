@@ -49,48 +49,48 @@ abstract class Data
     abstract fun addMetric(name: String, onSample: Metric.() -> Unit)
 
     /**
-     * Checks if a file with the given [fileName] exists.
-     * If the [fileName] does not contain an absolute path, the file will be searched for in the [saveDirectory].
+     * Checks if a file with the given [filePath] exists.
+     * If the [filePath] does not contain an absolute path, the file will be searched for in the [saveDirectory].
      */
-    abstract fun exists(fileName: String): Boolean
+    abstract fun exists(filePath: String): Boolean
 
     /**
-     * Saves the given [data] object to a file with the given [fileName] and [format].
+     * Saves the given [data] object to a file with the given [filePath] and [format].
      * @returns true if the save was successful
      */
-    abstract fun <T> saveObject(data: T, fileName: String, format: FileFormat = JSON): Boolean
+    abstract fun <T> saveObject(data: T, filePath: String, format: FileFormat = JSON): Boolean
 
     /**
-     * Saves the given [data] object to a file with the given [fileName] and [format] asynchronously.
+     * Saves the given [data] object to a file with the given [filePath] and [format] asynchronously.
      * The [onComplete] callback will be called if the save was successful.
      */
-    abstract fun <T> saveObjectAsync(data: T, fileName: String, format: FileFormat = JSON, onComplete: (T) -> Unit = {})
+    abstract fun <T> saveObjectAsync(data: T, filePath: String, format: FileFormat = JSON, onComplete: (T) -> Unit = {})
 
     /**
-     * Loads an object with the given [fileName] either from an absolute path, if included in the [fileName],
+     * Loads an object with the given [filePath] either from an absolute path, if included in the [filePath],
      * or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
      */
-    inline fun <reified T> loadObject(fileName: String, fromClassPath: Boolean = false): T? =
-        loadObject(fileName, T::class.java, fromClassPath)
+    inline fun <reified T> loadObject(filePath: String, fromClassPath: Boolean = false): T? =
+        loadObject(filePath, T::class.java, fromClassPath)
 
     /**
-     * Loads an object with the given [fileName] either from an absolute path, if included in the [fileName],
+     * Loads an object with the given [filePath] either from an absolute path, if included in the [filePath],
      * or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
      */
-    abstract fun <T> loadObject(fileName: String, type: Class<T>, fromClassPath: Boolean): T?
+    abstract fun <T> loadObject(filePath: String, type: Class<T>, fromClassPath: Boolean): T?
 
     /**
-     * Asynchronously loads an object with the given [fileName] either from an absolute path, if included in the
-     * [fileName], or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
+     * Asynchronously loads an object with the given [filePath] either from an absolute path, if included in the
+     * [filePath], or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
      */
-    inline fun <reified T> loadObjectAsync(fileName: String, fromClassPath: Boolean = false, noinline onFail: () -> Unit = {}, noinline onComplete: (T) -> Unit) =
-        loadObjectAsync(fileName, T::class.java, fromClassPath, onFail, onComplete)
+    inline fun <reified T> loadObjectAsync(filePath: String, fromClassPath: Boolean = false, noinline onFail: () -> Unit = {}, noinline onComplete: (T) -> Unit) =
+        loadObjectAsync(filePath, T::class.java, fromClassPath, onFail, onComplete)
 
     /**
-     * Asynchronously loads an object with the given [fileName] either from an absolute path, if included in the
-     * [fileName], or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
+     * Asynchronously loads an object with the given [filePath] either from an absolute path, if included in the
+     * [filePath], or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
      */
-    abstract fun <T> loadObjectAsync(fileName: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
+    abstract fun <T> loadObjectAsync(filePath: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
 }
 
 data class Metric(
