@@ -864,6 +864,7 @@ class SceneEditor(
             updateEntityPropertiesPanel(::height.name, height)
             set(SIZE_UPDATED)
             set(ROTATION_UPDATED)
+            this.onMovedScaledOrRotated(engine)
         }
     }
 

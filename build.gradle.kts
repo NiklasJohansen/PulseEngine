@@ -1,9 +1,8 @@
-
 plugins {
     `maven-publish`
-    kotlin("jvm") version "2.1.0"
-    kotlin("kapt") version "2.1.0"
-    id("me.champeau.jmh") version "0.7.2"
+    kotlin("jvm") version "2.1.10"
+    kotlin("kapt") version "2.1.10"
+    id("me.champeau.jmh") version "0.7.3"
 }
 
 val version: String by project
@@ -28,11 +27,11 @@ repositories {
 
 dependencies {
     // Kotlin
-    implementation("org.jetbrains.kotlin:kotlin-reflect:2.1.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.1.10")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
 
     // LWJGL
-    implementation(platform("org.lwjgl:lwjgl-bom:3.3.4"))
+    implementation(platform("org.lwjgl:lwjgl-bom:3.3.6"))
     implementation("org.lwjgl", "lwjgl")
     implementation("org.lwjgl", "lwjgl-glfw")
     implementation("org.lwjgl", "lwjgl-jemalloc")
@@ -51,10 +50,10 @@ dependencies {
     }
 
     // Other
-    implementation("org.joml:joml:1.10.5")
+    implementation("org.joml:joml:1.10.8")
     implementation("net.sf.trove4j:trove4j:3.0.3")
     implementation("de.undercouch:bson4jackson:2.15.1")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.3")
 
     // Java Microbenchmark Harness
     kapt("org.openjdk.jmh:jmh-generator-annprocess:1.37")
@@ -80,7 +79,7 @@ val jar by tasks.getting(Jar::class) {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(23)
     compilerOptions {
         freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
     }
