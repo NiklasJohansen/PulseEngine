@@ -15,12 +15,11 @@ class Testbed : PulseEngineGame()
 {
     override fun onCreate()
     {
-        engine.config.gameName = "Testbed 0.10.0-SNAPSHOT"
+        engine.config.gameName = "Testbed 0.10.0"
         engine.widget.add(SceneEditor(), CommandLine(), MetricViewer(), GpuMonitor())
         engine.console.runScript("testbed/startup.ps")
         engine.asset.loadAll("testbed/images")
-        engine.asset.loadAll("testbed/images/lut")
-        engine.scene.reload()
+        engine.scene.reload() // Load default.scn from disk
         engine.scene.start()
     }
 
@@ -42,6 +41,6 @@ class Testbed : PulseEngineGame()
     override fun onDestroy()
     {
         if (engine.scene.state == STOPPED)
-            engine.scene.save()
+            engine.scene.save() // Save default.scn to disk
     }
 }

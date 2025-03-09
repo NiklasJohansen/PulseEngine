@@ -1,7 +1,7 @@
 # Pulse Engine
 
-[![Repsy](https://img.shields.io/badge/latest-0.9.0-3f3750)](https://repo.repsy.io/mvn/njoh/public/no/njoh/pulse-engine/0.9.0/)
-[![Kotlin](https://img.shields.io/badge/kotlin-1.9.23-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![Repsy](https://img.shields.io/badge/latest-0.10.0-3f3750)](https://repo.repsy.io/mvn/njoh/public/no/njoh/pulse-engine/0.10.0/)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.1.10-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![workflow](https://github.com/NiklasJohansen/PulseEngine/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/NiklasJohansen/PulseEngine/actions)
 
 Pulse Engine is a 2D game engine library built with Kotlin and [LWJGL](https://www.lwjgl.org/).
@@ -16,7 +16,7 @@ Its main purpose is to provide the tools needed to get going when game jamming.
 - Fast 2D rendering of sprites, shapes and text
 - Render targets (surfaces) with composable post-processing effects
 - Support for custom renderers and shaders
-- Lighting system with soft shadows
+- Global illumination (radiance cascades) with indirect/bounce lighting
 - Asset loading and management
 - Basic audio playback
 - Input handling for keyboard, mouse and gamepads
@@ -47,7 +47,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'no.njoh:pulse-engine:0.9.0'
+    implementation 'no.njoh:pulse-engine:0.10.0'
 }
 ```
 
