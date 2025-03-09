@@ -379,7 +379,8 @@ open class UiElementFactory(
     {
         val menuItems = SceneSystem.REGISTERED_TYPES.map()
         {
-            MenuBarItem(it.simpleName ?: "")
+            val systemName = it.findAnnotation<Name>()?.name ?: it.simpleName!!.split("(?=[A-Z])".toRegex()).joinToString(" ").trim()
+            MenuBarItem(systemName)
             {
                 val newSystem = it.createInstance()
                 newSystem.init(engine)

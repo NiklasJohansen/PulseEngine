@@ -131,6 +131,8 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
 
     companion object
     {
+        private val OFFSET = Vector2f()
+
         fun calculatePixelOffset(surface: Surface): Vector2f
         {
             val pixelSize = 1f / surface.config.textureScale
@@ -139,7 +141,7 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             val yTranslation = viewMatrix.m31()
             val xOffset = xTranslation % pixelSize
             val yOffset = yTranslation % pixelSize
-            return Vector2f(xOffset, yOffset)
+            return OFFSET.set(xOffset, yOffset)
         }
     }
 }

@@ -127,7 +127,6 @@ open class Texture(
 
     companion object
     {
-        val SUPPORTED_FORMATS = listOf("png", "jpg", "jpeg", "hdr")
         val BLANK = Texture(filePath = "", name = "BLANK", filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = SRGBA8, mipLevels = 1).apply {
             finalize(handle = TextureHandle.NONE, isBindless = true, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
         }
