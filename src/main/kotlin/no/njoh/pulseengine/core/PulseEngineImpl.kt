@@ -160,9 +160,6 @@ class PulseEngineImpl(
         // Initialize widgets
         widget.init(this)
 
-        // Run startup script
-        console.runScript("/startup.ps")
-
         // Remove garbage before starting game loop
         System.gc()
 

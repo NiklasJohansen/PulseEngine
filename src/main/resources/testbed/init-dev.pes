@@ -1,3 +1,5 @@
+// Default key bindings practical for development
+
 bind ESCAPE exit
 bind F1 showConsole
 bind F2 showSceneEditor
