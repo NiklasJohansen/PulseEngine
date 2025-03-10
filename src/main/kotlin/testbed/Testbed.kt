@@ -15,7 +15,7 @@ class Testbed : PulseEngineGame()
 {
     override fun onCreate()
     {
-        engine.config.gameName = "Testbed 0.10.0"
+        engine.config.gameName = "Testbed 0.10.1"
         engine.widget.add(SceneEditor(), CommandLine(), MetricViewer(), GpuMonitor())
         engine.console.runScript("testbed/init-dev.pes")
         engine.asset.loadAll("testbed/images")
@@ -29,7 +29,7 @@ class Testbed : PulseEngineGame()
     {
         engine.gfx.mainSurface.setDrawColor(Color.WHITE)
         engine.gfx.mainSurface.drawText(
-            text = "PulseEngine 0.10.0 - Testbed",
+            text = "PulseEngine 0.10.1 - Testbed",
             x = engine.window.width * 0.5f,
             y = engine.window.height * 0.5f,
             xOrigin = 0.5f,
