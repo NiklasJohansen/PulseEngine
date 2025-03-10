@@ -32,7 +32,7 @@ open class WindowImpl : WindowInternal
 
     override fun init(config: ConfigurationInternal)
     {
-        Logger.info("Initializing window (${this::class.simpleName})")
+        Logger.info { "Initializing window (WindowImpl)" }
 
         if (!glfwInit()) throw IllegalStateException("Unable to initialize GLFW")
 
@@ -47,7 +47,7 @@ open class WindowImpl : WindowInternal
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
         glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE)
 
-        if (config.getEnum("gpuLogLevel", LogLevel::class) != LogLevel.OFF)
+        if (config.gpuLogLevel != LogLevel.OFF)
             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE)
 
         this.title      = config.gameName
@@ -158,7 +158,7 @@ open class WindowImpl : WindowInternal
 
     override fun destroy()
     {
-        Logger.info("Destroying window (${this::class.simpleName})")
+        Logger.info { "Destroying window (${this::class.simpleName})" }
         glfwSetErrorCallback(null)
         glfwDestroyWindow(windowHandle)
         glfwTerminate()
