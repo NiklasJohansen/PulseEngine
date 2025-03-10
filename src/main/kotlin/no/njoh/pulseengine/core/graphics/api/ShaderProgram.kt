@@ -35,15 +35,15 @@ class ShaderProgram(
 
     fun bind()
     {
-        glUseProgram(id)
         linkProgramIfNecessary()
+        glUseProgram(id)
     }
 
     fun unbind() = glUseProgram(0)
 
     fun delete()
     {
-        unbind()
+        glUseProgram(0)
         glDeleteProgram(id)
     }
 
