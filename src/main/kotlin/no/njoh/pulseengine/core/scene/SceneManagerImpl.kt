@@ -36,7 +36,7 @@ open class SceneManagerImpl : SceneManagerInternal()
 
     override fun init(engine: PulseEngine)
     {
-        Logger.info("Initializing scene (${this::class.simpleName})")
+        Logger.info { "Initializing scene (SceneManagerImpl)" }
 
         this.engine = engine
         this.activeScene = Scene("default")
@@ -92,7 +92,7 @@ open class SceneManagerImpl : SceneManagerInternal()
                 setActive(it)
             }
         }
-        else Logger.error("Cannot load scene: ${activeScene.name} - fileName is not set!")
+        else Logger.error { "Cannot load scene: ${activeScene.name} - fileName is not set!" }
     }
 
     override fun transitionInto(
@@ -163,7 +163,7 @@ open class SceneManagerImpl : SceneManagerInternal()
             else
                 engine.data.saveObject(activeScene, activeScene.fileName, activeScene.fileFormat)
         }
-        else Logger.error("Cannot save scene: ${activeScene.name} - fileName is not set!")
+        else Logger.error { "Cannot save scene: ${activeScene.name} - fileName is not set!" }
     }
 
     override fun saveAs(fileName: String, async: Boolean, updateActiveScene: Boolean)
@@ -192,12 +192,12 @@ open class SceneManagerImpl : SceneManagerInternal()
             engine.data.loadObjectAsync<Scene>(nextSceneFileName!!, nextSceneFromClassPath, {
                 loadingScene = false
                 nextSceneFileName = null
-                Logger.error("Failed to load scene from file: $nextSceneFileName")
+                Logger.error { "Failed to load scene from file: $nextSceneFileName" }
             }) { scene ->
                 loadingScene = false
                 nextStagedScene = scene
                 scene.fileName = nextSceneFileName!!
-                Logger.debug("Transitioning into scene: $nextSceneFileName")
+                Logger.debug { "Transitioning into scene: $nextSceneFileName" }
             }
         }
 
@@ -271,14 +271,13 @@ open class SceneManagerImpl : SceneManagerInternal()
         }.let { nanoTime ->
             val entityCount = SceneEntity.REGISTERED_TYPES.size
             val systemCount = SceneSystem.REGISTERED_TYPES.size
-            Logger.debug("Registered $entityCount SceneEntity classes and $systemCount SceneSystem " +
-                "classes in ${"%.3f".format(nanoTime / 1_000_000f)} ms. ")
+            Logger.debug { "Registered $entityCount SceneEntity classes and $systemCount SceneSystem classes in ${"%.3f".format(nanoTime / 1_000_000f)} ms." }
         }
     }
 
     override fun destroy()
     {
-        Logger.info("Destroying scene (${this::class.simpleName})")
+        Logger.info { "Destroying scene (${this::class.simpleName})" }
         activeScene.stop(engine)
     }
 }

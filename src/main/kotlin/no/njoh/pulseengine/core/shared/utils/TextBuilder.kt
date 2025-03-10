@@ -41,19 +41,21 @@ open class TextBuilderContext
 
     inline fun build(builder: TextBuilder): CharSequence
     {
-        val content = content.clear()
-        val result = builder(this)
-        return when (result)
-        {
-            is CharSequence -> result
-            is Char -> content.append(result)
-            is Int -> content.append(result)
-            is Float -> content.append(result)
-            is Double -> content.append(result)
-            is Long -> content.append(result)
-            is Boolean -> content.append(result)
-            else -> content.append(result.toString())
-        }
+        content.clear()
+        return mapResult(builder(this))
+    }
+
+    @PublishedApi
+    internal fun mapResult(result: Any) = when (result)
+    {
+        is CharSequence -> result
+        is Char -> content.append(result)
+        is Int -> content.append(result)
+        is Float -> content.append(result)
+        is Double -> content.append(result)
+        is Long -> content.append(result)
+        is Boolean -> content.append(result)
+        else -> content.append(result.toString())
     }
 }
 

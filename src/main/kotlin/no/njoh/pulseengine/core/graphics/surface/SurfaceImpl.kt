@@ -299,7 +299,7 @@ class SurfaceImpl(
 
             getPostProcessingEffect(effect.name)?.let()
             {
-                Logger.warn("Replacing existing post processing effect with same name: ${it.name}")
+                Logger.warn { "Replacing existing post processing effect with same name: ${it.name}" }
                 deletePostProcessingEffect(it.name)
             }
             effect.init(engine)
@@ -337,7 +337,7 @@ class SurfaceImpl(
     {
         if (writeRenderStates.size >= MAX_BATCH_COUNT)
         {
-            Logger.error("Reached max batch count of $MAX_BATCH_COUNT")
+            Logger.error { "Reached max batch count of $MAX_BATCH_COUNT" }
             return
         }
 

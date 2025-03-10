@@ -42,7 +42,7 @@ open class DataImpl : Data()
 
     fun init(gameName: String)
     {
-        Logger.info("Initializing data (${this::class.simpleName})")
+        Logger.info { "Initializing data (DataImpl)" }
         updateSaveDirectory(gameName)
 
         addMetric("FRAMES PER SECOND (FPS)")    { sample(currentFps.toFloat())                }
@@ -72,10 +72,10 @@ open class DataImpl : Data()
                     file.parentFile.mkdirs()
                 file.writeBytes(getMapper(format).writeValueAsBytes(data))
             }
-            Logger.debug("Saved state into $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
+            Logger.debug { "Saved state into $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms" }
             true
         }
-        .onFailure { Logger.error("Failed to save file: $filePath - reason: ${it.message}"); }
+        .onFailure { Logger.error { "Failed to save file: $filePath - reason: ${it.message}" } }
         .getOrDefault(false)
 
     override fun <T> loadObject(filePath: String, type: Class<T>, fromClassPath: Boolean): T? =
@@ -91,10 +91,10 @@ open class DataImpl : Data()
                         .readBytes()
                         .let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
             }
-            Logger.debug("Loaded state from $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms")
+            Logger.debug { "Loaded state from $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms" }
             state
         }
-        .onFailure { Logger.error("Failed to load state (fromClassPath=$fromClassPath): $filePath - reason: ${it.message}") }
+        .onFailure { Logger.error { "Failed to load state (fromClassPath=$fromClassPath): $filePath - reason: ${it.message}" } }
         .getOrNull()
 
     override fun <T> saveObjectAsync(data: T, filePath: String, format: FileFormat, onComplete: (T) -> Unit)

@@ -38,7 +38,7 @@ class DoubleBufferedFloatObject private constructor(
         if (readArray.size > mappedFloatBuffer.capacity() )
         {
             val newSizeInBytes = 4L * readArray.size
-            Logger.debug("Resizing GPU buffer #$id (${(mappedSizeInBytes / 1024f).formatted()} kB -> ${(newSizeInBytes / 1024f).formatted()} kB)")
+            Logger.debug { "Resizing GPU buffer #$id (${(mappedSizeInBytes / 1024f).formatted()} kB -> ${(newSizeInBytes / 1024f).formatted()} kB)" }
             glBindBuffer(target, id)
             glBufferData(target, newSizeInBytes, usage)
             mappedSizeInBytes = newSizeInBytes

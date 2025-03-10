@@ -17,7 +17,7 @@ open class WidgetManagerImpl: WidgetManagerInternal()
 
     override fun init(engine: PulseEngine)
     {
-        Logger.info("Initializing widgets (${this::class.simpleName})")
+        Logger.info {"Initializing widgets (WidgetManagerImpl)" }
 
         // Initialize all added widgets
         widgets.forEachFast { it.onCreate(engine) }
@@ -54,7 +54,7 @@ open class WidgetManagerImpl: WidgetManagerInternal()
 
     override fun destroy(engine: PulseEngine)
     {
-        Logger.info("Destroying widgets (${this::class.simpleName})")
+        Logger.info { "Destroying widgets (${this::class.simpleName})" }
         widgets.forEachFast { it.onDestroy(engine) }
     }
 

@@ -7,6 +7,9 @@ import no.njoh.pulseengine.core.window.ScreenMode
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
+import no.njoh.pulseengine.core.shared.utils.LogLevel.*
+import no.njoh.pulseengine.core.shared.utils.LogTarget
+import no.njoh.pulseengine.core.shared.utils.LogTarget.*
 import no.njoh.pulseengine.core.window.ScreenMode.*
 import java.io.FileNotFoundException
 import java.lang.Exception
@@ -23,8 +26,9 @@ open class ConfigurationImpl : ConfigurationInternal
     override var windowHeight: Int          by IntConfig(800)
     override var screenMode: ScreenMode     by EnumConfig(WINDOWED, ScreenMode::class)
     override var gameLoopMode: GameLoopMode by EnumConfig(MULTITHREADED, GameLoopMode::class)
-    override var logLevel: LogLevel         by EnumConfig(LogLevel.INFO, LogLevel::class)
-    override var gpuLogLevel: LogLevel      by EnumConfig(LogLevel.OFF, LogLevel::class)
+    override var logTarget: LogTarget       by EnumConfig(STDOUT, LogTarget::class)
+    override var logLevel: LogLevel         by EnumConfig(INFO, LogLevel::class)
+    override var gpuLogLevel: LogLevel      by EnumConfig(OFF, LogLevel::class)
     override var gpuProfiling: Boolean      by BoolConfig(false)
 
     private val properties = Properties()
@@ -32,34 +36,38 @@ open class ConfigurationImpl : ConfigurationInternal
 
     override fun init()
     {
-        Logger.info("Initializing configuration (${this::class.simpleName})")
-        load("/pulseengine/config/engine_default.cfg")
-        load("application.cfg")
+        Logger.info { "Initializing configuration (ConfigurationImpl)" }
+        runCatching { loadConfigFile("application.cfg") }
         Logger.LEVEL = logLevel
+        Logger.TARGET = logTarget
     }
 
-    override fun load(filePath: String) =
-        try
+    override fun load(filePath: String) = try
+    {
+        loadConfigFile(filePath)
+    }
+    catch (e: Exception)
+    {
+        Logger.error { "Failed to load configuration: $filePath, reason: ${e.message}" }
+    }
+
+    private fun loadConfigFile(filePath: String)
+    {
+        val startTime = System.nanoTime()
+        val stream = filePath.loadStreamFromDisk() ?: throw FileNotFoundException("file not found")
+        properties.load(stream)
+        for ((key, value) in properties)
         {
-            val startTime = System.nanoTime()
-            val stream = filePath.loadStreamFromDisk() ?: throw FileNotFoundException("File not found: $filePath")
-            properties.load(stream)
-            for ((key, value) in properties)
-            {
-                properties[key] = when {
-                    value !is String -> value
-                    value == "true" || value == "false" -> value.toBoolean()
-                    value.all { it.isDigit() } -> value.toInt()
-                    value.all { it.isDigit() || it == '.' } -> value.toFloat()
-                    else -> value
-                }
+            properties[key] = when {
+                value !is String -> value
+                value == "true" || value == "false" -> value.toBoolean()
+                value.all { it.isDigit() } -> value.toInt()
+                value.all { it.isDigit() || it == '.' } -> value.toFloat()
+                else -> value
             }
-            Logger.debug("Loaded configuration file: $filePath in ${startTime.toNowFormatted()}")
         }
-        catch (e: Exception)
-        {
-            Logger.error("Failed to load configuration: $filePath, reason: ${e.message}")
-        }
+        Logger.debug { "Loaded configuration file: $filePath in ${startTime.toNowFormatted()}" }
+    }
 
     override fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
     {
@@ -67,27 +75,27 @@ open class ConfigurationImpl : ConfigurationInternal
     }
 
     override fun getString(name: String) =
-        (properties[name] as? String) ?: null.also { Logger.error("Config property: $name (String) not found") }
+        (properties[name] as? String) ?: null.also { Logger.error { "Config property: $name (String) not found" } }
 
     override fun getInt(name: String) =
-        (properties[name] as? Int) ?: null.also { Logger.error("Config property: $name (Int) not found") }
+        (properties[name] as? Int) ?: null.also { Logger.error { "Config property: $name (Int) not found" } }
 
     override fun getFloat(name: String) =
-        (properties[name] as? Float) ?: null.also { Logger.error("Config property: $name (Float) not found") }
+        (properties[name] as? Float) ?: null.also { Logger.error { "Config property: $name (Float) not found" } }
 
     override fun getBool(name: String) =
-        (properties[name] as? Boolean) ?: null.also { Logger.error("Config property: $name (Boolean) not found") }
+        (properties[name] as? Boolean) ?: null.also { Logger.error { "Config property: $name (Boolean) not found" } }
 
     override fun <T: Enum<T>> getEnum(name: String, type: KClass<T>): T?
     {
-        val value = properties[name] ?: return null.also { Logger.error("Config property: $name (Enum) not found") }
+        val value = properties[name] ?: return null.also { Logger.error { "Config property: $name (Enum) not found" } }
         if (value::class == type)
             return value as T
 
         if (value is String)
             runCatching { return java.lang.Enum.valueOf(type.java, value).also { properties[name] = it } }
 
-        Logger.error("Config property: $name (Enum) not applicable to type: ${type.simpleName}")
+        Logger.error { "Config property: $name (Enum) not applicable to type: ${type.simpleName}" }
         return null
     }
 
@@ -105,7 +113,7 @@ open class ConfigurationImpl : ConfigurationInternal
             return if (value is String) value else
             {
                 if (value != null)
-                    Logger.warn("Config property: ${prop.name} (String) has value: $value (${value::class.simpleName}), using default: $initValue")
+                    Logger.warn { "Config property: ${prop.name} (String) has value: $value (${value::class.simpleName}), using default: $initValue" }
                 properties[prop.name] = initValue
                 initValue
             }
@@ -126,7 +134,7 @@ open class ConfigurationImpl : ConfigurationInternal
             return if (value is Int) value else
             {
                 if (value != null)
-                    Logger.warn("Config property: ${prop.name} (Int) has value: $value (${value::class.simpleName}), using default: $initValue")
+                    Logger.warn { "Config property: ${prop.name} (Int) has value: $value (${value::class.simpleName}), using default: $initValue" }
                 properties[prop.name] = initValue
                 initValue
             }
@@ -147,7 +155,7 @@ open class ConfigurationImpl : ConfigurationInternal
             return if (value is Boolean) value else
             {
                 if (value != null)
-                    Logger.warn("Config property: ${prop.name} (Boolean) has value: $value (${value::class.simpleName}), using default: $initValue")
+                    Logger.warn { "Config property: ${prop.name} (Boolean) has value: $value (${value::class.simpleName}), using default: $initValue" }
                 properties[prop.name] = initValue
                 initValue
             }
@@ -177,12 +185,12 @@ open class ConfigurationImpl : ConfigurationInternal
                 }
                 catch (e: Exception)
                 {
-                    Logger.warn("Config property: ${prop.name} (Enum) has unknown value: $value, using default: ${type.simpleName}.$newValue")
+                    Logger.warn { "Config property: ${prop.name} (Enum) has unknown value: $value, using default: ${type.simpleName}.$newValue" }
                 }
             }
             else if (value != null)
             {
-                Logger.warn("Config property: ${prop.name} (Enum) has unknown value: $value (${value::class.simpleName}), using default: ${type.simpleName}.$newValue")
+                Logger.warn { "Config property: ${prop.name} (Enum) has unknown value: $value (${value::class.simpleName}), using default: ${type.simpleName}.$newValue" }
             }
             properties[prop.name] = newValue
             return newValue

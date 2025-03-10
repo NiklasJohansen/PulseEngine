@@ -106,7 +106,7 @@ open class StaticList<T>(
         val data = data
         for (i in 0 until s) action(data[i] as T)
         if (s != size)
-            Logger.warn("DynamicList modified during iteration")
+            Logger.warn { "DynamicList modified during iteration" }
     }
 
     inline fun forEachIndexed(action: (i: Int, T) -> Unit)
@@ -116,7 +116,7 @@ open class StaticList<T>(
         for (i in 0 until s)
             action(i, data[i] as T)
         if (s != size)
-            Logger.warn("DynamicList modified during iteration")
+            Logger.warn { "DynamicList modified during iteration" }
     }
 
     //////////////////////////////////////////////////////////////////////// TRANSFORM

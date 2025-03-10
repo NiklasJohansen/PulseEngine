@@ -37,7 +37,7 @@ class Font(
     override fun load()
     {
         val fontData: ByteArray = filePath.loadBytesFromDisk() ?: run {
-            Logger.error("Failed to find and load Font asset: $filePath")
+            Logger.error { "Failed to find and load Font asset: $filePath" }
             return
         }
 

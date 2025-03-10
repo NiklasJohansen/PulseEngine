@@ -71,7 +71,7 @@ abstract class PersistentBufferObject(
         {
             GL_ARRAY_BUFFER -> glDrawArrays(mode, firstVertexPosition, vertexCount)
             GL_ELEMENT_ARRAY_BUFFER -> glDrawElementsBaseVertex(mode, countToDraw, GL_UNSIGNED_INT, 0, 4 * firstVertexPosition)
-            else -> Logger.error("Unsupported draw mode: $mode")
+            else -> Logger.error { "Unsupported draw mode: $mode" }
         }
 
         countToDraw = 0
@@ -209,7 +209,7 @@ data class SyncObj(
             if (result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED)
             {
                 if (LOG_SYNC_WAITS && waits > 0)
-                    Logger.debug("Sync object: $sync waited $waits times")
+                    Logger.debug { "Sync object: $sync waited $waits times" }
                 return
             }
             waits++

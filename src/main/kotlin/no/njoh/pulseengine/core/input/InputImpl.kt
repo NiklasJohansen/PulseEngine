@@ -61,7 +61,7 @@ open class InputImpl : InputInternal
 
     override fun init(windowHandle: Long, cursorPosScale: Float)
     {
-        Logger.info("Initializing input (${this::class.simpleName})")
+        Logger.info { "Initializing input (InputImpl)" }
 
         this.windowHandle = windowHandle
         this.cursorPosScale = cursorPosScale
@@ -115,9 +115,9 @@ open class InputImpl : InputInternal
             if (glfwJoystickIsGamepad(jid))
             {
                 if (event == GLFW_CONNECTED)
-                    gamepads.add(Gamepad(jid)).also { Logger.info("Added joystick: $jid") }
+                    gamepads.add(Gamepad(jid)).also { Logger.info { "Added joystick: $jid" } }
                 else if (event == GLFW_DISCONNECTED)
-                    gamepads.removeWhen { it.id == jid }.also { Logger.info("Removed joystick: $jid") }
+                    gamepads.removeWhen { it.id == jid }.also { Logger.info { "Removed joystick: $jid" } }
             }
         }
 
@@ -258,9 +258,9 @@ open class InputImpl : InputInternal
         {
             cursors[selectedCursorType]?.let { cursor ->
                 if (cursor.handle != -1L) glfwSetCursor(windowHandle, cursor.handle)
-                else Logger.error("Cursor of type: $selectedCursorType has not been loaded")
+                else Logger.error { "Cursor of type: $selectedCursorType has not been loaded" }
             } ?: run {
-                Logger.error("Cursor of type: $selectedCursorType has not been registered in input module")
+                Logger.error { "Cursor of type: $selectedCursorType has not been registered in input module" }
             }
             activeCursorType = selectedCursorType
         }
@@ -326,7 +326,7 @@ open class InputImpl : InputInternal
 
     override fun destroy()
     {
-        Logger.info("Destroying input (${this::class.simpleName})")
+        Logger.info { "Destroying input (${this::class.simpleName})" }
         glfwFreeCallbacks(windowHandle)
     }
 

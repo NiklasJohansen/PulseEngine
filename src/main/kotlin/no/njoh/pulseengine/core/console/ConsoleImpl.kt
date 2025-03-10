@@ -16,7 +16,7 @@ open class ConsoleImpl : ConsoleInternal
 
     override fun init(engine: PulseEngineInternal)
     {
-        Logger.info("Initializing console (${this::class.simpleName})")
+        Logger.info { "Initializing console (ConsoleImpl)" }
 
         // Register console commands and functions marked with @ConsoleTarget
         GlobalScope.launch { CommandRegistry.registerEngineCommands(engine) }

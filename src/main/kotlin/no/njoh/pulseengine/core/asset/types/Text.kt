@@ -13,7 +13,7 @@ class Text(filePath: String, name: String) : Asset(filePath, name)
     override fun load()
     {
         this.text = filePath.loadTextFromDisk() ?: run {
-            Logger.error("Failed to find and load Text asset: $filePath")
+            Logger.error { "Failed to find and load Text asset: $filePath" }
             ""
         }
     }

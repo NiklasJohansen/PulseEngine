@@ -425,7 +425,7 @@ class DockingPanel(
                     y.setQuiet(node.y)
                 }
             }
-            else -> null.also { Logger.error("Found unsupported UI element type in layout config: ${node.type}") }
+            else -> null.also { Logger.error { "Found unsupported UI element type in layout config: ${node.type}" } }
         }
 
     private fun createLayoutGraph(element: UiElement): LayoutNode?

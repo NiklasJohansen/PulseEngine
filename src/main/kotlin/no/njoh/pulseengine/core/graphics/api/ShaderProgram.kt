@@ -31,7 +31,7 @@ class ShaderProgram(
     private val textureUnits = emptyObjectIntHashMap<String>(32) // Sampler name -> texture unit
 
     /** Hash of the last time the shaders were compiled */
-    private var shaderCompileHash = 0L
+    private var shaderCompileHash = -1L
 
     fun bind()
     {
@@ -152,7 +152,10 @@ class ShaderProgram(
     }
 
     private fun getUniformLocation(name: String): Int =
-        glGetUniformLocation(id, name).also { if (it == -1) Logger.warn("Uniform '$name' not found in shader program #$id (${shaders.joinToString { it.filePath }})") }
+        glGetUniformLocation(id, name).also()
+        {
+            if (it == -1) Logger.warn { "Uniform '$name' not found in shader program #$id (${shaders.joinToString { it.filePath }})" }
+        }
 
     private fun linkProgramIfNecessary()
     {
@@ -161,20 +164,8 @@ class ShaderProgram(
         if (hash == shaderCompileHash)
             return // No need to relink program if the shaders have not been recompiled
 
-        Logger.debug("Linking program #$id (shaders: ${shaders.joinToString { "#${it.getId()}" }})")
+        Logger.debug { "Linking program #$id (shaders: ${shaders.joinToString { "#${it.getId()}" }})" }
 
-        reattachShaders()
-        glLinkProgram(id)
-        if (glGetProgrami(id, GL_LINK_STATUS) != GL_TRUE)
-            throw RuntimeException("Failed to link shaders: ${shaders.joinToString { it.filePath }} \n${glGetProgramInfoLog(id)}")
-
-        uniformLocations.clear()
-        textureUnits.clear()
-        shaderCompileHash = hash
-    }
-
-    private fun reattachShaders()
-    {
         // Detach all shaders in case recompiled shaders have gotten new IDs
         glGetAttachedShaders(id, shaderCount, shaderIds)
         for (i in 0 until shaderCount[0])
@@ -182,6 +173,15 @@ class ShaderProgram(
 
         // Reattach all shaders again
         shaders.forEachFast { glAttachShader(id, it.getId()) }
+
+        // Link and verify
+        glLinkProgram(id)
+        if (glGetProgrami(id, GL_LINK_STATUS) != GL_TRUE)
+            throw RuntimeException("Failed to link shaders: ${shaders.joinToString { it.filePath }} \n${glGetProgramInfoLog(id)}")
+
+        uniformLocations.clear()
+        textureUnits.clear()
+        shaderCompileHash = hash
     }
 
     companion object

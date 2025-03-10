@@ -91,7 +91,7 @@ open class Texture(
                 SRGBA8, RGBA8 ->
                 {
                     if (stbi_is_hdr_from_memory(buffer))
-                        Logger.warn("Loading HDR texture: $filePath into LDR format: $format")
+                        Logger.warn { "Loading HDR texture: $filePath into LDR format: $format" }
 
                     this.pixelsLDR = stbi_load_from_memory(buffer, width, height, components, STBI_rgb_alpha)
                         ?: throw RuntimeException("Could not load image into memory: " + stbi_failure_reason())
@@ -112,7 +112,7 @@ open class Texture(
         }
         catch (e: Exception)
         {
-            Logger.error("Failed to load image $filePath: ${e.message}")
+            Logger.error { "Failed to load image $filePath: ${e.message}" }
         }
     }
 

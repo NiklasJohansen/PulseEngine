@@ -13,7 +13,7 @@ class Binary(filePath: String, name: String) : Asset(filePath, name)
     override fun load()
     {
         this.bytes = filePath.loadBytesFromDisk() ?: run {
-            Logger.error("Failed to find and load Binary file: $filePath")
+            Logger.error { "Failed to find and load Binary file: $filePath" }
             ByteArray(0)
         }
     }
