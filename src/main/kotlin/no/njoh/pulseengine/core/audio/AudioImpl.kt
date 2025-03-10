@@ -27,7 +27,7 @@ open class AudioImpl : AudioInternal
 
     override fun init()
     {
-        Logger.info("Initializing audio (${this::class.simpleName})")
+        Logger.info { "Initializing audio (AudioImpl)" }
 
         // Use default output device
         setupDevice(alcOpenDevice(null as ByteBuffer?))
@@ -59,13 +59,13 @@ open class AudioImpl : AudioInternal
         attributes.flip()
 
         if (!alcResetDeviceSOFT(device, attributes))
-            Logger.error("Failed to reset device: ${ALC10.alcGetString(device, alcGetError(device))}")
+            Logger.error { "Failed to reset device: ${ALC10.alcGetString(device, alcGetError(device))}" }
 
         val hrtfState = alcGetInteger(device, ALC_HRTF_SOFT)
         if (hrtfState == 0)
-            Logger.warn("HRTF not enabled")
+            Logger.warn { "HRTF not enabled" }
         else
-            Logger.debug("HRTF enabled, using ${ALC10.alcGetString(device, ALC_HRTF_SPECIFIER_SOFT)}")
+            Logger.debug { "HRTF enabled, using ${ALC10.alcGetString(device, ALC_HRTF_SPECIFIER_SOFT)}" }
 
         this.device = device
     }
@@ -81,7 +81,7 @@ open class AudioImpl : AudioInternal
         if (sound != null)
             playSound(sound, volume, pitch, looping)
         else
-            Logger.error("Failed to play sound - no asset with name: $soundAssetName was found")
+            Logger.error { "Failed to play sound - no asset with name: $soundAssetName was found" }
     }
 
     override fun createSource(sound: Sound, volume: Float, pitch: Float, looping: Boolean): Int
@@ -152,10 +152,12 @@ open class AudioImpl : AudioInternal
 
     override fun setOutputDevice(deviceName: String)
     {
-        Logger.info("Setting output device: $deviceName")
+        Logger.info { "Setting output device: $deviceName" }
         val device = alcOpenDevice(deviceName)
         if (device == MemoryUtil.NULL)
-            Logger.error("Failed to set output device: $deviceName")
+        {
+            Logger.error { "Failed to set output device: $deviceName" }
+        }
         else
         {
             alcDestroyContext(context)
@@ -180,7 +182,7 @@ open class AudioImpl : AudioInternal
     {
         if (sound.buffer == null)
         {
-            Logger.error("Failed to upload sound: ${sound.filePath} - buffer is null")
+            Logger.error { "Failed to upload sound: ${sound.filePath} - buffer is null" }
             return
         }
 
@@ -206,7 +208,7 @@ open class AudioImpl : AudioInternal
 
     override fun destroy()
     {
-        Logger.info("Destroying audio (${this::class.simpleName})")
+        Logger.info { "Destroying audio (${this::class.simpleName})" }
         sources.forEachFast { alDeleteSources(it) }
         alcSetThreadContext(MemoryUtil.NULL)
         alcDestroyContext(context)

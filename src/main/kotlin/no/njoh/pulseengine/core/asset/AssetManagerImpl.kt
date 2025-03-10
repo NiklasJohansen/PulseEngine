@@ -59,7 +59,7 @@ open class AssetManagerImpl : AssetManagerInternal()
             assets[asset.name] = asset
             notifyAssetLoaded(asset)
         }
-        catch (e: Exception) { Logger.error("Failed to load asset (now): ${asset.name}, reason: ${e.message}") }
+        catch (e: Exception) { Logger.error { "Failed to load asset (now): ${asset.name}, reason: ${e.message}" } }
 
         return asset
     }
@@ -107,13 +107,13 @@ open class AssetManagerImpl : AssetManagerInternal()
             val toLoadCount = assetsToLoad.size
             load(it)
             if (assetsToLoad.size != toLoadCount)
-                Logger.debug("Loaded new asset from path: $filePath")
+                Logger.debug { "Loaded new asset from path: $filePath" }
         }
     }
 
     override fun destroy()
     {
-        Logger.info("Destroying assets (${this::class.simpleName})")
+        Logger.info { "Destroying assets (${this::class.simpleName})" }
         assets.values.toList().forEachFast { unload(it.name) }
     }
 
@@ -128,7 +128,7 @@ open class AssetManagerImpl : AssetManagerInternal()
                 it.unload()
                 notifyAssetUnloaded(it)
             }
-            catch (e: Exception) { Logger.error("Failed to unload asset: ${it.name}, reason: ${e.message}") }
+            catch (e: Exception) { Logger.error { "Failed to unload asset: ${it.name}, reason: ${e.message}" } }
         }
         assetsToUnload.clear()
     }
@@ -144,17 +144,17 @@ open class AssetManagerImpl : AssetManagerInternal()
             {
                 assetsToLoad.forEachFast()
                 {
-                    launch { runCatching { it.load() }.onFailure { e -> Logger.error("Failed to load asset: ${it.name}, reason: ${e.message}")  } }
+                    launch { runCatching { it.load() }.onFailure { e -> Logger.error { "Failed to load asset: ${it.name}, reason: ${e.message}" } } }
                 }
             }
-            Logger.debug("Loaded ${assetsToLoad.size} assets in ${startTime.toNowFormatted()}. [${assetsToLoad.joinToString { it.name }}]")
+            Logger.debug { "Loaded ${assetsToLoad.size} assets in ${startTime.toNowFormatted()}. [${assetsToLoad.joinToString { it.name }}]" }
         }
         else assetsToLoad[0].load()
 
         assetsToLoad.forEachFast()
         {
             assets[it.name] = it
-            runCatching { notifyAssetLoaded(it) }.onFailure { error -> Logger.error("onAssetLoadedCallback failed for asset: ${it.name}, reason: ${error.message}") }
+            runCatching { notifyAssetLoaded(it) }.onFailure { error -> Logger.error { "onAssetLoadedCallback failed for asset: ${it.name}, reason: ${error.message}" } }
         }
         assetsToLoad.clear()
     }
@@ -171,9 +171,9 @@ open class AssetManagerImpl : AssetManagerInternal()
                 notifyAssetUnloaded(it)
                 it.load()
                 notifyAssetLoaded(it)
-                Logger.debug("Reloaded asset: ${it.filePath}")
+                Logger.debug { "Reloaded asset: ${it.filePath}" }
             }
-            catch (e: Exception) { Logger.error("Failed to reload asset: ${it.name}, reason: ${e.message}") }
+            catch (e: Exception) { Logger.error { "Failed to reload asset: ${it.name}, reason: ${e.message}" } }
         }
         assetsToReload.clear()
     }

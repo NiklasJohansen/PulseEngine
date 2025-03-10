@@ -75,7 +75,7 @@ class PulseEngineImpl(
     private fun initEngine()
     {
         printLogo()
-        Logger.info("Initializing engine (${this::class.simpleName})")
+        Logger.info { "Initializing engine (PulseEngineImpl)" }
 
         // Create focus area for game
         focusArea.update(0f, 0f, window.width.toFloat(), window.height.toFloat())
@@ -123,6 +123,7 @@ class PulseEngineImpl(
             when (property.name)
             {
                 config::gameName.name -> data.updateSaveDirectory(config.gameName)
+                config::logTarget.name -> Logger.TARGET = config.logTarget
                 config::logLevel.name -> Logger.LEVEL = config.logLevel
                 config::gpuLogLevel.name -> gfx.setGpuLogLevel(config.gpuLogLevel)
                 config::gpuProfiling.name -> GpuProfiler.setEnabled(config.gpuProfiling)
@@ -146,9 +147,9 @@ class PulseEngineImpl(
     private fun initGame(game: PulseEngineGame)
     {
         val startTime = System.nanoTime()
-        Logger.info("Initializing game (${game::class.simpleName})")
+        Logger.info { "Initializing game (${game::class.simpleName})" }
         game.onCreate()
-        Logger.debug("Finished initializing game in: ${startTime.toNowFormatted()}")
+        Logger.debug { "Finished initializing game in: ${startTime.toNowFormatted()}" }
     }
 
     private fun postGameSetup()
@@ -159,14 +160,11 @@ class PulseEngineImpl(
         // Initialize widgets
         widget.init(this)
 
-        // Run startup script
-        console.runScript("/startup.ps")
-
         // Remove garbage before starting game loop
         System.gc()
 
         // Log when finished
-        Logger.info("Finished initialization in ${engineStartTime.toNowFormatted()}")
+        Logger.info { "Started up in: ${engineStartTime.toNowFormatted()}" }
     }
 
     private fun runGameLoop(game: PulseEngineGame)

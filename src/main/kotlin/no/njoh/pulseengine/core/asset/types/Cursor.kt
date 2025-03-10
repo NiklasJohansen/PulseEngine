@@ -47,7 +47,7 @@ class Cursor(
         }
         catch (e: Exception)
         {
-            Logger.error("Failed to load cursor $filePath: ${e.message}")
+            Logger.error { "Failed to load cursor $filePath: ${e.message}" }
         }
     }
 

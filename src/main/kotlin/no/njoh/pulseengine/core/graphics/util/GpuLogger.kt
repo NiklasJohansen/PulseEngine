@@ -54,11 +54,11 @@ object GpuLogger
         val caps = GL.getCapabilities()
         if (caps.GL_KHR_debug)
         {
-            Logger.debug("Using KHR_debug for OpenGL logging")
+            Logger.debug { "Using KHR_debug for OpenGL logging" }
             val callback = GLDebugMessageCallback.create { source, type, id, severity, length, message, userParam ->
                 val type = KHR.typeMapping[type]
                 val level = KHR.getLoglevel(severity, type)
-                if (level.value >= logLevel.value && source != KHRDebug.GL_DEBUG_SOURCE_APPLICATION)
+                if (level >= logLevel && source != KHRDebug.GL_DEBUG_SOURCE_APPLICATION)
                 {
                     val message = GLDebugMessageCallback.getMessage(length, message)
                     val typeName = type?.name ?: "UNKNOWN TYPE"
@@ -70,11 +70,11 @@ object GpuLogger
         }
         else if (caps.GL_ARB_debug_output)
         {
-            Logger.debug("Using ARB_debug_output for OpenGL logging")
+            Logger.debug { "Using ARB_debug_output for OpenGL logging" }
             val callback = GLDebugMessageARBCallback.create { source, type, id, severity, length, message, userParam ->
                 val type = ARB.typeMapping[type]
                 val level = ARB.getLoglevel(severity, type)
-                if (level.value >= logLevel.value && source != ARBDebugOutput.GL_DEBUG_SOURCE_APPLICATION_ARB)
+                if (level >= logLevel && source != ARBDebugOutput.GL_DEBUG_SOURCE_APPLICATION_ARB)
                 {
                     val message = GLDebugMessageARBCallback.getMessage(length, message)
                     val typeName = type?.name ?: "UNKNOWN TYPE"
@@ -89,7 +89,7 @@ object GpuLogger
         // Should be enabled by default when buildType is DEBUG and GLFW_OPENGL_DEBUG_CONTEXT is set GLFW_TRUE
         if (caps.OpenGL30 && (glGetInteger(GL_CONTEXT_FLAGS) and GL_CONTEXT_FLAG_DEBUG_BIT) == 0)
         {
-            Logger.warn("Current OpenGL context does not have the debug flag enabled. Enabling: GL_DEBUG_OUTPUT")
+            Logger.warn { "Current OpenGL context does not have the debug flag enabled. Enabling: GL_DEBUG_OUTPUT" }
             glEnable(GL_DEBUG_OUTPUT)
         }
 

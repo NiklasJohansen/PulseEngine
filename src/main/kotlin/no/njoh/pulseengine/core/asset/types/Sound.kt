@@ -39,7 +39,7 @@ class Sound(filePath: String, name: String) : Asset(filePath, name)
     private fun readVorbis(filePath: String, info: STBVorbisInfo): ShortBuffer
     {
         val bytes = filePath.loadBytesFromDisk() ?: run {
-            Logger.error("Failed to find and load Sound asset: $filePath")
+            Logger.error { "Failed to find and load Sound asset: $filePath" }
             return ShortBuffer.allocate(0)
         }
 

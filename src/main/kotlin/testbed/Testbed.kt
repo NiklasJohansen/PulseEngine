@@ -17,7 +17,7 @@ class Testbed : PulseEngineGame()
     {
         engine.config.gameName = "Testbed 0.10.0"
         engine.widget.add(SceneEditor(), CommandLine(), MetricViewer(), GpuMonitor())
-        engine.console.runScript("testbed/startup.ps")
+        engine.console.runScript("testbed/init-dev.pes")
         engine.asset.loadAll("testbed/images")
         engine.scene.reload() // Load default.scn from disk
         engine.scene.start()

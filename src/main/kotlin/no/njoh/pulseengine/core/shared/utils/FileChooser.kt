@@ -19,7 +19,7 @@ object FileChooser
                 when (NFD_SaveDialog(savePath, filters, defaultPath, null))
                 {
                     NFD_OKAY  -> onFileChosen(savePath.getStringUTF8(0))
-                    NFD_ERROR -> Logger.error("FileChooser error: ${NFD_GetError()}")
+                    NFD_ERROR -> Logger.error { "FileChooser error: ${NFD_GetError()}" }
                 }
             }
             finally
@@ -43,7 +43,7 @@ object FileChooser
                 when (NFD_OpenDialog(openPath, filters, defaultPath))
                 {
                     NFD_OKAY  -> onFileChosen(openPath.getStringUTF8(0))
-                    NFD_ERROR -> Logger.error("FileChooser error: ${NFD_GetError()}")
+                    NFD_ERROR -> Logger.error { "FileChooser error: ${NFD_GetError()}" }
                 }
             }
             finally

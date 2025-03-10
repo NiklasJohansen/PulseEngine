@@ -12,7 +12,7 @@ import java.io.File
 
 object CommandRegistry
 {
-    private const val SCRIPT_EXTENSION_TYPE = ".ps"
+    private const val SCRIPT_EXTENSION_TYPE = ".pes"
     private val keyBindingSubscriptions = mutableMapOf<String, Subscription>()
 
     fun registerEngineCommands(engine: PulseEngineInternal)

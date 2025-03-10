@@ -14,8 +14,8 @@ import org.lwjgl.opengl.GL11.glViewport
 import org.lwjgl.opengl.GL30.*
 
 class BloomEffect(
-    override val name: String,
-    override val order: Int,
+    override val name: String = "bloom",
+    override val order: Int = 90,
     var intensity: Float = 1.5f,
     var threshold: Float = 1.3f,
     var thresholdSoftness: Float = 0.7f,

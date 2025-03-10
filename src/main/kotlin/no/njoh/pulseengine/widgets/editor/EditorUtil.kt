@@ -76,7 +76,7 @@ object EditorUtil
         }
         catch (e: Exception)
         {
-            Logger.error("Failed to parse value: $value into required type: ${property.javaField?.type}, reason: ${e.message}")
+            Logger.error { "Failed to parse value: $value into required type: ${property.javaField?.type}, reason: ${e.message}" }
         }
 
     /**
@@ -90,7 +90,7 @@ object EditorUtil
         val prop = this::class.memberProperties.find { it.name == name } as? KMutableProperty<*> ?: return
 
         try { prop.setter.call(this, value) }
-        catch (e: Exception) { Logger.error("Failed to set property with name: $name, reason: ${e.message}") }
+        catch (e: Exception) { Logger.error { "Failed to set property with name: $name, reason: ${e.message}" } }
     }
 
     /**
@@ -120,7 +120,7 @@ object EditorUtil
         }
         catch (e: Exception)
         {
-            Logger.error("Failed to parse value: $value into required type: ${property.javaField?.type}, reason: ${e.message}")
+            Logger.error { "Failed to parse value: $value into required type: ${property.javaField?.type}, reason: ${e.message}" }
         }
     }
 
@@ -145,7 +145,7 @@ object EditorUtil
         }
         catch (e: Exception)
         {
-            Logger.error("Failed to parse value: $value into required type: ${property.javaField?.type}, reason: ${e.message}")
+            Logger.error { "Failed to parse value: $value into required type: ${property.javaField?.type}, reason: ${e.message}" }
         }
 
     /**
@@ -190,7 +190,7 @@ object EditorUtil
 
             if (copiesLeft == copies.size)
             {
-                Logger.error("Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}")
+                Logger.error { "Failed to copy entities with circular dependencies! IDs: ${copies.map { it.id }}" }
                 return emptyList()
             }
         }

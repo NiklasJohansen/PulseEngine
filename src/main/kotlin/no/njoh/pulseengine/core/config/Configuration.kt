@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.config
 
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode
 import no.njoh.pulseengine.core.shared.utils.LogLevel
+import no.njoh.pulseengine.core.shared.utils.LogTarget
 import no.njoh.pulseengine.core.window.ScreenMode
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
@@ -19,6 +20,9 @@ interface Configuration
 
     /** Defines whether the game loop should be multithreaded or not */
     var gameLoopMode: GameLoopMode
+
+    /** The output target to for all logging */
+    var logTarget: LogTarget
 
     /** The general level for all logging */
     var logLevel: LogLevel

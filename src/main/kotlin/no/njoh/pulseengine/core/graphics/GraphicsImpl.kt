@@ -37,7 +37,7 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun init(engine: PulseEngineInternal)
     {
-        Logger.info("Initializing graphics (${this::class.simpleName})")
+        Logger.info { "Initializing graphics (GraphicsImpl)" }
         val viewPortWidth = engine.window.width
         val viewPortHeight = engine.window.height
 
@@ -57,7 +57,7 @@ open class GraphicsImpl : GraphicsInternal
 
         onWindowChanged(engine, viewPortWidth, viewPortHeight, windowRecreated = true)
 
-        GpuLogger.setLogLevel(engine.config.getEnum("gpuLogLevel", LogLevel::class) ?: LogLevel.OFF)
+        GpuLogger.setLogLevel(engine.config.gpuLogLevel)
     }
 
     override fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean)
@@ -66,7 +66,7 @@ open class GraphicsImpl : GraphicsInternal
         {
             // Create OpenGL context in current thread
             GL.createCapabilities()
-            Logger.debug("Running OpenGL on GPU: ${glGetString(GL_RENDERER)}")
+            Logger.debug { "Running OpenGL on GPU: ${glGetString(GL_RENDERER)}" }
 
             // Load error shaders
             errorShaders[VERTEX]   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/error/error.vert"))
@@ -192,7 +192,7 @@ open class GraphicsImpl : GraphicsInternal
         {
             surfaceMap[name]?.let()
             {
-                Logger.warn("Surface with name: $name already exists. Destroying and creating new...")
+                Logger.warn { "Surface with name: $name already exists. Destroying and creating new..." }
                 surfaces.remove(it)
                 it.destroy()
             }
@@ -234,14 +234,14 @@ open class GraphicsImpl : GraphicsInternal
     {
         val id = shader.currentId.takeIf { it != INVALID_ID } ?: glCreateShader(shader.type.value)
 
-        Logger.debug("Compiling shader #$id (${shader.filePath})")
+        Logger.debug { "Compiling shader #$id (${shader.filePath})" }
         glShaderSource(id, shader.transform(shader.sourceCode))
         glCompileShader(id)
 
         if (glGetShaderi(id, GL_COMPILE_STATUS) != GL_TRUE)
         {
             val info = glGetShaderInfoLog(id).removeSuffix("\n")
-            Logger.error("Failed to compile shader #$id (${shader.filePath}) \n$info")
+            Logger.error { "Failed to compile shader #$id (${shader.filePath}) \n$info" }
             shader.setId(INVALID_ID)
             shader.setErrorId(errorShaders[shader.type]!!.currentId)
             glDeleteShader(id)
@@ -261,7 +261,7 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun destroy()
     {
-        Logger.info("Destroying graphics (${this::class.simpleName})")
+        Logger.info { "Destroying graphics (${this::class.simpleName})" }
         textureBank.destroy()
         fullFrameRenderer.destroy()
         surfaces.forEachFast { it.destroy() }

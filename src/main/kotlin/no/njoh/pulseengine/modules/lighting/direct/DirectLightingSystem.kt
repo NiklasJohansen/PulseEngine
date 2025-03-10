@@ -172,7 +172,7 @@ open class DirectLightingSystem : SceneSystem()
     {
         if (isEnabled && !isUsingNormalMap)
         {
-            Logger.debug("LightingSystem: enabling normal maps")
+            Logger.debug { "LightingSystem: enabling normal maps" }
             engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(normalMapRenderPass)
             val surface = engine.gfx.createSurface(
                 name = NORMAL_SURFACE_NAME,
@@ -188,7 +188,7 @@ open class DirectLightingSystem : SceneSystem()
         }
         else if (!isEnabled && isUsingNormalMap)
         {
-            Logger.debug("LightingSystem: disabling normal maps")
+            Logger.debug { "LightingSystem: disabling normal maps" }
             engine.scene.getSystemOfType<EntityRenderer>()?.removeRenderPass(normalMapRenderPass)
             engine.gfx.deleteSurface(NORMAL_SURFACE_NAME)
             isUsingNormalMap = false
@@ -199,7 +199,7 @@ open class DirectLightingSystem : SceneSystem()
     {
         if (isEnabled && !isUsingOccluderMap)
         {
-            Logger.debug("LightingSystem: enabling occluder map")
+            Logger.debug { "LightingSystem: enabling occluder map" }
             engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(occluderRenderPass)
             engine.gfx.createSurface(
                 name = OCCLUDER_SURFACE_NAME,
@@ -212,7 +212,7 @@ open class DirectLightingSystem : SceneSystem()
         }
         else if (!isEnabled && isUsingOccluderMap)
         {
-            Logger.debug("LightingSystem: disabling occluder map")
+            Logger.debug { "LightingSystem: disabling occluder map" }
             engine.scene.getSystemOfType<EntityRenderer>()?.removeRenderPass(occluderRenderPass)
             engine.gfx.deleteSurface(OCCLUDER_SURFACE_NAME)
             isUsingOccluderMap = false

@@ -57,7 +57,7 @@ object ContactSolver
             }
         }
 
-        Logger.error("Missing body interaction between ${b0::class.simpleName} and ${b1::class.simpleName}")
+        Logger.error { "Missing body interaction between ${b0::class.simpleName} and ${b1::class.simpleName}" }
         return null
     }
 

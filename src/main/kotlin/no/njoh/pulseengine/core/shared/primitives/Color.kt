@@ -48,7 +48,7 @@ data class Color(
         }
         catch (e: Exception)
         {
-            Logger.error("Failed to decode hex string: $rgbHex to color. Reason ${e.message}")
+            Logger.error { "Failed to decode hex string: $rgbHex to color. Reason ${e.message}" }
         }
         return this
     }

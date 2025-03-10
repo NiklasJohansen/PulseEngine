@@ -10,14 +10,14 @@ import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.ColorGradingEffect.ToneMapper.ACES
 
 class ColorGradingEffect(
-    override val name: String,
-    override val order: Int,
+    override val name: String = "color_grading",
+    override val order: Int = 100,
     var toneMapper: ToneMapper = ACES,
     var lutTexture: String = "",
     var lutIntensity: Float = 1.0f,
     var exposure: Float = 1.0f,
     var contrast: Float = 1f,
-    var saturation: Float = 0.5f,
+    var saturation: Float = 1f,
     var vignette: Float = 0f
 ) : BaseEffect() {
 

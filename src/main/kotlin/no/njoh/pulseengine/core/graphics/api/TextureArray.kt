@@ -60,7 +60,7 @@ class TextureArray(
         }
         else
         {
-            Logger.error("Failed to upload texture to texture array. Unsupported texture format: $format")
+            Logger.error { "Failed to upload texture to texture array. Unsupported texture format: $format" }
             return
         }
 
