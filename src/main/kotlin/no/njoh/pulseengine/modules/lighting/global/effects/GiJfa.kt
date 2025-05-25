@@ -4,72 +4,83 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
+import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
-import kotlin.math.ceil
-import kotlin.math.log2
-import kotlin.math.max
-import kotlin.math.pow
+import no.njoh.pulseengine.modules.lighting.global.effects.GiJfa.*
+import kotlin.math.*
 
 class GiJfa(
+    private val mode: JfaMode,
     override val name: String = "jfa",
-    override val order: Int
+    override val order: Int = 2
 ) : BaseEffect(
-    TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_0),
-    numFrameBufferObjects = 2
+    TextureDescriptor(mode.format, filter = NEAREST, wrapping = CLAMP_TO_EDGE),
+    TextureDescriptor(mode.format, filter = NEAREST, wrapping = CLAMP_TO_EDGE)
 ) {
-    private var outputTextures: List<Texture> = emptyList()
+    private var outTextures: MutableList<Texture> = mutableListOf()
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
         engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
         engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/jfa.frag"))
     )
 
-    override fun getTexture(index: Int) = outputTextures.getOrNull(index)
-
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
-        outputTextures = inTextures
-        val width = inTextures[0].width.toFloat()
-        val height = inTextures[0].height.toFloat()
-        val passes = ceil(log2(max(width, height))).toInt()
-        val program = programs[0]
+        if (outTextures.isEmpty())
+            outTextures = mutableListOf(inTextures[0])
+
+        var seedTex = inTextures[0]
+        val maxSize = max(seedTex.width, seedTex.height)
+        val numPasses = ceil(log2(maxSize.toFloat())).toInt()
+
+        fbo.bind()
+        fbo.clear()
         program.bind()
-        program.setUniform("resolution", width, height)
+        program.setUniform("computeInternal", mode == JfaMode.EXTERNAL_INTERNAL)
+        program.setUniform("resolution", seedTex.width, seedTex.height)
 
-        for (i in 0 until passes)
+        for (i in 0 until numPasses)
         {
-            GpuProfiler.beginMeasure { "Pass #" plus i }
-
-            val fbo = frameBuffers[i % 2]
-            fbo.bind()
-            fbo.clear()
-            program.setUniform("uOffset", 2f.pow(passes - i - 1f))
-            program.setUniformSampler("seedTex", outputTextures[0])
-            renderer.draw()
-            fbo.release()
-            outputTextures = fbo.getTextures()
-
-            GpuProfiler.endMeasure()
+            val offset = 2f.pow(numPasses - i - 1).toInt()
+            GpuProfiler.measure({ "PASS #" plus i plus " (" plus offset plus "px)" })
+            {
+                outTextures[0] = fbo.getTexture(i % 2)
+                fbo.attachOutputTexture(outTextures[0])
+                program.setUniform("offset", offset)
+                program.setUniformSampler("seedTex", seedTex)
+                renderer.draw()
+                seedTex = outTextures[0]
+            }
         }
 
-        return outputTextures
+        fbo.release()
+
+        return outTextures
+    }
+
+    override fun getTexture(index: Int) = outTextures.getOrNull(index)
+
+    enum class JfaMode(val format: TextureFormat)
+    {
+        EXTERNAL(RG16I),
+        EXTERNAL_INTERNAL(RGBA16I),
     }
 }
 
 class GiJfaSeed(
+    private val mode: JfaMode,
     private val sceneSurfaceName: String,
     override val name: String = "jfa_seed",
-    override val order: Int
+    override val order: Int = 1,
 ) : BaseEffect(
-    TextureDescriptor(filter = NEAREST, format = RGBA32F, attachment = COLOR_TEXTURE_0),
+    TextureDescriptor(format = mode.format, filter = NEAREST),
 ) {
-
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
         engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
         engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/jfa_seed.frag"))

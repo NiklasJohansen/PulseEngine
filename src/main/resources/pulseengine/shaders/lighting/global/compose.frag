@@ -14,15 +14,14 @@ uniform sampler2D localSdfTex;
 uniform float dithering;
 uniform float scale;
 uniform float sourceMultiplier;
+uniform vec2 resolution;
 uniform vec2 sampleOffset;
 uniform vec4 ambientLight;
 uniform vec4 ambientOccluderLight;
 
-const float sdfDecodeScale = sqrt(2.0) / 65000.0;
-
 float getSdfDistance(vec2 p)
 {
-    return -texture(localSdfTex, clamp(p, 0, 1)).r * sdfDecodeScale;
+    return -texture(localSdfTex, clamp(p, 0, 1)).r;
 }
 
 vec2 getSdfDirection(vec2 p)
@@ -30,10 +29,10 @@ vec2 getSdfDirection(vec2 p)
     float h = 0.002 * scale;
     const vec2 k = vec2(1, -1);
     return normalize(
-        k.xy * texture(localSdfTex, clamp(p + k.xy * h, 0, 1)).r * sdfDecodeScale +
-        k.yx * texture(localSdfTex, clamp(p + k.yx * h, 0, 1)).r * sdfDecodeScale +
-        k.xx * texture(localSdfTex, clamp(p + k.xx * h, 0, 1)).r * sdfDecodeScale +
-        k.yy * texture(localSdfTex, clamp(p + k.yy * h, 0, 1)).r * sdfDecodeScale
+        k.xy * texture(localSdfTex, clamp(p + k.xy * h, 0, 1)).r +
+        k.yx * texture(localSdfTex, clamp(p + k.yx * h, 0, 1)).r +
+        k.xx * texture(localSdfTex, clamp(p + k.xx * h, 0, 1)).r +
+        k.yy * texture(localSdfTex, clamp(p + k.yy * h, 0, 1)).r
     );
 }
 
@@ -58,7 +57,7 @@ void main()
         {
             light = ambientOccluderLight.rgb;
 
-            float o = 0.002 * scale;
+            float o = 0.005 * scale;
             vec2 offset[9] = vec2[9](vec2(0,0), vec2(o,0), vec2(-o,0), vec2(0,o), vec2(0,-o), vec2(o,o), vec2(-o,o), vec2(o,-o), vec2(-o,-o));
             float edgeLightStrengt = sceneMeta.a * 0.01;
 
@@ -68,11 +67,11 @@ void main()
                 vec2 dir = getSdfDirection(pos);
                 float dist = getSdfDistance(pos);
 
-                float falloff = edgeLightStrengt / (1.0 + (dist / scale) * 100.0);
+                float falloff = edgeLightStrengt / (1.0 + (0.05 * dist / scale));
                 falloff = clamp(falloff, 0.0, 1.0);
                 falloff = pow(falloff, 3.0);
 
-                vec2 samplePos = clamp(offsetUv + dir * dist * 1.3, 0.0, 1.0);
+                vec2 samplePos = clamp(offsetUv + dir * dist * 1.1 / resolution, 0.0, 1.0);
                 light += texture(lightTex, samplePos).rgb * falloff / 9.0;
             }
         }

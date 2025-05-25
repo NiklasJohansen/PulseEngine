@@ -15,6 +15,7 @@ import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.modules.lighting.global.effects.*
+import no.njoh.pulseengine.modules.lighting.global.effects.GiJfa.JfaMode.*
 
 import kotlin.math.*
 
@@ -32,15 +33,14 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 8, min=0.001f)          var sunDistance = 10f
     @Prop(i = 9, min=0f, max=360f)    var sunAngle = 0f
     @Prop(i = 10, min=0f)             var dithering = 0.7f
-    @Prop(i = 11)                     var textureFilter = LINEAR
-    @Prop(i = 12, min=0.01f, max=2f)  var lightTextureScale = 0.3f
-    @Prop(i = 13, min=0.01f, max=2f)  var localSceneTextureScale = 0.4f
-    @Prop(i = 14, min=0.01f, max=4f)  var globalSceneTextureScale = 0.6f
+    @Prop(i = 11)                     var lightTexFilter = LINEAR
+    @Prop(i = 12, min=0.01f, max=2f)  var lightTexScale = 0.4f
+    @Prop(i = 13, min=0.01f, max=4f)  var localSceneTexScale = 0.4f
+    @Prop(i = 14, min=0.01f, max=4f)  var globalSceneTexScale = 0.8f
     @Prop(i = 15, min=0f)             var drawCascade = 0
     @Prop(i = 16, min=0f)             var maxCascades = 10
     @Prop(i = 17, min=0f)             var maxSteps = 30
-    @Prop(i = 19, min=0f)             var intervalLength = 1.5f
-    @Prop(i = 20, min=0f, max=1f)     var intervalOverlap = 1f
+    @Prop(i = 19, min=0f)             var intervalLength = 1f
     @Prop(i = 21, min=0f, max=1f)     var bounceAccumulation = 0.5f
     @Prop(i = 22, min=0f)             var bounceRadius = 0f // 0=infinite
     @Prop(i = 23, min=0f, max=1f)     var bounceEdgeFade = 0.2f
@@ -49,9 +49,9 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 26)                     var traceWorldRays = true
     @Prop(i = 27)                     var mergeCascades = true
     @Prop(i = 28)                     var bilinearFix = true
-    @Prop(i = 29)                     var forkFix = true
-    @Prop(i = 30)                     var fixJitter = true
-    @Prop(i = 31)                     var targetSurface = "main"
+    @Prop(i = 30)                     var jitterFix = true
+    @Prop(i = 31)                     var upscaleSmaleSources = true
+    @Prop(i = 32)                     var targetSurface = "main"
 
     private var lastTargetSurface = ""
 
@@ -66,11 +66,11 @@ open class GlobalIlluminationSystem : SceneSystem()
             blendFunction = NONE,
             textureFormat = RGBA16F,
             textureFilter = NEAREST,
-            textureScale = localSceneTextureScale,
+            textureScale = localSceneTexScale,
             attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
         ).apply {
             addRenderer(GiSceneRenderer((this as SurfaceInternal).config))
-            addPostProcessingEffect(GiSceneBounce(GI_LIGHT_RAW))
+            addPostProcessingEffect(GiSceneBounce(GI_LIGHT_RAW, order = 0))
         }
 
         engine.gfx.createSurface(
@@ -81,7 +81,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             blendFunction = NONE,
             textureFormat = RGBA16F,
             textureFilter = NEAREST,
-            textureScale = globalSceneTextureScale,
+            textureScale = globalSceneTexScale,
             attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
         ).apply {
             addRenderer(GiSceneRenderer((this as SurfaceInternal).config))
@@ -93,12 +93,12 @@ open class GlobalIlluminationSystem : SceneSystem()
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
-            textureScale = localSceneTextureScale,
+            textureScale = localSceneTexScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(GiJfaSeed(GI_LOCAL_SCENE, order = 1))
-            addPostProcessingEffect(GiJfa(order = 2))
-            addPostProcessingEffect(GiSdf(order = 3))
+            addPostProcessingEffect(GiJfaSeed(mode = EXTERNAL_INTERNAL, sceneSurfaceName = GI_LOCAL_SCENE))
+            addPostProcessingEffect(GiJfa(mode = EXTERNAL_INTERNAL))
+            addPostProcessingEffect(GiSdf(isSigned = true))
         }
 
         engine.gfx.createSurface(
@@ -107,12 +107,12 @@ open class GlobalIlluminationSystem : SceneSystem()
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
-            textureScale = globalSceneTextureScale,
+            textureScale = globalSceneTexScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(GiJfaSeed(GI_GLOBAL_SCENE, order = 1))
-            addPostProcessingEffect(GiJfa(order = 2))
-            addPostProcessingEffect(GiSdf(order = 3))
+            addPostProcessingEffect(GiJfaSeed(mode = EXTERNAL, sceneSurfaceName = GI_GLOBAL_SCENE))
+            addPostProcessingEffect(GiJfa(mode = EXTERNAL))
+            addPostProcessingEffect(GiSdf(isSigned = false))
         }
 
         engine.gfx.createSurface(
@@ -121,7 +121,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             zOrder = engine.gfx.mainSurface.config.zOrder + 2,
             isVisible = false,
             backgroundColor = Color.BLANK,
-            textureScale = lightTextureScale,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
             addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_LOCAL_SDF, GI_GLOBAL_SDF))
@@ -134,7 +133,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = ADDITIVE,
-            textureScale = 1f,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
             addPostProcessingEffect(GiCompose(GI_LOCAL_SCENE, GI_LOCAL_SDF, GI_LIGHT_RAW))
@@ -143,14 +141,31 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     override fun onUpdate(engine: PulseEngine)
     {
-        engine.gfx.getSurface(GI_LOCAL_SCENE)?.setTextureScale(localSceneTextureScale)
-        engine.gfx.getSurface(GI_LOCAL_SCENE)?.getRenderer<GiSceneRenderer>()?.fixJitter = fixJitter
-        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.setTextureScale(globalSceneTextureScale)
-        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.getRenderer<GiSceneRenderer>()?.fixJitter = fixJitter
-        engine.gfx.getSurface(GI_LIGHT_RAW)?.setTextureScale(lightTextureScale)
-        engine.gfx.getSurface(GI_LOCAL_SDF)?.setTextureScale(localSceneTextureScale)
-        engine.gfx.getSurface(GI_GLOBAL_SDF)?.setTextureScale(globalSceneTextureScale)
-        setTargetSurface(engine)
+        engine.gfx.getSurface(GI_LOCAL_SDF)?.setTextureScale(localSceneTexScale)
+        engine.gfx.getSurface(GI_LOCAL_SCENE)?.apply()
+        {
+            setTextureScale(localSceneTexScale)
+            getRenderer<GiSceneRenderer>()?.jitterFix = jitterFix
+        }
+
+        engine.gfx.getSurface(GI_GLOBAL_SDF)?.setTextureScale(globalSceneTexScale)
+        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.apply()
+        {
+            setTextureScale(globalSceneTexScale)
+            getRenderer<GiSceneRenderer>()?.let()
+            {
+                it.jitterFix = jitterFix
+                it.worldScale = worldScale
+                it.upscaleSmallSources = upscaleSmaleSources
+            }
+        }
+
+        if (targetSurface != lastTargetSurface)
+        {
+            engine.gfx.getSurface(lastTargetSurface)?.deletePostProcessingEffect(GI_BLEND_EFFECT)
+            engine.gfx.getSurface(targetSurface)?.addPostProcessingEffect(MultiplyEffect(GI_BLEND_EFFECT, order = 15, GI_LIGHT_FINAL))
+            lastTargetSurface = targetSurface
+        }
     }
 
     override fun onFixedUpdate(engine: PulseEngine)
@@ -169,12 +184,10 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     override fun onRender(engine: PulseEngine)
     {
-        val localSceneSurface = engine.gfx.getSurface(GI_LOCAL_SCENE) ?: return
-        drawScene(engine, localSceneSurface)
+        drawScene(engine, surface = engine.gfx.getSurface(GI_LOCAL_SCENE) ?: return)
 
-        val globalSceneSurface = engine.gfx.getSurface(GI_GLOBAL_SCENE) ?: return
         if (traceWorldRays)
-            drawScene(engine, globalSceneSurface)
+            drawScene(engine, surface = engine.gfx.getSurface(GI_GLOBAL_SCENE) ?: return)
     }
 
     override fun onDestroy(engine: PulseEngine)
@@ -196,29 +209,18 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     private fun drawScene(engine: PulseEngine, surface: Surface)
     {
-        engine.scene.forEachEntityOfType<GiLightSource> { it.drawLightSource(engine, surface) }
         engine.scene.forEachEntityOfType<GiOccluder> { it.drawOccluder(engine, surface) }
-    }
-
-    private fun setTargetSurface(engine: PulseEngine)
-    {
-        if (targetSurface == lastTargetSurface)
-            return
-
-        engine.gfx.getSurface(lastTargetSurface)?.deletePostProcessingEffect(GI_BLEND_EFFECT)
-        engine.gfx.getSurface(targetSurface)?.addPostProcessingEffect(MultiplyEffect(GI_BLEND_EFFECT, order = 15, GI_LIGHT_FINAL))
-
-        lastTargetSurface = targetSurface
+        engine.scene.forEachEntityOfType<GiLightSource> { it.drawLightSource(engine, surface) }
     }
 
     companion object
     {
-        const val GI_LOCAL_SCENE    = "gi_local_scene"
-        const val GI_GLOBAL_SCENE   = "gi_global_scene"
-        const val GI_LOCAL_SDF      = "gi_local_sdf"
-        const val GI_GLOBAL_SDF     = "gi_global_sdf"
-        const val GI_LIGHT_RAW      = "gi_light_raw"
-        const val GI_LIGHT_FINAL    = "gi_light_final"
-        const val GI_BLEND_EFFECT   = "gi_blend_effect"
+        const val GI_LOCAL_SCENE  = "gi_local_scene"
+        const val GI_GLOBAL_SCENE = "gi_global_scene"
+        const val GI_LOCAL_SDF    = "gi_local_sdf"
+        const val GI_GLOBAL_SDF   = "gi_global_sdf"
+        const val GI_LIGHT_RAW    = "gi_light_raw"
+        const val GI_LIGHT_FINAL  = "gi_light_final"
+        const val GI_BLEND_EFFECT = "gi_blend_effect"
     }
 }

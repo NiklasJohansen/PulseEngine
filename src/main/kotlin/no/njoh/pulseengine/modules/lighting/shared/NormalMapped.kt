@@ -16,13 +16,13 @@ import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer.Orientation
 interface NormalMapped : CustomRenderPassTarget
 {
     @get:AssetRef(Texture::class)
-    @get:Prop("Lighting", 0, desc = "Name of the normal map [Texture] asset.")
+    @get:Prop("Lighting", 8, desc = "Name of the normal map [Texture] asset.")
     var normalMapName: String
 
-    @get:Prop("Lighting", 1, desc = "The intensity/scale of the normals in the map.")
+    @get:Prop("Lighting", 9, desc = "The intensity/scale of the normals in the map.")
     var normalMapIntensity: Float
 
-    @get:Prop("Lighting", 2, desc = "The orientation of the normals in the map.")
+    @get:Prop("Lighting", 10, desc = "The orientation of the normals in the map.")
     var normalMapOrientation: Orientation
 
     override fun renderCustomPass(engine: PulseEngine, surface: Surface)

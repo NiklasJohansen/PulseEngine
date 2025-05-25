@@ -18,7 +18,7 @@ open class Shader(
     var compileTimestamp = -1L
         private set
 
-    private var errorId = INVALID_ID // Error id is used when the load source code failed to compile
+    private var errorId = INVALID_ID // The error ID is used when the loaded source code failed to compile
 
     override fun load()
     {
@@ -38,7 +38,10 @@ open class Shader(
         compileTimestamp = System.nanoTime()
     }
 
-    fun setErrorId(id: Int) { errorId = id }
+    fun setErrorId(id: Int)
+    {
+        errorId = id
+    }
 
     companion object
     {
@@ -46,6 +49,8 @@ open class Shader(
     }
 }
 
-class VertexShader(filePath: String)   : Shader(filePath, ShaderType.VERTEX)
+class VertexShader(filePath: String) : Shader(filePath, ShaderType.VERTEX)
+
 class FragmentShader(filePath: String) : Shader(filePath, ShaderType.FRAGMENT)
-class ComputeShader(filePath: String)  : Shader(filePath, ShaderType.COMPUTE)
+
+class ComputeShader(filePath: String) : Shader(filePath, ShaderType.COMPUTE)

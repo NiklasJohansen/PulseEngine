@@ -11,8 +11,11 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.PackedSize
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
+import org.lwjgl.opengl.GL11.glViewport
 import kotlin.math.*
 
 class GiRadianceCascades(
@@ -23,12 +26,12 @@ class GiRadianceCascades(
     override val name: String = "radiance_cascades",
     override val order: Int = 0
 ) : BaseEffect(
-    TextureDescriptor(filter = LINEAR, format = RGBA16F),
-    numFrameBufferObjects = 2
+    TextureDescriptor(format = RGBA16F, filter = LINEAR, sizeFunc = ::textureSizeFunc),
+    TextureDescriptor(format = RGBA16F, filter = LINEAR, sizeFunc = ::textureSizeFunc)
 ) {
     private var skyColor = Color()
     private var sunColor = Color()
-    private var outTextures = emptyList<Texture>()
+    private var outTextures = mutableListOf<Texture>()
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
         engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
@@ -45,39 +48,52 @@ class GiRadianceCascades(
         val localSdfSurface = engine.gfx.getSurface(localSdfSurfaceName) ?: return inTextures
         val globalSdfSurface = engine.gfx.getSurface(globalSdfSurfaceName) ?: return inTextures
 
-        val width = inTextures[0].width.toFloat()
-        val height = inTextures[0].height.toFloat()
-        val baseRayCount = 4f
-        val diagonalSize = sqrt(width * width + height * height)
-        val cascadeCount = min(ceil(log2(diagonalSize) / log2(baseRayCount)).toInt() + 1, lightSystem.maxCascades)
+        val lightTexWidth = fbo.getTexture().width.toFloat()
+        val lightTexHeight = fbo.getTexture().height.toFloat()
+        val lightTexDiagonal = sqrt(lightTexWidth * lightTexWidth + lightTexHeight * lightTexHeight)
+
+        val localSdfTex = localSdfSurface.getTexture()
+        val localSdfTexWidth = localSdfTex.width.toFloat()
+        val localSdfTexHeight = localSdfTex.height.toFloat()
+        val localSdfTexDiagonal = sqrt(localSdfTexWidth * localSdfTexWidth + localSdfTexHeight * localSdfTexHeight)
+        val localSdfTexDistRatio  = floor(lightTexDiagonal) / floor(localSdfTexDiagonal)
+
+        val globalSdfTex = globalSdfSurface.getTexture()
+        val globalSdfTexWidth = globalSdfTex.width.toFloat()
+        val globalSdfTexHeight = globalSdfTex.height.toFloat()
+        val globalSdfTexDiagonal = sqrt(globalSdfTexWidth * globalSdfTexWidth + globalSdfTexHeight * globalSdfTexHeight)
+        val globalSdfTexDistRatio = floor(lightTexDiagonal) / floor(globalSdfTexDiagonal)
+
+        val cascadeCount = min(ceil(log2(lightTexDiagonal) / log2(BASE_RAY_COUNT)).toInt() + 1, lightSystem.maxCascades)
         var cascadeIndex = cascadeCount - 1
-        val sceneWidth = max(localSceneSurface.config.width, globalSceneSurface.config.width)
-        val sceneHeight = max(localSceneSurface.config.height, globalSceneSurface.config.height)
-        val minStepSize = min(1f / sceneWidth, 1f / sceneHeight) * 0.5f
+
         val worldScale = max(1f, lightSystem.worldScale)
         val xCamOrigin = globalSceneSurface.camera.origin.x / globalSceneSurface.config.width
         val yCamOrigin = 1f - (globalSceneSurface.camera.origin.y / globalSceneSurface.config.height)
 
-        val program = programs[0]
-        val skyLight = if (lightSystem.skyLight) lightSystem.skyIntensity else 0f
-        val sunLight = if (lightSystem.skyLight) lightSystem.sunIntensity else 0f
+        skyColor.setFrom(lightSystem.skyColor).multiplyRgb(if (lightSystem.skyLight) lightSystem.skyIntensity else 0f)
+        sunColor.setFrom(lightSystem.sunColor).multiplyRgb(if (lightSystem.skyLight) lightSystem.sunIntensity else 0f)
+        maxCascades = lightSystem.maxCascades
+        textureDescriptors.forEachFast()
+        {
+            it.scale  = lightSystem.lightTexScale
+            it.filter = lightSystem.lightTexFilter
+        }
 
-        skyColor.setFrom(lightSystem.skyColor).multiplyRgb(skyLight)
-        sunColor.setFrom(lightSystem.sunColor).multiplyRgb(sunLight)
-        outTextures = inTextures
-        textureDescriptors[0].filter = lightSystem.textureFilter
+        if (outTextures.isEmpty())
+            outTextures = mutableListOf(inTextures[0])
 
         program.bind()
-        program.setUniform("resolution", width, height)
+        program.setUniform("resolution", lightTexWidth, lightTexHeight)
+        program.setUniform("invResolution", 1f / lightTexWidth, 1f / lightTexHeight)
+        program.setUniform("localDistRatio", localSdfTexDistRatio)
+        program.setUniform("globalDistRatio", globalSdfTexDistRatio)
         program.setUniform("skyColor", skyColor)
         program.setUniform("sunColor", sunColor)
         program.setUniform("sunAngle", -lightSystem.sunAngle.toRadians())
         program.setUniform("sunDistance", lightSystem.sunDistance)
-        program.setUniform("minStepSize", minStepSize)
         program.setUniform("bilinearFix", lightSystem.bilinearFix)
-        program.setUniform("forkFix", lightSystem.forkFix)
         program.setUniform("intervalLength", lightSystem.intervalLength)
-        program.setUniform("intervalOverlap", lightSystem.intervalOverlap)
         program.setUniform("cascadeCount", cascadeCount.toFloat())
         program.setUniform("worldScale", worldScale)
         program.setUniform("invWorldScale", 1f / worldScale)
@@ -91,26 +107,54 @@ class GiRadianceCascades(
         program.setUniformSampler("localMetadataTex", localSceneSurface.getTexture(1))
         program.setUniformSampler("globalSceneTex", globalSceneSurface.getTexture(0))
         program.setUniformSampler("globalMetadataTex", globalSceneSurface.getTexture(1))
-        program.setUniformSampler("localSdfTex", localSdfSurface.getTexture())
-        program.setUniformSampler("globalSdfTex", globalSdfSurface.getTexture())
+        program.setUniformSampler("localSdfTex", localSdfTex)
+        program.setUniformSampler("globalSdfTex", globalSdfTex)
 
+        setViewportSizeToFit(fbo.getTexture())
+
+        fbo.bind()
+        fbo.clear()
+
+        var i = 0
         while (cascadeIndex >= lightSystem.drawCascade)
         {
-            GpuProfiler.beginMeasure { "Cascade #" plus cascadeIndex }
-
-            val fbo = frameBuffers[cascadeIndex % 2]
-            fbo.bind()
-            fbo.clear()
-            program.setUniform("cascadeIndex", cascadeIndex.toFloat())
-            program.setUniformSampler("upperCascadeTex", outTextures[0])
-            renderer.draw()
-            fbo.release()
-            outTextures = fbo.getTextures()
-            cascadeIndex--
-
-            GpuProfiler.endMeasure()
+            GpuProfiler.measure({ "PASS #" plus i++ plus " (C" plus cascadeIndex plus ")" })
+            {
+                val currentTex = fbo.getTexture(cascadeIndex % 2)
+                fbo.attachOutputTexture(currentTex)
+                program.setUniform("cascadeIndex", cascadeIndex.toFloat())
+                program.setUniformSampler("upperCascadeTex", outTextures[0])
+                renderer.draw()
+                outTextures[0] = currentTex
+                cascadeIndex--
+            }
         }
 
+        fbo.release()
+
         return outTextures
+    }
+
+    private fun setViewportSizeToFit(texture: Texture)
+    {
+        glViewport(0, 0, texture.width, texture.height)
+    }
+
+    companion object
+    {
+        private val BASE_RAY_COUNT = 4f
+        private var maxCascades = 0
+
+        fun textureSizeFunc(width: Int, height: Int, scale: Float): PackedSize
+        {
+            // Makes sure at least the height is a multiple of the max probe size
+            val diagonal = sqrt((width * width + height * height).toFloat())
+            val cascadeCount = min(ceil(log2(diagonal) / log2(BASE_RAY_COUNT)).toInt() + 1, max(1, maxCascades))
+            val maxProbeSize = 2f.pow(cascadeCount)
+            val hScaled = height * scale
+            val h = hScaled - min(hScaled / 2, hScaled % maxProbeSize)
+            val w = width * (h / height)
+            return PackedSize(w, h)
+        }
     }
 }

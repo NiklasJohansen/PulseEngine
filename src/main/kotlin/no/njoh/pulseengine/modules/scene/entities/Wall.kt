@@ -17,6 +17,7 @@ class Wall : Box(), DirectLightOccluder, GiOccluder, NormalMapped
     var textureName: String = ""
     var color = Color(1f, 1f, 1f)
 
+    override var occluderTextureName = ""
     override var bounceColor = Color(1f, 1f, 1f)
     override var castShadows = true
     override var edgeLight = 100f

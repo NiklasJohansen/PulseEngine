@@ -62,11 +62,20 @@ class ShaderProgram(
     fun setUniform(name: String, matrix: Matrix4f) =
         glUniformMatrix4fv(uniformLocationOf(name), false, matrix.get(floatArray16))
 
+    fun setUniform(name: String, value: Boolean) =
+        glUniform1i(uniformLocationOf(name), if (value) 1 else 0)
+
     fun setUniform(name: String, value: Int) =
         glUniform1i(uniformLocationOf(name), value)
 
-    fun setUniform(name: String, value: Boolean) =
-        glUniform1i(uniformLocationOf(name), if (value) 1 else 0)
+    fun setUniform(name: String, value1: Int, value2: Int) =
+        glUniform2i(uniformLocationOf(name), value1, value2)
+
+    fun setUniform(name: String, value1: Int, value2: Int, value3: Int) =
+        glUniform3i(uniformLocationOf(name), value1, value2, value3)
+
+    fun setUniform(name: String, value1: Int, value2: Int, value3: Int, value4: Int) =
+        glUniform4i(uniformLocationOf(name), value1, value2, value3, value4)
 
     fun setUniform(name: String, value: Float) =
         glUniform1f(uniformLocationOf(name), value)

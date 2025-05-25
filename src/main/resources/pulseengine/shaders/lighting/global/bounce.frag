@@ -25,7 +25,7 @@ void main()
 
     if (bounceAccumulation > 0.0 && isOccluder && !isLightSource)
     {
-        vec2 p = (1.0 / resolution) * scale;
+        vec2 p = (1.5 / resolution) * scale;
         vec2 dir[8] = vec2[8](+p.xy, -p.xy, +p.yx, -p.yx, +p.xx, -p.xx, +p.yy, -p.yy);
         vec3 lightAcc = vec3(0);
         float n = 0;
@@ -35,7 +35,7 @@ void main()
             bool isOpenSpace = texture(sceneTex, clamp(uv + dir[i], 0, 1)).a < 0.5;
             if (isOpenSpace)
             {
-                lightAcc += texture(lightTex, clamp(uvLastFrame + dir[i] * 5, 0, 1)).rgb;
+                lightAcc += texture(lightTex, clamp(uvLastFrame + dir[i] * 4, 0, 1)).rgb;
                 n++;
             }
         }
