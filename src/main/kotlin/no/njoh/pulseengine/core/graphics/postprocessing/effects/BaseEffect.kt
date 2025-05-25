@@ -53,25 +53,23 @@ abstract class BaseEffect(
     private fun updateFrameBuffers(inTexture: Texture)
     {
         if (frameBuffers.isEmpty())
-            createFrameBuffers(inTexture.width, inTexture.height)
-
-        if (!fbo.matches(inTexture.width, inTexture.height, textureDescriptors))
         {
-            frameBuffers.forEachFast { it.delete() }
-            frameBuffers.clear()
-            createFrameBuffers(inTexture.width, inTexture.height)
+            createNewFrameBuffers(inTexture.width, inTexture.height)
+        }
+        else if (!fbo.matches(inTexture.width, inTexture.height, textureDescriptors))
+        {
+            createNewFrameBuffers(inTexture.width, inTexture.height)
         }
     }
 
-    private fun createFrameBuffers(width: Int, height: Int)
+    private fun createNewFrameBuffers(width: Int, height: Int)
     {
-        for (i in 0 until numFrameBufferObjects)
-        {
-            frameBuffers.add(FrameBufferObject.create(width, height, textureDescriptors))
-        }
+        frameBuffers.forEachFast { it.delete() }
+        frameBuffers.clear()
+        repeat(numFrameBufferObjects) { frameBuffers += FrameBufferObject.create(width, height, textureDescriptors) }
     }
 
-    override fun getTexture(index: Int): Texture? = frameBuffers.lastOrNull()?.getTexture(index)
+    override fun getTexture(index: Int): Texture? = frameBuffers.lastOrNull()?.getTextureOrNull(index)
 
     override fun destroy()
     {

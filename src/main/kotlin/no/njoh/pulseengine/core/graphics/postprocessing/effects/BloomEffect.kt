@@ -114,8 +114,8 @@ class BloomEffect(
     private fun compose(engine: PulseEngineInternal, srcTexture: Texture)
     {
         val program = programs[2] // bloom_final
-        val bloomTexture = fbo.getTexture(1) ?: srcTexture
-        val outputTexture = fbo.getTexture(0) ?: srcTexture
+        val bloomTexture = fbo.getTexture(1)
+        val outputTexture = fbo.getTexture(0)
         val lensDirtTex = engine.asset.getOrNull<Texture>(lensDirtTexture)
         val lensDirtTexArray = engine.gfx.textureBank.getTextureArrayOrDefault(lensDirtTex)
         val lensDirtTexIndex = lensDirtTex?.handle?.textureIndex?.toFloat() ?: -1f
@@ -149,7 +149,7 @@ class BloomEffect(
         glDisable(GL_BLEND)
     }
 
-    fun getBloomTexture() = fbo.getTexture(1)
+    fun getBloomTexture() = fbo.getTextureOrNull(1)
 
-    override fun getTexture(index: Int) = fbo.getTexture(index)
+    override fun getTexture(index: Int) = fbo.getTextureOrNull(index)
 }

@@ -26,13 +26,14 @@ class GiSceneBounce(
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
         engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/bounce.vert")),
-        engine.asset.loadNow(FragmentShader( "/pulseengine/shaders/lighting/global/bounce.frag"))
+        engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/bounce.frag"))
     )
 
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
+        val lightTexture = lightSurface.getTexture()
 
         fbo.bind()
         fbo.clear()
@@ -42,11 +43,11 @@ class GiSceneBounce(
         program.setUniform("bounceAccumulation", lightSystem.bounceAccumulation)
         program.setUniform("bounceRadius", lightSystem.bounceRadius)
         program.setUniform("bounceEdgeFade", lightSystem.bounceEdgeFade)
-        program.setUniform("resolution", fbo.width.toFloat(), fbo.height.toFloat())
+        program.setUniform("resolution", lightTexture.width.toFloat(), lightTexture.height.toFloat())
         program.setUniform("scale", lightSurface.camera.scale.x)
         program.setUniformSampler("sceneTex", inTextures[0])
         program.setUniformSampler("sceneMetaTex", inTextures[1])
-        program.setUniformSampler("lightTex", lightSurface.getTexture())
+        program.setUniformSampler("lightTex", lightTexture)
         renderer.draw()
         fbo.release()
 

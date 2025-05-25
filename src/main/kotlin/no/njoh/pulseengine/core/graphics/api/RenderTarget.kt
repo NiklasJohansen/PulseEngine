@@ -41,7 +41,7 @@ class OffScreenRenderTarget(
 
     override fun begin() = fbo.bind()
     override fun end() = fbo.release()
-    override fun getTexture(index: Int) = fbo.getTexture(index)
+    override fun getTexture(index: Int) = fbo.getTextureOrNull(index)
     override fun getTextures() = fbo.getTextures()
     override fun destroy() = fbo.delete()
 }
@@ -69,8 +69,7 @@ class MultisampledOffScreenRenderTarget(
         fbo = FrameBufferObject.create(width, height, attachments.map { TextureDescriptor(textureFormat, textureFilter, CLAMP_TO_EDGE, NONE, it, textureScale) })
     }
 
-    override fun begin() =
-        msFbo.bind()
+    override fun begin() = msFbo.bind()
 
     override fun end()
     {
@@ -81,11 +80,9 @@ class MultisampledOffScreenRenderTarget(
         }
     }
 
-    override fun getTexture(index: Int) =
-        fbo.getTexture(index)
+    override fun getTexture(index: Int) = fbo.getTextureOrNull(index)
 
-    override fun getTextures() =
-        fbo.getTextures()
+    override fun getTextures() = fbo.getTextures()
 
     override fun destroy()
     {

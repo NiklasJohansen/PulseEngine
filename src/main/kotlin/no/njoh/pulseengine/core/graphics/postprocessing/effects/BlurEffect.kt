@@ -32,8 +32,8 @@ class BlurEffect(
     {
         val vProgram = programs[0]
         val hProgram = programs[1]
-        val vTex = fbo.getTexture(1)!!
-        val hTex = fbo.getTexture(0)!!
+        val vTex = fbo.getTexture(1)
+        val hTex = fbo.getTexture(0)
         var currentTex = inTextures[0]
 
         fbo.bind()

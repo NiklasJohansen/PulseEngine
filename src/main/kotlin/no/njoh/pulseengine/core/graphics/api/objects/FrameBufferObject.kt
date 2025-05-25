@@ -1,10 +1,12 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
+import gnu.trove.list.array.TLongArrayList
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA_MAX
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
+import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachIndexedFast
 import org.lwjgl.opengl.GL14.GL_DEPTH_COMPONENT24
@@ -17,11 +19,10 @@ import kotlin.math.min
 
 open class FrameBufferObject(
     val id: Int,
-    val width: Int,
-    val height: Int,
-    private val renderBufferIds: List<Int>,
     private val textures: List<Texture>,
-    private val textureDescriptors: List<TextureDescriptor>
+    private val textureSizes: TLongArrayList, // Holds PackedSize elements
+    private val textureDescriptors: List<TextureDescriptor>,
+    private val renderBufferIds: List<Int>
 ) {
     private val textureBuffers = textures.mapNotNull { it.attachment }.distinct().filter { it.isDrawable }.map { it.value }.toIntArray()
 
@@ -42,7 +43,9 @@ open class FrameBufferObject(
         glDeleteFramebuffers(id)
     }
 
-    fun getTexture(index: Int = 0) = textures.getOrNull(index)
+    fun getTextureOrNull(index: Int = 0) = textures.getOrNull(index)
+
+    fun getTexture(index: Int = 0) = textures[index]
 
     fun getTextures() = textures
 
@@ -78,13 +81,16 @@ open class FrameBufferObject(
 
     fun matches(width: Int, height: Int, descriptors: List<TextureDescriptor>): Boolean
     {
-        if (width != this.width || height != this.height)
-            return false
-
         if (textureDescriptors.size != descriptors.size)
             return false
 
-        textureDescriptors.forEachIndexedFast { i, desc -> if (desc != descriptors[i]) return false }
+        textureDescriptors.forEachIndexedFast { i, aDesc ->
+            val bDesc = descriptors[i]
+            val bSize = bDesc.sizeFunc(width, height, bDesc.scale)
+            val aSize = PackedSize(textureSizes[i])
+            if (aDesc != bDesc || aSize != bSize)
+                return false
+        }
 
         return true
     }
@@ -94,20 +100,23 @@ open class FrameBufferObject(
         fun create(width: Int, height: Int, textureDescriptors: List<TextureDescriptor>): FrameBufferObject
         {
             val textures = mutableListOf<Texture>()
-            val bufferIds = mutableListOf<Int>()
+            val renderBufferIds = mutableListOf<Int>()
+            val textureSizes = TLongArrayList()
             val frameBufferId = glGenFramebuffers()
+
             glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
 
-            for (tex in textureDescriptors)
+            for (texDesc in textureDescriptors)
             {
-                val samples = if (tex.multisampling == MSAA_MAX) glGetInteger(GL_MAX_SAMPLES) else tex.multisampling.samples
-                val texWidth = (width * tex.scale).toInt().coerceAtLeast(1)
-                val texHeight = (height * tex.scale).toInt().coerceAtLeast(1)
+                val samples = if (texDesc.multisampling == MSAA_MAX) glGetInteger(GL_MAX_SAMPLES) else texDesc.multisampling.samples
+                val texSize = texDesc.sizeFunc(width, height, texDesc.scale)
+                val (texWidth, texHeight) = texSize
+                textureSizes.add(texSize.data)
 
-                val textureId = when (tex.attachment)
+                val textureId = when (texDesc.attachment)
                 {
                     COLOR_TEXTURE_0, COLOR_TEXTURE_1, COLOR_TEXTURE_2, COLOR_TEXTURE_3, COLOR_TEXTURE_4 ->
-                        createColorTextureAttachment(texWidth, texHeight, tex.format, tex.filter, tex.wrapping, tex.attachment, samples)
+                        createColorTextureAttachment(texWidth, texHeight, texDesc.format, texDesc.filter, texDesc.wrapping, texDesc.attachment, samples)
                     DEPTH_TEXTURE ->
                         createDepthTextureAttachment(texWidth, texHeight, samples)
                     else -> null
@@ -115,21 +124,21 @@ open class FrameBufferObject(
 
                 if (textureId != null)
                 {
-                    val texture = Texture("", name = "fbo_${tex.attachment.name.lowercase()}", tex.filter, tex.wrapping, tex.format, mipLevels = 1)
+                    val texture = Texture("", name = "fbo_${texDesc.attachment.name.lowercase()}", texDesc.filter, texDesc.wrapping, texDesc.format, mipLevels = 1)
                     val handle = TextureHandle.create(0, textureId)
                     texture.stage(null as ByteBuffer?, texWidth, texHeight)
-                    texture.finalize(handle, isBindless = false, attachment = tex.attachment)
-                    textures.add(texture)
+                    texture.finalize(handle, isBindless = false, attachment = texDesc.attachment)
+                    textures += texture
                 }
 
-                val bufferId = when (tex.attachment)
+                val renderBufferId = when (texDesc.attachment)
                 {
                     DEPTH_STENCIL_BUFFER -> createDepthBufferAttachment(texWidth, texHeight, samples)
                     else -> null
                 }
 
-                if (bufferId != null)
-                    bufferIds.add(bufferId)
+                if (renderBufferId != null)
+                    renderBufferIds += renderBufferId
             }
 
             // Check if frame buffer is complete
@@ -140,7 +149,7 @@ open class FrameBufferObject(
             // Unbind frame buffer (binds default buffer)
             glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
-            return FrameBufferObject(frameBufferId, width, height, bufferIds, textures, textureDescriptors.map { it.copy() })
+            return FrameBufferObject(frameBufferId, textures, textureSizes, textureDescriptors.map { it.copy() }, renderBufferIds)
         }
 
         private fun createColorTextureAttachment(width: Int, height: Int, format: TextureFormat, filter: TextureFilter, wrapping: TextureWrapping, attachment: Attachment, samples: Int): Int
