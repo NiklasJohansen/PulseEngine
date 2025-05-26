@@ -16,16 +16,16 @@ class SpriteSheet(
     mipLevels: Int = 5,
     private val horizontalCells: Int,
     private val verticalCells: Int,
-) : Texture(filePath, name, filter, wrapping, format, mipLevels), Iterable<Texture> {
+) : Texture(filePath, name, initWidth = 1, initHeight = 1, filter, wrapping, format, mipLevels), Iterable<Texture> {
 
     private lateinit var textures: Array<Texture>
 
     var size = 0
         private set
 
-    override fun finalize(handle: TextureHandle, isBindless: Boolean, uMin: Float, vMin: Float, uMax: Float, vMax: Float, attachment: Attachment?)
+    override fun onUploaded(handle: TextureHandle, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
-        super.finalize(handle, isBindless, uMin, vMin, uMax, vMax, attachment)
+        super.onUploaded(handle, uMin, vMin, uMax, vMax)
 
         val uCellSize = 1f / horizontalCells
         val vCellSize = 1f / verticalCells
@@ -34,34 +34,34 @@ class SpriteSheet(
 
         this.size = horizontalCells * verticalCells
         this.textures = Array(size) { index ->
-
-            val texture = Texture(filePath, name, filter, wrapping, format, mipLevels)
             val xIndex = index % horizontalCells
             val yIndex = index / horizontalCells
             val uMinCell = uMin + xIndex * uCellSize * uTexSize
             val vMinCell = vMin + yIndex * vCellSize * vTexSize
             val uMaxCell = uMinCell + uCellSize * uTexSize
             val vMaxCell = vMinCell + vCellSize * vTexSize
-
-            texture.stage(null, (width * uCellSize).toInt(), (height * vCellSize).toInt())
-            texture.finalize(handle, isBindless, uMinCell, vMinCell, uMaxCell, vMaxCell)
-            texture
+            val cellWidth = (width * uCellSize).toInt()
+            val cellHeight = (height * vCellSize).toInt()
+            Texture(filePath, name, cellWidth, cellHeight, filter, wrapping, format, mipLevels).also()
+            {
+                it.onUploaded(handle, uMinCell, vMinCell, uMaxCell, vMaxCell)
+            }
         }
     }
 
-    fun getTexture(xIndex: Int, yIndex: Int) : Texture
+    fun getTexture(xIndex: Int, yIndex: Int): Texture
     {
         return textures[yIndex * horizontalCells + xIndex]
     }
 
-    fun getTexture(index: Int) : Texture
+    fun getTexture(index: Int): Texture
     {
         return textures[index]
     }
 
-    override fun iterator(): Iterator<Texture> = TextureIterator()
+    override fun iterator(): Iterator<Texture> = ImageIterator()
 
-    inner class TextureIterator : Iterator<Texture>
+    inner class ImageIterator : Iterator<Texture>
     {
         var index = 0
         override fun hasNext(): Boolean = index < size

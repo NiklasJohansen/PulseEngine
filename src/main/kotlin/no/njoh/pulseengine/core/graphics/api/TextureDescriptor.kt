@@ -10,7 +10,7 @@ data class TextureDescriptor(
     var multisampling: Multisampling = Multisampling.NONE,
     var attachment: Attachment = Attachment.COLOR_TEXTURE_0,
     var scale: Float = 1f,
-    var sizeFunc: (w: Int, h: Int, scale: Float) -> PackedSize = { w, h, s -> PackedSize(max(w * s, 1f), max(h * s, 1f)) }
+    var sizeFunc: (width: Int, height: Int, scale: Float) -> PackedSize = { w, h, s -> PackedSize(max(w * s, 1f), max(h * s, 1f)) }
 ) {
     override fun equals(other: Any?): Boolean =
         other is TextureDescriptor &&

@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
+import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 
 class ThresholdEffect(
@@ -15,7 +16,7 @@ class ThresholdEffect(
         engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/brightness_threshold.frag"))
     )
 
-    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         fbo.bind()
         fbo.clear()

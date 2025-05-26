@@ -71,7 +71,7 @@ class TextureArray(
         val v = texture.height / textureSize.toFloat()
         val handle = TextureHandle.create(samplerIndex, texIndex)
 
-        texture.finalize(handle = handle, isBindless = true, uMin = 0.0f, vMin = 0.0f, uMax = u, vMax = v)
+        texture.onUploaded(handle, uMin = 0.0f, vMin = 0.0f, uMax = u, vMax = v)
     }
 
     fun isFull() = size >= maxCapacity

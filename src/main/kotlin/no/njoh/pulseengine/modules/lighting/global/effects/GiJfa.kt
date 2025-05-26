@@ -2,8 +2,8 @@ package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
-import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
+import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
@@ -23,14 +23,14 @@ class GiJfa(
     TextureDescriptor(mode.format, filter = NEAREST, wrapping = CLAMP_TO_EDGE),
     TextureDescriptor(mode.format, filter = NEAREST, wrapping = CLAMP_TO_EDGE)
 ) {
-    private var outTextures: MutableList<Texture> = mutableListOf()
+    private var outTextures: MutableList<RenderTexture> = mutableListOf()
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
         engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
         engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/jfa.frag"))
     )
 
-    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         if (outTextures.isEmpty())
             outTextures = mutableListOf(inTextures[0])
@@ -86,7 +86,7 @@ class GiJfaSeed(
         engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/jfa_seed.frag"))
     )
 
-    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         val sceneSurface = engine.gfx.getSurface(sceneSurfaceName) ?: return inTextures
         fbo.bind()

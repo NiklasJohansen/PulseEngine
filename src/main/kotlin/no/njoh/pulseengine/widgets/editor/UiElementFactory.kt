@@ -340,7 +340,7 @@ open class UiElementFactory(
     {
         val image = Image()
         image.bgColor = Color.BLACK
-        image.texture = engine.gfx.mainSurface.getTexture()
+        image.renderTexture = engine.gfx.mainSurface.getTexture()
 
         val surfaceSelector = createItemSelectionDropdownUI(
             selectedItem = engine.gfx.mainSurface.config.name,
@@ -349,7 +349,7 @@ open class UiElementFactory(
             onItemChanged = { _, surfaceName ->
                 val surface = surfaceName.substringBefore("  (")
                 val index = surfaceName.substringAfterLast("#").toIntOrNull() ?: 0
-                image.texture = engine.gfx.getSurface(surface)?.getTexture(index)
+                image.renderTexture = engine.gfx.getSurface(surface)?.getTexture(index)
             }
         ).apply {
             width.updateType(Size.ValueType.AUTO)

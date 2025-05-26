@@ -2,8 +2,8 @@ package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
-import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
+import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
@@ -31,7 +31,7 @@ class GiRadianceCascades(
 ) {
     private var skyColor = Color()
     private var sunColor = Color()
-    private var outTextures = mutableListOf<Texture>()
+    private var outTextures = mutableListOf<RenderTexture>()
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
         engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
@@ -40,7 +40,7 @@ class GiRadianceCascades(
 
     override fun getTexture(index: Int) = outTextures.getOrNull(index)
 
-    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val localSceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
@@ -135,7 +135,7 @@ class GiRadianceCascades(
         return outTextures
     }
 
-    private fun setViewportSizeToFit(texture: Texture)
+    private fun setViewportSizeToFit(texture: RenderTexture)
     {
         glViewport(0, 0, texture.width, texture.height)
     }

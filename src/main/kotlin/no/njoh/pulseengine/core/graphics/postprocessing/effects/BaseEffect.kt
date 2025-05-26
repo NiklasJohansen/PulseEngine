@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.graphics.postprocessing.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
-import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.objects.FrameBufferObject
@@ -27,7 +27,7 @@ abstract class BaseEffect(
     open fun loadShaderProgram(engine: PulseEngineInternal): ShaderProgram = throw NotImplementedError("You must override either loadShaderProgram or loadShaderPrograms")
     open fun loadShaderPrograms(engine: PulseEngineInternal): List<ShaderProgram> = listOf(loadShaderProgram(engine))
 
-    abstract fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
+    abstract fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
 
     override fun init(engine: PulseEngineInternal)
     {
@@ -40,7 +40,7 @@ abstract class BaseEffect(
         renderers.forEachFast { it.init() }
     }
 
-    override fun process(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
+    override fun process(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         if (inTextures.isEmpty())
             return inTextures
@@ -50,7 +50,7 @@ abstract class BaseEffect(
         return applyEffect(engine, inTextures)
     }
 
-    private fun updateFrameBuffers(inTexture: Texture)
+    private fun updateFrameBuffers(inTexture: RenderTexture)
     {
         if (frameBuffers.isEmpty())
         {
@@ -69,7 +69,7 @@ abstract class BaseEffect(
         repeat(numFrameBufferObjects) { frameBuffers += FrameBufferObject.create(width, height, textureDescriptors) }
     }
 
-    override fun getTexture(index: Int): Texture? = frameBuffers.lastOrNull()?.getTextureOrNull(index)
+    override fun getTexture(index: Int): RenderTexture? = frameBuffers.lastOrNull()?.getTextureOrNull(index)
 
     override fun destroy()
     {

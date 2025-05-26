@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.gui.elements
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.Position
 import no.njoh.pulseengine.modules.gui.Size
@@ -19,51 +20,72 @@ open class Image(
 
     var bgColor = Color.BLANK
     var tint = Color.WHITE
-    var texture: Texture? = null
     var textureAssetName: String? = null
+    var texture: Texture? = null
+    var renderTexture: RenderTexture? = null
     var textureScale = 1f
 
     override fun onUpdate(engine: PulseEngine) { }
 
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
-        val texture = texture ?: textureAssetName?.let { engine.asset.getOrNull(it) } ?: return
-        var texWidth = width.value
-        var texHeight = height.value
+        var texWidth = 0
+        var texHeight = 0
+        var finalWidth = width.value
+        var finalHeight = height.value
         val xCenter = x.value + width.value / 2f
         val yCenter = y.value + height.value / 2f
 
-        // Calculate texture dimensions to fit inside image size
-        if (texture.width > texture.height)
+        if (renderTexture != null) 
         {
-            texHeight = (width.value / texture.width) * texture.height
-            if (texHeight > height.value)
+            texWidth = renderTexture!!.width
+            texHeight = renderTexture!!.height
+        } 
+        else if (texture != null || textureAssetName != null) 
+        {
+            texture = texture ?: textureAssetName?.let { engine.asset.getOrNull<Texture>(it) } ?: return
+            texWidth = texture!!.width
+            texHeight = texture!!.height
+        }
+
+        // Calculate texture dimensions to fit inside image size
+        if (texWidth > texHeight)
+        {
+            finalHeight = (width.value / texWidth) * texHeight
+            if (finalHeight > height.value)
             {
-                texHeight = height.value
-                texWidth = (height.value / texture.height) * texture.width
+                finalHeight = height.value
+                finalWidth = (height.value / texHeight) * texWidth
             }
         }
         else
         {
-            texWidth = (height.value / texture.height) * texture.width
-            if (texWidth > width.value)
+            finalWidth = (height.value / texHeight) * texWidth
+            if (finalWidth > width.value)
             {
-                texWidth = width.value
-                texHeight = (width.value / texture.width) * texture.height
+                finalWidth = width.value
+                finalHeight = (width.value / texWidth) * texHeight
             }
         }
 
         // Scale texture size
-        texWidth *= textureScale
-        texHeight *= textureScale
+        finalWidth *= textureScale
+        finalHeight *= textureScale
 
-        // Draw background texture
-        val bgTexture = if (texture.isBindless) Texture.BLANK else Texture.BLANK_BINDABLE
-        surface.setDrawColor(bgColor)
-        surface.drawTexture(bgTexture, x.value, y.value, width.value, height.value)
-
-        // Draw image
-        surface.setDrawColor(tint)
-        surface.drawTexture(texture, xCenter, yCenter, texWidth, texHeight, xOrigin = 0.5f, yOrigin = 0.5f)
+        // Draw background and image texture
+        if (renderTexture != null)
+        {
+            surface.setDrawColor(bgColor)
+            surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)
+            surface.setDrawColor(tint)
+            surface.drawTexture(renderTexture!!, xCenter, yCenter, finalWidth, finalHeight, xOrigin = 0.5f, yOrigin = 0.5f)
+        }
+        else if (texture != null)
+        {
+            surface.setDrawColor(bgColor)
+            surface.drawTexture(RenderTexture.BLANK, x.value, y.value, width.value, height.value)
+            surface.setDrawColor(tint)
+            surface.drawTexture(texture!!, xCenter, yCenter, finalWidth, finalHeight, xOrigin = 0.5f, yOrigin = 0.5f)
+        }
     }
 }

@@ -112,7 +112,14 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun drawFrame(engine: PulseEngineInternal)
     {
-        // Render all batched data to offscreen target
+        renderSurfaceContentToOffscreenTarget(engine)
+        renderPostProcessingEffectsToOffscreenTarget(engine)
+        renderOffscreenTargetsToBackBuffer()
+        GpuProfiler.endFrame()
+    }
+
+    private fun renderSurfaceContentToOffscreenTarget(engine: PulseEngineInternal)
+    {
         surfaces.forEachFiltered({ it.hasContent() })
         {
             GpuProfiler.measure(label = { "DRAW_SURFACE (" plus it.config.name plus ")" })
@@ -120,7 +127,10 @@ open class GraphicsImpl : GraphicsInternal
                 it.renderToOffScreenTarget(engine)
             }
         }
+    }
 
+    private fun renderPostProcessingEffectsToOffscreenTarget(engine: PulseEngineInternal)
+    {
         // Set OpenGL state for rendering post-processing effects
         if (surfaces.anyMatches { it.hasPostProcessingEffects() })
             PostProcessingBaseState.apply(mainSurface)
@@ -133,7 +143,10 @@ open class GraphicsImpl : GraphicsInternal
                 it.runPostProcessingPipeline(engine)
             }
         }
+    }
 
+    private fun renderOffscreenTargetsToBackBuffer()
+    {
         // Set OpenGL state for rendering offscreen target textures to back-buffer
         BackBufferBaseState.apply(surfaces.firstOrNull() ?: mainSurface)
 
@@ -142,13 +155,9 @@ open class GraphicsImpl : GraphicsInternal
         {
             GpuProfiler.measure(label = { "BACK_BUFFER_DRAW (" plus it.config.name plus ")" })
             {
-                fullFrameRenderer.program.bind()
-                fullFrameRenderer.program.setUniformSampler("tex", it.getTexture())
-                fullFrameRenderer.draw()
+                fullFrameRenderer.drawTexture(it.getTexture())
             }
         }
-
-        GpuProfiler.endFrame()
     }
 
     override fun createSurface(

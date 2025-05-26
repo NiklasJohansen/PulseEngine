@@ -2,8 +2,8 @@ package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
-import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
+import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
@@ -22,7 +22,7 @@ class GiSdf(
         engine.asset.loadNow(FragmentShader( "/pulseengine/shaders/lighting/global/sdf.frag"))
     )
 
-    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         fbo.bind()
         fbo.clear()

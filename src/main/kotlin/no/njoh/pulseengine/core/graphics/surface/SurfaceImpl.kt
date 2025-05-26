@@ -34,7 +34,7 @@ class SurfaceImpl(
     private var lineRenderer            = null as LineRenderer?
     private var textureRenderer         = null as TextureRenderer?
     private var stencilRenderer         = null as StencilRenderer?
-    private var bindlessTextureRenderer = null as BindlessTextureRenderer?
+    private var renderTextureRenderer   = null as RenderTextureRenderer?
 
     // Internal functions
     //--------------------------------------------------------------------------------------------
@@ -46,13 +46,13 @@ class SurfaceImpl(
 
         if (!initialized)
         {
-            textRenderer            = TextRenderer(config)
-            quadRenderer            = QuadRenderer(config)
-            lineRenderer            = LineRenderer(config)
-            textureRenderer         = TextureRenderer(config)
-            stencilRenderer         = StencilRenderer()
-            bindlessTextureRenderer = BindlessTextureRenderer(config)
-            renderers               += listOfNotNull(textRenderer, quadRenderer, lineRenderer, textureRenderer, stencilRenderer, bindlessTextureRenderer)
+            textRenderer          = TextRenderer(config)
+            quadRenderer          = QuadRenderer(config)
+            lineRenderer          = LineRenderer(config)
+            textureRenderer       = TextureRenderer(config)
+            stencilRenderer       = StencilRenderer()
+            renderTextureRenderer = RenderTextureRenderer(config)
+            renderers             += listOfNotNull(textRenderer, quadRenderer, lineRenderer, textureRenderer, stencilRenderer, renderTextureRenderer)
 
             renderers.forEachFast { rendererMap[it::class.java] = it }
         }
@@ -149,20 +149,19 @@ class SurfaceImpl(
         quadRenderer?.vertex(x, y)
     }
 
+    override fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees, xOrigin: Float, yOrigin: Float)
+    {
+        renderTextureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin)
+    }
+
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
     {
-        if (texture.isBindless)
-            bindlessTextureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius)
-        else
-            textureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin)
+        textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius)
     }
 
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, uTiling: Float, vTiling: Float)
     {
-        if (texture.isBindless)
-            bindlessTextureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, uTiling, vTiling)
-        else
-            textureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin)
+        textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, uTiling, vTiling)
     }
 
     override fun drawText(text: CharSequence, x: Float, y: Float, font: Font?, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float)
@@ -173,7 +172,7 @@ class SurfaceImpl(
     // Exposed getters
     //------------------------------------------------------------------------------------------------
 
-    override fun getTexture(index: Int, final: Boolean): Texture
+    override fun getTexture(index: Int, final: Boolean): RenderTexture
     {
         if (final) postEffects.forEachReversed { effect -> effect.getTexture(index)?.let { return it } }
 
@@ -184,7 +183,7 @@ class SurfaceImpl(
             )
     }
 
-    override fun getTextures(): List<Texture>
+    override fun getTextures(): List<RenderTexture>
     {
         return renderTarget.getTextures()
     }

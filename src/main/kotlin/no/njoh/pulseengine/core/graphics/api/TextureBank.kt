@@ -35,7 +35,7 @@ class TextureBank
         }
 
         // Fall back to no texture if the upload failed
-        texture.finalize(handle = TextureHandle.NONE, isBindless = true)
+        texture.onUploaded(handle = TextureHandle.NONE)
     }
 
     fun delete(texture: Texture)

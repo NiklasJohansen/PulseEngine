@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Shader
-import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -120,7 +119,7 @@ class ShaderProgram(
         }
     }
 
-    fun setUniformSampler(samplerName: String, texture: Texture, filter: TextureFilter = texture.filter, wrapping: TextureWrapping = texture.wrapping) =
+    fun setUniformSampler(samplerName: String, texture: RenderTexture, filter: TextureFilter = texture.filter, wrapping: TextureWrapping = texture.wrapping) =
         setUniformSampler(samplerName, texture.handle, filter, wrapping)
 
     fun setUniformSampler(samplerName: String, textureHandle: TextureHandle, filter: TextureFilter = LINEAR, wrapping: TextureWrapping = CLAMP_TO_EDGE)

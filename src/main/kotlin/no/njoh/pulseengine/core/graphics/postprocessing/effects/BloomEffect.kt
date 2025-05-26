@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
+import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
@@ -48,7 +49,7 @@ class BloomEffect(
         )
     )
 
-    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         val srcTexture = inTextures[0]
 
@@ -64,7 +65,7 @@ class BloomEffect(
         return fbo.getTextures()
     }
 
-    private fun downSample(srcTexture: Texture)
+    private fun downSample(srcTexture: RenderTexture)
     {
         val textures = fbo.getTextures()
         val program = programs[0] // bloom_downsample
@@ -111,7 +112,7 @@ class BloomEffect(
         disableBlend()
     }
 
-    private fun compose(engine: PulseEngineInternal, srcTexture: Texture)
+    private fun compose(engine: PulseEngineInternal, srcTexture: RenderTexture)
     {
         val program = programs[2] // bloom_final
         val bloomTexture = fbo.getTexture(1)
@@ -132,7 +133,7 @@ class BloomEffect(
         renderer.draw()
     }
 
-    private fun setViewportSizeToFit(texture: Texture)
+    private fun setViewportSizeToFit(texture: RenderTexture)
     {
         glViewport(0, 0, texture.width, texture.height)
     }
