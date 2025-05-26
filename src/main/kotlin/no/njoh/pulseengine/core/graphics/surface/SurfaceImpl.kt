@@ -253,18 +253,18 @@ class SurfaceImpl(
         return this
     }
 
-    private fun createRenderTarget(config: SurfaceConfig) = when (config.multisampling)
-    {
-        Multisampling.NONE -> OffScreenRenderTarget(config.textureScale, config.textureFormat, config.textureFilter, config.attachments)
-        else -> MultisampledOffScreenRenderTarget(config.textureScale, config.textureFormat, config.textureFilter, config.multisampling, config.attachments)
-    }
+    private fun createRenderTarget(config: SurfaceConfig) = RenderTarget(
+        textureDescriptors = config.attachments.map { attachment ->
+            TextureDescriptor(config.textureFormat, config.textureFilter, TextureWrapping.CLAMP_TO_EDGE, config.multisampling, attachment, config.textureScale)
+        }
+    )
 
     override fun setTextureFormat(format: TextureFormat): Surface
     {
         if (format != config.textureFormat)
         {
             config.textureFormat = format
-            renderTarget.textureFormat = format
+            renderTarget.textureDescriptors.forEachFast { it.format = format }
             runOnInitFrame { renderTarget.init(config.width, config.height) }
         }
         return this
@@ -275,7 +275,7 @@ class SurfaceImpl(
         if (filter != config.textureFilter)
         {
             config.textureFilter = filter
-            renderTarget.textureFilter = filter
+            renderTarget.textureDescriptors.forEachFast { it.filter = filter }
             runOnInitFrame { renderTarget.init(config.width, config.height) }
         }
         return this
@@ -286,7 +286,7 @@ class SurfaceImpl(
         if (scale != config.textureScale)
         {
             config.textureScale = scale
-            renderTarget.textureScale = scale
+            renderTarget.textureDescriptors.forEachFast { it.scale = scale }
             runOnInitFrame { renderTarget.init(config.width, config.height) }
         }
         return this

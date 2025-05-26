@@ -22,6 +22,7 @@ open class TextBuilderContext
     infix fun CharSequence.plus(f: Float): StringBuilder        = content.append(this).append(f)
     infix fun CharSequence.plus(l: Long): StringBuilder         = content.append(this).append(l)
     infix fun CharSequence.plus(b: Boolean): StringBuilder      = content.append(this).append(b)
+    infix fun CharSequence.plus(e: Enum<*>): StringBuilder      = content.append(this).append(e.name)
 
     infix fun StringBuilder.plus(s: String): StringBuilder       = if (this !== content) content.append(this).append(s) else append(s)
     infix fun StringBuilder.plus(c: CharSequence): StringBuilder = if (this !== content) content.append(this).append(c) else append(c)
@@ -30,6 +31,7 @@ open class TextBuilderContext
     infix fun StringBuilder.plus(f: Float): StringBuilder        = if (this !== content) content.append(this).append(f) else append(f)
     infix fun StringBuilder.plus(l: Long): StringBuilder         = if (this !== content) content.append(this).append(l) else append(l)
     infix fun StringBuilder.plus(b: Boolean): StringBuilder      = if (this !== content) content.append(this).append(b) else append(b)
+    infix fun StringBuilder.plus(e: Enum<*>): StringBuilder      = if (this !== content) content.append(this).append(e.name) else append(e.name)
 
     infix fun Int.plus(s: String): StringBuilder       = content.append(this).append(s)
     infix fun Int.plus(c: CharSequence): StringBuilder = content.append(this).append(c)
