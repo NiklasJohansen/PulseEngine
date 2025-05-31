@@ -9,7 +9,8 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 class MultiplyEffect(
     override val name: String,
     override val order: Int,
-    private val surfaceName: String
+    private val surfaceName: String,
+    private val bias: Float = 0f
 ) : BaseEffect() {
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
@@ -24,6 +25,7 @@ class MultiplyEffect(
         fbo.bind()
         fbo.clear()
         program.bind()
+        program.setUniform("bias", bias)
         program.setUniformSampler("tex0", inTextures[0])
         program.setUniformSampler("tex1", surface.getTexture())
         renderer.draw()

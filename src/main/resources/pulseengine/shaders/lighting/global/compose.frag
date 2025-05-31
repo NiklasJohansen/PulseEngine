@@ -5,7 +5,6 @@ in vec2 uv;
 
 out vec4 fragColor;
 
-uniform sampler2D baseTex;
 uniform sampler2D localSceneTex;
 uniform sampler2D localSceneMetadataTex;
 uniform sampler2D lightTex;
@@ -14,10 +13,11 @@ uniform sampler2D localSdfTex;
 uniform float dithering;
 uniform float scale;
 uniform float sourceMultiplier;
-uniform vec2 resolution;
+uniform vec2 localSdfRes;
 uniform vec2 sampleOffset;
 uniform vec4 ambientLight;
 uniform vec4 ambientOccluderLight;
+uniform vec2 lightTexUvMax;
 
 float getSdfDistance(vec2 p)
 {
@@ -36,11 +36,15 @@ vec2 getSdfDirection(vec2 p)
     );
 }
 
+float hash(vec2 uv)
+{
+    return fract(sin(7.289 * uv.x + 11.23 * uv.y) * 23758.5453);
+}
+
 void main()
 {
     vec2 offsetUv = clamp(uv + sampleOffset, 0.0, 1.0);
-    vec3 base = texture(baseTex, uv).rgb;
-    vec3 light = texture(lightTex, offsetUv).rgb;
+    vec3 light = texture(lightTex, offsetUv * lightTexUvMax).rgb;
     vec4 scene = texture(localSceneTex, offsetUv);
     vec4 sceneMeta = texture(localSceneMetadataTex, offsetUv);
 
@@ -57,22 +61,24 @@ void main()
         {
             light = ambientOccluderLight.rgb;
 
-            float o = 0.005 * scale;
+            float o = 0.003 * scale;
             vec2 offset[9] = vec2[9](vec2(0,0), vec2(o,0), vec2(-o,0), vec2(0,o), vec2(0,-o), vec2(o,o), vec2(-o,o), vec2(o,-o), vec2(-o,-o));
             float edgeLightStrengt = sceneMeta.a * 0.01;
 
             for (int i = 0; i < 9; i++)
             {
-                vec2 pos = clamp(offsetUv + offset[i], 0.0, 1.0);
+                float noise = hash(uv) * 2.0 - 1.0;
+                vec2 pos = clamp(offsetUv + offset[i] + 0.0005 * noise, 0.0, 1.0);
                 vec2 dir = getSdfDirection(pos);
-                float dist = getSdfDistance(pos);
+                float dist = getSdfDistance(pos) + abs(noise * 0.1);
 
                 float falloff = edgeLightStrengt / (1.0 + (0.05 * dist / scale));
                 falloff = clamp(falloff, 0.0, 1.0);
-                falloff = pow(falloff, 3.0);
+                falloff = pow(falloff, 7.0);
 
-                vec2 samplePos = clamp(offsetUv + dir * dist * 1.1 / resolution, 0.0, 1.0);
-                light += texture(lightTex, samplePos).rgb * falloff / 9.0;
+                vec2 samplePos = clamp(offsetUv + dir * dist * 1.2 / localSdfRes, 0.0, 1.0);
+                if (samplePos.x != 0.0 && samplePos.y != 0.0)
+                    light += texture(lightTex, samplePos * lightTexUvMax).rgb * falloff / 9.0;
             }
         }
     }
@@ -84,5 +90,5 @@ void main()
     float noise = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
     light += mix(-dithering / 255.0, dithering / 255.0, noise);
 
-    fragColor = vec4(base + light, 1.0);
+    fragColor = vec4(light, 1.0);
 }

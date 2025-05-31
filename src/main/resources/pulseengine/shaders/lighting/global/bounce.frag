@@ -15,6 +15,7 @@ uniform float bounceEdgeFade;
 uniform float bounceRadius;
 uniform vec2 resolution;
 uniform float scale;
+uniform vec2 lightTexUvMax;
 
 void main()
 {
@@ -35,7 +36,7 @@ void main()
             bool isOpenSpace = texture(sceneTex, clamp(uv + dir[i], 0, 1)).a < 0.5;
             if (isOpenSpace)
             {
-                lightAcc += texture(lightTex, clamp(uvLastFrame + dir[i] * 4, 0, 1)).rgb;
+                lightAcc += texture(lightTex, clamp(lightTexUvMax * uvLastFrame + dir[i] * 4, 0, 1)).rgb;
                 n++;
             }
         }

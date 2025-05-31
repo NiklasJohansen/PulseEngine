@@ -2,8 +2,8 @@
 
 #define TAU 6.28318530718
 #define PI 3.14159265359
-#define SCREEN 0.0
-#define WORLD 1.0
+#define LOCAL 0.0
+#define GLOBAL 1.0
 #define NO_HIT -1.0
 #define MIN_STEP 0.01
 
@@ -19,8 +19,10 @@ uniform sampler2D localSdfTex;
 uniform sampler2D globalSdfTex;
 uniform sampler2D upperCascadeTex;
 
-uniform float localDistRatio;
-uniform float globalDistRatio;
+uniform vec2 localSceneRes;
+uniform vec2 globalSceneRes;
+uniform float localSceneScale;
+uniform float globalSceneScale;
 uniform vec2 resolution;
 uniform vec2 invResolution;
 uniform vec4 skyColor;
@@ -45,33 +47,40 @@ const float sqrtBase = sqrt(baseRayCount);
 
 vec4 raymarch(vec2 rayPos, vec2 rayDir, float rayLen)
 {
+    float localToGlobalScale = globalSceneScale / localSceneScale;
+    vec2 sceneRes = localSceneRes;
     float traveledDist = 0.0;
     float stepSizeScale = 1.0;
-    float distRatio = localDistRatio;
-    float space = SCREEN;
+    float space = LOCAL;
     int steps = 0;
+
+    // Transform to local scene space (scene may have a different resolution than RC texture)
+    rayPos *= localSceneScale;
+    rayLen *= localSceneScale;
 
     while (steps < maxSteps && traveledDist < rayLen)
     {
-        float fieldDist = texture(space == SCREEN ? localSdfTex : globalSdfTex, rayPos * invResolution).r;
-        float stepSize = max(fieldDist, 0.0) * distRatio;
+        float stepSize = max(0.0, texture(space == LOCAL ? localSdfTex : globalSdfTex, rayPos / sceneRes).r);
         vec2 samplePos = rayPos + rayDir * stepSize;
 
-        if (samplePos.x < 0.0 || samplePos.x >= resolution.x || samplePos.y < 0.0 || samplePos.y >= resolution.y)
+        if (samplePos.x <= 0.0 || samplePos.x >= sceneRes.x || samplePos.y <= 0.0 || samplePos.y >= sceneRes.y)
         {
-            if (traceWorldRays && space == SCREEN)
+            if (traceWorldRays && space == LOCAL && cascadeIndex > 1)
             {
-                rayPos = (rayPos - camOrigin * resolution) * invWorldScale + camOrigin * resolution; // Remap position to world space
-                distRatio = globalDistRatio;
+                rayPos = (rayPos - camOrigin * sceneRes) * invWorldScale + camOrigin * sceneRes; // Remap position to global space
+                rayPos *= localToGlobalScale;
+                rayLen *= localToGlobalScale;
+                traveledDist *= localToGlobalScale;
                 stepSizeScale = worldScale;
-                space = WORLD;
+                sceneRes = globalSceneRes;
+                space = GLOBAL;
                 continue;
             }
             else break;
         }
 
         if (stepSize <= MIN_STEP)
-            return vec4(samplePos, space, steps); // Hit
+            return vec4(samplePos / sceneRes, space, steps); // Hit
 
         rayPos = samplePos;
         traveledDist += stepSize * stepSizeScale;
@@ -83,8 +92,8 @@ vec4 raymarch(vec2 rayPos, vec2 rayDir, float rayLen)
 
 vec4 sampleScene(float space, vec2 originPos, vec2 hitPosUv, vec2 rayDir)
 {
-    vec4 color = texture(space == SCREEN ? localSceneTex : globalSceneTex, hitPosUv);
-    vec4 metadata = texture(space == SCREEN ? localMetadataTex : globalMetadataTex, hitPosUv);
+    vec4 color = texture(space == LOCAL ? localSceneTex : globalSceneTex, hitPosUv);
+    vec4 metadata = texture(space == LOCAL ? localMetadataTex : globalMetadataTex, hitPosUv);
     float intensity = metadata.b;
     float radius = metadata.a;
     float coneAngle = metadata.r * PI;
@@ -100,8 +109,8 @@ vec4 sampleScene(float space, vec2 originPos, vec2 hitPosUv, vec2 rayDir)
 
     if (radius > 0.0) // Lights with radius
     {
-        vec2 hitPos = (space == SCREEN) ? hitPosUv : (hitPosUv - camOrigin) * worldScale + camOrigin;
-        float dist = distance(hitPos * resolution, originPos);
+        vec2 hitPos = (space == LOCAL) ? hitPosUv : (hitPosUv - camOrigin) * worldScale + camOrigin;
+        float dist = distance(hitPos * (space == LOCAL ? localSceneRes : globalSceneRes), originPos);
         color.rgb *= clamp((radius * camScale) / (dist * dist), 0.0, 1.0);
     }
 
@@ -113,16 +122,15 @@ vec4 getRadiance(vec2 probeCenter, vec2 rayStart, vec2 rayEnd)
     float rayLen = distance(rayStart, rayEnd);
     vec2 rayDir = (rayEnd - rayStart) / rayLen;
     vec4 result = raymarch(rayStart, rayDir, rayLen);
-    float space = result.z; // 0=screen, 1=world, -1=no hit
+    float space = result.z; // 0=local, 1=global, -1=no hit
 
     if (space == NO_HIT)
         return vec4(0, 0, 0, result.w == maxSteps ? -1 : 0); // No hit, use a=-1 if max steps reached (prevent merge and sun/sky radiance)
 
-    vec2 hitPosUv = result.xy * invResolution;
-    vec4 sceneColor = sampleScene(space, probeCenter, hitPosUv, rayDir);
+    vec4 sceneColor = sampleScene(space, probeCenter, result.xy, rayDir);
 
     // Fade out global radiance at the edge of the world to prevent popping when lights go out of global view
-    sceneColor.rgb *= 1.0 - space * smoothstep(0.45, 0.5, max(abs(hitPosUv.x - 0.5), abs(hitPosUv.y - 0.5)));
+    sceneColor.rgb *= 1.0 - space * smoothstep(0.45, 0.5, max(abs(result.x - 0.5), abs(result.y - 0.5)));
 
     return sceneColor;
 }

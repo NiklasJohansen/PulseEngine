@@ -11,6 +11,8 @@ import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
+import no.njoh.pulseengine.core.shared.utils.Extensions.component1
+import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
 import org.joml.Matrix4f
 
@@ -34,6 +36,7 @@ class GiSceneBounce(
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
         val lightTexture = lightSurface.getTexture()
+        val (uMax, vMax) = lightSystem.getLightTexUvMax(engine)
 
         fbo.bind()
         fbo.clear()
@@ -45,6 +48,7 @@ class GiSceneBounce(
         program.setUniform("bounceEdgeFade", lightSystem.bounceEdgeFade)
         program.setUniform("resolution", lightTexture.width.toFloat(), lightTexture.height.toFloat())
         program.setUniform("scale", lightSurface.camera.scale.x)
+        program.setUniform("lightTexUvMax", uMax, vMax)
         program.setUniformSampler("sceneTex", inTextures[0])
         program.setUniformSampler("sceneMetaTex", inTextures[1])
         program.setUniformSampler("lightTex", lightTexture)

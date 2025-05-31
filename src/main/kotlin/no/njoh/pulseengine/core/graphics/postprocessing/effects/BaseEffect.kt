@@ -18,9 +18,9 @@ abstract class BaseEffect(
     protected val renderers = mutableListOf<FullFrameRenderer>()
     protected val programs = mutableListOf<ShaderProgram>()
 
-    protected val fbo;      get() = frameBuffers[0]
-    protected val renderer; get() = renderers[0]
-    protected val program;  get() = programs[0]
+    val fbo;      get() = frameBuffers[0]
+    val renderer; get() = renderers[0]
+    val program;  get() = programs[0]
 
     constructor(vararg textureDescriptors: TextureDescriptor, numFrameBufferObjects: Int = 1) : this(textureDescriptors.toList(), numFrameBufferObjects)
 

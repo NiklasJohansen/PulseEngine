@@ -14,8 +14,11 @@ import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
+import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.modules.lighting.global.effects.*
 import no.njoh.pulseengine.modules.lighting.global.effects.GiJfa.JfaMode.*
+import no.njoh.pulseengine.modules.lighting.global.effects.GiRadianceCascades.Companion.BASE_RAY_COUNT
+import org.joml.Vector2f
 
 import kotlin.math.*
 
@@ -40,7 +43,7 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 15, min=0f)             var drawCascade = 0
     @Prop(i = 16, min=0f)             var maxCascades = 10
     @Prop(i = 17, min=0f)             var maxSteps = 30
-    @Prop(i = 19, min=0f)             var intervalLength = 1f
+    @Prop(i = 19, min=0f)             var intervalLength = 0.5f
     @Prop(i = 21, min=0f, max=1f)     var bounceAccumulation = 0.5f
     @Prop(i = 22, min=0f)             var bounceRadius = 0f // 0=infinite
     @Prop(i = 23, min=0f, max=1f)     var bounceEdgeFade = 0.2f
@@ -121,7 +124,8 @@ open class GlobalIlluminationSystem : SceneSystem()
             zOrder = engine.gfx.mainSurface.config.zOrder + 2,
             isVisible = false,
             backgroundColor = Color.BLANK,
-            attachments = listOf(COLOR_TEXTURE_0)
+            attachments = listOf(COLOR_TEXTURE_0),
+            textureSizeFunc = ::lightTextureSizeFunc
         ).apply {
             addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_LOCAL_SDF, GI_GLOBAL_SDF))
         }
@@ -139,31 +143,38 @@ open class GlobalIlluminationSystem : SceneSystem()
         }
     }
 
+    fun lightTextureSizeFunc(width: Int, height: Int, scale: Float): PackedSize
+    {
+        val scaledWidth = ceil(width * scale).toInt()
+        val scaledHeight = ceil(height * scale).toInt()
+        val diagonal = sqrt((scaledWidth * scaledWidth + scaledHeight * scaledHeight).toFloat())
+        val cascadeCount = min(ceil(log2(diagonal) / log2(BASE_RAY_COUNT)).toInt() + 1, max(1, maxCascades))
+        val maxProbeSize = 2f.pow(cascadeCount)
+        val w = ceil(scaledWidth / maxProbeSize) * maxProbeSize
+        val h = ceil(scaledHeight / maxProbeSize) * maxProbeSize
+        return PackedSize(w, h)
+    }
+
     override fun onUpdate(engine: PulseEngine)
     {
+        engine.gfx.getSurface(GI_LIGHT_RAW)?.setTextureScale(lightTexScale)
         engine.gfx.getSurface(GI_LOCAL_SDF)?.setTextureScale(localSceneTexScale)
-        engine.gfx.getSurface(GI_LOCAL_SCENE)?.apply()
-        {
-            setTextureScale(localSceneTexScale)
-            getRenderer<GiSceneRenderer>()?.jitterFix = jitterFix
-        }
-
+        engine.gfx.getSurface(GI_LOCAL_SCENE)?.setTextureScale(localSceneTexScale)
         engine.gfx.getSurface(GI_GLOBAL_SDF)?.setTextureScale(globalSceneTexScale)
-        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.apply()
+        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.setTextureScale(globalSceneTexScale)
+
+        engine.gfx.getSurface(GI_LOCAL_SCENE)?.getRenderer<GiSceneRenderer>()?.jitterFix = jitterFix
+        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.getRenderer<GiSceneRenderer>()?.let()
         {
-            setTextureScale(globalSceneTexScale)
-            getRenderer<GiSceneRenderer>()?.let()
-            {
-                it.jitterFix = jitterFix
-                it.worldScale = worldScale
-                it.upscaleSmallSources = upscaleSmaleSources
-            }
+            it.jitterFix = jitterFix
+            it.worldScale = worldScale
+            it.upscaleSmallSources = upscaleSmaleSources
         }
 
         if (targetSurface != lastTargetSurface)
         {
             engine.gfx.getSurface(lastTargetSurface)?.deletePostProcessingEffect(GI_BLEND_EFFECT)
-            engine.gfx.getSurface(targetSurface)?.addPostProcessingEffect(MultiplyEffect(GI_BLEND_EFFECT, order = 15, GI_LIGHT_FINAL))
+            engine.gfx.getSurface(targetSurface)?.addPostProcessingEffect(MultiplyEffect(GI_BLEND_EFFECT, order = 15, GI_LIGHT_FINAL, bias = 0.05f))
             lastTargetSurface = targetSurface
         }
     }
@@ -213,8 +224,21 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.scene.forEachEntityOfType<GiLightSource> { it.drawLightSource(engine, surface) }
     }
 
+    fun getLightTexUvMax(engine: PulseEngine): Vector2f
+    {
+        val lightSurface = engine.gfx.getSurface(GI_LIGHT_RAW) ?: return LIGHT_TEX_UV_MAX.set(1f, 1f)
+        val lightTex = lightSurface.getTexture()
+        val scaledLightTexWidth = lightSurface.config.width * lightSurface.config.textureScale
+        val scaledLightTexHeight = lightSurface.config.height * lightSurface.config.textureScale
+        val uMax = (scaledLightTexWidth / lightTex.width)
+        val vMax = (scaledLightTexHeight / lightTex.height)
+        return LIGHT_TEX_UV_MAX.set(uMax, vMax)
+    }
+
     companion object
     {
+        private val LIGHT_TEX_UV_MAX = Vector2f(1f, 1f)
+
         const val GI_LOCAL_SCENE  = "gi_local_scene"
         const val GI_GLOBAL_SCENE = "gi_global_scene"
         const val GI_LOCAL_SDF    = "gi_local_sdf"
