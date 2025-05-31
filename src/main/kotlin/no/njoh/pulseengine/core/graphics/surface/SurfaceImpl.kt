@@ -255,7 +255,15 @@ class SurfaceImpl(
 
     private fun createRenderTarget(config: SurfaceConfig) = RenderTarget(
         textureDescriptors = config.attachments.map { attachment ->
-            TextureDescriptor(config.textureFormat, config.textureFilter, TextureWrapping.CLAMP_TO_EDGE, config.multisampling, attachment, config.textureScale)
+            TextureDescriptor(
+                format = config.textureFormat,
+                filter = config.textureFilter,
+                wrapping = TextureWrapping.CLAMP_TO_EDGE,
+                multisampling = config.multisampling,
+                attachment = attachment,
+                scale = config.textureScale,
+                sizeFunc = config.textureSizeFunc
+            )
         }
     )
 

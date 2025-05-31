@@ -14,6 +14,7 @@ import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
@@ -170,6 +171,7 @@ open class GraphicsImpl : GraphicsInternal
         textureScale: Float,
         textureFormat: TextureFormat,
         textureFilter: TextureFilter,
+        textureSizeFunc: (width: Int, height: Int, scale: Float) -> PackedSize,
         multisampling: Multisampling,
         blendFunction: BlendFunction,
         attachments: List<Attachment>,
@@ -190,6 +192,7 @@ open class GraphicsImpl : GraphicsInternal
                 textureScale = textureScale,
                 textureFormat = textureFormat,
                 textureFilter = textureFilter,
+                textureSizeFunc = textureSizeFunc,
                 multisampling = multisampling,
                 blendFunction = blendFunction,
                 attachments = attachments,
