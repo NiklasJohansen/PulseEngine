@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
@@ -73,7 +74,8 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
         program.bind()
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", surface.camera.viewMatrix)
-        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+        program.setUniform("cameraAngle", surface.camera.rotation.z)
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays(), filter = TextureFilter.LINEAR)
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
     }
@@ -102,20 +104,15 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
     ) {
         instanceBuffer.fill(17)
         {
-            put(x)
-            put(y)
-            put(config.currentDepth)
-            put(w)
-            put(h)
-            put(xOrigin)
-            put(yOrigin)
+            put(x, y, config.currentDepth)
+            put(w, h)
+            put(xOrigin, yOrigin)
             put(rot)
             put(texture?.uMin ?: 0f)
             put(texture?.vMin ?: 0f)
             put(texture?.uMax ?: 1f)
             put(texture?.vMax ?: 1f)
-            put(uTiling)
-            put(vTiling)
+            put(uTiling, vTiling)
             put(texture?.handle?.toFloat() ?: -1f)
             put(normalScale * orientation.xDir)
             put(normalScale * orientation.yDir)

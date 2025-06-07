@@ -19,6 +19,7 @@ class GiCompose(
     private val localSceneSurfaceName: String,
     private val localSdfSurfaceName: String,
     private val lightSurfaceName: String,
+    private val normalMapSurfaceName: String,
     override val name: String = "compose",
     override val order: Int = 0
 ) : BaseEffect(
@@ -33,6 +34,7 @@ class GiCompose(
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
+        val normalSurface = engine.gfx.getSurface(normalMapSurfaceName) ?: return inTextures
         val localSceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
         val localSdfSurface = engine.gfx.getSurface(localSdfSurfaceName) ?: return inTextures
         val localSdfTexture = localSdfSurface.getTexture()
@@ -53,10 +55,12 @@ class GiCompose(
         program.setUniform("ambientLight", lightSystem.ambientLight)
         program.setUniform("ambientOccluderLight", lightSystem.ambientOccluderLight)
         program.setUniform("lightTexUvMax", uMax, vMax)
+        program.setUniform("normalMapScale", lightSystem.normalMapScale)
         program.setUniformSampler("localSceneTex", localSceneSurface.getTexture(0, final = false), filter = LINEAR)
         program.setUniformSampler("localSceneMetadataTex", localSceneSurface.getTexture(1, final = false), filter = NEAREST)
         program.setUniformSampler("lightTex", lightSurface.getTexture(), filter = lightSystem.lightTexFilter)
         program.setUniformSampler("localSdfTex", localSdfTexture)
+        program.setUniformSampler("normalMapTex", normalSurface.getTexture())
         renderer.draw()
         fbo.release()
 

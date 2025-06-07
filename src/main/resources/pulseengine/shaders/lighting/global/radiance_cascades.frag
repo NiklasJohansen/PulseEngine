@@ -17,6 +17,7 @@ uniform sampler2D globalSceneTex;
 uniform sampler2D globalMetadataTex;
 uniform sampler2D localSdfTex;
 uniform sampler2D globalSdfTex;
+uniform sampler2D normalMapTex;
 uniform sampler2D upperCascadeTex;
 
 uniform vec2 localSceneRes;
@@ -41,6 +42,7 @@ uniform int maxSteps;
 uniform float camAngle;
 uniform float camScale;
 uniform vec2 camOrigin;
+uniform float normalMapScale;
 
 const float baseRayCount = 4.0;
 const float sqrtBase = sqrt(baseRayCount);
@@ -103,8 +105,7 @@ vec4 sampleScene(float space, vec2 originPos, vec2 hitPosUv, vec2 rayDir)
         float sourceDir = metadata.g * TAU;
         vec2 coneDir = vec2(cos(sourceDir + camAngle), sin(sourceDir + camAngle));
         float dotK = max(dot(coneDir, -rayDir), 0.0);
-        float d = cos(coneAngle);
-        color.rgb *= clamp((dotK - d), 0, 1);
+        color.rgb *= clamp((dotK - cos(coneAngle)), 0, 1);
     }
 
     if (radius > 0.0) // Lights with radius
@@ -224,14 +225,18 @@ void main()
     // The total radiance for the current probe
     vec3 totalProbeRadiance = vec3(0.0);
 
+    // Sample normal map
+    vec2 normalUv = probeCenterPos * localSceneScale / localSceneRes;
+    vec3 normal = normalize(texture(normalMapTex, normalUv).xyz * 2.0 - 1.0);
+
     // Gather radiance from each ray of the current probe
     for (int i = 0; i < int(baseRayCount); i++)
     {
         // Ray angle based on the index of the current ray (in range 0 - 3 in c0, 0 - 15 in c1, etc.)
         float rayIndex = baseRayIndex + float(i);
         float rayAngle = (rayIndex + 0.5) * angleStepSize - camAngle;
-        vec2 dir = vec2(cos(rayAngle), -sin(rayAngle));
-        vec2 rayStart = probeCenterPos + dir * intervalStart;
+        vec2 rayDir = vec2(cos(rayAngle), -sin(rayAngle));
+        vec2 rayStart = probeCenterPos + rayDir * intervalStart;
         vec4 deltaRadiance = vec4(0.0);
 
         if (bilinearFix)
@@ -241,7 +246,7 @@ void main()
             {
                 vec2 upperProbeIndex = upperBillinearProbeIndecies[j];
                 vec2 upperProbeCenterPos = (upperProbeIndex + 0.5) * upperProbeSpacing;
-                vec2 rayEnd = upperProbeCenterPos + dir * intervalEnd;
+                vec2 rayEnd = upperProbeCenterPos + rayDir * intervalEnd;
                 vec4 radiance = getRadiance(probeCenterPos, rayStart, rayEnd);
                 rad[j] = merge(radiance, rayIndex, upperProbeIndex);
             }
@@ -251,7 +256,7 @@ void main()
         else
         {
             vec2 upperProbeIndex = (probeIndex - 0.5) / sqrtBase;
-            vec2 rayEnd   = probeCenterPos + dir * intervalEnd;
+            vec2 rayEnd = probeCenterPos + rayDir * intervalEnd;
             vec4 radiance = getRadiance(probeCenterPos, rayStart, rayEnd);
             deltaRadiance = merge(radiance, rayIndex, upperProbeIndex);
         }
@@ -265,10 +270,17 @@ void main()
             deltaRadiance.rgb = max(sunAndSkyRandiance, deltaRadiance.rgb);
         }
 
+        // Integrate normal map in the lowest cascades
+        if (cascadeIndex < 2.0)
+        {
+            vec3 lightDir = normalize(vec3(rayDir, normalMapScale != 0.0 ? 1.0 / normalMapScale : 100000.0));
+            deltaRadiance.rgb *= clamp(dot(normal, lightDir) * 2, 0.0, 1.0);
+        }
+
         // Accumulate the radiance from this ray
         totalProbeRadiance += deltaRadiance.rgb;
     }
 
-    // Divide by the amount of rays to get the average incoming radiance
+    // Divide by the amount of rays to get the average incoming radiance for this probe
     fragColor = vec4(totalProbeRadiance / baseRayCount, 1.0);
 }

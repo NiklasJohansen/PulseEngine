@@ -22,6 +22,7 @@ class GiRadianceCascades(
     private val globalSceneSurfaceName: String,
     private val localSdfSurfaceName: String,
     private val globalSdfSurfaceName: String,
+    private val normalMapSurfaceName: String,
     override val name: String = "radiance_cascades",
     override val order: Int = 0
 ) : BaseEffect(
@@ -46,6 +47,7 @@ class GiRadianceCascades(
         val globalSceneSurface = engine.gfx.getSurface(globalSceneSurfaceName) ?: return inTextures
         val localSdfSurface = engine.gfx.getSurface(localSdfSurfaceName) ?: return inTextures
         val globalSdfSurface = engine.gfx.getSurface(globalSdfSurfaceName) ?: return inTextures
+        val normalMapSurface = engine.gfx.getSurface(normalMapSurfaceName) ?: return inTextures
         val localSdfTex = localSdfSurface.getTexture()
         val globalSdfTex = globalSdfSurface.getTexture()
         val lightTexWidth = fbo.getTexture().width.toFloat()
@@ -78,6 +80,7 @@ class GiRadianceCascades(
         program.setUniform("bilinearFix", lightSystem.bilinearFix)
         program.setUniform("intervalLength", lightSystem.intervalLength)
         program.setUniform("cascadeCount", cascadeCount.toFloat())
+        program.setUniform("normalMapScale", lightSystem.normalMapScale)
         program.setUniform("worldScale", worldScale)
         program.setUniform("invWorldScale", 1f / worldScale)
         program.setUniform("traceWorldRays", lightSystem.traceWorldRays)
@@ -92,6 +95,7 @@ class GiRadianceCascades(
         program.setUniformSampler("globalMetadataTex", globalSceneSurface.getTexture(1))
         program.setUniformSampler("localSdfTex", localSdfTex)
         program.setUniformSampler("globalSdfTex", globalSdfTex)
+        program.setUniformSampler("normalMapTex", normalMapSurface.getTexture())
 
         setViewportSizeToFit(fbo.getTexture())
 

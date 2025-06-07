@@ -9,6 +9,7 @@ uniform sampler2D localSceneTex;
 uniform sampler2D localSceneMetadataTex;
 uniform sampler2D lightTex;
 uniform sampler2D localSdfTex;
+uniform sampler2D normalMapTex;
 
 uniform float dithering;
 uniform float scale;
@@ -18,6 +19,7 @@ uniform vec2 sampleOffset;
 uniform vec4 ambientLight;
 uniform vec4 ambientOccluderLight;
 uniform vec2 lightTexUvMax;
+uniform float normalMapScale;
 
 float getSdfDistance(vec2 p)
 {
@@ -65,6 +67,8 @@ void main()
             vec2 offset[9] = vec2[9](vec2(0,0), vec2(o,0), vec2(-o,0), vec2(0,o), vec2(0,-o), vec2(o,o), vec2(-o,o), vec2(o,-o), vec2(-o,-o));
             float edgeLightStrengt = sceneMeta.a * 0.01;
 
+            vec3 normal = normalize(texture(normalMapTex, offsetUv).xyz * 2.0 - 1.0);
+
             for (int i = 0; i < 9; i++)
             {
                 float noise = hash(uv) * 2.0 - 1.0;
@@ -75,6 +79,9 @@ void main()
                 float falloff = edgeLightStrengt / (1.0 + (0.05 * dist / scale));
                 falloff = clamp(falloff, 0.0, 1.0);
                 falloff = pow(falloff, 7.0);
+
+                vec3 lightDir = normalize(vec3(dir, normalMapScale != 0.0 ? 1.0 / normalMapScale : 100000.0));
+                falloff *= clamp(dot(normal, lightDir) * 2, 0.0, 1.0);
 
                 vec2 samplePos = clamp(offsetUv + dir * dist * 1.2 / localSdfRes, 0.0, 1.0);
                 if (samplePos.x != 0.0 && samplePos.y != 0.0)

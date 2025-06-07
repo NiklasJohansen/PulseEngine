@@ -50,7 +50,7 @@ open class Lamp : StandardSceneEntity(), DirectLightSource, GiLightSource
         }
     }
 
-    override fun onFixedUpdate(engine: PulseEngine)
+    override fun onUpdate(engine: PulseEngine)
     {
         if (engine.scene.state != RUNNING)
             return
@@ -58,10 +58,10 @@ open class Lamp : StandardSceneEntity(), DirectLightSource, GiLightSource
         if (trackParent)
         {
             val target = engine.scene.getEntityOfType<Spatial>(parentId) ?: return
-            val angle = initAngle - target.rotation.toRadians()
-            x = target.x + cos(angle) * initLength
-            y = target.y + sin(angle) * initLength
-            rotation = target.rotation + initRotation
+            val angle = initAngle - target.rotationInterpolated().toRadians()
+            x = target.xInterpolated() + cos(angle) * initLength
+            y = target.yInterpolated() + sin(angle) * initLength
+            rotation = target.rotationInterpolated() + initRotation
         }
     }
 

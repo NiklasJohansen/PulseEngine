@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.NONE
+import no.njoh.pulseengine.core.graphics.api.NativeMipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.MultiplyEffect
@@ -18,6 +19,8 @@ import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.modules.lighting.global.effects.*
 import no.njoh.pulseengine.modules.lighting.global.effects.GiJfa.JfaMode.*
 import no.njoh.pulseengine.modules.lighting.global.effects.GiRadianceCascades.Companion.BASE_RAY_COUNT
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapped
 import org.joml.Vector2f
 
 import kotlin.math.*
@@ -47,14 +50,15 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 21, min=0f, max=1f)     var bounceAccumulation = 0.5f
     @Prop(i = 22, min=0f)             var bounceRadius = 0f // 0=infinite
     @Prop(i = 23, min=0f, max=1f)     var bounceEdgeFade = 0.2f
-    @Prop(i = 24, min=0f)             var sourceMultiplier = 1f
-    @Prop(i = 25, min=1f)             var worldScale = 4f
-    @Prop(i = 26)                     var traceWorldRays = true
-    @Prop(i = 27)                     var mergeCascades = true
-    @Prop(i = 28)                     var bilinearFix = true
-    @Prop(i = 30)                     var jitterFix = true
-    @Prop(i = 31)                     var upscaleSmaleSources = true
-    @Prop(i = 32)                     var targetSurface = "main"
+    @Prop(i = 24, min=0f)             var normalMapScale = 1f
+    @Prop(i = 25, min=0f)             var sourceMultiplier = 1f
+    @Prop(i = 26, min=1f)             var worldScale = 4f
+    @Prop(i = 27)                     var traceWorldRays = true
+    @Prop(i = 28)                     var mergeCascades = true
+    @Prop(i = 20)                     var bilinearFix = true
+    @Prop(i = 31)                     var jitterFix = true
+    @Prop(i = 32)                     var upscaleSmaleSources = true
+    @Prop(i = 33)                     var targetSurface = "main"
 
     private var lastTargetSurface = ""
 
@@ -63,7 +67,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.createSurface(
             name = GI_LOCAL_SCENE,
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 6,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 7,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -78,7 +82,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.gfx.createSurface(
             name = GI_GLOBAL_SCENE,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 5,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 6,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -92,7 +96,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.gfx.createSurface(
             name = GI_LOCAL_SDF,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 4,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 5,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -106,7 +110,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.gfx.createSurface(
             name = GI_GLOBAL_SDF,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 3,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 4,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -119,6 +123,19 @@ open class GlobalIlluminationSystem : SceneSystem()
         }
 
         engine.gfx.createSurface(
+            name = GI_NORMAL_MAP,
+            camera = engine.gfx.mainCamera,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 3,
+            isVisible = false,
+            backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
+            textureFormat = RGBA16F,
+            textureFilter = LINEAR_MIPMAP,
+            mipmapGenerator = NativeMipmapGenerator()
+        ).apply {
+            addRenderer(NormalMapRenderer((this as SurfaceInternal).config))
+        }
+
+        engine.gfx.createSurface(
             name = GI_LIGHT_RAW,
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 2,
@@ -127,7 +144,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             attachments = listOf(COLOR_TEXTURE_0),
             textureSizeFunc = ::lightTextureSizeFunc
         ).apply {
-            addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_LOCAL_SDF, GI_GLOBAL_SDF))
+            addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_LOCAL_SDF, GI_GLOBAL_SDF, GI_NORMAL_MAP))
         }
 
         engine.gfx.createSurface(
@@ -139,20 +156,8 @@ open class GlobalIlluminationSystem : SceneSystem()
             blendFunction = ADDITIVE,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(GiCompose(GI_LOCAL_SCENE, GI_LOCAL_SDF, GI_LIGHT_RAW))
+            addPostProcessingEffect(GiCompose(GI_LOCAL_SCENE, GI_LOCAL_SDF, GI_LIGHT_RAW, GI_NORMAL_MAP))
         }
-    }
-
-    fun lightTextureSizeFunc(width: Int, height: Int, scale: Float): PackedSize
-    {
-        val scaledWidth = ceil(width * scale).toInt()
-        val scaledHeight = ceil(height * scale).toInt()
-        val diagonal = sqrt((scaledWidth * scaledWidth + scaledHeight * scaledHeight).toFloat())
-        val cascadeCount = min(ceil(log2(diagonal) / log2(BASE_RAY_COUNT)).toInt() + 1, max(1, maxCascades))
-        val maxProbeSize = 2f.pow(cascadeCount)
-        val w = ceil(scaledWidth / maxProbeSize) * maxProbeSize
-        val h = ceil(scaledHeight / maxProbeSize) * maxProbeSize
-        return PackedSize(w, h)
     }
 
     override fun onUpdate(engine: PulseEngine)
@@ -195,6 +200,10 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     override fun onRender(engine: PulseEngine)
     {
+        val normalSurface = engine.gfx.getSurface(GI_NORMAL_MAP)
+        if (normalSurface != null)
+            engine.scene.forEachEntityOfType<NormalMapped> { it.renderCustomPass(engine, normalSurface) }
+
         drawScene(engine, surface = engine.gfx.getSurface(GI_LOCAL_SCENE) ?: return)
 
         if (traceWorldRays)
@@ -208,6 +217,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.deleteSurface(GI_GLOBAL_SCENE)
         engine.gfx.deleteSurface(GI_LOCAL_SDF)
         engine.gfx.deleteSurface(GI_GLOBAL_SDF)
+        engine.gfx.deleteSurface(GI_NORMAL_MAP)
         engine.gfx.deleteSurface(GI_LIGHT_RAW)
         engine.gfx.deleteSurface(GI_LIGHT_FINAL)
         lastTargetSurface = ""
@@ -222,6 +232,18 @@ open class GlobalIlluminationSystem : SceneSystem()
     {
         engine.scene.forEachEntityOfType<GiOccluder> { it.drawOccluder(engine, surface) }
         engine.scene.forEachEntityOfType<GiLightSource> { it.drawLightSource(engine, surface) }
+    }
+
+    private fun lightTextureSizeFunc(width: Int, height: Int, scale: Float): PackedSize
+    {
+        val scaledWidth = ceil(width * scale).toInt()
+        val scaledHeight = ceil(height * scale).toInt()
+        val diagonal = sqrt((scaledWidth * scaledWidth + scaledHeight * scaledHeight).toFloat())
+        val cascadeCount = min(ceil(log2(diagonal) / log2(BASE_RAY_COUNT)).toInt() + 1, max(1, maxCascades))
+        val maxProbeSize = 2f.pow(cascadeCount)
+        val w = ceil(scaledWidth / maxProbeSize) * maxProbeSize
+        val h = ceil(scaledHeight / maxProbeSize) * maxProbeSize
+        return PackedSize(w, h)
     }
 
     fun getLightTexUvMax(engine: PulseEngine): Vector2f
@@ -243,6 +265,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         const val GI_GLOBAL_SCENE = "gi_global_scene"
         const val GI_LOCAL_SDF    = "gi_local_sdf"
         const val GI_GLOBAL_SDF   = "gi_global_sdf"
+        const val GI_NORMAL_MAP   = "gi_normal_map"
         const val GI_LIGHT_RAW    = "gi_light_raw"
         const val GI_LIGHT_FINAL  = "gi_light_final"
         const val GI_BLEND_EFFECT = "gi_blend_effect"

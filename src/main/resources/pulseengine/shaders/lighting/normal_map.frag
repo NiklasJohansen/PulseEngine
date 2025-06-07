@@ -14,6 +14,8 @@ out vec4 fragColor;
 
 uniform sampler2DArray textureArrays[16];
 
+uniform float cameraAngle;
+
 vec2 rotate(vec2 v, float a)
 {
     float s = sin(a);
@@ -32,7 +34,7 @@ void main()
         normal = texture(textureArrays[samplerIndex], vec3(sampleCoord, floor(texIndex)));
 
         // Scale and rotate normal
-        normal.xy = (rotate((normal.xy * 2.0 - 1.0) * scale, texAngleRad) + 1.0) * 0.5;
+        normal.xy = (rotate((normal.xy * 2.0 - 1.0) * scale, texAngleRad + cameraAngle) + 1.0) * 0.5;
     }
 
     if (normal.a < 0.5)

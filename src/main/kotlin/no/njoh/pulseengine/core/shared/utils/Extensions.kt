@@ -443,16 +443,17 @@ object Extensions
             path.endsWith(".jpeg") ||
             path.endsWith(".png")  ->
             {
-                val format = if ("_lut" in name || "_linear" in name || "_normal" in name) RGBA8 else SRGBA8
-                val mips = if (format == RGBA8) 1 else 5
+                val isNormalMap = name.endsWith("_normal")
+                val format = if ("_lut" in name || "_linear" in name || isNormalMap) RGBA8 else SRGBA8
+                val mipLevels = if (format == SRGBA8 || isNormalMap) 5 else 1
                 spriteSheetRegex.find(path)?.let { SpriteSheet(
                     filePath = path,
                     name = name.substringBeforeLast("_"),
                     format = format,
-                    mipLevels = mips,
+                    mipLevels = mipLevels,
                     horizontalCells = it.groupValues[1].toInt(),
                     verticalCells = it.groupValues[2].toInt()
-                ) } ?: Texture(path, name, format = format, mipLevels = mips)
+                ) } ?: Texture(path, name, format = format, mipLevels = mipLevels)
             }
             else -> null
         }

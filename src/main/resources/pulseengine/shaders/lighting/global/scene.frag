@@ -66,5 +66,5 @@ void main()
     }
 
     sceneColor = vertexColor * texColor;
-    metadata = vec4(sourceConeAngle / 360.0, sourceAngle / 360.0, sourceIntensity, sourceRadius);
+    metadata = vec4(sourceConeAngle / 360.0, fract(sourceAngle / 360.0), sourceIntensity, sourceRadius);
 }

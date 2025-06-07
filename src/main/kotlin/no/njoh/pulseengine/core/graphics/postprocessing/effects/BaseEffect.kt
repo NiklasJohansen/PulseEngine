@@ -38,6 +38,7 @@ abstract class BaseEffect(
             programs.forEachFast { renderers.add(FullFrameRenderer(it)) }
 
         renderers.forEachFast { it.init() }
+        textureDescriptors.forEachFast { it.mipmapGenerator?.init(engine) }
     }
 
     override fun process(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>

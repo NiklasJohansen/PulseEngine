@@ -73,12 +73,8 @@ void main()
     quadCornerRadius = cornerRadius;
     sourceIntensity = intensity;
     sourceRadius = radius;
-
-    sourceAngle = int(angle) % 361;
-    if (sourceAngle < 0) sourceAngle += 360;
-
-    sourceConeAngle = int(coneAngle) % 361;
-    if (sourceConeAngle < 0) sourceConeAngle += 360;
+    sourceAngle = angle;
+    sourceConeAngle = coneAngle;
 
     texSamplerIndex = getSamplerIndex(textureHandle);
     texIndex = getTexIndex(textureHandle);
@@ -88,16 +84,16 @@ void main()
     float pixelSizeInWorld = screenSpacePos.w / resolution.y;
     vec2 adjustedSize = max(size, vec2(pixelSizeInWorld * 1500.0 / camScale));
 
-    // Increase size of small light sources (and reduce intensity) if enabled
+    // Increase the size of small light sources (and reduce intensity) if enabled
     // This prevents small sources from being too small to be visible in the zoomed out global/world sdf
     float threshold = 10 * worldScale;
     if (upscaleSmallSources && intensity > 0.0 && adjustedSize.x < threshold && adjustedSize.y < threshold)
     {
         vec2 pos = screenSpacePos.xy * worldScale;
         float fade = smoothstep(0.55, 0.6, max(abs(pos.x - 0.5), abs(pos.y - 0.5)));
-        float amount = 2 * fade;
-        adjustedSize *= (1.0 + amount);
-        sourceIntensity = intensity / (1.0 + amount);
+        float amount = 1.0 + 2.0 * fade;
+        adjustedSize *= amount;
+        sourceIntensity = intensity / amount;
     }
 
     vec2 offset = (vertexPos - vec2(0.5)) * adjustedSize * rotate(radians(angle));
