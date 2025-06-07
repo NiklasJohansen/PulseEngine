@@ -21,6 +21,7 @@ interface SurfaceConfig
     val blendFunction: BlendFunction
     val attachments: List<Attachment>
     val backgroundColor: Color
+    val mipmapGenerator: MipmapGenerator?
 }
 
 class SurfaceConfigInternal(
@@ -36,7 +37,8 @@ class SurfaceConfigInternal(
     override var multisampling: Multisampling,
     override var blendFunction: BlendFunction,
     override val attachments: List<Attachment>,
-    override var backgroundColor: Color
+    override var backgroundColor: Color,
+    override var mipmapGenerator: MipmapGenerator?
 ) : SurfaceConfig {
 
     val hasDepthAttachment = attachments.anyMatches { it.hasDepth }

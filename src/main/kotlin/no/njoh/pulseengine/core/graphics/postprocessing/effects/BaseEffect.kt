@@ -75,7 +75,7 @@ abstract class BaseEffect(
     {
         programs.forEachFast { it.destroy() }
         renderers.forEachFast { it.destroy() }
-        frameBuffers.forEachFast { it.delete() }
         frameBuffers.forEachFast { it.destroy() }
+        textureDescriptors.forEachFast { it.mipmapGenerator?.destroy() }
     }
 }

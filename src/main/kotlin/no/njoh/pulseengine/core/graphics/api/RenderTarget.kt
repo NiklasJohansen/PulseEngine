@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.api.objects.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
@@ -40,6 +41,8 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
             }
         }
     }
+
+    fun generateMips(engine: PulseEngineInternal) = getTextures().forEachFast { it.generateMips(engine) }
 
     fun getTexture(index: Int) = readFbo.getTextureOrNull(index)
 

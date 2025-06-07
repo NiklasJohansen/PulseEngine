@@ -61,6 +61,7 @@ class SurfaceImpl(
         {
             renderers.forEachFast { it.init(engine) }
             postEffects.forEachFast { it.init(engine) }
+            config.mipmapGenerator?.init(engine)
         }
 
         renderTarget.init(width, height)
@@ -96,6 +97,7 @@ class SurfaceImpl(
         }
 
         renderTarget.end()
+        renderTarget.generateMips(engine)
     }
 
     override fun runPostProcessingPipeline(engine: PulseEngineInternal)
@@ -120,6 +122,7 @@ class SurfaceImpl(
         renderers.forEachFast { it.destroy() }
         postEffects.forEachFast { it.destroy() }
         renderTarget.destroy()
+        config.mipmapGenerator?.destroy()
     }
 
     override fun hasContent() = renderers.anyMatches { it.hasContentToRender() }
@@ -262,7 +265,8 @@ class SurfaceImpl(
                 multisampling = config.multisampling,
                 attachment = attachment,
                 scale = config.textureScale,
-                sizeFunc = config.textureSizeFunc
+                sizeFunc = config.textureSizeFunc,
+                mipmapGenerator = config.mipmapGenerator,
             )
         }
     )
