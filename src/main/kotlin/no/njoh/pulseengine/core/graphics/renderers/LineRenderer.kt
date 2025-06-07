@@ -63,9 +63,9 @@ class LineRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
 
     override fun destroy()
     {
-        vbo.delete()
-        vao.delete()
-        program.delete()
+        vbo.destroy()
+        vao.destroy()
+        program.destroy()
     }
 
     fun lineVertex(x: Float, y: Float)

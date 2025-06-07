@@ -35,7 +35,7 @@ open class FrameBufferObject(
 
     fun clear() = glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
-    fun delete()
+    fun destroy()
     {
         textures.forEachFast { glDeleteTextures(it.handle.textureIndex) }
         renderBufferIds.forEachFast { glDeleteRenderbuffers(it) }

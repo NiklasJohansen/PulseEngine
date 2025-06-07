@@ -107,9 +107,9 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
 
     override fun destroy()
     {
-        vbo.delete()
-        program.delete()
-        vao.delete()
+        vbo.destroy()
+        program.destroy()
+        vao.destroy()
     }
 
     fun draw(texture: RenderTexture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float)

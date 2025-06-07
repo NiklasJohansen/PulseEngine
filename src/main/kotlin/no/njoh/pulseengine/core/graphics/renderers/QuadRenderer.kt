@@ -72,10 +72,10 @@ class QuadRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
 
     override fun destroy()
     {
-        vao.delete()
-        vbo.delete()
-        ebo.delete()
-        program.delete()
+        vao.destroy()
+        vbo.destroy()
+        ebo.destroy()
+        program.destroy()
     }
 
     fun quad(x: Float, y: Float, width: Float, height: Float)

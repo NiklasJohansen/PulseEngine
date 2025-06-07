@@ -79,10 +79,10 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
 
     override fun destroy()
     {
-        vertexBuffer.delete()
-        instanceBuffer.delete()
-        program.delete()
-        vao.delete()
+        vertexBuffer.destroy()
+        instanceBuffer.destroy()
+        program.destroy()
+        vao.destroy()
     }
 
     fun draw(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)

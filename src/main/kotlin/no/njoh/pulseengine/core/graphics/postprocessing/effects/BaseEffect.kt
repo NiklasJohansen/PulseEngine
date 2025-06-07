@@ -64,7 +64,7 @@ abstract class BaseEffect(
 
     private fun createNewFrameBuffers(width: Int, height: Int)
     {
-        frameBuffers.forEachFast { it.delete() }
+        frameBuffers.forEachFast { it.destroy() }
         frameBuffers.clear()
         repeat(numFrameBufferObjects) { frameBuffers += FrameBufferObject.create(width, height, textureDescriptors) }
     }
@@ -73,8 +73,9 @@ abstract class BaseEffect(
 
     override fun destroy()
     {
-        programs.forEachFast { it.delete() }
+        programs.forEachFast { it.destroy() }
         renderers.forEachFast { it.destroy() }
         frameBuffers.forEachFast { it.delete() }
+        frameBuffers.forEachFast { it.destroy() }
     }
 }

@@ -80,10 +80,10 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
 
     override fun destroy()
     {
-        vertexBuffer.delete()
-        instanceBuffer.delete()
-        program.delete()
-        vao.delete()
+        vertexBuffer.destroy()
+        instanceBuffer.destroy()
+        program.destroy()
+        vao.destroy()
     }
 
     fun drawNormalMap(

@@ -101,10 +101,10 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
 
     override fun destroy()
     {
-        vertexBuffer.delete()
-        instanceBuffer.delete()
-        program.delete()
-        vao.delete()
+        vertexBuffer.destroy()
+        instanceBuffer.destroy()
+        program.destroy()
+        vao.destroy()
     }
 
     fun drawLight(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float, radius: Float)

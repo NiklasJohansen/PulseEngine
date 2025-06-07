@@ -15,7 +15,7 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 
     fun init(width: Int, height: Int)
     {
-        frameBuffers.forEachFast { it.delete() }
+        frameBuffers.forEachFast { it.destroy() }
         frameBuffers.clear()
 
         // First frame buffer can have multisampling
@@ -45,5 +45,5 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 
     fun getTextures() = readFbo.getTextures()
 
-    fun destroy() = frameBuffers.forEachFast { it.delete() }
+    fun destroy() = frameBuffers.forEachFast { it.destroy() }
 }

@@ -165,11 +165,11 @@ class DirectLightRenderer : BatchRenderer()
 
     override fun destroy()
     {
-        vertexBuffer.delete()
-        lightBuffer.delete()
-        edgeBuffer.delete()
-        program.delete()
-        vao.delete()
+        vertexBuffer.destroy()
+        lightBuffer.destroy()
+        edgeBuffer.destroy()
+        program.destroy()
+        vao.destroy()
     }
 
     fun addLight(

@@ -64,7 +64,7 @@ class DoubleBufferedIntObject private constructor(
         glBindBuffer(target, 0)
     }
 
-    fun delete()
+    fun destroy()
     {
         glDeleteBuffers(id)
     }

@@ -40,7 +40,7 @@ class ShaderProgram(
 
     fun unbind() = glUseProgram(0)
 
-    fun delete()
+    fun destroy()
     {
         glUseProgram(0)
         glDeleteProgram(id)
