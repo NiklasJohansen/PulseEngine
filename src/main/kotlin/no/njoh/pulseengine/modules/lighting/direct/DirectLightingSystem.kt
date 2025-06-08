@@ -67,15 +67,14 @@ open class DirectLightingSystem : SceneSystem()
     private var lastTargetSurfaces = ""
     private var postEffectSurfaces = mutableListOf<String>()
 
-    private val normalMapRenderPass = RenderPass(
+    private val normalMapRenderPass = RenderPass<NormalMapped>(
         surfaceName = NORMAL_SURFACE_NAME,
-        targetType = NormalMapped::class.java
+        drawFunction = { engine, surface, entity -> entity.renderNormalMap(engine, surface) }
     )
 
-    private val occluderRenderPass = RenderPass(
+    private val occluderRenderPass = RenderPass<DirectLightOccluder>(
         surfaceName = OCCLUDER_SURFACE_NAME,
-        targetType = DirectLightOccluder::class.java,
-        drawCondition = { (it as? DirectLightOccluder)?.castShadows ?: true }
+        drawCondition = { it.castShadows }
     )
 
     override fun onCreate(engine: PulseEngine)

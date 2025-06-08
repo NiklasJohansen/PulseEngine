@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.NONE
+import no.njoh.pulseengine.core.graphics.api.CustomMipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.NativeMipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
@@ -12,6 +13,8 @@ import no.njoh.pulseengine.core.graphics.postprocessing.effects.MultiplyEffect
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.scene.SceneSystem
+import no.njoh.pulseengine.core.scene.systems.EntityRenderer
+import no.njoh.pulseengine.core.scene.systems.EntityRenderer.RenderPass
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
@@ -61,6 +64,13 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 33)                     var targetSurface = "main"
 
     private var lastTargetSurface = ""
+
+    private val normalMapRenderPass   = RenderPass(GI_NORMAL_MAP)   { engine, surface, e: NormalMapped  -> e.renderNormalMap(engine, surface) }
+    private val localOccluderPass     = RenderPass(GI_LOCAL_SCENE)  { engine, surface, e: GiOccluder    -> e.drawOccluder(engine, surface)    }
+    private val localLightSourcePass  = RenderPass(GI_LOCAL_SCENE)  { engine, surface, e: GiLightSource -> e.drawLightSource(engine, surface) }
+    private val globalOccluderPass    = RenderPass(GI_GLOBAL_SCENE) { engine, surface, e: GiOccluder    -> e.drawOccluder(engine, surface)    }
+    private val globalLightSourcePass = RenderPass(GI_GLOBAL_SCENE) { engine, surface, e: GiLightSource -> e.drawLightSource(engine, surface) }
+
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -130,7 +140,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
             textureFormat = RGBA16F,
             textureFilter = LINEAR_MIPMAP,
-            mipmapGenerator = NativeMipmapGenerator()
+            mipmapGenerator = CustomMipmapGenerator()
         ).apply {
             addRenderer(NormalMapRenderer((this as SurfaceInternal).config))
         }
@@ -158,6 +168,13 @@ open class GlobalIlluminationSystem : SceneSystem()
         ).apply {
             addPostProcessingEffect(GiCompose(GI_LOCAL_SCENE, GI_LOCAL_SDF, GI_LIGHT_RAW, GI_NORMAL_MAP))
         }
+
+        val entityRenderer = engine.scene.getSystemOfType<EntityRenderer>() ?: return
+        entityRenderer.addRenderPass(normalMapRenderPass)
+        entityRenderer.addRenderPass(localOccluderPass)
+        entityRenderer.addRenderPass(localLightSourcePass)
+        entityRenderer.addRenderPass(globalOccluderPass)
+        entityRenderer.addRenderPass(globalLightSourcePass)
     }
 
     override fun onUpdate(engine: PulseEngine)
@@ -198,20 +215,15 @@ open class GlobalIlluminationSystem : SceneSystem()
         }
     }
 
-    override fun onRender(engine: PulseEngine)
-    {
-        val normalSurface = engine.gfx.getSurface(GI_NORMAL_MAP)
-        if (normalSurface != null)
-            engine.scene.forEachEntityOfType<NormalMapped> { it.renderCustomPass(engine, normalSurface) }
-
-        drawScene(engine, surface = engine.gfx.getSurface(GI_LOCAL_SCENE) ?: return)
-
-        if (traceWorldRays)
-            drawScene(engine, surface = engine.gfx.getSurface(GI_GLOBAL_SCENE) ?: return)
-    }
-
     override fun onDestroy(engine: PulseEngine)
     {
+        val entityRenderer = engine.scene.getSystemOfType<EntityRenderer>()
+        entityRenderer?.removeRenderPass(normalMapRenderPass)
+        entityRenderer?.removeRenderPass(localOccluderPass)
+        entityRenderer?.removeRenderPass(localLightSourcePass)
+        entityRenderer?.removeRenderPass(globalOccluderPass)
+        entityRenderer?.removeRenderPass(globalLightSourcePass)
+
         engine.gfx.getSurface(targetSurface)?.deletePostProcessingEffect(GI_BLEND_EFFECT)
         engine.gfx.deleteSurface(GI_LOCAL_SCENE)
         engine.gfx.deleteSurface(GI_GLOBAL_SCENE)
@@ -220,6 +232,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.deleteSurface(GI_NORMAL_MAP)
         engine.gfx.deleteSurface(GI_LIGHT_RAW)
         engine.gfx.deleteSurface(GI_LIGHT_FINAL)
+
         lastTargetSurface = ""
     }
 

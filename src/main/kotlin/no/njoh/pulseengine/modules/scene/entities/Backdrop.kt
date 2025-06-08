@@ -41,7 +41,7 @@ open class Backdrop : StandardSceneEntity(), NormalMapped
         )
     }
 
-    override fun renderCustomPass(engine: PulseEngine, surface: Surface)
+    override fun renderNormalMap(engine: PulseEngine, surface: Surface)
     {
         surface.getRenderer<NormalMapRenderer>()?.drawNormalMap(
             texture = engine.asset.getOrNull(normalMapName),
