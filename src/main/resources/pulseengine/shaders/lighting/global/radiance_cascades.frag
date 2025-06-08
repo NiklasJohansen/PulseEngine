@@ -35,17 +35,27 @@ uniform float cascadeCount;
 uniform bool bilinearFix;
 uniform float intervalLength;
 uniform float worldScale;
-uniform float invWorldScale;
 uniform bool traceWorldRays;
 uniform bool mergeCascades;
 uniform int maxSteps;
 uniform float camAngle;
 uniform float camScale;
-uniform vec2 camOrigin;
 uniform float normalMapScale;
+uniform mat4 localVPM;
+uniform mat4 localInvVPM;
+uniform mat4 globalVPM;
+uniform mat4 globalInvVPM;
 
 const float baseRayCount = 4.0;
 const float sqrtBase = sqrt(baseRayCount);
+
+vec2 mapUvTo(float dstSpace, vec2 uv)
+{
+    vec4 clipPos    = vec4(uv * 2.0 - 1.0, 0.0, 1.0); // NDC [-1..1]
+    vec4 worldPos   = (dstSpace == GLOBAL ? localInvVPM : globalInvVPM) * clipPos;
+    vec4 newClipPos = (dstSpace == GLOBAL ? globalVPM : localVPM) * worldPos; // NDC [-1..1]
+    return newClipPos.xy / newClipPos.w * 0.5 + 0.5; // UV [0..1]
+}
 
 vec4 raymarch(vec2 rayPos, vec2 rayDir, float rayLen)
 {
@@ -69,8 +79,7 @@ vec4 raymarch(vec2 rayPos, vec2 rayDir, float rayLen)
         {
             if (traceWorldRays && space == LOCAL && cascadeIndex > 1)
             {
-                rayPos = (rayPos - camOrigin * sceneRes) * invWorldScale + camOrigin * sceneRes; // Remap position to global space
-                rayPos *= localToGlobalScale;
+                rayPos = mapUvTo(GLOBAL, rayPos / localSceneRes) * globalSceneRes;
                 rayLen *= localToGlobalScale;
                 traveledDist *= localToGlobalScale;
                 stepSizeScale = worldScale;
@@ -110,7 +119,8 @@ vec4 sampleScene(float space, vec2 originPos, vec2 hitPosUv, vec2 rayDir)
 
     if (radius > 0.0) // Lights with radius
     {
-        vec2 hitPos = (space == LOCAL) ? hitPosUv : (hitPosUv - camOrigin) * worldScale + camOrigin;
+        float globalToLocalScale = localSceneScale / globalSceneScale;
+        vec2 hitPos = (space == LOCAL) ? hitPosUv : mapUvTo(LOCAL, hitPosUv) * globalToLocalScale;
         float dist = distance(hitPos * (space == LOCAL ? localSceneRes : globalSceneRes), originPos);
         color.rgb *= clamp((radius * camScale) / (dist * dist), 0.0, 1.0);
     }

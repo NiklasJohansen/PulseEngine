@@ -14,6 +14,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
+import org.joml.Matrix4f
 import org.lwjgl.opengl.GL11.glViewport
 import kotlin.math.*
 
@@ -56,8 +57,6 @@ class GiRadianceCascades(
         val cascadeCount = min(ceil(log2(lightTexDiagonal) / log2(BASE_RAY_COUNT)).toInt() + 1, lightSystem.maxCascades)
         var cascadeIndex = cascadeCount - 1
         val worldScale = max(1f, lightSystem.worldScale)
-        val xCamOrigin = globalSceneSurface.camera.origin.x / globalSceneSurface.config.width
-        val yCamOrigin = 1f - (globalSceneSurface.camera.origin.y / globalSceneSurface.config.height)
 
         skyColor.setFrom(lightSystem.skyColor).multiplyRgb(if (lightSystem.skyLight) lightSystem.skyIntensity else 0f)
         sunColor.setFrom(lightSystem.sunColor).multiplyRgb(if (lightSystem.skyLight) lightSystem.sunIntensity else 0f)
@@ -82,13 +81,15 @@ class GiRadianceCascades(
         program.setUniform("cascadeCount", cascadeCount.toFloat())
         program.setUniform("normalMapScale", lightSystem.normalMapScale)
         program.setUniform("worldScale", worldScale)
-        program.setUniform("invWorldScale", 1f / worldScale)
         program.setUniform("traceWorldRays", lightSystem.traceWorldRays)
         program.setUniform("mergeCascades", lightSystem.mergeCascades)
         program.setUniform("maxSteps", lightSystem.maxSteps)
         program.setUniform("camAngle", localSceneSurface.camera.rotation.z)
         program.setUniform("camScale", localSceneSurface.camera.scale.x)
-        program.setUniform("camOrigin", xCamOrigin, yCamOrigin)
+        program.setUniform("localVPM", localSceneSurface.camera.viewProjectionMatrix)
+        program.setUniform("localInvVPM", localSceneSurface.camera.viewProjectionMatrix.invert(invLocalVP))
+        program.setUniform("globalVPM", globalSceneSurface.camera.viewProjectionMatrix)
+        program.setUniform("globalInvVPM", globalSceneSurface.camera.viewProjectionMatrix.invert(invGlobalVP))
         program.setUniformSampler("localSceneTex", localSceneSurface.getTexture(0))
         program.setUniformSampler("localMetadataTex", localSceneSurface.getTexture(1))
         program.setUniformSampler("globalSceneTex", globalSceneSurface.getTexture(0))
@@ -130,5 +131,7 @@ class GiRadianceCascades(
     companion object
     {
         const val BASE_RAY_COUNT = 4f
+        private val invLocalVP = Matrix4f()
+        private val invGlobalVP = Matrix4f()
     }
 }

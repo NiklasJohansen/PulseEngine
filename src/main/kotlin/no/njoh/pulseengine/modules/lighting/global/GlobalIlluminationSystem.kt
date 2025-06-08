@@ -210,8 +210,8 @@ open class GlobalIlluminationSystem : SceneSystem()
             val scale = 1f / max(1f, worldScale)
             cam.position.set(engine.gfx.mainCamera.position)
             cam.rotation.set(engine.gfx.mainCamera.rotation)
-            cam.origin.set(engine.gfx.mainCamera.origin)
             cam.scale.set(engine.gfx.mainCamera.scale.x * scale, engine.gfx.mainCamera.scale.y * scale, engine.gfx.mainCamera.scale.z)
+            cam.origin.set(0.5f * globalSurface.config.width, 0.5f * globalSurface.config.height, 0f)
         }
     }
 
@@ -239,12 +239,6 @@ open class GlobalIlluminationSystem : SceneSystem()
     override fun onStateChanged(engine: PulseEngine)
     {
         if (enabled) onCreate(engine) else onDestroy(engine)
-    }
-
-    private fun drawScene(engine: PulseEngine, surface: Surface)
-    {
-        engine.scene.forEachEntityOfType<GiOccluder> { it.drawOccluder(engine, surface) }
-        engine.scene.forEachEntityOfType<GiLightSource> { it.drawLightSource(engine, surface) }
     }
 
     private fun lightTextureSizeFunc(width: Int, height: Int, scale: Float): PackedSize
