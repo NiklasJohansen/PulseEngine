@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.getOrPut
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
+import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.opengl.ARBUniformBufferObject.*
@@ -52,11 +53,14 @@ class ShaderProgram(
     fun uniformLocationOf(name: String): Int =
         uniformLocations.getOrPut(name) { getUniformLocation(name) }
 
+    fun setUniform(name: String, vec2: Vector2f) =
+        glUniform2f(uniformLocationOf(name), vec2.x, vec2.y)
+
     fun setUniform(name: String, vec3: Vector3f) =
-        glUniform3f(uniformLocationOf(name), vec3[0], vec3[1], vec3[2])
+        glUniform3f(uniformLocationOf(name), vec3.x, vec3.y, vec3.z)
 
     fun setUniform(name: String, vec4: Vector4f) =
-        glUniform4f(uniformLocationOf(name), vec4[0], vec4[1], vec4[2], vec4[3])
+        glUniform4f(uniformLocationOf(name), vec4.x, vec4.y, vec4.z, vec4.w)
 
     fun setUniform(name: String, matrix: Matrix4f) =
         glUniformMatrix4fv(uniformLocationOf(name), false, matrix.get(floatArray16))

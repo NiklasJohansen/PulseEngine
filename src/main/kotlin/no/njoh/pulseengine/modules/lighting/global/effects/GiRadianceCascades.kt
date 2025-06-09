@@ -13,6 +13,7 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
+import no.njoh.pulseengine.modules.lighting.global.GiSceneRenderer
 import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
 import org.joml.Matrix4f
 import org.lwjgl.opengl.GL11.glViewport
@@ -86,6 +87,7 @@ class GiRadianceCascades(
         program.setUniform("maxSteps", lightSystem.maxSteps)
         program.setUniform("camAngle", localSceneSurface.camera.rotation.z)
         program.setUniform("camScale", localSceneSurface.camera.scale.x)
+        program.setUniform("uvSampleOffset", GiSceneRenderer.getUvSampleOffset(localSceneSurface, enabled = lightSystem.jitterFix))
         program.setUniform("localVPM", localSceneSurface.camera.viewProjectionMatrix)
         program.setUniform("localInvVPM", localSceneSurface.camera.viewProjectionMatrix.invert(invLocalVP))
         program.setUniform("globalVPM", globalSceneSurface.camera.viewProjectionMatrix)

@@ -41,6 +41,7 @@ uniform int maxSteps;
 uniform float camAngle;
 uniform float camScale;
 uniform float normalMapScale;
+uniform vec2 uvSampleOffset;
 uniform mat4 localVPM;
 uniform mat4 localInvVPM;
 uniform mat4 globalVPM;
@@ -236,7 +237,7 @@ void main()
     vec3 totalProbeRadiance = vec3(0.0);
 
     // Sample normal map
-    vec2 normalUv = probeCenterPos * localSceneScale / localSceneRes;
+    vec2 normalUv = probeCenterPos * localSceneScale / localSceneRes - uvSampleOffset;
     vec3 normal = normalize(texture(normalMapTex, normalUv).xyz * 2.0 - 1.0);
 
     // Gather radiance from each ray of the current probe

@@ -12,8 +12,6 @@ import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
-import no.njoh.pulseengine.core.shared.utils.Extensions.component1
-import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import org.joml.Vector2f
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
@@ -80,20 +78,15 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             instanceBuffer.release()
         }
 
-        val (xPixelOffset, yPixelOffset) = calculatePixelOffset(surface)
-        val xDrawOffset = if (jitterFix) xPixelOffset / (surface.config.width  * 0.5f) else 0f
-        val yDrawOffset = if (jitterFix) yPixelOffset / (surface.config.height * 0.5f) else 0f
-
         vao.bind()
         program.bind()
-        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays(), wrapping = TextureWrapping.CLAMP_TO_EDGE, filter = TextureFilter.LINEAR)
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        program.setUniform("drawOffset", xDrawOffset, yDrawOffset)
-        program.setUniform("resolution", surface.config.width.toFloat() * surface.config.textureScale, surface.config.height.toFloat() * surface.config.textureScale)
+        program.setUniform("uvDrawOffset", getUvSampleOffset(surface, enabled = jitterFix))
         program.setUniform("resolution", surface.config.width.toFloat() * surface.config.textureScale, surface.config.height.toFloat() * surface.config.textureScale)
         program.setUniform("camScale", surface.camera.scale.x)
-        program.setUniform("upscaleSmallSources", upscaleSmallSources)
         program.setUniform("worldScale", worldScale)
+        program.setUniform("upscaleSmallSources", upscaleSmallSources)
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays(), wrapping = TextureWrapping.CLAMP_TO_EDGE, filter = TextureFilter.LINEAR)
 
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
@@ -151,15 +144,18 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
     {
         private val OFFSET = Vector2f()
 
-        fun calculatePixelOffset(surface: Surface): Vector2f
+        fun getUvSampleOffset(surface: Surface, enabled: Boolean): Vector2f
         {
+            if (!enabled) return OFFSET.set(0f, 0f)
+
             val pixelSize = 1f / surface.config.textureScale
             val viewMatrix = surface.camera.viewMatrix
             val xTranslation = -viewMatrix.m30()
             val yTranslation = viewMatrix.m31()
-            val xOffset = xTranslation % pixelSize
-            val yOffset = yTranslation % pixelSize
-            return OFFSET.set(xOffset, yOffset)
+            val xPixelOffset = xTranslation % pixelSize
+            val yPixelOffset = yTranslation % pixelSize
+
+            return OFFSET.set(xPixelOffset / surface.config.width, yPixelOffset / surface.config.height)
         }
     }
 }

@@ -10,8 +10,6 @@ import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
-import no.njoh.pulseengine.core.shared.utils.Extensions.component1
-import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
 import no.njoh.pulseengine.modules.lighting.global.GiSceneRenderer
 
@@ -39,22 +37,17 @@ class GiCompose(
         val localSdfSurface = engine.gfx.getSurface(localSdfSurfaceName) ?: return inTextures
         val localSdfTexture = localSdfSurface.getTexture()
 
-        val (uMax, vMax) = lightSystem.getLightTexUvMax(engine)
-        val (xPixelOffset, yPixelOffset) = GiSceneRenderer.calculatePixelOffset(localSceneSurface)
-        val xSampleOffset = if (lightSystem.jitterFix) xPixelOffset / lightSurface.config.width else 0f
-        val ySampleOffset = if (lightSystem.jitterFix) yPixelOffset / lightSurface.config.height else 0f
-
         fbo.bind()
         fbo.clear()
         program.bind()
         program.setUniform("localSdfRes", localSdfTexture.width.toFloat(), localSdfTexture.height.toFloat())
-        program.setUniform("sampleOffset", xSampleOffset, ySampleOffset)
+        program.setUniform("uvSampleOffset", GiSceneRenderer.getUvSampleOffset(localSceneSurface, enabled = lightSystem.jitterFix)) // TODO: enable
         program.setUniform("dithering", lightSystem.dithering)
         program.setUniform("scale", localSceneSurface.camera.scale.x)
         program.setUniform("sourceMultiplier", lightSystem.sourceMultiplier)
         program.setUniform("ambientLight", lightSystem.ambientLight)
         program.setUniform("ambientOccluderLight", lightSystem.ambientOccluderLight)
-        program.setUniform("lightTexUvMax", uMax, vMax)
+        program.setUniform("lightTexUvMax", lightSystem.getLightTexUvMax(engine))
         program.setUniform("normalMapScale", lightSystem.normalMapScale)
         program.setUniformSampler("localSceneTex", localSceneSurface.getTexture(0, final = false), filter = LINEAR)
         program.setUniformSampler("localSceneMetadataTex", localSceneSurface.getTexture(1, final = false), filter = NEAREST)

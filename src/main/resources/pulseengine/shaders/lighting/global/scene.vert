@@ -30,7 +30,7 @@ out float texIndex;
 flat out uint texSamplerIndex;
 
 uniform mat4 viewProjection;
-uniform vec2 drawOffset; // Used to prevent jitter when lightmap scale is below 1.0
+uniform vec2 uvDrawOffset; // Used to prevent jitter when lightmap scale is below 1.0
 uniform vec2 resolution;
 uniform float camScale;
 uniform float worldScale;
@@ -99,5 +99,5 @@ void main()
     vec2 offset = (vertexPos - vec2(0.5)) * adjustedSize * rotate(radians(angle));
     vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);
 
-    gl_Position = viewProjection * vertexPos + vec4(drawOffset, 0, 0);
+    gl_Position = viewProjection * vertexPos + vec4(2.0 * uvDrawOffset, 0, 0);
 }

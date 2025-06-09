@@ -15,7 +15,7 @@ uniform float dithering;
 uniform float scale;
 uniform float sourceMultiplier;
 uniform vec2 localSdfRes;
-uniform vec2 sampleOffset;
+uniform vec2 uvSampleOffset;
 uniform vec4 ambientLight;
 uniform vec4 ambientOccluderLight;
 uniform vec2 lightTexUvMax;
@@ -45,7 +45,7 @@ float hash(vec2 uv)
 
 void main()
 {
-    vec2 offsetUv = clamp(uv + sampleOffset, 0.0, 1.0);
+    vec2 offsetUv = clamp(uv + uvSampleOffset, 0.0, 1.0);
     vec3 light = texture(lightTex, offsetUv * lightTexUvMax).rgb;
     vec4 scene = texture(localSceneTex, offsetUv);
     vec4 sceneMeta = texture(localSceneMetadataTex, offsetUv);
