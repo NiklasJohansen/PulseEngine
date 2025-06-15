@@ -41,7 +41,7 @@ class GiCompose(
         fbo.clear()
         program.bind()
         program.setUniform("localSdfRes", localSdfTexture.width.toFloat(), localSdfTexture.height.toFloat())
-        program.setUniform("uvSampleOffset", GiSceneRenderer.getUvSampleOffset(localSceneSurface, enabled = lightSystem.jitterFix)) // TODO: enable
+        program.setUniform("uvSampleOffset", GiSceneRenderer.getUvSampleOffset(localSceneSurface, enabled = lightSystem.jitterFix))
         program.setUniform("dithering", lightSystem.dithering)
         program.setUniform("scale", localSceneSurface.camera.scale.x)
         program.setUniform("sourceMultiplier", lightSystem.sourceMultiplier)
@@ -49,6 +49,7 @@ class GiCompose(
         program.setUniform("ambientOccluderLight", lightSystem.ambientOccluderLight)
         program.setUniform("lightTexUvMax", lightSystem.getLightTexUvMax(engine))
         program.setUniform("normalMapScale", lightSystem.normalMapScale)
+        program.setUniform("camAngle", lightSurface.camera.rotation.z)
         program.setUniformSampler("localSceneTex", localSceneSurface.getTexture(0, final = false), filter = LINEAR)
         program.setUniformSampler("localSceneMetadataTex", localSceneSurface.getTexture(1, final = false), filter = NEAREST)
         program.setUniformSampler("lightTex", lightSurface.getTexture(), filter = lightSystem.lightTexFilter)

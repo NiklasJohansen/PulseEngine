@@ -285,7 +285,7 @@ void main()
         if (cascadeIndex < 2.0)
         {
             vec3 lightDir = normalize(vec3(rayDir, normalMapScale != 0.0 ? 1.0 / normalMapScale : 100000.0));
-            deltaRadiance.rgb *= clamp(dot(normal, lightDir) * 2, 0.0, 1.0);
+            deltaRadiance.rgb *= clamp(dot(normal, lightDir) * 4, 0.0, 1.0);
         }
 
         // Accumulate the radiance from this ray

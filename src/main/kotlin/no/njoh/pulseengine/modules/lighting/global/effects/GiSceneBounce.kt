@@ -3,12 +3,10 @@ package no.njoh.pulseengine.modules.lighting.global.effects
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
+import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_1
-import no.njoh.pulseengine.core.graphics.api.RenderTexture
-import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.core.shared.utils.Extensions.component1

@@ -67,7 +67,7 @@ void main()
 {
     vertexColor = unpackAndConvert(color);
     texStart = uvMin;
-    texSize = (uvMax - uvMin) * 0.98; // Use 0.98 to avoid artifacts at the edges of the texture
+    texSize = (uvMax - uvMin);
     texCoord = vertexPos;
     quadSize = size;
     quadCornerRadius = cornerRadius;

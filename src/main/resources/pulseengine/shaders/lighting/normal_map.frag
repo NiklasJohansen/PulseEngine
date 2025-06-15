@@ -26,19 +26,20 @@ vec2 rotate(vec2 v, float a)
 
 void main()
 {
-    vec4 normal = vec4(0.5, 0.5, 1.0, 1.0);
+    vec4 normal = vec4(0.0, 0.0, 1.0, 1.0);
 
     if (texIndex >= 0)
     {
         vec2 sampleCoord = texStart + texSize * (texTiling == 1.0 ? texCoord : fract(texCoord * texTiling));
         normal = texture(textureArrays[samplerIndex], vec3(sampleCoord, floor(texIndex)));
 
+        if (normal.a < 0.5)
+            discard;
+
         // Scale and rotate normal
-        normal.xy = (rotate((normal.xy * 2.0 - 1.0) * scale, texAngleRad + cameraAngle) + 1.0) * 0.5;
+        normal.xy = (rotate((normal.xy * 2.0 - 1.0) * scale, texAngleRad + cameraAngle));
+        normal.xyz = normalize(normal.xyz);
     }
 
-    if (normal.a < 0.5)
-        discard;
-
-    fragColor = normal;
+    fragColor = vec4(normal.xyz * 0.5 + 0.5, normal.a);
 }
