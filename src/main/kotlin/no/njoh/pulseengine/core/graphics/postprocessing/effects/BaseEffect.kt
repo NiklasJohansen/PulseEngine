@@ -48,7 +48,11 @@ abstract class BaseEffect(
 
         updateFrameBuffers(inTextures.first())
 
-        return applyEffect(engine, inTextures)
+        val outTextures = applyEffect(engine, inTextures)
+
+        outTextures.forEachFast { it.generateMips(engine) }
+
+        return outTextures
     }
 
     private fun updateFrameBuffers(inTexture: RenderTexture)
