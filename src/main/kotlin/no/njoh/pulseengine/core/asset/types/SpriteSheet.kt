@@ -13,10 +13,10 @@ class SpriteSheet(
     filter: TextureFilter = LINEAR_MIPMAP,
     wrapping: TextureWrapping = REPEAT,
     format: TextureFormat = SRGBA8,
-    mipLevels: Int = 5,
+    maxMipLevels: Int = 5,
     private val horizontalCells: Int,
     private val verticalCells: Int,
-) : Texture(filePath, name, initWidth = 1, initHeight = 1, filter, wrapping, format, mipLevels), Iterable<Texture> {
+) : Texture(filePath, name, initWidth = 1, initHeight = 1, filter, wrapping, format, maxMipLevels), Iterable<Texture> {
 
     private lateinit var textures: Array<Texture>
 
@@ -42,7 +42,7 @@ class SpriteSheet(
             val vMaxCell = vMinCell + vCellSize * vTexSize
             val cellWidth = (width * uCellSize).toInt()
             val cellHeight = (height * vCellSize).toInt()
-            Texture(filePath, name, cellWidth, cellHeight, filter, wrapping, format, mipLevels).also()
+            Texture(filePath, name, cellWidth, cellHeight, filter, wrapping, format, maxMipLevels).also()
             {
                 it.onUploaded(handle, uMinCell, vMinCell, uMaxCell, vMaxCell)
             }

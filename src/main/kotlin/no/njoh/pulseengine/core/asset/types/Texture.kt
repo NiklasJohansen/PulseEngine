@@ -23,7 +23,7 @@ open class Texture(
     val filter: TextureFilter = LINEAR_MIPMAP,
     val wrapping: TextureWrapping = REPEAT,
     val format: TextureFormat = SRGBA8,
-    val mipLevels: Int = 5,
+    val maxMipLevels: Int = 5,
 ) : Asset(filePath, name) {
 
     var handle = INVALID;    private set

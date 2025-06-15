@@ -9,6 +9,9 @@ import org.lwjgl.opengl.ARBInternalformatQuery2.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.ARBTextureStorage.glTexStorage3D
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL12.glTexSubImage3D
+import kotlin.math.floor
+import kotlin.math.log2
+import kotlin.math.min
 
 class TextureArray(
     val samplerIndex: Int,
@@ -17,7 +20,7 @@ class TextureArray(
     val format: TextureFormat,
     val filter: TextureFilter,
     val wrapping: TextureWrapping,
-    val mipLevels: Int
+    val maxMipLevels: Int
 ) {
     var id  = -1; private set
     var size = 0; private set
@@ -26,6 +29,7 @@ class TextureArray(
 
     fun init()
     {
+        val mipLevels = min(maxMipLevels, floor(log2(textureSize.toDouble())).toInt() + 1)
         id = glGenTextures()
         glBindTexture(GL_TEXTURE_2D_ARRAY, id)
         glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, format.internalFormat, textureSize, textureSize, maxCapacity)
@@ -85,5 +89,5 @@ class TextureArray(
 
     fun destroy() = glDeleteTextures(id)
 
-    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, mips=$mipLevels"
+    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, mips=$maxMipLevels"
 }
