@@ -6,11 +6,8 @@ import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.NONE
 import no.njoh.pulseengine.core.graphics.api.CustomMipmapGenerator
-import no.njoh.pulseengine.core.graphics.api.NativeMipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.MultiplyEffect
-import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.scene.systems.EntityRenderer
@@ -33,7 +30,7 @@ import kotlin.math.*
 open class GlobalIlluminationSystem : SceneSystem()
 {
     @Prop(i = 0)                      var ambientLight = Color(0f, 0f, 0f, 1f)
-    @Prop(i = 1)                      var ambientOccluderLight = Color(0f, 0f, 0f, 1f)
+    @Prop(i = 1)                      var ambientInteriorLight = Color(0f, 0f, 0f, 1f)
     @Prop(i = 2)                      var skyLight = true
     @Prop(i = 3)                      var skyColor = Color(0.02f, 0.08f, 0.2f, 1f)
     @Prop(i = 5)                      var sunColor = Color(0.95f, 0.95f, 0.9f, 1f)
@@ -65,38 +62,35 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     private var lastTargetSurface = ""
 
-    private val normalMapRenderPass   = RenderPass(GI_NORMAL_MAP)   { engine, surface, e: NormalMapped  -> e.renderNormalMap(engine, surface) }
-    private val localOccluderPass     = RenderPass(GI_LOCAL_SCENE)  { engine, surface, e: GiOccluder    -> e.drawOccluder(engine, surface)    }
-    private val localLightSourcePass  = RenderPass(GI_LOCAL_SCENE)  { engine, surface, e: GiLightSource -> e.drawLightSource(engine, surface) }
-    private val globalOccluderPass    = RenderPass(GI_GLOBAL_SCENE) { engine, surface, e: GiOccluder    -> e.drawOccluder(engine, surface)    }
-    private val globalLightSourcePass = RenderPass(GI_GLOBAL_SCENE) { engine, surface, e: GiLightSource -> e.drawLightSource(engine, surface) }
-
+    private val normalMapRenderPass   = RenderPass(GI_NORMAL_MAP)   { e, surface, entity: NormalMapped  -> entity.renderNormalMap(e, surface) }
+    private val localOccluderPass     = RenderPass(GI_LOCAL_SCENE)  { e, surface, entity: GiOccluder    -> entity.drawOccluder(e, surface)    }
+    private val localLightSourcePass  = RenderPass(GI_LOCAL_SCENE)  { e, surface, entity: GiLightSource -> entity.drawLightSource(e, surface) }
+    private val globalOccluderPass    = RenderPass(GI_GLOBAL_SCENE) { e, surface, entity: GiOccluder    -> entity.drawOccluder(e, surface)    }
+    private val globalLightSourcePass = RenderPass(GI_GLOBAL_SCENE) { e, surface, entity: GiLightSource -> entity.drawLightSource(e, surface) }
 
     override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface(
             name = GI_LOCAL_SCENE,
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 7,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 8,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
-            textureFormat = RGBA16F,
             textureFilter = NEAREST,
             textureScale = localSceneTexScale,
             attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
         ).apply {
             addRenderer(GiSceneRenderer((this as SurfaceInternal).config))
-            addPostProcessingEffect(GiSceneBounce(GI_LIGHT_RAW, order = 0))
+            addPostProcessingEffect(GiBounce(GI_LIGHT_EXTERIOR, GI_LOCAL_SDF, order = 0))
         }
 
         engine.gfx.createSurface(
             name = GI_GLOBAL_SCENE,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 6,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 7,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
-            textureFormat = RGBA16F,
             textureFilter = NEAREST,
             textureScale = globalSceneTexScale,
             attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
@@ -106,7 +100,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.gfx.createSurface(
             name = GI_LOCAL_SDF,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 5,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 6,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -120,7 +114,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.gfx.createSurface(
             name = GI_GLOBAL_SDF,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 4,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 5,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -135,10 +129,9 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.createSurface(
             name = GI_NORMAL_MAP,
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 3,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 4,
             isVisible = false,
             backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
-            textureFormat = RGBA16F,
             textureFilter = LINEAR_MIPMAP,
             mipmapGenerator = CustomMipmapGenerator()
         ).apply {
@@ -146,15 +139,26 @@ open class GlobalIlluminationSystem : SceneSystem()
         }
 
         engine.gfx.createSurface(
-            name = GI_LIGHT_RAW,
+            name = GI_LIGHT_EXTERIOR,
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 2,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 3,
             isVisible = false,
             backgroundColor = Color.BLANK,
             attachments = listOf(COLOR_TEXTURE_0),
             textureSizeFunc = ::lightTextureSizeFunc
         ).apply {
             addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_LOCAL_SDF, GI_GLOBAL_SDF, GI_NORMAL_MAP))
+        }
+
+        engine.gfx.createSurface(
+            name = GI_LIGHT_INTERIOR,
+            camera = engine.gfx.mainCamera,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 2,
+            isVisible = false,
+            backgroundColor = Color.BLANK,
+            attachments = listOf(COLOR_TEXTURE_0),
+        ).apply {
+            addPostProcessingEffect(GiInterior(GI_LOCAL_SCENE, GI_LOCAL_SDF, GI_LIGHT_EXTERIOR, GI_NORMAL_MAP))
         }
 
         engine.gfx.createSurface(
@@ -166,7 +170,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             blendFunction = ADDITIVE,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(GiCompose(GI_LOCAL_SCENE, GI_LOCAL_SDF, GI_LIGHT_RAW, GI_NORMAL_MAP))
+            addPostProcessingEffect(GiFinal(GI_LOCAL_SCENE, GI_LIGHT_EXTERIOR, GI_LIGHT_INTERIOR))
         }
 
         val entityRenderer = engine.scene.getSystemOfType<EntityRenderer>() ?: return
@@ -179,7 +183,8 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     override fun onUpdate(engine: PulseEngine)
     {
-        engine.gfx.getSurface(GI_LIGHT_RAW)?.setTextureScale(lightTexScale)
+        engine.gfx.getSurface(GI_LIGHT_EXTERIOR)?.setTextureScale(lightTexScale)
+        engine.gfx.getSurface(GI_LIGHT_INTERIOR)?.setTextureScale(localSceneTexScale)
         engine.gfx.getSurface(GI_LOCAL_SDF)?.setTextureScale(localSceneTexScale)
         engine.gfx.getSurface(GI_LOCAL_SCENE)?.setTextureScale(localSceneTexScale)
         engine.gfx.getSurface(GI_GLOBAL_SDF)?.setTextureScale(globalSceneTexScale)
@@ -230,7 +235,8 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.deleteSurface(GI_LOCAL_SDF)
         engine.gfx.deleteSurface(GI_GLOBAL_SDF)
         engine.gfx.deleteSurface(GI_NORMAL_MAP)
-        engine.gfx.deleteSurface(GI_LIGHT_RAW)
+        engine.gfx.deleteSurface(GI_LIGHT_EXTERIOR)
+        engine.gfx.deleteSurface(GI_LIGHT_INTERIOR)
         engine.gfx.deleteSurface(GI_LIGHT_FINAL)
 
         lastTargetSurface = ""
@@ -253,28 +259,29 @@ open class GlobalIlluminationSystem : SceneSystem()
         return PackedSize(w, h)
     }
 
-    fun getLightTexUvMax(engine: PulseEngine): Vector2f
+    fun getExteriorLightTexUvMax(engine: PulseEngine): Vector2f
     {
-        val lightSurface = engine.gfx.getSurface(GI_LIGHT_RAW) ?: return LIGHT_TEX_UV_MAX.set(1f, 1f)
+        val lightSurface = engine.gfx.getSurface(GI_LIGHT_EXTERIOR) ?: return UV_MAX.set(1f, 1f)
         val lightTex = lightSurface.getTexture()
         val scaledLightTexWidth = lightSurface.config.width * lightSurface.config.textureScale
         val scaledLightTexHeight = lightSurface.config.height * lightSurface.config.textureScale
         val uMax = (scaledLightTexWidth / lightTex.width)
         val vMax = (scaledLightTexHeight / lightTex.height)
-        return LIGHT_TEX_UV_MAX.set(uMax, vMax)
+        return UV_MAX.set(uMax, vMax)
     }
 
     companion object
     {
-        private val LIGHT_TEX_UV_MAX = Vector2f(1f, 1f)
+        private val UV_MAX = Vector2f(1f, 1f)
 
-        const val GI_LOCAL_SCENE  = "gi_local_scene"
-        const val GI_GLOBAL_SCENE = "gi_global_scene"
-        const val GI_LOCAL_SDF    = "gi_local_sdf"
-        const val GI_GLOBAL_SDF   = "gi_global_sdf"
-        const val GI_NORMAL_MAP   = "gi_normal_map"
-        const val GI_LIGHT_RAW    = "gi_light_raw"
-        const val GI_LIGHT_FINAL  = "gi_light_final"
-        const val GI_BLEND_EFFECT = "gi_blend_effect"
+        const val GI_LOCAL_SCENE    = "gi_local_scene"
+        const val GI_GLOBAL_SCENE   = "gi_global_scene"
+        const val GI_LOCAL_SDF      = "gi_local_sdf"
+        const val GI_GLOBAL_SDF     = "gi_global_sdf"
+        const val GI_NORMAL_MAP     = "gi_normal_map"
+        const val GI_LIGHT_EXTERIOR = "gi_light_exterior"
+        const val GI_LIGHT_INTERIOR = "gi_light_interior"
+        const val GI_LIGHT_FINAL    = "gi_light_final"
+        const val GI_BLEND_EFFECT   = "gi_blend_effect"
     }
 }

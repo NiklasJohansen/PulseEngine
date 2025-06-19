@@ -25,7 +25,7 @@ class GiRadianceCascades(
     private val localSdfSurfaceName: String,
     private val globalSdfSurfaceName: String,
     private val normalMapSurfaceName: String,
-    override val name: String = "radiance_cascades",
+    override val name: String = "gi_radiance_cascades",
     override val order: Int = 0
 ) : BaseEffect(
     TextureDescriptor(format = RGBA16F, filter = LINEAR),
@@ -50,6 +50,7 @@ class GiRadianceCascades(
         val localSdfSurface = engine.gfx.getSurface(localSdfSurfaceName) ?: return inTextures
         val globalSdfSurface = engine.gfx.getSurface(globalSdfSurfaceName) ?: return inTextures
         val normalMapSurface = engine.gfx.getSurface(normalMapSurfaceName) ?: return inTextures
+
         val localSdfTex = localSdfSurface.getTexture()
         val globalSdfTex = globalSdfSurface.getTexture()
         val lightTexWidth = fbo.getTexture().width.toFloat()

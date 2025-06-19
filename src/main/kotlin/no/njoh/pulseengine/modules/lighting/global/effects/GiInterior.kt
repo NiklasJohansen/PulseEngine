@@ -12,52 +12,64 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
 import no.njoh.pulseengine.modules.lighting.global.GiSceneRenderer
+import org.joml.Matrix4f
 
-class GiCompose(
+class GiInterior(
     private val localSceneSurfaceName: String,
     private val localSdfSurfaceName: String,
-    private val lightSurfaceName: String,
+    private val exteriorLightSurfaceName: String,
     private val normalMapSurfaceName: String,
-    override val name: String = "compose",
+    override val name: String = "gi_interior",
     override val order: Int = 0
 ) : BaseEffect(
+    TextureDescriptor(filter = LINEAR, format = RGBA16F), // Ping-pong textures
     TextureDescriptor(filter = LINEAR, format = RGBA16F)
 ) {
+    private var readTexIndex  = 0
+    private var writeTexIndex = 1
+    private var lastViewProjectionMatrix = Matrix4f()
+
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
-        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
-        engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/compose.frag"))
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/interior.vert")),
+        engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/interior.frag"))
     )
 
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
-        val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
+        val exteriorLightSurface = engine.gfx.getSurface(exteriorLightSurfaceName) ?: return inTextures
         val normalSurface = engine.gfx.getSurface(normalMapSurfaceName) ?: return inTextures
         val localSceneSurface = engine.gfx.getSurface(localSceneSurfaceName) ?: return inTextures
         val localSdfSurface = engine.gfx.getSurface(localSdfSurfaceName) ?: return inTextures
         val localSdfTexture = localSdfSurface.getTexture()
 
         fbo.bind()
-        fbo.clear()
+        fbo.attachOutputTexture(fbo.getTexture(writeTexIndex))
         program.bind()
         program.setUniform("localSdfRes", localSdfTexture.width.toFloat(), localSdfTexture.height.toFloat())
         program.setUniform("uvSampleOffset", GiSceneRenderer.getUvSampleOffset(localSceneSurface, enabled = lightSystem.jitterFix))
-        program.setUniform("dithering", lightSystem.dithering)
         program.setUniform("scale", localSceneSurface.camera.scale.x)
-        program.setUniform("sourceMultiplier", lightSystem.sourceMultiplier)
         program.setUniform("ambientLight", lightSystem.ambientLight)
-        program.setUniform("ambientOccluderLight", lightSystem.ambientOccluderLight)
-        program.setUniform("lightTexUvMax", lightSystem.getLightTexUvMax(engine))
+        program.setUniform("exteriorLightTexUvMax", lightSystem.getExteriorLightTexUvMax(engine))
         program.setUniform("normalMapScale", lightSystem.normalMapScale)
-        program.setUniform("camAngle", lightSurface.camera.rotation.z)
+        program.setUniform("camAngle", exteriorLightSurface.camera.rotation.z)
+        program.setUniform("lastViewProjectionMatrix", lastViewProjectionMatrix)
+        program.setUniform("currentViewProjectionMatrix", exteriorLightSurface.camera.viewProjectionMatrix)
+        program.setUniform("time", (System.currentTimeMillis() % 10_000L) / 10_000f)
         program.setUniformSampler("localSceneTex", localSceneSurface.getTexture(0, final = false), filter = LINEAR)
         program.setUniformSampler("localSceneMetadataTex", localSceneSurface.getTexture(1, final = false), filter = NEAREST)
-        program.setUniformSampler("lightTex", lightSurface.getTexture(), filter = lightSystem.lightTexFilter)
         program.setUniformSampler("localSdfTex", localSdfTexture)
         program.setUniformSampler("normalMapTex", normalSurface.getTexture())
+        program.setUniformSampler("exteriorLightTex", exteriorLightSurface.getTexture(), filter = lightSystem.lightTexFilter)
+        program.setUniformSampler("lastInteriorTex", fbo.getTexture(readTexIndex))
         renderer.draw()
         fbo.release()
 
+        writeTexIndex = readTexIndex.also { readTexIndex = writeTexIndex }
+        lastViewProjectionMatrix.set(exteriorLightSurface.camera.viewProjectionMatrix)
+
         return fbo.getTextures()
     }
+
+    override fun getTexture(index: Int) = frameBuffers.lastOrNull()?.getTextureOrNull(readTexIndex)
 }

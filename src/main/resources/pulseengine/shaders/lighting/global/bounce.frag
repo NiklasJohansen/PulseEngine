@@ -8,14 +8,14 @@ layout(location=1) out vec4 sceneMetadata;
 
 uniform sampler2D sceneTex;
 uniform sampler2D sceneMetaTex;
-uniform sampler2D lightTex;
+uniform sampler2D exteriorLightTex;
 
 uniform float bounceAccumulation;
 uniform float bounceEdgeFade;
 uniform float bounceRadius;
 uniform vec2 resolution;
 uniform float scale;
-uniform vec2 lightTexUvMax;
+uniform vec2 exteriorLightTexUvMax;
 
 void main()
 {
@@ -26,7 +26,7 @@ void main()
 
     if (bounceAccumulation > 0.0 && isOccluder && !isLightSource)
     {
-        vec2 p = (1.0 / resolution) * scale;
+        vec2 p = (1.2 / resolution) * scale;
         vec2 dir[8] = vec2[8](+p.xy, -p.xy, +p.yx, -p.yx, +p.xx, -p.xx, +p.yy, -p.yy);
         vec3 lightAcc = vec3(0);
         float n = 0;
@@ -36,7 +36,7 @@ void main()
             bool isOpenSpace = texture(sceneTex, clamp(uv + dir[i], 0, 1)).a < 0.5;
             if (isOpenSpace)
             {
-                lightAcc += texture(lightTex, clamp(lightTexUvMax * uvLastFrame + dir[i] * 4, 0, 1)).rgb;
+                lightAcc += texture(exteriorLightTex, clamp(exteriorLightTexUvMax * uvLastFrame + dir[i] * 2.5, 0, 1)).rgb;
                 n++;
             }
         }

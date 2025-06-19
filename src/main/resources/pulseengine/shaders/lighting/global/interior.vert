@@ -14,7 +14,7 @@ void main()
     vec4 clipPos = vec4(texCoord * 2.0 - 1.0, 0.0, 1.0);
     vec4 worldPos = inverse(currentViewProjectionMatrix) * clipPos;
     vec4 reprojectedPos = lastViewProjectionMatrix * worldPos;
-    uvLastFrame = (reprojectedPos.xy / reprojectedPos.w) * 0.5 + 0.5; // Convert back from clip space coordinates
+    uvLastFrame = (reprojectedPos.xy / reprojectedPos.w) * 0.5 + 0.5;
     uv = texCoord;
     gl_Position = vec4(position, 0.0, 1.0);
 }

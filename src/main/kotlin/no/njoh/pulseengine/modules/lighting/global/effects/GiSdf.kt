@@ -12,7 +12,7 @@ import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 
 class GiSdf(
     private val isSigned: Boolean,
-    override val name: String = "sdf",
+    override val name: String = "gi_sdf",
     override val order: Int = 3
 ) : BaseEffect(
     TextureDescriptor(format = R16F, filter = NEAREST)

@@ -17,7 +17,7 @@ import kotlin.math.*
 
 class GiJfa(
     private val mode: JfaMode,
-    override val name: String = "jfa",
+    override val name: String = "gi_jfa",
     override val order: Int = 2
 ) : BaseEffect(
     TextureDescriptor(mode.format, filter = NEAREST, wrapping = CLAMP_TO_EDGE),
@@ -76,7 +76,7 @@ class GiJfa(
 class GiJfaSeed(
     private val mode: JfaMode,
     private val sceneSurfaceName: String,
-    override val name: String = "jfa_seed",
+    override val name: String = "gi_jfa_seed",
     override val order: Int = 1,
 ) : BaseEffect(
     TextureDescriptor(format = mode.format, filter = NEAREST),
