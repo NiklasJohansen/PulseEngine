@@ -21,20 +21,21 @@ class SurfaceImpl(
     override val config: SurfaceConfigInternal,
 ): SurfaceInternal() {
 
-    override var renderTarget           = createRenderTarget(config)
-    private var initialized             = false
-    private val onInitFrame             = ArrayList<(PulseEngineInternal) -> Unit>()
-    private var readRenderStates        = ArrayList<RenderState>(MAX_BATCH_COUNT)
-    private var writeRenderStates       = ArrayList<RenderState>(MAX_BATCH_COUNT)
-    private val postEffects             = ArrayList<PostProcessingEffect>()
-    private val renderers               = ArrayList<BatchRenderer>()
-    private val rendererMap             = HashMap<Class<out BatchRenderer>, BatchRenderer>()
-    private var textRenderer            = null as TextRenderer?
-    private var quadRenderer            = null as QuadRenderer?
-    private var lineRenderer            = null as LineRenderer?
-    private var textureRenderer         = null as TextureRenderer?
-    private var stencilRenderer         = null as StencilRenderer?
-    private var renderTextureRenderer   = null as RenderTextureRenderer?
+    override var renderTarget         = createRenderTarget(config)
+    private var initialized           = false
+    private var shouldRerender        = true
+    private val onInitFrame           = ArrayList<(PulseEngineInternal) -> Unit>()
+    private var readRenderStates      = ArrayList<RenderState>(MAX_BATCH_COUNT)
+    private var writeRenderStates     = ArrayList<RenderState>(MAX_BATCH_COUNT)
+    private val postEffects           = ArrayList<PostProcessingEffect>()
+    private val renderers             = ArrayList<BatchRenderer>()
+    private val rendererMap           = HashMap<Class<out BatchRenderer>, BatchRenderer>()
+    private var textRenderer          = null as TextRenderer?
+    private var quadRenderer          = null as QuadRenderer?
+    private var lineRenderer          = null as LineRenderer?
+    private var textureRenderer       = null as TextureRenderer?
+    private var stencilRenderer       = null as StencilRenderer?
+    private var renderTextureRenderer = null as RenderTextureRenderer?
 
     // Internal functions
     //--------------------------------------------------------------------------------------------
@@ -98,6 +99,8 @@ class SurfaceImpl(
 
         renderTarget.end()
         renderTarget.generateMips(engine)
+
+        if (batchNum > 0) shouldRerender = false // Something was rendered, clear flag
     }
 
     override fun runPostProcessingPipeline(engine: PulseEngineInternal)
@@ -125,7 +128,7 @@ class SurfaceImpl(
         config.mipmapGenerator?.destroy()
     }
 
-    override fun hasContent() = renderers.anyMatches { it.hasContentToRender() }
+    override fun hasContent() = shouldRerender || renderers.anyMatches { it.hasContentToRender() }
 
     override fun hasPostProcessingEffects() = postEffects.isNotEmpty()
 
@@ -225,12 +228,17 @@ class SurfaceImpl(
 
     override fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float): Surface
     {
-        config.backgroundColor.setFromRgba(red, green, blue, alpha)
+        val bgColor = config.backgroundColor
+        if (red != bgColor.red || green != bgColor.green || blue != bgColor.blue || alpha != alpha)
+            shouldRerender = true
+        bgColor.setFromRgba(red, green, blue, alpha)
         return this
     }
 
     override fun setBackgroundColor(color: Color): Surface
     {
+        if (config.backgroundColor != color)
+            shouldRerender = true
         config.backgroundColor.setFrom(color)
         return this
     }
@@ -307,7 +315,6 @@ class SurfaceImpl(
     override fun addPostProcessingEffect(effect: PostProcessingEffect)
     {
         runOnInitFrame { engine ->
-
             getPostProcessingEffect(effect.name)?.let()
             {
                 Logger.warn { "Replacing existing post processing effect with same name: ${it.name}" }
