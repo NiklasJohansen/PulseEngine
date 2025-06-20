@@ -23,7 +23,7 @@ class SurfaceImpl(
 
     override var renderTarget         = createRenderTarget(config)
     private var initialized           = false
-    private var shouldRerender        = true
+    private var shouldRerender        = false
     private val onInitFrame           = ArrayList<(PulseEngineInternal) -> Unit>()
     private var readRenderStates      = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private var writeRenderStates     = ArrayList<RenderState>(MAX_BATCH_COUNT)
@@ -66,6 +66,7 @@ class SurfaceImpl(
         }
 
         renderTarget.init(width, height)
+        shouldRerender = true
         initialized = true
     }
 
