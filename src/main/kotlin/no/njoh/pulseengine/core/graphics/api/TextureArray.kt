@@ -26,10 +26,10 @@ class TextureArray(
     var size = 0; private set
 
     private var freeSlots = TIntArrayList()
+    private val mipLevels = min(maxMipLevels, floor(log2(textureSize.toDouble())).toInt() + 1)
 
     fun init()
     {
-        val mipLevels = min(maxMipLevels, floor(log2(textureSize.toDouble())).toInt() + 1)
         id = glGenTextures()
         glBindTexture(GL_TEXTURE_2D_ARRAY, id)
         glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, format.internalFormat, textureSize, textureSize, maxCapacity)
@@ -68,7 +68,9 @@ class TextureArray(
             return
         }
 
-        glGenerateMipmap(GL_TEXTURE_2D_ARRAY)
+        if (mipLevels > 1)
+            glGenerateMipmap(GL_TEXTURE_2D_ARRAY)
+
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
 
         val u = texture.width / textureSize.toFloat()
