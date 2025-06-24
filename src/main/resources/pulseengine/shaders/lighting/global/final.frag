@@ -12,7 +12,7 @@ uniform sampler2D exteriorLightTex;
 uniform sampler2D interiorLightTex;
 
 uniform float dithering;
-uniform float sourceMultiplier;
+uniform float sourceIntensity;
 uniform vec2 uvSampleOffset;
 uniform vec4 ambientLight;
 uniform vec4 ambientInteriorLight;
@@ -25,15 +25,15 @@ void main()
     vec4 sceneMeta = texture(localSceneMetadataTex, offsetUv);
     vec3 light = texture(exteriorLightTex, offsetUv * exteriorLightTexUvMax).rgb;
 
-    float sourceIntensity = sceneMeta.b;
+    float sceneSourceIntensity = sceneMeta.b;
     bool isOccluder = scene.a > 0.8;
-    bool isLightSource = sourceIntensity > 0.0;
+    bool isLightSource = sceneSourceIntensity > 0.0;
 
     if (isOccluder)
     {
         if (isLightSource)
         {
-            light *= 1.0 + sourceIntensity * sourceMultiplier;
+            light *= sourceIntensity;
         }
         else
         {

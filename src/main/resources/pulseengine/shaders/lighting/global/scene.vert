@@ -33,7 +33,7 @@ uniform mat4 viewProjection;
 uniform vec2 uvDrawOffset; // Used to prevent jitter when lightmap scale is below 1.0
 uniform vec2 resolution;
 uniform float camScale;
-uniform float worldScale;
+uniform float globalWorldScale;
 uniform bool upscaleSmallSources;
 
 vec4 unpackAndConvert(uint rgba)
@@ -86,10 +86,10 @@ void main()
 
     // Increase the size of small light sources (and reduce intensity) if enabled
     // This prevents small sources from being too small to be visible in the zoomed out global/world sdf
-    float threshold = 10 * worldScale;
+    float threshold = 10 * globalWorldScale;
     if (upscaleSmallSources && intensity > 0.0 && adjustedSize.x < threshold && adjustedSize.y < threshold)
     {
-        vec2 pos = screenSpacePos.xy * worldScale;
+        vec2 pos = screenSpacePos.xy * globalWorldScale;
         float fade = smoothstep(0.55, 0.6, max(abs(pos.x - 0.5), abs(pos.y - 0.5)));
         float amount = 1.0 + 2.0 * fade;
         adjustedSize *= amount;

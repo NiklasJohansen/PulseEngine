@@ -39,7 +39,7 @@ class GiFinal(
         program.setUniform("uvSampleOffset", GiSceneRenderer.getUvSampleOffset(localSceneSurface, enabled = lightSystem.jitterFix))
         program.setUniform("dithering", lightSystem.dithering)
         program.setUniform("scale", localSceneSurface.camera.scale.x)
-        program.setUniform("sourceMultiplier", lightSystem.sourceMultiplier)
+        program.setUniform("sourceIntensity", lightSystem.sourceIntensity)
         program.setUniform("ambientLight", lightSystem.ambientLight)
         program.setUniform("ambientInteriorLight", lightSystem.ambientInteriorLight)
         program.setUniform("exteriorLightTexUvMax", lightSystem.getExteriorLightTexUvMax(engine))

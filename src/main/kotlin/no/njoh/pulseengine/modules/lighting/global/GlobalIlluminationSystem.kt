@@ -34,31 +34,32 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 2)                      var skyLight = true
     @Prop(i = 3)                      var skyColor = Color(0.02f, 0.08f, 0.2f, 1f)
     @Prop(i = 5)                      var sunColor = Color(0.95f, 0.95f, 0.9f, 1f)
-    @Prop(i = 6, min=0f)              var skyIntensity = 0.1f
-    @Prop(i = 7, min=0f)              var sunIntensity = 0.01f
-    @Prop(i = 8, min=0.001f)          var sunDistance = 10f
-    @Prop(i = 9, min=0f, max=360f)    var sunAngle = 0f
+    @Prop(i = 6,  min=0f)             var skyIntensity = 0.1f
+    @Prop(i = 7,  min=0f)             var sunIntensity = 0.01f
+    @Prop(i = 8,  min=0.001f)         var sunDistance = 10f
+    @Prop(i = 9,  min=0f, max=360f)   var sunAngle = 0f
     @Prop(i = 10, min=0f)             var dithering = 0.2f
     @Prop(i = 11)                     var lightTexFilter = LINEAR
     @Prop(i = 12, min=0.01f, max=2f)  var lightTexScale = 0.4f
     @Prop(i = 13, min=0.01f, max=4f)  var localSceneTexScale = 0.4f
-    @Prop(i = 14, min=0.01f, max=4f)  var globalSceneTexScale = 0.8f
-    @Prop(i = 15, min=0f)             var drawCascade = 0
-    @Prop(i = 16, min=0f)             var maxCascades = 10
-    @Prop(i = 17, min=0f)             var maxSteps = 30
-    @Prop(i = 19, min=0f)             var intervalLength = 0.5f
-    @Prop(i = 21, min=0f, max=1f)     var bounceAccumulation = 0.5f
-    @Prop(i = 22, min=0f)             var bounceRadius = 0f // 0=infinite
-    @Prop(i = 23, min=0f, max=1f)     var bounceEdgeFade = 0.2f
-    @Prop(i = 24, min=0f)             var normalMapScale = 1f
-    @Prop(i = 25, min=0f)             var sourceMultiplier = 1f
-    @Prop(i = 26, min=1f)             var worldScale = 4f
-    @Prop(i = 27)                     var traceWorldRays = true
-    @Prop(i = 28)                     var mergeCascades = true
-    @Prop(i = 20)                     var bilinearFix = true
-    @Prop(i = 31)                     var jitterFix = true
-    @Prop(i = 32)                     var upscaleSmaleSources = true
-    @Prop(i = 33)                     var targetSurface = "main"
+    @Prop(i = 14, min=0.01f, max=4f)  var globalSceneTexScale = 0.6f
+    @Prop(i = 15, min=1f)             var globalWorldScale = 4f
+    @Prop(i = 16, min=0f)             var drawCascade = 0
+    @Prop(i = 17, min=0f)             var maxCascades = 10
+    @Prop(i = 18, min=0f)             var maxSteps = 25
+    @Prop(i = 19, min=0f)             var intervalLength = 1.0f
+    @Prop(i = 20, min=0f, max=1f)     var bounceAccumulation = 0.7f
+    @Prop(i = 21, min=0f)             var bounceRadius = 0f // 0=infinite
+    @Prop(i = 22, min=0f, max=1f)     var bounceEdgeFade = 0.2f
+    @Prop(i = 23, min=0f)             var normalMapScale = 4f
+    @Prop(i = 24, min=0f)             var sourceIntensity = 1f
+    @Prop(i = 25, min=0f, max=1f)     var minReflectance = 0.02f
+    @Prop(i = 26)                     var traceWorldRays = true
+    @Prop(i = 27)                     var mergeCascades = true
+    @Prop(i = 28)                     var bilinearFix = true
+    @Prop(i = 29)                     var jitterFix = true
+    @Prop(i = 30)                     var upscaleSmaleSources = true
+    @Prop(i = 31)                     var targetSurface = "main"
 
     private var lastTargetSurface = ""
 
@@ -194,16 +195,18 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.getSurface(GI_GLOBAL_SCENE)?.getRenderer<GiSceneRenderer>()?.let()
         {
             it.jitterFix = jitterFix
-            it.worldScale = worldScale
+            it.globalWorldScale = globalWorldScale
             it.upscaleSmallSources = upscaleSmaleSources
         }
 
         if (targetSurface != lastTargetSurface)
         {
             engine.gfx.getSurface(lastTargetSurface)?.deletePostProcessingEffect(GI_BLEND_EFFECT)
-            engine.gfx.getSurface(targetSurface)?.addPostProcessingEffect(MultiplyEffect(GI_BLEND_EFFECT, order = 15, GI_LIGHT_FINAL, bias = 0.05f))
+            engine.gfx.getSurface(targetSurface)?.addPostProcessingEffect(MultiplyEffect(GI_BLEND_EFFECT, order = 15, GI_LIGHT_FINAL, minReflectance))
             lastTargetSurface = targetSurface
         }
+
+        engine.gfx.getSurface(targetSurface)?.getPostProcessingEffect<MultiplyEffect>()?.minReflectance = minReflectance
     }
 
     override fun onFixedUpdate(engine: PulseEngine)
@@ -212,7 +215,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         {
             val globalSurface = engine.gfx.getSurface(GI_GLOBAL_SCENE) ?: return
             val cam = globalSurface.camera
-            val scale = 1f / max(1f, worldScale)
+            val scale = 1f / max(1f, globalWorldScale)
             cam.position.set(engine.gfx.mainCamera.position)
             cam.rotation.set(engine.gfx.mainCamera.rotation)
             cam.scale.set(engine.gfx.mainCamera.scale.x * scale, engine.gfx.mainCamera.scale.y * scale, engine.gfx.mainCamera.scale.z)

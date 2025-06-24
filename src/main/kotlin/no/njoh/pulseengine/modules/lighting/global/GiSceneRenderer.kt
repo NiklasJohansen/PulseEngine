@@ -25,7 +25,7 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
 
     var upscaleSmallSources = false
     var jitterFix = false
-    var worldScale = 1f
+    var globalWorldScale = 1f
 
     override fun init(engine: PulseEngineInternal)
     {
@@ -84,7 +84,7 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         program.setUniform("uvDrawOffset", getUvSampleOffset(surface, enabled = jitterFix))
         program.setUniform("resolution", surface.config.width.toFloat() * surface.config.textureScale, surface.config.height.toFloat() * surface.config.textureScale)
         program.setUniform("camScale", surface.camera.scale.x)
-        program.setUniform("worldScale", worldScale)
+        program.setUniform("globalWorldScale", globalWorldScale)
         program.setUniform("upscaleSmallSources", upscaleSmallSources)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays(), wrapping = TextureWrapping.CLAMP_TO_EDGE, filter = TextureFilter.LINEAR)
 
