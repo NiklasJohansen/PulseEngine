@@ -45,7 +45,7 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
             .withAttribute("uvMax", 2, GL_FLOAT, 1)
             .withAttribute("tiling", 2, GL_FLOAT, 1)
             .withAttribute("textureHandle", 1, GL_FLOAT, 1)
-            .withAttribute("normalScale", 2, GL_FLOAT, 1)
+            .withAttribute("scale", 2, GL_FLOAT, 1)
 
         vao = VertexArrayObject.createAndBind()
         program.bind()
@@ -72,9 +72,8 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
 
         vao.bind()
         program.bind()
-        program.setUniform("projection", surface.camera.projectionMatrix)
-        program.setUniform("view", surface.camera.viewMatrix)
         program.setUniform("cameraAngle", surface.camera.rotation.z)
+        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays(), filter = TextureFilter.LINEAR)
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()

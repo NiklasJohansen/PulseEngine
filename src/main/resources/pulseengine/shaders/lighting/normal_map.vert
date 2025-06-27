@@ -12,22 +12,21 @@ in vec2 uvMin;
 in vec2 uvMax;
 in vec2 tiling;
 in uint textureHandle;
-in vec2 normalScale;
+in vec2 scale;
 
-out vec2 texStart;
 out vec2 texSize;
+out vec2 texStart;
 out vec2 texCoord;
-out float texAngleRad;
 out vec2 texTiling;
-out vec2 quadSize;
-out vec2 scale;
-flat out uint samplerIndex;
 out float texIndex;
+flat out uint texSamplerIndex;
+out mat2 normalRotation;
+out vec2 normalScale;
 
-uniform mat4 view;
-uniform mat4 projection;
+uniform float cameraAngle;
+uniform mat4 viewProjection;
 
-uint getSamplerIndex(uint textureHandle)
+uint getTexSamplerIndex(uint textureHandle)
 {
     return (textureHandle >> uint(16)) & ((uint(1) << uint(16)) - uint(1));
 }
@@ -37,7 +36,7 @@ float getTexIndex(uint textureHandle)
     return float(textureHandle & ((uint(1) << uint(16)) - uint(1)));
 }
 
-mat2 rotate(float angle)
+mat2 rotMatrix(float angle)
 {
     float c = cos(angle);
     float s = sin(angle);
@@ -49,16 +48,16 @@ void main()
     texStart = uvMin;
     texSize = uvMax - uvMin;
     texCoord = vertexPos;
-    texAngleRad = radians(rotation);
     texTiling = tiling;
-    quadSize = size;
-    scale = normalScale;
-
-    samplerIndex = getSamplerIndex(textureHandle);
     texIndex = getTexIndex(textureHandle);
+    texSamplerIndex = getTexSamplerIndex(textureHandle);
 
-    vec2 offset = (vertexPos * size - size * origin) * rotate(texAngleRad);
+    float angle = radians(rotation);
+    normalRotation = rotMatrix(angle + cameraAngle);
+    normalScale = scale;
+
+    vec2 offset = (vertexPos - origin) * size * rotMatrix(angle);
     vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);
 
-    gl_Position = projection * view * vertexPos;
+    gl_Position = viewProjection * vertexPos;
 }

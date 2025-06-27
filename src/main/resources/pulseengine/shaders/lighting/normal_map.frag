@@ -1,28 +1,17 @@
 #version 150 core
 
-in vec2 texStart;
 in vec2 texSize;
+in vec2 texStart;
 in vec2 texCoord;
-in float texAngleRad;
 in vec2 texTiling;
-in vec2 quadSize;
-in vec2 scale;
 in float texIndex;
-flat in uint samplerIndex;
+flat in uint texSamplerIndex;
+in mat2 normalRotation;
+in vec2 normalScale;
 
 out vec4 fragColor;
 
 uniform sampler2DArray textureArrays[16];
-
-uniform float cameraAngle;
-
-vec2 rotate(vec2 v, float a)
-{
-    float s = sin(a);
-    float c = cos(a);
-    mat2 m = mat2(-c, -s, -s, c);
-    return m * v;
-}
 
 // Dynamic indexing of sampler arrays are not supported in GLSL bellow version 4.0, thus this atrocity
 vec4 sampleTextureArrayGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
@@ -59,18 +48,18 @@ void main()
         // at tile edges causing the wrong mip level to be selected
         vec2 coord = texCoord * texTiling;
         vec2 tiled = fract(coord);
-        vec2 ddx = dFdx(coord) * texSize * 1.0;
-        vec2 ddy = dFdy(coord) * texSize * 1.0;
+        vec2 ddx = dFdx(coord) * texSize;
+        vec2 ddy = dFdy(coord) * texSize;
         vec2 uv = texStart + texSize * tiled;
 
-        normal = sampleTextureArrayGrad(int(samplerIndex), vec3(uv, floor(texIndex)), ddx, ddy);
+        normal = sampleTextureArrayGrad(int(texSamplerIndex), vec3(uv, floor(texIndex)), ddx, ddy);
 
         if (normal.a < 0.5)
             discard;
 
         // Scale and rotate normal
         normal.xyz = normal.xyz * 2.0 - 1.0;
-        normal.xy  = rotate(normal.xy * scale, texAngleRad + cameraAngle);
+        normal.xy  = normalRotation * (normal.xy * normalScale);
         normal.xyz = normalize(normal.xyz);
     }
 
