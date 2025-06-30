@@ -36,7 +36,7 @@ class GiRadianceCascades(
     private var outTextures = mutableListOf<RenderTexture>()
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
-        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/base.vert")),
         engine.asset.loadNow(FragmentShader( "/pulseengine/shaders/lighting/global/radiance_cascades.frag"))
     )
 

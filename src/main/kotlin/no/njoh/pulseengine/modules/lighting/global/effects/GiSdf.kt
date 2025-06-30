@@ -18,7 +18,7 @@ class GiSdf(
     TextureDescriptor(format = R16F, filter = NEAREST)
 ) {
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
-        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/base.vert")),
         engine.asset.loadNow(FragmentShader( "/pulseengine/shaders/lighting/global/sdf.frag"))
     )
 

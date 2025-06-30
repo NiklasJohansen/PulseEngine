@@ -54,12 +54,14 @@ open class GlobalIlluminationSystem : SceneSystem()
     @Prop(i = 23, min=0f)             var normalMapScale = 4f
     @Prop(i = 24, min=0f)             var sourceIntensity = 1f
     @Prop(i = 25, min=0f, max=1f)     var minReflectance = 0.02f
-    @Prop(i = 26)                     var traceWorldRays = true
-    @Prop(i = 27)                     var mergeCascades = true
-    @Prop(i = 28)                     var bilinearFix = true
-    @Prop(i = 29)                     var jitterFix = true
-    @Prop(i = 30)                     var upscaleSmaleSources = true
-    @Prop(i = 31)                     var targetSurface = "main"
+    @Prop(i = 26, min=0f)             var aoRadius = 30f
+    @Prop(i = 27, min=0f)             var aoStrength = 1.5f
+    @Prop(i = 28)                     var traceWorldRays = true
+    @Prop(i = 29)                     var mergeCascades = true
+    @Prop(i = 30)                     var bilinearFix = true
+    @Prop(i = 31)                     var jitterFix = true
+    @Prop(i = 32)                     var upscaleSmaleSources = true
+    @Prop(i = 33)                     var targetSurface = "main"
 
     private var lastTargetSurface = ""
 
@@ -74,7 +76,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.createSurface(
             name = GI_LOCAL_SCENE,
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 8,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 9,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -88,7 +90,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.gfx.createSurface(
             name = GI_GLOBAL_SCENE,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 7,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 8,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -101,7 +103,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.gfx.createSurface(
             name = GI_LOCAL_SDF,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 6,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 7,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -115,7 +117,7 @@ open class GlobalIlluminationSystem : SceneSystem()
 
         engine.gfx.createSurface(
             name = GI_GLOBAL_SDF,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 5,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 6,
             isVisible = false,
             backgroundColor = Color.BLANK,
             blendFunction = NONE,
@@ -130,7 +132,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.createSurface(
             name = GI_NORMAL_MAP,
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 4,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 5,
             isVisible = false,
             backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
             textureFilter = LINEAR_MIPMAP,
@@ -142,7 +144,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.createSurface(
             name = GI_LIGHT_EXTERIOR,
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 3,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 4,
             isVisible = false,
             backgroundColor = Color.BLANK,
             attachments = listOf(COLOR_TEXTURE_0),
@@ -154,12 +156,24 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.createSurface(
             name = GI_LIGHT_INTERIOR,
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder + 2,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 3,
             isVisible = false,
             backgroundColor = Color.BLANK,
             attachments = listOf(COLOR_TEXTURE_0),
         ).apply {
             addPostProcessingEffect(GiInterior(GI_LOCAL_SCENE, GI_LOCAL_SDF, GI_LIGHT_EXTERIOR, GI_NORMAL_MAP))
+        }
+
+        engine.gfx.createSurface(
+            name = GI_AO,
+            camera = engine.gfx.mainCamera,
+            zOrder = engine.gfx.mainSurface.config.zOrder + 2,
+            isVisible = false,
+            backgroundColor = Color.WHITE,
+            blendFunction = NONE,
+            attachments = listOf(COLOR_TEXTURE_0)
+        ).apply {
+            addPostProcessingEffect(GiAo(GI_LOCAL_SCENE, GI_LOCAL_SDF))
         }
 
         engine.gfx.createSurface(
@@ -171,7 +185,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             blendFunction = ADDITIVE,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {
-            addPostProcessingEffect(GiFinal(GI_LOCAL_SCENE, GI_LIGHT_EXTERIOR, GI_LIGHT_INTERIOR))
+            addPostProcessingEffect(GiFinal(GI_LOCAL_SCENE, GI_LIGHT_EXTERIOR, GI_LIGHT_INTERIOR, GI_AO))
         }
 
         val entityRenderer = engine.scene.getSystemOfType<EntityRenderer>() ?: return
@@ -190,6 +204,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.getSurface(GI_LOCAL_SCENE)?.setTextureScale(localSceneTexScale)
         engine.gfx.getSurface(GI_GLOBAL_SDF)?.setTextureScale(globalSceneTexScale)
         engine.gfx.getSurface(GI_GLOBAL_SCENE)?.setTextureScale(globalSceneTexScale)
+        engine.gfx.getSurface(GI_AO)?.setTextureScale(localSceneTexScale)
 
         engine.gfx.getSurface(GI_LOCAL_SCENE)?.getRenderer<GiSceneRenderer>()?.jitterFix = jitterFix
         engine.gfx.getSurface(GI_GLOBAL_SCENE)?.getRenderer<GiSceneRenderer>()?.let()
@@ -240,6 +255,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         engine.gfx.deleteSurface(GI_NORMAL_MAP)
         engine.gfx.deleteSurface(GI_LIGHT_EXTERIOR)
         engine.gfx.deleteSurface(GI_LIGHT_INTERIOR)
+        engine.gfx.deleteSurface(GI_AO)
         engine.gfx.deleteSurface(GI_LIGHT_FINAL)
 
         lastTargetSurface = ""
@@ -284,6 +300,7 @@ open class GlobalIlluminationSystem : SceneSystem()
         const val GI_NORMAL_MAP     = "gi_normal_map"
         const val GI_LIGHT_EXTERIOR = "gi_light_exterior"
         const val GI_LIGHT_INTERIOR = "gi_light_interior"
+        const val GI_AO             = "gi_ao"
         const val GI_LIGHT_FINAL    = "gi_light_final"
         const val GI_BLEND_EFFECT   = "gi_blend_effect"
     }

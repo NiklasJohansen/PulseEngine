@@ -10,6 +10,7 @@ uniform sampler2D localSceneTex;
 uniform sampler2D localSceneMetadataTex;
 uniform sampler2D exteriorLightTex;
 uniform sampler2D interiorLightTex;
+uniform sampler2D aoTex;
 
 uniform float dithering;
 uniform float sourceIntensity;
@@ -17,6 +18,7 @@ uniform vec2 uvSampleOffset;
 uniform vec4 ambientLight;
 uniform vec4 ambientInteriorLight;
 uniform vec2 exteriorLightTexUvMax;
+uniform bool aoEnabled;
 
 void main()
 {
@@ -43,6 +45,10 @@ void main()
 
     // Ambient light
     light += ambientLight.rgb;
+
+    // Apply ambient occlusion
+    if (aoEnabled)
+        light *= texture(aoTex, offsetUv).r;
 
     // Add some dithering to prevent color banding
     float noise = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);

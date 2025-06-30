@@ -26,7 +26,7 @@ class GiJfa(
     private var outTextures: MutableList<RenderTexture> = mutableListOf()
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
-        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/base.vert")),
         engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/jfa.frag"))
     )
 
@@ -82,7 +82,7 @@ class GiJfaSeed(
     TextureDescriptor(format = mode.format, filter = NEAREST),
 ) {
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
-        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/default.vert")),
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/base.vert")),
         engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/jfa_seed.frag"))
     )
 

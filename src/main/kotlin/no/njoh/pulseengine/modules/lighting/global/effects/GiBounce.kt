@@ -24,7 +24,7 @@ class GiBounce(
     private val lastViewProjectionMatrix = Matrix4f()
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
-        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/bounce.vert")),
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/base_reprojected.vert")),
         engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/bounce.frag"))
     )
 
