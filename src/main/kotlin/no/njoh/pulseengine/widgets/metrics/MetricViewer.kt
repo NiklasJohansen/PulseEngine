@@ -8,6 +8,7 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.data.Metric
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.append
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
@@ -42,7 +43,7 @@ class MetricViewer : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface("metric_viewer", zOrder = -101)
+        engine.gfx.createSurface("metric_viewer", zOrder = -101, backgroundColor = Color.BLANK)
         engine.asset.load(Font("/pulseengine/assets/clacon.ttf", "graph_font"))
         engine.console.registerCommand("showMetricViewer")
         {
@@ -168,9 +169,9 @@ class MetricViewer : Widget
         fun render(surface: Surface, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
         {
             val headerText = newText(metric.name)
-            surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)
+            surface.setDrawColor(0.01f, 0.01f, 0.02f, 0.97f)
             surface.drawTexture(Texture.BLANK, xPos, yPos, width, height, cornerRadius = 4f)
-            surface.setDrawColor(1f,1f,1f,0.95f)
+            surface.setDrawColor(1f, 1f, 1f, 0.8f)
             surface.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 
             var minVal = if (size() > 0) Float.MAX_VALUE else 0f

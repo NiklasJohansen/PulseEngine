@@ -8,6 +8,7 @@ import no.njoh.pulseengine.core.console.MessageType
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.MouseButton
+import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.widget.Widget
 import kotlin.math.max
 import kotlin.math.min
@@ -16,8 +17,8 @@ class CommandLine : Widget
 {
     override var isRunning = false
 
-    private var widthFraction = 0.3f
-    private var heightFraction = 1f
+    private var widthFraction = 0.5f
+    private var heightFraction = 0.5f
 
     private var inputText = StringBuilder()
     private var suggestionBaseText = ""
@@ -30,7 +31,7 @@ class CommandLine : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface("cli", zOrder = -100)
+        engine.gfx.createSurface("cli", zOrder = -100, backgroundColor = Color.BLANK)
         engine.asset.load(Font("/pulseengine/assets/clacon.ttf", "cli_font"))
         engine.console.registerCommand("showConsole") {
             isRunning = !isRunning
@@ -303,8 +304,8 @@ class CommandLine : Widget
             suggestionCursor = -1
         }
 
-        // Resize width of console window (MOUSE LEFT)
-        if (engine.input.isPressed(MouseButton.LEFT))
+        // Resize width of console window (MOUSE RIGHT)
+        if (engine.input.isPressed(MouseButton.RIGHT))
         {
             widthFraction = max(0f, min(1f, widthFraction + engine.input.xdMouse / engine.window.width))
             heightFraction = max(0f, min(1f, heightFraction + engine.input.ydMouse / engine.window.height))
@@ -331,12 +332,12 @@ class CommandLine : Widget
         val surface = engine.gfx.getSurfaceOrDefault("cli")
 
         // Draw console rectangle
-        surface.setDrawColor(0.1f, 0.1f, 0.1f, 0.9f)
-        surface.drawTexture(Texture.BLANK, 0f, 0f, width, height)
+        surface.setDrawColor(0.0f, 0.0f, 0.0f, 0.98f)
+        surface.drawTexture(Texture.BLANK, -5f, -5f, width + 5, height + 5, cornerRadius = 10f)
 
         // Draw input box rectangle
-        surface.setDrawColor(0f, 0f, 0f, 0.3f)
-        surface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width - INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING)
+        surface.setDrawColor(0.01f, 0.01f, 0.01f, 0.92f)
+        surface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width - INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING, cornerRadius = 5f)
 
         // Draw selection rectangle
         val selectionDistance = selectCursor - inputCursor
@@ -350,8 +351,8 @@ class CommandLine : Widget
         }
 
         // Draw input text
-        surface.setDrawColor(1f, 1f, 1f, 1f)
-        surface.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2, cliFont, yOrigin = 0.2f, fontSize = FONT_SIZE)
+        surface.setDrawColor(1f, 1f, 1f, 0.95f)
+        surface.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2, cliFont, yOrigin = 0.7f, fontSize = FONT_SIZE)
 
         // Draw console history
         var yPos = height - INPUT_BOX_HEIGHT
@@ -365,7 +366,7 @@ class CommandLine : Widget
                 val color = MessageColor.from(consoleEntry.type)
 
                 yPos -= lines.size * FONT_SIZE
-                surface.setDrawColor(color.red, color.green, color.blue)
+                surface.setDrawColor(color.red, color.green, color.blue, 0.9f)
                 lines.forEachIndexed { i, line -> surface.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont, yOrigin = 0.5f, fontSize = FONT_SIZE) }
             }
     }
@@ -446,7 +447,7 @@ class CommandLine : Widget
 
     companion object
     {
-        private const val FONT_SIZE = 20f
+        private const val FONT_SIZE = 18f
         private const val TEXT_PADDING_X = 15f
         private const val INPUT_BOX_PADDING = 7f
         private const val INPUT_BOX_HEIGHT = FONT_SIZE + 20

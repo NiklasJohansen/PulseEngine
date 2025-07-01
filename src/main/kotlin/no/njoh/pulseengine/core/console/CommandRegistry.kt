@@ -68,7 +68,7 @@ object CommandRegistry
 
         engine.console.registerCommand(
             template = "toggleFullscreen",
-            description = "Toggles fullscreen "
+            description = "Toggles fullscreen"
         ) {
             engine.window.updateScreenMode(if (engine.window.screenMode == WINDOWED) FULLSCREEN else WINDOWED)
             CommandResult("Screen mode set to: ${engine.window.screenMode}", showCommand = true)
@@ -217,7 +217,7 @@ object CommandRegistry
             FileWatcher.setOnFileChanged(path, fileTypes, maxDepth, interval) { filePath ->
                 engine.console.runLater("$command \"$filePath\"", showCommand = true)
             }
-            CommandResult("Watching for file changes every $interval seconds in $path", showCommand = false)
+            CommandResult("Watching for file changes every $interval ms in $path", showCommand = false)
         }
     }
 }
