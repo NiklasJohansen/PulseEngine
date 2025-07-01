@@ -49,7 +49,6 @@ class GiInterior(
         program.setUniform("localSdfRes", localSdfTexture.width.toFloat(), localSdfTexture.height.toFloat())
         program.setUniform("uvSampleOffset", GiSceneRenderer.getUvSampleOffset(localSceneSurface, enabled = lightSystem.jitterFix))
         program.setUniform("scale", localSceneSurface.camera.scale.x)
-        program.setUniform("ambientLight", lightSystem.ambientLight)
         program.setUniform("exteriorLightTexUvMax", lightSystem.getExteriorLightTexUvMax(engine))
         program.setUniform("normalMapScale", lightSystem.normalMapScale)
         program.setUniform("camAngle", exteriorLightSurface.camera.rotation.z)

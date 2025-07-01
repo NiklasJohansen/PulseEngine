@@ -32,7 +32,6 @@ class GiBounce(
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
         val exteriorLightSurface = engine.gfx.getSurface(exteriorLightSurfaceName) ?: return inTextures
-        val localSdfSurface = engine.gfx.getSurface(localSdfSurfaceName) ?: return inTextures
         val exteriorLightTexture = exteriorLightSurface.getTexture()
 
         fbo.bind()
@@ -49,7 +48,6 @@ class GiBounce(
         program.setUniformSampler("sceneTex", inTextures[0])
         program.setUniformSampler("sceneMetaTex", inTextures[1])
         program.setUniformSampler("exteriorLightTex", exteriorLightTexture)
-        program.setUniformSampler("localSdfTex", localSdfSurface.getTexture())
         renderer.draw()
         fbo.release()
 
