@@ -50,9 +50,11 @@ void main()
     if (aoEnabled)
         light *= texture(aoTex, offsetUv).r;
 
-    // Add some dithering to prevent color banding
+    // Add some tinted dithering to prevent color banding
     float noise = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
-    light += mix(-dithering / 255.0, dithering / 255.0, noise);
+    float maxChannel = max(max(light.r, light.g), light.b);
+    vec3 tint = (maxChannel > 0.0) ? light.rgb / maxChannel : vec3(0);
+    light += tint * mix(-dithering / 255.0, dithering / 255.0, noise);
 
     fragColor = vec4(light, 1.0);
 }
