@@ -59,9 +59,9 @@ class SpriteSheet(
         return textures[index]
     }
 
-    override fun iterator(): Iterator<Texture> = ImageIterator()
+    override fun iterator(): Iterator<Texture> = TextureIterator()
 
-    inner class ImageIterator : Iterator<Texture>
+    inner class TextureIterator : Iterator<Texture>
     {
         var index = 0
         override fun hasNext(): Boolean = index < size

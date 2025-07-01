@@ -281,7 +281,6 @@ class PulseEngineImpl(
 
     private fun updateInput()
     {
-//        window.wasResized = false
         input.pollEvents()
 
         // Update world mouse position

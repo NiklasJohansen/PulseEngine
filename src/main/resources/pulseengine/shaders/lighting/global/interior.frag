@@ -58,7 +58,7 @@ vec3 getOccluderLight(vec2 offsetUv, vec4 sceneMetaData)
         }
         if (i == 10) continue; // No intersection found
 
-        vec3 lightDir = normalize(vec3(dir, normalMapScale != 0.0 ? 1.0 / normalMapScale : 100000.0));
+        vec3 lightDir = normalize(vec3(dir, normalMapScale));
         float falloff = clamp(dot(normal, lightDir) * 4, 0.0, 1.0);
         falloff *= edgeLightStrengt / (1.0 + (0.05 * travelDist / scale));
 

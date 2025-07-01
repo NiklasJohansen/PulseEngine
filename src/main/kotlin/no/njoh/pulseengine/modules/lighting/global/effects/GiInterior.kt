@@ -50,7 +50,7 @@ class GiInterior(
         program.setUniform("uvSampleOffset", GiSceneRenderer.getUvSampleOffset(localSceneSurface, enabled = lightSystem.jitterFix))
         program.setUniform("scale", localSceneSurface.camera.scale.x)
         program.setUniform("exteriorLightTexUvMax", lightSystem.getExteriorLightTexUvMax(engine))
-        program.setUniform("normalMapScale", lightSystem.normalMapScale)
+        program.setUniform("normalMapScale", if (lightSystem.normalMapScale != 0f) 1f / lightSystem.normalMapScale else 100000f)
         program.setUniform("camAngle", exteriorLightSurface.camera.rotation.z)
         program.setUniform("lastViewProjectionMatrix", lastViewProjectionMatrix)
         program.setUniform("currentViewProjectionMatrix", exteriorLightSurface.camera.viewProjectionMatrix)
