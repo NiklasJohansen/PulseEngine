@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.window
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.config.ConfigurationInternal
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.component1
@@ -25,7 +26,8 @@ open class WindowImpl : WindowInternal
     override var wasResized = false
     override var title = ""
 
-    private var contentScaleChangedCallbacks = mutableListOf<(Float) -> Unit>()
+    private var contentScaleChangedCallbacks = ArrayList<(Float) -> Unit>()
+    private val onInitFrame = ArrayList<(PulseEngineInternal) -> Unit>()
     private var resizeCallBack: (width: Int, height: Int, windowRecreated: Boolean) -> Unit = { _, _, _ -> }
     private var initWidth = 800
     private var initHeight = 600
@@ -58,6 +60,14 @@ open class WindowImpl : WindowInternal
         createWindow()
     }
 
+    override fun initFrame(engineInternal: PulseEngineInternal)
+    {
+        wasResized = false
+
+        onInitFrame.forEachFast { it(engineInternal) }
+        onInitFrame.clear()
+    }
+
     private fun createWindow()
     {
         var windowWidth  = initWidth
@@ -77,7 +87,7 @@ open class WindowImpl : WindowInternal
         if (windowHandle == MemoryUtil.NULL)
             throw RuntimeException("Failed to create the GLFW windowHandle")
 
-        // Destroy previous window if it existed
+        // Destroy previous window if it exists
         if (prevWindowHandle != MemoryUtil.NULL)
             glfwDestroyWindow(prevWindowHandle)
 
@@ -124,16 +134,16 @@ open class WindowImpl : WindowInternal
 
     override fun updateScreenMode(mode: ScreenMode)
     {
-        if (mode == this.screenMode)
+        if (mode == screenMode)
             return
 
-        // Create new window
         screenMode = mode
-        createWindow()
-
-        // Notify observers
-        resizeCallBack(width, height, true)
-        wasResized = true
+        runOnInitFrame()
+        {
+            createWindow()
+            resizeCallBack(width, height, true)
+            wasResized = true
+        }
     }
 
     override fun updateTitle(title: String)
@@ -142,12 +152,12 @@ open class WindowImpl : WindowInternal
             return
 
         this.title = title
-        glfwSetWindowTitle(windowHandle, title)
+        runOnInitFrame { glfwSetWindowTitle(windowHandle, title) }
     }
 
     override fun close()
     {
-        glfwSetWindowShouldClose(windowHandle, true)
+        runOnInitFrame { glfwSetWindowShouldClose(windowHandle, true) }
     }
 
     override fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit) { resizeCallBack = callback }
@@ -209,21 +219,25 @@ open class WindowImpl : WindowInternal
     }
 
     private fun getMonitors(): List<Long> =
-        glfwGetMonitors()?.let {
-            monitors -> 0.until(monitors.limit()).mapNotNull { monitors[it] }
-        } ?: emptyList()
+        glfwGetMonitors()
+            ?.let { monitors -> 0.until(monitors.limit()).mapNotNull { monitors[it] } }
+            ?: emptyList()
 
-    private fun getWindowContentScaling(windowHandle: Long): Float {
+    private fun getWindowContentScaling(windowHandle: Long): Float
+    {
         val xScale = FloatArray(1)
         val yScale = FloatArray(1)
         glfwGetWindowContentScale(windowHandle, xScale, yScale)
         return max(xScale[0], yScale[0])
     }
 
-    private fun getFramebufferSize(windowHandle: Long): Vector2i {
+    private fun getFramebufferSize(windowHandle: Long): Vector2i
+    {
         val fbWidth = IntArray(1)
         val fbHeight = IntArray(1)
         glfwGetFramebufferSize(windowHandle, fbWidth, fbHeight)
         return Vector2i(fbWidth[0], fbHeight[0])
     }
+
+    private fun runOnInitFrame(command: PulseEngineInternal.() -> Unit) { onInitFrame.add(command) }
 }

@@ -1,10 +1,10 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.graphics.api.*
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR_MIPMAP
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureHandle.Companion.INVALID
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.REPEAT
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -18,60 +18,27 @@ import java.nio.FloatBuffer
 open class Texture(
     filePath: String,
     name: String,
+    initWidth: Int = 1,
+    initHeight: Int = 1,
     val filter: TextureFilter = LINEAR_MIPMAP,
     val wrapping: TextureWrapping = REPEAT,
     val format: TextureFormat = SRGBA8,
-    val mipLevels: Int = 5,
+    val maxMipLevels: Int = 5,
 ) : Asset(filePath, name) {
 
-    var handle: TextureHandle = INVALID
-        private set
+    var handle = INVALID;    private set
+    var width  = initWidth;  private set
+    var height = initHeight; private set
 
-    var width: Int = 1
-        private set
+    var uMin = 0f; private set
+    var vMin = 0f; private set
+    var uMax = 1f; private set
+    var vMax = 1f; private set
 
-    var height: Int = 1
-        private set
+    var pixelsLDR: ByteBuffer?  = null; private set
+    var pixelsHDR: FloatBuffer? = null; private set
 
-    var uMin: Float = 0f
-        private set
-
-    var vMin: Float = 0f
-        private set
-
-    var uMax: Float = 1f
-        private set
-
-    var vMax: Float = 1f
-        private set
-
-    var isBindless: Boolean = false
-        private set
-
-    var pixelsLDR: ByteBuffer? = null
-        private set
-
-    var pixelsHDR: FloatBuffer? = null
-        private set
-
-    var attachment: Attachment? = null
-        private set
-
-    private var onFinalized: (Texture) -> Unit = { }
-
-    open fun finalize(handle: TextureHandle, isBindless: Boolean, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, attachment: Attachment? = null)
-    {
-        this.handle = handle
-        this.isBindless = isBindless
-        this.uMin = uMin
-        this.vMin = vMin
-        this.uMax = uMax
-        this.vMax = vMax
-        this.attachment = attachment
-        this.onFinalized(this)
-        this.pixelsLDR = null
-        this.pixelsHDR = null
-    }
+    private var afterUpload: (Texture) -> Unit = { }
 
     override fun load()
     {
@@ -105,7 +72,7 @@ open class Texture(
             }
             this.width = width[0]
             this.height = height[0]
-            this.onFinalized = { tex ->
+            this.afterUpload = { tex ->
                 tex.pixelsLDR?.let { stbi_image_free(it) }
                 tex.pixelsHDR?.let { stbi_image_free(it) }
             }
@@ -116,22 +83,29 @@ open class Texture(
         }
     }
 
-    fun stage(pixels: ByteBuffer?, width: Int, height: Int)
+    fun loadFrom(pixels: ByteBuffer?, width: Int, height: Int)
     {
         this.pixelsLDR = pixels
         this.width = width
         this.height = height
     }
 
+    open fun onUploaded(handle: TextureHandle, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
+    {
+        this.handle = handle
+        this.uMin = uMin
+        this.vMin = vMin
+        this.uMax = uMax
+        this.vMax = vMax
+        this.afterUpload(this)
+        this.pixelsLDR = null
+        this.pixelsHDR = null
+    }
+
     override fun unload() { }
 
     companion object
     {
-        val BLANK = Texture(filePath = "", name = "BLANK", filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = SRGBA8, mipLevels = 1).apply {
-            finalize(handle = TextureHandle.NONE, isBindless = true, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
-        }
-        val BLANK_BINDABLE = Texture(filePath = "", name = "BLANK_BINDABLE", filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGBA8, mipLevels = 1).apply {
-            finalize(handle = TextureHandle.NONE, isBindless = false, uMin = 0f, vMin = 0f, uMax = 1f, vMax = 1f)
-        }
+        val BLANK = Texture(filePath = "", name = "BLANK").also { it.onUploaded(TextureHandle.NONE) }
     }
 }

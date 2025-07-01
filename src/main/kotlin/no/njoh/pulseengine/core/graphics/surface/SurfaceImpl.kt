@@ -21,20 +21,21 @@ class SurfaceImpl(
     override val config: SurfaceConfigInternal,
 ): SurfaceInternal() {
 
-    override var renderTarget           = createRenderTarget(config)
-    private var initialized             = false
-    private val onInitFrame             = ArrayList<(PulseEngineInternal) -> Unit>()
-    private var readRenderStates        = ArrayList<RenderState>(MAX_BATCH_COUNT)
-    private var writeRenderStates       = ArrayList<RenderState>(MAX_BATCH_COUNT)
-    private val postEffects             = ArrayList<PostProcessingEffect>()
-    private val renderers               = ArrayList<BatchRenderer>()
-    private val rendererMap             = HashMap<Class<out BatchRenderer>, BatchRenderer>()
-    private var textRenderer            = null as TextRenderer?
-    private var quadRenderer            = null as QuadRenderer?
-    private var lineRenderer            = null as LineRenderer?
-    private var textureRenderer         = null as TextureRenderer?
-    private var stencilRenderer         = null as StencilRenderer?
-    private var bindlessTextureRenderer = null as BindlessTextureRenderer?
+    override var renderTarget         = createRenderTarget(config)
+    private var initialized           = false
+    private var shouldRerender        = false
+    private val onInitFrame           = ArrayList<(PulseEngineInternal) -> Unit>()
+    private var readRenderStates      = ArrayList<RenderState>(MAX_BATCH_COUNT)
+    private var writeRenderStates     = ArrayList<RenderState>(MAX_BATCH_COUNT)
+    private val postEffects           = ArrayList<PostProcessingEffect>()
+    private val renderers             = ArrayList<BatchRenderer>()
+    private val rendererMap           = HashMap<Class<out BatchRenderer>, BatchRenderer>()
+    private var textRenderer          = null as TextRenderer?
+    private var quadRenderer          = null as QuadRenderer?
+    private var lineRenderer          = null as LineRenderer?
+    private var textureRenderer       = null as TextureRenderer?
+    private var stencilRenderer       = null as StencilRenderer?
+    private var renderTextureRenderer = null as RenderTextureRenderer?
 
     // Internal functions
     //--------------------------------------------------------------------------------------------
@@ -46,13 +47,13 @@ class SurfaceImpl(
 
         if (!initialized)
         {
-            textRenderer            = TextRenderer(config)
-            quadRenderer            = QuadRenderer(config)
-            lineRenderer            = LineRenderer(config)
-            textureRenderer         = TextureRenderer(config)
-            stencilRenderer         = StencilRenderer()
-            bindlessTextureRenderer = BindlessTextureRenderer(config)
-            renderers               += listOfNotNull(textRenderer, quadRenderer, lineRenderer, textureRenderer, stencilRenderer, bindlessTextureRenderer)
+            textRenderer          = TextRenderer(config)
+            quadRenderer          = QuadRenderer(config)
+            lineRenderer          = LineRenderer(config)
+            textureRenderer       = TextureRenderer(config)
+            stencilRenderer       = StencilRenderer()
+            renderTextureRenderer = RenderTextureRenderer(config)
+            renderers             += listOfNotNull(textRenderer, quadRenderer, lineRenderer, textureRenderer, stencilRenderer, renderTextureRenderer)
 
             renderers.forEachFast { rendererMap[it::class.java] = it }
         }
@@ -61,9 +62,11 @@ class SurfaceImpl(
         {
             renderers.forEachFast { it.init(engine) }
             postEffects.forEachFast { it.init(engine) }
+            config.mipmapGenerator?.init(engine)
         }
 
         renderTarget.init(width, height)
+        shouldRerender = true
         initialized = true
     }
 
@@ -96,6 +99,9 @@ class SurfaceImpl(
         }
 
         renderTarget.end()
+        renderTarget.generateMips(engine)
+
+        if (batchNum > 0) shouldRerender = false // Something was rendered, clear flag
     }
 
     override fun runPostProcessingPipeline(engine: PulseEngineInternal)
@@ -120,9 +126,10 @@ class SurfaceImpl(
         renderers.forEachFast { it.destroy() }
         postEffects.forEachFast { it.destroy() }
         renderTarget.destroy()
+        config.mipmapGenerator?.destroy()
     }
 
-    override fun hasContent() = renderers.anyMatches { it.hasContentToRender() }
+    override fun hasContent() = shouldRerender || renderers.anyMatches { it.hasContentToRender() }
 
     override fun hasPostProcessingEffects() = postEffects.isNotEmpty()
 
@@ -149,20 +156,19 @@ class SurfaceImpl(
         quadRenderer?.vertex(x, y)
     }
 
+    override fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees, xOrigin: Float, yOrigin: Float)
+    {
+        renderTextureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin)
+    }
+
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
     {
-        if (texture.isBindless)
-            bindlessTextureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius)
-        else
-            textureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin)
+        textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius)
     }
 
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, uTiling: Float, vTiling: Float)
     {
-        if (texture.isBindless)
-            bindlessTextureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, uTiling, vTiling)
-        else
-            textureRenderer?.drawTexture(texture, x, y, width, height, angle, xOrigin, yOrigin)
+        textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, uTiling, vTiling)
     }
 
     override fun drawText(text: CharSequence, x: Float, y: Float, font: Font?, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float)
@@ -173,7 +179,7 @@ class SurfaceImpl(
     // Exposed getters
     //------------------------------------------------------------------------------------------------
 
-    override fun getTexture(index: Int, final: Boolean): Texture
+    override fun getTexture(index: Int, final: Boolean): RenderTexture
     {
         if (final) postEffects.forEachReversed { effect -> effect.getTexture(index)?.let { return it } }
 
@@ -184,7 +190,7 @@ class SurfaceImpl(
             )
     }
 
-    override fun getTextures(): List<Texture>
+    override fun getTextures(): List<RenderTexture>
     {
         return renderTarget.getTextures()
     }
@@ -223,12 +229,17 @@ class SurfaceImpl(
 
     override fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float): Surface
     {
-        config.backgroundColor.setFromRgba(red, green, blue, alpha)
+        val bgColor = config.backgroundColor
+        if (red != bgColor.red || green != bgColor.green || blue != bgColor.blue || alpha != alpha)
+            shouldRerender = true
+        bgColor.setFromRgba(red, green, blue, alpha)
         return this
     }
 
     override fun setBackgroundColor(color: Color): Surface
     {
+        if (config.backgroundColor != color)
+            shouldRerender = true
         config.backgroundColor.setFrom(color)
         return this
     }
@@ -254,18 +265,27 @@ class SurfaceImpl(
         return this
     }
 
-    private fun createRenderTarget(config: SurfaceConfig) = when (config.multisampling)
-    {
-        Multisampling.NONE -> OffScreenRenderTarget(config.textureScale, config.textureFormat, config.textureFilter, config.attachments)
-        else -> MultisampledOffScreenRenderTarget(config.textureScale, config.textureFormat, config.textureFilter, config.multisampling, config.attachments)
-    }
+    private fun createRenderTarget(config: SurfaceConfig) = RenderTarget(
+        textureDescriptors = config.attachments.map { attachment ->
+            TextureDescriptor(
+                format = config.textureFormat,
+                filter = config.textureFilter,
+                wrapping = TextureWrapping.CLAMP_TO_EDGE,
+                multisampling = config.multisampling,
+                attachment = attachment,
+                scale = config.textureScale,
+                sizeFunc = config.textureSizeFunc,
+                mipmapGenerator = config.mipmapGenerator,
+            )
+        }
+    )
 
     override fun setTextureFormat(format: TextureFormat): Surface
     {
         if (format != config.textureFormat)
         {
             config.textureFormat = format
-            renderTarget.textureFormat = format
+            renderTarget.textureDescriptors.forEachFast { it.format = format }
             runOnInitFrame { renderTarget.init(config.width, config.height) }
         }
         return this
@@ -276,7 +296,7 @@ class SurfaceImpl(
         if (filter != config.textureFilter)
         {
             config.textureFilter = filter
-            renderTarget.textureFilter = filter
+            renderTarget.textureDescriptors.forEachFast { it.filter = filter }
             runOnInitFrame { renderTarget.init(config.width, config.height) }
         }
         return this
@@ -287,7 +307,7 @@ class SurfaceImpl(
         if (scale != config.textureScale)
         {
             config.textureScale = scale
-            renderTarget.textureScale = scale
+            renderTarget.textureDescriptors.forEachFast { it.scale = scale }
             runOnInitFrame { renderTarget.init(config.width, config.height) }
         }
         return this
@@ -296,7 +316,6 @@ class SurfaceImpl(
     override fun addPostProcessingEffect(effect: PostProcessingEffect)
     {
         runOnInitFrame { engine ->
-
             getPostProcessingEffect(effect.name)?.let()
             {
                 Logger.warn { "Replacing existing post processing effect with same name: ${it.name}" }

@@ -16,7 +16,7 @@ class StaticBufferObject(
     }
 
     fun release() = glBindBuffer(target, 0)
-    fun delete() = glDeleteBuffers(id)
+    fun destroy() = glDeleteBuffers(id)
 
     companion object
     {

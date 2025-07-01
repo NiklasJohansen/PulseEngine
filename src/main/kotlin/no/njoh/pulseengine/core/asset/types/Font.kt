@@ -61,8 +61,8 @@ class Font(
         }
         rgbaBuffer.flip()
 
-        charTexture = Texture(filePath = "", name = "char_tex_$name", filter = LINEAR_MIPMAP, wrapping = CLAMP_TO_EDGE, format = SRGBA8, mipLevels = 3)
-        charTexture.stage(rgbaBuffer, BITMAP_W, BITMAP_H)
+        charTexture = Texture(filePath = "", name = "char_tex_$name", filter = LINEAR_MIPMAP, wrapping = CLAMP_TO_EDGE, format = SRGBA8, maxMipLevels = 3)
+        charTexture.loadFrom(rgbaBuffer, BITMAP_W, BITMAP_H)
     }
 
     override fun unload()

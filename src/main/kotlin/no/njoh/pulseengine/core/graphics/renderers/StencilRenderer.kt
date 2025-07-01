@@ -52,8 +52,8 @@ class StencilRenderer : BatchRenderer()
 
     override fun destroy()
     {
-        vao.delete()
-        vbo.delete()
-        program.delete()
+        vao.destroy()
+        vbo.destroy()
+        program.destroy()
     }
 }

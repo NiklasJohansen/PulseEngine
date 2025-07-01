@@ -9,6 +9,9 @@ import org.lwjgl.opengl.ARBInternalformatQuery2.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.ARBTextureStorage.glTexStorage3D
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL12.glTexSubImage3D
+import kotlin.math.floor
+import kotlin.math.log2
+import kotlin.math.min
 
 class TextureArray(
     val samplerIndex: Int,
@@ -17,12 +20,13 @@ class TextureArray(
     val format: TextureFormat,
     val filter: TextureFilter,
     val wrapping: TextureWrapping,
-    val mipLevels: Int
+    val maxMipLevels: Int
 ) {
     var id  = -1; private set
     var size = 0; private set
 
     private var freeSlots = TIntArrayList()
+    private val mipLevels = min(maxMipLevels, floor(log2(textureSize.toDouble())).toInt() + 1)
 
     fun init()
     {
@@ -64,14 +68,16 @@ class TextureArray(
             return
         }
 
-        glGenerateMipmap(GL_TEXTURE_2D_ARRAY)
+        if (mipLevels > 1)
+            glGenerateMipmap(GL_TEXTURE_2D_ARRAY)
+
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
 
         val u = texture.width / textureSize.toFloat()
         val v = texture.height / textureSize.toFloat()
         val handle = TextureHandle.create(samplerIndex, texIndex)
 
-        texture.finalize(handle = handle, isBindless = true, uMin = 0.0f, vMin = 0.0f, uMax = u, vMax = v)
+        texture.onUploaded(handle, uMin = 0.0f, vMin = 0.0f, uMax = u, vMax = v)
     }
 
     fun isFull() = size >= maxCapacity
@@ -85,5 +91,5 @@ class TextureArray(
 
     fun destroy() = glDeleteTextures(id)
 
-    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, mips=$mipLevels"
+    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, mips=$maxMipLevels"
 }

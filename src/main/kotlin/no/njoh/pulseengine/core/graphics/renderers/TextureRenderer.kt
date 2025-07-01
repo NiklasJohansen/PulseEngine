@@ -5,36 +5,26 @@ import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
-import java.lang.Float.floatToRawIntBits
 
 class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
 {
     private lateinit var vao: VertexArrayObject
-    private lateinit var vbo: StaticBufferObject
+    private lateinit var vertexBuffer: StaticBufferObject
+    private lateinit var instanceBuffer: DoubleBufferedFloatObject
     private lateinit var program: ShaderProgram
-    private lateinit var data: FloatArray
-
-    private var readCount = 0
-    private var writeCount = 0
-    private var readOffset = 0
-    private var writeOffset = 0
-    private val capacity = 50
-    private val stride = 10
 
     override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
-            readOffset = 0
-            writeOffset = capacity * stride
-            data = FloatArray(capacity * stride * 2)
-            vbo = StaticBufferObject.createQuadVertexArrayBuffer()
+            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
+            vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/texture.vert")),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/texture.frag"))
@@ -44,93 +34,107 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         val vertexLayout = VertexAttributeLayout()
             .withAttribute("vertexPos", 2, GL_FLOAT)
 
+        val instanceLayout = VertexAttributeLayout()
+            .withAttribute("worldPos", 3, GL_FLOAT, 1)
+            .withAttribute("size", 2, GL_FLOAT, 1)
+            .withAttribute("origin", 2, GL_FLOAT, 1)
+            .withAttribute("angle", 1, GL_FLOAT, 1)
+            .withAttribute("cornerRadius", 1, GL_FLOAT, 1)
+            .withAttribute("uvMin", 2, GL_FLOAT, 1)
+            .withAttribute("uvMax", 2, GL_FLOAT, 1)
+            .withAttribute("tiling", 2, GL_FLOAT, 1)
+            .withAttribute("color", 1, GL_FLOAT, 1)
+            .withAttribute("textureHandle", 1, GL_FLOAT, 1)
+
         vao = VertexArrayObject.createAndBind()
-        vbo.bind()
         program.bind()
+        vertexBuffer.bind()
         program.setVertexAttributeLayout(vertexLayout)
+        instanceBuffer.bind()
+        program.setVertexAttributeLayout(instanceLayout)
         vao.release()
     }
 
     override fun onInitFrame()
     {
-        readOffset = writeOffset.also { writeOffset = readOffset }
-        readCount = writeCount.also { writeCount = 0 }
+        instanceBuffer.swapBuffers()
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
-        // Bind VAO and shader program
-        vao.bind()
-        program.bind()
-
-        // Set matrices
-        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-
-        // Set texture unit
-        glActiveTexture(GL_TEXTURE0)
-
-        // Draw each texture with separate draw call
-        for (i in startIndex until startIndex + drawCount)
+        if (startIndex == 0)
         {
-            val base = readOffset + i * stride
-            val x = data[base + 0]
-            val y = data[base + 1]
-            val z = data[base + 2]
-            val w = data[base + 3]
-            val h = data[base + 4]
-            val angle = data[base + 5]
-            val xOrigin = data[base + 6]
-            val yOrigin = data[base + 7]
-            val rgba = data[base + 8]
-            val textureId = data[base + 9].toInt()
-
-            // Bind texture
-            if (textureId != TextureHandle.NONE.textureIndex)
-                program.setUniformSampler("tex", TextureHandle.create(0, textureId))
-
-            // Set uniforms
-            program.setUniform("position", x, y, z)
-            program.setUniform("size", w, h)
-            program.setUniform("origin", xOrigin, yOrigin)
-            program.setUniform("angle", angle)
-            program.setUniform("color", floatToRawIntBits(rgba))
-            program.setUniform("sampleTexture", textureId != TextureHandle.NONE.textureIndex)
-
-            // Draw quad
-            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
+            instanceBuffer.bind()
+            instanceBuffer.submit()
+            instanceBuffer.release()
         }
 
-        // Release VAO and reset count
+        vao.bind()
+        program.bind()
+        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
-        readCount = 0
     }
 
     override fun destroy()
     {
-        vbo.delete()
-        program.delete()
-        vao.delete()
+        vertexBuffer.destroy()
+        instanceBuffer.destroy()
+        program.destroy()
+        vao.destroy()
     }
 
-    fun drawTexture(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float)
+    fun draw(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
     {
-        if (writeCount >= capacity)
-            return
-
-        val base = writeOffset + writeCount * stride
-        data[base + 0] = x
-        data[base + 1] = y
-        data[base + 2] = config.currentDepth
-        data[base + 3] = w
-        data[base + 4] = h
-        data[base + 5] = angle
-        data[base + 6] = xOrigin
-        data[base + 7] = yOrigin
-        data[base + 8] = config.currentDrawColor
-        data[base + 9] = texture.handle.textureIndex.toFloat()
-
-        writeCount++
-        config.increaseDepth()
+        instanceBuffer.fill(17)
+        {
+            put(x, y, config.currentDepth)
+            put(w, h)
+            put(xOrigin, yOrigin)
+            put(angle)
+            put(cornerRadius)
+            put(texture.uMin, texture.vMin)
+            put(texture.uMax, texture.vMax)
+            put(1f, 1f) // U/V Tiling
+            put(config.currentDrawColor)
+            put(texture.handle.toFloat())
+        }
         increaseBatchSize()
+        config.increaseDepth()
+    }
+
+    fun draw(
+        texture: Texture,
+        x: Float,
+        y: Float,
+        w: Float,
+        h: Float,
+        angle: Float,
+        xOrigin: Float,
+        yOrigin: Float,
+        cornerRadius: Float,
+        uMin: Float,
+        vMin: Float,
+        uMax: Float,
+        vMax: Float,
+        uTiling: Float,
+        vTiling: Float
+    ) {
+        instanceBuffer.fill(17)
+        {
+            put(x, y, config.currentDepth)
+            put(w, h)
+            put(xOrigin, yOrigin)
+            put(angle)
+            put(cornerRadius)
+            put(texture.uMax * uMin, texture.vMax * vMin)
+            put(texture.uMax * uMax, texture.vMax * vMax)
+            put(uTiling, vTiling)
+            put(config.currentDrawColor)
+            put(texture.handle.toFloat())
+        }
+        increaseBatchSize()
+        config.increaseDepth()
     }
 }

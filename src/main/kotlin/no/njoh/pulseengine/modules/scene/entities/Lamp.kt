@@ -24,11 +24,12 @@ open class Lamp : StandardSceneEntity(), DirectLightSource, GiLightSource
 
     @JsonAlias("color")
     override var lightColor = Color(1f, 0.92f, 0.75f)
+    override var lightTextureName = ""
     override var intensity = 4f
-    override var radius: Float = 800f
-    override var size = 100f
+    override var radius = 0f // 0=infinite in global illumination
+    override var size = 30f
     override var coneAngle = 360f
-    override var spill: Float = 0.95f
+    override var spill = 0.95f
     override var type = DirectLightType.RADIAL
     override var shadowType = DirectShadowType.SOFT
 
@@ -49,7 +50,7 @@ open class Lamp : StandardSceneEntity(), DirectLightSource, GiLightSource
         }
     }
 
-    override fun onFixedUpdate(engine: PulseEngine)
+    override fun onUpdate(engine: PulseEngine)
     {
         if (engine.scene.state != RUNNING)
             return
@@ -57,10 +58,10 @@ open class Lamp : StandardSceneEntity(), DirectLightSource, GiLightSource
         if (trackParent)
         {
             val target = engine.scene.getEntityOfType<Spatial>(parentId) ?: return
-            val angle = initAngle - target.rotation.toRadians()
-            x = target.x + cos(angle) * initLength
-            y = target.y + sin(angle) * initLength
-            rotation = target.rotation + initRotation
+            val angle = initAngle - target.rotationInterpolated().toRadians()
+            x = target.xInterpolated() + cos(angle) * initLength
+            y = target.yInterpolated() + sin(angle) * initLength
+            rotation = target.rotationInterpolated() + initRotation
         }
     }
 

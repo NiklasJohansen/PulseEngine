@@ -1,59 +1,54 @@
 #version 330 core
 
-in vec2 uv;
+out ivec4 fragColor;
 
-out vec4 fragColor;
+uniform isampler2D seedTex;
 
-uniform sampler2D seedTex;
-
-uniform float uOffset;
-uniform vec2 resolution;
+uniform int offset;
+uniform ivec2 resolution;
+uniform bool computeInternal;
 
 void main()
 {
-    vec2 nearestOutsideSeed = vec2(0.0);
-    vec2 nearestInsideSeed = vec2(0.0);
-    float nearestOutsideDist = 9999.0;
-    float nearestInsideDist = 9999.0;
+    ivec2 fragCoord = ivec2(gl_FragCoord.xy);
+    ivec2 nearestExternalSeed = ivec2(0);
+    ivec2 nearestInternalSeed = ivec2(0);
+    int nearestExternalDist = 100000000;
+    int nearestInternalDist = 100000000;
 
-    vec2 invRes = 1.0 / resolution;
-
-    for (float y = -1.0; y <= 1.0; y += 1.0)
+    for (int dy = -1; dy <= 1; dy++)
     {
-        for (float x = -1.0; x <= 1.0; x += 1.0)
+        for (int dx = -1; dx <= 1; dx++)
         {
-            vec2 samplePos = uv + vec2(x, y) * uOffset * invRes;
-
-            if (samplePos.x < 0.0 || samplePos.x > 1.0 || samplePos.y < 0.0 || samplePos.y > 1.0)
+            ivec2 neighbor = fragCoord + ivec2(dx, dy) * offset;
+            if (neighbor.x < 0 || neighbor.y < 0 || neighbor.x >= resolution.x || neighbor.y >= resolution.y)
                 continue;
 
-            vec4 seed = texture(seedTex, samplePos);
-            vec2 outsideSeed = seed.xy;
-            vec2 insideSeed = seed.zw;
+            ivec4 seed = texelFetch(seedTex, neighbor, 0); // xy = external, zw = internal
 
-            if (outsideSeed.x != 0.0 || outsideSeed.y != 0.0)
+            if (seed.x >= 0) // Check external seed
             {
-                vec2 diff = outsideSeed - uv;
-                float dist = dot(diff, diff);
-                if (dist < nearestOutsideDist)
+                ivec2 d = seed.xy - fragCoord;
+                int dist = d.x * d.x + d.y * d.y;
+                if (dist < nearestExternalDist)
                 {
-                    nearestOutsideDist = dist;
-                    nearestOutsideSeed = outsideSeed;
+                    nearestExternalDist = dist;
+                    nearestExternalSeed = seed.xy;
                 }
             }
 
-            if (insideSeed.x != 0.0 || insideSeed.y != 0.0)
+            if (computeInternal && seed.z >= 0) // Check internal seed
             {
-                vec2 diff = insideSeed - uv;
-                float dist = dot(diff, diff);
-                if (dist < nearestInsideDist)
+                ivec2 d = seed.zw - fragCoord;
+                int dist = d.x * d.x + d.y * d.y;
+                if (dist < nearestInternalDist)
                 {
-                    nearestInsideDist = dist;
-                    nearestInsideSeed = insideSeed;
+                    nearestInternalDist = dist;
+                    nearestInternalSeed = seed.zw;
                 }
             }
         }
     }
 
-    fragColor = vec4(nearestOutsideSeed, nearestInsideSeed);
+    fragColor = ivec4(nearestExternalSeed, nearestInternalSeed);
 }

@@ -898,8 +898,6 @@ class SceneEditor(
             val spawnPos = activeCamera.screenPosToWorldPos(engine.window.width * 0.5f, engine.window.height * 0.5f)
             entity.x = spawnPos.x
             entity.y = spawnPos.y
-            entity.width = 512f
-            entity.height = 512f
         }
         entity.setPrimitiveProperty("textureName", "crate")
         engine.scene.addEntity(entity)

@@ -2,55 +2,56 @@ package no.njoh.pulseengine.modules.lighting.global.effects
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
-import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
+import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_1
-import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
 import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
 import org.joml.Matrix4f
 
-class GiSceneBounce(
-    private val lightSurfaceName: String,
-    override val name: String = "bounce",
+class GiBounce(
+    private val exteriorLightSurfaceName: String,
+    private val localSdfSurfaceName: String,
+    override val name: String = "gi_bounce",
     override val order: Int = 0
 ) : BaseEffect(
     TextureDescriptor(filter = NEAREST, format = RGBA16F, attachment = COLOR_TEXTURE_0), // Scene radiance
     TextureDescriptor(filter = NEAREST, format = RGBA16F, attachment = COLOR_TEXTURE_1)  // Scene metadata
 ) {
-    private var lastViewProjectionMatrix = Matrix4f()
+    private val lastViewProjectionMatrix = Matrix4f()
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
-        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/bounce.vert")),
-        engine.asset.loadNow(FragmentShader( "/pulseengine/shaders/lighting/global/bounce.frag"))
+        engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/base_reprojected.vert")),
+        engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/bounce.frag"))
     )
 
-    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         val lightSystem = engine.scene.getSystemOfType<GlobalIlluminationSystem>() ?: return inTextures
-        val lightSurface = engine.gfx.getSurface(lightSurfaceName) ?: return inTextures
+        val exteriorLightSurface = engine.gfx.getSurface(exteriorLightSurfaceName) ?: return inTextures
+        val exteriorLightTexture = exteriorLightSurface.getTexture()
 
         fbo.bind()
         fbo.clear()
         program.bind()
         program.setUniform("lastViewProjectionMatrix", lastViewProjectionMatrix)
-        program.setUniform("currentViewProjectionMatrix", lightSurface.camera.viewProjectionMatrix)
+        program.setUniform("currentViewProjectionMatrix", exteriorLightSurface.camera.viewProjectionMatrix)
         program.setUniform("bounceAccumulation", lightSystem.bounceAccumulation)
         program.setUniform("bounceRadius", lightSystem.bounceRadius)
         program.setUniform("bounceEdgeFade", lightSystem.bounceEdgeFade)
-        program.setUniform("resolution", fbo.width.toFloat(), fbo.height.toFloat())
-        program.setUniform("scale", lightSurface.camera.scale.x)
+        program.setUniform("resolution", exteriorLightTexture.width.toFloat(), exteriorLightTexture.height.toFloat())
+        program.setUniform("scale", exteriorLightSurface.camera.scale.x)
+        program.setUniform("exteriorLightTexUvMax", lightSystem.getExteriorLightTexUvMax(engine))
         program.setUniformSampler("sceneTex", inTextures[0])
         program.setUniformSampler("sceneMetaTex", inTextures[1])
-        program.setUniformSampler("lightTex", lightSurface.getTexture())
+        program.setUniformSampler("exteriorLightTex", exteriorLightTexture)
         renderer.draw()
         fbo.release()
 
-        lastViewProjectionMatrix.set(lightSurface.camera.viewProjectionMatrix)
+        lastViewProjectionMatrix.set(exteriorLightSurface.camera.viewProjectionMatrix)
 
         return fbo.getTextures()
     }

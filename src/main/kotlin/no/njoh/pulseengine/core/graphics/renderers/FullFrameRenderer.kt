@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL30.*
@@ -27,6 +28,13 @@ class FullFrameRenderer(val program: ShaderProgram)
         program.bind()
         program.setVertexAttributeLayout("position", 2, GL_FLOAT, 4 * FLOAT_BYTES, 0L)
         program.setVertexAttributeLayout("texCoord", 2, GL_FLOAT, 4 * FLOAT_BYTES, 2L * FLOAT_BYTES)
+    }
+
+    fun drawTexture(texture: RenderTexture)
+    {
+        program.bind()
+        program.setUniformSampler("tex", texture)
+        draw()
     }
 
     fun draw()

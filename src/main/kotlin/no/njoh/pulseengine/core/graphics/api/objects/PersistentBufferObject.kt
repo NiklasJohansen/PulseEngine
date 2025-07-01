@@ -33,9 +33,9 @@ abstract class PersistentBufferObject(
         glBindBuffer(target, 0)
     }
 
-    fun delete()
+    fun destroy()
     {
-        onDelete()
+        onDestroy()
         glDeleteBuffers(id)
     }
 
@@ -77,7 +77,7 @@ abstract class PersistentBufferObject(
         countToDraw = 0
     }
 
-    protected abstract fun onDelete()
+    protected abstract fun onDestroy()
     protected abstract fun onFillBuffer(bufferIndex: Int)
 
     companion object
@@ -133,7 +133,7 @@ class PersistentFloatBufferObject(
     internal val backingBuffer = memAllocFloat(bufferSize)
     private val mappedBuffer = persistentBuffer.asFloatBuffer()
 
-    override fun onDelete() = memFree(backingBuffer)
+    override fun onDestroy() = memFree(backingBuffer)
 
     override fun onFillBuffer(bufferIndex: Int)
     {
@@ -170,7 +170,7 @@ class PersistentIntBufferObject(
     internal val backingBuffer = memAllocInt(bufferSize)
     private val mappedBuffer = persistentBuffer.asIntBuffer()
 
-    override fun onDelete() = memFree(backingBuffer)
+    override fun onDestroy() = memFree(backingBuffer)
 
     override fun onFillBuffer(bufferIndex: Int)
     {

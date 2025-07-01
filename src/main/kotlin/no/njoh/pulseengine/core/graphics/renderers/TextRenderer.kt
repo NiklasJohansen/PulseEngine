@@ -87,10 +87,10 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
 
     override fun destroy()
     {
-        vertexBuffer.delete()
-        instanceBuffer.delete()
-        program.delete()
-        vao.delete()
+        vertexBuffer.destroy()
+        instanceBuffer.destroy()
+        program.destroy()
+        vao.destroy()
     }
 
     fun draw(text: CharSequence, x: Float, y: Float, font: Font, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float)

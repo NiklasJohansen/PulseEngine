@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
+import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
@@ -26,7 +27,7 @@ class ColorGradingEffect(
         engine.asset.loadNow(FragmentShader("/pulseengine/shaders/effects/color_grading.frag"))
     )
 
-    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<Texture>): List<Texture>
+    override fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         val lutTex = engine.asset.getOrNull<Texture>(lutTexture)
         val lutTexIndex = lutTex?.handle?.textureIndex?.toFloat() ?: -1f

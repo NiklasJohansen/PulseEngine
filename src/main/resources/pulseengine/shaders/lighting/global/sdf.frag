@@ -1,24 +1,27 @@
 #version 330 core
 
-in vec2 uv;
-
 out vec4 fragColor;
 
-uniform sampler2D jfaTex;
+uniform isampler2D jfaTex;
 
-const float sdfEncodeScale = 65000 / sqrt(2);
+uniform bool isSigned;
 
 void main()
 {
-    vec4 nearestSeed = texture(jfaTex, uv);
-    vec2 nearestOustideSeed = nearestSeed.xy;
-    float dist = distance(nearestOustideSeed, uv);
+    ivec2 fragCoord = ivec2(gl_FragCoord.xy);
+    ivec4 seed = texelFetch(jfaTex, fragCoord, 0); // xy = external, zw = internal
+    ivec2 eDelta = seed.xy - fragCoord;
+    int externalDist = eDelta.x * eDelta.x + eDelta.y * eDelta.y;
 
-    if (dist == 0.0) // Inside
+    if (isSigned)
     {
-        vec2 nearestInsideSeed = nearestSeed.zw;
-        dist = -distance(nearestInsideSeed, uv);
+        ivec2 iDelta = seed.zw - fragCoord;
+        int internalDist = iDelta.x * iDelta.x + iDelta.y * iDelta.y;
+        float dist = (externalDist > internalDist) ? sqrt(float(externalDist)) : -sqrt(float(internalDist));
+        fragColor = vec4(dist, 0.0, 0.0, 0.0);
     }
-
-    fragColor = vec4(dist * sdfEncodeScale, 0.0, 0.0, 1.0);
+    else
+    {
+        fragColor = vec4(sqrt(float(externalDist)), 0.0, 0.0, 0.0);
+    }
 }

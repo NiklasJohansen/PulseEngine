@@ -1,17 +1,31 @@
-#version 150 core
+#version 330 core
 
-in vec2 vertexPos;
-in vec2 texCoord;
+// Vertex attributes
+in vec2 vertexPos; // In range (0-1)
 
-out vec2 uv;
+// Instance attributes
+in vec3 worldPos;
+in vec2 size;
+in vec2 origin;
+in float angle;
+in float cornerRadius;
+in vec2 uvMin;
+in vec2 uvMax;
+in vec2 tiling;
+in uint color;
+in uint textureHandle;
+
 out vec4 vertexColor;
+out vec2 texStart;
+out vec2 texSize;
+out vec2 texCoord;
+out vec2 texTiling;
+out vec2 quadSize;
+out float quadCornerRadius;
+flat out uint samplerIndex;
+out float texIndex;
 
 uniform mat4 viewProjection;
-uniform vec3 position;
-uniform vec2 size;
-uniform vec2 origin;
-uniform float angle;
-uniform int color;
 
 vec4 unpackAndConvert(uint rgba)
 {
@@ -23,6 +37,16 @@ vec4 unpackAndConvert(uint rgba)
     return vec4(linearRgb, sRgba.a);
 }
 
+uint getSamplerIndex(uint textureHandle)
+{
+    return (textureHandle >> uint(16)) & ((uint(1) << uint(16)) - uint(1));
+}
+
+float getTexIndex(uint textureHandle)
+{
+    return float(textureHandle & ((uint(1) << uint(16)) - uint(1)));
+}
+
 mat2 rotate(float angle)
 {
     float c = cos(angle);
@@ -32,11 +56,19 @@ mat2 rotate(float angle)
 
 void main()
 {
-    uv = vec2(vertexPos.x, 1.0 - vertexPos.y);
-    vertexColor = unpackAndConvert(uint(color));
+    vertexColor = unpackAndConvert(color);
+    texStart = uvMin;
+    texSize = uvMax - uvMin;
+    texCoord = vertexPos;
+    texTiling = tiling;
+    quadSize = size;
+    quadCornerRadius = cornerRadius;
+
+    samplerIndex = getSamplerIndex(textureHandle);
+    texIndex = getTexIndex(textureHandle);
 
     vec2 offset = (vertexPos - origin) * size * rotate(radians(angle));
-    vec4 vertexPos = vec4(position, 1.0) + vec4(offset, 0.0, 0.0);
+    vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);
 
     gl_Position = viewProjection * vertexPos;
 }

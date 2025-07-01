@@ -2,15 +2,16 @@ package no.njoh.pulseengine.modules.lighting.global
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
+import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
-import no.njoh.pulseengine.core.shared.utils.Extensions.component1
-import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import org.joml.Vector2f
 import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
@@ -22,7 +23,9 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
     private lateinit var program: ShaderProgram
 
-    var fixJitter = false
+    var upscaleSmallSources = false
+    var jitterFix = false
+    var globalWorldScale = 1f
 
     override fun init(engine: PulseEngineInternal)
     {
@@ -48,6 +51,9 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             .withAttribute("intensity", 1, GL_FLOAT, 1)
             .withAttribute("coneAngle", 1, GL_FLOAT, 1)
             .withAttribute("radius", 1, GL_FLOAT, 1)
+            .withAttribute("uvMin", 2, GL_FLOAT, 1)
+            .withAttribute("uvMax", 2, GL_FLOAT, 1)
+            .withAttribute("textureHandle", 1, GL_FLOAT, 1)
 
         vao = VertexArrayObject.createAndBind()
         program.bind()
@@ -72,16 +78,15 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             instanceBuffer.release()
         }
 
-        val (xPixelOffset, yPixelOffset) = calculatePixelOffset(surface)
-        val xDrawOffset = if (fixJitter) xPixelOffset / (surface.config.width  * 0.5f) else 0f
-        val yDrawOffset = if (fixJitter) yPixelOffset / (surface.config.height * 0.5f) else 0f
-
         vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        program.setUniform("drawOffset", xDrawOffset, yDrawOffset)
+        program.setUniform("uvDrawOffset", getUvSampleOffset(surface, enabled = jitterFix))
         program.setUniform("resolution", surface.config.width.toFloat() * surface.config.textureScale, surface.config.height.toFloat() * surface.config.textureScale)
         program.setUniform("camScale", surface.camera.scale.x)
+        program.setUniform("globalWorldScale", globalWorldScale)
+        program.setUniform("upscaleSmallSources", upscaleSmallSources)
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays(), wrapping = TextureWrapping.CLAMP_TO_EDGE, filter = TextureFilter.LINEAR)
 
         glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
         vao.release()
@@ -89,15 +94,15 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
 
     override fun destroy()
     {
-        vertexBuffer.delete()
-        instanceBuffer.delete()
-        program.delete()
-        vao.delete()
+        vertexBuffer.destroy()
+        instanceBuffer.destroy()
+        program.destroy()
+        vao.destroy()
     }
 
-    fun drawLight(x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float, radius: Float)
+    fun drawLight(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float, radius: Float)
     {
-        instanceBuffer.fill(11)
+        instanceBuffer.fill(16)
         {
             put(x, y, config.currentDepth)
             put(w, h)
@@ -107,14 +112,17 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             put(intensity)
             put(coneAngle)
             put(radius)
+            put(texture.uMin, texture.vMin)
+            put(texture.uMax, texture.vMax)
+            put(texture.handle.toFloat())
         }
         increaseBatchSize()
         config.increaseDepth()
     }
 
-    fun drawOccluder(x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, edgeLight: Float)
+    fun drawOccluder(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, edgeLight: Float)
     {
-        instanceBuffer.fill(11)
+        instanceBuffer.fill(16)
         {
             put(x, y, config.currentDepth)
             put(w, h)
@@ -124,6 +132,9 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             put(0f)
             put(360f)
             put(edgeLight)
+            put(texture.uMin, texture.vMin)
+            put(texture.uMax, texture.vMax)
+            put(texture.handle.toFloat())
         }
         increaseBatchSize()
         config.increaseDepth()
@@ -133,15 +144,18 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
     {
         private val OFFSET = Vector2f()
 
-        fun calculatePixelOffset(surface: Surface): Vector2f
+        fun getUvSampleOffset(surface: Surface, enabled: Boolean): Vector2f
         {
+            if (!enabled) return OFFSET.set(0f, 0f)
+
             val pixelSize = 1f / surface.config.textureScale
             val viewMatrix = surface.camera.viewMatrix
             val xTranslation = -viewMatrix.m30()
             val yTranslation = viewMatrix.m31()
-            val xOffset = xTranslation % pixelSize
-            val yOffset = yTranslation % pixelSize
-            return OFFSET.set(xOffset, yOffset)
+            val xPixelOffset = xTranslation % pixelSize
+            val yPixelOffset = yTranslation % pixelSize
+
+            return OFFSET.set(xPixelOffset / surface.config.width, yPixelOffset / surface.config.height)
         }
     }
 }

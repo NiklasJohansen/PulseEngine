@@ -50,6 +50,11 @@ abstract class Surface
     /**
      * Draws a textured quad at a given position with a given size, rotation, origin and corner radius.
      */
+    abstract fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+
+    /**
+     * Draws a textured quad at a given position with a given size, rotation, origin and corner radius.
+     */
     abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f)
 
     /**
@@ -145,12 +150,12 @@ abstract class Surface
      * attachments and the [index] can be used to get a specific one.
      * @param final If true, the final post-processed texture is returned.
      */
-    abstract fun getTexture(index: Int = 0, final: Boolean = true): Texture
+    abstract fun getTexture(index: Int = 0, final: Boolean = true): RenderTexture
 
     /**
      * Gets all textures from the off-screen render target.
      */
-    abstract fun getTextures(): List<Texture>
+    abstract fun getTextures(): List<RenderTexture>
 
     ///////////////////////////////////////// Post-Processing /////////////////////////////////////////
 

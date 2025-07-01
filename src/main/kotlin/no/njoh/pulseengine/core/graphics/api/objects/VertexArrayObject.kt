@@ -7,7 +7,7 @@ class VertexArrayObject(val id: Int)
 {
     fun bind() = this.also { glBindVertexArray(id) }
     fun release() = this.also { glBindVertexArray(0) }
-    fun delete()
+    fun destroy()
     {
         release()
         glDeleteVertexArrays(id)
