@@ -201,6 +201,7 @@ class PulseEngineImpl(
         data.startFrameTimer()
         asset.update()
         audio.update()
+        window.initFrame(this)
         gfx.initFrame(this)
         console.update()
         updateInput()
@@ -280,7 +281,7 @@ class PulseEngineImpl(
 
     private fun updateInput()
     {
-        window.wasResized = false
+//        window.wasResized = false
         input.pollEvents()
 
         // Update world mouse position

@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.window
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.config.ConfigurationInternal
 
 interface Window
@@ -54,6 +55,7 @@ interface WindowInternal : Window
     val cursorPosScale: Float
 
     fun init(config: ConfigurationInternal)
+    fun initFrame(engineInternal: PulseEngineInternal)
     fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit)
     fun swapBuffers()
     fun isOpen(): Boolean
