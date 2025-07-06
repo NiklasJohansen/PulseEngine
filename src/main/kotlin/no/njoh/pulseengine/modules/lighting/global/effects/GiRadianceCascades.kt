@@ -71,6 +71,7 @@ class GiRadianceCascades(
         program.setUniform("lightTexRes", lightTexWidth, lightTexHeight)
         program.setUniform("localSdfRes", localSdfTex.width.toFloat(), localSdfTex.height.toFloat())
         program.setUniform("globalSdfRes", globalSdfTex.width.toFloat(), globalSdfTex.height.toFloat())
+        program.setUniform("lightTexScale", lightSystem.lightTexScale)
         program.setUniform("localSdfScaleRatio", lightSystem.localSceneTexScale  / lightSystem.lightTexScale)
         program.setUniform("globalSdfScaleRatio", lightSystem.globalSceneTexScale / lightSystem.lightTexScale)
         program.setUniform("globalWorldScale", globalWorldScale)
