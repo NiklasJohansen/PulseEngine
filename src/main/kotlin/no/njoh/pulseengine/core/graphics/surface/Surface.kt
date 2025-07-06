@@ -61,7 +61,7 @@ abstract class Surface
      * Draws a textured quad at a given position with a given size, rotation, origin, corner radius and
      * texture coordinates. The texture will be tiled according to the given tiling values.
      */
-    abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, uTiling: Float = 1f, vTiling: Float = 1f)
+    abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, xTiling: Float = 1f, yTiling: Float = 1f)
 
     /**
      * Draws text at a given position with a given font, size, rotation and origin.

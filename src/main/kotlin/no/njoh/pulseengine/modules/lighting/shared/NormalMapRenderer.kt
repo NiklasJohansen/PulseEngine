@@ -96,8 +96,8 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
         rot: Float,
         xOrigin: Float,
         yOrigin: Float,
-        uTiling: Float = 1f,
-        vTiling: Float = 1f,
+        xTiling: Float = 1f,
+        yTiling: Float = 1f,
         normalScale: Float = 1f,
         orientation: Orientation = Orientation.NORMAL
     ) {
@@ -111,7 +111,7 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
             put(texture?.vMin ?: 0f)
             put(texture?.uMax ?: 1f)
             put(texture?.vMax ?: 1f)
-            put(uTiling, vTiling)
+            put(xTiling, yTiling)
             put(texture?.handle?.toFloat() ?: -1f)
             put(normalScale * orientation.xDir)
             put(normalScale * orientation.yDir)

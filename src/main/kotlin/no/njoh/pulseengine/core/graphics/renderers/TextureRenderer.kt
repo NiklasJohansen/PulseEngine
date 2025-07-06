@@ -118,8 +118,8 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         vMin: Float,
         uMax: Float,
         vMax: Float,
-        uTiling: Float,
-        vTiling: Float
+        xTiling: Float,
+        yTiling: Float
     ) {
         instanceBuffer.fill(17)
         {
@@ -130,7 +130,7 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             put(cornerRadius)
             put(texture.uMax * uMin, texture.vMax * vMin)
             put(texture.uMax * uMax, texture.vMax * vMax)
-            put(uTiling, vTiling)
+            put(xTiling, yTiling)
             put(config.currentDrawColor)
             put(texture.handle.toFloat())
         }

@@ -166,9 +166,9 @@ class SurfaceImpl(
         textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius)
     }
 
-    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, uTiling: Float, vTiling: Float)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, xTiling: Float, yTiling: Float)
     {
-        textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, uTiling, vTiling)
+        textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, xTiling, yTiling)
     }
 
     override fun drawText(text: CharSequence, x: Float, y: Float, font: Font?, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float)

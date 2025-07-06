@@ -36,8 +36,8 @@ open class Backdrop : StandardSceneEntity(), NormalMapped
             angle = rotation,
             xOrigin = 0.5f,
             yOrigin = 0.5f,
-            uTiling = xTiling,
-            vTiling = yTiling
+            xTiling = xTiling,
+            yTiling = yTiling
         )
     }
 
@@ -52,8 +52,8 @@ open class Backdrop : StandardSceneEntity(), NormalMapped
             rot = rotation,
             xOrigin = 0.5f,
             yOrigin = 0.5f,
-            uTiling = xTiling,
-            vTiling = yTiling,
+            xTiling = xTiling,
+            yTiling = yTiling,
             normalScale = normalMapIntensity,
             orientation = normalMapOrientation
         )
