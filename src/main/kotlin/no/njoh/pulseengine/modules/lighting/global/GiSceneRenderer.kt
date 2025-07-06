@@ -53,6 +53,7 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             .withAttribute("radius", 1, GL_FLOAT, 1)
             .withAttribute("uvMin", 2, GL_FLOAT, 1)
             .withAttribute("uvMax", 2, GL_FLOAT, 1)
+            .withAttribute("tiling", 2, GL_FLOAT, 1)
             .withAttribute("textureHandle", 1, GL_FLOAT, 1)
 
         vao = VertexArrayObject.createAndBind()
@@ -100,9 +101,9 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         vao.destroy()
     }
 
-    fun drawLight(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float, radius: Float)
+    fun drawLight(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, intensity: Float, coneAngle: Float, radius: Float, cornerRadius: Float = 0f, xTiling: Float = 1f, yTiling: Float = 1f)
     {
-        instanceBuffer.fill(16)
+        instanceBuffer.fill(18)
         {
             put(x, y, config.currentDepth)
             put(w, h)
@@ -114,15 +115,16 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             put(radius)
             put(texture.uMin, texture.vMin)
             put(texture.uMax, texture.vMax)
+            put(xTiling, yTiling)
             put(texture.handle.toFloat())
         }
         increaseBatchSize()
         config.increaseDepth()
     }
 
-    fun drawOccluder(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, edgeLight: Float)
+    fun drawOccluder(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, edgeLight: Float, cornerRadius: Float = 0f, xTiling: Float = 1f, yTiling: Float = 1f)
     {
-        instanceBuffer.fill(16)
+        instanceBuffer.fill(18)
         {
             put(x, y, config.currentDepth)
             put(w, h)
@@ -134,6 +136,7 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             put(edgeLight)
             put(texture.uMin, texture.vMin)
             put(texture.uMax, texture.vMax)
+            put(xTiling, yTiling)
             put(texture.handle.toFloat())
         }
         increaseBatchSize()

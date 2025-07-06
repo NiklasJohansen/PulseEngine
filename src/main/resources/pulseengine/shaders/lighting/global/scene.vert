@@ -14,6 +14,7 @@ in float coneAngle;
 in float radius;
 in vec2 uvMin;
 in vec2 uvMax;
+in vec2 tiling;
 in uint textureHandle;
 
 out vec4 vertexColor;
@@ -26,6 +27,7 @@ out float sourceRadius;
 out vec2 texStart;
 out vec2 texSize;
 out vec2 texCoord;
+out vec2 texTiling;
 out float texIndex;
 flat out uint texSamplerIndex;
 
@@ -69,6 +71,7 @@ void main()
     texStart = uvMin;
     texSize = (uvMax - uvMin);
     texCoord = vertexPos;
+    texTiling = tiling;
     quadSize = size;
     quadCornerRadius = cornerRadius;
     sourceIntensity = intensity;

@@ -24,7 +24,7 @@ interface NormalMapped
     @get:Prop("Lighting", 10, desc = "The orientation of the normals in the map.")
     var normalMapOrientation: Orientation
 
-    fun renderNormalMap(engine: PulseEngine, surface: Surface)
+    fun onRenderNormalMap(engine: PulseEngine, surface: Surface)
     {
         if (this is SceneEntity && this is Spatial && normalMapTexture.isNotBlank())
         {

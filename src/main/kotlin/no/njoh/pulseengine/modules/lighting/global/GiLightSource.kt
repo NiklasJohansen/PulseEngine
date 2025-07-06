@@ -33,9 +33,9 @@ interface GiLightSource
     var coneAngle: Float
 
     /**
-     * Default implementation for drawing a light source
+     * Default implementation for rendering a light source
      */
-    fun drawLightSource(engine: PulseEngine, surface: Surface)
+    fun onRenderLightSource(engine: PulseEngine, surface: Surface)
     {
         if ((this as? SceneEntity)?.isSet(HIDDEN) == true || intensity == 0f)
             return
@@ -50,7 +50,6 @@ interface GiLightSource
                 w = width,
                 h = height,
                 angle = rotationInterpolated(),
-                cornerRadius = 0f,
                 intensity = intensity,
                 coneAngle = coneAngle,
                 radius = radius
