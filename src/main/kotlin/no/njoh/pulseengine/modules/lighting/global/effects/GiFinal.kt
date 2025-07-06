@@ -46,6 +46,7 @@ class GiFinal(
         program.setUniform("ambientInteriorLight", lightSystem.ambientInteriorLight)
         program.setUniform("exteriorLightTexUvMax", lightSystem.getExteriorLightTexUvMax(engine))
         program.setUniform("aoEnabled", aoEnabled)
+        program.setUniformSampler("baseTex", inTextures[0])
         program.setUniformSampler("localSceneTex", localSceneSurface.getTexture(0, final = false), filter = LINEAR)
         program.setUniformSampler("localSceneMetadataTex", localSceneSurface.getTexture(1, final = false), filter = NEAREST)
         program.setUniformSampler("exteriorLightTex", exteriorLightSurface.getTexture(), filter = lightSystem.lightTexFilter)
