@@ -36,7 +36,7 @@ open class Wheel : StandardSceneEntity(), CircleBody
     @JsonIgnore private var acc = 0f
 
     @TexRef
-    var textureName = ""
+    var baseTexture = ""
 
     /** Initialize the shape once when the entity is created */
     override fun onCreate() = shape.init(x, y, max(width, height) * 0.5f, rotation, density)
@@ -68,7 +68,7 @@ open class Wheel : StandardSceneEntity(), CircleBody
     {
         surface.setDrawColor(1f, 1f, 1f)
         surface.drawTexture(
-            texture = engine.asset.getOrNull(textureName) ?: Texture.BLANK,
+            texture = engine.asset.getOrNull(baseTexture) ?: Texture.BLANK,
             x = xInterpolated(),
             y = yInterpolated(),
             width = width,

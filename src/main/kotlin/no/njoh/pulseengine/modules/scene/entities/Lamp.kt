@@ -24,7 +24,7 @@ open class Lamp : StandardSceneEntity(), DirectLightSource, GiLightSource
 
     @JsonAlias("color")
     override var lightColor = Color(1f, 0.92f, 0.75f)
-    override var lightTextureName = ""
+    override var lightTexture = ""
     override var intensity = 4f
     override var radius = 0f // 0=infinite in global illumination
     override var size = 30f

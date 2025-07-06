@@ -21,7 +21,7 @@ interface GiLightSource
 
     @get:TexRef
     @get:Prop("Lighting", 1, desc = "Name of the light texture")
-    var lightTextureName: String
+    var lightTexture: String
 
     @get:Prop("Lighting", 2, min = 0f, desc = "Light intensity multiplier")
     var intensity: Float
@@ -44,7 +44,7 @@ interface GiLightSource
         {
             surface.setDrawColor(lightColor)
             surface.getRenderer<GiSceneRenderer>()?.drawLight(
-                texture = engine.asset.getOrNull(lightTextureName) ?: Texture.BLANK,
+                texture = engine.asset.getOrNull(lightTexture) ?: Texture.BLANK,
                 x = xInterpolated(),
                 y = yInterpolated(),
                 w = width,

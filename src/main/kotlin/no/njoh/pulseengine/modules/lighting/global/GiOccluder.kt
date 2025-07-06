@@ -15,7 +15,7 @@ interface GiOccluder
 {
     @get:TexRef
     @get:Prop("Lighting", 0, desc = "The name of the occluder texture")
-    var occluderTextureName: String
+    var occluderTexture: String
 
     @get:Prop("Lighting", 1, desc = "The color of the occluder")
     var bounceColor: Color
@@ -37,7 +37,7 @@ interface GiOccluder
         {
             surface.setDrawColor(bounceColor)
             surface.getRenderer<GiSceneRenderer>()?.drawOccluder(
-                texture = engine.asset.getOrNull(occluderTextureName) ?: Texture.BLANK,
+                texture = engine.asset.getOrNull(occluderTexture) ?: Texture.BLANK,
                 x = xInterpolated(),
                 y = yInterpolated(),
                 w = width,

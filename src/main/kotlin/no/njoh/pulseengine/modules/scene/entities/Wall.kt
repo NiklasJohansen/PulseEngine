@@ -14,15 +14,15 @@ import no.njoh.pulseengine.modules.physics.entities.Box
 class Wall : Box(), DirectLightOccluder, GiOccluder, NormalMapped
 {
     @TexRef
-    var textureName: String = ""
+    var baseTexture: String = ""
     var color = Color(1f, 1f, 1f)
 
-    override var occluderTextureName = ""
+    override var occluderTexture = ""
     override var bounceColor = Color(1f, 1f, 1f)
     override var castShadows = true
     override var edgeLight = 100f
 
-    override var normalMapName: String = ""
+    override var normalMapTexture: String = ""
     override var normalMapIntensity = 1f
     override var normalMapOrientation = Orientation.NORMAL
 
@@ -30,7 +30,7 @@ class Wall : Box(), DirectLightOccluder, GiOccluder, NormalMapped
     {
         surface.setDrawColor(color)
         surface.drawTexture(
-            texture = engine.asset.getOrNull(textureName) ?: Texture.BLANK,
+            texture = engine.asset.getOrNull(baseTexture) ?: Texture.BLANK,
             x = xInterpolated(),
             y = yInterpolated(),
             width = width,
