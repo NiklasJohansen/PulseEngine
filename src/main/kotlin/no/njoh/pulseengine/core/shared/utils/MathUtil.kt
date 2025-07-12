@@ -234,7 +234,6 @@ object MathUtil
 
     /**
      * Returns true if the (x, y) point is inside the [Shape].
-     * https://wrfranklin.org/Research/Short_Notes/pnpoly.html
      */
     fun isPointInsideShape(x: Float, y: Float, shape: Shape): Boolean
     {
@@ -253,6 +252,7 @@ object MathUtil
         }
         else // Polygon shape
         {
+            // https://wrfranklin.org/Research/Short_Notes/pnpoly.html
             var i = 0
             var j = nPoints - 1
             var inside = false
