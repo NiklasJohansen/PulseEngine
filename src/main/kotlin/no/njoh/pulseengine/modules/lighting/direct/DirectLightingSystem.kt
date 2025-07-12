@@ -302,7 +302,7 @@ open class DirectLightingSystem : SceneSystem()
                 y = light.y,
                 width = light.radius * 1.7f + if (light.type == LINEAR) light.size * 2 else 0f,
                 height = light.radius * 1.7f,
-                rotation = light.rotation
+                angle = light.rotation
             ) {
                 if (it.castShadows && (it as SceneEntity).isNot(HIDDEN))
                 {

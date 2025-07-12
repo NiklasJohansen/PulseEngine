@@ -102,9 +102,9 @@ class SpatialGrid (
         }
     }
 
-    inline fun <reified T> queryArea(x: Float, y: Float, width: Float, height: Float, rotation: Float = 0f, queryId: Int, action: (T) -> Unit)
+    inline fun <reified T> queryArea(x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, queryId: Int, action: (T) -> Unit)
     {
-        val angleRad = -rotation.toRadians()
+        val angleRad = -angle.toRadians()
         val rayLength = width
         val rayWidth = height
         val xDelta = cos(angleRad) * rayLength * 0.5f
