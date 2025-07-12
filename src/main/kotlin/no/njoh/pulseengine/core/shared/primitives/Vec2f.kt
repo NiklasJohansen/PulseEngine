@@ -1,4 +1,6 @@
-package utils.Vec2f
+@file:Suppress("NOTHING_TO_INLINE")
+
+package no.njoh.pulseengine.core.shared.primitives.Vec2f
 
 typealias Vec2f      = Long
 typealias Vec2fArray = LongArray

@@ -27,8 +27,8 @@ repositories {
 
 dependencies {
     // Kotlin
-    implementation("org.jetbrains.kotlin:kotlin-reflect:2.1.10")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.2.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 
     // LWJGL
     implementation(platform("org.lwjgl:lwjgl-bom:3.3.6"))
