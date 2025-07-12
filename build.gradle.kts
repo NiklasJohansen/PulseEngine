@@ -1,7 +1,7 @@
 plugins {
     `maven-publish`
-    kotlin("jvm") version "2.1.10"
-    kotlin("kapt") version "2.1.10"
+    kotlin("jvm") version "2.2.0"
+    kotlin("kapt") version "2.2.0"
     id("me.champeau.jmh") version "0.7.3"
 }
 
