@@ -204,10 +204,24 @@ abstract class SceneManager
      * @param y The center y-coordinate of the area
      * @param angle Angle in degrees.
      */
-    inline fun <reified T> forEachEntityNearbyOfType(x: Float, y: Float, width: Float, height: Float, rotation: Float = 0f, queryId: Int = nextQueryId(), action: (T) -> Unit) =
-        activeScene.spatialGrid.queryArea(x, y, width, height, rotation, queryId, action)
     inline fun <reified T> forEachEntityNearbyOfType(x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, queryId: Int = nextQueryId(), action: (T) -> Unit) =
         activeScene.spatialGrid.queryArea(x, y, width, height, angle, queryId, action)
+
+    /**
+     * Calls the [action] lambda for each [SceneEntity] overlapping the given point.
+     * @param x The x-coordinate of the point
+     * @param y The y-coordinate of the point
+     */
+    inline fun forEachEntityAtPoint(x: Float, y: Float, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
+        activeScene.spatialGrid.queryPosition(x, y, queryId, action)
+
+    /**
+     * Calls the [action] lambda for each [SceneEntity] of type [T] overlapping the given point.
+     * @param x The x-coordinate of the point
+     * @param y The y-coordinate of the point
+     */
+    inline fun <reified T> forEachEntityAtPointOfType(x: Float, y: Float, queryId: Int = nextQueryId(), action: (T) -> Unit) =
+        activeScene.spatialGrid.queryPosition<T>(x, y, queryId, action)
 
     /**
      * Calls the [action] lambda for each [SceneEntity] intersecting the given ray.

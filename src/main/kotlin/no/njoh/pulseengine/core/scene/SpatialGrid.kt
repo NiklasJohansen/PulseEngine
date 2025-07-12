@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.shared.primitives.HitResult
 import no.njoh.pulseengine.core.shared.primitives.Physical
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
+import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.GridUtil
@@ -138,6 +139,27 @@ class SpatialGrid (
             {
                 forEachEntityInCellOfType(xi, yi, queryId, action)
             }
+        }
+    }
+
+    inline fun <reified T> queryPosition(x: Float, y: Float, queryId: Int, action: (T) -> Unit)
+    {
+        val xCell = ((x - xOffset) * invCellSize).toInt()
+        val yCell = ((y - yOffset) * invCellSize).toInt()
+        lastQueryId = queryId
+
+        if (xCell < 0 || yCell < 0 || xCell >= xCells || yCell >= yCells)
+            return // Out of bounds, no entities to query
+
+        forEachEntityInCellOfType<T>(xCell, yCell, queryId)
+        {
+            it as Spatial
+            val isInside = when (it)
+            {
+                is Physical -> MathUtil.isPointInsideShape(x, y, it.shape)
+                else -> MathUtil.isPointInsideRect(x, y, it.x, it.y, it.width, it.height, it.rotation.toRadians())
+            }
+            if (isInside) action(it)
         }
     }
 
