@@ -24,6 +24,9 @@ class Label(
     var centerVertically = true
     var textResizeStrategy = CROP_TEXT
     var fontSize = ScaledValue.of(24f)
+    var wrapNewLines = true
+    var newLineSpacing = 0.2f
+
     var text: CharSequence = text
         set (value)
         {
@@ -64,6 +67,9 @@ class Label(
                     while (i < text.length && i < charWidths.size)
                     {
                         currentTextWidth += charWidths[i]
+                        if (wrapNewLines && text[i] == '\n')
+                            currentTextWidth = 0f
+
                         if (currentTextWidth > width.value)
                         {
                             currentText = text.substring(0, max(0, i - 2)) + "..."
@@ -110,7 +116,10 @@ class Label(
             font = font,
             fontSize = fontSize.value,
             xOrigin = if (centerHorizontally) 0.5f else 0f,
-            yOrigin = if (centerVertically) 0.5f else 0f)
+            yOrigin = if (centerVertically) 0.5f else 0f,
+            wrapNewLines = wrapNewLines,
+            newLineSpacing = newLineSpacing
+        )
     }
 
     enum class TextSizeStrategy

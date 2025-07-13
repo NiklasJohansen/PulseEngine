@@ -65,15 +65,15 @@ abstract class Surface
     /**
      * Draws text at a given position with a given font, size, angle and origin.
      */
-    abstract fun drawText(text: CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+    abstract fun drawText(text: CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, wrapNewLines: Boolean = true, newLineSpacing: Float = 0.2f)
 
     /**
      * Draws text at a given position with a given font, size, angle and origin.
      * Supports building the text with a [TextBuilder] to avoid allocating new [String] objects and excessive garbage.
      * Example: drawText(text = { "Hello, " plus "World!" }, ..., ...)
      */
-    inline fun drawText(text: TextBuilder, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f) =
-        drawText(context.build(text), x, y, font, fontSize, angle, xOrigin, yOrigin)
+    inline fun drawText(text: TextBuilder, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, wrapNewLines: Boolean = true, newLineSpacing: Float = 0.2f) =
+        drawText(context.build(text), x, y, font, fontSize, angle, xOrigin, yOrigin, wrapNewLines, newLineSpacing)
 
     /**
      * Defines a clipping area for all drawing operations performed within the [drawFunc].

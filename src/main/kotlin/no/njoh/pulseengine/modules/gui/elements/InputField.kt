@@ -522,7 +522,7 @@ class InputField (
 
         // Draw input text
         surface.setDrawColor(if (hasText) textColor else placeHolderTextColor)
-        surface.drawText(text, x.value + leftTextPadding.value, y.value + height.value / 2f, font, fontSize.value, yOrigin = 0.5f)
+        surface.drawText(text, x.value + leftTextPadding.value, y.value + height.value / 2f, font, fontSize.value, yOrigin = 0.5f, wrapNewLines = false)
 
         if ((contentType == INTEGER || contentType == FLOAT) && width.value > 50f && editable)
         {
