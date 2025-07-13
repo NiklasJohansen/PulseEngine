@@ -20,8 +20,8 @@ class Label(
 
     var color = Color.WHITE
     var font = Font.DEFAULT
-    var centerHorizontally = false
-    var centerVertically = true
+    var horizontalAlignment = 0.0f
+    var verticalAlignment = 0.5f
     var textResizeStrategy = CROP_TEXT
     var fontSize = ScaledValue.of(24f)
     var wrapNewLines = true
@@ -111,12 +111,12 @@ class Label(
         surface.setDrawColor(color.red, color.green, color.blue, color.alpha)
         surface.drawText(
             text = visibleText,
-            x = x.value + if (centerHorizontally) width.value / 2f else 0f,
-            y = y.value + if (centerVertically) height.value / 2 else 0f,
+            x = x.value + width.value * horizontalAlignment,
+            y = y.value + height.value * verticalAlignment,
             font = font,
             fontSize = fontSize.value,
-            xOrigin = if (centerHorizontally) 0.5f else 0f,
-            yOrigin = if (centerVertically) 0.5f else 0f,
+            xOrigin = horizontalAlignment,
+            yOrigin = verticalAlignment,
             wrapNewLines = wrapNewLines,
             newLineSpacing = newLineSpacing
         )
