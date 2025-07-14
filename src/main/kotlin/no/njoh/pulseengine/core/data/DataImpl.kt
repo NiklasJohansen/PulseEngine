@@ -15,7 +15,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import kotlin.system.measureNanoTime
 
-open class DataImpl : Data()
+open class DataImpl : DataInternal()
 {
     override var currentFps           = 0
     override var totalFrameTimeMs     = 0f
@@ -29,21 +29,20 @@ open class DataImpl : Data()
     override var usedMemoryKb         = 0L
     override var totalMemoryKb        = 0L
     override val metrics              = ArrayList<Metric>()
-    override var saveDirectory        = "NOT SET"
 
     private val fpsFilter      = FloatArray(20)
     private var fpsTimer       = 0.0
     private var frameStartTime = 0.0
     private var frameCounter   = 0
+    private var getSaveDir     = { "n/a" }
 
     var lastFrameTime          = 0.0
     var fixedUpdateAccumulator = 0.0
     var fixedUpdateLastTime    = 0.0
 
-    fun init(gameName: String)
+    fun init()
     {
         Logger.info { "Initializing data (DataImpl)" }
-        updateSaveDirectory(gameName)
 
         addMetric("FRAMES PER SECOND (FPS)")    { sample(currentFps.toFloat())                }
         addMetric("FRAME TIME (MS)")            { sample(totalFrameTimeMs)                    }
@@ -118,10 +117,7 @@ open class DataImpl : Data()
         }
     }
 
-    fun updateSaveDirectory(gameName: String)
-    {
-        saveDirectory = File("$homeDir/$gameName").absolutePath
-    }
+    override fun setOnGetSaveDirectory(callback: () -> String) { getSaveDir = callback }
 
     fun startFrameTimer()
     {
@@ -189,7 +185,7 @@ open class DataImpl : Data()
         if (byteArray.firstOrNull() == '{'.toByte()) FileFormat.JSON else FileFormat.BINARY
 
     private fun getFile(filePath: String): File =
-        File(filePath).takeIf { it.isAbsolute } ?: File("$saveDirectory/$filePath")
+        File(filePath).takeIf { it.isAbsolute } ?: File("${getSaveDir()}/$filePath")
 
     companion object
     {
@@ -207,6 +203,5 @@ open class DataImpl : Data()
 
         private const val KILO_BYTE = 1024L
         private val runtime = Runtime.getRuntime()
-        private val homeDir = System.getProperty("user.home")
     }
 }

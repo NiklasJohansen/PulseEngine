@@ -118,14 +118,16 @@ class PulseEngineImpl(
             }
         }
 
-        // Update save directory based on creator and game name
-        config.setOnChanged { property, _ ->
-            when (property.name)
+        // Provides the save directory to the data module
+        data.setOnGetSaveDirectory { config.saveDirectory }
+
+        // Update module properties when config changes
+        config.setOnChanged { propName, _ ->
+            when (propName)
             {
-                config::gameName.name -> data.updateSaveDirectory(config.gameName)
-                config::logTarget.name -> Logger.TARGET = config.logTarget
-                config::logLevel.name -> Logger.LEVEL = config.logLevel
-                config::gpuLogLevel.name -> gfx.setGpuLogLevel(config.gpuLogLevel)
+                config::logTarget.name    -> Logger.TARGET = config.logTarget
+                config::logLevel.name     -> Logger.LEVEL = config.logLevel
+                config::gpuLogLevel.name  -> gfx.setGpuLogLevel(config.gpuLogLevel)
                 config::gpuProfiling.name -> GpuProfiler.setEnabled(config.gpuProfiling)
             }
         }
@@ -135,7 +137,7 @@ class PulseEngineImpl(
 
         // Initialize engine components
         config.init()
-        data.init(config.gameName)
+        data.init()
         window.init(config)
         gfx.init(this)
         input.init(window.windowHandle, window.cursorPosScale)

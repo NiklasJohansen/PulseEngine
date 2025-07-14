@@ -132,7 +132,7 @@ class SceneEditor(
         storedCameraState = CameraState.from(activeCamera)
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
         isRunning = engine.config.getBool("openEditorOnStart") ?: false
-        lastSaveLoadDirectory = engine.data.saveDirectory
+        lastSaveLoadDirectory = engine.config.saveDirectory
 
         // Create separate render surface for editor UI
         engine.gfx.createSurface(
@@ -446,7 +446,7 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showSaveFileDialog(engine.data.saveDirectory)
+            FileChooser.showSaveFileDialog(engine.config.saveDirectory)
             {
                 sceneFileToSaveAs = it + if (!it.endsWith(".scn")) ".scn" else ""
             }
@@ -460,7 +460,7 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showFileSelectionDialog(engine.data.saveDirectory)
+            FileChooser.showFileSelectionDialog(engine.config.saveDirectory)
             {
                 sceneFileToLoad = it
             }
@@ -477,7 +477,7 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showSaveFileDialog(engine.data.saveDirectory)
+            FileChooser.showSaveFileDialog(engine.config.saveDirectory)
             {
                 sceneFileToCreate = it
             }

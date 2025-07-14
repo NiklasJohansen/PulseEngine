@@ -40,9 +40,6 @@ abstract class Data
     /** The list of available metrics used to monitor the engine and game stats */
     abstract val metrics: List<Metric>
 
-    /** The absolute path to where save files are stored */
-    abstract var saveDirectory: String
-
     /**
      * Adds a new named metric to the metric list.
      */
@@ -91,6 +88,11 @@ abstract class Data
      * [filePath], or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
      */
     abstract fun <T> loadObjectAsync(filePath: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
+}
+
+abstract class DataInternal : Data()
+{
+    abstract fun setOnGetSaveDirectory(callback: () -> String)
 }
 
 data class Metric(

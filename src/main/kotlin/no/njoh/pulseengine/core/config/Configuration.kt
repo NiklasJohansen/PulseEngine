@@ -5,12 +5,14 @@ import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.LogTarget
 import no.njoh.pulseengine.core.window.ScreenMode
 import kotlin.reflect.KClass
-import kotlin.reflect.KProperty
 
 interface Configuration
 {
     /** The name of the game. Sets the default save folder name and window title */
     var gameName: String
+
+    /** The absolute path to where save files are stored. Default: ~/gameName/ */
+    var saveDirectory: String
 
     /** The target frames per second */
     var targetFps: Int
@@ -71,5 +73,5 @@ interface ConfigurationInternal : Configuration
     val screenMode: ScreenMode
 
     fun init()
-    fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
+    fun setOnChanged(callback: (propName: String, value: Any) -> Unit)
 }
