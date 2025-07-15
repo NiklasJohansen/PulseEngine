@@ -37,6 +37,7 @@ class InputField (
     var invalidTextColor = Color(227, 108, 60)
     var font = Font.DEFAULT
     var fontSize = ScaledValue.of(24f)
+    var maxTextLength = 10_000
     var numberMinVal = Float.NEGATIVE_INFINITY
     var numberMaxVal = Float.POSITIVE_INFINITY
     var contentType = TEXT
@@ -51,10 +52,11 @@ class InputField (
         {
             if (value != inputText.toString())
             {
+                val v = if (value.length < maxTextLength) value else value.substring(0, maxTextLength)
                 clear()
-                inputText.set(value)
-                inputCursor = value.length
-                selectCursor = value.length
+                inputText.set(v)
+                inputCursor = v.length
+                selectCursor = v.length
             }
         }
 
@@ -418,6 +420,18 @@ class InputField (
             }
         }
 
+        ///////////////////////////////// Limit text length /////////////////////////////////
+
+        if (inputText.length > maxTextLength)
+        {
+            inputText.setLength(maxTextLength)
+            if (inputCursor > maxTextLength)
+            {
+                inputCursor = maxTextLength
+                selectCursor = inputCursor
+            }
+        }
+
         ///////////////////////////////// ENTER pressed /////////////////////////////////
 
         if (input.wasClicked(Key.ENTER))
@@ -469,8 +483,8 @@ class InputField (
         }
 
         // Determine what text is visible in input box
-        while(inputCursor > inputTextOffset + charsPerLine - 1) inputTextOffset++
-        while(inputCursor < inputTextOffset) inputTextOffset--
+        while (inputCursor > inputTextOffset + charsPerLine - 1) inputTextOffset++
+        while (inputCursor < inputTextOffset) inputTextOffset--
         text = text.substring(max(inputTextOffset, 0), min(inputTextOffset + charsPerLine, text.length))
 
         // Draw input box rectangle
@@ -564,7 +578,7 @@ class InputField (
     fun setTextQuiet(newText: String)
     {
         text = newText
-        lastText = newText
+        lastText = text
         isValid = validateContent()
     }
 

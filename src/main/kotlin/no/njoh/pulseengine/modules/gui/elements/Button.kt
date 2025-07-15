@@ -17,6 +17,7 @@ open class Button(
 
     var toggleButton = false
     var isPressed = false
+    var disabled = false
 
     var bgColor = Color.BLANK
     var bgHoverColor = Color.BLANK
@@ -24,6 +25,7 @@ open class Button(
     var hoverColor = Color.BLANK
     var activeColor = Color.BLANK
     var activeHoverColor: Color? = null
+    var disabledColor = Color(0.5f, 0.5f, 0.5f, 1f)
 
     var textureAssetName: String? = null
     var textureScale = 1f
@@ -46,17 +48,19 @@ open class Button(
 
     override fun onMouseClicked(engine: PulseEngine)
     {
+        if (disabled) return
+
         if (toggleButton)
             isPressed = !isPressed
 
-        onClickedCallback(this)
+       onClickedCallback(this)
     }
 
     override fun onUpdate(engine: PulseEngine)
     {
         isMouseOver = engine.input.hasHoverFocus(area) && mouseInsideArea
 
-        if (isMouseOver)
+        if (!disabled && isMouseOver)
         {
             engine.input.setCursorType(CursorType.HAND)
         }
@@ -69,8 +73,9 @@ open class Button(
 
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
-        val bgColor = if (isMouseOver) bgHoverColor else bgColor
+        val bgColor = if (!disabled && isMouseOver) bgHoverColor else bgColor
         val color = when {
+            disabled -> disabledColor
             isMouseOver && isPressed -> activeHoverColor ?: activeColor
             isMouseOver -> hoverColor
             isPressed -> activeColor

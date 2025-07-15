@@ -130,11 +130,7 @@ class Scrollbar(
             val scrollChangeFraction = -scroll * (scrollDistance / maxScrollDist)
             val fractionChange = mouseMoveFraction + scrollChangeFraction
             if (fractionChange != 0f && (sliderGrabbed || scroll != 0f))
-            {
-                sliderFraction = (sliderFraction + fractionChange).coerceIn(0f, 1f)
-                onScrollCallback(sliderFraction)
-                scrollable.setScrollFraction(sliderFraction)
-            }
+                setTargetSliderFraction(sliderFraction + fractionChange)
         }
     }
 
@@ -168,6 +164,13 @@ class Scrollbar(
     {
         this.scrollDirection = direction
         this.scrollable = scrollable
+    }
+
+    fun setTargetSliderFraction(newFraction: Float)
+    {
+        sliderFraction = newFraction.coerceIn(0f, 1f)
+        onScrollCallback(sliderFraction)
+        scrollable.setScrollFraction(sliderFraction)
     }
 
     private fun Scrollable?.getUsedSpaceFraction() = when (scrollDirection)
