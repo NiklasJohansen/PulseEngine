@@ -39,11 +39,19 @@ open class Button(
     var iconSize = ScaledValue.of(15f)
 
     private var onClickedCallback: (Button) -> Unit = { }
+    private var onMouseEnterCallback: (Button) -> Unit = { }
+    private var onMouseLeaveCallback: (Button) -> Unit = { }
     private var isMouseOver = false
+
+    override fun onMouseEnter(engine: PulseEngine)
+    {
+        onMouseEnterCallback(this)
+    }
 
     override fun onMouseLeave(engine: PulseEngine)
     {
         engine.input.setCursorType(CursorType.ARROW)
+        onMouseLeaveCallback(this)
     }
 
     override fun onMouseClicked(engine: PulseEngine)
@@ -66,10 +74,9 @@ open class Button(
         }
     }
 
-    fun setOnClicked(callback: (Button) -> Unit)
-    {
-        this.onClickedCallback = callback
-    }
+    fun setOnClicked(callback: (Button) -> Unit)    { onClickedCallback = callback    }
+    fun setOnMouseEnter(callback: (Button) -> Unit) { onMouseEnterCallback = callback }
+    fun setOnMouseLeave(callback: (Button) -> Unit) { onMouseLeaveCallback = callback }
 
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
