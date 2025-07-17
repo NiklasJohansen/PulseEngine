@@ -62,14 +62,14 @@ class PulseEngineImpl(
         // Setup
         initEngine()
         initGame(game)
-        postGameSetup()
+        postGameInit()
+        game.onStart()
 
         // Run
         runGameLoop(game)
 
         // Destroy
-        game.onDestroy()
-        destroy()
+        destroy(game)
     }
 
     private fun initEngine()
@@ -154,7 +154,7 @@ class PulseEngineImpl(
         Logger.debug { "Finished initializing game in: ${startTime.toNowFormatted()}" }
     }
 
-    private fun postGameSetup()
+    private fun postGameInit()
     {
         // Load initial assets from disk
         asset.update()
@@ -294,10 +294,11 @@ class PulseEngineImpl(
         input.requestFocus(focusArea)
     }
 
-    private fun destroy()
+    private fun destroy(game: PulseEngineGame)
     {
+        game.onDestroy()
         FileWatcher.shutdown()
-        runCatching { gameThread?.interrupt() }
+        gameThread?.interrupt()
         scene.destroy()
         widget.destroy(this)
         audio.destroy()
@@ -312,7 +313,8 @@ class PulseEngineImpl(
         val runnable =
         {
             audio.enableInCurrentThread()
-            action()
+            try { action() }
+            catch (_ : InterruptedException) { Logger.info { "Game thread interrupted - shutting down" } }
         }
         gameThread = Thread(runnable, "game").apply { start() }
     }
