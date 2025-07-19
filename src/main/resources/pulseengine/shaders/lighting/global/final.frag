@@ -41,7 +41,7 @@ void main()
         }
         else
         {
-            light = texture(interiorLightTex, uv).rgb + ambientInteriorLight.rgb;
+            light = texture(interiorLightTex, offsetUv).rgb + ambientInteriorLight.rgb;
         }
     }
 

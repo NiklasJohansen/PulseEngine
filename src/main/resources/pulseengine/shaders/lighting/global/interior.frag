@@ -15,7 +15,6 @@ uniform sampler2D lastInteriorTex;
 
 uniform float scale;
 uniform vec2 localSdfRes;
-uniform vec2 uvSampleOffset;
 uniform vec2 exteriorLightTexUvMax;
 uniform float normalMapScale;
 uniform float camAngle;
@@ -26,14 +25,14 @@ float noise(vec2 p)
     return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-vec3 getOccluderLight(vec2 offsetUv, vec4 sceneMetaData)
+vec3 getOccluderLight(vec4 sceneMetaData)
 {
     const int rayCount = 16;
 
     vec2 noise = vec2(noise(uv.xy + time), noise(uv.yx - time)) * 2.0 - 1.0;
     float angleStep = TAU / rayCount;
     float startAngle = camAngle + angleStep * noise.x;
-    vec2 startPos = offsetUv * localSdfRes + noise;
+    vec2 startPos = uv * localSdfRes + noise;
     vec2 invLocalSdfRes = 1.0 / localSdfRes;
     vec3 light = vec3(0.0);
 
@@ -73,9 +72,8 @@ vec3 getOccluderLight(vec2 offsetUv, vec4 sceneMetaData)
 
 void main()
 {
-    vec2 offsetUv = clamp(uv + uvSampleOffset, 0.0, 1.0);
-    vec4 scene = texture(localSceneTex, offsetUv);
-    vec4 sceneMeta = texture(localSceneMetadataTex, offsetUv);
+    vec4 scene = texture(localSceneTex, uv);
+    vec4 sceneMeta = texture(localSceneMetadataTex, uv);
 
     float sourceIntensity = sceneMeta.b;
     bool isOccluder = scene.a > 0.8;
@@ -84,7 +82,12 @@ void main()
 
     if (isOccluder && !isLightSource)
     {
-        light = getOccluderLight(offsetUv, sceneMeta);
+        light = getOccluderLight(sceneMeta);
+    }
+    else
+    {
+        // Fill the rest with the exterior light so bilinear filtering never blends with black
+        light = texture(exteriorLightTex, uv * exteriorLightTexUvMax).rgb;
     }
 
     fragColor = vec4(light, 1.0);
