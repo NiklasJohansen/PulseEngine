@@ -200,7 +200,7 @@ class PulseEngineImpl(
 
     private fun beginFrame()
     {
-        data.startFrameTimer()
+        data.update()
         asset.update()
         audio.update()
         window.initFrame(this)

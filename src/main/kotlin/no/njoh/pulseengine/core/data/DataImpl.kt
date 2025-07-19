@@ -18,6 +18,7 @@ import kotlin.system.measureNanoTime
 open class DataImpl : DataInternal()
 {
     override var currentFps           = 0
+    override var frameNumber          = 0L
     override var totalFrameTimeMs     = 0f
     override var gpuRenderTimeMs      = 0f
     override var cpuRenderTimeMs      = 0f
@@ -119,9 +120,10 @@ open class DataImpl : DataInternal()
 
     override fun setOnGetSaveDirectory(callback: () -> String) { getSaveDir = callback }
 
-    fun startFrameTimer()
+    fun update()
     {
         frameStartTime = glfwGetTime()
+        frameNumber++
     }
 
     inline fun measureAndUpdateTimeStats(block: () -> Unit)

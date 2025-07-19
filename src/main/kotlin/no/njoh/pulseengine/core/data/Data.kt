@@ -7,6 +7,9 @@ abstract class Data
     /** The current number of frames the engine is processing per second */
     abstract val currentFps: Int
 
+    /** The number of the current frame. Counts up by one each frame */
+    abstract val frameNumber: Long
+
     /** Total time in milliseconds used to process the most recent frame */
     abstract val totalFrameTimeMs: Float
 
