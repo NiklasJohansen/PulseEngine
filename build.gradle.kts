@@ -8,9 +8,6 @@ plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
-val version: String by project
-val group: String by project
-val artifact: String by project
 val mainClass: String by project
 
 enum class Platform(val classifier: String) {
@@ -69,17 +66,15 @@ val sourcesJar by tasks.register<Jar>("sourcesJar") {
     from(kotlin.sourceSets["main"].kotlin)
 }
 
-tasks.named<Jar>("jar") {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    exclude("testbed/**")
-}
-
-// For running the engine as a standalone application
 tasks.named<ShadowJar>("shadowJar") {
-    archiveClassifier.set("app")
+    archiveClassifier.set("") // Makes it the main artifact name
     mergeServiceFiles()
     manifest { attributes["Main-Class"] = mainClass }
 }
+
+tasks.named<Jar>("jar") { enabled = false }
+
+tasks.named("assemble") { dependsOn("shadowJar") }
 
 kotlin {
     jvmToolchain(23)
@@ -91,7 +86,7 @@ kotlin {
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
-            from(components["java"])
+            from(components["shadow"])
             artifact(sourcesJar)
         }
     }
