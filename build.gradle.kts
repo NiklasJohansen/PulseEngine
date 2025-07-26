@@ -1,6 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins {
+plugins{
     `maven-publish`
     kotlin("jvm") version "2.2.0"
     kotlin("kapt") version "2.2.0"
@@ -13,11 +13,9 @@ val mainClass: String by project
 enum class Platform(val classifier: String) {
     LINUX("natives-linux"),
     LINUX_ARM64("natives-linux-arm64"),
-    LINUX_ARM32("natives-linux-arm32"),
     MACOS("natives-macos"),
     MACOS_ARM64("natives-macos-arm64"),
     WINDOWS("natives-windows"),
-    WINDOWS_X86("natives-windows-x86"),
     WINDOWS_ARM64("natives-windows-arm64");
 }
 
@@ -32,21 +30,16 @@ dependencies {
 
     // LWJGL
     implementation(platform("org.lwjgl:lwjgl-bom:3.3.6"))
-    implementation("org.lwjgl", "lwjgl")
-    implementation("org.lwjgl", "lwjgl-glfw")
-    implementation("org.lwjgl", "lwjgl-jemalloc")
-    implementation("org.lwjgl", "lwjgl-openal")
-    implementation("org.lwjgl", "lwjgl-opengl")
-    implementation("org.lwjgl", "lwjgl-stb")
-    implementation("org.lwjgl", "lwjgl-nfd")
-    Platform.values().forEach { platform ->
-        runtimeOnly("org.lwjgl", "lwjgl", classifier = platform.classifier)
-        runtimeOnly("org.lwjgl", "lwjgl-glfw", classifier = platform.classifier)
-        runtimeOnly("org.lwjgl", "lwjgl-jemalloc", classifier = platform.classifier)
-        runtimeOnly("org.lwjgl", "lwjgl-openal", classifier = platform.classifier)
-        runtimeOnly("org.lwjgl", "lwjgl-opengl", classifier = platform.classifier)
-        runtimeOnly("org.lwjgl", "lwjgl-stb", classifier = platform.classifier)
-        runtimeOnly("org.lwjgl", "lwjgl-nfd", classifier = platform.classifier)
+    listOf(
+        "lwjgl",        // Core LWJGL library
+        "lwjgl-glfw",   // GLFW for window management
+        "lwjgl-opengl", // OpenGL bindings
+        "lwjgl-openal", // OpenAL for audio
+        "lwjgl-stb",    // STB for image loading
+        "lwjgl-nfd"     // Native File Dialog for file selection
+    ).forEach { module ->
+        implementation("org.lwjgl", module)
+        Platform.values().forEach { platform -> runtimeOnly("org.lwjgl", module, classifier = platform.classifier) }
     }
 
     // Other
@@ -65,14 +58,12 @@ val sourcesJar by tasks.register<Jar>("sourcesJar") {
     from(kotlin.sourceSets["main"].kotlin)
 }
 
+tasks.named<Jar>("jar") { enabled = false }
 tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier.set("") // Makes it the main artifact name
     mergeServiceFiles()
     manifest { attributes["Main-Class"] = mainClass }
 }
-
-tasks.named<Jar>("jar") { enabled = false }
-
 tasks.named("assemble") { dependsOn("shadowJar") }
 
 kotlin {
