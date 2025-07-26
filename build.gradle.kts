@@ -1,8 +1,11 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     `maven-publish`
     kotlin("jvm") version "2.2.0"
     kotlin("kapt") version "2.2.0"
     id("me.champeau.jmh") version "0.7.3"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 val version: String by project
@@ -61,22 +64,21 @@ dependencies {
     implementation("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }
 
-val sourcesJar by tasks.creating(Jar::class) {
-    group = JavaBasePlugin.DOCUMENTATION_GROUP
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+val sourcesJar by tasks.register<Jar>("sourcesJar") {
     archiveClassifier.set("sources")
-    exclude("*.png", "*.jpg", "*.ttf", "*.ogg", "*.txt")
-    from(sourceSets.main.get().allSource)
+    from(kotlin.sourceSets["main"].kotlin)
 }
 
-val jar by tasks.getting(Jar::class) {
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-    manifest {
-        attributes["Main-Class"] = mainClass
-    }
-    // exclude("**/*.kotlin_module", "**/*.kotlin_metadata", "testbed/**")
-    exclude("**/*.kotlin_module", "**/*.kotlin_metadata")
-    from({ configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) } })
+tasks.named<Jar>("jar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude("testbed/**")
+}
+
+// For running the engine as a standalone application
+tasks.named<ShadowJar>("shadowJar") {
+    archiveClassifier.set("app")
+    mergeServiceFiles()
+    manifest { attributes["Main-Class"] = mainClass }
 }
 
 kotlin {
@@ -88,8 +90,8 @@ kotlin {
 
 publishing {
     publications {
-        create<MavenPublication>("default") {
-            artifact(jar)
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
             artifact(sourcesJar)
         }
     }
