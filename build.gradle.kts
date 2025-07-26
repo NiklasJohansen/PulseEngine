@@ -9,15 +9,14 @@ plugins{
 }
 
 val mainClass: String by project
-
-enum class Platform(val classifier: String) {
-    LINUX("natives-linux"),
-    LINUX_ARM64("natives-linux-arm64"),
-    MACOS("natives-macos"),
-    MACOS_ARM64("natives-macos-arm64"),
-    WINDOWS("natives-windows"),
-    WINDOWS_ARM64("natives-windows-arm64");
-}
+val platforms = listOf(
+    "natives-linux",
+    "natives-linux-arm64",
+    "natives-macos",
+    "natives-macos-arm64",
+    "natives-windows",
+    "natives-windows-arm64"
+)
 
 repositories {
     mavenCentral()
@@ -39,7 +38,7 @@ dependencies {
         "lwjgl-nfd"     // Native File Dialog for file selection
     ).forEach { module ->
         implementation("org.lwjgl", module)
-        Platform.values().forEach { platform -> runtimeOnly("org.lwjgl", module, classifier = platform.classifier) }
+        platforms.forEach { platform -> runtimeOnly("org.lwjgl", module, classifier = platform) }
     }
 
     // Other
@@ -53,18 +52,22 @@ dependencies {
     kaptJmh("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }
 
-val sourcesJar by tasks.register<Jar>("sourcesJar") {
-    archiveClassifier.set("sources")
-    from(kotlin.sourceSets["main"].kotlin)
-}
-
 tasks.named<Jar>("jar") { enabled = false }
+
 tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier.set("") // Makes it the main artifact name
     mergeServiceFiles()
+    exclude("testbed/**") // Comment this line out when running JAR locally
     manifest { attributes["Main-Class"] = mainClass }
 }
+
 tasks.named("assemble") { dependsOn("shadowJar") }
+
+tasks.register<Jar>("sourcesJar") {
+    archiveClassifier.set("sources")
+    from(kotlin.sourceSets["main"].kotlin)
+    exclude("testbed/**")
+}
 
 kotlin {
     jvmToolchain(23)
@@ -77,7 +80,7 @@ publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             artifact(tasks.named<ShadowJar>("shadowJar"))
-            artifact(sourcesJar)
+            artifact(tasks.named<Jar>("sourcesJar"))
         }
     }
 
