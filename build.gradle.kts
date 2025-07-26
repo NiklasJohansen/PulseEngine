@@ -56,9 +56,8 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.3")
 
     // Java Microbenchmark Harness
-    kapt("org.openjdk.jmh:jmh-generator-annprocess:1.37")
-    implementation("org.openjdk.jmh:jmh-core:1.37")
-    implementation("org.openjdk.jmh:jmh-generator-annprocess:1.37")
+    jmh("org.openjdk.jmh:jmh-core:1.37")
+    kaptJmh("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }
 
 val sourcesJar by tasks.register<Jar>("sourcesJar") {
@@ -106,5 +105,3 @@ publishing {
         // }
     }
 }
-
-jmh { profilers.set(listOf("gc")) }
