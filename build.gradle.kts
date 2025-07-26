@@ -5,7 +5,7 @@ plugins {
     kotlin("jvm") version "2.2.0"
     kotlin("kapt") version "2.2.0"
     id("me.champeau.jmh") version "0.7.3"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.8"
 }
 
 val mainClass: String by project
@@ -85,7 +85,7 @@ kotlin {
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
-            from(components["shadow"])
+            artifact(tasks.named<ShadowJar>("shadowJar"))
             artifact(sourcesJar)
         }
     }
