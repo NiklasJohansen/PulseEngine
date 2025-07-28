@@ -3,6 +3,7 @@ package no.njoh.pulseengine.widgets.metrics
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
+import no.njoh.pulseengine.core.graphics.GraphicsInternal
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
@@ -85,7 +86,7 @@ class GpuMonitor : Widget
     }
 
     private fun createWindow(engine: PulseEngine) = uiFactory.createWindowUI(
-        title = "GPU Monitor",
+        title = "GPU Monitor - ${(engine.gfx as? GraphicsInternal)?.gpuName}",
         iconName = "MONITOR",
         x = 20f,
         y = 20f,
