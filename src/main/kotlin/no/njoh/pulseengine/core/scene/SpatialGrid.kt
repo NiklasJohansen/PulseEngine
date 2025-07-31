@@ -302,7 +302,7 @@ class SpatialGrid (
         val surface = engine.gfx.getSurface("spatial_grid") ?: engine.gfx.createSurface(
             name = "spatial_grid",
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder - 100
+            zOrder = -80
         )
 
         // Background rectangle

@@ -65,7 +65,11 @@ class PhysicsSystem : SceneSystem()
         if (!drawShapes)
             return
 
-        val surface = engine.gfx.mainSurface
+        val surface = engine.gfx.getSurface("physics") ?: engine.gfx.createSurface(
+            name = "physics",
+            camera = engine.gfx.mainCamera,
+            zOrder = -85
+        )
         engine.scene.forEachEntityOfType<PhysicsEntity> { it.render(engine, surface) }
     }
 
