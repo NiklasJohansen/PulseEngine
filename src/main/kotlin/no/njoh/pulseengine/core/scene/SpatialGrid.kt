@@ -35,6 +35,7 @@ class SpatialGrid (
     @PublishedApi internal var yCells = 0
     @PublishedApi internal var invCellSize = 1f / cellSize
     @PublishedApi internal lateinit var cells: Array2D<Node?>
+    @PublishedApi internal val reusableHitResult = HitResult<Any?>(null, 0f, 0f, Float.MAX_VALUE)
 
     private var width = 0
     private var height = 0
@@ -177,7 +178,7 @@ class SpatialGrid (
         }
     }
 
-    inline fun <reified T> queryFirstAlongRay(x: Float, y: Float, angle: Float, rayLength: Float): HitResult<T>?
+    inline fun <reified T> queryFirstAlongRay(x: Float, y: Float, angle: Float, rayLength: Float, predicate: ((T) -> Boolean) = { true }): HitResult<T>?
     {
         val angleRad = -angle.toRadians()
         val xEnd = x + cos(angleRad) * rayLength
@@ -193,7 +194,7 @@ class SpatialGrid (
             while (node != null)
             {
                 val entity = node.entity
-                if (entity.isNot(DEAD) && entity is T)
+                if (entity.isNot(DEAD) && entity is T && predicate(entity))
                 {
                     entity as Spatial
                     val hitPoint = when (entity)
@@ -217,7 +218,11 @@ class SpatialGrid (
                 ((xHit - xOffset) * invCellSize).toInt() == xCell && // Requires the hit point to be inside the current cell
                 ((yHit - yOffset) * invCellSize).toInt() == yCell
             ) {
-                return HitResult(closestEntity, xHit, yHit, sqrt(minDist))
+                reusableHitResult.entity = closestEntity
+                reusableHitResult.xPos = xHit
+                reusableHitResult.yPos = yHit
+                reusableHitResult.distance = sqrt(minDist)
+                return reusableHitResult as HitResult<T>
             }
         }
 
