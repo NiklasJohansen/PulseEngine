@@ -37,6 +37,20 @@ class Testbed : PulseEngineGame()
             yOrigin = 0.5f,
             fontSize = 72f
         )
+
+        val res = engine.scene.getFirstEntityAlongRay(0f, 10f, 0f, 1000f) { it !is Particle }
+
+        if(res != null)
+        {
+            engine.gfx.mainSurface.drawText(
+                text = "Entity: ${res.entity::class.java}",
+                x = engine.window.width * 0.5f,
+                y = engine.window.height * 0.5f + 100f,
+                xOrigin = 0.5f,
+                yOrigin = 0.5f,
+                fontSize = 36f
+            )
+        }
     }
 
     override fun onDestroy()

@@ -140,6 +140,12 @@ abstract class SceneManager
         activeScene.spatialGrid.queryFirstAlongRay(x, y, angle, rayLength)
 
     /**
+     * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity] matching the [predicate].
+     */
+    inline fun getFirstEntityAlongRay(x: Float, y: Float, angle: Float, rayLength: Float, predicate: (SceneEntity) -> Boolean) : HitResult<SceneEntity>? =
+        activeScene.spatialGrid.queryFirstAlongRay(x, y, angle, rayLength, predicate)
+
+    /**
      * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity] of type [T].
      */
     inline fun <reified T> getFirstEntityAlongRayOfType(x: Float, y: Float, angle: Float, rayLength: Float) : HitResult<T>? =
