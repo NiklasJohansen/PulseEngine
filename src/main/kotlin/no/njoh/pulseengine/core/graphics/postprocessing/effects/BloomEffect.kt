@@ -31,7 +31,9 @@ class BloomEffect(
     TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 16f),
     TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 32f),
     TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 64f),
-    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 128f)
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 128f),
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 256f),
+    TextureDescriptor(filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGB16F,  scale = 1f / 512f)
 ) {
 
     override fun loadShaderPrograms(engine: PulseEngineInternal) = listOf(
