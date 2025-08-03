@@ -62,4 +62,9 @@ class ThreadBarrier(private val threadCount: Int)
         waitingThreadCount = threadCount
         lock.notifyAll()
     }
+
+    fun destroy() = synchronized(lock)
+    {
+        breakBarrier()
+    }
 }

@@ -173,28 +173,34 @@ class PulseEngineImpl(
     {
         val isMultithreaded = (config.gameLoopMode == MULTITHREADED)
 
-        if (isMultithreaded)
+        try
         {
-            runInSeparateGameThread()
+            if (isMultithreaded)
             {
-                while (running) runSynchronized { tick(game) }
+                runInSeparateGameThread()
+                {
+                    while (running) runSynchronized { tick(game) }
+                }
+                while (running)
+                {
+                    beginFrame()
+                    runSynchronized { drawFrame() }
+                    endFrame()
+                }
             }
-            while (running)
-            {
-                beginFrame()
-                runSynchronized { drawFrame() }
-                endFrame()
-            }
-        }
-        else
-        {
-            while (running)
+            else while (running)
             {
                 beginFrame()
                 tick(game)
                 drawFrame()
                 endFrame()
             }
+        }
+        catch (e: Throwable)
+        {
+            Logger.error(e) { "Fatal error in game loop - shutting down" }
+            Logger.writeAndOpenCrashReport()
+            shutdown()
         }
     }
 
@@ -315,6 +321,12 @@ class PulseEngineImpl(
             audio.enableInCurrentThread()
             try { action() }
             catch (_ : InterruptedException) { Logger.info { "Game thread interrupted - shutting down" } }
+            catch (t: Throwable)
+            {
+                Logger.error(t) { "Fatal error in game thread - shutting down" }
+                Logger.writeAndOpenCrashReport()
+                shutdown()
+            }
         }
         gameThread = Thread(runnable, "game").apply { start() }
     }
@@ -324,6 +336,13 @@ class PulseEngineImpl(
         beginFrame.await() // Waits for all threads to be ready
         action()           // Runs the action
         endFrame.await()   // Waits for all threads to finish
+    }
+
+    private fun shutdown()
+    {
+        running = false
+        beginFrame.destroy()
+        endFrame.destroy()
     }
 
     private fun printLogo() = println("""
