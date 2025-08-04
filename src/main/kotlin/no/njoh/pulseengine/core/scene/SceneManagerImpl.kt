@@ -1,16 +1,13 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineGame
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneState.*
-import no.njoh.pulseengine.core.scene.systems.EntityUpdater
-import no.njoh.pulseengine.core.scene.systems.EntityRendererImpl
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil
-import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.getClassesFromFullyQualifiedClassNames
-import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.getClassesOfSuperType
+import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.forEachClassWithSupertype
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
@@ -34,16 +31,14 @@ open class SceneManagerImpl : SceneManagerInternal()
     private var onTransitionFinished: ((PulseEngine) -> Unit)? = null
     private var onRender: ((PulseEngine, Surface, Float) -> Unit)? = null
 
-    override fun init(engine: PulseEngine)
+    override fun init(engine: PulseEngine, game: PulseEngineGame)
     {
         Logger.info { "Initializing scene (SceneManagerImpl)" }
 
         this.engine = engine
         this.activeScene = Scene("default")
         this.activeScene.fileName = "default.scn"
-        addSystem(EntityUpdater())
-        addSystem(EntityRendererImpl())
-        registerSystemsAndEntityClasses()
+        registerSystemsAndEntityClasses(gameBasePackage = game::class.java.packageName.substringBefore("."))
     }
 
     override fun start()
@@ -147,8 +142,6 @@ open class SceneManagerImpl : SceneManagerInternal()
             .substringBefore(".")
         val scene = Scene(sceneName)
         scene.fileName = fileName
-        scene.systems.add(EntityUpdater())
-        scene.systems.add(EntityRendererImpl())
         setActive(scene)
     }
 
@@ -254,17 +247,15 @@ open class SceneManagerImpl : SceneManagerInternal()
         else onRender = null
     }
 
-    override fun registerSystemsAndEntityClasses()
+    override fun registerSystemsAndEntityClasses(gameBasePackage: String)
     {
         measureNanoTime {
             SceneEntity.REGISTERED_TYPES.clear()
             SceneSystem.REGISTERED_TYPES.clear()
 
-            val classes = ReflectionUtil.getFullyQualifiedClassNames()
-                .getClassesFromFullyQualifiedClassNames()
-
-            classes.getClassesOfSuperType(SceneEntity::class).forEachFast { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
-            classes.getClassesOfSuperType(SceneSystem::class).forEachFast { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
+            val classes = ReflectionUtil.getClassesInPackages(gameBasePackage, "no.njoh.pulseengine.modules.scene")
+            classes.forEachClassWithSupertype<SceneEntity> { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
+            classes.forEachClassWithSupertype<SceneSystem> { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
 
             SceneEntity.REGISTERED_TYPES.remove(SceneEntity::class)
             SceneSystem.REGISTERED_TYPES.remove(SceneSystem::class)

@@ -60,7 +60,7 @@ class PulseEngineImpl(
     fun run(game: PulseEngineGame)
     {
         // Setup
-        initEngine()
+        initEngine(game)
         initGame(game)
         postGameInit()
         game.onStart()
@@ -72,7 +72,7 @@ class PulseEngineImpl(
         destroy(game)
     }
 
-    private fun initEngine()
+    private fun initEngine(game: PulseEngineGame)
     {
         printLogo()
         Logger.info { "Initializing engine (PulseEngineImpl)" }
@@ -143,7 +143,7 @@ class PulseEngineImpl(
         input.init(window.windowHandle, window.cursorPosScale)
         audio.init()
         console.init(this)
-        scene.init(this)
+        scene.init(this, game)
     }
 
     private fun initGame(game: PulseEngineGame)

@@ -182,16 +182,6 @@ object CommandRegistry
             CommandResult("No command bound for key: ${keys.joinToString("+")}", MessageType.ERROR)
         }
 
-        ///////////////////////////////////////////// RELOAD SYSTEM AND ENTITY TYPES COMMAND /////////////////////////////////////////////
-
-        engine.console.registerCommand(
-            template = "reloadEntityAndSystemTypes",
-            description = "Reloads all entity types and systems"
-        ) {
-            engine.scene.registerSystemsAndEntityClasses()
-            CommandResult("Reloaded entity types", showCommand = false)
-        }
-
         ///////////////////////////////////////////// RELOAD ASSETS /////////////////////////////////////////////
 
         engine.console.registerCommand(

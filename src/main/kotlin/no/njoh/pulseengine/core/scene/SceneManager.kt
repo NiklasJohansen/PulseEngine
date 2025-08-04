@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineGame
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SpatialGrid.Companion.nextQueryId
@@ -268,10 +269,10 @@ abstract class SceneManager
  */
 abstract class SceneManagerInternal : SceneManager()
 {
-    abstract fun init(engine: PulseEngine)
+    abstract fun init(engine: PulseEngine, game: PulseEngineGame)
     abstract fun render()
     abstract fun update()
     abstract fun fixedUpdate()
     abstract fun destroy()
-    abstract fun registerSystemsAndEntityClasses()
+    abstract fun registerSystemsAndEntityClasses(gameBasePackage: String)
 }

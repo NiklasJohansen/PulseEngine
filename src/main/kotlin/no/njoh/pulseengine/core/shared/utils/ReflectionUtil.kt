@@ -1,71 +1,76 @@
 package no.njoh.pulseengine.core.shared.utils
 
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import java.io.File
+import java.io.File.pathSeparator
+import java.io.File.separatorChar
 import java.lang.management.ManagementFactory
 import java.lang.reflect.Method
-import java.lang.reflect.Modifier
-import java.nio.file.FileSystems
+import java.lang.reflect.Modifier.isAbstract
 import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
+import java.util.jar.JarFile
 import kotlin.reflect.KClass
+import kotlin.sequences.forEach
+import kotlin.use
 
 object ReflectionUtil
 {
-    val STRINGS_TO_IGNORE_IN_CLASS_SEARCH = mutableListOf(
-        "$", "/org/joml", "/org/lwjgl", "/jetbrains", "/intellij"
-    )
-
-    val classCache = mutableMapOf<String, Class<*>>()
     val annotationCache = mutableMapOf<String, MutableMap<String, MutableSet<*>>>()
 
-    fun getFullyQualifiedClassNames(maxSearchDepth: Int = 10): List<String>
-    {
-        // Get paths from classpath - necessary for when the application is run in IDE
-        val paths = ManagementFactory.getRuntimeMXBean().classPath
-            .split(File.pathSeparator)
-            .mapNotNull { if (!it.endsWith(".jar")) Paths.get(it) else null }
-            .toMutableList()
+    /**
+     * Finds all classes in the specified packages and sub-packages down to the specified depth.
+     */
+    fun getClassesInPackages(
+        vararg packages: String,
+        maxSearchDepth: Int = 10,
+        includeAbstractClasses: Boolean = false
+    ): List<Class<*>> {
+        val loader = Thread.currentThread().contextClassLoader
+        val classNames = ConcurrentHashMap.newKeySet<String>()
 
-        // Get paths from inside JAR file - used when application is run from a JAR or imported as a library
-        ReflectionUtil::class.java.getResource("/no")?.toURI()
-            ?.takeIf { it.scheme == "jar" }
-            ?.let { jarUri ->
-                val fileSystem =
-                    try { FileSystems.getFileSystem(jarUri) }
-                    catch (e: Exception) { FileSystems.newFileSystem(jarUri, emptyMap<String, Any>()) }
-                paths.add(fileSystem.getPath("/"))
+        for (file in ManagementFactory.getRuntimeMXBean().classPath.split(pathSeparator).map(::File))
+        {
+            if (file.isDirectory)
+            {
+                for (pkg in packages)
+                {
+                    val basePath = if (pkg.isEmpty()) file.toPath() else file.toPath().resolve(pkg.replace('.', '/'))
+                    if (pkg.isNotEmpty() && !Files.exists(basePath))
+                        continue
+
+                    Files.walk(basePath, maxSearchDepth).use { stream ->
+                        stream
+                            .filter { path -> path.toString().let { it.endsWith(".class") && '$' !in it } }
+                            .map { basePath.relativize(it).toString().removeSuffix(".class").replace(separatorChar, '.') }
+                            .forEach { classNames += if (pkg.isEmpty()) it else "$pkg.$it" }
+                    }
+                }
             }
-
-        return paths.flatMap { findClassNames(it, maxSearchDepth, STRINGS_TO_IGNORE_IN_CLASS_SEARCH ) }
-    }
-
-    private fun findClassNames(startPath: Path, maxSearchDepth: Int, ignoreStrings: List<String> ): List<String> =
-        Files.walk(startPath, maxSearchDepth)
-            .iterator()
-            .asSequence()
-            .mapNotNull { path ->
-                val filePath = path.toString()
-                if (!filePath.endsWith(".class") || ignoreStrings.any { filePath.contains(it) }) null
-                else filePath
-                    .removePrefix("$startPath")
-                    .removePrefix("/")
-                    .removePrefix("\\")
-                    .removeSuffix(".class")
-                    .replace("/", ".")
-                    .replace("\\", ".")
-            }.toList()
-
-    fun List<String>.getClassesFromFullyQualifiedClassNames() : List<Class<*>> =
-        this.mapNotNull { className ->
-            runCatching { if (className !in classCache) Class.forName(className) else classCache[className]!! }
-                .onSuccess { classCache[className] = it }
-                .getOrNull()
+            else if (file.isFile && file.name.endsWith(".jar", true))
+            {
+                JarFile(file).use { jar ->
+                    for (pkg in packages)
+                    {
+                        val prefix = if (pkg.isEmpty()) "" else pkg.replace('.', '/') + "/"
+                        jar.entries().asSequence()
+                            .map { it.name }
+                            .filter { it.endsWith(".class") && it.startsWith(prefix) && '$' !in it }
+                            .map { it.removePrefix(prefix).removeSuffix(".class").replace('/', '.') }
+                            .forEach { classNames += if (pkg.isEmpty()) it else "$pkg.$it" }
+                    }
+                }
+            }
         }
 
+        return classNames.mapNotNull { name ->
+            runCatching { Class.forName(name, false, loader)}.getOrNull()?.takeIf { includeAbstractClasses || !isAbstract(it.modifiers) }
+        }
+    }
+
     @Suppress("UNCHECKED_CAST")
-    fun <T: Any> List<Class<*>>.getClassesOfSuperType(superType: KClass<T>): List<Class<out T>> =
-        this.filter { superType.java.isAssignableFrom(it) && !Modifier.isAbstract(it.modifiers) } as List<Class<out T>>
+    inline fun <reified T> List<Class<*>>.forEachClassWithSupertype(action: (Class<out T>) -> Unit) =
+        this.forEachFast { if (T::class.java.isAssignableFrom(it)) action(it as Class<out T>) }
 
     /**
      * Find the first annotation on the named property of type [T].
