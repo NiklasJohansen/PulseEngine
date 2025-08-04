@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.core.scene.systems
+package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState

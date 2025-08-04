@@ -16,8 +16,8 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.lighting.direct.DirectShadowType.NONE
-import no.njoh.pulseengine.core.scene.systems.EntityRenderer
-import no.njoh.pulseengine.core.scene.systems.EntityRenderer.RenderPass
+import no.njoh.pulseengine.modules.scene.systems.EntityRenderer
+import no.njoh.pulseengine.modules.scene.systems.EntityRenderer.RenderPass
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.MathUtil

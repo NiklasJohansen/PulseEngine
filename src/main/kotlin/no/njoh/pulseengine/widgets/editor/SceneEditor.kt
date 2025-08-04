@@ -44,6 +44,8 @@ import no.njoh.pulseengine.core.widget.Widget
 import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.gui.elements.Button
 import no.njoh.pulseengine.modules.gui.layout.WindowPanel
+import no.njoh.pulseengine.modules.scene.systems.EntityRendererImpl
+import no.njoh.pulseengine.modules.scene.systems.EntityUpdater
 import no.njoh.pulseengine.widgets.editor.EditorUtil.duplicateAndInsertEntities
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
@@ -321,6 +323,8 @@ class SceneEditor(
         sceneFileToCreate?.let()
         {
             engine.scene.createEmptyAndSetActive(it)
+            engine.scene.addSystem(EntityUpdater().also { it.init(engine) })
+            engine.scene.addSystem(EntityRendererImpl().also { it.init(engine) })
             engine.scene.save()
             sceneFileToCreate = null
         }
