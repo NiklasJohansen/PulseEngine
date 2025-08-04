@@ -11,7 +11,7 @@ import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
-import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import org.lwjgl.opengl.GL20.*
 
 class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
@@ -20,13 +20,25 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
     private lateinit var program: ShaderProgram
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
+    private lateinit var instanceLayout: VertexAttributeLayout
 
     override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
-            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
+            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
+            instanceLayout = VertexAttributeLayout()
+                .withAttribute("worldPos",  3, GL_FLOAT, 1)
+                .withAttribute("size",      2, GL_FLOAT, 1)
+                .withAttribute("origin",    2, GL_FLOAT, 1)
+                .withAttribute("rotation",  1, GL_FLOAT, 1)
+                .withAttribute("uvMin",     2, GL_FLOAT, 1)
+                .withAttribute("uvMax",     2, GL_FLOAT, 1)
+                .withAttribute("tiling",    2, GL_FLOAT, 1)
+                .withAttribute("scale",     2, GL_FLOAT, 1)
+                .withAttribute("texHandle", 1, GL_UNSIGNED_INT, 1)
+
             program = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/normal_map.vert")),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/normal_map.frag"))
@@ -35,17 +47,6 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
 
         val vertexLayout = VertexAttributeLayout()
             .withAttribute("vertexPos", 2, GL_FLOAT)
-
-        val instanceLayout = VertexAttributeLayout()
-            .withAttribute("worldPos", 3, GL_FLOAT, 1)
-            .withAttribute("size", 2, GL_FLOAT, 1)
-            .withAttribute("origin", 2, GL_FLOAT, 1)
-            .withAttribute("rotation", 1, GL_FLOAT, 1)
-            .withAttribute("uvMin", 2, GL_FLOAT, 1)
-            .withAttribute("uvMax", 2, GL_FLOAT, 1)
-            .withAttribute("tiling", 2, GL_FLOAT, 1)
-            .withAttribute("textureHandle", 1, GL_FLOAT, 1)
-            .withAttribute("scale", 2, GL_FLOAT, 1)
 
         vao = VertexArrayObject.createAndBind()
         program.bind()
@@ -75,7 +76,7 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
         program.setUniform("cameraAngle", surface.camera.rotation.z)
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays(), filter = TextureFilter.LINEAR)
-        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
+        drawInstancedQuads(instanceBuffer, instanceLayout, program, drawCount, startIndex)
         vao.release()
     }
 
@@ -112,9 +113,9 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
             put(texture?.uMax ?: 1f)
             put(texture?.vMax ?: 1f)
             put(xTiling, yTiling)
-            put(texture?.handle?.toFloat() ?: -1f)
             put(normalScale * orientation.xDir)
             put(normalScale * orientation.yDir)
+            put(texture?.handle?.toFloat() ?: -1f)
         }
 
         increaseBatchSize()

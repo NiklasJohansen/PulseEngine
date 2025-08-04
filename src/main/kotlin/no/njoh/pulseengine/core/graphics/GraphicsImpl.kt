@@ -67,7 +67,7 @@ open class GraphicsImpl : GraphicsInternal
         if (windowRecreated)
         {
             // Create OpenGL context in current thread
-            GL.createCapabilities()
+            GlCapabilities.create()
             gpuName = glGetString(GL_RENDERER) ?: "Unknown GPU"
             Logger.debug { "Running OpenGL on GPU: $gpuName" }
 

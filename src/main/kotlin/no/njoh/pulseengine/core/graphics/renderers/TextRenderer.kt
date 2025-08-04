@@ -12,13 +12,13 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import no.njoh.pulseengine.core.shared.primitives.FlatObjectBuffer
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Math.PI
 import org.joml.Math.cos
-import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
+import org.lwjgl.opengl.GL11.GL_UNSIGNED_INT
 import org.lwjgl.opengl.GL20.GL_FLOAT
-import org.lwjgl.opengl.GL20.GL_TRIANGLE_STRIP
 import org.lwjgl.stb.STBTruetype.*
 import kotlin.math.max
 import kotlin.math.min
@@ -29,6 +29,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
+    private lateinit var instanceLayout: VertexAttributeLayout
     private lateinit var program: ShaderProgram
     private val glyphBuffer = GlyphBuffer()
     private val newLinePositions = TIntArrayList(100)
@@ -37,8 +38,17 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
     {
         if (!this::program.isInitialized)
         {
-            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
+            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
+            instanceLayout = VertexAttributeLayout()
+                .withAttribute("worldPos",  3, GL_FLOAT, 1)
+                .withAttribute("size",      2, GL_FLOAT, 1)
+                .withAttribute("rotation",  1, GL_FLOAT, 1)
+                .withAttribute("uvMin",     2, GL_FLOAT, 1)
+                .withAttribute("uvMax",     2, GL_FLOAT, 1)
+                .withAttribute("color",     1, GL_UNSIGNED_INT, 1)
+                .withAttribute("texHandle", 1, GL_UNSIGNED_INT, 1)
+
             program = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/glyph.vert")),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/glyph.frag"))
@@ -47,15 +57,6 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
 
         val vertexLayout = VertexAttributeLayout()
             .withAttribute("vertexPos", 2, GL_FLOAT)
-
-        val instanceLayout = VertexAttributeLayout()
-            .withAttribute("worldPos", 3, GL_FLOAT, 1)
-            .withAttribute("size", 2, GL_FLOAT, 1)
-            .withAttribute("rotation", 1, GL_FLOAT, 1)
-            .withAttribute("uvMin", 2, GL_FLOAT, 1)
-            .withAttribute("uvMax", 2, GL_FLOAT, 1)
-            .withAttribute("color", 1, GL_FLOAT, 1)
-            .withAttribute("textureHandle", 1, GL_FLOAT, 1)
 
         vao = VertexArrayObject.createAndBind()
         program.bind()
@@ -84,7 +85,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
+        drawInstancedQuads(instanceBuffer, instanceLayout, program, drawCount, startIndex)
         vao.release()
     }
 

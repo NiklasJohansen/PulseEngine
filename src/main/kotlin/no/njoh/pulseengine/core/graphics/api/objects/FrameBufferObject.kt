@@ -12,7 +12,9 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachIndexedFast
 import org.lwjgl.opengl.GL12.GL_CLAMP_TO_EDGE
 import org.lwjgl.opengl.GL14.GL_DEPTH_COMPONENT24
 import org.lwjgl.opengl.GL30.*
+import org.lwjgl.opengl.GL32.GL_MAX_COLOR_TEXTURE_SAMPLES
 import org.lwjgl.opengl.GL32.GL_TEXTURE_2D_MULTISAMPLE
+import org.lwjgl.opengl.GL32.glFramebufferTexture
 import org.lwjgl.opengl.GL32.glTexImage2DMultisample
 import org.lwjgl.opengl.GL42.glTexStorage2D
 import kotlin.math.min
@@ -58,7 +60,10 @@ open class FrameBufferObject(
     fun attachOutputTexture(texture: RenderTexture, attachment: Attachment = texture.attachment, mipLevel: Int = 0)
     {
         val target = if (texture.multisampling == NONE) GL_TEXTURE_2D else GL_TEXTURE_2D_MULTISAMPLE
-        glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.value, target, texture.handle.textureIndex, mipLevel)
+        when (texture.multisampling) {
+            NONE -> glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.value, target, texture.handle.textureIndex, mipLevel)
+            else -> glFramebufferTexture(GL_FRAMEBUFFER, attachment.value, texture.handle.textureIndex, mipLevel)
+        }
     }
 
     fun resolveToFBO(destinationFbo: FrameBufferObject)
@@ -71,7 +76,7 @@ open class FrameBufferObject(
             val sourceTexture = textures[i]
             val destinationTexture = destinationFbo.textures[i]
             glReadBuffer(sourceTexture.attachment.value)
-            glDrawBuffers(destinationTexture.attachment.value)
+            glDrawBuffer(destinationTexture.attachment.value)
             glBlitFramebuffer(
                 0, 0, sourceTexture.width, sourceTexture.height,
                 0, 0, destinationTexture.width, destinationTexture.height,
@@ -112,9 +117,11 @@ open class FrameBufferObject(
 
             glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
 
+
             for (texDesc in textureDescriptors)
             {
-                val samples = if (texDesc.multisampling == MSAA_MAX) glGetInteger(GL_MAX_SAMPLES) else texDesc.multisampling.samples
+                val requestedSamples = if (texDesc.multisampling == MSAA_MAX) Int.MAX_VALUE else texDesc.multisampling.samples
+                val samples = minOf(requestedSamples, glGetInteger(GL_MAX_SAMPLES), glGetInteger(GL_MAX_COLOR_TEXTURE_SAMPLES))
                 val texSize = texDesc.sizeFunc(width, height, texDesc.scale)
                 val (texWidth, texHeight) = texSize
                 textureSizes.add(texSize.data)
@@ -188,6 +195,7 @@ open class FrameBufferObject(
             if (samples > 1)
             {
                 glTexImage2DMultisample(target, samples, format.internalFormat, width, height, true)
+                glFramebufferTexture(GL_FRAMEBUFFER, attachment.value, textureId, 0)
             }
             else
             {
@@ -202,8 +210,9 @@ open class FrameBufferObject(
                 glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter.magValue)
                 glTexParameteri(target, GL_TEXTURE_WRAP_S, wrapping.value)
                 glTexParameteri(target, GL_TEXTURE_WRAP_T, wrapping.value)
+                glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.value, target, textureId, 0)
             }
-            glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.value, target, textureId, 0)
+
             glBindTexture(target, 0)
             return textureId
         }
@@ -216,16 +225,17 @@ open class FrameBufferObject(
             if (samples > 1)
             {
                 glTexImage2DMultisample(target, samples, GL_DEPTH_COMPONENT24, width, height, true)
+                glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, textureId, 0)
             }
             else
             {
-                glTexImage2D(target, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0)
+                glTexImage2D(target, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, 0L)
                 glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
                 glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
                 glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
                 glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, target, textureId, 0)
             }
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, target, textureId, 0)
             glBindTexture(target, 0)
             return textureId
         }
