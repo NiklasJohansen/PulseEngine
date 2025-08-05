@@ -8,9 +8,9 @@ import org.joml.*
 abstract class Camera
 {
     /** Camera matrices */
-    open val viewMatrix: Matrix4f = Matrix4f()
-    open val projectionMatrix: Matrix4f = Matrix4f()
-    open val viewProjectionMatrix: Matrix4f = Matrix4f()
+    open val viewMatrix = Matrix4f()
+    open val projectionMatrix = Matrix4f()
+    open val viewProjectionMatrix = Matrix4f()
 
     /** World position */
     var position = Vector3f()
@@ -18,11 +18,11 @@ abstract class Camera
     /** Rotation in radians */
     var rotation = Vector3f()
 
-    /** Scale - default value 1.0f */
-    var scale = Vector3f(1.0f)
-
     /** Origin in screen space coordinates. Determines the point of rotation. */
     var origin = Vector3f()
+
+    /** Scale - default value 1.0f */
+    var scale = Vector3f(1.0f)
 
     /** Depth range */
     var farPlane = 5f
@@ -56,6 +56,9 @@ abstract class CameraInternal : Camera()
     /** Last rotation in radians */
     val rotationLast = Vector3f()
 
+    /** Last origin */
+    val originLast = Vector3f()
+
     /** Last scale - default value 1.0f */
     val scaleLast = Vector3f(1.0f)
 
@@ -83,6 +86,7 @@ class DefaultCamera(
     private val iPos = Vector3f()
     private val iRot = Vector3f()
     private val iScale = Vector3f()
+    private val iOrigin = Vector3f()
 
     override fun screenPosToWorldPos(x: Float, y: Float): Vector3f
     {
@@ -115,14 +119,15 @@ class DefaultCamera(
     {
         position.interpolateFrom(positionLast, destination = iPos)
         rotation.interpolateFrom(rotationLast, destination = iRot)
+        origin.interpolateFrom(originLast, destination = iOrigin)
         scale.interpolateFrom(scaleLast, destination = iScale)
 
         viewMatrix
             .identity()
-            .translate(origin)
+            .translate(iOrigin)
             .scale(iScale)
             .rotateXYZ(iRot.x, iRot.y, -iRot.z)
-            .translate(iPos.x - origin.x, iPos.y - origin.y, iPos.z - origin.z)
+            .translate(iPos.x - iOrigin.x, iPos.y - iOrigin.y, iPos.z - iOrigin.z)
 
         viewMatrix.invert(invViewMatrix)
         projectionMatrix.mul(viewMatrix, viewProjectionMatrix)
@@ -140,14 +145,14 @@ class DefaultCamera(
     {
         positionLast.set(position)
         rotationLast.set(rotation)
+        originLast.set(origin)
         scaleLast.set(scale)
     }
 
     companion object
     {
-        fun createOrthographic(width: Int, height: Int): DefaultCamera =
-            DefaultCamera(ORTHOGRAPHIC)
-                .also { it.updateProjection(width, height) }
+        fun createOrthographic(width: Int, height: Int) =
+            DefaultCamera(ORTHOGRAPHIC).also { it.updateProjection(width, height) }
     }
 
     enum class ProjectionType
