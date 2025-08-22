@@ -1,5 +1,5 @@
 package no.njoh.pulseengine.core.console
 
-interface Subscription {
+fun interface Subscription {
     fun unsubscribe()
 }
