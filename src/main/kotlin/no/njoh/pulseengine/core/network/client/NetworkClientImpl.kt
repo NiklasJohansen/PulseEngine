@@ -103,7 +103,7 @@ class NetworkClientImpl(
     {
         if (!isStarted)
         {
-            Logger.debug { "NetworkClient: Ignoring message to server - client is stopped" }
+            Logger.debug { "NetworkClient: Ignoring message: ${msg::class.simpleName} to server - client is stopped" }
             return
         }
         when (channel)
@@ -227,7 +227,7 @@ class NetworkClientImpl(
             stats.outTcpByteCount.increase(binaryData.length)
             stats.outTcpPacketCount.increase()
         }
-        catch (e: Exception) { logNetFailure(e, "Sending TCP") }
+        catch (e: Exception) { logNetFailure(e, "Sending TCP message: ${msg::class.simpleName}") }
     }
 
     private fun writeUdpMessage(msg: Any)
@@ -243,7 +243,7 @@ class NetworkClientImpl(
             stats.outUdpByteCount.increase(packet.length)
             stats.outUdpPacketCount.increase()
         }
-        catch (e: Exception) { logNetFailure(e, "Sending UDP") }
+        catch (e: Exception) { logNetFailure(e, "Sending UDP message: ${msg::class.simpleName}") }
     }
 
     // Handle incoming message ---------------------------------------------------------
@@ -281,7 +281,7 @@ class NetworkClientImpl(
         if (isShuttingDown || e.isExpectedCloseError())
             Logger.info { "NetworkClient: $op ended (${e::class.simpleName}: ${e.message})" }
         else
-            Logger.error(e) { "NetworkClient: $op failed" }
+            Logger.error(e) { "NetworkClient: $op failed (${e::class.simpleName}: ${e.message})" }
     }
 
     private fun startThread(name: String, block: () -> Unit) =

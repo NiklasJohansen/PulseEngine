@@ -103,7 +103,7 @@ class NetworkServerImpl(
     {
         if (!isStarted)
         {
-            Logger.debug { "NetworkServer: Ignoring message to client - server is stopped" }
+            Logger.debug { "NetworkServer: Ignoring message: ${msg::class.simpleName} to client - server is stopped" }
             return
         }
         val connection = connectionsByClientId[clientId] ?: return
@@ -118,7 +118,7 @@ class NetworkServerImpl(
     {
         if (!isStarted)
         {
-            Logger.debug { "NetworkServer: Ignoring message to all clients - server is stopped" }
+            Logger.debug { "NetworkServer: Ignoring message: ${msg::class.simpleName} to all clients - server is stopped" }
             return
         }
         when (channel)
@@ -370,7 +370,7 @@ class NetworkServerImpl(
                 stats.outTcpByteCount.increase(binaryData.length)
                 stats.outTcpPacketCount.increase()
             }
-            catch (e: Exception) { logNetFailure(e, "Sending TCP", this)  }
+            catch (e: Exception) { logNetFailure(e, "Sending TCP message: ${msg::class.simpleName}", this)  }
         }
 
         fun writeUdpMessage(msg: Any) = writeUdpMessage(codec.encode(msg), msg)
@@ -389,7 +389,7 @@ class NetworkServerImpl(
                 stats.outUdpByteCount.increase(packet.length)
                 stats.outUdpPacketCount.increase()
             }
-            catch (e: Exception) { logNetFailure(e, "Sending UDP", this) }
+            catch (e: Exception) { logNetFailure(e, "Sending UDP message: ${msg::class.simpleName}", this) }
         }
 
         fun destroy()
