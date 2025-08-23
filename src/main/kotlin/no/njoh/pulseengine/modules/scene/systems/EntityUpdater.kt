@@ -12,11 +12,11 @@ import no.njoh.pulseengine.core.scene.interfaces.Updatable
 open class EntityUpdater : SceneSystem()
 {
     @Prop(min = 1f, max = 100000f)
-    var tickRate = -1
+    var tickRate = -1f
 
     override fun onCreate(engine: PulseEngine)
     {
-        if (tickRate == -1)
+        if (tickRate == -1f)
             tickRate = engine.config.fixedTickRate
     }
 

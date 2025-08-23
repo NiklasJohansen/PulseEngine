@@ -171,9 +171,9 @@ open class DataImpl : DataInternal()
         totalFrameTimeMs = ((nowTime - frameStartTimeNs).toDouble() * 1e-6).toFloat()
     }
 
-    fun updateInterpolationValue(fixedTickRateHz: Int)
+    fun updateInterpolationValue(fixedTickRateHz: Float)
     {
-        val fixedDeltaTimeNs = 1_000_000_000L / fixedTickRateHz
+        val fixedDeltaTimeNs = 1_000_000_000L / fixedTickRateHz.toDouble()
         interpolation = (fixedUpdateAccumulatorNs.toDouble() / fixedDeltaTimeNs).coerceIn(0.0, 1.0).toFloat()
     }
 

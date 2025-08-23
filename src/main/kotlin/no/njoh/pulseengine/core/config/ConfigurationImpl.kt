@@ -28,9 +28,9 @@ open class ConfigurationImpl : ConfigurationInternal
     override var gameName: String           by StringConfig("ExampleGame")
     override var saveDirectory: String      by StringConfig(defaultSaveDir)
     override var targetFps: Int             by IntConfig(120)
-    override var fixedTickRate: Int         by IntConfig(60)
-    override var windowWidth: Int           by IntConfig(1000)
-    override var windowHeight: Int          by IntConfig(800)
+    override var fixedTickRate: Float       by FloatConfig(60f, minValue = 0.000000001f)
+    override var windowWidth: Int           by IntConfig(1920)
+    override var windowHeight: Int          by IntConfig(1080)
     override var screenMode: ScreenMode     by EnumConfig(WINDOWED, ScreenMode::class)
     override var gameLoopMode: GameLoopMode by EnumConfig(MULTITHREADED, GameLoopMode::class)
     override var logTarget: LogTarget       by EnumConfig(STDOUT, LogTarget::class)
@@ -160,6 +160,33 @@ open class ConfigurationImpl : ConfigurationInternal
             {
                 if (value != null)
                     Logger.warn { "Config property: ${prop.name} (Int) has value: $value (${value::class.simpleName}), using default: $initValue" }
+                properties[prop.name] = initValue
+                initValue
+            }
+        }
+    }
+
+    inner class FloatConfig(private val initValue: Float, private val minValue: Float = Float.MIN_VALUE)
+    {
+        operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: Float)
+        {
+            var value = value
+            if (value < minValue)
+            {
+                Logger.warn { "Config property: ${prop.name} (Float) with value $value can not be lower than $minValue, using default: $minValue" }
+                value = minValue
+            }
+            properties[prop.name] = value
+            notifyPropertyChange(prop.name, value)
+        }
+
+        operator fun getValue(thisRef: Any?, prop: KProperty<*>): Float
+        {
+            val value = properties[prop.name]
+            return if (value is Float) value else
+            {
+                if (value != null)
+                    Logger.warn { "Config property: ${prop.name} (Float) has value: $value (${value::class.simpleName}), using default: $initValue" }
                 properties[prop.name] = initValue
                 initValue
             }

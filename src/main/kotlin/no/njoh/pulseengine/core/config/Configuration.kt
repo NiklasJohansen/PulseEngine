@@ -18,7 +18,7 @@ interface Configuration
     var targetFps: Int
 
     /** The rate of ticks per second for the fixed update loop */
-    var fixedTickRate: Int
+    var fixedTickRate: Float
 
     /** Defines whether the game loop should be multithreaded or not */
     var gameLoopMode: GameLoopMode

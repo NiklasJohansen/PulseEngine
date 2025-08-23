@@ -251,7 +251,7 @@ class PulseEngineImpl(
 
     private fun fixedUpdate(game: PulseEngineGame)
     {
-        val deltaTimeNs  = 1_000_000_000L / config.fixedTickRate.toLong()
+        val deltaTimeNs  = (1_000_000_000.0 / config.fixedTickRate.toDouble()).toLong()
         val nowNs = System.nanoTime()
         val frameTimeNs = min(nowNs - data.fixedUpdateLastTimeNs, 250_000_000L) // cap at 0.25s
 
