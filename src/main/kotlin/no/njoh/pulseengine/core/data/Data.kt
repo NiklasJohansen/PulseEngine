@@ -26,10 +26,10 @@ abstract class Data
     abstract val cpuFixedUpdateTimeMs: Float
 
     /** The fixed time step in seconds used for the fixed update loop. Equal to: 1.0 / fixedTickRate */
-    abstract val fixedDeltaTime: Float
+    abstract val fixedDeltaTimeSec: Float
 
     /** The variable time step in seconds used for the update loop. */
-    abstract val deltaTime: Float
+    abstract val deltaTimeSec: Float
 
     /** The interpolation value used to smooth out rendering between fixed updates */
     abstract val interpolation: Float

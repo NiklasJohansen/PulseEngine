@@ -18,6 +18,8 @@ import no.njoh.pulseengine.core.graphics.NoOpGraphics
 import no.njoh.pulseengine.core.input.Input
 import no.njoh.pulseengine.core.input.InputInternal
 import no.njoh.pulseengine.core.input.NoOpInput
+import no.njoh.pulseengine.core.network.Network
+import no.njoh.pulseengine.core.network.NetworkInternal
 import no.njoh.pulseengine.core.scene.SceneManager
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
 import no.njoh.pulseengine.core.widget.WidgetManager
@@ -98,7 +100,7 @@ interface PulseEngineInternal : PulseEngine
     override val gfx: GraphicsInternal
     override val audio: AudioInternal
     override val input: InputInternal
-    override val data: Data
+    override val data: DataInternal
     override val console: ConsoleInternal
     override val asset: AssetManagerInternal
     override val scene: SceneManagerInternal

@@ -28,7 +28,6 @@ import no.njoh.pulseengine.core.widget.WidgetManagerImpl
 import no.njoh.pulseengine.core.widget.WidgetManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
-import org.lwjgl.glfw.GLFW.*
 import kotlin.math.min
 
 /**
@@ -47,13 +46,14 @@ class PulseEngineImpl(
     override val widget: WidgetManagerInternal  = WidgetManagerImpl()
 ) : PulseEngineInternal {
 
+    @Volatile
+    private var running          = true
     private val engineStartTime  = System.nanoTime()
     private val fpsLimiter       = FpsLimiter()
     private val beginFrame       = ThreadBarrier(2)
     private val endFrame         = ThreadBarrier(2)
     private val focusArea        = FocusArea(0f, 0f, 0f, 0f)
     private var gameThread       = null as Thread?
-    private var running          = true
 
     init { PulseEngine.INSTANCE = this }
 
@@ -251,16 +251,16 @@ class PulseEngineImpl(
 
     private fun fixedUpdate(game: PulseEngineGame)
     {
-        val dt = 1.0 / config.fixedTickRate.toDouble()
-        val time = glfwGetTime()
-        val frameTime = min(time - data.fixedUpdateLastTime, 0.25)
+        val deltaTimeNs  = 1_000_000_000L / config.fixedTickRate.toLong()
+        val nowNs = System.nanoTime()
+        val frameTimeNs = min(nowNs - data.fixedUpdateLastTimeNs, 250_000_000L) // cap at 0.25s
 
-        data.fixedUpdateLastTime = time
-        data.fixedUpdateAccumulator += frameTime
-        data.fixedDeltaTime = dt.toFloat()
+        data.fixedUpdateLastTimeNs = nowNs
+        data.fixedUpdateAccumulatorNs += frameTimeNs
+        data.fixedDeltaTimeSec = 1.0f / config.fixedTickRate
 
         var updated = false
-        while (data.fixedUpdateAccumulator >= dt)
+        while (data.fixedUpdateAccumulatorNs >= deltaTimeNs)
         {
             input.requestFocus(focusArea)
             gfx.updateCameras()
@@ -268,17 +268,16 @@ class PulseEngineImpl(
             scene.fixedUpdate()
             widget.fixedUpdate(this)
 
+            data.fixedUpdateAccumulatorNs -= deltaTimeNs
             updated = true
-            data.fixedUpdateAccumulator -= dt
         }
 
-        if (updated)
-            data.cpuFixedUpdateTimeMs = ((glfwGetTime() - time) * 1000.0).toFloat()
+        if (updated) data.cpuFixedUpdateTimeMs = ((System.nanoTime() - nowNs) / 1_000_000.0).toFloat()
     }
 
     private fun render(game: PulseEngineGame)
     {
-        data.updateInterpolationValue()
+        data.updateInterpolationValue(config.fixedTickRate)
         data.measureCpuRenderTime()
         {
             game.onRender()

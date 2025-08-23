@@ -2,7 +2,6 @@ package no.njoh.pulseengine.core.window
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.config.ConfigurationInternal
-import org.lwjgl.glfw.GLFW
 
 class NoOpWindow : WindowInternal
 {
@@ -16,10 +15,9 @@ class NoOpWindow : WindowInternal
     override var wasResized = false
     override val windowHandle = -1L
     private var isOpen = true
-
     override fun close() { isOpen = false }
     override fun destroy() {}
-    override fun init(config: ConfigurationInternal) { GLFW.glfwInit() }
+    override fun init(config: ConfigurationInternal) { }
     override fun initFrame(engineInternal: PulseEngineInternal) {}
     override fun isOpen() = isOpen
     override fun setOnContentScaleChanged(callback: (scale: Float) -> Unit) {}
