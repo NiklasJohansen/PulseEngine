@@ -15,6 +15,8 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.InputImpl
 import no.njoh.pulseengine.core.input.InputInternal
+import no.njoh.pulseengine.core.network.NetworkImpl
+import no.njoh.pulseengine.core.network.NetworkInternal
 import no.njoh.pulseengine.core.scene.SceneManagerImpl
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode.MULTITHREADED
@@ -39,6 +41,7 @@ class PulseEngineImpl(
     override val gfx: GraphicsInternal          = GraphicsImpl(),
     override val audio: AudioInternal           = AudioImpl(),
     override var input: InputInternal           = InputImpl(),
+    override val network: NetworkInternal       = NetworkImpl(),
     override val data: DataImpl                 = DataImpl(),
     override val console: ConsoleInternal       = ConsoleImpl(),
     override val asset: AssetManagerInternal    = AssetManagerImpl(),
@@ -142,6 +145,7 @@ class PulseEngineImpl(
         gfx.init(this)
         input.init(window.windowHandle, window.cursorPosScale)
         audio.init()
+        network.init()
         console.init(this)
         scene.init(this, game)
     }

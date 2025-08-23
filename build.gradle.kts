@@ -46,6 +46,8 @@ dependencies {
     implementation("net.sf.trove4j:trove4j:3.0.3")
     implementation("de.undercouch:bson4jackson:2.15.1")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.3")
+    implementation("com.esotericsoftware:kryo:5.6.2")
+    implementation("org.objenesis:objenesis:3.4")
 
     // Java Microbenchmark Harness
     jmh("org.openjdk.jmh:jmh-core:1.37")

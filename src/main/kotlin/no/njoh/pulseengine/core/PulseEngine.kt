@@ -50,6 +50,9 @@ interface PulseEngine
     /** Handles all operations related to mouse, keyboard and gamepad input */
     val input: Input
 
+    /** Handles network operations, both client and server */
+    val network: Network
+
     /** Handles saving and loading of data and keeps track of common engine metrics */
     val data: Data
 
@@ -100,6 +103,7 @@ interface PulseEngineInternal : PulseEngine
     override val gfx: GraphicsInternal
     override val audio: AudioInternal
     override val input: InputInternal
+    override val network: NetworkInternal
     override val data: DataInternal
     override val console: ConsoleInternal
     override val asset: AssetManagerInternal
