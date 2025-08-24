@@ -9,7 +9,7 @@ import no.njoh.pulseengine.widgets.metrics.MetricViewer
 import no.njoh.pulseengine.widgets.editor.SceneEditor
 import no.njoh.pulseengine.widgets.metrics.GpuMonitor
 
-fun main() = PulseEngine.run(Testbed::class)
+fun main() = PulseEngine.run<Testbed>()
 
 class Testbed : PulseEngineGame()
 {
