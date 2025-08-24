@@ -72,21 +72,19 @@ interface PulseEngine
     {
         /**
          * Runs a [PulseEngineGame] with the default [PulseEngineImpl] implementation.
+         * Set [headless] to true to run without window, graphics, audio, input and assets.
          */
-        fun run(game: KClass<out PulseEngineGame>) =
-            PulseEngineImpl().run(game.createInstance())
-
-        /**
-         * Runs a [PulseEngineGame] in headless mode, without a window, graphics, audio, input and assets.
-         */
-        fun runHeadless(game: KClass<out PulseEngineGame>) =
-            PulseEngineImpl(
+        inline fun <reified T: PulseEngineGame> run(headless: Boolean = false)
+        {
+            val engine = if (!headless) PulseEngineImpl() else PulseEngineImpl(
                 window = NoOpWindow(),
                 gfx    = NoOpGraphics(),
                 audio  = NoOpAudio(),
                 input  = NoOpInput(),
                 asset  = NoOpAssetManager()
-            ).run(game.createInstance())
+            )
+            engine.run(T::class.createInstance())
+        }
 
         /** Holds a global reference to the current engine instance */
         lateinit var INSTANCE: PulseEngine; internal set
