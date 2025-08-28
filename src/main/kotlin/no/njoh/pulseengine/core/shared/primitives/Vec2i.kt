@@ -35,5 +35,6 @@ inline fun Vec2i.vDiv(v: Int):   Vec2i = Vec2i(x / v, y / v)
 
 // Array constructors
 fun emptyVec2iArray(): Vec2iArray = VEC2I_EMPTY_ARRAY
+fun vec2iArrayOfSize(size: Int): Vec2iArray = LongArray(size)
 fun vec2iArrayOf(vararg values: Vec2i): Vec2iArray =
     if (values.isEmpty()) VEC2I_EMPTY_ARRAY else LongArray(values.size) { values[it] }

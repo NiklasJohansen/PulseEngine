@@ -12,8 +12,11 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import org.lwjgl.opengl.GL20.*
 
-class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
-{
+class TextureRenderer(
+    private val config: SurfaceConfigInternal,
+    var alphaDiscardThreshold: Float = 0.4f
+) : BatchRenderer() {
+
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
@@ -73,6 +76,7 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+        program.setUniform("alphaDiscardThreshold", alphaDiscardThreshold)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
         drawInstancedQuads(instanceBuffer, instanceLayout, program, drawCount, startIndex)
         vao.release()

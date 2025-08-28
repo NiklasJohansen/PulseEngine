@@ -15,6 +15,7 @@ flat in uint samplerIndex;
 out vec4 fragColor;
 
 uniform sampler2DArray textureArrays[16];
+uniform float alphaDiscardThreshold;
 
 // Dynamic indexing of sampler arrays are not supported in GLSL bellow version 4.0, thus this atrocity
 vec4 sampleTextureArrayGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
@@ -66,7 +67,7 @@ void main()
         textureColor.a *= 1.0f - smoothstep(0.0, EDGE_SOFTNESS, distFromCorner);
     }
 
-    if (textureColor.a < 0.4)
+    if (textureColor.a < alphaDiscardThreshold)
         discard;
 
     fragColor = vertexColor * textureColor;
