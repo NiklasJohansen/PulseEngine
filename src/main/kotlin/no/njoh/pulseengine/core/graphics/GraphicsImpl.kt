@@ -28,6 +28,7 @@ open class GraphicsImpl : GraphicsInternal
     override lateinit var mainCamera: CameraInternal
     override lateinit var mainSurface: SurfaceInternal
     override lateinit var textureBank: TextureBank
+    override lateinit var gpuName: String
     private  lateinit var fullFrameRenderer: FullFrameRenderer
 
     private val onInitFrame  = ArrayList<PulseEngineInternal.() -> Unit>()
@@ -66,8 +67,9 @@ open class GraphicsImpl : GraphicsInternal
         if (windowRecreated)
         {
             // Create OpenGL context in current thread
-            GL.createCapabilities()
-            Logger.debug { "Running OpenGL on GPU: ${glGetString(GL_RENDERER)}" }
+            GlCapabilities.create()
+            gpuName = glGetString(GL_RENDERER) ?: "Unknown GPU"
+            Logger.debug { "Running OpenGL on GPU: $gpuName" }
 
             // Load error shaders
             errorShaders[VERTEX]   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/error/error.vert"))

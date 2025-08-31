@@ -5,15 +5,15 @@ import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import org.joml.Vector2f
-import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL20.*
 
 class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
@@ -21,6 +21,7 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
+    private lateinit var instanceLayout: VertexAttributeLayout
     private lateinit var program: ShaderProgram
 
     var upscaleSmallSources = false
@@ -31,8 +32,22 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
     {
         if (!this::program.isInitialized)
         {
-            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
+            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
+            instanceLayout = VertexAttributeLayout()
+                .withAttribute("worldPos",      3, GL_FLOAT, 1)
+                .withAttribute("size",          2, GL_FLOAT, 1)
+                .withAttribute("angle",         1, GL_FLOAT, 1)
+                .withAttribute("cornerRadius",  1, GL_FLOAT, 1)
+                .withAttribute("intensity",     1, GL_FLOAT, 1)
+                .withAttribute("coneAngle",     1, GL_FLOAT, 1)
+                .withAttribute("radius",        1, GL_FLOAT, 1)
+                .withAttribute("uvMin",         2, GL_FLOAT, 1)
+                .withAttribute("uvMax",         2, GL_FLOAT, 1)
+                .withAttribute("tiling",        2, GL_FLOAT, 1)
+                .withAttribute("color",         1, GL_UNSIGNED_INT, 1)
+                .withAttribute("texHandle",     1, GL_UNSIGNED_INT, 1)
+
             program = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/global/scene.vert")),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/global/scene.frag"))
@@ -41,19 +56,6 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
 
         val vertexLayout = VertexAttributeLayout()
             .withAttribute("vertexPos", 2, GL_FLOAT)
-
-        val instanceLayout = VertexAttributeLayout()
-            .withAttribute("worldPos", 3, GL_FLOAT, 1)
-            .withAttribute("size", 2, GL_FLOAT, 1)
-            .withAttribute("angle", 1, GL_FLOAT, 1)
-            .withAttribute("cornerRadius", 1, GL_FLOAT, 1)
-            .withAttribute("color", 1, GL_FLOAT, 1)
-            .withAttribute("intensity", 1, GL_FLOAT, 1)
-            .withAttribute("coneAngle", 1, GL_FLOAT, 1)
-            .withAttribute("radius", 1, GL_FLOAT, 1)
-            .withAttribute("uvMin", 2, GL_FLOAT, 1)
-            .withAttribute("uvMax", 2, GL_FLOAT, 1)
-            .withAttribute("textureHandle", 1, GL_FLOAT, 1)
 
         vao = VertexArrayObject.createAndBind()
         program.bind()
@@ -86,9 +88,8 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         program.setUniform("camScale", surface.camera.scale.x)
         program.setUniform("globalWorldScale", globalWorldScale)
         program.setUniform("upscaleSmallSources", upscaleSmallSources)
-        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays(), wrapping = TextureWrapping.CLAMP_TO_EDGE, filter = TextureFilter.LINEAR)
-
-        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays(), wrapping = CLAMP_TO_EDGE, filter = LINEAR)
+        drawInstancedQuads(instanceBuffer, instanceLayout, program, drawCount, startIndex)
         vao.release()
     }
 
@@ -100,40 +101,42 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         vao.destroy()
     }
 
-    fun drawLight(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, intensity: Float, coneAngle: Float, radius: Float)
+    fun drawLight(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, intensity: Float, coneAngle: Float, radius: Float, cornerRadius: Float = 0f, xTiling: Float = 1f, yTiling: Float = 1f)
     {
-        instanceBuffer.fill(16)
+        instanceBuffer.fill(18)
         {
             put(x, y, config.currentDepth)
             put(w, h)
             put(angle)
             put(cornerRadius)
-            put(config.currentDrawColor)
             put(intensity)
             put(coneAngle)
             put(radius)
             put(texture.uMin, texture.vMin)
             put(texture.uMax, texture.vMax)
+            put(xTiling, yTiling)
+            put(config.currentDrawColor)
             put(texture.handle.toFloat())
         }
         increaseBatchSize()
         config.increaseDepth()
     }
 
-    fun drawOccluder(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, cornerRadius: Float, edgeLight: Float)
+    fun drawOccluder(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, edgeLight: Float, cornerRadius: Float = 0f, xTiling: Float = 1f, yTiling: Float = 1f)
     {
-        instanceBuffer.fill(16)
+        instanceBuffer.fill(18)
         {
             put(x, y, config.currentDepth)
             put(w, h)
             put(angle)
             put(cornerRadius)
-            put(config.currentDrawColor)
             put(0f)
             put(360f)
             put(edgeLight)
             put(texture.uMin, texture.vMin)
             put(texture.uMax, texture.vMax)
+            put(xTiling, yTiling)
+            put(config.currentDrawColor)
             put(texture.handle.toFloat())
         }
         increaseBatchSize()

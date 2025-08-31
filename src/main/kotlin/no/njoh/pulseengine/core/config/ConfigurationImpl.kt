@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.config
 
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode.*
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadStreamFromDisk
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadTextFromDisk
 import no.njoh.pulseengine.core.window.ScreenMode
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -11,7 +11,9 @@ import no.njoh.pulseengine.core.shared.utils.LogLevel.*
 import no.njoh.pulseengine.core.shared.utils.LogTarget
 import no.njoh.pulseengine.core.shared.utils.LogTarget.*
 import no.njoh.pulseengine.core.window.ScreenMode.*
+import java.io.File
 import java.io.FileNotFoundException
+import java.io.StringReader
 import java.lang.Exception
 import java.util.Properties
 import kotlin.reflect.KClass
@@ -19,11 +21,16 @@ import kotlin.reflect.KProperty
 
 open class ConfigurationImpl : ConfigurationInternal
 {
+    private val properties = Properties()
+    private var defaultSaveDir = File("$homeDir/ExampleGame").absolutePath
+    private var onChangeCallback = { propName: String, value: Any -> }
+
     override var gameName: String           by StringConfig("ExampleGame")
+    override var saveDirectory: String      by StringConfig(defaultSaveDir)
     override var targetFps: Int             by IntConfig(120)
-    override var fixedTickRate: Int         by IntConfig(60)
-    override var windowWidth: Int           by IntConfig(1000)
-    override var windowHeight: Int          by IntConfig(800)
+    override var fixedTickRate: Float       by FloatConfig(60f, minValue = 0.000000001f)
+    override var windowWidth: Int           by IntConfig(1920)
+    override var windowHeight: Int          by IntConfig(1080)
     override var screenMode: ScreenMode     by EnumConfig(WINDOWED, ScreenMode::class)
     override var gameLoopMode: GameLoopMode by EnumConfig(MULTITHREADED, GameLoopMode::class)
     override var logTarget: LogTarget       by EnumConfig(STDOUT, LogTarget::class)
@@ -31,13 +38,11 @@ open class ConfigurationImpl : ConfigurationInternal
     override var gpuLogLevel: LogLevel      by EnumConfig(OFF, LogLevel::class)
     override var gpuProfiling: Boolean      by BoolConfig(false)
 
-    private val properties = Properties()
-    private var onChangeCallback = { prop: KProperty<*>, value: Any -> }
-
     override fun init()
     {
         Logger.info { "Initializing configuration (ConfigurationImpl)" }
         runCatching { loadConfigFile("application.cfg") }
+        runCatching { loadConfigFile("application-dev.cfg") }
         Logger.LEVEL = logLevel
         Logger.TARGET = logTarget
     }
@@ -54,22 +59,42 @@ open class ConfigurationImpl : ConfigurationInternal
     private fun loadConfigFile(filePath: String)
     {
         val startTime = System.nanoTime()
-        val stream = filePath.loadStreamFromDisk() ?: throw FileNotFoundException("file not found")
-        properties.load(stream)
-        for ((key, value) in properties)
+        val content = filePath.loadTextFromDisk()?.replace("\\", "/") ?: throw FileNotFoundException("file not found")
+        val newProps = Properties().also { it.load(StringReader(content)) }
+        for ((key, value) in newProps)
         {
-            properties[key] = when {
-                value !is String -> value
-                value == "true" || value == "false" -> value.toBoolean()
-                value.all { it.isDigit() } -> value.toInt()
-                value.all { it.isDigit() || it == '.' } -> value.toFloat()
+            val propName = key.toString()
+            val propValue = value.toString().trim()
+            if (propValue.isBlank() || propName.isBlank() || propName.startsWith("#"))
+                continue // Skip comments and empty lines
+
+            val lastValue = properties[propName]
+            val newValue = when {
+                propValue == "true" || value == "false" -> propValue.toBoolean()
+                propValue.all { it.isDigit() } -> propValue.toInt()
+                propValue.all { it.isDigit() || it == '.' } -> propValue.toFloat()
                 else -> value
             }
+            properties[propName] = newValue
+            if (newValue != lastValue)
+                notifyPropertyChange(propName, newValue)
         }
         Logger.debug { "Loaded configuration file: $filePath in ${startTime.toNowFormatted()}" }
     }
 
-    override fun setOnChanged(callback: (property: KProperty<*>, value: Any) -> Unit)
+    private fun notifyPropertyChange(propName: String, value: Any)
+    {
+        onChangeCallback(propName, value)
+
+        // Update save directory if game name has changed
+        if (propName == ::gameName.name && saveDirectory == defaultSaveDir)
+        {
+            defaultSaveDir = File("$homeDir/$value").absolutePath
+            saveDirectory = defaultSaveDir
+        }
+    }
+
+    override fun setOnChanged(callback: (propName: String, value: Any) -> Unit)
     {
         onChangeCallback = callback
     }
@@ -104,7 +129,7 @@ open class ConfigurationImpl : ConfigurationInternal
         operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: String)
         {
             properties[prop.name] = value
-            onChangeCallback.invoke(prop, value)
+            notifyPropertyChange(prop.name, value)
         }
 
         operator fun getValue(thisRef: Any?, prop: KProperty<*>): String
@@ -125,7 +150,7 @@ open class ConfigurationImpl : ConfigurationInternal
         operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: Int)
         {
             properties[prop.name] = value
-            onChangeCallback.invoke(prop, value)
+            notifyPropertyChange(prop.name, value)
         }
 
         operator fun getValue(thisRef: Any?, prop: KProperty<*>): Int
@@ -141,12 +166,39 @@ open class ConfigurationImpl : ConfigurationInternal
         }
     }
 
+    inner class FloatConfig(private val initValue: Float, private val minValue: Float = Float.MIN_VALUE)
+    {
+        operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: Float)
+        {
+            var value = value
+            if (value < minValue)
+            {
+                Logger.warn { "Config property: ${prop.name} (Float) with value $value can not be lower than $minValue, using default: $minValue" }
+                value = minValue
+            }
+            properties[prop.name] = value
+            notifyPropertyChange(prop.name, value)
+        }
+
+        operator fun getValue(thisRef: Any?, prop: KProperty<*>): Float
+        {
+            val value = properties[prop.name]
+            return if (value is Float) value else
+            {
+                if (value != null)
+                    Logger.warn { "Config property: ${prop.name} (Float) has value: $value (${value::class.simpleName}), using default: $initValue" }
+                properties[prop.name] = initValue
+                initValue
+            }
+        }
+    }
+
     inner class BoolConfig(private val initValue: Boolean)
     {
         operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: Boolean)
         {
             properties[prop.name] = value
-            onChangeCallback.invoke(prop, value)
+            notifyPropertyChange(prop.name, value)
         }
 
         operator fun getValue(thisRef: Any?, prop: KProperty<*>): Boolean
@@ -167,7 +219,7 @@ open class ConfigurationImpl : ConfigurationInternal
         operator fun setValue(thisRef: Any?, prop: KProperty<*>, value: T)
         {
             properties[prop.name] = value
-            onChangeCallback.invoke(prop, value)
+            notifyPropertyChange(prop.name, value)
         }
 
         operator fun getValue(thisRef: Any?, prop: KProperty<*>): T
@@ -195,5 +247,10 @@ open class ConfigurationImpl : ConfigurationInternal
             properties[prop.name] = newValue
             return newValue
         }
+    }
+
+    companion object
+    {
+        private val homeDir = System.getProperty("user.home")
     }
 }

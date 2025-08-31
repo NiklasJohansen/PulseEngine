@@ -11,8 +11,8 @@ in float rotation;
 in vec2 uvMin;
 in vec2 uvMax;
 in vec2 tiling;
-in uint textureHandle;
 in vec2 scale;
+in uint texHandle;
 
 out vec2 texSize;
 out vec2 texStart;
@@ -49,8 +49,8 @@ void main()
     texSize = uvMax - uvMin;
     texCoord = vertexPos;
     texTiling = tiling;
-    texIndex = getTexIndex(textureHandle);
-    texSamplerIndex = getTexSamplerIndex(textureHandle);
+    texIndex = getTexIndex(texHandle);
+    texSamplerIndex = getTexSamplerIndex(texHandle);
 
     float angle = radians(rotation);
     normalRotation = rotMatrix(angle + cameraAngle);

@@ -12,13 +12,13 @@ import no.njoh.pulseengine.modules.lighting.shared.NormalMapped
 open class Backdrop : StandardSceneEntity(), NormalMapped
 {
     @AssetRef(Texture::class)
-    var textureName: String = ""
+    var baseTexture: String = ""
 
     var color = Color(1f, 1f, 1f)
     var xTiling = 1f
     var yTiling = 1f
 
-    override var normalMapName: String = ""
+    override var normalMapTexture: String = ""
     override var normalMapIntensity = 1f
     override var normalMapOrientation = Orientation.NORMAL
 
@@ -28,7 +28,7 @@ open class Backdrop : StandardSceneEntity(), NormalMapped
     {
         surface.setDrawColor(color)
         surface.drawTexture(
-            texture = engine.asset.getOrNull(textureName) ?: Texture.BLANK,
+            texture = engine.asset.getOrNull(baseTexture) ?: Texture.BLANK,
             x = x,
             y = y,
             width = width,
@@ -36,15 +36,15 @@ open class Backdrop : StandardSceneEntity(), NormalMapped
             angle = rotation,
             xOrigin = 0.5f,
             yOrigin = 0.5f,
-            uTiling = xTiling,
-            vTiling = yTiling
+            xTiling = xTiling,
+            yTiling = yTiling
         )
     }
 
-    override fun renderNormalMap(engine: PulseEngine, surface: Surface)
+    override fun onRenderNormalMap(engine: PulseEngine, surface: Surface)
     {
         surface.getRenderer<NormalMapRenderer>()?.drawNormalMap(
-            texture = engine.asset.getOrNull(normalMapName),
+            texture = engine.asset.getOrNull(normalMapTexture),
             x = x,
             y = y,
             w = width,
@@ -52,8 +52,8 @@ open class Backdrop : StandardSceneEntity(), NormalMapped
             rot = rotation,
             xOrigin = 0.5f,
             yOrigin = 0.5f,
-            uTiling = xTiling,
-            vTiling = yTiling,
+            xTiling = xTiling,
+            yTiling = yTiling,
             normalScale = normalMapIntensity,
             orientation = normalMapOrientation
         )

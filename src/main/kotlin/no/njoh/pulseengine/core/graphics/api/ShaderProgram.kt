@@ -15,6 +15,7 @@ import org.joml.Vector4f
 import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL30.GL_TEXTURE_2D_ARRAY
+import org.lwjgl.opengl.GL30.glVertexAttribIPointer
 import org.lwjgl.opengl.GL33.glVertexAttribDivisor
 
 class ShaderProgram(
@@ -26,6 +27,9 @@ class ShaderProgram(
 
     /** Cache of uniform locations */
     private var uniformLocations = emptyObjectIntHashMap<String>(16) // Uniform name -> location
+
+    /** Cache of attribute locations */
+    private var attributeLocations = emptyObjectIntHashMap<String>(16) // Attribute name -> location
 
     /** Used for setting texture sampler bindings */
     private val textureUnits = emptyObjectIntHashMap<String>(32) // Sampler name -> texture unit
@@ -48,7 +52,7 @@ class ShaderProgram(
     }
 
     fun attributeLocationOf(name: String): Int =
-        glGetAttribLocation(id, name)
+        attributeLocations.getOrPut(name) { glGetAttribLocation(id, name) }
 
     fun uniformLocationOf(name: String): Int =
         uniformLocations.getOrPut(name) { getUniformLocation(name) }
@@ -102,24 +106,29 @@ class ShaderProgram(
     {
         val location = attributeLocationOf(name)
         glEnableVertexAttribArray(location)
-        glVertexAttribPointer(location, count, type, normalized, stride, offset)
+        when (type)
+        {
+            GL_INT, GL_UNSIGNED_INT -> glVertexAttribIPointer(location, count, type, stride, offset)
+            GL_FLOAT -> glVertexAttribPointer(location, count, type, normalized, stride, offset)
+            else -> throw IllegalArgumentException("Unsupported vertex attribute type: $type")
+        }
         glVertexAttribDivisor(location, divisor)
     }
 
-    fun setVertexAttributeLayout(layout: VertexAttributeLayout)
+    fun setVertexAttributeLayout(layout: VertexAttributeLayout, instanceOffset: Int = 0)
     {
-        var offset = 0L
+        var byteOffset = layout.strideInBytes * instanceOffset
         layout.attributes.forEachFast { attribute ->
             setVertexAttributeLayout(
                 name = attribute.name,
                 count = attribute.count,
                 type = attribute.type,
                 stride = layout.strideInBytes.toInt(),
-                offset = offset,
+                offset = byteOffset,
                 divisor = attribute.divisor,
                 normalized = attribute.normalized
             )
-            offset += attribute.bytes
+            byteOffset += attribute.bytes
         }
     }
 

@@ -10,40 +10,40 @@ import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromClassPath
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
-import org.lwjgl.glfw.GLFW.glfwGetTime
 import java.io.File
 import java.io.FileNotFoundException
+import kotlin.math.max
 import kotlin.system.measureNanoTime
 
-open class DataImpl : Data()
+open class DataImpl : DataInternal()
 {
     override var currentFps           = 0
+    override var frameNumber          = 0L
     override var totalFrameTimeMs     = 0f
     override var gpuRenderTimeMs      = 0f
     override var cpuRenderTimeMs      = 0f
     override var cpuUpdateTimeMs      = 0f
     override var cpuFixedUpdateTimeMs = 0f
-    override var fixedDeltaTime       = 0.017f
-    override var deltaTime            = 0.017f
+    override var fixedDeltaTimeSec    = 0.017f
+    override var deltaTimeSec         = 0.017f
     override var interpolation        = 0f
     override var usedMemoryKb         = 0L
     override var totalMemoryKb        = 0L
     override val metrics              = ArrayList<Metric>()
-    override var saveDirectory        = "NOT SET"
 
-    private val fpsFilter      = FloatArray(20)
-    private var fpsTimer       = 0.0
-    private var frameStartTime = 0.0
-    private var frameCounter   = 0
+    private val fpsFilter        = LongArray(20)
+    private var fpsTimerNs       = System.nanoTime()
+    private var frameStartTimeNs = System.nanoTime()
+    private var frameCounter     = 0
+    private var getSaveDir       = { "n/a" }
 
-    var lastFrameTime          = 0.0
-    var fixedUpdateAccumulator = 0.0
-    var fixedUpdateLastTime    = 0.0
+    var lastFrameTimeNs          = System.nanoTime()
+    var fixedUpdateLastTimeNs    = System.nanoTime()
+    var fixedUpdateAccumulatorNs = 0L
 
-    fun init(gameName: String)
+    fun init()
     {
         Logger.info { "Initializing data (DataImpl)" }
-        updateSaveDirectory(gameName)
 
         addMetric("FRAMES PER SECOND (FPS)")    { sample(currentFps.toFloat())                }
         addMetric("FRAME TIME (MS)")            { sample(totalFrameTimeMs)                    }
@@ -118,25 +118,12 @@ open class DataImpl : Data()
         }
     }
 
-    fun updateSaveDirectory(gameName: String)
+    override fun setOnGetSaveDirectory(callback: () -> String) { getSaveDir = callback }
+
+    fun update()
     {
-        saveDirectory = File("$homeDir/$gameName").absolutePath
-    }
-
-    fun startFrameTimer()
-    {
-        frameStartTime = glfwGetTime()
-    }
-
-    inline fun measureAndUpdateTimeStats(block: () -> Unit)
-    {
-        val startTime = glfwGetTime()
-        deltaTime = (startTime - lastFrameTime).toFloat()
-
-        block.invoke()
-
-        lastFrameTime = glfwGetTime()
-        cpuUpdateTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        frameStartTimeNs = System.nanoTime()
+        frameNumber++
     }
 
     fun updateMemoryStats()
@@ -145,37 +132,49 @@ open class DataImpl : Data()
         totalMemoryKb = runtime.maxMemory() / KILO_BYTE
     }
 
-    inline fun measureCpuRenderTime(block: () -> Unit)
+    inline fun measureAndUpdateTimeStats(block: () -> Unit)
     {
-        val startTime = glfwGetTime()
+        val startTime = System.nanoTime()
+        deltaTimeSec = ((startTime - lastFrameTimeNs).toDouble() * 1e-9).toFloat()
 
         block.invoke()
 
-        cpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
+        lastFrameTimeNs = System.nanoTime()
+        cpuUpdateTimeMs = ((lastFrameTimeNs - startTime).toDouble() * 1e-6).toFloat()
+    }
+
+    inline fun measureCpuRenderTime(block: () -> Unit)
+    {
+        val startTime = System.nanoTime()
+
+        block.invoke()
+
+        cpuRenderTimeMs = ((System.nanoTime() - startTime).toDouble() * 1e-6).toFloat()
     }
 
     inline fun measureGpuRenderTime(block: () -> Unit)
     {
-        val startTime = glfwGetTime()
+        val startTime = System.nanoTime()
 
         block.invoke()
 
-        gpuRenderTimeMs = ((glfwGetTime() - startTime) * 1000.0).toFloat()
-    }
-
-    fun updateInterpolationValue()
-    {
-        interpolation = fixedUpdateAccumulator.toFloat() / fixedDeltaTime
+        gpuRenderTimeMs = ((System.nanoTime() - startTime).toDouble() * 1e-6).toFloat()
     }
 
     fun calculateFrameRate()
     {
-        val nowTime = glfwGetTime()
-        fpsFilter[frameCounter] = 1.0f / (nowTime - fpsTimer).toFloat()
+        val nowTime = System.nanoTime()
+        fpsFilter[frameCounter] = max(1L, nowTime - fpsTimerNs)
         frameCounter = (frameCounter + 1) % fpsFilter.size
-        currentFps = fpsFilter.average().toInt()
-        fpsTimer = nowTime
-        totalFrameTimeMs = ((nowTime - frameStartTime) * 1000.0).toFloat()
+        currentFps = (1_000_000_000.0 / fpsFilter.average()).toInt()
+        fpsTimerNs = nowTime
+        totalFrameTimeMs = ((nowTime - frameStartTimeNs).toDouble() * 1e-6).toFloat()
+    }
+
+    fun updateInterpolationValue(fixedTickRateHz: Float)
+    {
+        val fixedDeltaTimeNs = 1_000_000_000L / fixedTickRateHz.toDouble()
+        interpolation = (fixedUpdateAccumulatorNs.toDouble() / fixedDeltaTimeNs).coerceIn(0.0, 1.0).toFloat()
     }
 
     private fun getMapper(fileFormat: FileFormat) =
@@ -189,7 +188,7 @@ open class DataImpl : Data()
         if (byteArray.firstOrNull() == '{'.toByte()) FileFormat.JSON else FileFormat.BINARY
 
     private fun getFile(filePath: String): File =
-        File(filePath).takeIf { it.isAbsolute } ?: File("$saveDirectory/$filePath")
+        File(filePath).takeIf { it.isAbsolute } ?: File("${getSaveDir()}/$filePath")
 
     companion object
     {
@@ -207,6 +206,5 @@ open class DataImpl : Data()
 
         private const val KILO_BYTE = 1024L
         private val runtime = Runtime.getRuntime()
-        private val homeDir = System.getProperty("user.home")
     }
 }

@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import gnu.trove.list.array.TIntArrayList
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Font.*
@@ -11,15 +12,16 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import no.njoh.pulseengine.core.shared.primitives.FlatObjectBuffer
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Math.PI
 import org.joml.Math.cos
-import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
+import org.lwjgl.opengl.GL11.GL_UNSIGNED_INT
 import org.lwjgl.opengl.GL20.GL_FLOAT
-import org.lwjgl.opengl.GL20.GL_TRIANGLE_STRIP
 import org.lwjgl.stb.STBTruetype.*
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 
 class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
@@ -27,15 +29,26 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
+    private lateinit var instanceLayout: VertexAttributeLayout
     private lateinit var program: ShaderProgram
     private val glyphBuffer = GlyphBuffer()
+    private val newLinePositions = TIntArrayList(100)
 
     override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
-            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
+            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
+            instanceLayout = VertexAttributeLayout()
+                .withAttribute("worldPos",  3, GL_FLOAT, 1)
+                .withAttribute("size",      2, GL_FLOAT, 1)
+                .withAttribute("rotation",  1, GL_FLOAT, 1)
+                .withAttribute("uvMin",     2, GL_FLOAT, 1)
+                .withAttribute("uvMax",     2, GL_FLOAT, 1)
+                .withAttribute("color",     1, GL_UNSIGNED_INT, 1)
+                .withAttribute("texHandle", 1, GL_UNSIGNED_INT, 1)
+
             program = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/glyph.vert")),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/glyph.frag"))
@@ -44,15 +57,6 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
 
         val vertexLayout = VertexAttributeLayout()
             .withAttribute("vertexPos", 2, GL_FLOAT)
-
-        val instanceLayout = VertexAttributeLayout()
-            .withAttribute("worldPos", 3, GL_FLOAT, 1)
-            .withAttribute("size", 2, GL_FLOAT, 1)
-            .withAttribute("rotation", 1, GL_FLOAT, 1)
-            .withAttribute("uvMin", 2, GL_FLOAT, 1)
-            .withAttribute("uvMax", 2, GL_FLOAT, 1)
-            .withAttribute("color", 1, GL_FLOAT, 1)
-            .withAttribute("textureHandle", 1, GL_FLOAT, 1)
 
         vao = VertexArrayObject.createAndBind()
         program.bind()
@@ -81,7 +85,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
+        drawInstancedQuads(instanceBuffer, instanceLayout, program, drawCount, startIndex)
         vao.release()
     }
 
@@ -93,7 +97,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
         vao.destroy()
     }
 
-    fun draw(text: CharSequence, x: Float, y: Float, font: Font, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float)
+    fun draw(text: CharSequence, x: Float, y: Float, font: Font, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float, wrapNewLines: Boolean, newLineSpacing: Float)
     {
         if (text.isEmpty()) return
 
@@ -101,13 +105,27 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
         var xAdvance = -getLeftSideBearing(text[0], font, fontSize)
         val glyphs = glyphBuffer.clear()
         var charIndex = 0
+        var glyphCount = 0
+        var newLineNext = false
 
         while (charIndex < text.length)
         {
             val cp = CodePoint.of(text, charIndex)
             val charCode = cp.code - 32
-            if (charCode >= 0 && charCode < MAX_CHAR_COUNT)
+
+            if (wrapNewLines && text[charIndex] == '\n')
             {
+                newLinePositions.add(glyphCount)
+                newLineNext = true
+            }
+            else if (charCode >= 0 && charCode < MAX_CHAR_COUNT)
+            {
+                if (newLineNext)
+                {
+                    xAdvance = -getLeftSideBearing(text[charIndex], font, fontSize)
+                    newLineNext = false
+                }
+
                 val quad = font.getQuad(charCode)
                 glyphs.x    = quad.x * scale + xAdvance
                 glyphs.y    = quad.y * scale
@@ -118,6 +136,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
                 glyphs.uMax = quad.u1
                 glyphs.vMax = quad.v1
                 glyphs.next()
+                glyphCount++
                 xAdvance += quad.advance * scale
             }
             charIndex += cp.advanceCount
@@ -125,19 +144,29 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
 
         glyphs.flip()
 
-        // Find distance between start of first character and end of last
-        val xFirst = glyphs.first().x
-        val xLast = glyphs.last().x
-        val wLast = glyphs.last().w
-        val textWidth = xLast + wLast - xFirst
+        // Find text dimensions and apply new line offsets
+        var newLineOffset = 0f
+        var newLineIndex = 0
+        var textHeight = 0f
+        var textMinWidth = Float.MAX_VALUE
+        var textMaxWidth = Float.MIN_VALUE
 
-        // Find max height over baseline
-        var textHeight = Float.MIN_VALUE
-        glyphs.forEach { glyph -> textHeight = max(textHeight, -glyph.y) }
+        glyphs.forEachIndexed { i, glyph ->
+            if (newLineIndex < newLinePositions.size() && i == newLinePositions[newLineIndex])
+            {
+                newLineOffset += textHeight * (1f + newLineSpacing)
+                newLineIndex++
+            }
+            textHeight = max(textHeight, -glyph.y)
+            textMinWidth = min(textMinWidth, glyph.x)
+            textMaxWidth = max(textMaxWidth, glyph.x + glyph.w)
+            glyph.y += newLineOffset
+        }
 
         // Calculate position offsets
+        val textWidth = textMaxWidth - textMinWidth
         val xOffset = textWidth * xOrigin
-        val yOffset = textHeight * (1f - yOrigin)
+        val yOffset = textHeight - (textHeight + newLineOffset) * yOrigin
 
         val texHandle = font.charTexture.handle.toFloat()
         when (angle)
@@ -145,6 +174,8 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
             0f -> drawAxisAlignedGlyphs(texHandle, x, y, xOffset, yOffset)
             else -> drawRotatedGlyphs(texHandle, x, y, xOffset, yOffset, angle)
         }
+
+        newLinePositions.clear()
     }
 
     private fun drawAxisAlignedGlyphs(texHandle: Float, x: Float, y: Float, xOffset: Float, yOffset: Float)

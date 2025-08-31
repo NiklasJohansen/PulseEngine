@@ -34,6 +34,16 @@ abstract class FlatObjectBuffer<T>(@JvmField val stride: Int)
         }
     }
 
+    inline fun forEachIndexed(action: (i: Int, T) -> Unit)
+    {
+        pos = 0
+        while (pos < limit)
+        {
+            action(pos / stride, this as T)
+            next()
+        }
+    }
+
     class FloatRef<T: FlatObjectBuffer<*>>(private val data: FloatArray, private val offset: Int)
     {
         operator fun getValue(thisRef: T, p: KProperty<*>) = data[thisRef.pos + offset]

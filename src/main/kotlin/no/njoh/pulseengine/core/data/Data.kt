@@ -7,6 +7,9 @@ abstract class Data
     /** The current number of frames the engine is processing per second */
     abstract val currentFps: Int
 
+    /** The number of the current frame. Counts up by one each frame */
+    abstract val frameNumber: Long
+
     /** Total time in milliseconds used to process the most recent frame */
     abstract val totalFrameTimeMs: Float
 
@@ -23,10 +26,10 @@ abstract class Data
     abstract val cpuFixedUpdateTimeMs: Float
 
     /** The fixed time step in seconds used for the fixed update loop. Equal to: 1.0 / fixedTickRate */
-    abstract val fixedDeltaTime: Float
+    abstract val fixedDeltaTimeSec: Float
 
     /** The variable time step in seconds used for the update loop. */
-    abstract val deltaTime: Float
+    abstract val deltaTimeSec: Float
 
     /** The interpolation value used to smooth out rendering between fixed updates */
     abstract val interpolation: Float
@@ -39,9 +42,6 @@ abstract class Data
 
     /** The list of available metrics used to monitor the engine and game stats */
     abstract val metrics: List<Metric>
-
-    /** The absolute path to where save files are stored */
-    abstract var saveDirectory: String
 
     /**
      * Adds a new named metric to the metric list.
@@ -91,6 +91,11 @@ abstract class Data
      * [filePath], or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
      */
     abstract fun <T> loadObjectAsync(filePath: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
+}
+
+abstract class DataInternal : Data()
+{
+    abstract fun setOnGetSaveDirectory(callback: () -> String)
 }
 
 data class Metric(

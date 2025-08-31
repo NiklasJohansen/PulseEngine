@@ -15,6 +15,8 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.InputImpl
 import no.njoh.pulseengine.core.input.InputInternal
+import no.njoh.pulseengine.core.network.NetworkImpl
+import no.njoh.pulseengine.core.network.NetworkInternal
 import no.njoh.pulseengine.core.scene.SceneManagerImpl
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode.MULTITHREADED
@@ -28,7 +30,6 @@ import no.njoh.pulseengine.core.widget.WidgetManagerImpl
 import no.njoh.pulseengine.core.widget.WidgetManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
-import org.lwjgl.glfw.GLFW.*
 import kotlin.math.min
 
 /**
@@ -40,6 +41,7 @@ class PulseEngineImpl(
     override val gfx: GraphicsInternal          = GraphicsImpl(),
     override val audio: AudioInternal           = AudioImpl(),
     override var input: InputInternal           = InputImpl(),
+    override val network: NetworkInternal       = NetworkImpl(),
     override val data: DataImpl                 = DataImpl(),
     override val console: ConsoleInternal       = ConsoleImpl(),
     override val asset: AssetManagerInternal    = AssetManagerImpl(),
@@ -47,32 +49,33 @@ class PulseEngineImpl(
     override val widget: WidgetManagerInternal  = WidgetManagerImpl()
 ) : PulseEngineInternal {
 
+    @Volatile
+    private var running          = true
     private val engineStartTime  = System.nanoTime()
     private val fpsLimiter       = FpsLimiter()
     private val beginFrame       = ThreadBarrier(2)
     private val endFrame         = ThreadBarrier(2)
     private val focusArea        = FocusArea(0f, 0f, 0f, 0f)
     private var gameThread       = null as Thread?
-    private var running          = true
 
     init { PulseEngine.INSTANCE = this }
 
     fun run(game: PulseEngineGame)
     {
         // Setup
-        initEngine()
+        initEngine(game)
         initGame(game)
-        postGameSetup()
+        postGameInit()
+        game.onStart()
 
         // Run
         runGameLoop(game)
 
         // Destroy
-        game.onDestroy()
-        destroy()
+        destroy(game)
     }
 
-    private fun initEngine()
+    private fun initEngine(game: PulseEngineGame)
     {
         printLogo()
         Logger.info { "Initializing engine (PulseEngineImpl)" }
@@ -118,14 +121,16 @@ class PulseEngineImpl(
             }
         }
 
-        // Update save directory based on creator and game name
-        config.setOnChanged { property, _ ->
-            when (property.name)
+        // Provides the save directory to the data module
+        data.setOnGetSaveDirectory { config.saveDirectory }
+
+        // Update module properties when config changes
+        config.setOnChanged { propName, _ ->
+            when (propName)
             {
-                config::gameName.name -> data.updateSaveDirectory(config.gameName)
-                config::logTarget.name -> Logger.TARGET = config.logTarget
-                config::logLevel.name -> Logger.LEVEL = config.logLevel
-                config::gpuLogLevel.name -> gfx.setGpuLogLevel(config.gpuLogLevel)
+                config::logTarget.name    -> Logger.TARGET = config.logTarget
+                config::logLevel.name     -> Logger.LEVEL = config.logLevel
+                config::gpuLogLevel.name  -> gfx.setGpuLogLevel(config.gpuLogLevel)
                 config::gpuProfiling.name -> GpuProfiler.setEnabled(config.gpuProfiling)
             }
         }
@@ -135,13 +140,14 @@ class PulseEngineImpl(
 
         // Initialize engine components
         config.init()
-        data.init(config.gameName)
+        data.init()
         window.init(config)
         gfx.init(this)
         input.init(window.windowHandle, window.cursorPosScale)
         audio.init()
+        network.init()
         console.init(this)
-        scene.init(this)
+        scene.init(this, game)
     }
 
     private fun initGame(game: PulseEngineGame)
@@ -152,7 +158,7 @@ class PulseEngineImpl(
         Logger.debug { "Finished initializing game in: ${startTime.toNowFormatted()}" }
     }
 
-    private fun postGameSetup()
+    private fun postGameInit()
     {
         // Load initial assets from disk
         asset.update()
@@ -171,22 +177,22 @@ class PulseEngineImpl(
     {
         val isMultithreaded = (config.gameLoopMode == MULTITHREADED)
 
-        if (isMultithreaded)
+        try
         {
-            runInSeparateGameThread()
+            if (isMultithreaded)
             {
-                while (running) runSynchronized { tick(game) }
+                runInSeparateGameThread()
+                {
+                    while (running) runSynchronized { tick(game) }
+                }
+                while (running)
+                {
+                    beginFrame()
+                    runSynchronized { drawFrame() }
+                    endFrame()
+                }
             }
-            while (running)
-            {
-                beginFrame()
-                runSynchronized { drawFrame() }
-                endFrame()
-            }
-        }
-        else
-        {
-            while (running)
+            else while (running)
             {
                 beginFrame()
                 tick(game)
@@ -194,11 +200,17 @@ class PulseEngineImpl(
                 endFrame()
             }
         }
+        catch (e: Throwable)
+        {
+            Logger.error(e) { "Fatal error in game loop - shutting down" }
+            Logger.writeAndOpenCrashReport()
+            shutdown()
+        }
     }
 
     private fun beginFrame()
     {
-        data.startFrameTimer()
+        data.update()
         asset.update()
         audio.update()
         window.initFrame(this)
@@ -243,16 +255,16 @@ class PulseEngineImpl(
 
     private fun fixedUpdate(game: PulseEngineGame)
     {
-        val dt = 1.0 / config.fixedTickRate.toDouble()
-        val time = glfwGetTime()
-        val frameTime = min(time - data.fixedUpdateLastTime, 0.25)
+        val deltaTimeNs  = (1_000_000_000.0 / config.fixedTickRate.toDouble()).toLong()
+        val nowNs = System.nanoTime()
+        val frameTimeNs = min(nowNs - data.fixedUpdateLastTimeNs, 250_000_000L) // cap at 0.25s
 
-        data.fixedUpdateLastTime = time
-        data.fixedUpdateAccumulator += frameTime
-        data.fixedDeltaTime = dt.toFloat()
+        data.fixedUpdateLastTimeNs = nowNs
+        data.fixedUpdateAccumulatorNs += frameTimeNs
+        data.fixedDeltaTimeSec = 1.0f / config.fixedTickRate
 
         var updated = false
-        while (data.fixedUpdateAccumulator >= dt)
+        while (data.fixedUpdateAccumulatorNs >= deltaTimeNs)
         {
             input.requestFocus(focusArea)
             gfx.updateCameras()
@@ -260,17 +272,16 @@ class PulseEngineImpl(
             scene.fixedUpdate()
             widget.fixedUpdate(this)
 
+            data.fixedUpdateAccumulatorNs -= deltaTimeNs
             updated = true
-            data.fixedUpdateAccumulator -= dt
         }
 
-        if (updated)
-            data.cpuFixedUpdateTimeMs = ((glfwGetTime() - time) * 1000.0).toFloat()
+        if (updated) data.cpuFixedUpdateTimeMs = ((System.nanoTime() - nowNs) / 1_000_000.0).toFloat()
     }
 
     private fun render(game: PulseEngineGame)
     {
-        data.updateInterpolationValue()
+        data.updateInterpolationValue(config.fixedTickRate)
         data.measureCpuRenderTime()
         {
             game.onRender()
@@ -292,10 +303,11 @@ class PulseEngineImpl(
         input.requestFocus(focusArea)
     }
 
-    private fun destroy()
+    private fun destroy(game: PulseEngineGame)
     {
+        game.onDestroy()
         FileWatcher.shutdown()
-        runCatching { gameThread?.interrupt() }
+        gameThread?.interrupt()
         scene.destroy()
         widget.destroy(this)
         audio.destroy()
@@ -310,7 +322,14 @@ class PulseEngineImpl(
         val runnable =
         {
             audio.enableInCurrentThread()
-            action()
+            try { action() }
+            catch (_ : InterruptedException) { Logger.info { "Game thread interrupted - shutting down" } }
+            catch (t: Throwable)
+            {
+                Logger.error(t) { "Fatal error in game thread - shutting down" }
+                Logger.writeAndOpenCrashReport()
+                shutdown()
+            }
         }
         gameThread = Thread(runnable, "game").apply { start() }
     }
@@ -320,6 +339,13 @@ class PulseEngineImpl(
         beginFrame.await() // Waits for all threads to be ready
         action()           // Runs the action
         endFrame.await()   // Waits for all threads to finish
+    }
+
+    private fun shutdown()
+    {
+        running = false
+        beginFrame.destroy()
+        endFrame.destroy()
     }
 
     private fun printLogo() = println("""

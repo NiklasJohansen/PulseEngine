@@ -6,6 +6,7 @@ in vec2 uv;
 
 out vec4 fragColor;
 
+uniform sampler2D baseTex;
 uniform sampler2D localSceneTex;
 uniform sampler2D localSceneMetadataTex;
 uniform sampler2D exteriorLightTex;
@@ -23,6 +24,7 @@ uniform bool aoEnabled;
 void main()
 {
     vec2 offsetUv = clamp(uv + uvSampleOffset, 0.0, 1.0);
+    vec3 base = texture(baseTex, uv).rgb;
     vec4 scene = texture(localSceneTex, offsetUv);
     vec4 sceneMeta = texture(localSceneMetadataTex, offsetUv);
     vec3 light = texture(exteriorLightTex, offsetUv * exteriorLightTexUvMax).rgb;
@@ -39,7 +41,7 @@ void main()
         }
         else
         {
-            light = texture(interiorLightTex, uv).rgb + ambientInteriorLight.rgb;
+            light = texture(interiorLightTex, offsetUv).rgb + ambientInteriorLight.rgb;
         }
     }
 
@@ -50,11 +52,9 @@ void main()
     if (aoEnabled)
         light *= texture(aoTex, offsetUv).r;
 
-    // Add some tinted dithering to prevent color banding
+    // Add some dithering to prevent color banding
     float noise = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
-    float maxChannel = max(max(light.r, light.g), light.b);
-    vec3 tint = (maxChannel > 0.0) ? light.rgb / maxChannel : vec3(0);
-    light += tint * mix(-dithering / 255.0, dithering / 255.0, noise);
+    light += mix(-dithering / 255.0, dithering / 255.0, noise);
 
-    fragColor = vec4(light, 1.0);
+    fragColor = vec4(base + light, 1.0);
 }

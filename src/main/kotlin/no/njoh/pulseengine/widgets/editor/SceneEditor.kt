@@ -44,6 +44,8 @@ import no.njoh.pulseengine.core.widget.Widget
 import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.gui.elements.Button
 import no.njoh.pulseengine.modules.gui.layout.WindowPanel
+import no.njoh.pulseengine.modules.scene.systems.EntityRendererImpl
+import no.njoh.pulseengine.modules.scene.systems.EntityUpdater
 import no.njoh.pulseengine.widgets.editor.EditorUtil.duplicateAndInsertEntities
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
 import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
@@ -132,7 +134,7 @@ class SceneEditor(
         storedCameraState = CameraState.from(activeCamera)
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
         isRunning = engine.config.getBool("openEditorOnStart") ?: false
-        lastSaveLoadDirectory = engine.data.saveDirectory
+        lastSaveLoadDirectory = engine.config.saveDirectory
 
         // Create separate render surface for editor UI
         engine.gfx.createSurface(
@@ -321,6 +323,8 @@ class SceneEditor(
         sceneFileToCreate?.let()
         {
             engine.scene.createEmptyAndSetActive(it)
+            engine.scene.addSystem(EntityUpdater().also { it.init(engine) })
+            engine.scene.addSystem(EntityRendererImpl().also { it.init(engine) })
             engine.scene.save()
             sceneFileToCreate = null
         }
@@ -446,7 +450,7 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showSaveFileDialog(engine.data.saveDirectory)
+            FileChooser.showSaveFileDialog(engine.config.saveDirectory)
             {
                 sceneFileToSaveAs = it + if (!it.endsWith(".scn")) ".scn" else ""
             }
@@ -460,7 +464,7 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showFileSelectionDialog(engine.data.saveDirectory)
+            FileChooser.showFileSelectionDialog(engine.config.saveDirectory)
             {
                 sceneFileToLoad = it
             }
@@ -477,7 +481,7 @@ class SceneEditor(
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showSaveFileDialog(engine.data.saveDirectory)
+            FileChooser.showSaveFileDialog(engine.config.saveDirectory)
             {
                 sceneFileToCreate = it
             }

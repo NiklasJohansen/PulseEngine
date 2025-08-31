@@ -8,13 +8,14 @@ in vec3 worldPos;
 in vec2 size;
 in float angle;
 in float cornerRadius;
-in uint color;
 in float intensity;
 in float coneAngle;
 in float radius;
 in vec2 uvMin;
 in vec2 uvMax;
-in uint textureHandle;
+in vec2 tiling;
+in uint color;
+in uint texHandle;
 
 out vec4 vertexColor;
 out vec2 quadSize;
@@ -26,6 +27,7 @@ out float sourceRadius;
 out vec2 texStart;
 out vec2 texSize;
 out vec2 texCoord;
+out vec2 texTiling;
 out float texIndex;
 flat out uint texSamplerIndex;
 
@@ -69,6 +71,7 @@ void main()
     texStart = uvMin;
     texSize = (uvMax - uvMin);
     texCoord = vertexPos;
+    texTiling = tiling;
     quadSize = size;
     quadCornerRadius = cornerRadius;
     sourceIntensity = intensity;
@@ -76,8 +79,8 @@ void main()
     sourceAngle = angle;
     sourceConeAngle = coneAngle;
 
-    texSamplerIndex = getSamplerIndex(textureHandle);
-    texIndex = getTexIndex(textureHandle);
+    texSamplerIndex = getSamplerIndex(texHandle);
+    texIndex = getTexIndex(texHandle);
 
     // Adjust size to make sure it covers at least one pixel
     vec4 screenSpacePos = viewProjection * vec4(worldPos, 1.0);

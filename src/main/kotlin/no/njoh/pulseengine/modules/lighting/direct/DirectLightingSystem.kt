@@ -16,8 +16,8 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.lighting.direct.DirectShadowType.NONE
-import no.njoh.pulseengine.core.scene.systems.EntityRenderer
-import no.njoh.pulseengine.core.scene.systems.EntityRenderer.RenderPass
+import no.njoh.pulseengine.modules.scene.systems.EntityRenderer
+import no.njoh.pulseengine.modules.scene.systems.EntityRenderer.RenderPass
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.MathUtil
@@ -69,7 +69,7 @@ open class DirectLightingSystem : SceneSystem()
 
     private val normalMapRenderPass = RenderPass<NormalMapped>(
         surfaceName = NORMAL_SURFACE_NAME,
-        drawFunction = { engine, surface, entity -> entity.renderNormalMap(engine, surface) }
+        drawFunction = { engine, surface, entity -> entity.onRenderNormalMap(engine, surface) }
     )
 
     private val occluderRenderPass = RenderPass<DirectLightOccluder>(
@@ -302,7 +302,7 @@ open class DirectLightingSystem : SceneSystem()
                 y = light.y,
                 width = light.radius * 1.7f + if (light.type == LINEAR) light.size * 2 else 0f,
                 height = light.radius * 1.7f,
-                rotation = light.rotation
+                angle = light.rotation
             ) {
                 if (it.castShadows && (it as SceneEntity).isNot(HIDDEN))
                 {

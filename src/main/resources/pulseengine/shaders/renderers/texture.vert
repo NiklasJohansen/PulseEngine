@@ -13,7 +13,7 @@ in vec2 uvMin;
 in vec2 uvMax;
 in vec2 tiling;
 in uint color;
-in uint textureHandle;
+in uint texHandle;
 
 out vec4 vertexColor;
 out vec2 texStart;
@@ -64,8 +64,8 @@ void main()
     quadSize = size;
     quadCornerRadius = cornerRadius;
 
-    samplerIndex = getSamplerIndex(textureHandle);
-    texIndex = getTexIndex(textureHandle);
+    samplerIndex = getSamplerIndex(texHandle);
+    texIndex = getTexIndex(texHandle);
 
     vec2 offset = (vertexPos - origin) * size * rotate(radians(angle));
     vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);

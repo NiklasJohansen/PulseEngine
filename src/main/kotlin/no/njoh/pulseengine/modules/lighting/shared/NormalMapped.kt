@@ -16,7 +16,7 @@ interface NormalMapped
 {
     @get:AssetRef(Texture::class)
     @get:Prop("Lighting", 8, desc = "Name of the normal map [Texture] asset.")
-    var normalMapName: String
+    var normalMapTexture: String
 
     @get:Prop("Lighting", 9, desc = "The intensity/scale of the normals in the map.")
     var normalMapIntensity: Float
@@ -24,12 +24,12 @@ interface NormalMapped
     @get:Prop("Lighting", 10, desc = "The orientation of the normals in the map.")
     var normalMapOrientation: Orientation
 
-    fun renderNormalMap(engine: PulseEngine, surface: Surface)
+    fun onRenderNormalMap(engine: PulseEngine, surface: Surface)
     {
-        if (this is SceneEntity && this is Spatial && normalMapName.isNotBlank())
+        if (this is SceneEntity && this is Spatial && normalMapTexture.isNotBlank())
         {
             surface.getRenderer<NormalMapRenderer>()?.drawNormalMap(
-                texture = engine.asset.getOrNull(normalMapName),
+                texture = engine.asset.getOrNull(normalMapTexture),
                 x = x,
                 y = y,
                 w = width,

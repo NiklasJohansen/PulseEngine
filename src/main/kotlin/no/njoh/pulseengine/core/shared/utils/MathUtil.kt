@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.shared.utils
 
 import no.njoh.pulseengine.core.shared.primitives.Shape
+import no.njoh.pulseengine.core.shared.utils.Extensions.component1
+import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import org.joml.Vector2f
 import org.joml.Vector3f
 import kotlin.math.*
@@ -228,6 +230,56 @@ object MathUtil
         }
 
         return null // No intersection
+    }
+
+    /**
+     * Returns true if the (x, y) point is inside the [Shape].
+     */
+    fun isPointInsideShape(x: Float, y: Float, shape: Shape): Boolean
+    {
+        val nPoints = shape.getPointCount()
+        if (nPoints == 1) // Point/circle shape
+        {
+            val radius = shape.getRadius() ?: 0f
+            val center = shape.getPoint(0)
+            val xd = center.x - x
+            val yd = center.y - y
+            return xd * xd + yd * yd <= radius * radius
+        }
+        else if (nPoints == 2) // Line shape
+        {
+            return false // A line cannot contain a point
+        }
+        else // Polygon shape
+        {
+            // https://wrfranklin.org/Research/Short_Notes/pnpoly.html
+            var i = 0
+            var j = nPoints - 1
+            var inside = false
+            while (i < nPoints)
+            {
+                val (xi, yi) = shape.getPoint(i)
+                val (xj, yj) = shape.getPoint(j)
+                if (((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi))
+                    inside = !inside
+                j = i++
+            }
+            return inside
+        }
+    }
+
+    /**
+     * Returns true if the (x, y) point is inside the rotated rectangle.
+     */
+    fun isPointInsideRect(x: Float, y: Float, xRect: Float, yRect: Float, width: Float, height: Float, angleRad: Float): Boolean
+    {
+        val xTranslated = x - xRect
+        val yTranslated = y - yRect
+        val cosTheta = cos(-angleRad)
+        val sinTheta = sin(-angleRad)
+        val xRotated = xTranslated * cosTheta + yTranslated * sinTheta
+        val yRotated = -xTranslated * sinTheta + yTranslated * cosTheta
+        return xRotated >= -width * 0.5f && xRotated <= width * 0.5f && yRotated >= -height * 0.5f && yRotated <= height * 0.5f
     }
 
     /**

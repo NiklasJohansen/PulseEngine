@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.core.scene.systems
+package no.njoh.pulseengine.modules.scene.systems
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
@@ -120,14 +120,11 @@ open class EntityRendererImpl : EntityRenderer()
             val drawFunction = task.drawFunction
             if (entities.isNotEmpty())
             {
-                entities.sortWith(BackToFrontEntityComparator)
-                if (drawFunction != null)
+                entities.sortWith(BackToFrontEntityComparator) // TODO: This creates alot of garbage internally
+                when (drawFunction)
                 {
-                    entities.forEachFast { drawFunction(engine, surface, it) }
-                }
-                else
-                {
-                    entities.forEachFast { it.onRender(engine, surface) }
+                    null -> entities.forEachFast { it.onRender(engine, surface) }
+                    else -> entities.forEachFast { drawFunction(engine, surface, it) }
                 }
                 entities.clear()
             }

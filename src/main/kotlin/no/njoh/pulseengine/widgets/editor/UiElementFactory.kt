@@ -269,8 +269,8 @@ open class UiElementFactory(
             menuLabel.text = menuBarButton.labelText
             menuLabel.fontSize = ScaledValue.of(fontSize)
             menuLabel.font = font
-            menuLabel.centerHorizontally = true
-            menuLabel.centerVertically = true
+            menuLabel.horizontalAlignment = 0.5f
+            menuLabel.verticalAlignment = 0.5f
             menuLabel.font = style.getFont()
             dropdown.color = style.getColor("LIGHT_BG")
             dropdown.cornerRadius = ScaledValue.of(2f)

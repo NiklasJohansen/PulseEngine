@@ -26,6 +26,7 @@ uniform vec2 localSdfRes;
 uniform vec2 globalSdfRes;
 uniform float localSdfScaleRatio;
 uniform float globalSdfScaleRatio;
+uniform float lightTexScale;
 uniform float globalWorldScale;
 uniform vec4 skyColor;
 uniform vec4 sunColor;
@@ -104,9 +105,9 @@ vec4 sampleScene(float space, vec2 originPos, vec2 hitPosUv, vec2 rayDir)
 {
     vec4 color = texture(space == LOCAL ? localSceneTex : globalSceneTex, hitPosUv);
     vec4 metadata = texture(space == LOCAL ? localMetadataTex : globalMetadataTex, hitPosUv);
+    float coneAngle = metadata.r * PI;
     float intensity = metadata.b;
     float radius = metadata.a;
-    float coneAngle = metadata.r * PI;
 
     if (coneAngle < PI) // Directional lights
     {
@@ -118,8 +119,10 @@ vec4 sampleScene(float space, vec2 originPos, vec2 hitPosUv, vec2 rayDir)
 
     if (radius > 0.0) // Lights with radius
     {
-        vec2 hitPos = (space == LOCAL) ? hitPosUv : mapUvTo(LOCAL, hitPosUv) / localSdfScaleRatio * globalSdfScaleRatio;
-        float dist = distance(hitPos * (space == LOCAL ? localSdfRes : globalSdfRes), originPos);
+        vec2 hitPos = (space == LOCAL)
+            ? hitPosUv * localSdfRes / localSdfScaleRatio
+            : mapUvTo(LOCAL, hitPosUv) * globalSdfRes / globalSdfScaleRatio;
+        float dist = distance(hitPos, originPos) / lightTexScale;
         color.rgb *= clamp((radius * camScale) / (dist * dist), 0.0, 1.0);
     }
 

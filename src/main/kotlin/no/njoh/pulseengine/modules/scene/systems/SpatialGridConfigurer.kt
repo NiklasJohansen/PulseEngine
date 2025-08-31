@@ -8,7 +8,7 @@ import no.njoh.pulseengine.core.shared.annotations.Prop
 @Name("Spatial Grid")
 class SpatialGridConfigurer : SceneSystem()
 {
-    @Prop(i = 0, min = 50f, max = 1_000f)
+    @Prop(i = 0, min = 5f, max = 1_000f)
     var cellSize = 350f
 
     @Prop(i = 1, min = 0f, max = 100_000_000f)

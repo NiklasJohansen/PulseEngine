@@ -28,6 +28,11 @@ open class Camera : StandardSceneEntity()
     @JsonIgnore private var camSize = 100f
     @JsonIgnore private var zoom = targetZoom
 
+    override fun onStart(engine: PulseEngine)
+    {
+        zoom = targetZoom
+    }
+
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
         if (engine.scene.state != SceneState.STOPPED)
@@ -81,6 +86,8 @@ open class Camera : StandardSceneEntity()
     {
         engine.scene.getEntityOfType<Spatial>(targetEntityId)?.let { trackEntity(it) }
 
+        zoom += (targetZoom - zoom) * smoothing
+
         val surfaceWidth = engine.gfx.mainSurface.config.width
         val surfaceHeight = engine.gfx.mainSurface.config.height
         val newScale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight) * zoom
@@ -103,14 +110,13 @@ open class Camera : StandardSceneEntity()
             y = entity.y
             if (trackRotation)
                 rotation = entity.rotation
-            zoom = targetZoom
             initalized = true
             return
         }
 
         x += (entity.x - x) * smoothing
         y += (entity.y - y) * smoothing
-        zoom += (targetZoom - zoom) * smoothing
+
         if (trackRotation)
         {
             val diff = (entity.rotation - rotation).toRadians()

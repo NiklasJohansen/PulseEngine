@@ -9,10 +9,9 @@ import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.TextBuilderContext
 import no.njoh.pulseengine.core.shared.utils.TextBuilder
-
-typealias Degrees = Float
 
 /**
  * A surface is a rendering target that can be used to draw lines, quads, textures and text.
@@ -48,33 +47,33 @@ abstract class Surface
     abstract fun drawQuadVertex(x: Float, y: Float)
 
     /**
-     * Draws a textured quad at a given position with a given size, rotation, origin and corner radius.
+     * Draws a textured quad at a given position with a given size, angle, origin and corner radius.
      */
     abstract fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
 
     /**
-     * Draws a textured quad at a given position with a given size, rotation, origin and corner radius.
+     * Draws a textured quad at a given position with a given size, angle, origin and corner radius.
      */
     abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f)
 
     /**
-     * Draws a textured quad at a given position with a given size, rotation, origin, corner radius and
+     * Draws a textured quad at a given position with a given size, angle, origin, corner radius and
      * texture coordinates. The texture will be tiled according to the given tiling values.
      */
-    abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, uTiling: Float = 1f, vTiling: Float = 1f)
+    abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, xTiling: Float = 1f, yTiling: Float = 1f)
 
     /**
-     * Draws text at a given position with a given font, size, rotation and origin.
+     * Draws text at a given position with a given font, size, angle and origin.
      */
-    abstract fun drawText(text: CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+    abstract fun drawText(text: CharSequence, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, wrapNewLines: Boolean = true, newLineSpacing: Float = 0.2f)
 
     /**
-     * Draws text at a given position with a given font, size, rotation and origin.
+     * Draws text at a given position with a given font, size, angle and origin.
      * Supports building the text with a [TextBuilder] to avoid allocating new [String] objects and excessive garbage.
      * Example: drawText(text = { "Hello, " plus "World!" }, ..., ...)
      */
-    inline fun drawText(text: TextBuilder, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f) =
-        drawText(context.build(text), x, y, font, fontSize, angle, xOrigin, yOrigin)
+    inline fun drawText(text: TextBuilder, x: Float, y: Float, font: Font? = null, fontSize: Float = 20f, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, wrapNewLines: Boolean = true, newLineSpacing: Float = 0.2f) =
+        drawText(context.build(text), x, y, font, fontSize, angle, xOrigin, yOrigin, wrapNewLines, newLineSpacing)
 
     /**
      * Defines a clipping area for all drawing operations performed within the [drawFunc].

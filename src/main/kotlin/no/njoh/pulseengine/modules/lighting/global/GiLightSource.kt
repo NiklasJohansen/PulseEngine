@@ -21,7 +21,7 @@ interface GiLightSource
 
     @get:TexRef
     @get:Prop("Lighting", 1, desc = "Name of the light texture")
-    var lightTextureName: String
+    var lightTexture: String
 
     @get:Prop("Lighting", 2, min = 0f, desc = "Light intensity multiplier")
     var intensity: Float
@@ -33,9 +33,9 @@ interface GiLightSource
     var coneAngle: Float
 
     /**
-     * Default implementation for drawing a light source
+     * Default implementation for rendering a light source
      */
-    fun drawLightSource(engine: PulseEngine, surface: Surface)
+    fun onRenderLightSource(engine: PulseEngine, surface: Surface)
     {
         if ((this as? SceneEntity)?.isSet(HIDDEN) == true || intensity == 0f)
             return
@@ -44,13 +44,12 @@ interface GiLightSource
         {
             surface.setDrawColor(lightColor)
             surface.getRenderer<GiSceneRenderer>()?.drawLight(
-                texture = engine.asset.getOrNull(lightTextureName) ?: Texture.BLANK,
+                texture = engine.asset.getOrNull(lightTexture) ?: Texture.BLANK,
                 x = xInterpolated(),
                 y = yInterpolated(),
                 w = width,
                 h = height,
                 angle = rotationInterpolated(),
-                cornerRadius = 0f,
                 intensity = intensity,
                 coneAngle = coneAngle,
                 radius = radius

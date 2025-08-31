@@ -15,7 +15,7 @@ interface GiOccluder
 {
     @get:TexRef
     @get:Prop("Lighting", 0, desc = "The name of the occluder texture")
-    var occluderTextureName: String
+    var occluderTexture: String
 
     @get:Prop("Lighting", 1, desc = "The color of the occluder")
     var bounceColor: Color
@@ -27,9 +27,9 @@ interface GiOccluder
     var edgeLight: Float
 
     /**
-     * Default implementation for drawing an occluder
+     * Default implementation for rendering an occluder
      */
-    fun drawOccluder(engine: PulseEngine, surface: Surface)
+    fun onRenderOccluder(engine: PulseEngine, surface: Surface)
     {
         if (!castShadows) return
 
@@ -37,13 +37,12 @@ interface GiOccluder
         {
             surface.setDrawColor(bounceColor)
             surface.getRenderer<GiSceneRenderer>()?.drawOccluder(
-                texture = engine.asset.getOrNull(occluderTextureName) ?: Texture.BLANK,
+                texture = engine.asset.getOrNull(occluderTexture) ?: Texture.BLANK,
                 x = xInterpolated(),
                 y = yInterpolated(),
                 w = width,
                 h = height,
                 angle = rotationInterpolated(),
-                cornerRadius = 0f,
                 edgeLight = edgeLight
             )
         }

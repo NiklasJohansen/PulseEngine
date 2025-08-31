@@ -48,7 +48,7 @@ class PhysicsSystem : SceneSystem()
         if (engine.scene.state != RUNNING)
             return
 
-        engine.scene.forEachEntityOfType<PhysicsEntity> { it.beginStep(engine, engine.data.fixedDeltaTime, gravity) }
+        engine.scene.forEachEntityOfType<PhysicsEntity> { it.beginStep(engine, engine.data.fixedDeltaTimeSec, gravity) }
 
         val totalIterations = physicsIterations
         for (i in 0 until totalIterations)
@@ -65,7 +65,11 @@ class PhysicsSystem : SceneSystem()
         if (!drawShapes)
             return
 
-        val surface = engine.gfx.mainSurface
+        val surface = engine.gfx.getSurface("physics") ?: engine.gfx.createSurface(
+            name = "physics",
+            camera = engine.gfx.mainCamera,
+            zOrder = -85
+        )
         engine.scene.forEachEntityOfType<PhysicsEntity> { it.render(engine, surface) }
     }
 

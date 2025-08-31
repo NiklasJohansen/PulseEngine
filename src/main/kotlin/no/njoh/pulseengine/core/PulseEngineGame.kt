@@ -10,25 +10,30 @@ abstract class PulseEngineGame
     /**
      * Runs one time at startup
      */
-    abstract fun onCreate()
+    open fun onCreate() { }
+
+    /**
+     * Runs one time at startup after game is created, assets are loaded and engine is initialized.
+     */
+    open fun onStart() { }
 
     /**
      * Runs at a fixed tick rate independent of frame rate
      */
-    open fun onFixedUpdate() { /* default implementation */ }
+    open fun onFixedUpdate() { }
 
     /**
      * Runs every frame
      */
-    abstract fun onUpdate()
+    open fun onUpdate() { }
 
     /**
      * Runs every frame
      */
-    abstract fun onRender()
+    open fun onRender() { }
 
     /**
      * Runs one time before shutdown
      */
-    abstract fun onDestroy()
+    open fun onDestroy() { }
 }

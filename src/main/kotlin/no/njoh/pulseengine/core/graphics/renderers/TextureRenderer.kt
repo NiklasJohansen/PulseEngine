@@ -9,22 +9,38 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
-import org.lwjgl.opengl.ARBBaseInstance.glDrawArraysInstancedBaseInstance
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import org.lwjgl.opengl.GL20.*
 
-class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
-{
+class TextureRenderer(
+    private val config: SurfaceConfigInternal,
+    var alphaDiscardThreshold: Float = 0.4f
+) : BatchRenderer() {
+
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
+    private lateinit var instanceLayout: VertexAttributeLayout
     private lateinit var program: ShaderProgram
 
     override fun init(engine: PulseEngineInternal)
     {
         if (!this::program.isInitialized)
         {
-            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
+            instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
+            instanceLayout = VertexAttributeLayout()
+                .withAttribute("worldPos",     3, GL_FLOAT, 1)
+                .withAttribute("size",         2, GL_FLOAT, 1)
+                .withAttribute("origin",       2, GL_FLOAT, 1)
+                .withAttribute("angle",        1, GL_FLOAT, 1)
+                .withAttribute("cornerRadius", 1, GL_FLOAT, 1)
+                .withAttribute("uvMin",        2, GL_FLOAT, 1)
+                .withAttribute("uvMax",        2, GL_FLOAT, 1)
+                .withAttribute("tiling",       2, GL_FLOAT, 1)
+                .withAttribute("color",        1, GL_UNSIGNED_INT, 1)
+                .withAttribute("texHandle",    1, GL_UNSIGNED_INT, 1)
+
             program = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/texture.vert")),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/texture.frag"))
@@ -33,18 +49,6 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
 
         val vertexLayout = VertexAttributeLayout()
             .withAttribute("vertexPos", 2, GL_FLOAT)
-
-        val instanceLayout = VertexAttributeLayout()
-            .withAttribute("worldPos", 3, GL_FLOAT, 1)
-            .withAttribute("size", 2, GL_FLOAT, 1)
-            .withAttribute("origin", 2, GL_FLOAT, 1)
-            .withAttribute("angle", 1, GL_FLOAT, 1)
-            .withAttribute("cornerRadius", 1, GL_FLOAT, 1)
-            .withAttribute("uvMin", 2, GL_FLOAT, 1)
-            .withAttribute("uvMax", 2, GL_FLOAT, 1)
-            .withAttribute("tiling", 2, GL_FLOAT, 1)
-            .withAttribute("color", 1, GL_FLOAT, 1)
-            .withAttribute("textureHandle", 1, GL_FLOAT, 1)
 
         vao = VertexArrayObject.createAndBind()
         program.bind()
@@ -72,8 +76,9 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+        program.setUniform("alphaDiscardThreshold", alphaDiscardThreshold)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, drawCount, startIndex)
+        drawInstancedQuads(instanceBuffer, instanceLayout, program, drawCount, startIndex)
         vao.release()
     }
 
@@ -118,8 +123,8 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         vMin: Float,
         uMax: Float,
         vMax: Float,
-        uTiling: Float,
-        vTiling: Float
+        xTiling: Float,
+        yTiling: Float
     ) {
         instanceBuffer.fill(17)
         {
@@ -130,7 +135,7 @@ class TextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             put(cornerRadius)
             put(texture.uMax * uMin, texture.vMax * vMin)
             put(texture.uMax * uMax, texture.vMax * vMax)
-            put(uTiling, vTiling)
+            put(xTiling, yTiling)
             put(config.currentDrawColor)
             put(texture.handle.toFloat())
         }

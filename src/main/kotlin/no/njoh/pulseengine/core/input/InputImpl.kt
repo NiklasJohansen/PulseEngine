@@ -167,13 +167,7 @@ open class InputImpl : InputInternal
     override fun setOnKeyPressed(callback: (Key) -> Unit): Subscription
     {
         onKeyPressed.add(callback)
-        return object : Subscription
-        {
-            override fun unsubscribe()
-            {
-                onKeyPressed.remove(callback)
-            }
-        }
+        return Subscription { /* onUnsubscribe */ onKeyPressed.remove(callback)  }
     }
 
     override fun acquireFocus(focusArea: FocusArea)

@@ -1,9 +1,11 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineGame
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SpatialGrid.Companion.nextQueryId
+import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.primitives.HitResult
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -139,6 +141,12 @@ abstract class SceneManager
         activeScene.spatialGrid.queryFirstAlongRay(x, y, angle, rayLength)
 
     /**
+     * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity] matching the [predicate].
+     */
+    inline fun getFirstEntityAlongRay(x: Float, y: Float, angle: Float, rayLength: Float, predicate: (SceneEntity) -> Boolean) : HitResult<SceneEntity>? =
+        activeScene.spatialGrid.queryFirstAlongRay(x, y, angle, rayLength, predicate)
+
+    /**
      * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity] of type [T].
      */
     inline fun <reified T> getFirstEntityAlongRayOfType(x: Float, y: Float, angle: Float, rayLength: Float) : HitResult<T>? =
@@ -193,19 +201,35 @@ abstract class SceneManager
      * Calls the [action] lambda for each [SceneEntity] nearby the given rotated area.
      * @param x The center x-coordinate of the area
      * @param y The center y-coordinate of the area
-     * @param rotation Angle in degrees.
+     * @param angle Angle in degrees.
      */
-    inline fun forEachEntityNearby(x: Float, y: Float, width: Float, height: Float, rotation: Float = 0f, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
-        activeScene.spatialGrid.queryArea(x, y, width, height, rotation, queryId, action)
+    inline fun forEachEntityNearby(x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
+        activeScene.spatialGrid.queryArea(x, y, width, height, angle, queryId, action)
 
     /**
      * Calls the [action] lambda for each [SceneEntity] of type [T] nearby the given area.
      * @param x The center x-coordinate of the area
      * @param y The center y-coordinate of the area
-     * @param rotation Angle in degrees.
+     * @param angle Angle in degrees.
      */
-    inline fun <reified T> forEachEntityNearbyOfType(x: Float, y: Float, width: Float, height: Float, rotation: Float = 0f, queryId: Int = nextQueryId(), action: (T) -> Unit) =
-        activeScene.spatialGrid.queryArea(x, y, width, height, rotation, queryId, action)
+    inline fun <reified T> forEachEntityNearbyOfType(x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, queryId: Int = nextQueryId(), action: (T) -> Unit) =
+        activeScene.spatialGrid.queryArea(x, y, width, height, angle, queryId, action)
+
+    /**
+     * Calls the [action] lambda for each [SceneEntity] overlapping the given point.
+     * @param x The x-coordinate of the point
+     * @param y The y-coordinate of the point
+     */
+    inline fun forEachEntityAtPoint(x: Float, y: Float, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
+        activeScene.spatialGrid.queryPosition(x, y, queryId, action)
+
+    /**
+     * Calls the [action] lambda for each [SceneEntity] of type [T] overlapping the given point.
+     * @param x The x-coordinate of the point
+     * @param y The y-coordinate of the point
+     */
+    inline fun <reified T> forEachEntityAtPointOfType(x: Float, y: Float, queryId: Int = nextQueryId(), action: (T) -> Unit) =
+        activeScene.spatialGrid.queryPosition<T>(x, y, queryId, action)
 
     /**
      * Calls the [action] lambda for each [SceneEntity] intersecting the given ray.
@@ -245,10 +269,10 @@ abstract class SceneManager
  */
 abstract class SceneManagerInternal : SceneManager()
 {
-    abstract fun init(engine: PulseEngine)
+    abstract fun init(engine: PulseEngine, game: PulseEngineGame)
     abstract fun render()
     abstract fun update()
     abstract fun fixedUpdate()
     abstract fun destroy()
-    abstract fun registerSystemsAndEntityClasses()
+    abstract fun registerSystemsAndEntityClasses(gameBasePackage: String)
 }

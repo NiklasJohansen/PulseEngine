@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.shared.primitives.HitResult
 import no.njoh.pulseengine.core.shared.primitives.Physical
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
+import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.GridUtil
@@ -34,6 +35,7 @@ class SpatialGrid (
     @PublishedApi internal var yCells = 0
     @PublishedApi internal var invCellSize = 1f / cellSize
     @PublishedApi internal lateinit var cells: Array2D<Node?>
+    @PublishedApi internal val reusableHitResult = HitResult<Any?>(null, 0f, 0f, Float.MAX_VALUE)
 
     private var width = 0
     private var height = 0
@@ -102,9 +104,9 @@ class SpatialGrid (
         }
     }
 
-    inline fun <reified T> queryArea(x: Float, y: Float, width: Float, height: Float, rotation: Float = 0f, queryId: Int, action: (T) -> Unit)
+    inline fun <reified T> queryArea(x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, queryId: Int, action: (T) -> Unit)
     {
-        val angleRad = -rotation.toRadians()
+        val angleRad = -angle.toRadians()
         val rayLength = width
         val rayWidth = height
         val xDelta = cos(angleRad) * rayLength * 0.5f
@@ -141,6 +143,27 @@ class SpatialGrid (
         }
     }
 
+    inline fun <reified T> queryPosition(x: Float, y: Float, queryId: Int, action: (T) -> Unit)
+    {
+        val xCell = ((x - xOffset) * invCellSize).toInt()
+        val yCell = ((y - yOffset) * invCellSize).toInt()
+        lastQueryId = queryId
+
+        if (xCell < 0 || yCell < 0 || xCell >= xCells || yCell >= yCells)
+            return // Out of bounds, no entities to query
+
+        forEachEntityInCellOfType<T>(xCell, yCell, queryId)
+        {
+            it as Spatial
+            val isInside = when (it)
+            {
+                is Physical -> MathUtil.isPointInsideShape(x, y, it.shape)
+                else -> MathUtil.isPointInsideRect(x, y, it.x, it.y, it.width, it.height, it.rotation.toRadians())
+            }
+            if (isInside) action(it)
+        }
+    }
+
     inline fun <reified T> queryRay(x: Float, y: Float, angle: Float, rayLength: Float, rayWidth: Float, queryId: Int, action: (T) -> Unit)
     {
         val angleRad = -angle.toRadians()
@@ -155,7 +178,7 @@ class SpatialGrid (
         }
     }
 
-    inline fun <reified T> queryFirstAlongRay(x: Float, y: Float, angle: Float, rayLength: Float): HitResult<T>?
+    inline fun <reified T> queryFirstAlongRay(x: Float, y: Float, angle: Float, rayLength: Float, predicate: ((T) -> Boolean) = { true }): HitResult<T>?
     {
         val angleRad = -angle.toRadians()
         val xEnd = x + cos(angleRad) * rayLength
@@ -171,7 +194,7 @@ class SpatialGrid (
             while (node != null)
             {
                 val entity = node.entity
-                if (entity.isNot(DEAD) && entity is T)
+                if (entity.isNot(DEAD) && entity is T && predicate(entity))
                 {
                     entity as Spatial
                     val hitPoint = when (entity)
@@ -195,7 +218,11 @@ class SpatialGrid (
                 ((xHit - xOffset) * invCellSize).toInt() == xCell && // Requires the hit point to be inside the current cell
                 ((yHit - yOffset) * invCellSize).toInt() == yCell
             ) {
-                return HitResult(closestEntity, xHit, yHit, sqrt(minDist))
+                reusableHitResult.entity = closestEntity
+                reusableHitResult.xPos = xHit
+                reusableHitResult.yPos = yHit
+                reusableHitResult.distance = sqrt(minDist)
+                return reusableHitResult as HitResult<T>
             }
         }
 
@@ -280,7 +307,7 @@ class SpatialGrid (
         val surface = engine.gfx.getSurface("spatial_grid") ?: engine.gfx.createSurface(
             name = "spatial_grid",
             camera = engine.gfx.mainCamera,
-            zOrder = engine.gfx.mainSurface.config.zOrder - 1
+            zOrder = -80
         )
 
         // Background rectangle

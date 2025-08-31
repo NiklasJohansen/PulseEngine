@@ -1,6 +1,5 @@
 package no.njoh.pulseengine.core.shared.utils
 
-import org.lwjgl.glfw.GLFW.glfwGetTime
 import java.lang.Long.max
 
 /*
@@ -68,12 +67,14 @@ internal class FpsLimiter
         try
         {
             // sleep until the average sleep time is greater than the time remaining till nextFrame
+            var i = 0
+            var time = 0L
             var lastTime = getTime()
-            var time: Long
             while (nextFrame - lastTime > sleepDurations.avg())
             {
                 Thread.sleep(1)
                 time = getTime()
+                if (time == lastTime && ++i > 50) break // Break if the time is not advancing
                 sleepDurations.add(time - lastTime) // update average sleep time
                 lastTime = time
             }
@@ -110,19 +111,11 @@ internal class FpsLimiter
         yieldDurations.init((-(getTime() - getTime()) * 1.333).toLong())
         nextFrame = getTime()
 
-        val osName = System.getProperty("os.name")
-        if (osName.startsWith("Win"))
+        if (System.getProperty("os.name").startsWith("Win"))
         {
             // On windows the sleep functions can be highly inaccurate by over 10ms making in unusable.
-            // However it can be forced to be a bit more accurate by running a separate sleeping daemon thread.
-            val timerAccuracyThread = Thread(Runnable {
-                try
-                {
-                    Thread.sleep(Long.MAX_VALUE)
-                }
-                catch (e: Exception) { }
-            })
-
+            // However, it can be forced to be a bit more accurate by running a separate sleeping daemon thread.
+            val timerAccuracyThread = Thread { runCatching { Thread.sleep(Long.MAX_VALUE) } }
             timerAccuracyThread.name = "LWJGL3 Timer"
             timerAccuracyThread.isDaemon = true
             timerAccuracyThread.start()
@@ -130,11 +123,9 @@ internal class FpsLimiter
     }
 
     /**
-     * Get the system time in nano seconds
-     *
-     * @return will return the current time in nano's
+     * Returns the current time in nanoseconds.
      */
-    private fun getTime(): Long = (glfwGetTime() * NANOS_IN_SECOND).toLong()
+    private fun getTime() = System.nanoTime()
 
     private inner class RunningAvg(slotCount: Int)
     {

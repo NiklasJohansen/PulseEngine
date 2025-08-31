@@ -9,13 +9,13 @@ import no.njoh.pulseengine.widgets.metrics.MetricViewer
 import no.njoh.pulseengine.widgets.editor.SceneEditor
 import no.njoh.pulseengine.widgets.metrics.GpuMonitor
 
-fun main() = PulseEngine.run(Testbed::class)
+fun main() = PulseEngine.run<Testbed>()
 
 class Testbed : PulseEngineGame()
 {
     override fun onCreate()
     {
-        engine.config.gameName = "Testbed 0.11.0"
+        engine.config.gameName = "Testbed 0.12.0-SNAPSHOT"
         engine.config.targetFps = 100000
         engine.widget.add(SceneEditor(), CommandLine(), MetricViewer(), GpuMonitor())
         engine.console.runScript("testbed/init-dev.pes")
@@ -30,7 +30,7 @@ class Testbed : PulseEngineGame()
     {
         engine.gfx.mainSurface.setDrawColor(Color.WHITE)
         engine.gfx.mainSurface.drawText(
-            text = "PulseEngine 0.11.0 - Testbed",
+            text = "PulseEngine 0.12.0-SNAPSHOT - Testbed",
             x = engine.window.width * 0.5f,
             y = engine.window.height * 0.5f,
             xOrigin = 0.5f,

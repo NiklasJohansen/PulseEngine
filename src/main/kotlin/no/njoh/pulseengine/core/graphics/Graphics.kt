@@ -94,6 +94,7 @@ interface GraphicsInternal : Graphics
 {
     override val mainCamera: CameraInternal
     val textureBank: TextureBank
+    val gpuName: String
 
     fun init(engine: PulseEngineInternal)
     fun uploadTexture(texture: Texture)
