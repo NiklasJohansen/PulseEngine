@@ -5,7 +5,7 @@
 [![workflow](https://github.com/NiklasJohansen/PulseEngine/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/NiklasJohansen/PulseEngine/actions)
 
 Pulse Engine is a 2D game engine built with Kotlin and [LWJGL](https://www.lwjgl.org/).
-Its main purpose is to provide the tools needed to get going when game jamming.
+The engine provides a basic toolkit for prototyping and developing smaller 2D games.
 
 ![game level](pulse_engine.jpg)
 
@@ -20,6 +20,7 @@ Its main purpose is to provide the tools needed to get going when game jamming.
 - Asset loading and hot reloading
 - Basic audio playback
 - Input handling for keyboard, mouse and gamepads
+- Networking with UDP/TCP based client-server architecture
 - Fast multithreaded game loop
 - Collision detection and physics
 - Responsive retained UI components
