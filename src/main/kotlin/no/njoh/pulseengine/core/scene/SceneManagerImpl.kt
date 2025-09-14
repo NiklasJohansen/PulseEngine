@@ -253,7 +253,7 @@ open class SceneManagerImpl : SceneManagerInternal()
             SceneEntity.REGISTERED_TYPES.clear()
             SceneSystem.REGISTERED_TYPES.clear()
 
-            val classes = ReflectionUtil.getClassesInPackages(gameBasePackage, "no.njoh.pulseengine.modules.scene")
+            val classes = ReflectionUtil.getClassesInPackages(gameBasePackage, "no.njoh.pulseengine.modules")
             classes.forEachClassWithSupertype<SceneEntity> { SceneEntity.REGISTERED_TYPES.add(it.kotlin) }
             classes.forEachClassWithSupertype<SceneSystem> { SceneSystem.REGISTERED_TYPES.add(it.kotlin) }
 
