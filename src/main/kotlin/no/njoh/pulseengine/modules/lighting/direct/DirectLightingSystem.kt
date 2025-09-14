@@ -69,7 +69,7 @@ open class DirectLightingSystem : SceneSystem()
 
     private val normalMapRenderPass = RenderPass<NormalMapped>(
         surfaceName = NORMAL_SURFACE_NAME,
-        drawFunction = { engine, surface, entity -> entity.onRenderNormalMap(engine, surface) }
+        drawFunction = { engine, surface -> onRenderNormalMap(engine, surface) }
     )
 
     private val occluderRenderPass = RenderPass<DirectLightOccluder>(

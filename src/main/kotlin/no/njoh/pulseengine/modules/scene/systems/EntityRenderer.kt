@@ -20,7 +20,16 @@ abstract class EntityRenderer : SceneSystem()
     @JsonIgnore
     protected val renderPasses = mutableListOf<RenderPass>()
 
-    /** Adds a [RenderPass] to the [EntityRenderer] */
+    /** Adds a new [RenderPass] to the [EntityRenderer] */
+    inline fun <reified T : Any> addRenderPass(
+        surfaceName: String,
+        noinline drawCondition: ((T) -> Boolean)? = null,
+        noinline drawFunction: (T.(PulseEngine, Surface) -> Unit)? = null
+    ) {
+        addRenderPass(RenderPass<T>(surfaceName, drawCondition, drawFunction))
+    }
+
+    /** Adds the given [RenderPass] to the [EntityRenderer] */
     fun addRenderPass(renderPass: RenderPass) =
         renderPasses.add(renderPass)
 
@@ -40,7 +49,7 @@ abstract class EntityRenderer : SceneSystem()
         val surfaceName: String,
         val targetType: Class<*>,
         val drawCondition: ((Any) -> Boolean)? = null,
-        val drawFunction: ((PulseEngine, Surface, Any) -> Unit)? = null
+        val drawFunction: (Any.(PulseEngine, Surface) -> Unit)? = null
     ) {
         companion object
         {
@@ -48,12 +57,12 @@ abstract class EntityRenderer : SceneSystem()
             inline operator fun <reified T : Any> invoke(
                 surfaceName: String,
                 noinline drawCondition: ((T) -> Boolean)? = null,
-                noinline drawFunction: ((PulseEngine, Surface, T) -> Unit)? = null
+                noinline drawFunction: (T.(PulseEngine, Surface) -> Unit)? = null
             ) = RenderPass(
                 surfaceName = surfaceName,
                 targetType = T::class.java,
                 drawCondition = drawCondition as ((Any) -> Boolean)?,
-                drawFunction = drawFunction as ((PulseEngine, Surface, Any) -> Unit)?
+                drawFunction = drawFunction as (Any.(PulseEngine, Surface) -> Unit)?
             )
         }
     }
@@ -124,7 +133,7 @@ open class EntityRendererImpl : EntityRenderer()
                 when (drawFunction)
                 {
                     null -> entities.forEachFast { it.onRender(engine, surface) }
-                    else -> entities.forEachFast { drawFunction(engine, surface, it) }
+                    else -> entities.forEachFast { drawFunction(it, engine, surface) }
                 }
                 entities.clear()
             }
@@ -139,7 +148,7 @@ open class EntityRendererImpl : EntityRenderer()
      */
     private data class RenderTask(
         var surfaceName: String,
-        var drawFunction: ((PulseEngine, Surface, Any) -> Unit)?,
+        var drawFunction: (Any.(PulseEngine, Surface) -> Unit)?,
         val entities: ArrayList<Renderable> = ArrayList()
     )
 

@@ -65,11 +65,11 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     private var lastTargetSurface = ""
 
-    private val normalMapRenderPass   = RenderPass(GI_NORMAL_MAP)   { e, surface, entity: NormalMapped  -> entity.onRenderNormalMap(e, surface) }
-    private val localOccluderPass     = RenderPass(GI_LOCAL_SCENE)  { e, surface, entity: GiOccluder    -> entity.onRenderOccluder(e, surface)    }
-    private val localLightSourcePass  = RenderPass(GI_LOCAL_SCENE)  { e, surface, entity: GiLightSource -> entity.onRenderLightSource(e, surface) }
-    private val globalOccluderPass    = RenderPass(GI_GLOBAL_SCENE) { e, surface, entity: GiOccluder    -> entity.onRenderOccluder(e, surface)    }
-    private val globalLightSourcePass = RenderPass(GI_GLOBAL_SCENE) { e, surface, entity: GiLightSource -> entity.onRenderLightSource(e, surface) }
+    private val normalMapRenderPass   = RenderPass<NormalMapped>(GI_NORMAL_MAP)    { e, surface -> onRenderNormalMap(e, surface)   }
+    private val localOccluderPass     = RenderPass<GiOccluder>(GI_LOCAL_SCENE)     { e, surface -> onRenderOccluder(e, surface)    }
+    private val localLightSourcePass  = RenderPass<GiLightSource>(GI_LOCAL_SCENE)  { e, surface -> onRenderLightSource(e, surface) }
+    private val globalOccluderPass    = RenderPass<GiOccluder>(GI_GLOBAL_SCENE)    { e, surface -> onRenderOccluder(e, surface)    }
+    private val globalLightSourcePass = RenderPass<GiLightSource>(GI_GLOBAL_SCENE) { e, surface -> onRenderLightSource(e, surface) }
 
     override fun onCreate(engine: PulseEngine)
     {
