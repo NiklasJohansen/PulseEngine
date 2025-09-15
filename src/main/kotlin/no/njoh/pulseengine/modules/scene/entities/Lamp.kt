@@ -18,7 +18,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 @Icon("LIGHT_BULB", size = 24f, showInViewport = true)
-open class Lamp : StandardSceneEntity(), DirectLightSource, GiLightSource
+open class Lamp : CommonSceneEntity(), DirectLightSource, GiLightSource
 {
     var trackParent = true
 

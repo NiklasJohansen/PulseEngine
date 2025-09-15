@@ -5,13 +5,13 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
+import no.njoh.pulseengine.modules.scene.entities.CommonSceneEntity
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import kotlin.math.sqrt
 
-open class Spring : StandardSceneEntity(), PhysicsEntity
+open class Spring : CommonSceneEntity(), PhysicsEntity
 {
     @EntityRef
     @Prop("Connection", 0)
