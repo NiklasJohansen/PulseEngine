@@ -31,7 +31,7 @@ class CommandLine : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface("cli", zOrder = -100, backgroundColor = Color.BLANK)
+        engine.gfx.createSurface("cli", zOrder = -100)
         engine.asset.load(Font("/pulseengine/assets/clacon.ttf", "cli_font"))
         engine.console.registerCommand("showConsole") {
             isRunning = !isRunning
