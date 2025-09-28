@@ -57,6 +57,7 @@ data class Outliner(
             val rowPanel = RowPanel(width = Size.auto(), height = Size.auto()).apply()
             {
                 verticalScrollbarVisibility = ALWAYS_VISIBLE
+                focusable = false
             }
 
             // ---------------------------------- Header panel ----------------------------------
@@ -653,7 +654,7 @@ data class Outliner(
 
         private fun UiElement.setBackgroundColor(index: Int, style: EditorStyle)
         {
-            (this as? Button)?.bgColor = if (index % 2 == 0) style.getColor( "BUTTON") else Color.BLANK
+            (this as? Button)?.bgColor = if (index % 2 == 0) style.getColor("ROW") else Color.BLANK
         }
 
         // Stores the ID of the last selected row

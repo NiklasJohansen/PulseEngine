@@ -23,7 +23,7 @@ open class WindowPanel(
 
     var movable = false
     var resizable = false
-    var resizeMargin = 10f
+    var resizeMargin = 3f
     var isGrabbed = false
         private set
 
@@ -54,17 +54,23 @@ open class WindowPanel(
         handleMovingAndResizing(engine.input, engine.window)
     }
 
+    override fun updateFocusArea()
+    {
+        // Increase focus area to accommodate for resize margins
+        super.updateFocusArea()
+        area.update(area.x0 - resizeMargin, area.y0 - resizeMargin, area.x1 + resizeMargin, area.y1 + resizeMargin)
+    }
+
     private fun handleMovingAndResizing(input: Input, window: Window)
     {
         val allowResize = parent !is VerticalPanel && parent !is HorizontalPanel && resizable
         val isInsideArea = area.isInside(input.xMouse, input.yMouse)
         val isInsideHeader = header.area.isInside(input.xMouse, input.yMouse)
-        val isMouseMoving = abs(input.xdMouse) > 1f || abs(input.ydMouse) > 1f
+        val isMouseMoving = abs(input.xdMouse) > 0.2f || abs(input.ydMouse) > 0.2f
         val isInsideTopResizeArea = allowResize && isInsideArea && (input.yMouse < area.y0 + resizeMargin)
         val isInsideBottomResizeArea = allowResize && isInsideArea && (input.yMouse > area.y1 - resizeMargin)
         val isInsideLeftResizeArea = allowResize && isInsideArea && (input.xMouse < area.x0 + resizeMargin)
         val isInsideRightResizeArea = allowResize && isInsideArea && (input.xMouse > area.x1 - resizeMargin)
-
         if (input.isPressed(MouseButton.LEFT))
         {
             if (!isGrabbed && !isResizingTop && !isResizingBottom && !isResizingLeft && !isResizingRight && isInsideArea)

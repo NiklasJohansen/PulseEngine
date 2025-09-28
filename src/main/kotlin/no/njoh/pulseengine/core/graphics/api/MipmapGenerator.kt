@@ -118,9 +118,9 @@ class CustomMipmapGenerator(
         for (level in 1 until getLevelCount(texture.width, texture.height))
         {
             val prevLevel  = level - 1
-            val prevWidth  = max(1, texture.width shr prevLevel)
+            val prevWidth  = max(1, texture.width  shr prevLevel)
             val prevHeight = max(1, texture.height shr prevLevel)
-            val currWidth  = max(1, texture.width shr level)
+            val currWidth  = max(1, texture.width  shr level)
             val currHeight = max(1, texture.height shr level)
 
             glViewport(0, 0, currWidth, currHeight)
@@ -131,6 +131,7 @@ class CustomMipmapGenerator(
         }
 
         fbo.release()
+        glViewport(0, 0, texture.width, texture.height)
     }
 
     override fun onDestroy()

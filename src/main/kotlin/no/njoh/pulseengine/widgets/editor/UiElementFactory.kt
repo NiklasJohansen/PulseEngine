@@ -413,7 +413,6 @@ open class UiElementFactory(
 
         return HorizontalPanel().apply()
         {
-            color = style.getColor("DARK_BG")
             cornerRadius = ScaledValue.of(4f)
             addChildren(
                 VerticalPanel().apply()
@@ -480,7 +479,7 @@ open class UiElementFactory(
             padding.left = ScaledValue.of(5f)
             padding.right = ScaledValue.of(5f)
             padding.top = ScaledValue.of(5f)
-            cornerRadius = ScaledValue.of(2f)
+            cornerRadius = ScaledValue.of(4f)
             color = style.getColor("HEADER")
             activeColor = style.getColor("HEADER")
             hoverColor = style.getColor("HEADER_HOVER")
@@ -721,7 +720,7 @@ open class UiElementFactory(
             padding.left = ScaledValue.of(12f)
             padding.right = ScaledValue.of(12f)
             padding.top = ScaledValue.of(4f)
-            cornerRadius = ScaledValue.of(2f)
+            cornerRadius = ScaledValue.of(4f)
             color = style.getColor( "BUTTON")
             addChildren(label, propUi)
         }
@@ -739,7 +738,7 @@ open class UiElementFactory(
             padding.left = ScaledValue.of(5f)
             padding.right = ScaledValue.of(5f)
             padding.top = ScaledValue.of(5f)
-            cornerRadius = ScaledValue.of(2f)
+            cornerRadius = ScaledValue.of(4f)
             color = style.getColor("HEADER")
             activeColor = style.getColor("HEADER")
             hoverColor = style.getColor("HEADER_HOVER")

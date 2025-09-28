@@ -4,7 +4,8 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.graphics.GraphicsInternal
-import no.njoh.pulseengine.core.graphics.api.Multisampling
+import no.njoh.pulseengine.core.graphics.api.Multisampling.*
+import no.njoh.pulseengine.core.graphics.postprocessing.effects.FrostedGlassEffect
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -58,8 +59,22 @@ class GpuMonitor : Widget
 
     override fun onRender(engine: PulseEngine)
     {
-        val surface = engine.gfx.getSurface(SURFACE) ?: return
-        window?.render(engine, surface)
+        val window = window ?: return
+        val bgSurface = engine.gfx.getSurface(BACKGROUND_SURFACE) ?: return
+        val fgSurface = engine.gfx.getSurface(FOREGROUND_SURFACE) ?: return
+
+        // Frosted glass background
+        FrostedGlassEffect.drawToTargetSurface(
+            engine = engine,
+            target = bgSurface,
+            x = window.x.value,
+            y = window.y.value,
+            width = window.width.value,
+            height = window.height.value
+        )
+
+        // Foreground UI
+        window.render(engine, fgSurface)
     }
 
     private fun init(engine: PulseEngine)
@@ -73,13 +88,16 @@ class GpuMonitor : Widget
             return
         }
 
-        if (engine.gfx.getSurface(SURFACE) == null)
+        if (engine.gfx.getSurface(BACKGROUND_SURFACE) == null)
         {
-            engine.gfx.createSurface(
-                name = SURFACE,
-                zOrder = engine.gfx.getAllSurfaces().minOf { it.config.zOrder } - 1,
-                multisampling = Multisampling.MSAA16
-            )
+            val zOrder = engine.gfx.getAllSurfaces().minOf { it.config.zOrder } - 1
+            engine.gfx.createSurface(BACKGROUND_SURFACE, zOrder = zOrder)
+        }
+
+        if (engine.gfx.getSurface(FOREGROUND_SURFACE) == null)
+        {
+            val zOrder = engine.gfx.getAllSurfaces().minOf { it.config.zOrder } - 2
+            engine.gfx.createSurface(FOREGROUND_SURFACE, zOrder = zOrder, multisampling = MSAA16)
         }
 
         window = window ?: createWindow(engine)
@@ -177,7 +195,7 @@ class GpuMonitor : Widget
                     createLabel(it.fracText,  color = it.fracColor,      width = 0.10f),
                 )
 
-                color = if (rows.size % 2 == 0) uiFactory.style.getColor("BUTTON") else Color.BLANK
+                color = if (rows.size % 2 == 0) uiFactory.style.getColor("ROW") else Color.BLANK
             }
         }
 
@@ -188,7 +206,7 @@ class GpuMonitor : Widget
     private fun updateMeasurements()
     {
         var i = 0
-        var startSize = measurements.size
+        val startSize = measurements.size
         GpuProfiler.getMeasurements().forEach()
         {
             if (i > measurements.lastIndex)
@@ -222,7 +240,8 @@ class GpuMonitor : Widget
 
     companion object
     {
-        private const val SURFACE = "gpu_monitor"
+        private const val BACKGROUND_SURFACE = "gpu_monitor_bg"
+        private const val FOREGROUND_SURFACE = "gpu_monitor_fg"
         private val random = Random()
         private val color = Color(1f, 1f, 1f)
         private fun nextColor(label: CharSequence): Color

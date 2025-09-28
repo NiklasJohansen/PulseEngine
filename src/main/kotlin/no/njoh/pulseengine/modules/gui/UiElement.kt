@@ -197,7 +197,7 @@ abstract class UiElement(
         updatePopupLayout()
     }
 
-    private fun updateFocusArea()
+    open fun updateFocusArea()
     {
         var x0 = x.value
         var y0 = y.value
@@ -254,8 +254,11 @@ abstract class UiElement(
     // Rendering the UI element
     // ---------------------------------------------------------------------------------------------------------
 
-    open fun render(engine: PulseEngine, surface: Surface)
-    {
+    open fun render(
+        engine: PulseEngine,
+        surface: Surface,
+        renderPopup: Boolean = (parent == null) // Start rendering the popups from the root node by default
+    ) {
         if (!isVisible())
             return
 
@@ -273,12 +276,11 @@ abstract class UiElement(
             children.forEachFast { it.render(engine, surface) }
         }
 
-        // Start rendering the popups from the root node
-        if (parent == null)
+        if (renderPopup)
             renderPopup(engine, surface)
     }
 
-    private fun renderPopup(engine: PulseEngine, surface: Surface)
+    fun renderPopup(engine: PulseEngine, surface: Surface)
     {
         if (!isVisible())
             return

@@ -36,7 +36,7 @@ object BackBufferBaseState : RenderState
     override fun onApply(surface: SurfaceInternal)
     {
         // Clear back-buffer with color of given surface
-        val c = surface.config.backgroundColor
+        val c = surface.config.backgroundColor.asLinear()
         glClearColor(c.red, c.green, c.blue, c.alpha)
         glClear(GL_COLOR_BUFFER_BIT)
 

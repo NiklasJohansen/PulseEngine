@@ -25,7 +25,7 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
     private var readOffset = 0
     private var writeOffset = 0
     private val capacity = 50
-    private val stride = 10
+    private val stride = 15
 
     override fun init(engine: PulseEngineInternal)
     {
@@ -73,16 +73,21 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
         for (i in startIndex until startIndex + drawCount)
         {
             val base = readOffset + i * stride
-            val x = data[base + 0]
-            val y = data[base + 1]
-            val z = data[base + 2]
-            val w = data[base + 3]
-            val h = data[base + 4]
-            val angle = data[base + 5]
-            val xOrigin = data[base + 6]
-            val yOrigin = data[base + 7]
-            val rgba = data[base + 8]
-            val textureId = data[base + 9].toInt()
+            val x =            data[base + 0]
+            val y =            data[base + 1]
+            val z =            data[base + 2]
+            val w =            data[base + 3]
+            val h =            data[base + 4]
+            val angle =        data[base + 5]
+            val xOrigin =      data[base + 6]
+            val yOrigin =      data[base + 7]
+            val cornerRadius = data[base + 8]
+            val uMin =         data[base + 9]
+            val vMin =         data[base + 10]
+            val uMax =         data[base + 11]
+            val vMax =         data[base + 12]
+            val rgba =         data[base + 13]
+            val textureId =    data[base + 14].toInt()
 
             // Bind texture
             if (textureId != TextureHandle.NONE.textureIndex)
@@ -94,6 +99,8 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
             program.setUniform("origin", xOrigin, yOrigin)
             program.setUniform("angle", angle)
             program.setUniform("color", floatToRawIntBits(rgba))
+            program.setUniform("cornerRadius", cornerRadius)
+            program.setUniform("uvMinMax", uMin, vMin, uMax, vMax)
             program.setUniform("sampleTexture", textureId != TextureHandle.NONE.textureIndex)
 
             // Draw quad
@@ -112,7 +119,7 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
         vao.destroy()
     }
 
-    fun draw(texture: RenderTexture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float)
+    fun draw(texture: RenderTexture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
         if (writeCount >= capacity)
             return
@@ -126,9 +133,13 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
         data[base + 5] = angle
         data[base + 6] = xOrigin
         data[base + 7] = yOrigin
-        data[base + 8] = config.currentDrawColor
-        data[base + 9] = texture.handle.textureIndex.toFloat()
-
+        data[base + 8] = cornerRadius
+        data[base + 9] = uMin
+        data[base + 10] = vMin
+        data[base + 11] = uMax
+        data[base + 12] = vMax
+        data[base + 13] = config.currentDrawColor
+        data[base + 14] = texture.handle.textureIndex.toFloat()
         writeCount++
         config.increaseDepth()
         increaseBatchSize()

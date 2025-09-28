@@ -217,7 +217,7 @@ class AssetPicker(
 
         val row = Button(height = Size.absolute(rowHeight)).apply()
         {
-            bgColor = if (rows.children.size % 2 == 0) style.getColor( "BUTTON") else Color.BLANK
+            bgColor = if (rows.children.size % 2 == 0) style.getColor("ROW") else Color.BLANK
             hoverColor = style.getColor( "BUTTON_HOVER")
             addChildren(HorizontalPanel().apply() { addChildren(icon, label, image) })
         }

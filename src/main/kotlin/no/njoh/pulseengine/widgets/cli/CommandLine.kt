@@ -5,10 +5,10 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.console.MessageType
+import no.njoh.pulseengine.core.graphics.postprocessing.effects.FrostedGlassEffect
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.MouseButton
-import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.widget.Widget
 import kotlin.math.max
 import kotlin.math.min
@@ -31,7 +31,8 @@ class CommandLine : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface("cli", zOrder = -100)
+        engine.gfx.createSurface("cli_bg", zOrder = -99)
+        engine.gfx.createSurface("cli_fg", zOrder = -100)
         engine.asset.load(Font("/pulseengine/assets/clacon.ttf", "cli_font"))
         engine.console.registerCommand("showConsole") {
             isRunning = !isRunning
@@ -328,16 +329,18 @@ class CommandLine : Widget
         while(inputCursor < inputTextOffset) inputTextOffset--
         text = text.substring(max(inputTextOffset, 0), min(inputTextOffset + charsPerLine, text.length))
 
-        // Render to the overlay layer
-        val surface = engine.gfx.getSurfaceOrDefault("cli")
+        // Render frosted glass background
+        val bgSurface = engine.gfx.getSurfaceOrDefault("cli_bg")
+        FrostedGlassEffect.drawToTargetSurface(engine, bgSurface, -5f, -5f, width + 5, height + 5, cornerRadius = 10f)
 
         // Draw console rectangle
-        surface.setDrawColor(0.0f, 0.0f, 0.0f, 0.98f)
-        surface.drawTexture(Texture.BLANK, -5f, -5f, width + 5, height + 5, cornerRadius = 10f)
+        val fgSurface = engine.gfx.getSurfaceOrDefault("cli_fg")
+        fgSurface.setDrawColor(0.0f, 0.0f, 0.0f, 0.9f)
+        fgSurface.drawTexture(Texture.BLANK, -5f, -5f, width + 5, height + 5, cornerRadius = 10f)
 
         // Draw input box rectangle
-        surface.setDrawColor(0.01f, 0.01f, 0.01f, 0.92f)
-        surface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width - INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING, cornerRadius = 5f)
+        fgSurface.setDrawColor(0.01f, 0.01f, 0.01f, 0.5f)
+        fgSurface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width - INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING, cornerRadius = 5f)
 
         // Draw selection rectangle
         val selectionDistance = selectCursor - inputCursor
@@ -346,13 +349,13 @@ class CommandLine : Widget
         {
             val selectionStart = getTextWidth(inBoxCursor + if (selectionDistance > 0) 1 else 0)
             val selectionWidth = getTextWidth(selectionDistance.coerceIn(-inBoxCursor, charsPerLine - inBoxCursor - 1))
-            surface.setDrawColor(0.2f, 0.4f, 1f, 0.9f)
-            surface.drawQuad(TEXT_PADDING_X + selectionStart, height - INPUT_BOX_HEIGHT + INPUT_BOX_PADDING, selectionWidth, FONT_SIZE)
+            fgSurface.setDrawColor(0.2f, 0.4f, 1f, 0.9f)
+            fgSurface.drawQuad(TEXT_PADDING_X + selectionStart, height - INPUT_BOX_HEIGHT + INPUT_BOX_PADDING, selectionWidth, FONT_SIZE)
         }
 
         // Draw input text
-        surface.setDrawColor(1f, 1f, 1f, 0.95f)
-        surface.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2, cliFont, yOrigin = 0.7f, fontSize = FONT_SIZE)
+        fgSurface.setDrawColor(1f, 1f, 1f, 0.95f)
+        fgSurface.drawText(text, TEXT_PADDING_X, height - INPUT_BOX_HEIGHT / 2, cliFont, yOrigin = 0.7f, fontSize = FONT_SIZE)
 
         // Draw console history
         var yPos = height - INPUT_BOX_HEIGHT
@@ -366,8 +369,8 @@ class CommandLine : Widget
                 val color = MessageColor.from(consoleEntry.type)
 
                 yPos -= lines.size * FONT_SIZE
-                surface.setDrawColor(color.red, color.green, color.blue, 0.9f)
-                lines.forEachIndexed { i, line -> surface.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont, yOrigin = 0.5f, fontSize = FONT_SIZE) }
+                fgSurface.setDrawColor(color.red, color.green, color.blue, 0.9f)
+                lines.forEachIndexed { i, line -> fgSurface.drawText(line, TEXT_PADDING_X, yPos + i * FONT_SIZE, cliFont, yOrigin = 0.5f, fontSize = FONT_SIZE) }
             }
     }
 

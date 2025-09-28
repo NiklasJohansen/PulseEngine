@@ -9,9 +9,9 @@ import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.graphics.api.Camera
-import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.core.graphics.api.Multisampling
+import no.njoh.pulseengine.core.graphics.api.Multisampling.*
+import no.njoh.pulseengine.core.graphics.postprocessing.effects.FrostedGlassEffect
 import no.njoh.pulseengine.modules.gui.UiUtil.findElementById
 import no.njoh.pulseengine.modules.gui.elements.InputField
 import no.njoh.pulseengine.modules.gui.UiElement
@@ -43,6 +43,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
 import no.njoh.pulseengine.core.widget.Widget
 import no.njoh.pulseengine.modules.gui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.gui.elements.Button
+import no.njoh.pulseengine.modules.gui.layout.Panel
 import no.njoh.pulseengine.modules.gui.layout.WindowPanel
 import no.njoh.pulseengine.modules.scene.systems.EntityRendererImpl
 import no.njoh.pulseengine.modules.scene.systems.EntityUpdater
@@ -136,21 +137,13 @@ class SceneEditor(
         isRunning = engine.config.getBool("openEditorOnStart") ?: false
         lastSaveLoadDirectory = engine.config.saveDirectory
 
-        // Create separate render surface for editor UI
-        engine.gfx.createSurface(
-            name = "scene_editor_foreground",
-            zOrder = -90,
-            attachments = listOf(Attachment.COLOR_TEXTURE_0, Attachment.DEPTH_STENCIL_BUFFER),
-            multisampling = Multisampling.MSAA16
-        )
-
-        // Background surface for grid
-        engine.gfx.createSurface(
-            name = "scene_editor_background",
-            zOrder = 20,
-            camera = activeCamera,
-            backgroundColor = Color(0.043f, 0.047f, 0.054f, 0f)
-        )
+        // Create surfaces
+        engine.gfx.createSurface("scene_editor_background",       zOrder = 20, camera = activeCamera, backgroundColor = Color(0.043f, 0.047f, 0.054f, 0f))
+        engine.gfx.createSurface("scene_editor_gizmo",            zOrder = -50)
+        engine.gfx.createSurface("scene_editor_scene_frost",      zOrder = -90)
+        engine.gfx.createSurface("scene_editor_foreground",       zOrder = -92, multisampling = MSAA16)
+        engine.gfx.createSurface("scene_editor_popup_frost",      zOrder = -93)
+        engine.gfx.createSurface("scene_editor_foreground_popup", zOrder = -94, multisampling = MSAA16)
 
         // Load editor icon font
         engine.asset.load(Font("/pulseengine/assets/editor_icons.ttf", uiFactory.style.iconFontName))
@@ -391,18 +384,45 @@ class SceneEditor(
 
     override fun onRender(engine: PulseEngine)
     {
-        if (showGrid)
-            renderGrid(engine.gfx.getSurfaceOrDefault("scene_editor_background"))
+        val backgroundSurface      = engine.gfx.getSurfaceOrDefault("scene_editor_background")
+        val gizmoSurface           = engine.gfx.getSurfaceOrDefault("scene_editor_gizmo")
+        val foregroundSurface      = engine.gfx.getSurfaceOrDefault("scene_editor_foreground")
+        val foregroundSurfacePopup = engine.gfx.getSurfaceOrDefault("scene_editor_foreground_popup")
+        val sceneFrostSurface      = engine.gfx.getSurfaceOrDefault("scene_editor_scene_frost")
+        val popupFrostSurface      = engine.gfx.getSurfaceOrDefault("scene_editor_popup_frost")
 
-        val foregroundSurface = engine.gfx.getSurfaceOrDefault("scene_editor_foreground")
+        backgroundSurface.setBackgroundColor(0.001f, 0.001f, 0.001f, 1f)
+
+        if (showGrid)
+            renderGrid(backgroundSurface)
 
         if (enableViewportInteractions)
         {
-            renderEntityIconAndGizmo(foregroundSurface, engine)
-            renderSelectionRectangle(foregroundSurface)
+            renderEntityIconAndGizmo(gizmoSurface, engine)
+            renderSelectionRectangle(gizmoSurface)
         }
 
-        rootUI.render(engine, foregroundSurface)
+        rootUI.render(engine, foregroundSurface, renderPopup = false)
+        rootUI.renderPopup(engine, foregroundSurfacePopup)
+
+        renderFrostGlass(engine, sceneFrostSurface, rootUI)
+        renderFrostGlass(engine, popupFrostSurface, rootUI, onlyPopups = true)
+    }
+
+    private fun renderFrostGlass(engine: PulseEngine, surface: Surface, node: UiElement, onlyPopups: Boolean = false)
+    {
+        if (onlyPopups && node.popup != null)
+            renderFrostGlass(engine, surface, node.popup!!, true)
+
+        node.children.forEachFast { renderFrostGlass(engine, surface, it, onlyPopups) }
+
+        val isNodePopup = node === node.parent?.popup
+        val isHidden = node.hidden || (node as? Panel)?.color?.alpha == 0f
+
+        if (node !is Panel || isHidden || (onlyPopups && !isNodePopup) || (!onlyPopups && isNodePopup))
+            return
+
+        FrostedGlassEffect.drawToTargetSurface(engine, surface, node.area.x0, node.area.y0, node.area.width, node.area.height, node.cornerRadius.value)
     }
 
     private fun renderEntityIconAndGizmo(surface: Surface, engine: PulseEngine)
@@ -1113,7 +1133,7 @@ class SceneEditor(
 
         val middleLineSize = 2f / activeCamera.scale.x
         val alpha = (activeCamera.scale.x + 0.2f).coerceIn(0.1f, 0.4f)
-        val shade = 0.3f
+        val shade = 0.1f
 
         surface.setDrawColor(shade, shade, shade, alpha + 0.1f)
         for (x in xStart until xEnd step cellSize)

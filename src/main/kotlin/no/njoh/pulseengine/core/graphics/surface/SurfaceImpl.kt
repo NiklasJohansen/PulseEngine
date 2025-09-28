@@ -54,7 +54,7 @@ class SurfaceImpl(
             textureRenderer       = TextureRenderer(config)
             stencilRenderer       = StencilRenderer()
             renderTextureRenderer = RenderTextureRenderer(config)
-            renderers             += listOfNotNull(textRenderer, quadRenderer, lineRenderer, textureRenderer, stencilRenderer, renderTextureRenderer)
+            renderers             += listOfNotNull(renderTextureRenderer, textRenderer, quadRenderer, lineRenderer, textureRenderer, stencilRenderer)
 
             renderers.forEachFast { rendererMap[it::class.java] = it }
         }
@@ -157,9 +157,9 @@ class SurfaceImpl(
         quadRenderer?.vertex(x, y)
     }
 
-    override fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees, xOrigin: Float, yOrigin: Float)
+    override fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
-        renderTextureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin)
+        renderTextureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax)
     }
 
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)

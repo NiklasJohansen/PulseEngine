@@ -7,8 +7,8 @@ import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.data.Metric
+import no.njoh.pulseengine.core.graphics.postprocessing.effects.FrostedGlassEffect
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.append
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
@@ -43,7 +43,8 @@ class MetricViewer : Widget
 
     override fun onCreate(engine: PulseEngine)
     {
-        engine.gfx.createSurface("metric_viewer", zOrder = -101)
+        engine.gfx.createSurface("metric_viewer_bg", zOrder = -101)
+        engine.gfx.createSurface("metric_viewer", zOrder = -102)
         engine.asset.load(Font("/pulseengine/assets/clacon.ttf", "graph_font"))
         engine.console.registerCommand("showMetricViewer")
         {
@@ -110,12 +111,17 @@ class MetricViewer : Widget
             h *= scale
         }
 
-        val surface = engine.gfx.getSurfaceOrDefault("metric_viewer")
+        val bgSurface = engine.gfx.getSurfaceOrDefault("metric_viewer_bg")
+        val fgSurface = engine.gfx.getSurfaceOrDefault("metric_viewer")
         val font = engine.asset.getOrNull("graph_font") ?: Font.DEFAULT
 
         graphs.forEachFast()
         {
-            it.render(surface, font, x, y, w, h)
+            // Draw background
+            FrostedGlassEffect.drawToTargetSurface(engine, bgSurface, x, y, w, h, cornerRadius = 4f)
+
+            // Draw foreground
+            it.render(fgSurface, font, x, y, w, h)
             xMax = max(xMax, x + w + graphPadding)
             yMax = max(yMax, y + h + graphPadding)
             x += w + graphPadding
@@ -130,11 +136,11 @@ class MetricViewer : Widget
 
         if (adjustingSize)
         {
-            surface.setDrawColor(1f, 0f, 0f, 0.9f)
-            surface.drawLine(xPos, yPos, xPos + maxWidth, yPos)
-            surface.drawLine(xPos, yPos + area.height, xPos + maxWidth, yPos + area.height)
-            surface.drawLine(xPos, yPos, xPos, yPos + area.height)
-            surface.drawLine(xPos + maxWidth, yPos, xPos + maxWidth, yPos + area.height)
+            fgSurface.setDrawColor(1f, 0f, 0f, 0.9f)
+            fgSurface.drawLine(xPos, yPos, xPos + maxWidth, yPos)
+            fgSurface.drawLine(xPos, yPos + area.height, xPos + maxWidth, yPos + area.height)
+            fgSurface.drawLine(xPos, yPos, xPos, yPos + area.height)
+            fgSurface.drawLine(xPos + maxWidth, yPos, xPos + maxWidth, yPos + area.height)
         }
     }
 
@@ -169,7 +175,7 @@ class MetricViewer : Widget
         fun render(surface: Surface, font: Font, xPos: Float, yPos: Float, width: Float, height: Float)
         {
             val headerText = newText(metric.name)
-            surface.setDrawColor(0.01f, 0.01f, 0.02f, 0.97f)
+            surface.setDrawColor(0.01f, 0.01f, 0.02f, 0.75f)
             surface.drawTexture(Texture.BLANK, xPos, yPos, width, height, cornerRadius = 4f)
             surface.setDrawColor(1f, 1f, 1f, 0.8f)
             surface.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
