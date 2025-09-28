@@ -23,15 +23,15 @@ open class Lamp : CommonSceneEntity(), DirectLightSource, GiLightSource
     var trackParent = true
 
     @JsonAlias("color")
-    override var lightColor = Color(1f, 0.92f, 0.75f)
+    override var lightColor   = Color(1f, 0.92f, 0.75f)
     override var lightTexture = ""
-    override var intensity = 4f
-    override var radius = 0f // 0=infinite in global illumination
-    override var size = 30f
-    override var coneAngle = 360f
-    override var spill = 0.95f
-    override var type = DirectLightType.RADIAL
-    override var shadowType = DirectShadowType.SOFT
+    override var intensity    = 1f
+    override var radius       = 0f // 0=infinite in global illumination
+    override var size         = 30f
+    override var coneAngle    = 360f
+    override var spill        = 0.95f
+    override var type         = DirectLightType.RADIAL
+    override var shadowType   = DirectShadowType.SOFT
 
     protected var initLength   = -1f // Length from light position to center of target entity
     protected var initAngle    = -1f // Angle between light position and center of target entity
