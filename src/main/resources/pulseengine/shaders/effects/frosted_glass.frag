@@ -6,7 +6,7 @@ in vec2 uv;
 
 out vec4 fragColor;
 
-uniform sampler2D baseTex;
+uniform sampler2D tex;
 
 uniform float intensity;
 uniform float brightness;
@@ -38,27 +38,32 @@ mat2 rotate(float a)
     return mat2(c, -s, s, c);
 }
 
-vec4 sampleAtLevel(float lod, vec2 uvCoord)
+vec3 sampleAtLevel(float lod, vec2 uvCoord)
 {
-    vec2 stepSize = radius / vec2(textureSize(baseTex, int(lod)));
+    vec2 texSize  = vec2(textureSize(tex, int(lod)));
+    vec2 stepSize = radius / texSize;
     float jitter = 0.7;
-    float angle = (hash(gl_FragCoord.xy) - 0.5) * TAU * jitter;
+    float angle = (hash(uvCoord * texSize) - 0.5) * TAU * jitter;
     mat2 rotMat = rotate(angle);
-    vec4 sum = textureLod(baseTex, uvCoord, lod);;
-    float weightedSum = 1.0;
+    vec3 sum = textureLod(tex, clamp(uvCoord, 0.0, 1.0), lod).rgb;
+    float wsum = 1.0;
 
-    // Symmetric ring samples
     for (int i = 0; i < 12; ++i)
     {
         vec2 p = POISSON[i];
         vec2 offset = rotMat * p * stepSize;
-        float weight = exp(-dot(p, p) * 1.5); // Gaussian falloff
-        sum += textureLod(baseTex, uvCoord + offset, lod) * weight;
-        sum += textureLod(baseTex, uvCoord - offset, lod) * weight;
-        weightedSum += weight * 2.0;
+        float weight = exp(-dot(p, p) * 1.5);
+        vec2 aUv = uvCoord + offset;
+        vec2 bUv = uvCoord - offset;
+        float aMask = float(all(greaterThanEqual(aUv, vec2(0))) && all(lessThanEqual(aUv, vec2(1))));
+        float bMask = float(all(greaterThanEqual(bUv, vec2(0))) && all(lessThanEqual(bUv, vec2(1))));
+
+        sum += textureLod(tex, clamp(aUv, 0.0, 1.0), lod).rgb * weight * aMask;
+        sum += textureLod(tex, clamp(bUv, 0.0, 1.0), lod).rgb * weight * bMask;
+        wsum += weight * (aMask + bMask);
     }
 
-    return sum / weightedSum;
+    return sum / max(wsum, 1e-6);
 }
 
 void main()
@@ -70,17 +75,19 @@ void main()
     // Determine mip levels and interpolation weight
     float aLod = clamp(floor(targetLod), 0.0, maxLod);
     float bLod = clamp(aLod + 1.0, 0.0, maxLod);
-    float wight = clamp(fract(targetLod), 0.0, 1.0);
+    float weight = clamp(fract(targetLod), 0.0, 1.0);
 
     // Sample and blend between two mip levels
-    vec4 a = sampleAtLevel(aLod, uv);
-    vec4 b = sampleAtLevel(bLod, uv);
-    fragColor = mix(a, b, wight);
+    vec3 a = sampleAtLevel(aLod, uv);
+    vec3 b = sampleAtLevel(bLod, uv);
+    vec3 color = mix(a, b, weight);
 
     // Dither to avoid banding
-    float dither = (hash(gl_FragCoord.xy) - 0.5) / 255.0;
-    fragColor.rgb += dither * 0.05;
+    float dither = (hash(uv * vec2(textureSize(tex, 0))) - 0.5) / 255.0;
+    color += dither * 0.05;
 
     // Apply brightness
-    fragColor.rgb *= brightness;
+    color *= brightness;
+
+    fragColor = vec4(color, 1.0);
 }
