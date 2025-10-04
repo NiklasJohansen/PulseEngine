@@ -138,12 +138,12 @@ class SceneEditor(
         lastSaveLoadDirectory = engine.config.saveDirectory
 
         // Create surfaces
-        engine.gfx.createSurface("scene_editor_background",       zOrder = 20, camera = activeCamera, backgroundColor = Color(0.043f, 0.047f, 0.054f, 0f))
-        engine.gfx.createSurface("scene_editor_gizmo",            zOrder = -50)
-        engine.gfx.createSurface("scene_editor_scene_frost",      zOrder = -90)
-        engine.gfx.createSurface("scene_editor_foreground",       zOrder = -92, multisampling = MSAA16)
-        engine.gfx.createSurface("scene_editor_popup_frost",      zOrder = -93)
-        engine.gfx.createSurface("scene_editor_foreground_popup", zOrder = -94, multisampling = MSAA16)
+        engine.gfx.createSurface("scene_editor_grid",        zOrder = 20, camera = activeCamera, backgroundColor = Color(0.043f, 0.047f, 0.054f, 0f))
+        engine.gfx.createSurface("scene_editor_gizmo",       zOrder = -50)
+        engine.gfx.createSurface("scene_editor_ui_base_bg",  zOrder = -90)
+        engine.gfx.createSurface("scene_editor_ui_base",     zOrder = -92, multisampling = MSAA16)
+        engine.gfx.createSurface("scene_editor_ui_popup_bg", zOrder = -93)
+        engine.gfx.createSurface("scene_editor_ui_popup",    zOrder = -94, multisampling = MSAA16)
 
         // Load editor icon font
         engine.asset.load(Font("/pulseengine/assets/editor_icons.ttf", uiFactory.style.iconFontName))
@@ -384,17 +384,17 @@ class SceneEditor(
 
     override fun onRender(engine: PulseEngine)
     {
-        val backgroundSurface      = engine.gfx.getSurfaceOrDefault("scene_editor_background")
-        val gizmoSurface           = engine.gfx.getSurfaceOrDefault("scene_editor_gizmo")
-        val foregroundSurface      = engine.gfx.getSurfaceOrDefault("scene_editor_foreground")
-        val foregroundSurfacePopup = engine.gfx.getSurfaceOrDefault("scene_editor_foreground_popup")
-        val sceneFrostSurface      = engine.gfx.getSurfaceOrDefault("scene_editor_scene_frost")
-        val popupFrostSurface      = engine.gfx.getSurfaceOrDefault("scene_editor_popup_frost")
+        val gridSurface      = engine.gfx.getSurfaceOrDefault("scene_editor_grid")
+        val gizmoSurface     = engine.gfx.getSurfaceOrDefault("scene_editor_gizmo")
+        val uiBaseSurface    = engine.gfx.getSurfaceOrDefault("scene_editor_ui_base")
+        val uiPopupSurface   = engine.gfx.getSurfaceOrDefault("scene_editor_ui_popup")
+        val uiBaseBgSurface  = engine.gfx.getSurfaceOrDefault("scene_editor_ui_base_bg")
+        val uiPopupBgSurface = engine.gfx.getSurfaceOrDefault("scene_editor_ui_popup_bg")
 
-        backgroundSurface.setBackgroundColor(0.001f, 0.001f, 0.001f, 1f)
+        gridSurface.setBackgroundColor(0.001f, 0.001f, 0.001f, 1f)
 
         if (showGrid)
-            renderGrid(backgroundSurface)
+            renderGrid(gridSurface)
 
         if (enableViewportInteractions)
         {
@@ -402,27 +402,29 @@ class SceneEditor(
             renderSelectionRectangle(gizmoSurface)
         }
 
-        rootUI.render(engine, foregroundSurface, renderPopup = false)
-        rootUI.renderPopup(engine, foregroundSurfacePopup)
+        rootUI.render(engine, uiBaseSurface, renderPopup = false)
+        rootUI.renderPopup(engine, uiPopupSurface)
 
-        renderFrostGlass(engine, sceneFrostSurface, rootUI)
-        renderFrostGlass(engine, popupFrostSurface, rootUI, onlyPopups = true)
+        renderFrostedGlass(engine, uiBaseBgSurface, rootUI)
+        renderFrostedGlass(engine, uiPopupBgSurface, rootUI, onlyPopups = true)
     }
 
-    private fun renderFrostGlass(engine: PulseEngine, surface: Surface, node: UiElement, onlyPopups: Boolean = false)
+    private fun renderFrostedGlass(engine: PulseEngine, surface: Surface, node: UiElement, onlyPopups: Boolean = false)
     {
-        if (onlyPopups && node.popup != null)
-            renderFrostGlass(engine, surface, node.popup!!, true)
-
-        node.children.forEachFast { renderFrostGlass(engine, surface, it, onlyPopups) }
-
+        var onlyPopups = onlyPopups
         val isNodePopup = node === node.parent?.popup
         val isHidden = node.hidden || (node as? Panel)?.color?.alpha == 0f
 
-        if (node !is Panel || isHidden || (onlyPopups && !isNodePopup) || (!onlyPopups && isNodePopup))
-            return
+        if (node is Panel && !isHidden && (!onlyPopups || isNodePopup))
+        {
+            FrostedGlassEffect.drawToTargetSurface(engine, surface, node.x.value, node.y.value, node.width.value, node.height.value, node.cornerRadius.value)
+            onlyPopups = true // Only draw popups after first panel
+        }
 
-        FrostedGlassEffect.drawToTargetSurface(engine, surface, node.area.x0, node.area.y0, node.area.width, node.area.height, node.cornerRadius.value)
+        node.children.forEachFast { renderFrostedGlass(engine, surface, it, onlyPopups) }
+
+        if (onlyPopups && node.popup != null)
+            renderFrostedGlass(engine, surface, node.popup!!, onlyPopups = true)
     }
 
     private fun renderEntityIconAndGizmo(surface: Surface, engine: PulseEngine)

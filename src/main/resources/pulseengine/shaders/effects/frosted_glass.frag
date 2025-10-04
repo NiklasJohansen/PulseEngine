@@ -27,9 +27,7 @@ const vec2 POISSON[16] = vec2[](
 
 float hash(vec2 p)
 {
-    vec3 p1 = fract(vec3(p.xyx) * 0.1031);
-    p1 += dot(p1, p1.yzx + 33.33);
-    return fract((p1.x + p1.y) * p1.z);
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453123);
 }
 
 mat2 rotate(float a)
@@ -42,7 +40,7 @@ vec3 sampleAtLevel(float lod, vec2 uvCoord)
 {
     vec2 texSize  = vec2(textureSize(tex, int(lod)));
     vec2 stepSize = radius / texSize;
-    float jitter = 0.7;
+    float jitter = 0.6;
     float angle = (hash(uvCoord * texSize) - 0.5) * TAU * jitter;
     mat2 rotMat = rotate(angle);
     vec3 sum = textureLod(tex, clamp(uvCoord, 0.0, 1.0), lod).rgb;
@@ -84,9 +82,9 @@ void main()
 
     // Dither to avoid banding
     float dither = (hash(uv * vec2(textureSize(tex, 0))) - 0.5) / 255.0;
-    color += dither * 0.05;
+    color += dither * 0.1;
 
-    // Apply brightness
+    // Reduce brightness to improve visibility
     color *= brightness;
 
     fragColor = vec4(color, 1.0);

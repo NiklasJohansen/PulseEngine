@@ -27,7 +27,7 @@ class FrostedGlassEffect(
     override val order: Int = 0,
     var intensity: Float = 0.6f,
     var brightness: Float = 0.75f,
-    var radius: Float = 2.5f,
+    var radius: Float = 2f,
     var zThreshold: Int = -50,
     var disableAfterNumInactiveFrames: Int = 10
 ) : BaseEffect(
@@ -53,7 +53,7 @@ class FrostedGlassEffect(
             return inTextures // Disable effect if not used
 
         val frostText = fbo.getTexture(0)
-        val sceneTex = fbo.getTextures().last()
+        val sceneTex = fbo.getTexture(1)
         val frostProgram = programs[0]
         val sceneProgram = programs[1]
         val frostRenderer = renderers[0]
