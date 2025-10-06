@@ -30,6 +30,7 @@ import no.njoh.pulseengine.core.widget.WidgetManagerImpl
 import no.njoh.pulseengine.core.widget.WidgetManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
+import java.util.concurrent.BrokenBarrierException
 import kotlin.math.min
 
 /**
@@ -324,6 +325,7 @@ class PulseEngineImpl(
             audio.enableInCurrentThread()
             try { action() }
             catch (_ : InterruptedException) { Logger.info { "Game thread interrupted - shutting down" } }
+            catch (_ : BrokenBarrierException) { Logger.info { "Game thread interrupted - shutting down" } }
             catch (t: Throwable)
             {
                 Logger.error(t) { "Fatal error in game thread - shutting down" }
