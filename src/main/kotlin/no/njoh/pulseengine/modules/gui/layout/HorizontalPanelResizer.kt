@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.Size
 import no.njoh.pulseengine.modules.gui.Size.ValueType.ABSOLUTE
 import no.njoh.pulseengine.modules.gui.Size.ValueType.AUTO
-import no.njoh.pulseengine.modules.gui.UiUtil.getRequiredHorizontalSpace
+import no.njoh.pulseengine.modules.gui.UiUtils.getRequiredHorizontalSpace
 import no.njoh.pulseengine.modules.gui.elements.ResizeBarGizmo
 import no.njoh.pulseengine.modules.gui.UiElement
 import no.njoh.pulseengine.core.shared.utils.Extensions.sumByFloat
@@ -14,7 +14,7 @@ import no.njoh.pulseengine.modules.gui.minus
 import kotlin.math.max
 import kotlin.math.min
 
-class HorizontalResizeGizmo(
+class HorizontalPanelResizer(
     private val hPanel: HorizontalPanel
 ): UiElement(hPanel.x, hPanel.y, hPanel.width, hPanel.height) {
 

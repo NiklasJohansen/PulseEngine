@@ -7,7 +7,7 @@ import no.njoh.pulseengine.modules.gui.Position.PositionType
 import no.njoh.pulseengine.modules.gui.Position.PositionType.*
 import no.njoh.pulseengine.modules.gui.Size.ValueType.*
 import no.njoh.pulseengine.modules.gui.Size.ValueType.AUTO
-import no.njoh.pulseengine.modules.gui.UiUtil.findElementById
+import no.njoh.pulseengine.modules.gui.UiUtils.findElement
 import no.njoh.pulseengine.modules.gui.layout.*
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.sumByFloat
@@ -146,7 +146,7 @@ class DockingPanel(
         panel.width.type = ABSOLUTE
         val hPanel = HorizontalPanel()
         hPanel.focusable = false
-        hPanel.addPopup(HorizontalResizeGizmo(hPanel))
+        hPanel.addPopup(HorizontalPanelResizer(hPanel))
         val childrenToMove = getDockedElements()
         if (leftSide)
             hPanel.addChildren(panel, *childrenToMove.toTypedArray())
@@ -164,7 +164,7 @@ class DockingPanel(
         panel.height.type = ABSOLUTE
         val vPanel = VerticalPanel()
         vPanel.focusable = false
-        vPanel.addPopup(VerticalResizeGizmo(vPanel))
+        vPanel.addPopup(VerticalPanelResizer(vPanel))
         val childrenToMove = getDockedElements()
         if (topSide)
             vPanel.addChildren(panel, *childrenToMove.toTypedArray())
@@ -187,7 +187,7 @@ class DockingPanel(
             hPanel.addChildren(panel, this)
         else
             hPanel.addChildren(this, panel)
-        hPanel.addPopup(HorizontalResizeGizmo(hPanel))
+        hPanel.addPopup(HorizontalPanelResizer(hPanel))
         parent?.replaceChild(this, hPanel)
         hPanel.setMinSizeFromChildren()
         panel.setAuto()
@@ -211,7 +211,7 @@ class DockingPanel(
             vPanel.addChildren(panel, this)
         else
             vPanel.addChildren(this, panel)
-        vPanel.addPopup(VerticalResizeGizmo(vPanel))
+        vPanel.addPopup(VerticalPanelResizer(vPanel))
         parent?.replaceChild(this, vPanel)
         vPanel.setMinSizeFromChildren()
         panel.setAuto()
@@ -368,7 +368,7 @@ class DockingPanel(
             rebuildLayoutFromGraph(dockingPanel, layoutGraph)?.let { newDockingPanel ->
                 dockingPanel.clearChildren()
                 dockingPanel.addChildren(*newDockingPanel.children.toTypedArray())
-                dockingPanel.findElementById("viewport")?.let {
+                dockingPanel.findElement("viewport")?.let {
                     viewport = it as Panel
                 }
             }
@@ -392,7 +392,7 @@ class DockingPanel(
             {
                 HorizontalPanel().apply()
                 {
-                    addPopup(HorizontalResizeGizmo(this))
+                    addPopup(HorizontalPanelResizer(this))
                     focusable = false
                     width.setQuiet(node.width)
                     height.setQuiet(node.height)
@@ -405,7 +405,7 @@ class DockingPanel(
             VerticalPanel::class.simpleName ->
             {
                 VerticalPanel().apply {
-                    addPopup(VerticalResizeGizmo(this))
+                    addPopup(VerticalPanelResizer(this))
                     focusable = false
                     width.setQuiet(node.width)
                     height.setQuiet(node.height)
@@ -418,7 +418,7 @@ class DockingPanel(
             }
             WindowPanel::class.simpleName ->
             {
-                root.findElementById(node.id)?.apply {
+                root.findElement(node.id)?.apply {
                     width.setQuiet(node.width)
                     height.setQuiet(node.height)
                     x.setQuiet(node.x)

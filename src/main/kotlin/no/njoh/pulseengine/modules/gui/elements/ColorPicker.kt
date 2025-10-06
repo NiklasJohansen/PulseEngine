@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.gui.*
-import no.njoh.pulseengine.modules.gui.UiUtil.hasFocus
+import no.njoh.pulseengine.modules.gui.UiUtils.hasFocus
 import no.njoh.pulseengine.modules.gui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.gui.layout.Panel
 import no.njoh.pulseengine.modules.gui.layout.VerticalPanel

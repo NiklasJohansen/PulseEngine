@@ -12,7 +12,7 @@ import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.api.Multisampling.*
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.FrostedGlassEffect
-import no.njoh.pulseengine.modules.gui.UiUtil.findElementById
+import no.njoh.pulseengine.modules.gui.UiUtils.findElement
 import no.njoh.pulseengine.modules.gui.elements.InputField
 import no.njoh.pulseengine.modules.gui.UiElement
 import no.njoh.pulseengine.modules.gui.layout.RowPanel
@@ -241,7 +241,7 @@ class SceneEditor(
 
     private fun createSceneSystemsPropertyWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElementById("Scene Systems") != null)
+        if (dockingUI.findElement("Scene Systems") != null)
             return // Already exists
 
         updateSceneSystemProperties(engine)
@@ -253,7 +253,7 @@ class SceneEditor(
 
     private fun createOutlinerWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElementById("Outliner") != null)
+        if (dockingUI.findElement("Outliner") != null)
             return // Already exists
 
         outliner = Outliner.build(
@@ -283,14 +283,14 @@ class SceneEditor(
 
     private fun createInspectorWindow()
     {
-        if (dockingUI.findElementById("Inspector") != null)
+        if (dockingUI.findElement("Inspector") != null)
             return // Already exists
 
         val inspectorWindow = uiFactory.createWindowUI("Inspector", "CUBE")
         val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
         inspectorWindow.body.addChildren(propertyPanel)
 
-        val propWindow = dockingUI.findElementById("Outliner")
+        val propWindow = dockingUI.findElement("Outliner")
         if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
             dockingUI.insertInsideBottom(target = propWindow as WindowPanel, inspectorWindow)
         else

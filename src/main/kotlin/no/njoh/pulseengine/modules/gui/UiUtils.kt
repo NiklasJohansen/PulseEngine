@@ -8,17 +8,54 @@ import no.njoh.pulseengine.modules.gui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.gui.layout.VerticalPanel
 import no.njoh.pulseengine.core.shared.utils.Extensions.sumByFloat
 
-object UiUtil
+@Suppress("UNCHECKED_CAST")
+object UiUtils
 {
     /**
-     * Returns the first [UiElement] with a matching id among its children or it self.
+     * Returns the first [UiElement] with a matching id among its children or itself.
      */
-    fun UiElement.findElementById(id: String): UiElement?
+    fun UiElement.findElement(id: String): UiElement?
     {
-        if (this.id == id)
-            return this
+        if (this.id == id) return this
 
-        children.forEachFast { child -> child.findElementById(id)?.let { return it } }
+        popup?.findElement(id)?.let { return it }
+        children.forEachFast { child -> child.findElement(id)?.let { return it } }
+
+        return null
+    }
+
+    /**
+     * Returns the first [UiElement] with a matching type [T] among its children or itself.
+     */
+    inline fun <reified T> UiElement.findElement() = findElement(T::class.java)
+
+    /**
+     * Returns the first [UiElement] with a matching [type] among its children or itself.
+     */
+    fun <T> UiElement.findElement(type: Class<T>): T?
+    {
+        if (type.isAssignableFrom(this::class.java)) return this as T
+
+        popup?.findElement(type)?.let { return it }
+        children.forEachFast { child -> child.findElement(type)?.let { return it } }
+
+        return null
+    }
+
+    /**
+     * Returns the first [UiElement] with a matching [id] and type [T] among its children or itself.
+     */
+    inline fun <reified T> UiElement.findElement(id: String) = findElement(id, T::class.java)
+
+    /**
+     * Returns the first [UiElement] with a matching [id] and [type] among its children or itself.
+     */
+    fun <T> UiElement.findElement(id: String, type: Class<T>): T?
+    {
+        if (this.id == id && type.isAssignableFrom(this::class.java)) return this as T
+
+        popup?.findElement(type)?.let { return it }
+        children.forEachFast { child -> child.findElement(type)?.let { return it } }
 
         return null
     }
@@ -28,9 +65,9 @@ object UiUtil
      */
     fun UiElement.firstElementOrNull(predicate: (UiElement) -> Boolean): UiElement?
     {
-        if (predicate(this))
-            return this
+        if (predicate(this)) return this
 
+        popup?.firstElementOrNull(predicate)?.let { return it }
         children.forEachFast { child -> child.firstElementOrNull(predicate)?.let { return it } }
 
         return null

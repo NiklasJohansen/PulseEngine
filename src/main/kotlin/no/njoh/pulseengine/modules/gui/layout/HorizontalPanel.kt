@@ -54,8 +54,5 @@ class HorizontalPanel(
 
             xPos += widthChild + child.padding.left + child.padding.right
         }
-
-        if (popup is HorizontalResizeGizmo)
-            popup?.updateLayout()
     }
 }

@@ -54,8 +54,5 @@ class VerticalPanel(
 
             yPos += heightChild + child.padding.top + child.padding.bottom
         }
-
-        if (popup is VerticalResizeGizmo)
-            popup?.updateLayout()
     }
 }

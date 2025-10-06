@@ -7,8 +7,8 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.gui.*
-import no.njoh.pulseengine.modules.gui.UiUtil.firstElementOrNull
-import no.njoh.pulseengine.modules.gui.UiUtil.hasFocus
+import no.njoh.pulseengine.modules.gui.UiUtils.firstElementOrNull
+import no.njoh.pulseengine.modules.gui.UiUtils.hasFocus
 import no.njoh.pulseengine.modules.gui.elements.*
 import no.njoh.pulseengine.modules.gui.elements.InputField.ContentType.TEXT
 import no.njoh.pulseengine.modules.gui.layout.*
