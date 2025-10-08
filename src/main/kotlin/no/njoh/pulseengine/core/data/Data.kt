@@ -26,12 +26,12 @@ abstract class Data
     abstract val cpuFixedUpdateTimeMs: Float
 
     /** The fixed time step in seconds used for the fixed update loop. Equal to: 1.0 / fixedTickRate */
-    abstract val fixedDeltaTimeSec: Float
+    abstract val fixedDeltaTime: Float
 
     /** The variable time step in seconds used for the update loop. */
-    abstract val deltaTimeSec: Float
+    abstract val deltaTime: Float
 
-    /** The interpolation value used to smooth out rendering between fixed updates */
+    /** The interpolation value (0.0 - 1.0) used to smooth out rendering between fixed updates. */
     abstract val interpolation: Float
 
     /** The total amount of memory in kilobytes available */
@@ -95,6 +95,18 @@ abstract class Data
 
 abstract class DataInternal : Data()
 {
+    abstract override var deltaTime: Float
+    abstract override var cpuUpdateTimeMs: Float
+    abstract override var cpuRenderTimeMs: Float
+    abstract override var gpuRenderTimeMs: Float
+    abstract override var interpolation: Float
+    abstract override var fixedDeltaTime: Float
+    abstract override var cpuFixedUpdateTimeMs: Float
+
+    abstract fun init()
+    abstract fun update()
+    abstract fun calculateFrameRate()
+    abstract fun updateMemoryStats()
     abstract fun setOnGetSaveDirectory(callback: () -> String)
 }
 

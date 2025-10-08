@@ -210,7 +210,7 @@ open class SceneManagerImpl : SceneManagerInternal()
     {
         if (transitionFade > 0)
         {
-            transitionFade -= (1000f / transitionTimeMs * 0.5f) * engine.data.fixedDeltaTimeSec
+            transitionFade -= (1000f / transitionTimeMs * 0.5f) * engine.data.fixedDeltaTime
             // Don't go past 0.5 before scene is loaded
             if (loadingScene)
                 transitionFade = max(transitionFade, 0.5f)

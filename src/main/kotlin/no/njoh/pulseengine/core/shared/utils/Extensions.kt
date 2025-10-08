@@ -363,7 +363,7 @@ object Extensions
     {
         val start = System.nanoTime()
         block()
-        return (System.nanoTime() - start) / 1_000_000f
+        return ((System.nanoTime() - start).toDouble() * 1e-6).toFloat()
     }
 
     /**

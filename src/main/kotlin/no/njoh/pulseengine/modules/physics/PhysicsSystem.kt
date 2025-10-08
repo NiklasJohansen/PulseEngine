@@ -48,7 +48,7 @@ class PhysicsSystem : SceneSystem()
         if (engine.scene.state != RUNNING)
             return
 
-        engine.scene.forEachEntityOfType<PhysicsEntity> { it.beginStep(engine, engine.data.fixedDeltaTimeSec, gravity) }
+        engine.scene.forEachEntityOfType<PhysicsEntity> { it.beginStep(engine, engine.data.fixedDeltaTime, gravity) }
 
         val totalIterations = physicsIterations
         for (i in 0 until totalIterations)

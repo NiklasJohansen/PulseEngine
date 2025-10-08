@@ -54,7 +54,7 @@ open class Wheel : CommonSceneEntity(), CircleBody
     {
         if (acc != 0f)
         {
-            shape.applyAngularAcceleration(acc * engine.data.fixedDeltaTimeSec)
+            shape.applyAngularAcceleration(acc * engine.data.fixedDeltaTime)
             acc = 0f
             wakeUp()
         }
