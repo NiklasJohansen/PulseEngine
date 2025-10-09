@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.editor
+package no.njoh.pulseengine.modules.editor
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.*
@@ -15,11 +15,12 @@ import no.njoh.pulseengine.modules.ui.elements.*
 import no.njoh.pulseengine.modules.ui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.modules.ui.elements.Label.TextSizeStrategy.UPDATE_WIDTH
 import no.njoh.pulseengine.modules.ui.layout.*
-import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
-import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
-import no.njoh.pulseengine.widgets.editor.EditorUtil.setArrayProperty
-import no.njoh.pulseengine.widgets.editor.EditorUtil.setPrimitiveProperty
+import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
+import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
+import no.njoh.pulseengine.modules.editor.EditorUtil.setArrayProperty
+import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
 import java.lang.IllegalArgumentException
+import kotlin.collections.get
 import kotlin.math.min
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.createInstance

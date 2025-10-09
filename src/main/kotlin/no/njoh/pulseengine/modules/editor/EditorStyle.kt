@@ -1,7 +1,8 @@
-package no.njoh.pulseengine.widgets.editor
+package no.njoh.pulseengine.modules.editor
 
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.shared.primitives.Color
+import kotlin.collections.get
 
 class EditorStyle
 {

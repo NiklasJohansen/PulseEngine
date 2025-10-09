@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.editor
+package no.njoh.pulseengine.modules.editor
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,18 +40,18 @@ import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
 import no.njoh.pulseengine.core.shared.utils.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
-import no.njoh.pulseengine.core.widget.Widget
+import no.njoh.pulseengine.core.service.Service
 import no.njoh.pulseengine.modules.ui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.ui.elements.Button
 import no.njoh.pulseengine.modules.ui.layout.Panel
 import no.njoh.pulseengine.modules.ui.layout.WindowPanel
 import no.njoh.pulseengine.modules.scene.systems.EntityRendererImpl
 import no.njoh.pulseengine.modules.scene.systems.EntityUpdater
-import no.njoh.pulseengine.widgets.editor.EditorUtil.duplicateAndInsertEntities
-import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
-import no.njoh.pulseengine.widgets.editor.EditorUtil.getPropInfo
-import no.njoh.pulseengine.widgets.editor.EditorUtil.isEditable
-import no.njoh.pulseengine.widgets.editor.EditorUtil.setPrimitiveProperty
+import no.njoh.pulseengine.modules.editor.EditorUtil.duplicateAndInsertEntities
+import no.njoh.pulseengine.modules.editor.EditorUtil.getName
+import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
+import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
+import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
 import org.joml.Vector3f
 import kotlin.math.*
 import kotlin.reflect.KClass
@@ -61,9 +61,7 @@ import kotlin.reflect.full.*
 class SceneEditor(
     val uiFactory: UiElementFactory = UiElementFactory(),
     var enableViewportInteractions: Boolean = true
-): Widget {
-
-    override var isRunning = false
+): Service() {
 
     // UI
     lateinit var viewportArea: FocusArea
@@ -127,6 +125,9 @@ class SceneEditor(
     {
         // Load editor config
         engine.config.load("/pulseengine/config/editor_default.cfg")
+        if (engine.config.getBool("openEditorOnStart") == true)
+            start()
+
         UI_SCALE = engine.window.contentScale
 
         // Set editor data
@@ -134,7 +135,6 @@ class SceneEditor(
         activeCamera = engine.gfx.mainCamera
         storedCameraState = CameraState.from(activeCamera)
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
-        isRunning = engine.config.getBool("openEditorOnStart") ?: false
         lastSaveLoadDirectory = engine.config.saveDirectory
 
         // Create surfaces
@@ -151,8 +151,7 @@ class SceneEditor(
         // Register a console command to toggle editor visibility
         engine.console.registerCommand("showSceneEditor")
         {
-            isRunning = !isRunning
-            if (!isRunning) play(engine) else stop(engine)
+            if (isRunning) stopEditorAndStartGame(engine) else stopGameAndStartEditor(engine)
             CommandResult("", showCommand = false)
         }
 
@@ -208,8 +207,8 @@ class SceneEditor(
                 }
             )),
             MenuBarButton("Run", listOf(
-                MenuBarItem("Start") { play(engine) },
-                MenuBarItem("Stop") { stop(engine) },
+                MenuBarItem("Start") { stopEditorAndStartGame(engine) },
+                MenuBarItem("Stop") { stopGameAndStartEditor(engine) },
                 MenuBarItem("Pause") { engine.scene.pause() }
             ))
         )
@@ -411,11 +410,13 @@ class SceneEditor(
 
     private fun renderFrostedGlass(engine: PulseEngine, surface: Surface, node: UiElement, onlyPopups: Boolean = false)
     {
+        if (node.hidden) return
+
         var onlyPopups = onlyPopups
         val isNodePopup = node === node.parent?.popup
-        val isHidden = node.hidden || (node as? Panel)?.color?.alpha == 0f
+        val isTransparent = (node is Panel && node.color.alpha == 0f)
 
-        if (node is Panel && !isHidden && (!onlyPopups || isNodePopup))
+        if (!isTransparent && node is Panel && (!onlyPopups || isNodePopup))
         {
             FrostedGlassEffect.drawToTargetSurface(engine, surface, node.x.value, node.y.value, node.width.value, node.height.value, node.cornerRadius.value)
             onlyPopups = true // Only draw popups after first panel
@@ -510,9 +511,9 @@ class SceneEditor(
         }
     }
 
-    private fun play(engine: PulseEngine)
+    private fun stopEditorAndStartGame(engine: PulseEngine)
     {
-        isRunning = false
+        stop() // Stop editor service
         storedCameraState.saveFrom(activeCamera)
         activeCamera.scale.set(1f)
         activeCamera.position.set(0f)
@@ -529,9 +530,9 @@ class SceneEditor(
         }
     }
 
-    private fun stop(engine: PulseEngine)
+    private fun stopGameAndStartEditor(engine: PulseEngine)
     {
-        isRunning = true
+        start() // Start editor service
         storedCameraState.loadInto(activeCamera)
 
         if (engine.scene.state != SceneState.STOPPED)
@@ -881,7 +882,8 @@ class SceneEditor(
                 MOVE
             else null // ARROW
 
-        cursorType?.let { engine.input.setCursorType(it) }
+        if (engine.input.hasHoverFocus(viewportArea))
+            cursorType?.let { engine.input.setCursorType(it) }
 
         if (isRotating || isResizingHorizontally || isResizingVertically)
         {

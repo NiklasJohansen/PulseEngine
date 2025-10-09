@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.editor
+package no.njoh.pulseengine.modules.editor
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Asset
@@ -12,6 +12,7 @@ import no.njoh.pulseengine.modules.ui.UiUtils.hasFocus
 import no.njoh.pulseengine.modules.ui.elements.*
 import no.njoh.pulseengine.modules.ui.elements.InputField.ContentType.TEXT
 import no.njoh.pulseengine.modules.ui.layout.*
+import kotlin.collections.iterator
 import kotlin.reflect.full.findAnnotation
 
 class AssetPicker(

@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.editor
+package no.njoh.pulseengine.modules.editor
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine

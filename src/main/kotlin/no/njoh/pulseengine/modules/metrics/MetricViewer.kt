@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.metrics
+package no.njoh.pulseengine.modules.metrics
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.FocusArea
@@ -14,17 +14,15 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
 import no.njoh.pulseengine.core.shared.utils.Extensions.noneMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
-import no.njoh.pulseengine.core.widget.Widget
+import no.njoh.pulseengine.core.service.Service
 import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Widget to view all registered [Metric]s in the Data module.
+ * Tool to view all registered [Metric]s in the Data module.
  */
-class MetricViewer : Widget
+class MetricViewer : Service()
 {
-    override var isRunning = false
-
     private var xPos = 10f
     private var yPos = 10f
 
@@ -48,7 +46,7 @@ class MetricViewer : Widget
         engine.asset.load(Font("/pulseengine/assets/clacon.ttf", "graph_font"))
         engine.console.registerCommand("showMetricViewer")
         {
-            isRunning = !isRunning
+            if (isRunning) stop() else start()
             CommandResult("", showCommand = false)
         }
     }

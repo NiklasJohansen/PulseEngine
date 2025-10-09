@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.editor
+package no.njoh.pulseengine.modules.editor
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.Key.*
@@ -25,7 +25,7 @@ import no.njoh.pulseengine.core.shared.annotations.Icon.Companion.getColor
 import no.njoh.pulseengine.modules.ui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.ui.ScaledValue
 import no.njoh.pulseengine.modules.ui.ScrollbarVisibility.ALWAYS_VISIBLE
-import no.njoh.pulseengine.widgets.editor.EditorUtil.getName
+import no.njoh.pulseengine.modules.editor.EditorUtil.getName
 import kotlin.reflect.KClass
 
 data class Outliner(

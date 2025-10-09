@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.editor
+package no.njoh.pulseengine.modules.editor
 
 data class MenuBarButton(val labelText: String, val items: List<MenuBarItem>)
 

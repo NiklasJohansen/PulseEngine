@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.metrics
+package no.njoh.pulseengine.modules.metrics
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -12,7 +12,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.append
-import no.njoh.pulseengine.core.widget.Widget
+import no.njoh.pulseengine.core.service.Service
 import no.njoh.pulseengine.modules.ui.Position
 import no.njoh.pulseengine.modules.ui.ScaledValue
 import no.njoh.pulseengine.modules.ui.Size
@@ -24,19 +24,17 @@ import no.njoh.pulseengine.modules.ui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.ui.layout.RowPanel
 import no.njoh.pulseengine.modules.ui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.ui.layout.WindowPanel
-import no.njoh.pulseengine.widgets.editor.UiElementFactory
+import no.njoh.pulseengine.modules.editor.UiElementFactory
 import java.util.Random
 import kotlin.math.min
 import kotlin.math.max
 import kotlin.math.pow
 
 /**
- * Widget for viewing all GPU timings measured by the [GpuProfiler].
+ * Tool for viewing all GPU timings measured by the [GpuProfiler].
  */
-class GpuMonitor : Widget
+class GpuMonitor : Service()
 {
-    override var isRunning = false
-
     private var window: WindowPanel? = null
     private var timeRows = RowPanel()
     private var measurements = mutableListOf<Measurement>()
@@ -79,7 +77,8 @@ class GpuMonitor : Widget
 
     private fun init(engine: PulseEngine)
     {
-        isRunning = !isRunning
+        if (isRunning) stop() else start()
+
         engine.config.gpuProfiling = isRunning
 
         if (!isRunning)

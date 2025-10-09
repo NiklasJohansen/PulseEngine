@@ -28,8 +28,8 @@ import no.njoh.pulseengine.core.shared.utils.FileWatcher
 import no.njoh.pulseengine.core.shared.utils.FpsLimiter
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ThreadBarrier
-import no.njoh.pulseengine.core.widget.WidgetManagerImpl
-import no.njoh.pulseengine.core.widget.WidgetManagerInternal
+import no.njoh.pulseengine.core.service.ServiceManagerImpl
+import no.njoh.pulseengine.core.service.ServiceManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
 import java.util.concurrent.BrokenBarrierException
@@ -39,17 +39,17 @@ import kotlin.math.min
  * Main [PulseEngine] implementation.
  */
 class PulseEngineImpl(
-    override val config: ConfigurationInternal  = ConfigurationImpl(),
-    override val window: WindowInternal         = WindowImpl(),
-    override val gfx: GraphicsInternal          = GraphicsImpl(),
-    override val audio: AudioInternal           = AudioImpl(),
-    override var input: InputInternal           = InputImpl(),
-    override val network: NetworkInternal       = NetworkImpl(),
-    override val data: DataInternal             = DataImpl(),
-    override val console: ConsoleInternal       = ConsoleImpl(),
-    override val asset: AssetManagerInternal    = AssetManagerImpl(),
-    override val scene: SceneManagerInternal    = SceneManagerImpl(),
-    override val widget: WidgetManagerInternal  = WidgetManagerImpl()
+    override val config: ConfigurationInternal   = ConfigurationImpl(),
+    override val window: WindowInternal          = WindowImpl(),
+    override val gfx: GraphicsInternal           = GraphicsImpl(),
+    override val audio: AudioInternal            = AudioImpl(),
+    override var input: InputInternal            = InputImpl(),
+    override val network: NetworkInternal        = NetworkImpl(),
+    override val data: DataInternal              = DataImpl(),
+    override val console: ConsoleInternal        = ConsoleImpl(),
+    override val asset: AssetManagerInternal     = AssetManagerImpl(),
+    override val scene: SceneManagerInternal     = SceneManagerImpl(),
+    override val service: ServiceManagerInternal = ServiceManagerImpl()
 ) : PulseEngineInternal {
 
     @Volatile
@@ -169,8 +169,8 @@ class PulseEngineImpl(
         // Load initial assets from disk
         asset.update()
 
-        // Initialize widgets
-        widget.init(this)
+        // Initialize services
+        service.init(this)
 
         // Remove garbage before starting game loop
         System.gc()
@@ -255,7 +255,7 @@ class PulseEngineImpl(
 
         game.onUpdate()
         scene.update()
-        widget.update(this)
+        service.update(this)
 
         lastFrameTimeNs = System.nanoTime()
         data.cpuUpdateTimeMs = ((lastFrameTimeNs - startTime).toDouble() * 1e-6).toFloat()
@@ -279,7 +279,7 @@ class PulseEngineImpl(
             gfx.updateCameras()
             game.onFixedUpdate()
             scene.fixedUpdate()
-            widget.fixedUpdate(this)
+            service.fixedUpdate(this)
 
             fixedUpdateAccumulatorNs -= deltaTimeNs
             updated = true
@@ -297,7 +297,7 @@ class PulseEngineImpl(
         {
             game.onRender()
             scene.render()
-            widget.render(this)
+            service.render(this)
         }
     }
 
@@ -320,7 +320,7 @@ class PulseEngineImpl(
         FileWatcher.shutdown()
         gameThread?.interrupt()
         scene.destroy()
-        widget.destroy(this)
+        service.destroy(this)
         audio.destroy()
         asset.destroy()
         input.destroy()

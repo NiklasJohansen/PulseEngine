@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.widgets.cli
+package no.njoh.pulseengine.modules.cli
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
@@ -9,14 +9,12 @@ import no.njoh.pulseengine.core.graphics.postprocessing.effects.FrostedGlassEffe
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.MouseButton
-import no.njoh.pulseengine.core.widget.Widget
+import no.njoh.pulseengine.core.service.Service
 import kotlin.math.max
 import kotlin.math.min
 
-class CommandLine : Widget
+class CommandLine : Service()
 {
-    override var isRunning = false
-
     private var widthFraction = 0.5f
     private var heightFraction = 0.5f
 
@@ -34,12 +32,18 @@ class CommandLine : Widget
         engine.gfx.createSurface("cli_bg", zOrder = -99)
         engine.gfx.createSurface("cli_fg", zOrder = -100)
         engine.asset.load(Font("/pulseengine/assets/clacon.ttf", "cli_font"))
-        engine.console.registerCommand("showConsole") {
-            isRunning = !isRunning
+        engine.console.registerCommand("showConsole")
+        {
             if (isRunning)
-                engine.input.acquireFocus(area)
-            else
+            {
+                stop()
                 engine.input.releaseFocus(area)
+            }
+            else
+            {
+                start()
+                engine.input.acquireFocus(area)
+            }
             CommandResult("", showCommand = false)
         }
 
