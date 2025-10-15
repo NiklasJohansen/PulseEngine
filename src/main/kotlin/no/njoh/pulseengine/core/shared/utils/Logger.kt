@@ -10,16 +10,16 @@ import java.time.format.DateTimeFormatter
 
 object Logger
 {
-    @JvmField var LEVEL = DEBUG
+    @JvmField var LEVEL  = DEBUG
     @JvmField var TARGET = STDOUT
 
-    private const val RESET  = "\u001B[0m"
     private const val RED    = "\u001B[31m"
-    private const val YELLOW = "\u001B[33m"
     private const val BLUE   = "\u001B[34m"
     private const val WHITE  = "\u001B[37m"
+    private const val YELLOW = "\u001B[33m"
+    private const val RESET  = "\u001B[0m"
     private val TIME_FORMAT  = DateTimeFormatter.ofPattern("HH:mm:ss.SS")
-    private val history = ArrayDeque<String>(100)
+    private val history      = ArrayDeque<String>(100)
 
     @PublishedApi
     internal val context = TextBuilderContext()

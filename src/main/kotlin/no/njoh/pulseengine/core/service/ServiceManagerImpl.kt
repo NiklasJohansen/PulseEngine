@@ -23,9 +23,9 @@ open class ServiceManagerImpl: ServiceManagerInternal()
         services.forEachFast { it.onCreate(engine) }
 
         // Add metrics to measure service performance
-        engine.data.addMetric("SERVICES UPDATE (MS)") { sample(updateTimeMs) }
-        engine.data.addMetric("SERVICES FIXED UPDATE (MS)") { sample(fixedUpdateTimeMs) }
-        engine.data.addMetric("SERVICES RENDER (MS)") { sample(renderTimeMs) }
+        engine.data.addMetric("SERVICE UPDATE (MS)") { sample(updateTimeMs) }
+        engine.data.addMetric("SERVICE FIXED UPDATE (MS)") { sample(fixedUpdateTimeMs) }
+        engine.data.addMetric("SERVICE RENDER (MS)") { sample(renderTimeMs) }
     }
 
     override fun update(engine: PulseEngine)

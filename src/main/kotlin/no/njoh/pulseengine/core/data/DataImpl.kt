@@ -24,8 +24,8 @@ open class DataImpl : DataInternal()
     override var cpuRenderTimeMs      = 0f
     override var cpuUpdateTimeMs      = 0f
     override var cpuFixedUpdateTimeMs = 0f
-    override var fixedDeltaTime    = 0.017f
-    override var deltaTime         = 0.017f
+    override var fixedDeltaTime       = 0.017f
+    override var deltaTime            = 0.017f
     override var interpolation        = 0f
     override var usedMemoryKb         = 0L
     override var totalMemoryKb        = 0L

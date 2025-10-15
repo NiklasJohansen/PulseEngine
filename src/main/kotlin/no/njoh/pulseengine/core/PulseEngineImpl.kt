@@ -59,7 +59,7 @@ class PulseEngineImpl(
     private val beginFrame               = ThreadBarrier(2)
     private val endFrame                 = ThreadBarrier(2)
     private val focusArea                = FocusArea(0f, 0f, 0f, 0f)
-    private val engineStartTime          = System.nanoTime()
+    private val engineStartTimeNs        = System.nanoTime()
     private var lastFrameTimeNs          = System.nanoTime()
     private var fixedUpdateLastTimeNs    = System.nanoTime()
     private var fixedUpdateAccumulatorNs = 0L
@@ -176,7 +176,7 @@ class PulseEngineImpl(
         System.gc()
 
         // Log when finished
-        Logger.info { "Started up in: ${engineStartTime.toNowFormatted()}" }
+        Logger.info { "Started up in: ${engineStartTimeNs.toNowFormatted()}" }
     }
 
     private fun runGameLoop(game: PulseEngineGame)
