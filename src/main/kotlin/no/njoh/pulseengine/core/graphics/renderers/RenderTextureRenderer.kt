@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL20.*
 import java.lang.Float.floatToRawIntBits
 
@@ -20,12 +21,12 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
     private lateinit var program: ShaderProgram
     private lateinit var data: FloatArray
 
-    private var readCount = 0
-    private var writeCount = 0
-    private var readOffset = 0
+    private var readCount   = 0
+    private var writeCount  = 0
+    private var readOffset  = 0
     private var writeOffset = 0
-    private val capacity = 50
-    private val stride = 10
+    private val capacity    = 100
+    private val stride      = 15
 
     override fun init(engine: PulseEngineInternal)
     {
@@ -69,20 +70,26 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
         // Set texture unit
         glActiveTexture(GL_TEXTURE0)
 
+        // TODO: Batch draw calls
         // Draw each texture with separate draw call
         for (i in startIndex until startIndex + drawCount)
         {
-            val base = readOffset + i * stride
-            val x = data[base + 0]
-            val y = data[base + 1]
-            val z = data[base + 2]
-            val w = data[base + 3]
-            val h = data[base + 4]
-            val angle = data[base + 5]
-            val xOrigin = data[base + 6]
-            val yOrigin = data[base + 7]
-            val rgba = data[base + 8]
-            val textureId = data[base + 9].toInt()
+            val base         = readOffset + i * stride
+            val x            = data[base + 0]
+            val y            = data[base + 1]
+            val z            = data[base + 2]
+            val w            = data[base + 3]
+            val h            = data[base + 4]
+            val angle        = data[base + 5]
+            val xOrigin      = data[base + 6]
+            val yOrigin      = data[base + 7]
+            val cornerRadius = data[base + 8]
+            val uMin         = data[base + 9]
+            val vMin         = data[base + 10]
+            val uMax         = data[base + 11]
+            val vMax         = data[base + 12]
+            val rgba         = data[base + 13]
+            val textureId    = data[base + 14].toInt()
 
             // Bind texture
             if (textureId != TextureHandle.NONE.textureIndex)
@@ -94,6 +101,8 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
             program.setUniform("origin", xOrigin, yOrigin)
             program.setUniform("angle", angle)
             program.setUniform("color", floatToRawIntBits(rgba))
+            program.setUniform("cornerRadius", cornerRadius)
+            program.setUniform("uvMinMax", uMin, vMin, uMax, vMax)
             program.setUniform("sampleTexture", textureId != TextureHandle.NONE.textureIndex)
 
             // Draw quad
@@ -112,23 +121,30 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
         vao.destroy()
     }
 
-    fun draw(texture: RenderTexture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float)
+    fun draw(texture: RenderTexture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
         if (writeCount >= capacity)
+        {
+            Logger.warn { "RenderTextureRenderer: Capacity of $capacity reached, dropping texture: ${texture.name}" }
             return
+        }
 
         val base = writeOffset + writeCount * stride
-        data[base + 0] = x
-        data[base + 1] = y
-        data[base + 2] = config.currentDepth
-        data[base + 3] = w
-        data[base + 4] = h
-        data[base + 5] = angle
-        data[base + 6] = xOrigin
-        data[base + 7] = yOrigin
-        data[base + 8] = config.currentDrawColor
-        data[base + 9] = texture.handle.textureIndex.toFloat()
-
+        data[base +  0] = x
+        data[base +  1] = y
+        data[base +  2] = config.currentDepth
+        data[base +  3] = w
+        data[base +  4] = h
+        data[base +  5] = angle
+        data[base +  6] = xOrigin
+        data[base +  7] = yOrigin
+        data[base +  8] = cornerRadius
+        data[base +  9] = uMin
+        data[base + 10] = vMin
+        data[base + 11] = uMax
+        data[base + 12] = vMax
+        data[base + 13] = config.currentDrawColor
+        data[base + 14] = texture.handle.textureIndex.toFloat()
         writeCount++
         config.increaseDepth()
         increaseBatchSize()

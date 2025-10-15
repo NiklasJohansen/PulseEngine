@@ -4,10 +4,10 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState.STOPPED
 import no.njoh.pulseengine.core.PulseEngineGame
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.widgets.cli.CommandLine
-import no.njoh.pulseengine.widgets.metrics.MetricViewer
-import no.njoh.pulseengine.widgets.editor.SceneEditor
-import no.njoh.pulseengine.widgets.metrics.GpuMonitor
+import no.njoh.pulseengine.modules.cli.CommandLine
+import no.njoh.pulseengine.modules.metrics.MetricViewer
+import no.njoh.pulseengine.modules.editor.SceneEditor
+import no.njoh.pulseengine.modules.metrics.GpuMonitor
 
 fun main() = PulseEngine.run<Testbed>()
 
@@ -17,7 +17,7 @@ class Testbed : PulseEngineGame()
     {
         engine.config.gameName = "Testbed 0.12.0-SNAPSHOT"
         engine.config.targetFps = 100000
-        engine.widget.add(SceneEditor(), CommandLine(), MetricViewer(), GpuMonitor())
+        engine.service.add(SceneEditor(), CommandLine(), MetricViewer(), GpuMonitor())
         engine.console.runScript("testbed/init-dev.pes")
         engine.asset.loadAll("testbed/images")
         engine.scene.reload() // Load default.scn from disk

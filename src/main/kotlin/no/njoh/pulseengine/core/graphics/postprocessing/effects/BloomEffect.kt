@@ -152,7 +152,7 @@ class BloomEffect(
         glDisable(GL_BLEND)
     }
 
-    fun getBloomTexture() = fbo.getTextureOrNull(1)
+    fun getBloomTexture() = frameBuffers.firstOrNull()?.getTextureOrNull(1)
 
-    override fun getTexture(index: Int) = fbo.getTextureOrNull(index)
+    override fun getTexture(index: Int) = frameBuffers.firstOrNull()?.getTextureOrNull(index)
 }

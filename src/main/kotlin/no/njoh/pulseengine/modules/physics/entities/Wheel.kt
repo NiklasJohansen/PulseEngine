@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
+import no.njoh.pulseengine.modules.scene.entities.CommonSceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.annotations.TexRef
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateAngleFrom
@@ -18,7 +18,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sign
 
-open class Wheel : StandardSceneEntity(), CircleBody
+open class Wheel : CommonSceneEntity(), CircleBody
 {
     @JsonIgnore
     override val shape = CircleShape()
@@ -54,7 +54,7 @@ open class Wheel : StandardSceneEntity(), CircleBody
     {
         if (acc != 0f)
         {
-            shape.applyAngularAcceleration(acc * engine.data.fixedDeltaTimeSec)
+            shape.applyAngularAcceleration(acc * engine.data.fixedDeltaTime)
             acc = 0f
             wakeUp()
         }

@@ -354,7 +354,7 @@ object Extensions
      * Prints the time in milliseconds from 'this' to now.
      * @receiver Start time in nanoseconds.
      */
-    fun Long.toNowFormatted(): String = "${"%.3f".format((System.nanoTime() - this) / 1_000_000f)} ms"
+    fun Long.toNowFormatted(): String = "${"%.3f".format((System.nanoTime() - this).toDouble() * 1e-6)} ms"
 
     /**
      * Executes the given [block] and returns elapsed time in milliseconds
@@ -363,7 +363,7 @@ object Extensions
     {
         val start = System.nanoTime()
         block()
-        return (System.nanoTime() - start) / 1_000_000f
+        return ((System.nanoTime() - start).toDouble() * 1e-6).toFloat()
     }
 
     /**

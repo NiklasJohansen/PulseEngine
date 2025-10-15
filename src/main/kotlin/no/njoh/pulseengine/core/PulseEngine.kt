@@ -22,12 +22,11 @@ import no.njoh.pulseengine.core.network.Network
 import no.njoh.pulseengine.core.network.NetworkInternal
 import no.njoh.pulseengine.core.scene.SceneManager
 import no.njoh.pulseengine.core.scene.SceneManagerInternal
-import no.njoh.pulseengine.core.widget.WidgetManager
-import no.njoh.pulseengine.core.widget.WidgetManagerInternal
+import no.njoh.pulseengine.core.service.ServiceManager
+import no.njoh.pulseengine.core.service.ServiceManagerInternal
 import no.njoh.pulseengine.core.window.NoOpWindow
 import no.njoh.pulseengine.core.window.Window
 import no.njoh.pulseengine.core.window.WindowInternal
-import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 
 /**
@@ -65,8 +64,8 @@ interface PulseEngine
     /** Handles all operations related to loading, saving, running and accessing a Scene and its data */
     val scene: SceneManager
 
-    /** Handles updating and rendering of all active widgets */
-    val widget: WidgetManager
+    /** Handles updating and rendering of all services */
+    val service: ServiceManager
 
     companion object
     {
@@ -106,5 +105,5 @@ interface PulseEngineInternal : PulseEngine
     override val console: ConsoleInternal
     override val asset: AssetManagerInternal
     override val scene: SceneManagerInternal
-    override val widget: WidgetManagerInternal
+    override val service: ServiceManagerInternal
 }

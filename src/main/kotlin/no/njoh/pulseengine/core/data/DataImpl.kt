@@ -24,8 +24,8 @@ open class DataImpl : DataInternal()
     override var cpuRenderTimeMs      = 0f
     override var cpuUpdateTimeMs      = 0f
     override var cpuFixedUpdateTimeMs = 0f
-    override var fixedDeltaTimeSec    = 0.017f
-    override var deltaTimeSec         = 0.017f
+    override var fixedDeltaTime       = 0.017f
+    override var deltaTime            = 0.017f
     override var interpolation        = 0f
     override var usedMemoryKb         = 0L
     override var totalMemoryKb        = 0L
@@ -37,11 +37,7 @@ open class DataImpl : DataInternal()
     private var frameCounter     = 0
     private var getSaveDir       = { "n/a" }
 
-    var lastFrameTimeNs          = System.nanoTime()
-    var fixedUpdateLastTimeNs    = System.nanoTime()
-    var fixedUpdateAccumulatorNs = 0L
-
-    fun init()
+    override fun init()
     {
         Logger.info { "Initializing data (DataImpl)" }
 
@@ -120,48 +116,19 @@ open class DataImpl : DataInternal()
 
     override fun setOnGetSaveDirectory(callback: () -> String) { getSaveDir = callback }
 
-    fun update()
+    override fun update()
     {
         frameStartTimeNs = System.nanoTime()
         frameNumber++
     }
 
-    fun updateMemoryStats()
+    override fun updateMemoryStats()
     {
         usedMemoryKb = (runtime.totalMemory() - runtime.freeMemory()) / KILO_BYTE
         totalMemoryKb = runtime.maxMemory() / KILO_BYTE
     }
 
-    inline fun measureAndUpdateTimeStats(block: () -> Unit)
-    {
-        val startTime = System.nanoTime()
-        deltaTimeSec = ((startTime - lastFrameTimeNs).toDouble() * 1e-9).toFloat()
-
-        block.invoke()
-
-        lastFrameTimeNs = System.nanoTime()
-        cpuUpdateTimeMs = ((lastFrameTimeNs - startTime).toDouble() * 1e-6).toFloat()
-    }
-
-    inline fun measureCpuRenderTime(block: () -> Unit)
-    {
-        val startTime = System.nanoTime()
-
-        block.invoke()
-
-        cpuRenderTimeMs = ((System.nanoTime() - startTime).toDouble() * 1e-6).toFloat()
-    }
-
-    inline fun measureGpuRenderTime(block: () -> Unit)
-    {
-        val startTime = System.nanoTime()
-
-        block.invoke()
-
-        gpuRenderTimeMs = ((System.nanoTime() - startTime).toDouble() * 1e-6).toFloat()
-    }
-
-    fun calculateFrameRate()
+    override fun calculateFrameRate()
     {
         val nowTime = System.nanoTime()
         fpsFilter[frameCounter] = max(1L, nowTime - fpsTimerNs)
@@ -169,12 +136,6 @@ open class DataImpl : DataInternal()
         currentFps = (1_000_000_000.0 / fpsFilter.average()).toInt()
         fpsTimerNs = nowTime
         totalFrameTimeMs = ((nowTime - frameStartTimeNs).toDouble() * 1e-6).toFloat()
-    }
-
-    fun updateInterpolationValue(fixedTickRateHz: Float)
-    {
-        val fixedDeltaTimeNs = 1_000_000_000L / fixedTickRateHz.toDouble()
-        interpolation = (fixedUpdateAccumulatorNs.toDouble() / fixedDeltaTimeNs).coerceIn(0.0, 1.0).toFloat()
     }
 
     private fun getMapper(fileFormat: FileFormat) =

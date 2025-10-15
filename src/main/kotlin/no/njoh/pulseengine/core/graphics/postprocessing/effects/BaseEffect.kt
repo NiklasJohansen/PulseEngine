@@ -50,7 +50,8 @@ abstract class BaseEffect(
 
         val outTextures = applyEffect(engine, inTextures)
 
-        outTextures.forEachFast { it.generateMips(engine) }
+        if (outTextures !== inTextures)
+            outTextures.forEachFast { it.generateMips(engine) }
 
         return outTextures
     }

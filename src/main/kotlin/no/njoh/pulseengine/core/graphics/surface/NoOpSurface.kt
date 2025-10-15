@@ -47,7 +47,7 @@ class NoOpSurface: SurfaceInternal()
     override fun drawLineVertex(x: Float, y: Float) {}
     override fun drawQuad(x: Float, y: Float, width: Float, height: Float) {}
     override fun drawQuadVertex(x: Float, y: Float) {}
-    override fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float) {}
+    override fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float) {}
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float) {}
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, xTiling: Float, yTiling: Float) {}
     override fun drawText(text: CharSequence, x: Float, y: Float, font: Font?, fontSize: Float, angle: Degrees, xOrigin: Float, yOrigin: Float, wrapNewLines: Boolean, newLineSpacing: Float) {}

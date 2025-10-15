@@ -65,11 +65,11 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     private var lastTargetSurface = ""
 
-    private val normalMapRenderPass   = RenderPass(GI_NORMAL_MAP)   { e, surface, entity: NormalMapped  -> entity.onRenderNormalMap(e, surface) }
-    private val localOccluderPass     = RenderPass(GI_LOCAL_SCENE)  { e, surface, entity: GiOccluder    -> entity.onRenderOccluder(e, surface)    }
-    private val localLightSourcePass  = RenderPass(GI_LOCAL_SCENE)  { e, surface, entity: GiLightSource -> entity.onRenderLightSource(e, surface) }
-    private val globalOccluderPass    = RenderPass(GI_GLOBAL_SCENE) { e, surface, entity: GiOccluder    -> entity.onRenderOccluder(e, surface)    }
-    private val globalLightSourcePass = RenderPass(GI_GLOBAL_SCENE) { e, surface, entity: GiLightSource -> entity.onRenderLightSource(e, surface) }
+    private val normalMapRenderPass   = RenderPass<NormalMapped>(GI_NORMAL_MAP)    { e, surface -> onRenderNormalMap(e, surface)   }
+    private val localOccluderPass     = RenderPass<GiOccluder>(GI_LOCAL_SCENE)     { e, surface -> onRenderOccluder(e, surface)    }
+    private val localLightSourcePass  = RenderPass<GiLightSource>(GI_LOCAL_SCENE)  { e, surface -> onRenderLightSource(e, surface) }
+    private val globalOccluderPass    = RenderPass<GiOccluder>(GI_GLOBAL_SCENE)    { e, surface -> onRenderOccluder(e, surface)    }
+    private val globalLightSourcePass = RenderPass<GiLightSource>(GI_GLOBAL_SCENE) { e, surface -> onRenderLightSource(e, surface) }
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -78,7 +78,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 9,
             isVisible = false,
-            backgroundColor = Color.BLANK,
             blendFunction = NONE,
             textureFilter = NEAREST,
             textureScale = localSceneTexScale,
@@ -92,7 +91,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             name = GI_GLOBAL_SCENE,
             zOrder = engine.gfx.mainSurface.config.zOrder + 8,
             isVisible = false,
-            backgroundColor = Color.BLANK,
             blendFunction = NONE,
             textureFilter = NEAREST,
             textureScale = globalSceneTexScale,
@@ -105,7 +103,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             name = GI_LOCAL_SDF,
             zOrder = engine.gfx.mainSurface.config.zOrder + 7,
             isVisible = false,
-            backgroundColor = Color.BLANK,
             blendFunction = NONE,
             textureScale = localSceneTexScale,
             attachments = listOf(COLOR_TEXTURE_0)
@@ -119,7 +116,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             name = GI_GLOBAL_SDF,
             zOrder = engine.gfx.mainSurface.config.zOrder + 6,
             isVisible = false,
-            backgroundColor = Color.BLANK,
             blendFunction = NONE,
             textureScale = globalSceneTexScale,
             attachments = listOf(COLOR_TEXTURE_0)
@@ -146,7 +142,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 4,
             isVisible = false,
-            backgroundColor = Color.BLANK,
             attachments = listOf(COLOR_TEXTURE_0),
             textureSizeFunc = ::lightTextureSizeFunc
         ).apply {
@@ -158,7 +153,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 3,
             isVisible = false,
-            backgroundColor = Color.BLANK,
             attachments = listOf(COLOR_TEXTURE_0),
         ).apply {
             addPostProcessingEffect(GiInterior(GI_LOCAL_SCENE, GI_LOCAL_SDF, GI_LIGHT_EXTERIOR, GI_NORMAL_MAP))
@@ -181,7 +175,6 @@ open class GlobalIlluminationSystem : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 1,
             isVisible = false,
-            backgroundColor = Color.BLANK,
             blendFunction = ADDITIVE,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {

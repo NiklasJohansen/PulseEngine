@@ -69,7 +69,7 @@ open class DirectLightingSystem : SceneSystem()
 
     private val normalMapRenderPass = RenderPass<NormalMapped>(
         surfaceName = NORMAL_SURFACE_NAME,
-        drawFunction = { engine, surface, entity -> entity.onRenderNormalMap(engine, surface) }
+        drawFunction = { engine, surface -> onRenderNormalMap(engine, surface) }
     )
 
     private val occluderRenderPass = RenderPass<DirectLightOccluder>(
@@ -83,7 +83,6 @@ open class DirectLightingSystem : SceneSystem()
             name = LIGHT_SURFACE_NAME,
             camera = engine.gfx.mainCamera,
             isVisible = false,
-            backgroundColor = Color.BLANK,
             textureFormat = textureFormat,
             textureFilter = textureFilter,
             textureScale = textureScale,
@@ -204,7 +203,6 @@ open class DirectLightingSystem : SceneSystem()
                 name = OCCLUDER_SURFACE_NAME,
                 camera = engine.gfx.mainCamera,
                 zOrder = lightSurface.config.zOrder + 1, // Render occluder map before lightmap
-                backgroundColor = Color(0f, 0f, 0f, 0f),
                 isVisible = false
             )
             isUsingOccluderMap = true

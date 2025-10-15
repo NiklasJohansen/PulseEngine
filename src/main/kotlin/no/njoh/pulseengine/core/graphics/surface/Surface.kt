@@ -47,9 +47,9 @@ abstract class Surface
     abstract fun drawQuadVertex(x: Float, y: Float)
 
     /**
-     * Draws a textured quad at a given position with a given size, angle, origin and corner radius.
+     * Draws a textured quad at a given position with a given size, angle, origin, corner radius and texture coordinates.
      */
-    abstract fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f)
+    abstract fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
 
     /**
      * Draws a textured quad at a given position with a given size, angle, origin and corner radius.

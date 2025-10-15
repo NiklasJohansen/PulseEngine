@@ -5,23 +5,21 @@ import no.njoh.pulseengine.core.console.MessageType
 import no.njoh.pulseengine.core.shared.utils.LogLevel.*
 import no.njoh.pulseengine.core.shared.utils.LogTarget.CONSOLE
 import no.njoh.pulseengine.core.shared.utils.LogTarget.STDOUT
-import java.io.File
 import java.time.LocalTime
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 object Logger
 {
-    @JvmField var LEVEL = DEBUG
+    @JvmField var LEVEL  = DEBUG
     @JvmField var TARGET = STDOUT
 
-    private const val RESET  = "\u001B[0m"
     private const val RED    = "\u001B[31m"
-    private const val YELLOW = "\u001B[33m"
     private const val BLUE   = "\u001B[34m"
     private const val WHITE  = "\u001B[37m"
+    private const val YELLOW = "\u001B[33m"
+    private const val RESET  = "\u001B[0m"
     private val TIME_FORMAT  = DateTimeFormatter.ofPattern("HH:mm:ss.SS")
-    private val history = ArrayDeque<String>(100)
+    private val history      = ArrayDeque<String>(100)
 
     @PublishedApi
     internal val context = TextBuilderContext()
@@ -60,7 +58,6 @@ object Logger
         val message = "$levelText [$time]  $text"
         PulseEngine.INSTANCE.console.log(message, messageType)
         recordHistory(message)
-
         if (error != null)
         {
             val stackTrace = error.stackTraceToString()
@@ -82,9 +79,8 @@ object Logger
             ERROR -> RED
             else -> RESET
         }
-        val message = "${levelColor}$levelText $WHITE[$time]$RESET $text"
-        println(message)
-        recordHistory(message)
+        println("${levelColor}$levelText $WHITE[$time]$RESET $text")
+        recordHistory("$levelText [$time] $text")
         if (error != null)
         {
             error.printStackTrace()
@@ -94,21 +90,7 @@ object Logger
 
     fun writeAndOpenCrashReport()
     {
-        val report = StringBuilder()
-        report.appendLine("PulseEngine Crash Report")
-        report.appendLine("Time: ${LocalTime.now().format(TIME_FORMAT)}")
-        report.appendLine("Thread: ${Thread.currentThread().name}")
-        report.appendLine("Last 100 log lines:")
-        history.forEach { report.appendLine(it) }
-        try {
-            val file = File("crash_report_${ZonedDateTime.now().toEpochSecond()}.txt")
-            file.createNewFile()
-            file.writeText(report.toString())
-            openFile(file.absolutePath)
-            println("Crash report written to ${file.absolutePath}")
-        } catch (e: Exception) {
-            println("Failed to write crash report: ${e.message}")
-        }
+        CrashReportBuilder.buildAndOpen(history.toList())
     }
 
     private fun recordHistory(message: String)

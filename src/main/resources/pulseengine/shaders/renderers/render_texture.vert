@@ -4,6 +4,7 @@ in vec2 vertexPos;
 in vec2 texCoord;
 
 out vec2 uv;
+out vec2 quadUv;
 out vec4 vertexColor;
 
 uniform mat4 viewProjection;
@@ -12,6 +13,7 @@ uniform vec2 size;
 uniform vec2 origin;
 uniform float angle;
 uniform int color;
+uniform vec4 uvMinMax;
 
 vec4 unpackAndConvert(uint rgba)
 {
@@ -32,7 +34,10 @@ mat2 rotate(float angle)
 
 void main()
 {
-    uv = vec2(vertexPos.x, 1.0 - vertexPos.y);
+    vec2 uvMin = vec2(uvMinMax.x, 1.0 - uvMinMax.y);
+    vec2 uvMax = vec2(uvMinMax.z, 1.0 - uvMinMax.w);
+    uv = uvMin + (uvMax - uvMin) * vertexPos;
+    quadUv = vertexPos;
     vertexColor = unpackAndConvert(uint(color));
 
     vec2 offset = (vertexPos - origin) * size * rotate(radians(angle));

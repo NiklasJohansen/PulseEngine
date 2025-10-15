@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.modules.scene.entities.StandardSceneEntity
+import no.njoh.pulseengine.modules.scene.entities.CommonSceneEntity
 import no.njoh.pulseengine.modules.physics.BodyType
 import no.njoh.pulseengine.modules.physics.shapes.CircleShape
 import no.njoh.pulseengine.modules.physics.bodies.CircleBody
@@ -13,7 +13,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateAngleFrom
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import kotlin.math.max
 
-open class Ball : StandardSceneEntity(), CircleBody
+open class Ball : CommonSceneEntity(), CircleBody
 {
     @JsonIgnore
     override val shape = CircleShape()

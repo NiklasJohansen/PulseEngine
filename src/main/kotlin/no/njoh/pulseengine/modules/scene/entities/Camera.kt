@@ -11,7 +11,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import kotlin.math.*
 
 @Icon("CAMERA", size = 24f, showInViewport = true)
-open class Camera : StandardSceneEntity()
+open class Camera : CommonSceneEntity()
 {
     var viewPortWidth = 1000f
     var viewPortHeight = 800f
