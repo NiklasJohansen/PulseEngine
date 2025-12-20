@@ -29,14 +29,15 @@ class LineRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
             )
         }
 
-        val layout = VertexAttributeLayout()
-            .withAttribute("position", 3, GL_FLOAT)
-            .withAttribute("rgbaColor", 1, GL_FLOAT)
-
         vao = VertexArrayObject.createAndBind()
         vbo.bind()
         program.bind()
-        program.setVertexAttributeLayout(layout)
+
+        VertexAttributeLayout()
+            .withAttribute("position",  3, GL_FLOAT)
+            .withAttribute("rgbaColor", 1, GL_FLOAT)
+            .bind(program)
+
         vao.release()
     }
 

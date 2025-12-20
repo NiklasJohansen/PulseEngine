@@ -42,13 +42,10 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
             )
         }
 
-        val vertexLayout = VertexAttributeLayout()
-            .withAttribute("vertexPos", 2, GL_FLOAT)
-
         vao = VertexArrayObject.createAndBind()
         vbo.bind()
         program.bind()
-        program.setVertexAttributeLayout(vertexLayout)
+        VertexAttributeLayout().withAttribute("vertexPos", 2, GL_FLOAT).bind(program)
         vao.release()
     }
 

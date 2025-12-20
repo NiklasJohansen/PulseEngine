@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.graphics.api.CameraInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.util.DrawUtils
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import org.lwjgl.opengl.GL31.*
 import kotlin.math.max
@@ -30,6 +31,7 @@ class DirectLightRenderer : BatchRenderer()
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var lightBuffer: DoubleBufferedFloatObject
     private lateinit var edgeBuffer: DoubleBufferedFloatObject
+    private lateinit var instanceLayout: VertexAttributeLayout
 
     private var readLights = 0
     private var readEdges = 0
@@ -42,41 +44,33 @@ class DirectLightRenderer : BatchRenderer()
         {
             lightBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             edgeBuffer = DoubleBufferedFloatObject.createShaderStorageBuffer(blockBinding = 0)
-            vertexBuffer = StaticBufferObject.createArrayBuffer(floatArrayOf(
-                0f, 0f, // Top-left vertex
-                1f, 0f, // Top-right vertex
-                0f, 1f, // Bottom-left vertex
-                1f, 1f  // Bottom-right vertex
-            ))
+            vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
+            instanceLayout = VertexAttributeLayout()
+                .withAttribute("position",3, GL_FLOAT, 1)
+                .withAttribute("radius", 1, GL_FLOAT, 1)
+                .withAttribute("directionAngle", 1, GL_FLOAT, 1)
+                .withAttribute("coneAngle",1, GL_FLOAT, 1)
+                .withAttribute("size",1, GL_FLOAT, 1)
+                .withAttribute("color",1, GL_FLOAT, 1)
+                .withAttribute("intensity",1, GL_FLOAT, 1)
+                .withAttribute("spill",1, GL_FLOAT, 1)
+                .withAttribute("flags",1, GL_FLOAT, 1)
+                .withAttribute("edgeIndex",1, GL_FLOAT, 1)
+                .withAttribute("edgeCount",1, GL_FLOAT, 1)
+ 
             program = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/lighting/direct/light.vert")),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/lighting/direct/light.frag"))
             )
         }
 
-        val vertexLayout = VertexAttributeLayout()
-            .withAttribute("vertexPos", 2, GL_FLOAT)
-
-        val instanceLayout = VertexAttributeLayout()
-            .withAttribute("position",3, GL_FLOAT, 1)
-            .withAttribute("radius", 1, GL_FLOAT, 1)
-            .withAttribute("directionAngle", 1, GL_FLOAT, 1)
-            .withAttribute("coneAngle",1, GL_FLOAT, 1)
-            .withAttribute("size",1, GL_FLOAT, 1)
-            .withAttribute("color",1, GL_FLOAT, 1)
-            .withAttribute("intensity",1, GL_FLOAT, 1)
-            .withAttribute("spill",1, GL_FLOAT, 1)
-            .withAttribute("flags",1, GL_FLOAT, 1)
-            .withAttribute("edgeIndex",1, GL_FLOAT, 1)
-            .withAttribute("edgeCount",1, GL_FLOAT, 1)
-
         vao = VertexArrayObject.createAndBind()
         program.bind()
         edgeBuffer.bind()
         vertexBuffer.bind()
-        program.setVertexAttributeLayout(vertexLayout)
+        VertexAttributeLayout().withAttribute("vertexPos", 2, GL_FLOAT).bind(program)
         lightBuffer.bind()
-        program.setVertexAttributeLayout(instanceLayout)
+        instanceLayout.bind(program)
         vao.release()
     }
 

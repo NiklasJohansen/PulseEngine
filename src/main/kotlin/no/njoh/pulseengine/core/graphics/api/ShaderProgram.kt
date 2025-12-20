@@ -102,36 +102,6 @@ class ShaderProgram(
         glUniform4f(uniformLocationOf(name), c.red, c.green, c.blue, c.alpha)
     }
 
-    fun setVertexAttributeLayout(name: String, count: Int, type: Int, stride: Int, offset: Long, divisor: Int = 0, normalized: Boolean = false)
-    {
-        val location = attributeLocationOf(name)
-        glEnableVertexAttribArray(location)
-        when (type)
-        {
-            GL_INT, GL_UNSIGNED_INT -> glVertexAttribIPointer(location, count, type, stride, offset)
-            GL_FLOAT -> glVertexAttribPointer(location, count, type, normalized, stride, offset)
-            else -> throw IllegalArgumentException("Unsupported vertex attribute type: $type")
-        }
-        glVertexAttribDivisor(location, divisor)
-    }
-
-    fun setVertexAttributeLayout(layout: VertexAttributeLayout, instanceOffset: Int = 0)
-    {
-        var byteOffset = layout.strideInBytes * instanceOffset
-        layout.attributes.forEachFast { attribute ->
-            setVertexAttributeLayout(
-                name = attribute.name,
-                count = attribute.count,
-                type = attribute.type,
-                stride = layout.strideInBytes.toInt(),
-                offset = byteOffset,
-                divisor = attribute.divisor,
-                normalized = attribute.normalized
-            )
-            byteOffset += attribute.bytes
-        }
-    }
-
     fun setUniformSampler(samplerName: String, texture: RenderTexture, filter: TextureFilter = texture.filter, wrapping: TextureWrapping = texture.wrapping) =
         setUniformSampler(samplerName, texture.handle, filter, wrapping)
 

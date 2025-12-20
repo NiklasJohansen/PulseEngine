@@ -26,13 +26,10 @@ class StencilRenderer : BatchRenderer()
             )
         }
 
-        val layout = VertexAttributeLayout()
-            .withAttribute("vertexPos", 2, GL_FLOAT)
-
         vao = VertexArrayObject.createAndBind()
         vbo.bind()
         program.bind()
-        program.setVertexAttributeLayout(layout)
+        VertexAttributeLayout().withAttribute("vertexPos", 2, GL_FLOAT).bind(program)
         vao.release()
     }
 

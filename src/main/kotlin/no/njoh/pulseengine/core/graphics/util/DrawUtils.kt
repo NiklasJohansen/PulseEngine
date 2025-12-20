@@ -24,7 +24,7 @@ object DrawUtils
         else // Fall back to glDrawArraysInstanced (macOS)
         {
             instanceBuffer.bind()
-            shaderProgram.setVertexAttributeLayout(attributeLayout, baseInstanceIndex)
+            attributeLayout.bind(shaderProgram, baseInstanceIndex)
             glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, instanceCount)
         }
     }

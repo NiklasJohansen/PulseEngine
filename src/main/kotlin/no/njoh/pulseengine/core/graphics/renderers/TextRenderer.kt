@@ -55,15 +55,12 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
             )
         }
 
-        val vertexLayout = VertexAttributeLayout()
-            .withAttribute("vertexPos", 2, GL_FLOAT)
-
         vao = VertexArrayObject.createAndBind()
         program.bind()
         vertexBuffer.bind()
-        program.setVertexAttributeLayout(vertexLayout)
+        VertexAttributeLayout().withAttribute("vertexPos", 2, GL_FLOAT).bind(program)
         instanceBuffer.bind()
-        program.setVertexAttributeLayout(instanceLayout)
+        instanceLayout.bind(program)
         vao.release()
     }
 
