@@ -23,7 +23,7 @@ out vec2 texTiling;
 out vec2 quadSize;
 out float quadCornerRadius;
 flat out uint samplerIndex;
-out float texIndex;
+flat out uint texIndex;
 
 uniform mat4 viewProjection;
 
@@ -42,9 +42,9 @@ uint getSamplerIndex(uint textureHandle)
     return (textureHandle >> uint(16)) & ((uint(1) << uint(16)) - uint(1));
 }
 
-float getTexIndex(uint textureHandle)
+uint getTexIndex(uint textureHandle)
 {
-    return float(textureHandle & ((uint(1) << uint(16)) - uint(1)));
+    return textureHandle & ((uint(1) << uint(16)) - uint(1));
 }
 
 mat2 rotate(float angle)

@@ -1,6 +1,6 @@
 #version 150 core
 #define EDGE_SOFTNESS 0.01
-#define NO_TEXTURE 65534
+#define NO_TEXTURE 65534u
 
 in vec4 vertexColor;
 in vec2 texStart;
@@ -9,7 +9,7 @@ in vec2 texCoord;
 in vec2 texTiling;
 in vec2 quadSize;
 in float quadCornerRadius;
-in float texIndex;
+flat in uint texIndex;
 flat in uint samplerIndex;
 
 out vec4 fragColor;
@@ -55,7 +55,7 @@ void main()
         vec2 ddx = dFdx(coord) * texSize;
         vec2 ddy = dFdy(coord) * texSize;
         vec2 uv = texStart + texSize * tiled;
-        textureColor = sampleTextureArrayGrad(int(samplerIndex), vec3(uv, floor(texIndex)), ddx, ddy);
+        textureColor = sampleTextureArrayGrad(int(samplerIndex), vec3(uv, float(texIndex)), ddx, ddy);
     }
 
     if (quadCornerRadius > 0.0)
