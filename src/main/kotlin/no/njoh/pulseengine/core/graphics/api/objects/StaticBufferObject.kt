@@ -29,6 +29,15 @@ class StaticBufferObject(
             return StaticBufferObject(id, target, blockBinding)
         }
 
+        fun createElementArrayBuffer(data: IntArray, target: Int = GL_ELEMENT_ARRAY_BUFFER, blockBinding: Int? = null): StaticBufferObject
+        {
+            val id = glGenBuffers()
+            glBindBuffer(target, id)
+            glBufferData(target, data, GL_STATIC_DRAW)
+            glBindBuffer(target, 0)
+            return StaticBufferObject(id, target, blockBinding)
+        }
+
         fun createQuadVertexArrayBuffer() = createArrayBuffer(
             floatArrayOf(
                 0f, 0f, // Top-left vertex

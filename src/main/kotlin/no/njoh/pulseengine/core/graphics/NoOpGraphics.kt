@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.Mesh
 import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.Attachment
@@ -47,6 +48,7 @@ class NoOpGraphics : GraphicsInternal
     override fun getSurfaceOrDefault(name: String) = mainSurface
     override fun compileShader(shader: Shader) {}
     override fun init(engine: PulseEngineInternal) {}
+    override fun uploadMesh(mesh: Mesh) {}
     override fun initFrame(engine: PulseEngineInternal) {}
     override fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean) {}
     override fun drawFrame(engine: PulseEngineInternal) {}

@@ -9,6 +9,8 @@ import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
 import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
+import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
+import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
@@ -238,6 +240,42 @@ open class GraphicsImpl : GraphicsInternal
                 it.destroy()
             }
         }
+    }
+
+    override fun uploadMesh(mesh: Mesh)
+    {
+        if (mesh.vertices.isEmpty() || mesh.indices.isEmpty())
+        {
+            Logger.warn { "Attempted to upload empty mesh to GPU: ${mesh.name} (${mesh.filePath})" }
+            return
+        }
+        
+        val vao = VertexArrayObject.createAndBind()
+
+        val vbo = mesh.vbo ?: StaticBufferObject.createArrayBuffer(mesh.vertices)
+        vbo.bind()
+
+        VertexAttributeLayout().apply() 
+        {
+            withAttribute("position", 3, GL_FLOAT)
+            if (mesh.hasNormals) 
+                withAttribute("normal", 3, GL_FLOAT)
+            if (mesh.hasTangents) 
+            {
+                withAttribute("tangent", 3, GL_FLOAT)
+                withAttribute("bitangent", 3, GL_FLOAT)
+            }
+            if (mesh.hasTexCoords) 
+                withAttribute("texCoord", 2, GL_FLOAT)
+        }.bind()
+
+        val ebo = mesh.ebo ?: StaticBufferObject.createElementArrayBuffer(mesh.indices)
+        ebo.bind()
+
+        vao.release()
+        vbo.release()
+        ebo.release()
+        mesh.onUploaded(vao, vbo, ebo)
     }
 
     override fun uploadTexture(texture: Texture) = textureBank.upload(texture)

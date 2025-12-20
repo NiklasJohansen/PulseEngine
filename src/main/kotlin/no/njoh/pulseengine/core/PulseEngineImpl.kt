@@ -32,6 +32,7 @@ import no.njoh.pulseengine.core.service.ServiceManagerImpl
 import no.njoh.pulseengine.core.service.ServiceManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
+import no.njoh.pulseengine.core.asset.types.Mesh
 import java.util.concurrent.BrokenBarrierException
 import kotlin.math.min
 
@@ -95,7 +96,10 @@ class PulseEngineImpl(
             gfx.onWindowChanged(this, w, h, windowRecreated)
             focusArea.update(0f, 0f, w.toFloat(), h.toFloat())
             if (windowRecreated)
+            {
                 input.init(window.windowHandle, window.cursorPosScale)
+                asset.getAllOfType<Mesh>().forEachFast { gfx.uploadMesh(it) }
+            }
         }
 
         // Let Audio module get sound assets based on name
@@ -111,6 +115,7 @@ class PulseEngineImpl(
                 is Texture -> gfx.uploadTexture(it)
                 is Font    -> gfx.uploadTexture(it.charTexture)
                 is Shader  -> gfx.compileShader(it)
+                is Mesh    -> gfx.uploadMesh(it)
                 is Sound   -> audio.uploadSound(it)
                 is Cursor  -> input.createCursor(it)
             }
