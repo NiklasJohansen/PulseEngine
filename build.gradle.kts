@@ -35,7 +35,8 @@ dependencies {
         "lwjgl-opengl", // OpenGL bindings
         "lwjgl-openal", // OpenAL for audio
         "lwjgl-stb",    // STB for image loading
-        "lwjgl-nfd"     // Native File Dialog for file selection
+        "lwjgl-nfd",    // Native File Dialog for file selection
+        "lwjgl-assimp"  // Assimp for 3D model loading
     ).forEach { module ->
         implementation("org.lwjgl", module)
         platforms.forEach { platform -> runtimeOnly("org.lwjgl", module, classifier = platform) }
