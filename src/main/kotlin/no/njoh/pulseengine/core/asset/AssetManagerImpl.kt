@@ -16,6 +16,7 @@ open class AssetManagerImpl : AssetManagerInternal()
     private val assetsToLoad = mutableListOf<Asset>(Font.DEFAULT)
     private val assetsToUnload = mutableListOf<Asset>()
     private val assetsToReload = mutableListOf<Asset>()
+    private val subAssetsToLoad = mutableListOf<Asset>()
     private var onAssetLoadedCallbacks = mutableListOf<(Asset) -> Unit>()
     private var onAssetUnloadedCallbacks = mutableListOf<(Asset) -> Unit>()
 
@@ -54,6 +55,7 @@ open class AssetManagerImpl : AssetManagerInternal()
             asset.load()
             assets[asset.name] = asset
             notifyAssetLoaded(asset)
+            asset.getSubAssets().forEachFast { loadNow(it) }
         }
         catch (e: Exception) { Logger.error { "Failed to load asset (now): ${asset.name}, reason: ${e.message}" } }
 
@@ -143,16 +145,24 @@ open class AssetManagerImpl : AssetManagerInternal()
                     launch { runCatching { it.load() }.onFailure { e -> Logger.error { "Failed to load asset: ${it.name}, reason: ${e.message}" } } }
                 }
             }
+            assetsToLoad.forEachFast { subAssetsToLoad += it.getSubAssets() }
             Logger.debug { "Loaded ${assetsToLoad.size} assets in ${startTime.toNowFormatted()}. [${assetsToLoad.joinToString { it.name }}]" }
         }
-        else assetsToLoad[0].load()
+        else
+        {
+            assetsToLoad[0].load()
+            subAssetsToLoad += assetsToLoad[0].getSubAssets()
+        }
 
         assetsToLoad.forEachFast()
         {
             assets[it.name] = it
             runCatching { notifyAssetLoaded(it) }.onFailure { error -> Logger.error { "onAssetLoadedCallback failed for asset: ${it.name}, reason: ${error.message}" } }
         }
+
         assetsToLoad.clear()
+        assetsToLoad += subAssetsToLoad
+        subAssetsToLoad.clear()
     }
 
     private fun handleAssetReloading()

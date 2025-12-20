@@ -9,4 +9,6 @@ abstract class Asset(
 ) {
     abstract fun load()
     abstract fun unload()
+
+    open fun getSubAssets(): List<Asset> = emptyList()
 }
