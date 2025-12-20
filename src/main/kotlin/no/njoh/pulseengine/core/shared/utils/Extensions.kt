@@ -439,21 +439,22 @@ object Extensions
             path.endsWith(".txt")  -> Text(path, name)
             path.endsWith(".dat")  -> Binary(path, name)
             path.endsWith(".hdr")  -> Texture(path, name, format = RGBA32F)
+            path.endsWith(".obj")  ||
+            path.endsWith(".fbx")  ||
+            path.endsWith(".gltf") -> Mesh(path, name)
             path.endsWith(".jpg")  ||
             path.endsWith(".jpeg") ||
             path.endsWith(".png")  ->
             {
-                val isNormalMap = "_normal" in name
-                val format = if ("_lut" in name || "_linear" in name || isNormalMap) RGBA8 else SRGBA8
-                val maxMipLevels = if (format == SRGBA8 || isNormalMap) 10 else 1
+                val isPBR = "_normal" in name || "_ao" in name || "_metallic" in name || "_roughness" in name || "_emissive" in name || "_specular" in name
+                val format = if ("_lut" in name || "_linear" in name || isPBR) RGBA8 else SRGBA8
                 spriteSheetRegex.find(path)?.let { SpriteSheet(
                     filePath = path,
                     name = name.substringBeforeLast("_"),
                     format = format,
-                    maxMipLevels = maxMipLevels,
                     horizontalCells = it.groupValues[1].toInt(),
                     verticalCells = it.groupValues[2].toInt()
-                ) } ?: Texture(path, name, format = format, maxMipLevels = maxMipLevels)
+                ) } ?: Texture(path, name, format = format)
             }
             else -> null
         }
