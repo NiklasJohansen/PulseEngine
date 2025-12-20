@@ -226,6 +226,7 @@ class PulseEngineImpl(
         audio.update()
         window.initFrame(this)
         gfx.initFrame(this)
+        service.startFrame(this)
         console.update()
         updateInput()
     }
@@ -241,6 +242,7 @@ class PulseEngineImpl(
     {
         data.gpuRenderTimeMs = measureMillisTime()
         {
+            service.drawFrame(this)
             gfx.drawFrame(this)
             window.swapBuffers()
         }
@@ -248,6 +250,7 @@ class PulseEngineImpl(
 
     private fun endFrame()
     {
+        service.endFrame(this)
         fpsLimiter.sync(config.targetFps)
         data.calculateFrameRate()
         running = window.isOpen()

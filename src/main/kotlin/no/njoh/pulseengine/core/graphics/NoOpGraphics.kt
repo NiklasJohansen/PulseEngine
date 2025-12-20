@@ -8,7 +8,7 @@ import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.api.BlendFunction
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.DefaultCamera
-import no.njoh.pulseengine.core.graphics.api.DefaultCamera.ProjectionType.ORTHOGRAPHIC
+import no.njoh.pulseengine.core.graphics.api.CameraProjectionType.ORTHOGRAPHIC
 import no.njoh.pulseengine.core.graphics.api.MipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.TextureBank

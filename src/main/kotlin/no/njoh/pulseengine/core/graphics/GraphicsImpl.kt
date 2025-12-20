@@ -22,7 +22,6 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
-import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL30.*
 
 open class GraphicsImpl : GraphicsInternal
@@ -108,15 +107,17 @@ open class GraphicsImpl : GraphicsInternal
         onInitFrame.clear()
 
         surfaces.forEachFast { it.initFrame(engine) }
+        
         surfaces.forEachCamera()
         {
-            it.updateViewMatrix()
-            it.updateWorldPositions(mainSurface.config.width, mainSurface.config.height)
+            it.onFrameStart(engine)
         }
     }
 
     override fun drawFrame(engine: PulseEngineInternal)
     {
+        surfaces.forEachCamera { it.onFrameDraw(engine) }
+
         renderSurfaceContentToOffscreenTarget(engine)
         renderPostProcessingEffectsToOffscreenTarget(engine)
         renderOffscreenTargetsToBackBuffer()

@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.BlendFunction
 import no.njoh.pulseengine.core.graphics.api.DefaultCamera
-import no.njoh.pulseengine.core.graphics.api.DefaultCamera.ProjectionType.ORTHOGRAPHIC
+import no.njoh.pulseengine.core.graphics.api.CameraProjectionType.ORTHOGRAPHIC
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.RenderState
 import no.njoh.pulseengine.core.graphics.api.RenderTarget

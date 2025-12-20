@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.service
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
@@ -28,6 +29,14 @@ open class ServiceManagerImpl: ServiceManagerInternal()
         engine.data.addMetric("SERVICE RENDER (MS)") { sample(renderTimeMs) }
     }
 
+    override fun startFrame(engine: PulseEngine)
+    {
+        services.forEachFiltered({ it.isRunning }) 
+        { 
+          if (it is ServiceInternal) it.onFrameStart(engine) 
+        }
+    }
+
     override fun update(engine: PulseEngine)
     {
         updateTimeMs = measureMillisTime()
@@ -52,6 +61,22 @@ open class ServiceManagerImpl: ServiceManagerInternal()
         }
     }
 
+    override fun drawFrame(engineInternal: PulseEngineInternal)
+    {
+        services.forEachFiltered({ it.isRunning }) 
+        { 
+            if (it is ServiceInternal) it.onFrameDraw(engineInternal)
+        }
+    }
+
+    override fun endFrame(engine: PulseEngine)
+    {
+        services.forEachFiltered({ it.isRunning }) 
+        {
+            if (it is ServiceInternal)it.onFrameEnd(engine) 
+        }
+    }
+ 
     override fun destroy(engine: PulseEngine)
     {
         Logger.info { "Destroying services (${this::class.simpleName})" }

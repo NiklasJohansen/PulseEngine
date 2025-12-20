@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.service
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.PulseEngineInternal
 
 abstract class ServiceManager
 {
@@ -33,8 +34,11 @@ abstract class ServiceManager
 abstract class ServiceManagerInternal : ServiceManager()
 {
     abstract fun init(engine: PulseEngine)
+    abstract fun startFrame(engine: PulseEngine)
     abstract fun update(engine: PulseEngine)
     abstract fun fixedUpdate(engine: PulseEngine)
     abstract fun render(engine: PulseEngine)
+    abstract fun drawFrame(engineInternal: PulseEngineInternal)
+    abstract fun endFrame(engine: PulseEngine)
     abstract fun destroy(engine: PulseEngine)
 }

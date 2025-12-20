@@ -1,8 +1,9 @@
 package no.njoh.pulseengine.core.graphics.api
 
-import no.njoh.pulseengine.core.graphics.api.DefaultCamera.*
-import no.njoh.pulseengine.core.graphics.api.DefaultCamera.ProjectionType.*
+import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.graphics.api.CameraProjectionType.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
+import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.*
 
 abstract class Camera
@@ -33,7 +34,7 @@ abstract class Camera
     val bottomRightWorldPosition = Vector2f()
 
     /** Transforms a coordinate from screen space to world space */
-    abstract fun screenPosToWorldPos(x: Float, y: Float): Vector3f
+    abstract fun screenPosToWorldPos(x: Float, y: Float, z: Float = 0f): Vector3f
 
     /** Transforms a coordinate from world space to screen space */
     abstract fun worldPosToScreenPos(x: Float, y: Float, z: Float = 0f): Vector2f
@@ -42,7 +43,7 @@ abstract class Camera
     abstract fun isInView(x: Float, y: Float, width: Float, height: Float, padding: Float = 0f): Boolean
 
     /** Updates the projection matrix */
-    abstract fun updateProjection(width: Int, height: Int, type: ProjectionType? = null)
+    abstract fun updateProjection(width: Int, height: Int, type: CameraProjectionType? = null)
 }
 
 abstract class CameraInternal : Camera()
@@ -65,15 +66,15 @@ abstract class CameraInternal : Camera()
     /** Called each physics step */
     abstract fun updateLastState()
 
-    /** Called each frame */
-    abstract fun updateViewMatrix()
+    /** Called from the engine thread at the beginning of each frame */
+    open fun onFrameStart(engine: PulseEngineInternal) { }
 
-    /** Called each frame */
-    abstract fun updateWorldPositions(screenWidth: Int, screenHeight: Int)
+    /** Called from the engine thread right before the submitted date is drawn */
+    open fun onFrameDraw(engine: PulseEngineInternal) { }
 }
 
 class DefaultCamera(
-    private var projectionType: ProjectionType
+    private var projectionType: CameraProjectionType
 ) : CameraInternal() {
 
     override var projectionMatrix = Matrix4f()
@@ -88,9 +89,9 @@ class DefaultCamera(
     private val iScale = Vector3f()
     private val iOrigin = Vector3f()
 
-    override fun screenPosToWorldPos(x: Float, y: Float): Vector3f
+    override fun screenPosToWorldPos(x: Float, y: Float, z: Float): Vector3f
     {
-        val pos = returnVector.set(x, y, 0f, 1f).mul(invViewMatrix)
+        val pos = returnVector.set(x, y, z, 1f).mul(invViewMatrix)
         return worldPositionVector.set(pos.x, pos.y, pos.z)
     }
 
@@ -100,12 +101,14 @@ class DefaultCamera(
         return screenPositionVector.set(pos.x, pos.y)
     }
 
-    override fun updateProjection(width: Int, height: Int, type: ProjectionType?)
+    override fun updateProjection(width: Int, height: Int, type: CameraProjectionType?)
     {
         projectionType = type ?: projectionType
         projectionMatrix = when (projectionType)
         {
             ORTHOGRAPHIC -> Matrix4f().ortho(0.0f, width.toFloat(), height.toFloat(), 0.0f, nearPlane, farPlane)
+            // TODO: Fix y-axis inversion for perspective projection
+            PERSPECTIVE -> Matrix4f().perspective(45f.toRadians(), width.toFloat() / height.toFloat(), nearPlane, farPlane)
         }
     }
 
@@ -115,8 +118,12 @@ class DefaultCamera(
         y + height >= topLeftWorldPosition.y - padding &&
         y <= bottomRightWorldPosition.y + padding
 
-    override fun updateViewMatrix()
+    override fun onFrameStart(engine: PulseEngineInternal)
     {
+        // Updates the view matrix at the start of the frame.
+        // Ensures that geometry submitted last frame is rendered with the camera state 
+        // from the previous frame. This is the default behavior as the renderers are double-buffered.
+
         position.interpolateFrom(positionLast, destination = iPos)
         rotation.interpolateFrom(rotationLast, destination = iRot)
         origin.interpolateFrom(originLast, destination = iOrigin)
@@ -131,13 +138,15 @@ class DefaultCamera(
 
         viewMatrix.invert(invViewMatrix)
         projectionMatrix.mul(viewMatrix, viewProjectionMatrix)
-    }
 
-    override fun updateWorldPositions(screenWidth: Int, screenHeight: Int)
-    {
+        // Update world positions of screen corners
+        val screenWidth = engine.gfx.mainSurface.config.width.toFloat()
+        val screenHeight = engine.gfx.mainSurface.config.height.toFloat()
+
         val topLeft = screenPosToWorldPos(0f, 0f)
         topLeftWorldPosition.set(topLeft.x, topLeft.y)
-        val bottomRight = screenPosToWorldPos(screenWidth.toFloat(), screenHeight.toFloat())
+
+        val bottomRight = screenPosToWorldPos(screenWidth, screenHeight)
         bottomRightWorldPosition.set(bottomRight.x, bottomRight.y)
     }
 
@@ -154,9 +163,10 @@ class DefaultCamera(
         fun createOrthographic(width: Int, height: Int) =
             DefaultCamera(ORTHOGRAPHIC).also { it.updateProjection(width, height) }
     }
+}
 
-    enum class ProjectionType
-    {
-        ORTHOGRAPHIC
-    }
+enum class CameraProjectionType
+{
+    ORTHOGRAPHIC,
+    PERSPECTIVE
 }
