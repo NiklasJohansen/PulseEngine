@@ -8,6 +8,8 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.modules.vr.VrCamera
+import no.njoh.pulseengine.modules.vr.VrManager
 import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.lwjgl.opengl.GL11.*
@@ -20,7 +22,11 @@ class MeshRenderer() : BatchRenderer()
     private val camPos = Vector3f()
 
     private lateinit var program: ShaderProgram
-    
+
+    var envDiffuseTexture = ""
+    var envSpecularTexture = ""
+    var brdfLutTexture = ""
+
     override fun init(engine: PulseEngineInternal) 
     {
         if (!this::program.isInitialized)
@@ -44,11 +50,19 @@ class MeshRenderer() : BatchRenderer()
         surface.camera.viewMatrix.invert(invViewMatrix)
         invViewMatrix.getTranslation(camPos)
 
+        val envSpecularMipCount = engine.asset.getOrNull<Texture>(envSpecularTexture)
+            ?.let { engine.gfx.textureBank.getTextureArray(it) }?.mipLevels?.toFloat() ?: 1f
+
         program.bind()
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniform("cameraPos", camPos)
-        
+        program.setUniform("envSpecularMipCount", envSpecularMipCount)
+
+        program.setTexture("envDiffuseTex",  engine.asset.getOrNull(envDiffuseTexture))
+        program.setTexture("envSpecularTex", engine.asset.getOrNull(envSpecularTexture))
+        program.setTexture("brdfLutTex",     engine.asset.getOrNull(brdfLutTexture))
+
         for (i in startIndex until startIndex + drawCount)
         {
             val cmd = readDrawCommands.getOrNull(i) ?: continue
