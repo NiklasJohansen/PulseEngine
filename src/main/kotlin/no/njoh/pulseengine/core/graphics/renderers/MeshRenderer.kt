@@ -103,5 +103,8 @@ class MeshRenderer() : BatchRenderer()
         increaseBatchSize()
     }
 
-    private data class DrawCommand(val mesh: Mesh, val transform: Matrix4f)
+    private data class DrawCommand(
+        val mesh: Mesh,
+        val transform: Matrix4f
+    )
 }
