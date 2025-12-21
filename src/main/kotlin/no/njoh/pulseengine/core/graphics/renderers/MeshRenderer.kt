@@ -8,8 +8,6 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.modules.vr.VrCamera
-import no.njoh.pulseengine.modules.vr.VrManager
 import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.lwjgl.opengl.GL11.*
