@@ -66,6 +66,11 @@ open class FrameBufferObject(
         }
     }
 
+    fun attachOutputTextureArray(textureArray: TextureArray, index: Int, attachment: Attachment, mipLevel: Int = 0)
+    {
+        glFramebufferTextureLayer(GL_FRAMEBUFFER, attachment.value, textureArray.id, mipLevel, index)
+    }
+
     fun resolveToFBO(destinationFbo: FrameBufferObject)
     {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, this.id)
@@ -116,8 +121,7 @@ open class FrameBufferObject(
             val frameBufferId = glGenFramebuffers()
 
             glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
-
-
+ 
             for (texDesc in textureDescriptors)
             {
                 val requestedSamples = if (texDesc.multisampling == MSAA_MAX) Int.MAX_VALUE else texDesc.multisampling.samples
@@ -166,16 +170,19 @@ open class FrameBufferObject(
             // Check if the frame buffer is complete. It will not be complete if it has no textures attached,
             // so we skip this check. A texture must be attached to the buffer at a later point for it to be usable.
             if (textureDescriptors.isNotEmpty())
-            {
-                val status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-                if (status != GL_FRAMEBUFFER_COMPLETE)
-                    throw RuntimeException("Failed to create frame buffer object. Status: $status")
-            }
+                checkStatus()
 
             // Unbind frame buffer (binds default buffer)
             glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
             return FrameBufferObject(frameBufferId, renderTextures, textureSizes, textureDescriptors.map { it.copy() }, renderBufferIds)
+        }
+
+        fun checkStatus()
+        {
+            val status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+            if (status != GL_FRAMEBUFFER_COMPLETE)
+                throw RuntimeException("Failed to create frame buffer object. Status: $status")
         }
 
         private fun createColorTextureAttachment(

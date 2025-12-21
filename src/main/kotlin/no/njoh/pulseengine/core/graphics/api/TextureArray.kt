@@ -2,13 +2,14 @@ package no.njoh.pulseengine.core.graphics.api
 
 import gnu.trove.list.array.TIntArrayList
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
-import no.njoh.pulseengine.core.shared.utils.Logger
+import org.lwjgl.opengl.ARBClearTexture.glClearTexImage
 import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
-import org.lwjgl.opengl.ARBInternalformatQuery2.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.ARBTextureStorage.glTexStorage3D
 import org.lwjgl.opengl.GL11.*
+import org.lwjgl.opengl.GL12.GL_TEXTURE_BASE_LEVEL
+import org.lwjgl.opengl.GL12.GL_TEXTURE_MAX_LEVEL
 import org.lwjgl.opengl.GL12.glTexSubImage3D
+import org.lwjgl.opengl.GL30.GL_TEXTURE_2D_ARRAY
 import kotlin.math.floor
 import kotlin.math.log2
 import kotlin.math.min
@@ -25,14 +26,18 @@ class TextureArray(
     var id  = -1; private set
     var size = 0; private set
 
+    val mipLevels = min(maxMipLevels, floor(log2(textureSize.toDouble())).toInt() + 1)
+
     private var freeSlots = TIntArrayList()
-    private val mipLevels = min(maxMipLevels, floor(log2(textureSize.toDouble())).toInt() + 1)
 
     fun init()
     {
         id = glGenTextures()
         glBindTexture(GL_TEXTURE_2D_ARRAY, id)
         glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, format.internalFormat, textureSize, textureSize, maxCapacity)
+        glClearTexImage(id, 0, format.pixelFormat, format.type, null as java.nio.ByteBuffer?)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BASE_LEVEL, 0)
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, mipLevels - 1)
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, wrapping.value)
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, wrapping.value)
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, filter.minValue)
@@ -43,33 +48,34 @@ class TextureArray(
     fun upload(texture: Texture)
     {
         check(texture.width <= textureSize) { "Texture width (${texture.width} px) cannot be larger than $textureSize px" }
-        check(texture.height <= textureSize) { "Texture width (${texture.height} px) cannot be larger than $textureSize px" }
+        check(texture.height <= textureSize) { "Texture height (${texture.height} px) cannot be larger than $textureSize px" }
 
         if (id == -1)
             init()
 
-        val texIndex = if (freeSlots.isEmpty) size++ else freeSlots.removeAt(freeSlots.size() - 1)
-        if (texIndex >= maxCapacity)
-            throw RuntimeException("Texture array with capacity: $maxCapacity is full!")
+        val texIndex = when
+        {
+            !freeSlots.isEmpty -> freeSlots.removeAt(freeSlots.size() - 1)
+            size >= maxCapacity -> throw RuntimeException("Texture array with capacity: $maxCapacity is full!")
+            else -> size++
+        }
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, id)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
 
-        if ((format == RGBA8 || format == SRGBA8) && texture.pixelsLDR != null)
+        if (texture.pixelsLDR != null)
         {
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, texIndex, texture.width, texture.height, 1, GL_RGBA, GL_UNSIGNED_BYTE, texture.pixelsLDR!!)
+            check(format.type == GL_UNSIGNED_BYTE) { "Pixel buffer type: ${texture.pixelsLDR!!::class.simpleName} doesn't match texture format: $format" }
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, texIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, texture.pixelsLDR!!)
         }
-        else if ((format == RGBA16F || format == RGBA32F) && texture.pixelsHDR != null)
+        else if (texture.pixelsHDR != null)
         {
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, texIndex, texture.width, texture.height, 1, GL_RGBA, GL_FLOAT, texture.pixelsHDR!!)
-        }
-        else
-        {
-            Logger.error { "Failed to upload texture to texture array. Unsupported texture format: $format" }
-            return
+            check(format.type == GL_FLOAT) { "Pixel buffer type: ${texture.pixelsHDR!!::class.simpleName} doesn't match texture format: $format" }
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, texIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, texture.pixelsHDR!!)
         }
 
-        if (mipLevels > 1)
-            glGenerateMipmap(GL_TEXTURE_2D_ARRAY)
+        if (mipLevels > 1 && (texture.pixelsHDR != null || texture.pixelsLDR != null))
+            glGenerateMipmap(GL_TEXTURE_2D_ARRAY) // TODO: This generate mipmaps for the whole array on every upload
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
 
@@ -80,7 +86,7 @@ class TextureArray(
         texture.onUploaded(handle, uMin = 0.0f, vMin = 0.0f, uMax = u, vMax = v)
     }
 
-    fun isFull() = size >= maxCapacity
+    fun isFull() = (size >= maxCapacity && freeSlots.isEmpty)
 
     fun delete(texture: Texture)
     {
@@ -89,7 +95,14 @@ class TextureArray(
             freeSlots.add(texIndex)
     }
 
-    fun destroy() = glDeleteTextures(id)
+    fun destroy()
+    {
+        if (id != -1)
+            glDeleteTextures(id)
+        id = -1
+        size = 0
+        freeSlots.clear()
+    } 
 
-    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, mips=$maxMipLevels"
+    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, mips=$mipLevels"
 }
