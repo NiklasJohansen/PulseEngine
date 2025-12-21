@@ -1,10 +1,11 @@
 package no.njoh.pulseengine.core.asset
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Asset
 
 class NoOpAssetManager : AssetManagerInternal()
 {
-    override fun update() {}
+    override fun update(engine: PulseEngineInternal) {}
     override fun destroy() {}
     override fun setOnAssetLoaded(callback: (Asset) -> Unit) {}
     override fun setOnAssetUnloaded(callback: (Asset) -> Unit) {}

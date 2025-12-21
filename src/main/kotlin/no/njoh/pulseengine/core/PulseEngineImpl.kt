@@ -172,7 +172,7 @@ class PulseEngineImpl(
     private fun postGameInit()
     {
         // Load initial assets from disk
-        asset.update()
+        asset.update(this)
 
         // Initialize services
         service.init(this)
@@ -222,7 +222,7 @@ class PulseEngineImpl(
     private fun beginFrame()
     {
         data.update()
-        asset.update()
+        asset.update(this)
         audio.update()
         window.initFrame(this)
         gfx.initFrame(this)

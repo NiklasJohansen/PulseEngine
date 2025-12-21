@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.asset
 
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.pathToAsset
 
@@ -50,7 +51,7 @@ abstract class AssetManager
 
 abstract class AssetManagerInternal : AssetManager()
 {
-    abstract fun update()
+    abstract fun update(engine: PulseEngineInternal)
     abstract fun <T : Asset> loadNow(asset: T): T
     abstract fun setOnAssetLoaded(callback: (Asset) -> Unit)
     abstract fun setOnAssetUnloaded(callback: (Asset) -> Unit)

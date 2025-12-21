@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.asset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -72,11 +73,11 @@ open class AssetManagerImpl : AssetManagerInternal()
         assetsToUnload += assets.remove(assetName) ?: return
     }
 
-    override fun update()
+    override fun update(engine: PulseEngineInternal)
     {
         handleAssetUnloading()
-        handleAssetLoading()
-        handleAssetReloading()
+        handleAssetLoading(engine)
+        handleAssetReloading(engine)
     }
 
     override fun setOnAssetLoaded(callback: (Asset) -> Unit)
@@ -92,7 +93,7 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun reloadAssetFromPath(filePath: String)
     {
         assets.forEach { (_, asset) ->
-            if (filePath.endsWith(asset.filePath))
+            if (asset.filePath.isNotEmpty() && filePath.endsWith(asset.filePath))
             {
                 asset.filePath = filePath
                 reload(asset)
@@ -131,7 +132,7 @@ open class AssetManagerImpl : AssetManagerInternal()
         assetsToUnload.clear()
     }
 
-    private fun handleAssetLoading()
+    private fun handleAssetLoading(engine: PulseEngineInternal)
     {
         if (assetsToLoad.isEmpty()) return
 
@@ -158,6 +159,7 @@ open class AssetManagerImpl : AssetManagerInternal()
         {
             assets[it.name] = it
             runCatching { notifyAssetLoaded(it) }.onFailure { error -> Logger.error { "onAssetLoadedCallback failed for asset: ${it.name}, reason: ${error.message}" } }
+            it.postProcess(engine)
         }
 
         assetsToLoad.clear()
@@ -165,7 +167,7 @@ open class AssetManagerImpl : AssetManagerInternal()
         subAssetsToLoad.clear()
     }
 
-    private fun handleAssetReloading()
+    private fun handleAssetReloading(engine: PulseEngineInternal)
     {
         if (assetsToReload.isEmpty()) return
 
@@ -177,6 +179,7 @@ open class AssetManagerImpl : AssetManagerInternal()
                 notifyAssetUnloaded(it)
                 it.load()
                 notifyAssetLoaded(it)
+                it.postProcess(engine)
                 Logger.debug { "Reloaded asset: ${it.filePath}" }
             }
             catch (e: Exception) { Logger.error { "Failed to reload asset: ${it.name}, reason: ${e.message}" } }
