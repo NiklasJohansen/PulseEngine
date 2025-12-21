@@ -438,7 +438,7 @@ object Extensions
             path.endsWith(".ttf")  -> Font(path, name)
             path.endsWith(".txt")  -> Text(path, name)
             path.endsWith(".dat")  -> Binary(path, name)
-            path.endsWith(".hdr")  -> Texture(path, name, format = RGBA32F)
+            path.endsWith(".hdr")  -> EnvMap(path, name)
             path.endsWith(".obj")  ||
             path.endsWith(".fbx")  ||
             path.endsWith(".gltf") -> Mesh(path, name)

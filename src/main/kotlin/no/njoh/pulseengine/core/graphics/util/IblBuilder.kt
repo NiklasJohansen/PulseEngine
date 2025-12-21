@@ -1,0 +1,100 @@
+package no.njoh.pulseengine.core.graphics.util
+
+import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.EnvMap
+import no.njoh.pulseengine.core.asset.types.FragmentShader
+import no.njoh.pulseengine.core.asset.types.VertexShader
+import no.njoh.pulseengine.core.graphics.api.Attachment.*
+import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.objects.FrameBufferObject
+import no.njoh.pulseengine.core.graphics.renderers.FullFrameRenderer
+import no.njoh.pulseengine.core.shared.utils.Logger
+import org.lwjgl.opengl.GL11.*
+import kotlin.math.max
+
+object IblBuilder
+{
+    private var specularProgram: ShaderProgram? = null
+    private var specularRenderer: FullFrameRenderer? = null
+    private var diffuseProgram: ShaderProgram? = null
+    private var diffuseRenderer: FullFrameRenderer? = null
+    private var fbo: FrameBufferObject? = null // FBO that owns no textures
+
+    fun generateSpecularIBL(engine: PulseEngineInternal, srcEnv: EnvMap, dstEnv: EnvMap, mipCount: Int)
+    {
+        Logger.info { "Generating specular IBL for ${srcEnv.name} -> ${dstEnv.name}" }
+
+        val program = specularProgram ?: ShaderProgram.create(
+            engine.asset.loadNow(VertexShader("/pulseengine/shaders/utils/ibl.vert")),
+            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/utils/ibl_specular.frag"))
+        )
+        val renderer = specularRenderer ?: FullFrameRenderer(program).also { it.init() }
+        val frameBufferObject = fbo ?: FrameBufferObject.create(1, 1, emptyList()).also { fbo = it }
+        val dstTextureArray = engine.gfx.textureBank.getTextureArray(dstEnv) ?: error("No texture array found for dstEnv (${dstEnv.name})")
+        val srcTextureArray = engine.gfx.textureBank.getTextureArray(srcEnv) ?: error("No texture array found for srcEnv (${srcEnv.name})")
+
+        program.bind()
+        program.setUniformSamplerArray("textureArray", srcTextureArray)
+        program.setUniform("srcEnv", srcEnv.handle.textureIndex.toFloat(), srcEnv.uMax, srcEnv.vMax)
+
+        val err = glGetError()
+        require(err == GL_NO_ERROR) { "GL error after setting srcEnv: $err" }
+
+        frameBufferObject.bind()
+        
+        for (mip in 0 until mipCount)
+        {
+            val mipWidth = max(1, dstEnv.width shr mip)
+            val mipHeight = max(1, dstEnv.height shr mip)
+            val roughness = mip.toFloat() / (mipCount - 1).coerceAtLeast(1)
+
+            program.setUniform("roughness", roughness)
+            program.setUniform("resolution", mipWidth.toFloat())
+ 
+            frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachment = COLOR_TEXTURE_0, mip)
+            FrameBufferObject.checkStatus()
+
+            glViewport(0, 0, mipWidth, mipHeight)
+            glClear(GL_COLOR_BUFFER_BIT)
+
+            renderer.draw()
+        }
+
+        frameBufferObject.release()
+        fbo = frameBufferObject
+        specularProgram = program
+        specularRenderer = renderer
+    }
+
+    fun generateDiffuseIBL(engine: PulseEngineInternal, srcEnv: EnvMap, dstEnv: EnvMap)
+    {
+        Logger.info { "Generating diffuse IBL for ${srcEnv.name} -> ${dstEnv.name}" }
+
+        val program = diffuseProgram ?: ShaderProgram.create(
+            engine.asset.loadNow(VertexShader("/pulseengine/shaders/utils/ibl.vert")),
+            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/utils/ibl_diffuse.frag"))
+        )
+        val renderer = diffuseRenderer ?: FullFrameRenderer(program).also { it.init() }
+        val frameBufferObject = fbo ?: FrameBufferObject.create(1, 1, emptyList()).also { fbo = it }
+        val dstTextureArray = engine.gfx.textureBank.getTextureArray(dstEnv) ?: error("No texture array found for dstEnv (${dstEnv.name})")
+        val srcTextureArray = engine.gfx.textureBank.getTextureArray(srcEnv) ?: error("No texture array found for srcEnv (${srcEnv.name})")
+
+        program.bind()
+        program.setUniformSamplerArray("textureArray", srcTextureArray)
+        program.setUniform("srcEnv", srcEnv.handle.textureIndex.toFloat(), srcEnv.uMax, srcEnv.vMax)
+        
+        frameBufferObject.bind()
+        frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachment = COLOR_TEXTURE_0, mipLevel = 0)
+        FrameBufferObject.checkStatus()
+        
+        glViewport(0, 0, dstEnv.width, dstEnv.height)
+        glClear(GL_COLOR_BUFFER_BIT)
+        
+        renderer.draw()
+
+        frameBufferObject.release()
+        fbo = frameBufferObject
+        diffuseProgram = program
+        diffuseRenderer = renderer
+    }
+}
