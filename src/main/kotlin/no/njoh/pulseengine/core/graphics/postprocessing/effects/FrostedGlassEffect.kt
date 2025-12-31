@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.api.NativeMipmapGenerator
+import no.njoh.pulseengine.core.graphics.api.mipmap.NativeMipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor

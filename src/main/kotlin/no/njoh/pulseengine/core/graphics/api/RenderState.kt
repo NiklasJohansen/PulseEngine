@@ -40,6 +40,9 @@ object BackBufferBaseState : RenderState
         glClearColor(c.red, c.green, c.blue, c.alpha)
         glClear(GL_COLOR_BUFFER_BIT)
 
+        // Enable color writing
+        glColorMask(true, true, true, true)
+        
         // Disable depth testing
         glDisable(GL_DEPTH_TEST)
 
@@ -92,8 +95,8 @@ object BatchRenderBaseState : RenderState
             glEnable(GL_DEPTH_TEST)
             glDepthMask(true)
             glDepthFunc(GL_LEQUAL)
-            glDepthRange(surface.camera.nearPlane.toDouble(), surface.camera.farPlane.toDouble())
-            glClearDepth(surface.camera.farPlane.toDouble())
+            glDepthRange(0.0, 1.0)
+            glClearDepth(1.0)
         }
         else glDisable(GL_DEPTH_TEST)
 
@@ -111,6 +114,7 @@ object BatchRenderBaseState : RenderState
         // Set color and clear surface
         val c = config.backgroundColor
         glClearColor(c.red, c.green, c.blue, c.alpha)
+        glColorMask(true, true, true, true)
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
         // Disable sRGB color space

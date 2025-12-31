@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
 import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
+import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.renderers.*
@@ -176,7 +177,7 @@ open class GraphicsImpl : GraphicsInternal
         zOrder: Int?,
         camera: Camera?,
         isVisible: Boolean,
-        mipmapGenerator: MipmapGenerator?,
+        mipmapGenerators: Map<Attachment, MipmapGenerator>,
         textureScale: Float,
         textureFormat: TextureFormat,
         textureFilter: TextureFilter,
@@ -198,7 +199,7 @@ open class GraphicsImpl : GraphicsInternal
                 height = surfaceHeight,
                 zOrder = zOrder ?: this.lastZOrder--,
                 isVisible = isVisible,
-                mipmapGenerator = mipmapGenerator,
+                mipmapGenerators = mipmapGenerators,
                 textureScale = textureScale,
                 textureFormat = textureFormat,
                 textureFilter = textureFilter,

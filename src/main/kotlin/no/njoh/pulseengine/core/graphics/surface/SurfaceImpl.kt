@@ -63,7 +63,7 @@ class SurfaceImpl(
         {
             renderers.forEachFast { it.init(engine, this) }
             postEffects.forEachFast { it.init(engine) }
-            config.mipmapGenerator?.init(engine)
+            config.mipmapGenerators.values.forEach { it.init(engine) }
         }
 
         renderTarget.init(width, height)
@@ -127,7 +127,7 @@ class SurfaceImpl(
         renderers.forEachFast { it.destroy() }
         postEffects.forEachFast { it.destroy() }
         renderTarget.destroy()
-        config.mipmapGenerator?.destroy()
+        config.mipmapGenerators.forEach { it.value.destroy() }
     }
 
     override fun hasContent() = shouldRerender || renderers.anyMatches { it.hasContentToRender() }
@@ -276,7 +276,7 @@ class SurfaceImpl(
                 attachment = attachment,
                 scale = config.textureScale,
                 sizeFunc = config.textureSizeFunc,
-                mipmapGenerator = config.mipmapGenerator,
+                mipmapGenerator = config.mipmapGenerators[attachment],
             )
         }
     )

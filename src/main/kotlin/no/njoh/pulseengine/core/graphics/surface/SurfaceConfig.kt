@@ -21,7 +21,7 @@ interface SurfaceConfig
     val blendFunction: BlendFunction
     val attachments: List<Attachment>
     val backgroundColor: Color
-    val mipmapGenerator: MipmapGenerator?
+    val mipmapGenerators: Map<Attachment, MipmapGenerator>
 }
 
 class SurfaceConfigInternal(

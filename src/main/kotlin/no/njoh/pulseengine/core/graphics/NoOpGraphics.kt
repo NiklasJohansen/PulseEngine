@@ -9,7 +9,7 @@ import no.njoh.pulseengine.core.graphics.api.BlendFunction
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.DefaultCamera
 import no.njoh.pulseengine.core.graphics.api.CameraProjectionType.ORTHOGRAPHIC
-import no.njoh.pulseengine.core.graphics.api.MipmapGenerator
+import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.TextureBank
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
@@ -33,7 +33,7 @@ class NoOpGraphics : GraphicsInternal
         zOrder: Int?,
         camera: Camera?,
         isVisible: Boolean,
-        mipmapGenerator: MipmapGenerator?,
+        mipmapGenerators: Map<Attachment, MipmapGenerator>,
         textureScale: Float,
         textureFormat: TextureFormat,
         textureFilter: TextureFilter,

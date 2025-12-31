@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.api.BlendFunction.NONE
-import no.njoh.pulseengine.core.graphics.api.CustomMipmapGenerator
+import no.njoh.pulseengine.core.graphics.api.mipmap.CustomMipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.postprocessing.effects.MultiplyEffect
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
@@ -132,7 +132,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             isVisible = false,
             backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
             textureFilter = LINEAR_MIPMAP,
-            mipmapGenerator = CustomMipmapGenerator()
+            mipmapGenerators = mapOf(COLOR_TEXTURE_0 to CustomMipmapGenerator())
         ).apply {
             addRenderer(NormalMapRenderer((this as SurfaceInternal).config))
         }

@@ -36,6 +36,7 @@ class NoOpSurface: SurfaceInternal()
         attachments = emptyList(),
         backgroundColor = Color.BLANK,
         mipmapGenerator = null
+        mipmapGenerators = emptyMap(),
     )
     override val renderTarget = RenderTarget(emptyList())
     override fun addPostProcessingEffect(effect: PostProcessingEffect) {}

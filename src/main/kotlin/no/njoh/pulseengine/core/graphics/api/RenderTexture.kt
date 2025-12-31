@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.graphics.api
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
+import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
 
 class RenderTexture(
     val name: String,

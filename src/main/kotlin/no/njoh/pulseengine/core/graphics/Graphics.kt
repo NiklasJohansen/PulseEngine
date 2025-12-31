@@ -13,8 +13,8 @@ import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.CameraInternal
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR_MIPMAP
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
+import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.LogLevel
@@ -63,10 +63,10 @@ interface Graphics
         zOrder: Int? = null,
         camera: Camera? = null,
         isVisible: Boolean = true,
-        mipmapGenerator: MipmapGenerator? = null,
+        mipmapGenerators: Map<Attachment, MipmapGenerator> = emptyMap(),
         textureScale: Float = 1f,
         textureFormat: TextureFormat = RGBA16F,
-        textureFilter: TextureFilter = if (mipmapGenerator != null) LINEAR_MIPMAP else LINEAR,
+        textureFilter: TextureFilter = LINEAR,
         textureSizeFunc: (width: Int, height: Int, scale: Float) -> PackedSize = ::defaultTexSizeFunc,
         multisampling: Multisampling = NONE,
         blendFunction: BlendFunction = BlendFunction.NORMAL,

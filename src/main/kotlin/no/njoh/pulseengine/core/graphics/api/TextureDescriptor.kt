@@ -2,6 +2,7 @@
 
 package no.njoh.pulseengine.core.graphics.api
 
+import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import kotlin.math.max
 
