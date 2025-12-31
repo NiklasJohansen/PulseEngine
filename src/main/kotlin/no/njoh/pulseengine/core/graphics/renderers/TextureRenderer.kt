@@ -23,7 +23,7 @@ class TextureRenderer(
     private lateinit var instanceLayout: VertexAttributeLayout
     private lateinit var program: ShaderProgram
 
-    override fun init(engine: PulseEngineInternal)
+    override fun init(engine: PulseEngineInternal, surface: Surface)
     {
         if (!this::program.isInitialized)
         {

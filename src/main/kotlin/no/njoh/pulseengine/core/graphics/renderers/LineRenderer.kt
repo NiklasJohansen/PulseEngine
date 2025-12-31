@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawLineVertices
 import org.lwjgl.opengl.GL11.*
 
 class LineRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
@@ -18,7 +19,7 @@ class LineRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
     private lateinit var program: ShaderProgram
     private var vertices = 0
 
-    override fun init(engine: PulseEngineInternal)
+    override fun init(engine: PulseEngineInternal, surface: Surface)
     {
         if (!this::program.isInitialized)
         {
@@ -55,11 +56,9 @@ class LineRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
             vbo.release()
         }
 
-        vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        glDrawArrays(GL_LINES, startIndex * 2, drawCount * 2) // 2 vertices per line
-        vao.release()
+        drawLineVertices(vao, startIndex * 2, drawCount * 2)
     }
 
     override fun destroy()

@@ -11,7 +11,7 @@ import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
 import no.njoh.pulseengine.core.graphics.api.CameraInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.core.graphics.util.DrawUtils
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedTriangleStripVertices
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import org.lwjgl.opengl.GL31.*
 import kotlin.math.max
@@ -38,7 +38,7 @@ class DirectLightRenderer : BatchRenderer()
     private var writeLights = 0
     private var writeEdges = 0
 
-    override fun init(engine: PulseEngineInternal)
+    override fun init(engine: PulseEngineInternal, surface: Surface)
     {
         if (!this::program.isInitialized)
         {
@@ -126,7 +126,6 @@ class DirectLightRenderer : BatchRenderer()
         lightBuffer.release()
 
         // Set up VAO, shader program and uniforms
-        vao.bind()
         program.bind()
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", view)
@@ -149,11 +148,10 @@ class DirectLightRenderer : BatchRenderer()
             program.setUniform("hasOccluderMap", 1f)
         } ?: program.setUniform("hasOccluderMap", 0f)
 
-        // Perform draw call
-        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, readLights)
+        // Draw
+        drawInstancedTriangleStripVertices(vao, 0, 4, readLights)
 
         // Reset
-        vao.release()
         gpuRenderTimeMs = (System.nanoTime() - renderStartTime) / 1_000_000f
     }
 

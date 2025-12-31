@@ -9,13 +9,11 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleVertices
+import org.lwjgl.opengl.GL11.GL_DEPTH_TEST
 import org.lwjgl.opengl.GL11.GL_FLOAT
-import org.lwjgl.opengl.GL11.GL_LEQUAL
-import org.lwjgl.opengl.GL11.GL_LESS
-import org.lwjgl.opengl.GL11.GL_TRIANGLES
-import org.lwjgl.opengl.GL11.glDepthFunc
 import org.lwjgl.opengl.GL11.glDepthMask
-import org.lwjgl.opengl.GL11.glDrawArrays
+import org.lwjgl.opengl.GL11.glDisable
 
 class SkyboxRenderer() : BatchRenderer() 
 {
@@ -25,7 +23,7 @@ class SkyboxRenderer() : BatchRenderer()
 
     var envTextureName = ""
 
-    override fun init(engine: PulseEngineInternal) 
+    override fun init(engine: PulseEngineInternal, surface: Surface) 
     {
         if (!this::program.isInitialized) 
         {
@@ -54,9 +52,8 @@ class SkyboxRenderer() : BatchRenderer()
         val tex = engine.asset.getOrNull<Texture>(envTextureName) ?: return
         val texArray = engine.gfx.textureBank.getTextureArray(tex) ?: return
 
-        // Setup depth state
-        glDepthFunc(GL_LEQUAL)
-        glDepthMask(false)
+        glDepthMask(false) // Disable depth writes skybox
+        glDisable(GL_DEPTH_TEST)
 
         program.bind()
         program.setUniformSamplerArray("textureArray", texArray)
@@ -64,12 +61,7 @@ class SkyboxRenderer() : BatchRenderer()
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", surface.camera.viewMatrix)
 
-        vao.bind()
-        glDrawArrays(GL_TRIANGLES, 0, 36) // 12 triangles * 3 verts
-        vao.release()
-
-        glDepthMask(true)
-        glDepthFunc(GL_LESS)
+        drawTriangleVertices(vao, 0, 36) // 12 triangles * 3 verts
     }
 
     override fun destroy() 

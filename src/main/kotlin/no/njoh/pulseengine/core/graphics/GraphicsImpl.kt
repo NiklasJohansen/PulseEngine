@@ -61,6 +61,9 @@ open class GraphicsImpl : GraphicsInternal
         onWindowChanged(engine, viewPortWidth, viewPortHeight, windowRecreated = true)
 
         GpuLogger.setLogLevel(engine.config.gpuLogLevel)
+
+        engine.data.addMetric("DRAW_CALLS") { sample(GpuProfiler.drawCalls.toFloat()) }
+        engine.data.addMetric("TRIANGLES")  { sample(GpuProfiler.triangles.toFloat()) }
     }
 
     override fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean)

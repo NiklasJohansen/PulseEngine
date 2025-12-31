@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleStripVertices
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL20.*
 import java.lang.Float.floatToRawIntBits
@@ -28,7 +29,7 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
     private val capacity    = 100
     private val stride      = 15
 
-    override fun init(engine: PulseEngineInternal)
+    override fun init(engine: PulseEngineInternal, surface: Surface)
     {
         if (!this::program.isInitialized)
         {
@@ -57,11 +58,7 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
-        // Bind VAO and shader program
-        vao.bind()
         program.bind()
-
-        // Set matrices
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
 
         // Set texture unit
@@ -103,11 +100,10 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
             program.setUniform("sampleTexture", textureId != TextureHandle.NONE.textureIndex)
 
             // Draw quad
-            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
+            drawTriangleStripVertices(vao, 0, 4)
         }
 
         // Release VAO and reset count
-        vao.release()
         readCount = 0
     }
 

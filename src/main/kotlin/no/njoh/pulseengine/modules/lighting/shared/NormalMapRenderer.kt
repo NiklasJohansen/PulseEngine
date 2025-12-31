@@ -22,7 +22,7 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : BatchRender
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
     private lateinit var instanceLayout: VertexAttributeLayout
 
-    override fun init(engine: PulseEngineInternal)
+    override fun init(engine: PulseEngineInternal, surface: Surface)
     {
         if (!this::program.isInitialized)
         {

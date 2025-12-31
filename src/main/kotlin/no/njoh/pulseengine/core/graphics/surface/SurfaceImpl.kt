@@ -61,7 +61,7 @@ class SurfaceImpl(
 
         if (glContextRecreated || !initialized)
         {
-            renderers.forEachFast { it.init(engine) }
+            renderers.forEachFast { it.init(engine, this) }
             postEffects.forEachFast { it.init(engine) }
             config.mipmapGenerator?.init(engine)
         }
@@ -371,7 +371,7 @@ class SurfaceImpl(
     override fun addRenderer(renderer: BatchRenderer)
     {
         runOnInitFrame { engine ->
-            renderer.init(engine)
+            renderer.init(engine, this)
             renderers.add(renderer)
             rendererMap[renderer.javaClass] = renderer
         }

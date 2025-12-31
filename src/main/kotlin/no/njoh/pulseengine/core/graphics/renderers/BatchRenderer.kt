@@ -95,7 +95,7 @@ abstract class BatchRenderer
     /**
      * Called once when the renderer is added to the [Surface]
      */
-    abstract fun init(engine: PulseEngineInternal)
+    abstract fun init(engine: PulseEngineInternal, surface: Surface)
 
     /**
      * Called once at the start of every frame.

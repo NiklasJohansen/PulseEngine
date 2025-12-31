@@ -25,7 +25,7 @@ class MeshRenderer() : BatchRenderer()
     var envSpecularTexture = ""
     var brdfLutTexture = ""
 
-    override fun init(engine: PulseEngineInternal) 
+    override fun init(engine: PulseEngineInternal, surface: Surface)
     {
         if (!this::program.isInitialized)
         {
@@ -44,7 +44,9 @@ class MeshRenderer() : BatchRenderer()
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
     {
-        // Calculate camera position
+        if (startIndex != 0) return // only once per frame
+
+        // Camera position
         surface.camera.viewMatrix.invert(invViewMatrix)
         invViewMatrix.getTranslation(camPos)
 

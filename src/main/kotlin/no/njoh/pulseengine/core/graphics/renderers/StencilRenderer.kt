@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleStripVertices
 import org.lwjgl.opengl.GL20.*
 
 class StencilRenderer : BatchRenderer()
@@ -15,7 +16,7 @@ class StencilRenderer : BatchRenderer()
     private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram
 
-    override fun init(engine: PulseEngineInternal)
+    override fun init(engine: PulseEngineInternal, surface: Surface)
     {
         if (!this::program.isInitialized)
         {
@@ -37,12 +38,10 @@ class StencilRenderer : BatchRenderer()
 
     fun drawStencil(surface: Surface, x: Float, y: Float, width: Float, height: Float)
     {
-        vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniform("posAndSize", x, y, width, height)
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
-        vao.release()
+        drawTriangleStripVertices(vao, 0, 4)
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int) { }

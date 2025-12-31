@@ -8,6 +8,7 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleIndices
 import org.lwjgl.opengl.GL11.*
 
 class QuadRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
@@ -20,7 +21,7 @@ class QuadRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
     private var vertexCount = 0
     private var singleVertexCount = 0
 
-    override fun init(engine: PulseEngineInternal)
+    override fun init(engine: PulseEngineInternal, surface: Surface)
     {
         if (!this::program.isInitialized)
         {
@@ -62,13 +63,10 @@ class QuadRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
             ebo.submit()
         }
 
-        vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         glBindTexture(GL_TEXTURE_2D, 0)
-        // 6 elements per quad, 4 bytes per element
-        glDrawElements(GL_TRIANGLES, drawCount * 6, GL_UNSIGNED_INT, startIndex * 6L * 4)
-        vao.release()
+        drawTriangleIndices(vao, startIndex * 6, drawCount * 6) // 6 elements per quad
     }
 
     override fun destroy()

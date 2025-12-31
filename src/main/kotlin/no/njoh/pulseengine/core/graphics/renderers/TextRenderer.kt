@@ -34,7 +34,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
     private val glyphBuffer = GlyphBuffer()
     private val newLinePositions = TIntArrayList(100)
 
-    override fun init(engine: PulseEngineInternal)
+    override fun init(engine: PulseEngineInternal, surface: Surface)
     {
         if (!this::program.isInitialized)
         {

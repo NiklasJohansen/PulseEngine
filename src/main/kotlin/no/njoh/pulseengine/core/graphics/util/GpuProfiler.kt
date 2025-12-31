@@ -12,6 +12,11 @@ object GpuProfiler
     @PublishedApi internal val context = TextBuilderContext()
 
     private var shouldBeEnabled = false
+    private var drawCallCounter = 0L
+    private var triangleCounter = 0L
+
+    var drawCalls = 0L; private set
+    var triangles = 0L; private set
 
     /**
      * Measures the time it takes to execute the given [action].
@@ -23,6 +28,8 @@ object GpuProfiler
         action()
         endMeasure()
     }
+
+    inline fun measure(label: String, action: () -> Unit) = measure({ label }, action)
 
     /**
      * Begins a GPU time measure.
@@ -71,6 +78,10 @@ object GpuProfiler
     internal fun initFrame()
     {
         enabled = shouldBeEnabled
+        drawCalls = drawCallCounter
+        triangles = triangleCounter
+        drawCallCounter = 0
+        triangleCounter = 0
 
         if (!enabled) return
 
@@ -87,5 +98,21 @@ object GpuProfiler
         if (!enabled) return
 
         GpuTimeQuery.end() // End the "Frame" timer
+    }
+
+    /**
+     * Increments the draw call counter by the given [count].
+     */
+    fun incrementDrawCalls(count: Long = 1L)
+    {
+        drawCallCounter += count
+    }
+
+    /**
+     * Increments the triangle counter by the given [count].
+     */
+    fun incrementTriangles(count: Long)
+    {
+        triangleCounter += count
     }
 }
