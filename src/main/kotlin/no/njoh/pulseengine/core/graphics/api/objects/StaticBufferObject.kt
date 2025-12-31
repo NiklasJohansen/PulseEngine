@@ -49,9 +49,9 @@ class StaticBufferObject(
 
         fun createFullscreenUvTriangleArrayBuffer() = createArrayBuffer(
             floatArrayOf(
-                -1f, -1f, 0f, 0f, // v1 (bottom-left)
-                 3f, -1f, 2f, 0f, // v2 (bottom-right)
-                -1f,  3f, 0f, 2f  // v3 (top-left)
+                -1f, -1f,  0f, 0f,
+                -1f,  3f,  0f, 2f,
+                 3f, -1f,  2f, 0f
             )
         )
     }

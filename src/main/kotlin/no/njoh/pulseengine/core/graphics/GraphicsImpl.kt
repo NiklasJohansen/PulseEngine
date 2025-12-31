@@ -199,6 +199,7 @@ open class GraphicsImpl : GraphicsInternal
                 height = surfaceHeight,
                 zOrder = zOrder ?: this.lastZOrder--,
                 isVisible = isVisible,
+                drawWireframe = false,
                 mipmapGenerators = mipmapGenerators,
                 textureScale = textureScale,
                 textureFormat = textureFormat,
@@ -249,7 +250,7 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun uploadMesh(mesh: Mesh)
     {
-        if (mesh.vertices.isEmpty() || mesh.indices.isEmpty())
+        if ((mesh.vbo == null && mesh.vertices.isEmpty()) || (mesh.ebo == null && mesh.indices.isEmpty()))
         {
             Logger.warn { "Attempted to upload empty mesh to GPU: ${mesh.name} (${mesh.filePath})" }
             return

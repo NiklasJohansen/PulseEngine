@@ -65,6 +65,9 @@ object PostProcessingBaseState : RenderState
 {
     override fun onApply(surface: SurfaceInternal)
     {
+        // Set polygon mode to fill
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
         // Clear back-buffer
         glClearColor(0f, 0f, 0f, 0f)
         glClear(GL_COLOR_BUFFER_BIT)
@@ -88,6 +91,14 @@ object BatchRenderBaseState : RenderState
     override fun onApply(surface: SurfaceInternal)
     {
         val config = surface.config
+
+        // Set polygon mode
+        glPolygonMode(GL_FRONT_AND_BACK, if (config.drawWireframe) GL_LINE else GL_FILL)
+
+        // Set face culling
+        glEnable(GL_CULL_FACE)
+        glCullFace(GL_BACK)
+        glFrontFace(GL_CW)
 
         // Set depth state
         if (config.hasDepthAttachment)

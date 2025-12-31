@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.surface
 
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.api.*
+import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import java.lang.Float.intBitsToFloat
@@ -13,6 +14,7 @@ interface SurfaceConfig
     val height: Int
     val zOrder: Int
     val isVisible: Boolean
+    var drawWireframe: Boolean
     val textureScale: Float
     val textureFormat: TextureFormat
     val textureFilter: TextureFilter
@@ -30,6 +32,7 @@ class SurfaceConfigInternal(
     override var height: Int,
     override var zOrder: Int,
     override var isVisible: Boolean,
+    override var drawWireframe: Boolean,
     override var textureScale: Float,
     override var textureFormat: TextureFormat,
     override var textureFilter: TextureFilter,
@@ -38,7 +41,7 @@ class SurfaceConfigInternal(
     override var blendFunction: BlendFunction,
     override val attachments: List<Attachment>,
     override var backgroundColor: Color,
-    override var mipmapGenerator: MipmapGenerator?
+    override val mipmapGenerators: Map<Attachment, MipmapGenerator>
 ) : SurfaceConfig {
 
     val hasDepthAttachment = attachments.anyMatches { it.hasDepth }

@@ -27,6 +27,7 @@ class NoOpSurface: SurfaceInternal()
         height = 0,
         zOrder = 0,
         isVisible = false,
+        drawWireframe = false,
         textureScale = 1f,
         textureFormat = TextureFormat.RGBA8,
         textureFilter = TextureFilter.LINEAR,
@@ -35,8 +36,7 @@ class NoOpSurface: SurfaceInternal()
         blendFunction = BlendFunction.NORMAL,
         attachments = emptyList(),
         backgroundColor = Color.BLANK,
-        mipmapGenerator = null
-        mipmapGenerators = emptyMap(),
+        mipmapGenerators = emptyMap()
     )
     override val renderTarget = RenderTarget(emptyList())
     override fun addPostProcessingEffect(effect: PostProcessingEffect) {}
