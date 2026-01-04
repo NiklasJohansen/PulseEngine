@@ -9,13 +9,14 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import org.lwjgl.opengl.GL20.*
 
 class TextureRenderer(
     private val config: SurfaceConfigInternal,
     var alphaDiscardThreshold: Float = 0.4f
-) : BatchRenderer() {
+) : Renderer() {
 
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
@@ -61,7 +62,7 @@ class TextureRenderer(
         instanceBuffer.swapBuffers()
     }
 
-    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {
@@ -70,13 +71,11 @@ class TextureRenderer(
             instanceBuffer.release()
         }
 
-        vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniform("alphaDiscardThreshold", alphaDiscardThreshold)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        drawInstancedQuads(instanceBuffer, instanceLayout, program, drawCount, startIndex)
-        vao.release()
+        drawInstancedQuads(vao, instanceBuffer, instanceLayout, program, startIndex, drawCount)
     }
 
     override fun destroy()

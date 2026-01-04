@@ -10,12 +10,13 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleStripVertices
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL20.*
 import java.lang.Float.floatToRawIntBits
 
-class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+class RenderTextureRenderer(private val config: SurfaceConfigInternal) : Renderer()
 {
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: StaticBufferObject
@@ -56,7 +57,7 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : BatchRe
         readCount = writeCount.also { writeCount = 0 }
     }
 
-    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)

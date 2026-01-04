@@ -12,6 +12,7 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import no.njoh.pulseengine.core.shared.primitives.FlatObjectBuffer
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
@@ -24,7 +25,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+class TextRenderer(private val config: SurfaceConfigInternal) : Renderer()
 {
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
@@ -69,7 +70,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
         instanceBuffer.swapBuffers()
     }
 
-    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {
@@ -78,12 +79,10 @@ class TextRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
             instanceBuffer.release()
         }
 
-        vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        drawInstancedQuads(instanceBuffer, instanceLayout, program, drawCount, startIndex)
-        vao.release()
+        drawInstancedQuads(vao, instanceBuffer, instanceLayout, program, startIndex, drawCount)
     }
 
     override fun destroy()

@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.StencilState.Action.CLEAR
 import no.njoh.pulseengine.core.graphics.api.StencilState.Action.SET
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
-import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
+import no.njoh.pulseengine.core.graphics.renderers.Renderer
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.TextBuilderContext
@@ -198,25 +198,25 @@ abstract class Surface
     abstract fun applyRenderState(state: RenderState)
 
     /**
-     * Adds a [BatchRenderer] to the [Surface].
+     * Adds a [Renderer] to the [Surface].
      * The renderer will be initialized and ready at the start of the next frame.
      */
-    abstract fun addRenderer(renderer: BatchRenderer)
+    abstract fun addRenderer(renderer: Renderer)
 
     /**
-     * Deletes a [BatchRenderer] from the [Surface]. The renderer will be removed at the start of the next frame.
+     * Deletes a [Renderer] from the [Surface]. The renderer will be removed at the start of the next frame.
      */
-    abstract fun getRenderers(): List<BatchRenderer>
+    abstract fun getRenderers(): List<Renderer>
 
     /**
-     * Gets a [BatchRenderer] by a class type reference.
+     * Gets a [Renderer] by a class type reference.
      */
-    abstract fun <T: BatchRenderer> getRenderer(type: Class<T>): T?
+    abstract fun <T: Renderer> getRenderer(type: Class<T>): T?
 
     /**
-     * Gets a [BatchRenderer] by the inferred class type.
+     * Gets a [Renderer] by the inferred class type.
      */
-    inline fun <reified T: BatchRenderer> getRenderer(): T? = getRenderer(T::class.java)
+    inline fun <reified T: Renderer> getRenderer(): T? = getRenderer(T::class.java)
 
     // Reusable StringBuilder for text drawing
     @PublishedApi internal val sb = StringBuilder(1000)

@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.renderers.*
-import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer.Companion.MAX_BATCH_COUNT
+import no.njoh.pulseengine.core.graphics.renderers.Renderer.Companion.MAX_BATCH_COUNT
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
@@ -29,8 +29,8 @@ class SurfaceImpl(
     private var readRenderStates      = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private var writeRenderStates     = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private val postEffects           = ArrayList<PostProcessingEffect>()
-    private val renderers             = ArrayList<BatchRenderer>()
-    private val rendererMap           = HashMap<Class<out BatchRenderer>, BatchRenderer>()
+    private val renderers             = ArrayList<Renderer>()
+    private val rendererMap           = HashMap<Class<out Renderer>, Renderer>()
     private var textRenderer          = null as TextRenderer?
     private var quadRenderer          = null as QuadRenderer?
     private var lineRenderer          = null as LineRenderer?
@@ -94,7 +94,7 @@ class SurfaceImpl(
             readRenderStates[batchNum].apply(this)
             GpuProfiler.measure({ "RENDER_BATCH " plus " (#" plus batchNum plus ")" })
             {
-                renderers.forEachFast { it.renderBatch(engine, this, batchNum) }
+                renderers.forEachFast { it.render(engine, this, batchNum) }
             }
             batchNum++
         }
@@ -197,12 +197,12 @@ class SurfaceImpl(
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T : BatchRenderer> getRenderer(type: Class<T>): T?
+    override fun <T : Renderer> getRenderer(type: Class<T>): T?
     {
         return rendererMap[type] as T?
     }
 
-    override fun getRenderers(): List<BatchRenderer>
+    override fun getRenderers(): List<Renderer>
     {
         return renderers
     }
@@ -368,7 +368,7 @@ class SurfaceImpl(
         writeRenderStates.add(state)
     }
 
-    override fun addRenderer(renderer: BatchRenderer)
+    override fun addRenderer(renderer: Renderer)
     {
         runOnInitFrame { engine ->
             renderer.init(engine, this)

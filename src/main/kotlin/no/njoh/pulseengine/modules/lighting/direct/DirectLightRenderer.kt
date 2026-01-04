@@ -8,15 +8,15 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
-import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
-import no.njoh.pulseengine.core.graphics.api.CameraInternal
+import no.njoh.pulseengine.core.graphics.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedTriangleStripVertices
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import org.lwjgl.opengl.GL31.*
 import kotlin.math.max
 
-class DirectLightRenderer : BatchRenderer()
+class DirectLightRenderer : Renderer()
 {
     var ambientColor = Color(0.1f, 0.1f, 0.1f)
     var normalMapTextureHandle: TextureHandle? = null
@@ -82,7 +82,7 @@ class DirectLightRenderer : BatchRenderer()
         readEdges = writeEdges.also { writeEdges = 0 }
     }
 
-    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         if (readLights == 0)
         {
@@ -90,8 +90,7 @@ class DirectLightRenderer : BatchRenderer()
             return
         }
 
-        val cam = surface.camera as CameraInternal
-        val zRotCamera = cam.rotation.z.interpolateFrom(cam.rotationLast.z)
+        val zRotCamera = surface.camera.rotation.z.interpolateFrom(surface.camera.rotationLast.z)
         val renderStartTime = System.nanoTime()
         val texScale = surface.config.textureScale
         val view = surface.camera.viewMatrix

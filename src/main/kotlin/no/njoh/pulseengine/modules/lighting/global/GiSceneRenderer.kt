@@ -9,14 +9,15 @@ import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
-import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
+import no.njoh.pulseengine.core.graphics.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import org.joml.Vector2f
 import org.lwjgl.opengl.GL20.*
 
-class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+class GiSceneRenderer(private val config: SurfaceConfigInternal) : Renderer()
 {
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
@@ -68,7 +69,7 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         instanceBuffer.swapBuffers()
     }
 
-    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {
@@ -77,7 +78,6 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
             instanceBuffer.release()
         }
 
-        vao.bind()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniform("uvDrawOffset", getUvSampleOffset(surface, enabled = jitterFix))
@@ -86,8 +86,7 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : BatchRenderer
         program.setUniform("globalWorldScale", globalWorldScale)
         program.setUniform("upscaleSmallSources", upscaleSmallSources)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays(), wrapping = CLAMP_TO_EDGE, filter = LINEAR)
-        drawInstancedQuads(instanceBuffer, instanceLayout, program, drawCount, startIndex)
-        vao.release()
+        drawInstancedQuads(vao, instanceBuffer, instanceLayout, program, startIndex, drawCount)
     }
 
     override fun destroy()

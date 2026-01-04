@@ -13,7 +13,7 @@ import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
-import no.njoh.pulseengine.core.graphics.renderers.BatchRenderer
+import no.njoh.pulseengine.core.graphics.renderers.Renderer
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
@@ -40,7 +40,7 @@ class NoOpSurface: SurfaceInternal()
     )
     override val renderTarget = RenderTarget(emptyList())
     override fun addPostProcessingEffect(effect: PostProcessingEffect) {}
-    override fun addRenderer(renderer: BatchRenderer) {}
+    override fun addRenderer(renderer: Renderer) {}
     override fun applyRenderState(state: RenderState) {}
     override fun deletePostProcessingEffect(name: String) {}
     override fun destroy() {}
@@ -52,11 +52,11 @@ class NoOpSurface: SurfaceInternal()
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float) {}
     override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, xTiling: Float, yTiling: Float) {}
     override fun drawText(text: CharSequence, x: Float, y: Float, font: Font?, fontSize: Float, angle: Degrees, xOrigin: Float, yOrigin: Float, wrapNewLines: Boolean, newLineSpacing: Float) {}
-    override fun <T : BatchRenderer> getRenderer(type: Class<T>) = null
+    override fun <T : Renderer> getRenderer(type: Class<T>) = null
     override fun <T : PostProcessingEffect> getPostProcessingEffect(type: Class<T>) = null
     override fun getPostProcessingEffect(name: String) = null
     override fun getPostProcessingEffects() = emptyList<PostProcessingEffect>()
-    override fun getRenderers() = emptyList<BatchRenderer>()
+    override fun getRenderers() = emptyList<Renderer>()
     override fun getTexture(index: Int, final: Boolean) = RenderTexture.BLANK
     override fun getTextures() = emptyList<RenderTexture>()
     override fun hasContent() = false

@@ -9,10 +9,11 @@ import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawLineVertices
 import org.lwjgl.opengl.GL11.*
 
-class LineRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
+class LineRenderer(private val config: SurfaceConfigInternal) : Renderer()
 {
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: DoubleBufferedFloatObject
@@ -47,7 +48,7 @@ class LineRenderer(private val config: SurfaceConfigInternal) : BatchRenderer()
         vbo.swapBuffers()
     }
 
-    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         if (startIndex == 0)
         {

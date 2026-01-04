@@ -9,13 +9,14 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleVertices
 import org.lwjgl.opengl.GL11.GL_DEPTH_TEST
 import org.lwjgl.opengl.GL11.GL_FLOAT
 import org.lwjgl.opengl.GL11.glDepthMask
 import org.lwjgl.opengl.GL11.glDisable
 
-class SkyboxRenderer() : BatchRenderer() 
+class SkyboxRenderer() : Renderer()
 {
     private lateinit var program: ShaderProgram
     private lateinit var vao: VertexArrayObject
@@ -45,10 +46,10 @@ class SkyboxRenderer() : BatchRenderer()
         increaseBatchSize() // To ensure the batch is rendered
     }
 
-    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int) 
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         if (startIndex != 0) return
-        
+
         val tex = engine.asset.getOrNull<Texture>(envTextureName) ?: return
         val texArray = engine.gfx.textureBank.getTextureArray(tex) ?: return
 

@@ -62,22 +62,25 @@ object DrawUtils
     }
 
     fun drawInstancedQuads(
+        vao: VertexArrayObject,
         instanceBuffer: DoubleBufferedFloatObject,
         attributeLayout: VertexAttributeLayout,
         shaderProgram: ShaderProgram,
+        firstInstanceIndex: Int,
         instanceCount: Int,
-        baseInstanceIndex: Int
     ) {
+        vao.bind()
         if (GlCapabilities.baseInstance)
         {
-            glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, instanceCount, baseInstanceIndex)
+            glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, instanceCount, firstInstanceIndex)
         }
         else // Fall back to glDrawArraysInstanced (macOS)
         {
             instanceBuffer.bind()
-            attributeLayout.bind(shaderProgram, baseInstanceIndex)
+            attributeLayout.bind(shaderProgram, firstInstanceIndex)
             glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, instanceCount)
         }
+        vao.release()
         GpuProfiler.incrementTriangles(instanceCount * 2L)
         GpuProfiler.incrementDrawCalls()
     }

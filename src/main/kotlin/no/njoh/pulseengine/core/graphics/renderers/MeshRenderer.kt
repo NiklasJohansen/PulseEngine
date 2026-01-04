@@ -12,7 +12,7 @@ import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.lwjgl.opengl.GL11.*
 
-class MeshRenderer() : BatchRenderer() 
+class MeshRenderer : Renderer()
 {
     private var readDrawCommands = ArrayList<DrawCommand>(256)
     private var writeDrawCommands = ArrayList<DrawCommand>(256)
@@ -42,9 +42,9 @@ class MeshRenderer() : BatchRenderer()
         writeDrawCommands.clear()
     }
 
-    override fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
+    override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
-        if (startIndex != 0) return // only once per frame
+        if (startIndex > 0) return // Only once per frame
 
         // Camera position
         surface.camera.viewMatrix.invert(invViewMatrix)

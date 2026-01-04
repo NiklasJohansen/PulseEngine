@@ -2,13 +2,16 @@ package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 
 /**
- * Used to batch up vertex data into separate draw calls.
- * Managed by the [Graphics] implementation.
+ * Base class for all renderers.
+ * A renderer is responsible for drawing to the render target of a [Surface].
+ * Batches are used to group draw calls together when the global state changes,
+ * e.g., stencil masks or changes to blending modes.
  */
-abstract class BatchRenderer
+abstract class Renderer
 {
     private val batchSize  = IntArray(MAX_BATCH_COUNT * 2)
     private val batchStart = IntArray(MAX_BATCH_COUNT * 2)
@@ -72,7 +75,7 @@ abstract class BatchRenderer
     /**
      * Renders the numbered batch if it is not empty.
      */
-    fun renderBatch(engine: PulseEngineInternal, surface: Surface, batchNum: Int)
+    fun render(engine: PulseEngineInternal, surface: SurfaceInternal, batchNum: Int)
     {
         val i = readOffset + batchNum
         val drawCount = batchSize[i]
@@ -100,12 +103,12 @@ abstract class BatchRenderer
     /**
      * Called once at the start of every frame.
      */
-    abstract fun onInitFrame()
+    open fun onInitFrame() {}
 
     /**
      * Called every frame on every none-empty batch.
      */
-    abstract fun onRenderBatch(engine: PulseEngineInternal, surface: Surface, startIndex: Int, drawCount: Int)
+    abstract fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
 
     /**
      * Called once when the [Surface] is destroyed.
