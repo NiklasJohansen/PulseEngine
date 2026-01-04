@@ -59,7 +59,7 @@ void main()
     vertexColor = unpackAndConvert(color);
     texStart = uvMin;
     texSize = uvMax - uvMin;
-    texCoord = vertexPos;
+    texCoord = vec2(vertexPos.x, 1.0 - vertexPos.y); 
     texTiling = tiling;
     quadSize = size;
     quadCornerRadius = cornerRadius;

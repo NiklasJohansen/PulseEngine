@@ -10,13 +10,14 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.*
 import no.njoh.pulseengine.core.graphics.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceConfig
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedTriangleStripVertices
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import org.lwjgl.opengl.GL31.*
 import kotlin.math.max
 
-class DirectLightRenderer : Renderer()
+class DirectLightRenderer(val config: SurfaceConfig) : Renderer()
 {
     var ambientColor = Color(0.1f, 0.1f, 0.1f)
     var normalMapTextureHandle: TextureHandle? = null
@@ -190,10 +191,10 @@ class DirectLightRenderer : Renderer()
         lightBuffer.fill(13)
         {
             put(x)
-            put(y)
+            put(config.height - y)
             put(z)
             put(radius)
-            put(direction)
+            put(-direction)
             put(coneAngle)
             put(max(sourceSize, 0.01f))
             put(rgba)
@@ -212,9 +213,9 @@ class DirectLightRenderer : Renderer()
         edgeBuffer.fill(4)
         {
             put(x0)
-            put(y0)
+            put(config.height - y0)
             put(x1)
-            put(y1)
+            put(config.height - y1)
         }
         writeEdges++
     }

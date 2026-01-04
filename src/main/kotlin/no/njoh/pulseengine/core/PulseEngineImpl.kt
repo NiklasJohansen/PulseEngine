@@ -314,7 +314,7 @@ class PulseEngineImpl(
         input.pollEvents()
 
         // Update world mouse position
-        val pos = gfx.mainCamera.screenPosToWorldPos(input.xMouse, input.yMouse)
+        val pos = gfx.mainCamera.screenPosToWorldPos(input.xMouse, input.yMouse, 0f, gfx.mainSurface.config.width, gfx.mainSurface.config.height)
         input.xWorldMouse = pos.x
         input.yWorldMouse = pos.y
 

@@ -98,7 +98,7 @@ object BatchRenderBaseState : RenderState
         // Set face culling
         glEnable(GL_CULL_FACE)
         glCullFace(GL_BACK)
-        glFrontFace(GL_CW)
+        glFrontFace(GL_CCW)
 
         // Set depth state
         if (config.hasDepthAttachment)

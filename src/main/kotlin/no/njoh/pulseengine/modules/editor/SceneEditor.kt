@@ -52,6 +52,7 @@ import no.njoh.pulseengine.modules.editor.EditorUtil.getName
 import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
+import org.joml.Matrix4f
 import org.joml.Vector3f
 import kotlin.math.*
 import kotlin.reflect.KClass
@@ -436,6 +437,9 @@ class SceneEditor(
             if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
                 it.renderGizmo(surface, showResizeDots)
         }
+        
+        val screenWidth = engine.window.width
+        val screenHeight = engine.window.height
 
         engine.scene.forEachEntityTypeList { entities ->
             val firstEntity = entities.firstOrNull()
@@ -454,7 +458,7 @@ class SceneEditor(
                         if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
                         {
                             it as Spatial
-                            val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y)
+                            val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y, 0f, screenWidth, screenHeight)
                             if (texture != null)
                                 surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
                             else if (iconChar != null)
@@ -515,9 +519,9 @@ class SceneEditor(
     {
         stop() // Stop editor service
         storedCameraState.saveFrom(activeCamera)
-        activeCamera.scale.set(1f)
-        activeCamera.position.set(0f)
-        activeCamera.rotation.set(0f)
+//        activeCamera.scale.set(1f)
+//        activeCamera.position.set(0f)
+//        activeCamera.rotation.set(0f)
         prevSelectedEntityId = entitySelection.firstOrNull()?.id
 
         resetUI()
@@ -923,7 +927,9 @@ class SceneEditor(
         val entity = type.createInstance()
         if (entity is Spatial)
         {
-            val spawnPos = activeCamera.screenPosToWorldPos(engine.window.width * 0.5f, engine.window.height * 0.5f)
+            val w = engine.window.width
+            val h = engine.window.height
+            val spawnPos = activeCamera.screenPosToWorldPos(w * 0.5f, h * 0.5f, 0f, w, h)
             entity.x = spawnPos.x
             entity.y = spawnPos.y
         }
@@ -1058,7 +1064,7 @@ class SceneEditor(
     {
         if (isSelecting)
         {
-            val pos = activeCamera.worldPosToScreenPos(xStartSelect, yStartSelect)
+            val pos = activeCamera.worldPosToScreenPos(xStartSelect, yStartSelect, 0f, surface.config.width, surface.config.height)
             val x = pos.x
             val y = pos.y
             val w = (xEndSelect - xStartSelect) * activeCamera.scale.x
@@ -1076,7 +1082,7 @@ class SceneEditor(
     {
         if (this !is Spatial) return
 
-        val pos = activeCamera.worldPosToScreenPos(x, y)
+        val pos = activeCamera.worldPosToScreenPos(x, y, 0f, surface.config.width, surface.config.height)
         val padding = getGizmoPadding()
         val w = (width + padding * 2) * activeCamera.scale.x / 2f
         val h = (height + padding * 2) * activeCamera.scale.y / 2f
@@ -1245,13 +1251,15 @@ class SceneEditor(
 data class CameraState(
     val pos: Vector3f,
     val rot: Vector3f,
-    val scale: Vector3f
+    val scale: Vector3f,
+    val projectionMatrix: Matrix4f
 ) {
     fun saveFrom(camera: Camera)
     {
         pos.set(camera.position)
         rot.set(camera.rotation)
         scale.set(camera.scale)
+        projectionMatrix.set(camera.projectionMatrix)
     }
 
     fun loadInto(camera: Camera)
@@ -1259,6 +1267,7 @@ data class CameraState(
         camera.position.set(pos)
         camera.rotation.set(rot)
         camera.scale.set(scale)
+        camera.projectionMatrix.set(projectionMatrix)
     }
 
     fun reset()
@@ -1270,6 +1279,7 @@ data class CameraState(
 
     companion object
     {
-        fun from(camera: Camera) = CameraState(Vector3f(camera.position), Vector3f(camera.rotation), Vector3f(camera.scale))
+        fun from(camera: Camera) = CameraState(Vector3f(camera.position), Vector3f(camera.rotation), Vector3f(camera.scale),
+            Matrix4f(camera.projectionMatrix))
     }
 }

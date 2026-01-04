@@ -90,10 +90,10 @@ class TextureRenderer(
     {
         instanceBuffer.fill(17)
         {
-            put(x, y, config.currentDepth)
+            put(x, config.height - y, config.currentDepth)
             put(w, h)
-            put(xOrigin, yOrigin)
-            put(angle)
+            put(xOrigin, 1f - yOrigin)
+            put(-angle)
             put(cornerRadius)
             put(texture.uMin, texture.vMin)
             put(texture.uMax, texture.vMax)
@@ -124,10 +124,10 @@ class TextureRenderer(
     ) {
         instanceBuffer.fill(17)
         {
-            put(x, y, config.currentDepth)
+            put(x, config.height- y, config.currentDepth)
             put(w, h)
-            put(xOrigin, yOrigin)
-            put(angle)
+            put(xOrigin, 1f - yOrigin)
+            put(-angle)
             put(cornerRadius)
             put(texture.uMax * uMin, texture.vMax * vMin)
             put(texture.uMax * uMax, texture.vMax * vMax)

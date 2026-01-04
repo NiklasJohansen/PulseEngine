@@ -542,20 +542,35 @@ class InputField (
         {
             val xArrow = x.value + width.value - numberStepperWidth.value / 2
             val yArrow = y.value + height.value / 2
-            val size = 6f * UI_SCALE
+            
             val offset = 5f * UI_SCALE
-            drawArrow(xArrow, yArrow - offset, size, size, surface, textColor, -2.5f)
-            drawArrow(xArrow, yArrow + offset, size, size, surface, textColor, 2.5f)
+            surface.drawArrow(xArrow, yArrow - offset, textColor, up = true)
+            surface.drawArrow(xArrow, yArrow + offset, textColor, up = false)
         }
     }
 
-    private fun drawArrow(x: Float, y: Float, width: Float, height: Float, surface: Surface, color: Color, lengthFactor: Float = 2.5f)
+    private fun Surface.drawArrow(x: Float, y: Float, color: Color, up: Boolean)
     {
-        surface.setDrawColor(color)
-        surface.drawQuadVertex(x, y + height / lengthFactor)
-        surface.drawQuadVertex(x, y + height / lengthFactor)
-        surface.drawQuadVertex(x - width / 2, y - height / lengthFactor)
-        surface.drawQuadVertex(x + width / 2, y - height / lengthFactor)
+        val size = 6f * UI_SCALE
+        val length = -2.5f
+
+        if (up)
+        {
+            // CCW winding order
+            setDrawColor(color)
+            drawQuadVertex(x, y + size / length)
+            drawQuadVertex(x, y + size / length)
+            drawQuadVertex(x - size / 2, y - size / length)
+            drawQuadVertex(x + size / 2, y - size / length)
+        }
+        else
+        {
+            setDrawColor(color)
+            drawQuadVertex(x - size / 2, y + size / length)
+            drawQuadVertex(x, y - size / length)
+            drawQuadVertex(x, y - size / length)
+            drawQuadVertex(x + size / 2, y + size / length)
+        }
     }
 
     fun unfocus()

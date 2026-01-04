@@ -371,7 +371,7 @@ vec3 getDirectionToLight(vec2 pixelPos)
 void main()
 {
     // Postion on screen
-    vec2 pixelPos = vec2(gl_FragCoord.x, resolution.y - gl_FragCoord.y);
+    vec2 pixelPos = gl_FragCoord.xy;
 
     // Squarded distance from pixel position to light
     float distSquared = getSquaredDistanceToLight(pixelPos);

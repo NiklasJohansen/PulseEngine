@@ -316,14 +316,14 @@ class ColorPicker(
                 surface.setDrawColor(colorSpace[i]) // Top left
                 surface.drawQuadVertex(xBox, y.value + boxHeight * i)
 
-                surface.setDrawColor(colorSpace[i])  // Top right
-                surface.drawQuadVertex(xBox + boxWidth, y.value + boxHeight * i)
+                surface.setDrawColor(colorSpace[i + 1]) // Bottom left
+                surface.drawQuadVertex(xBox, y.value + boxHeight * (i + 1))
 
                 surface.setDrawColor(colorSpace[i + 1]) // Bottom right
                 surface.drawQuadVertex(xBox + boxWidth, y.value + boxHeight * (i + 1))
-
-                surface.setDrawColor(colorSpace[i + 1]) // Bottom left
-                surface.drawQuadVertex(xBox, y.value + boxHeight * (i + 1))
+                
+                surface.setDrawColor(colorSpace[i])  // Top right
+                surface.drawQuadVertex(xBox + boxWidth, y.value + boxHeight * i)
             }
 
             // Left arrow
@@ -338,9 +338,9 @@ class ColorPicker(
             // Right arrow
             surface.setDrawColor(hueColor)
             surface.drawQuadVertex(x.value + width.value + xOffset - 2, yArrow - arrowHeight)
+            surface.drawQuadVertex(x.value + width.value, yArrow)
+            surface.drawQuadVertex(x.value + width.value, yArrow)
             surface.drawQuadVertex(x.value + width.value + xOffset - 2, yArrow + arrowHeight)
-            surface.drawQuadVertex(x.value + width.value, yArrow)
-            surface.drawQuadVertex(x.value + width.value, yArrow)
 
             if (strokeColor != null && strokeColor!!.alpha != 0f)
             {
@@ -418,12 +418,15 @@ class ColorPicker(
         {
             surface.setDrawColor(Color(1f, 1f, 1f)) // White
             surface.drawQuadVertex(x.value, y.value)
-            surface.setDrawColor(hueColor)
-            surface.drawQuadVertex(x.value + width.value, y.value)
-            surface.setDrawColor(Color(0f, 0f, 0f)) // Black
-            surface.drawQuadVertex(x.value + width.value, y.value + height.value)
+
             surface.setDrawColor(Color(0f, 0f, 0f)) // Black
             surface.drawQuadVertex(x.value, y.value + height.value)
+
+            surface.setDrawColor(Color(0f, 0f, 0f)) // Black
+            surface.drawQuadVertex(x.value + width.value, y.value + height.value)
+            
+            surface.setDrawColor(hueColor)
+            surface.drawQuadVertex(x.value + width.value, y.value)
 
             if (strokeColor != null && strokeColor!!.alpha != 0f)
             {

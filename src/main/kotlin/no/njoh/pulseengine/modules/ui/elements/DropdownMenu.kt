@@ -169,15 +169,24 @@ class DropdownMenu <T> (
         {
             val xArrow = x.value + width.value - 15
             val yArrow = y.value + height.value / 2
-            val arrowWidth = 10f
-            val arrowHeight = 10f
-
-            val direction = if (dropdown.isVisible()) -2.5f else 2.5f
+            val size = 10f
+            val length = 2.5f
             surface.setDrawColor(menuLabel.color)
-            surface.drawQuadVertex(xArrow, yArrow + arrowHeight / direction)
-            surface.drawQuadVertex(xArrow, yArrow + arrowHeight / direction)
-            surface.drawQuadVertex(xArrow - arrowWidth / 2, yArrow - arrowHeight / direction)
-            surface.drawQuadVertex(xArrow + arrowWidth / 2, yArrow - arrowHeight / direction)
+            
+            if (dropdown.isVisible())
+            {
+                surface.drawQuadVertex(xArrow - size / 2, yArrow - size / length)
+                surface.drawQuadVertex(xArrow, yArrow + size / length)
+                surface.drawQuadVertex(xArrow, yArrow + size / length)
+                surface.drawQuadVertex(xArrow + size / 2, yArrow - size / length)
+            }
+            else
+            {
+                surface.drawQuadVertex(xArrow - size / 2, yArrow + size / length)
+                surface.drawQuadVertex(xArrow + size / 2, yArrow + size / length)
+                surface.drawQuadVertex(xArrow, yArrow - size / length)
+                surface.drawQuadVertex(xArrow, yArrow - size / length)
+            }
         }
     }
 }

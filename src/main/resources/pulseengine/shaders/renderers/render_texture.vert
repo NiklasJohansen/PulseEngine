@@ -34,10 +34,11 @@ mat2 rotate(float angle)
 
 void main()
 {
+    vec2 flippedVertexPos = vec2(vertexPos.x, 1.0 - vertexPos.y);
     vec2 uvMin = vec2(uvMinMax.x, 1.0 - uvMinMax.y);
     vec2 uvMax = vec2(uvMinMax.z, 1.0 - uvMinMax.w);
-    uv = uvMin + (uvMax - uvMin) * vertexPos;
-    quadUv = vertexPos;
+    uv = uvMin + (uvMax - uvMin) * flippedVertexPos;
+    quadUv = flippedVertexPos;
     vertexColor = unpackAndConvert(uint(color));
 
     vec2 offset = (vertexPos - origin) * size * rotate(radians(angle));

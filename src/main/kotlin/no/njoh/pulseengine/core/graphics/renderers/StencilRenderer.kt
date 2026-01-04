@@ -41,7 +41,7 @@ class StencilRenderer : Renderer()
     {
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        program.setUniform("posAndSize", x, y, width, height)
+        program.setUniform("posAndSize", x, surface.config.height - (y + height), width, height)
         drawTriangleStripVertices(vao, 0, 4)
     }
 

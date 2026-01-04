@@ -72,7 +72,12 @@ vec3 sampleWorldSpaceNormal(out float normalLenTS)
     normalLenTS = length(normalTangentSpace);
 
     // To world space
-    return normalize(vTBN * normalTangentSpace);
+    vec3 N = normalize(vTBN * normalTangentSpace);
+
+    if (!gl_FrontFacing)
+        N = -N;
+
+    return N;
 }
 
 vec3 sampleAoMetallicRoughness()

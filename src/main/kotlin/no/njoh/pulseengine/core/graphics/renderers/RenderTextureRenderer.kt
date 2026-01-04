@@ -91,10 +91,10 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : Rendere
                 program.setUniformSampler("tex", TextureHandle.create(0, textureId))
 
             // Set uniforms
-            program.setUniform("position", x, y, z)
+            program.setUniform("position", x, config.height - y, z)
             program.setUniform("size", w, h)
-            program.setUniform("origin", xOrigin, yOrigin)
-            program.setUniform("angle", angle)
+            program.setUniform("origin", xOrigin, 1f - yOrigin)
+            program.setUniform("angle", -angle)
             program.setUniform("color", floatToRawIntBits(rgba))
             program.setUniform("cornerRadius", cornerRadius)
             program.setUniform("uvMinMax", uMin, vMin, uMax, vMax)

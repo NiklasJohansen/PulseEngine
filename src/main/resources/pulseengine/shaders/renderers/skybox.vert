@@ -9,12 +9,12 @@ out vec3 worldDir;
 
 void main()
 {
-    mat3 Rview = mat3(view);   // Strip translation from view (only rotation)
-    mat3 R = transpose(Rview); // camera rotation in world space
-    worldDir = R * position;   // World-space direction
+    worldDir = position;
 
-    // Position the cube around the camera (no translation)
-    gl_Position = projection * vec4(position, 1.0);
+    // Remove translation and use only camera rotation
+    mat4 viewRotOnly = mat4(mat3(view));
+    vec4 clipPos = projection * viewRotOnly * vec4(position, 1.0);
+
+    // Force depth to far plane (1.0)
+    gl_Position = vec4(clipPos.xy, clipPos.w, clipPos.w);
 }
-
-

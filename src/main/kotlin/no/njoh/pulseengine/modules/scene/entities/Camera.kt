@@ -96,9 +96,9 @@ open class Camera : CommonSceneEntity()
             scale.set(newScale)
             rotation.z = -super.rotation.toRadians()
             origin.x = surfaceWidth * xOrigin
-            origin.y = surfaceHeight * yOrigin
+            origin.y = surfaceHeight * (1f - yOrigin)
             position.x = surfaceWidth * xOrigin - x
-            position.y = surfaceHeight * yOrigin - y
+            position.y = y - surfaceHeight * yOrigin
         }
     }
 

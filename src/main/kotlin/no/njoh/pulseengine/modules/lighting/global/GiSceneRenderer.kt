@@ -101,9 +101,9 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : Renderer()
     {
         instanceBuffer.fill(18)
         {
-            put(x, y, config.currentDepth)
+            put(x, config.height - y, config.currentDepth)
             put(w, h)
-            put(angle)
+            put(-angle)
             put(cornerRadius)
             put(intensity)
             put(coneAngle)
@@ -122,9 +122,9 @@ class GiSceneRenderer(private val config: SurfaceConfigInternal) : Renderer()
     {
         instanceBuffer.fill(18)
         {
-            put(x, y, config.currentDepth)
+            put(x, config.height - y, config.currentDepth)
             put(w, h)
-            put(angle)
+            put(-angle)
             put(cornerRadius)
             put(0f)
             put(360f)

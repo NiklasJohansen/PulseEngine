@@ -73,7 +73,7 @@ class LineRenderer(private val config: SurfaceConfigInternal) : Renderer()
     {
         vbo.fill(4)
         {
-            put(x, y, config.currentDepth, config.currentDrawColor)
+            put(x, config.height - y, config.currentDepth, config.currentDrawColor)
         }
         config.increaseDepth()
         vertices++
@@ -87,11 +87,12 @@ class LineRenderer(private val config: SurfaceConfigInternal) : Renderer()
     fun line(x0: Float, y0: Float, x1: Float, y1: Float)
     {
         val depth = config.currentDepth
+        val height = config.height
         val rgba = config.currentDrawColor
         vbo.fill(8)
         {
-            put(x0, y0, depth, rgba)
-            put(x1, y1, depth, rgba)
+            put(x0, height - y0, depth, rgba)
+            put(x1, height - y1, depth, rgba)
         }
         config.increaseDepth()
         increaseBatchSize()

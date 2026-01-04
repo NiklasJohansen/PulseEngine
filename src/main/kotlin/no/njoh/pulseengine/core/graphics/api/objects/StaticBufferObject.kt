@@ -39,19 +39,21 @@ class StaticBufferObject(
         }
 
         fun createQuadVertexArrayBuffer() = createArrayBuffer(
+            // For GL_TRIANGLE_STRIP with CCW front face
             floatArrayOf(
-                0f, 0f, // Top-left vertex
-                1f, 0f, // Top-right vertex
-                0f, 1f, // Bottom-left vertex
-                1f, 1f  // Bottom-right vertex
+                0f, 0f, // Bottom-left
+                1f, 0f, // Bottom-right
+                0f, 1f, // Top-left
+                1f, 1f, // Top-right
             )
         )
 
         fun createFullscreenUvTriangleArrayBuffer() = createArrayBuffer(
+            // For GL_TRIANGLE_STRIP with CCW front face
             floatArrayOf(
-                -1f, -1f,  0f, 0f,
-                -1f,  3f,  0f, 2f,
-                 3f, -1f,  2f, 0f
+                -1f, -1f,   0f, 0f,
+                3f, -1f,    2f, 0f,
+                -1f,  3f,   0f, 2f
             )
         )
     }

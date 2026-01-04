@@ -82,13 +82,15 @@ class QuadRenderer(private val config: SurfaceConfigInternal) : Renderer()
     {
         val depth = config.currentDepth
         val rgba = config.currentDrawColor
+        val h = config.height
 
         vbo.fill(16)
         {
-            put(x, y, depth, rgba)
-            put(x, y + height, depth, rgba)
-            put(x + width, y + height, depth, rgba)
-            put(x + width, y, depth, rgba)
+            // CCW in Y-up
+            put(x,         h - (y + height), depth, rgba) // BL
+            put(x,         h - y,            depth, rgba) // TL
+            put(x + width, h - y,            depth, rgba) // TR
+            put(x + width, h - (y + height), depth, rgba) // BR
         }
 
         ebo.fill(6)
@@ -106,7 +108,7 @@ class QuadRenderer(private val config: SurfaceConfigInternal) : Renderer()
     {
         vbo.fill(4)
         {
-            put(x, y, config.currentDepth, config.currentDrawColor)
+            put(x, config.height - y, config.currentDepth, config.currentDrawColor)
         }
 
         singleVertexCount++

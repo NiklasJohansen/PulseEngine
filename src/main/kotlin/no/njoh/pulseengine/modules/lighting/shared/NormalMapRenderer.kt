@@ -100,10 +100,10 @@ class NormalMapRenderer(private val config: SurfaceConfigInternal) : Renderer()
     ) {
         instanceBuffer.fill(17)
         {
-            put(x, y, config.currentDepth)
+            put(x, config.height - y, config.currentDepth)
             put(w, h)
-            put(xOrigin, yOrigin)
-            put(rot)
+            put(xOrigin, 1f - yOrigin)
+            put(-rot)
             put(texture?.uMin ?: 0f)
             put(texture?.vMin ?: 0f)
             put(texture?.uMax ?: 1f)

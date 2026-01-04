@@ -90,7 +90,7 @@ open class DirectLightingSystem : SceneSystem()
             blendFunction = ADDITIVE,
             attachments = listOf(COLOR_TEXTURE_0)
         ).also {
-            it.addRenderer(DirectLightRenderer())
+            it.addRenderer(DirectLightRenderer(it.config))
             configureNormalMap(engine, it, useNormalMap)
             configureOccluderMap(engine, it, enableLightSpill)
         }
@@ -261,7 +261,7 @@ open class DirectLightingSystem : SceneSystem()
         lightRenderer.xDrawOffset = xOffset
         lightRenderer.yDrawOffset = yOffset
         xSamplingOffset = -xOffset / lightSurface.config.width
-        ySamplingOffset =  yOffset / lightSurface.config.height
+        ySamplingOffset = -yOffset / lightSurface.config.height
 
         postEffectSurfaces.forEachPostEffect(engine)
         {
@@ -272,13 +272,16 @@ open class DirectLightingSystem : SceneSystem()
 
     private fun updateBoundingRect(lightSurface: Surface)
     {
-        val screenWidth = lightSurface.config.width.toFloat()
-        val screenHeight = lightSurface.config.height.toFloat()
+        val screenWidth = lightSurface.config.width
+        val screenHeight = lightSurface.config.height
         for (i in BOUNDING_COORDS.indices step 2)
         {
             val worldPos = lightSurface.camera.screenPosToWorldPos(
                 x = screenWidth  * BOUNDING_COORDS[i],
-                y = screenHeight * BOUNDING_COORDS[i + 1]
+                y = screenHeight * BOUNDING_COORDS[i + 1],
+                z = 0f,
+                screenWidth = screenWidth,
+                screenHeight = screenHeight
             )
             if (worldPos.x < xMin || i == 0) xMin = worldPos.x
             if (worldPos.x > xMax || i == 0) xMax = worldPos.x

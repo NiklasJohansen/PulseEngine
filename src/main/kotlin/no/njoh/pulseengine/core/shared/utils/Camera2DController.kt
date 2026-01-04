@@ -33,7 +33,7 @@ class Camera2DController(
             else
             {
                 xPosChangeRate += engine.input.xScroll * scrollSpeed / cam.scale.x
-                yPosChangeRate += engine.input.yScroll * scrollSpeed / cam.scale.y
+                yPosChangeRate -= engine.input.yScroll * scrollSpeed / cam.scale.y
             }
         }
 
@@ -47,13 +47,13 @@ class Camera2DController(
             cam.scale.x = xScale
             cam.scale.y = yScale
             cam.position.x -= (engine.input.xMouse - xCenter) * xScaleDiff / (xScale * xScale)
-            cam.position.y -= (engine.input.yMouse - yCenter) * yScaleDiff / (yScale * yScale)
+            cam.position.y += (engine.input.yMouse - yCenter) * yScaleDiff / (yScale * yScale)
         }
 
         if (engine.input.isPressed(dragButton))
         {
             xPosChangeRate += engine.input.xdMouse / cam.scale.x * (1f - smoothing)
-            yPosChangeRate += engine.input.ydMouse / cam.scale.y * (1f - smoothing)
+            yPosChangeRate -= engine.input.ydMouse / cam.scale.y * (1f - smoothing)
         }
 
         cam.origin.x = xCenter

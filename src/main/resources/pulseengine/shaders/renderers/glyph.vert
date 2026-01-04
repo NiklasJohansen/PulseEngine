@@ -52,7 +52,7 @@ mat2 rotate(float angle)
 void main()
 {
     vertexColor = unpackAndConvert(color);
-    texCoord = uvMin + (uvMax - uvMin) * vertexPos;
+    texCoord = uvMin + (uvMax - uvMin) * vec2(vertexPos.x, 1.0 - vertexPos.y);
     texIndex = getTexIndex(texHandle);
     samplerIndex = getSamplerIndex(texHandle);
 
