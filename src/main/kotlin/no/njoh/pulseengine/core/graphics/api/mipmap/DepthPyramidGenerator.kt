@@ -40,13 +40,11 @@ class DepthPyramidGenerator(
         program.bind()
         program.setUniformSampler("tex", texture)
 
-        glDisable(GL_SCISSOR_TEST)
         glDisable(GL_BLEND)
-        glDisable(GL_CULL_FACE)
-        glColorMask(false, false, false, false)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_ALWAYS)
         glDepthMask(true)
+        glColorMask(false, false, false, false)
 
         for (level in 1 until getLevelCount(texture.width, texture.height))
         {
@@ -69,6 +67,7 @@ class DepthPyramidGenerator(
         glViewport(0, 0, texture.width, texture.height)
         glDepthFunc(GL_LEQUAL)
         glColorMask(true, true, true, true)
+        glEnable(GL_BLEND)
     }
 
     override fun onDestroy()

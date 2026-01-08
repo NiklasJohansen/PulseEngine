@@ -47,6 +47,7 @@ class SurfaceConfigInternal(
     val hasDepthAttachment = attachments.anyMatches { it.hasDepth }
     var currentDrawColor   = 0f
     var currentDepth       = 0f
+    var hasDepthPrepass    = false
 
     init { setDrawColor(1f, 1f, 1f, 1f) }
 
@@ -58,6 +59,7 @@ class SurfaceConfigInternal(
     fun resetDepth(value: Float)
     {
         currentDepth = value
+        hasDepthPrepass = false
     }
 
     fun setDrawColor(r: Float, g: Float, b: Float, a: Float)
