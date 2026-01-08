@@ -1,5 +1,8 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
+import no.njoh.pulseengine.core.asset.types.Material.CullMode.BACK
+import no.njoh.pulseengine.core.asset.types.Material.CullMode.NONE
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
@@ -228,47 +231,69 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
 
         for (i in 0 until numMaterials)
         {
-            val aiMaterial = AIMaterial.create(materialPointers[i])
+            val material = AIMaterial.create(materialPointers[i])
+            val materialName = material.getMaterialStringProp(AI_MATKEY_NAME) ?: "material_${materials.size}"
             val basePath = this.filePath.substringBeforeLast("/") + "/"
             
-            val albedoPath = 
-                getTexturePath(aiMaterial, aiTextureType_DIFFUSE) 
-                ?: getTexturePath(aiMaterial, aiTextureType_BASE_COLOR)
+            val albedoPath = material.getTexturePath(aiTextureType_DIFFUSE) ?: material.getTexturePath(aiTextureType_BASE_COLOR)
 
-            val normalPath = getTexturePath(aiMaterial, aiTextureType_NORMALS)
+            val normalPath = material.getTexturePath(aiTextureType_NORMALS)
 
             val metalRoughPath =
-                getTexturePath(aiMaterial, aiTextureType_METALNESS)
-                ?: getTexturePath(aiMaterial, aiTextureType_DIFFUSE_ROUGHNESS)
-                ?: getTexturePath(aiMaterial, aiTextureType_UNKNOWN)
+                material.getTexturePath(aiTextureType_METALNESS)
+                ?: material.getTexturePath(aiTextureType_DIFFUSE_ROUGHNESS)
+                ?: material.getTexturePath(aiTextureType_UNKNOWN)
 
-            val specularPath = getTexturePath(aiMaterial, aiTextureType_SHININESS)
+            val emissivePath = material.getTexturePath(aiTextureType_EMISSIVE)
 
-            val emissivePath = getTexturePath(aiMaterial, aiTextureType_EMISSIVE)
+            val cullMode = material.getMaterialIntProp(AI_MATKEY_TWOSIDED).let()
+            {
+                if (it == 1) "NONE" else "BACK"
+            }
+
+            val alphaMode = material.getMaterialStringProp(AI_MATKEY_GLTF_ALPHAMODE) ?: "OPAQUE"
+            
+            val alphaCutoff = material.getMaterialFloatProp(AI_MATKEY_GLTF_ALPHACUTOFF) ?: 0.5f
 
             this.materials += MeshMaterial(
-                name = this.name + "_" + getMaterialName(aiMaterial),
+                name = this.name + "_" + materialName,
                 albedoPath = albedoPath?.let { basePath + it.replace("%20", " ") },
                 normalPath = normalPath?.let { basePath + it.replace("%20", " ") },
                 aoMetalRoughPath = metalRoughPath?.let { basePath + it.replace("%20", " ") },
-                specularPath = specularPath?.let { basePath + it.replace("%20", " ") },
-                emissivePath = emissivePath?.let { basePath + it.replace("%20", " ") }
+                emissivePath = emissivePath?.let { basePath + it.replace("%20", " ") },
+                cullMode = cullMode,
+                alphaMode = alphaMode,
+                alphaCutoff = alphaCutoff
             )
         }
     }
 
-    private fun getMaterialName(mat: AIMaterial): String = AIString.calloc().use()
+    private fun AIMaterial.getMaterialStringProp(prop: String): String? = AIString.calloc().use()
     {
-        aiGetMaterialString(mat, AI_MATKEY_NAME, aiTextureType_NONE, 0, it)
-        it.dataString()
+        val res = aiGetMaterialString(this, prop, aiTextureType_NONE, 0, it)
+        if (res == aiReturn_SUCCESS) it.dataString() else null
     }
 
-    private fun getTexturePath(mat: AIMaterial, type: Int): String? = AIString.calloc().use()
+    private fun AIMaterial.getMaterialFloatProp(prop: String): Float? = AIString.calloc().use()
     {
-        if (aiGetMaterialTextureCount(mat, type) < 1)
+        val tmp = FloatArray(1)
+        val res = aiGetMaterialFloatArray(this, prop, aiTextureType_NONE, 0, tmp, intArrayOf(1))
+        if (res == aiReturn_SUCCESS) tmp[0] else null
+    }
+
+    private fun AIMaterial.getMaterialIntProp(prop: String): Int? = AIString.calloc().use()
+    {
+        val tmp = IntArray(1)
+        val res = aiGetMaterialIntegerArray(this, prop, aiTextureType_NONE, 0, tmp, intArrayOf(1))
+        if (res == aiReturn_SUCCESS) tmp[0] else null
+    }
+
+    private fun AIMaterial.getTexturePath(type: Int): String? = AIString.calloc().use()
+    {
+        if (aiGetMaterialTextureCount(this, type) < 1)
             return null
 
-        if (aiGetMaterialTexture(mat, type, 0, it, null as IntArray?, null, null, null, null, null) != aiReturn_SUCCESS)
+        if (aiGetMaterialTexture(this, type, 0, it, null as IntArray?, null, null, null, null, null) != aiReturn_SUCCESS)
             return null
 
         return it.dataString()
@@ -279,18 +304,27 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
         val assets = mutableListOf<Asset>()
         for (mat in materials)
         {
-            val albedo   = mat.albedoPath?.let {       Texture(it, mat.name + "_albedo",       format = SRGBA8) }
-            val normal   = mat.normalPath?.let {       Texture(it, mat.name + "_normal",       format = RGBA8)  }
-            val aomr     = mat.aoMetalRoughPath?.let { Texture(it, mat.name + "_aoMetalRough", format = RGBA8)  }
-            val specular = mat.specularPath?.let {     Texture(it, mat.name + "_specular",     format = RGBA8)  }
-            val emissive = mat.emissivePath?.let {     Texture(it, mat.name + "_emissive",     format = RGBA8)  }
+            val albedo    = mat.albedoPath?.let {       Texture(it, mat.name + "_albedo",       format = SRGBA8) }
+            val normal    = mat.normalPath?.let {       Texture(it, mat.name + "_normal",       format = RGBA8)  }
+            val aomr      = mat.aoMetalRoughPath?.let { Texture(it, mat.name + "_aoMetalRough", format = RGBA8)  }
+            val emissive  = mat.emissivePath?.let {     Texture(it, mat.name + "_emissive",     format = RGBA8)  }
+            val cullMode  = when (mat.cullMode.uppercase())
+            {
+                "NONE" -> NONE
+                else   -> BACK
+            }
+            val blendMode = when (mat.alphaMode.uppercase())
+            {
+                "BLEND" -> TRANSPARENT
+                "MASK"  -> MASK
+                else    -> OPAQUE
+            }
 
             albedo?.let { assets += it }
             normal?.let { assets += it }
             aomr?.let { assets += it }
-            specular?.let { assets += it }
             emissive?.let { assets += it }
-            assets += Material(mat.name, albedo, normal, aomr, specular, emissive)
+            assets += Material(mat.name, albedo, normal, aomr, emissive, null, cullMode, blendMode, mat.alphaCutoff)
         }
         return assets  
     }
@@ -306,7 +340,9 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
         val albedoPath: String?,
         val normalPath: String?,
         val aoMetalRoughPath: String?,
-        val specularPath: String?,
         val emissivePath: String?,
+        val cullMode: String,
+        val alphaMode: String,
+        val alphaCutoff: Float
     )
 }
