@@ -158,6 +158,8 @@ open class FrameBufferObject(
         return true
     }
 
+    fun checkStatus() = FrameBufferObject.checkStatus()
+
     companion object
     {
         fun create(width: Int, height: Int, textureDescriptors: List<TextureDescriptor>): FrameBufferObject

@@ -7,7 +7,10 @@ out vec4 fragColor;
 
 uniform sampler2DArray textureArray;
 uniform vec3 srcEnv; // x: layer, y: uMax, z: vMax
+uniform vec2 srcEnvSize;
 uniform float roughness;
+
+const uint SAMPLE_COUNT = 1024u;
 
 vec2 dirToLatLong(vec3 dir)
 {
@@ -27,14 +30,6 @@ vec3 latLongToDir(vec2 uv)
     float y = cos(theta);
     float z = sin(phi) * sin(theta);
     return vec3(x, y, z);
-}
-
-vec3 sampleEnv(vec3 dir)
-{
-    float layer = srcEnv.x;
-    vec2 uvMax = srcEnv.yz;
-    vec2 uv = dirToLatLong(dir) * uvMax;
-    return texture(textureArray, vec3(uv, layer)).rgb;
 }
 
 float radicalInverse_VdC(uint bits)
@@ -70,30 +65,57 @@ vec3 importanceSampleGGX(vec2 Xi, float roughness, vec3 N)
     return normalize(T * H.x + B * H.z + N * H.y);
 }
 
+float distributionGGX(float NdotH, float roughness)
+{
+    float a  = roughness * roughness;
+    float a2 = a * a;
+    float denom = (NdotH * NdotH) * (a2 - 1.0) + 1.0;
+    return a2 / max(PI * denom * denom, 1e-8);
+}
+
+vec3 sampleEnvMap(vec3 dir, float lod)
+{
+    float layer = srcEnv.x;
+    vec2 uvMax = srcEnv.yz;
+    vec2 uvLL = dirToLatLong(dir) * uvMax;
+    return textureLod(textureArray, vec3(uvLL, layer), lod).rgb;
+}
+
 void main()
 {
-    vec3 N = latLongToDir(uv);
+    vec3 N = normalize(latLongToDir(uv));
     vec3 V = N;
 
-    const uint SAMPLE_COUNT = 1024u;
+    // Solid angle per texel
+    float saTexel = 4.0 * PI / max(srcEnvSize.x * srcEnvSize.y, 1.0);
     vec3 prefiltered = vec3(0.0);
     float totalWeight = 0.0;
 
     for (uint i = 0u; i < SAMPLE_COUNT; i++)
     {
         vec2 Xi = hammersley(i, SAMPLE_COUNT);
-        vec3 H = importanceSampleGGX(Xi, roughness, N);
-        vec3 L = normalize(2.0 * dot(V,H) * H - V);
+        vec3 H  = importanceSampleGGX(Xi, roughness, N);
+
+        float NdotH = max(dot(N, H), 0.0);
+        float HdotV = max(dot(H, V), 0.0);
+
+        vec3 L = normalize(2.0 * HdotV * H - V);
         float NdotL = max(dot(N, L), 0.0);
 
         if (NdotL > 0.0)
         {
-            vec3 env = sampleEnv(L);
+            float D = distributionGGX(NdotH, roughness);
+            float pdf = (D * NdotH) / max(4.0 * HdotV, 1e-6);
+
+            float saSample = 1.0 / max(float(SAMPLE_COUNT) * pdf, 1e-6);
+            float lod = max(0.0, 0.5 * log2(saSample / saTexel));
+
+            vec3 env = sampleEnvMap(L, lod);
             prefiltered += env * NdotL;
             totalWeight += NdotL;
         }
     }
 
-    prefiltered = prefiltered / max(totalWeight, 0.0001);
+    prefiltered = prefiltered / max(totalWeight, 1e-4);
     fragColor = vec4(prefiltered, 1.0);
 }

@@ -36,12 +36,13 @@ object IblBuilder
         program.bind()
         program.setUniformSamplerArray("textureArray", srcTextureArray)
         program.setUniform("srcEnv", srcEnv.handle.textureIndex.toFloat(), srcEnv.uMax, srcEnv.vMax)
+        program.setUniform("srcEnvSize", srcEnv.width.toFloat(), srcEnv.height.toFloat())
 
         val err = glGetError()
         require(err == GL_NO_ERROR) { "GL error after setting srcEnv: $err" }
 
         frameBufferObject.bind()
-        
+
         for (mip in 0 until mipCount)
         {
             val mipWidth = max(1, dstEnv.width shr mip)
@@ -49,10 +50,9 @@ object IblBuilder
             val roughness = mip.toFloat() / (mipCount - 1).coerceAtLeast(1)
 
             program.setUniform("roughness", roughness)
-            program.setUniform("resolution", mipWidth.toFloat())
- 
+
             frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachment = COLOR_TEXTURE_0, mip)
-            FrameBufferObject.checkStatus()
+            frameBufferObject.checkStatus()
 
             glViewport(0, 0, mipWidth, mipHeight)
             glClear(GL_COLOR_BUFFER_BIT)
@@ -89,7 +89,7 @@ object IblBuilder
         
         glViewport(0, 0, dstEnv.width, dstEnv.height)
         glClear(GL_COLOR_BUFFER_BIT)
-        
+
         renderer.draw()
 
         frameBufferObject.release()
