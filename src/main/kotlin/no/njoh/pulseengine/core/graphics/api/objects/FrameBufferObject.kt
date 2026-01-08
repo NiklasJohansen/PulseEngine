@@ -227,6 +227,12 @@ open class FrameBufferObject(
             return FrameBufferObject(frameBufferId, renderTextures, textureSizes, textureDescriptors.map { it.copy() }, renderBufferIds)
         }
 
+        fun createEmpty(): FrameBufferObject
+        {
+            val id = glGenFramebuffers()
+            return FrameBufferObject(id, emptyList(), TLongArrayList(), emptyList(), emptyList())
+        }
+
         fun checkStatus()
         {
             val status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
