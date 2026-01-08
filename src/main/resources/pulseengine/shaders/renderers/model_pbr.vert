@@ -16,13 +16,15 @@ out vec2 vTexCoord;
 
 void main()
 {
-    mat3 M = mat3(model);
-    vec3 N = normalize(M * normal);
-    vec3 T = normalize(M * tangent);
-    vec3 B = normalize(M * bitangent);
+    mat3 M  = mat3(model);
+    vec3 N  = normalize(M * normal);
+    vec3 T  = normalize(M * tangent);
+    vec3 B0 = normalize(M * bitangent);
 
-    // Re-orthogonalize T to N
-    T = normalize(T - dot(T, N) * N);
+    T = normalize(T - N * dot(T, N));
+
+    float sign = (dot(cross(N, T), B0) < 0.0) ? -1.0 : 1.0;
+    vec3 B = normalize(cross(N, T)) * sign;
 
     vec4 worldPos = model * vec4(position, 1.0);
     
