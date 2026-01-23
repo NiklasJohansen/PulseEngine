@@ -40,7 +40,8 @@ class NoOpSurface: SurfaceInternal()
     )
     override val renderTarget = RenderTarget(emptyList())
     override fun addPostProcessingEffect(effect: PostProcessingEffect) {}
-    override fun addRenderer(renderer: Renderer) {}
+    override fun addRenderer(renderer: Renderer, index: Int) {}
+    override fun deleteRenderer(renderer: Renderer) {}
     override fun applyRenderState(state: RenderState) {}
     override fun deletePostProcessingEffect(name: String) {}
     override fun destroy() {}

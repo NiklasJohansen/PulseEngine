@@ -14,6 +14,8 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.BrdfLutBuilder
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleIndices
+import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
+import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.joml.Matrix4f
 import org.joml.Vector3f
@@ -36,12 +38,11 @@ class ModelRenderer : Renderer()
     private val camPos        = Vector3f()
     private val tmpPos        = Vector3f()
 
+    var iblBrdfTexture = "ibl_brdf_lut"
     var iblDiffuseTexture  = ""
     var iblSpecularTexture = ""
     var iblIntensity       = 1f
 
-    private val brdfTexName = "generated_brdf_lut"
-    
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
         if (!this::program.isInitialized)
@@ -52,10 +53,10 @@ class ModelRenderer : Renderer()
             )
         }
 
-        if (engine.asset.getOrNull<Texture>(brdfTexName) == null)
+        if (engine.asset.getOrNull<Texture>(iblBrdfTexture) == null)
         {
             val brdfLutTex = Texture(
-                name = brdfTexName,
+                name = iblBrdfTexture,
                 filePath = "",
                 initWidth = 512,
                 initHeight = 512,
@@ -84,20 +85,25 @@ class ModelRenderer : Renderer()
         invViewMatrix.getTranslation(camPos)
 
         val hasDepthPrepass = surface.config.hasDepthPrepass
+        val aoRenderer = surface.getRenderer<GtaoRenderer>()
+        val aoTex = aoRenderer?.getAoRenderTexture()
         val texBank = engine.gfx.textureBank
         val envSpecularMipCount = engine.asset.getOrNull<Texture>(iblSpecularTexture)
             ?.let { texBank.getTextureArray(it) }?.mipLevels?.toFloat() ?: 1f
 
         program.bind()
         program.setUniformSamplerArrays(texBank.getAllTextureArrays())
+        program.setUniformSampler("gtaoTex", aoTex ?: texBank.getOrCreateFallbackTexture(WHITE))
+        program.setUniform("screenSize", surface.config.width.toFloat(), surface.config.height.toFloat())
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniform("cameraPos", camPos)
         program.setUniform("envSpecularMipCount", envSpecularMipCount)
         program.setUniform("envIntensity", iblIntensity)
+        program.setUniform("aoIntensity", aoRenderer?.intensity ?: 0f)
 
         program.setTexture("envDiffuseTex",  engine.asset.getOrNull(iblDiffuseTexture))
         program.setTexture("envSpecularTex", engine.asset.getOrNull(iblSpecularTexture))
-        program.setTexture("envBrdfLutTex",  engine.asset.getOrNull(brdfTexName))
+        program.setTexture("envBrdfLutTex",  engine.asset.getOrNull(iblBrdfTexture))
 
         // Build lists
         for (cmd in readDrawCommands)
@@ -109,11 +115,11 @@ class ModelRenderer : Renderer()
                 val matInfo  = mesh.materials.getOrNull(subMesh.materialIndex)
                 val material = matInfo?.name?.let { engine.asset.getOrNull<Material>(it) }
                 val mode     = material?.blendMode ?: OPAQUE
-                
+
                 cmd.transform.getTranslation(tmpPos)
                 val distSq = camPos.distanceSquared(tmpPos)
                 val item = RenderItem(mesh, subMesh, material, cmd.transform, distSq)
- 
+
                 when (mode)
                 {
                     TRANSPARENT  -> transparentMeshes += item
@@ -134,6 +140,8 @@ class ModelRenderer : Renderer()
         opaqueMeshes.forEachFast { drawItem(it) }
 
         // -------- MASK --------
+        // Disable AO for masked and transparent meshes
+        program.setUniformSampler("gtaoTex", texBank.getOrCreateFallbackTexture(WHITE))
         
         glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
         glDepthFunc(GL_LEQUAL)
@@ -195,7 +203,7 @@ class ModelRenderer : Renderer()
         if (mode == currentCullMode) return
         currentCullMode = mode
 
-        when (mode) 
+        when (mode)
         {
             CullMode.NONE -> glDisable(GL_CULL_FACE)
             CullMode.BACK -> { glEnable(GL_CULL_FACE); glCullFace(GL_BACK) }

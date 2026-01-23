@@ -12,6 +12,11 @@ abstract class Camera
     open val viewMatrix = Matrix4f()
     open val projectionMatrix = Matrix4f()
     open val viewProjectionMatrix = Matrix4f()
+    
+    /** Inverse camera matrices */
+    open val invViewMatrix = Matrix4f()
+    open val invProjectionMatrix = Matrix4f()
+    open val invViewProjectionMatrix = Matrix4f()
 
     /** World position */
     var position = Vector3f()
@@ -80,8 +85,6 @@ class DefaultCamera(private var projectionType: CameraProjectionType) : CameraIn
     override var projectionMatrix = Matrix4f()
     override var viewProjectionMatrix = Matrix4f()
 
-    private val invViewMatrix = Matrix4f()
-    private val invViewProjectionMatrix = Matrix4f()
     private val returnVector = Vector4f()
     private val worldPositionVector = Vector3f()
     private val screenPositionVector = Vector2f()
@@ -124,6 +127,7 @@ class DefaultCamera(private var projectionType: CameraProjectionType) : CameraIn
             ORTHOGRAPHIC -> Matrix4f().ortho(0f, width.toFloat(), 0f, height.toFloat(), nearPlane, farPlane) // Y-up
             PERSPECTIVE -> Matrix4f().perspective(fov.toRadians(), width.toFloat() / height.toFloat(), nearPlane, farPlane)
         }
+        invProjectionMatrix.set(projectionMatrix).invert()
     }
 
     override fun isInView(x: Float, y: Float, width: Float, height: Float, padding: Float) =
@@ -166,9 +170,9 @@ class DefaultCamera(private var projectionType: CameraProjectionType) : CameraIn
                 viewMatrix.set(invViewMatrix).invert()
             }
         }
-        
+
         viewProjectionMatrix.set(projectionMatrix).mul(viewMatrix)
-        viewProjectionMatrix.invert(invViewProjectionMatrix)
+        invViewProjectionMatrix.set(viewProjectionMatrix).invert()
 
         // Update world positions of screen corners
         val screenWidth = engine.gfx.mainSurface.config.width

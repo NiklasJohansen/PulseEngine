@@ -22,14 +22,13 @@ object GpuProfiler
      * Measures the time it takes to execute the given [action].
      * Only call this on the graphics thread.
      */
-    inline fun measure(label: TextBuilder, action: () -> Unit)
+    inline fun <T> measure(label: TextBuilder, action: () -> T): T
     {
         beginMeasure(label)
-        action()
-        endMeasure()
+        return try { action() } finally { endMeasure() }
     }
 
-    inline fun measure(label: String, action: () -> Unit) = measure({ label }, action)
+    inline fun <T> measure(label: String, action: () -> T) = measure({ label }, action)
 
     /**
      * Begins a GPU time measure.

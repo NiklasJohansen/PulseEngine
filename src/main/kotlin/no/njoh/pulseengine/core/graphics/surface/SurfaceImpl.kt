@@ -368,14 +368,26 @@ class SurfaceImpl(
         writeRenderStates.add(state)
     }
 
-    override fun addRenderer(renderer: Renderer)
+    override fun addRenderer(renderer: Renderer, index: Int)
     {
-        runOnInitFrame { engine ->
-            renderer.init(engine, this)
-            renderers.add(renderer)
+        runOnInitFrame()
+        {
+            renderer.init(it, this)
+            val i = if (index < 0) renderers.size else index
+            renderers.add(i, renderer)
             rendererMap[renderer.javaClass] = renderer
         }
     }
 
+    override fun deleteRenderer(renderer: Renderer)
+    {
+        runOnInitFrame()
+        {
+            renderers.remove(renderer)
+            rendererMap.remove(renderer.javaClass)
+            renderer.destroy()
+        }
+    }
+    
     private fun runOnInitFrame(command: (PulseEngineInternal) -> Unit) { onInitFrame.add(command) }
 }

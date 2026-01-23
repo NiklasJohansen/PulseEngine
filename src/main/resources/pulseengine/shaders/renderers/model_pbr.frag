@@ -10,19 +10,22 @@ in vec2 vTexCoord;
 out vec4 fragColor;
 
 uniform sampler2DArray textureArrays[16];
+uniform sampler2D gtaoTex;
 
 uniform vec4 albedoTex;
 uniform vec4 normalTex;
 uniform vec4 aoMetalRoughTex;
 uniform vec4 emissiveTex;
 uniform vec4 envDiffuseTex;
-uniform vec4 envSpecularTex; 
+uniform vec4 envSpecularTex;
 uniform vec4 envBrdfLutTex;
 
 uniform float envIntensity;
 uniform float envSpecularMipCount;
 uniform vec3  cameraPos;
+uniform vec2  screenSize;
 uniform float alphaCutoff; // 0 for opaque/blend
+uniform float aoIntensity;
 
 // ------------------------------------------------------------------
 // Texture sampling
@@ -43,7 +46,7 @@ vec3 sampleWorldSpaceNormal(out float normalLenTS)
     // Tangent-space normal
     vec3 normalTs = sampleTexOrDefault(normalTex, vWorldNormal).rgb * 2.0 - 1.0;
     float len = max(length(normalTs), 1e-5);
-    
+
     normalLenTS = min(len, 1.0);
 
     // To world space
@@ -175,6 +178,12 @@ void main()
     r = clamp(r + sigma2 * 0.5, 0.0, 1.0);
     roughness = sqrt(r);
 
+    // Ambient occlusion
+    vec2 uvScreen = gl_FragCoord.xy / screenSize;
+    float gtao = texture(gtaoTex, uvScreen).r;
+    gtao = exp(-aoIntensity * (1.0 - gtao));
+    float aoCombined = gtao * ao; 
+
     // Single directional light
     vec3 L = normalize(vec3(0.4, 1.0, 0.2)); // Direction TO light
     vec3 lightColor = vec3(0);   // Bright white-ish
@@ -191,7 +200,7 @@ void main()
     vec3 F_dir  = fresnelSchlick(max(dot(H, V), 0.0), F0);
     vec3 kS_dir = F_dir;
     vec3 kD_dir = (vec3(1.0) - kS_dir) * (1.0 - metallic);
-    
+
     float G   = geometrySmith(N, V, L, roughness);
     float NDF = distributionGGX(N, H, roughness);
     float denom = 4.0 * NdotV * NdotL + 0.000001;
@@ -204,7 +213,7 @@ void main()
     //--------------------------------------------------
     // Image-based lighting (IBL)
     //--------------------------------------------------
-    
+
     vec2 brdf = sampleBrdfLut(NdotV, roughness);
 
     // Specular
@@ -212,15 +221,15 @@ void main()
     float maxMip = envSpecularMipCount - 1.0;
     float lod = roughness * maxMip;
     vec3 prefilteredColor = sampleEnvMap(envSpecularTex, R, lod);
-    float specOcc = specularOcclusion(NdotV, ao, roughness);
+    float specOcc = specularOcclusion(NdotV, aoCombined, roughness);
     vec3 specularIBL = prefilteredColor * (F0 * brdf.x + brdf.y) * specOcc;
 
     // Diffuse
     vec3 F_ibl = fresnelSchlickRoughness(NdotV, F0, roughness);
     vec3 kD_ibl = (vec3(1.0) - F_ibl) * (1.0 - metallic);
     vec3 irradiance = sampleEnvMap(envDiffuseTex, N, 0.0);
-    vec3 diffuseIBL = irradiance * baseColor.rgb * kD_ibl * ao;
-    
+    vec3 diffuseIBL = irradiance * baseColor.rgb * kD_ibl * aoCombined;
+
     //--------------------------------------------------
     // Final color composition
     //--------------------------------------------------
