@@ -4,10 +4,24 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
+import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
+import org.lwjgl.BufferUtils
+import org.lwjgl.opengl.GL11.GL_RGBA
+import org.lwjgl.opengl.GL11.GL_RGBA8
+import org.lwjgl.opengl.GL11.GL_TEXTURE_2D
+import org.lwjgl.opengl.GL11.GL_UNPACK_ALIGNMENT
+import org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE
+import org.lwjgl.opengl.GL11.glBindTexture
+import org.lwjgl.opengl.GL11.glGenTextures
+import org.lwjgl.opengl.GL11.glPixelStorei
+import org.lwjgl.opengl.GL11.glTexImage2D
+import org.lwjgl.opengl.GL11.glTexParameteri
+import org.lwjgl.opengl.GL12.GL_TEXTURE_BASE_LEVEL
+import org.lwjgl.opengl.GL12.GL_TEXTURE_MAX_LEVEL
 import kotlin.math.max
 
 class TextureBank
@@ -15,6 +29,7 @@ class TextureBank
     private val capacitySpecs = mutableListOf<TextureCapacitySpec>().apply { addAll(DEFAULT_CAPACITIES) }
     private val textureArrays = mutableListOf<TextureArray>()
     private val emptyTextureArray = TextureArray(0, 0, 0, RGBA8, LINEAR, CLAMP_TO_EDGE, 1)
+    private val fallbackTextures = mutableMapOf<Color, RenderTexture>()
 
     fun upload(texture: Texture)
     {
@@ -63,6 +78,29 @@ class TextureBank
         getTextureArray(texture) ?: emptyTextureArray.also { if (it.id == -1) it.init() }
 
     fun getAllTextureArrays(): List<TextureArray> = textureArrays
+
+    fun getOrCreateFallbackTexture(color: Color): RenderTexture =
+        fallbackTextures.getOrPut(color) { createFallbackTexture(color) }
+
+    private fun createFallbackTexture(color: Color): RenderTexture
+    {
+        val pixels = BufferUtils.createByteBuffer(4)
+        pixels.put((color.red * 255).toInt().coerceIn(0, 255).toByte())
+        pixels.put((color.green * 255).toInt().coerceIn(0, 255).toByte())
+        pixels.put((color.blue * 255).toInt().coerceIn(0, 255).toByte())
+        pixels.put((color.alpha * 255).toInt().coerceIn(0, 255).toByte())
+        pixels.flip()
+
+        val id = glGenTextures()
+        glBindTexture(GL_TEXTURE_2D, id)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
+        glBindTexture(GL_TEXTURE_2D, 0)
+
+        return RenderTexture(name = "fallback", handle = TextureHandle.create(0, id), width = 1, height = 1)
+    }
 
     private fun getOrCreateTextureArrayFor(texture: Texture): TextureArray?
     {
