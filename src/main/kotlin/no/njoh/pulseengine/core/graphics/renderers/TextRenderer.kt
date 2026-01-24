@@ -162,7 +162,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : Renderer()
         // Calculate position offsets
         val textWidth = textMaxWidth - textMinWidth
         val xOffset = textWidth * xOrigin
-        val yOffset = textHeight - (textHeight + newLineOffset) * yOrigin
+        val yOffset = textHeight - (textHeight + newLineOffset) * (1f - yOrigin)
 
         val texHandle = font.charTexture.handle.toFloat()
         when (angle)
@@ -178,6 +178,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : Renderer()
     {
         val color = config.currentDrawColor
         val depth = config.currentDepth
+        val height = config.height
         val xPos = x - xOffset
         val yPos = y + yOffset
         val count = glyphBuffer.size()
@@ -187,7 +188,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : Renderer()
             glyphBuffer.forEach()
             {
                 put(it.x + xPos)
-                put(it.y + yPos)
+                put(height - (it.y + it.h + yPos))
                 put(depth)
                 put(it.w, it.h)
                 put(0f) // Rotation
@@ -205,6 +206,7 @@ class TextRenderer(private val config: SurfaceConfigInternal) : Renderer()
     {
         val color = config.currentDrawColor
         val depth = config.currentDepth
+        val height = config.height
         val angleRad = -angle.toRadians()
         val normalRad = angleRad + 0.5f * PI.toFloat()
         val c0 = cos(angleRad)
@@ -220,9 +222,9 @@ class TextRenderer(private val config: SurfaceConfigInternal) : Renderer()
             glyphBuffer.forEach()
             {
                 val xGlyph = it.x
-                val yGlyph = it.y
+                val yGlyph = it.y + it.h
                 put(xPos + (xGlyph * c0) + (yGlyph * c1))
-                put(yPos + (xGlyph * s0) + (yGlyph * s1))
+                put(height - (yPos + (xGlyph * s0) + (yGlyph * s1)))
                 put(depth)
                 put(it.w, it.h)
                 put(angle)
