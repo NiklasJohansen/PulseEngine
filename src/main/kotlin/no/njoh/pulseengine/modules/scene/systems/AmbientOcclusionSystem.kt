@@ -3,14 +3,13 @@ package no.njoh.pulseengine.modules.scene.systems
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.renderers.GtaoRenderer
 import no.njoh.pulseengine.core.graphics.renderers.ModelRenderer
-import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
 @Name("Ambient Occlusion")
-class AmbientOcclusion : SceneSystem()
+class AmbientOcclusionSystem : SceneSystem()
 {
     // AO Settings
     @Prop(i=0,  min=0f)         var intensity       = 1.5f
@@ -36,7 +35,7 @@ class AmbientOcclusion : SceneSystem()
     @Prop(i=15, min=0f, max=1f) var temporalHistoryRejection = 0.5f
 
     // Target surfaces
-    @Prop(i=16)                 var targetSurfaces = "world"
+    @Prop(i=16) var targetSurfaces = "world"
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()
@@ -50,10 +49,7 @@ class AmbientOcclusion : SceneSystem()
             targetSurfaceNames = targetSurfaces.split(",").map { it.trim() }
         }
 
-        engine.gfx.getAllSurfaces().forEachFiltered({ it.config.name in targetSurfaceNames })
-        {
-            updateRenderer(it)
-        }
+        targetSurfaceNames.forEachFast { updateRenderer(engine, it) }
     }
 
     override fun onDestroy(engine: PulseEngine)
@@ -73,14 +69,15 @@ class AmbientOcclusion : SceneSystem()
         if (!enabled) onDestroy(engine)
     }
     
-    private fun updateRenderer(surface: Surface)
+    private fun updateRenderer(engine: PulseEngine, surfaceName: String)
     {
+        val surface = engine.gfx.getSurface(surfaceName) ?: return
         val renderer = surface.getRenderer<GtaoRenderer>()
         if (renderer == null)
         {
             val index = surface.getRenderers().indexOfFirst { r -> r is ModelRenderer } // Insert before model renderer
             surface.addRenderer(GtaoRenderer(), index)
-            return // Return, renderer will be added next frame
+            return
         }
 
         renderer.intensity                = intensity

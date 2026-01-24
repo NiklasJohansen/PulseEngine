@@ -7,41 +7,53 @@ import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.annotations.TexRef
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
 @Name("Color Grading")
 class ColorGradingSystem : SceneSystem()
 {
-    @Prop(i=0)                 var toneMapper    = ACES
-    @Prop(i=1) @TexRef         var lutTexture    = ""
-    @Prop(i=2, min=0f, max=1f) var lutIntensity  = 1f
-    @Prop(i=3, min=0f)         var exposure      = 1f
-    @Prop(i=4)                 var contrast      = 1f
-    @Prop(i=5, min=0f)         var saturation    = 1f
-    @Prop(i=6, min=0f)         var vignette      = 0f
-    @Prop(i=7)                 var targetSurface = "main"
+    @Prop(i=0)                 var toneMapper     = ACES
+    @Prop(i=1) @TexRef         var lutTexture     = ""
+    @Prop(i=2, min=0f, max=1f) var lutIntensity   = 1f
+    @Prop(i=3, min=0f)         var exposure       = 1f
+    @Prop(i=4)                 var contrast       = 1f
+    @Prop(i=5, min=0f)         var saturation     = 1f
+    @Prop(i=6, min=0f)         var vignette       = 0f
+    @Prop(i=7)                 var targetSurfaces = "main"
 
-    private var lastTargetSurface = targetSurface
-
-    override fun onCreate(engine: PulseEngine)
-    {
-        val surface = engine.gfx.getSurface(targetSurface) ?: return
-        surface.deletePostProcessingEffect(EFFECT_NAME)
-        surface.addPostProcessingEffect(ColorGradingEffect(EFFECT_NAME, EFFECT_ORDER))
-    }
+    private var lastTargetSurfaces = targetSurfaces
+    private var targetSurfaceNames = emptyList<String>()
 
     override fun onUpdate(engine: PulseEngine)
     {
-        if (targetSurface != lastTargetSurface)
+        if (targetSurfaces != lastTargetSurfaces)
         {
-            engine.gfx.getSurface(lastTargetSurface)?.deletePostProcessingEffect(EFFECT_NAME)
-            lastTargetSurface = targetSurface
+            onDestroy(engine)
+            lastTargetSurfaces = targetSurfaces
+            targetSurfaceNames = targetSurfaces.split(",").map { it.trim() }
         }
 
-        val surface = engine.gfx.getSurface(targetSurface) ?: return
+        targetSurfaceNames.forEachFast { updateEffect(engine, it) }
+    }
+
+    override fun onStateChanged(engine: PulseEngine)
+    {
+        if (!enabled) onDestroy(engine)
+    }
+
+    override fun onDestroy(engine: PulseEngine)
+    {
+        targetSurfaceNames.forEachFast { engine.gfx.getSurface(it)?.deletePostProcessingEffect(EFFECT_NAME) }
+    }
+    
+    private fun updateEffect(engine: PulseEngine, surfaceName: String)
+    {
+        val surface = engine.gfx.getSurface(surfaceName) ?: return
         val effect = surface.getPostProcessingEffect<ColorGradingEffect>()
         if (effect == null)
         {
-            onCreate(engine)
+            surface.deletePostProcessingEffect(EFFECT_NAME)
+            surface.addPostProcessingEffect(ColorGradingEffect(EFFECT_NAME, EFFECT_ORDER))
             return
         }
 
@@ -53,17 +65,7 @@ class ColorGradingSystem : SceneSystem()
         effect.saturation   = saturation
         effect.vignette     = vignette
     }
-
-    override fun onStateChanged(engine: PulseEngine)
-    {
-        if (enabled) onCreate(engine) else onDestroy(engine)
-    }
-
-    override fun onDestroy(engine: PulseEngine)
-    {
-        engine.gfx.getSurface(targetSurface)?.deletePostProcessingEffect(EFFECT_NAME)
-    }
-
+    
     companion object
     {
         var EFFECT_NAME  = "color_grading"
