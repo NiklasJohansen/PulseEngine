@@ -245,11 +245,11 @@ class GpuMonitor : Service()
         private val color = Color(1f, 1f, 1f)
         private fun nextColor(label: CharSequence): Color
         {
-            random.setSeed(label.toString().hashCode().toLong())
+            random.setSeed(label.toString().hashCode().toLong() + 1)
             return color.setFromHsb(
                 hue = random.nextFloat(),
                 saturation = 0.5f + 0.4f * random.nextFloat(),
-                brightness = 0.7f + 0.3f * random.nextFloat(),
+                brightness = 0.9f + 0.1f * random.nextFloat(),
             )
         }
     }
