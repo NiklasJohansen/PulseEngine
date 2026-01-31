@@ -68,7 +68,7 @@ abstract class EntityRenderer : SceneSystem()
     }
 }
 
-@Name("Entity Renderer")
+@Name("Entity Renderer (2D)")
 @Icon("MONITOR")
 open class EntityRendererImpl : EntityRenderer()
 {
