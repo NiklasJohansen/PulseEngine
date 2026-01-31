@@ -32,7 +32,7 @@ import no.njoh.pulseengine.core.service.ServiceManagerImpl
 import no.njoh.pulseengine.core.service.ServiceManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
-import no.njoh.pulseengine.core.asset.types.Mesh
+import no.njoh.pulseengine.core.asset.types.Model
 import java.util.concurrent.BrokenBarrierException
 import kotlin.math.min
 
@@ -98,7 +98,7 @@ class PulseEngineImpl(
             if (windowRecreated)
             {
                 input.init(window.windowHandle, window.cursorPosScale)
-                asset.getAllOfType<Mesh>().forEachFast { gfx.uploadMesh(it) }
+                asset.getAllOfType<Model>().forEachFast { gfx.uploadMesh(it) }
             }
         }
 
@@ -115,7 +115,7 @@ class PulseEngineImpl(
                 is Texture -> gfx.uploadTexture(it)
                 is Font    -> gfx.uploadTexture(it.charTexture)
                 is Shader  -> gfx.compileShader(it)
-                is Mesh    -> gfx.uploadMesh(it)
+                is Model   -> gfx.uploadMesh(it)
                 is Sound   -> audio.uploadSound(it)
                 is Cursor  -> input.createCursor(it)
             }

@@ -2,9 +2,6 @@ package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
-import no.njoh.pulseengine.core.asset.types.Material
-import no.njoh.pulseengine.core.asset.types.Material.BlendMode.OPAQUE
-import no.njoh.pulseengine.core.asset.types.Mesh
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
@@ -12,15 +9,15 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleIndices
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
-import org.joml.Matrix4f
+import no.njoh.pulseengine.core.graphics.api.DrawList
 import org.lwjgl.opengl.GL11.*
 
 class DepthPrepassRenderer : Renderer()
 {
     private lateinit var program: ShaderProgram
 
-    private var readCommands  = ArrayList<DrawCommand>(256)
-    private var writeCommands = ArrayList<DrawCommand>(256)
+    private var readDrawLists  = ArrayList<DrawList>()
+    private var writeDrawLists = ArrayList<DrawList>()
 
     override fun init(engine: PulseEngineInternal, surface: Surface) 
     {
@@ -35,8 +32,8 @@ class DepthPrepassRenderer : Renderer()
 
     override fun onInitFrame() 
     {
-        writeCommands = readCommands.also { readCommands = writeCommands }
-        writeCommands.clear()
+        writeDrawLists = readDrawLists.also { readDrawLists = writeDrawLists }
+        writeDrawLists.clear()
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int) 
@@ -49,33 +46,31 @@ class DepthPrepassRenderer : Renderer()
         glColorMask(false, false, false, false)
         glDepthMask(true)
         glEnable(GL_DEPTH_TEST)
+        glDisable(GL_CULL_FACE)
+        glViewport(0, 0, surface.config.width, surface.config.height)
 
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
 
-        for (cmd in readCommands)
+        for (renderPass in readDrawLists)
         {
-            val vao = cmd.mesh.vao ?: continue
-
-            for (subMesh in cmd.mesh.subMeshes)
+            for (item in renderPass.opaqueItems)
             {
-                val matInfo = cmd.mesh.materials.getOrNull(subMesh.materialIndex)
-                val material = matInfo?.name?.let { engine.asset.getOrNull<Material>(it) }
-                val blendMode = material?.blendMode ?: OPAQUE
+                val vao = item.model.vao ?: continue
+                val subMesh = item.subMesh
 
-                if (blendMode != OPAQUE)
-                    continue // skip MASK + BLEND
-
-                program.setUniform("model", cmd.transform)
+                program.setUniform("model", item.transform)
 
                 drawTriangleIndices(vao, subMesh.indexStart, subMesh.indexCount)
             }
         }
 
+        readDrawLists.clear()
+        
         glColorMask(true, true, true, true)
 
         // Resolve depth to single sampled texture (if surface is using MSAA)
-        surface.renderTarget.resolveDepth()
+        surface.renderTarget.resolveDepth(engine)
 
         // Generate depth pyramid
         surface.getTextures().firstOrNullFast { it.attachment == DEPTH_TEXTURE }?.generateMips(engine)
@@ -89,11 +84,9 @@ class DepthPrepassRenderer : Renderer()
         program.destroy()
     }
 
-    fun draw(mesh: Mesh, transform: Matrix4f) 
+    fun draw(drawList: DrawList)
     {
-        writeCommands += DrawCommand(mesh, transform)
+        writeDrawLists += drawList
         increaseBatchSize()
     }
-
-    private data class DrawCommand(val mesh: Mesh, val transform: Matrix4f)
 }

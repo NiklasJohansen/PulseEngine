@@ -248,40 +248,40 @@ open class GraphicsImpl : GraphicsInternal
         }
     }
 
-    override fun uploadMesh(mesh: Mesh)
+    override fun uploadMesh(model: Model)
     {
-        if ((mesh.vbo == null && mesh.vertices.isEmpty()) || (mesh.ebo == null && mesh.indices.isEmpty()))
+        if ((model.vbo == null && model.vertices.isEmpty()) || (model.ebo == null && model.indices.isEmpty()))
         {
-            Logger.warn { "Attempted to upload empty mesh to GPU: ${mesh.name} (${mesh.filePath})" }
+            Logger.warn { "Attempted to upload empty mesh to GPU: ${model.name} (${model.filePath})" }
             return
         }
         
         val vao = VertexArrayObject.createAndBind()
 
-        val vbo = mesh.vbo ?: StaticBufferObject.createArrayBuffer(mesh.vertices)
+        val vbo = model.vbo ?: StaticBufferObject.createArrayBuffer(model.vertices)
         vbo.bind()
 
         VertexAttributeLayout().apply() 
         {
             withAttribute("position", 3, GL_FLOAT)
-            if (mesh.hasNormals) 
+            if (model.hasNormals) 
                 withAttribute("normal", 3, GL_FLOAT)
-            if (mesh.hasTangents) 
+            if (model.hasTangents) 
             {
                 withAttribute("tangent", 3, GL_FLOAT)
                 withAttribute("bitangent", 3, GL_FLOAT)
             }
-            if (mesh.hasTexCoords) 
+            if (model.hasTexCoords) 
                 withAttribute("texCoord", 2, GL_FLOAT)
         }.bind()
 
-        val ebo = mesh.ebo ?: StaticBufferObject.createElementArrayBuffer(mesh.indices)
+        val ebo = model.ebo ?: StaticBufferObject.createElementArrayBuffer(model.indices)
         ebo.bind()
 
         vao.release()
         vbo.release()
         ebo.release()
-        mesh.onUploaded(vao, vbo, ebo)
+        model.onUploaded(vao, vbo, ebo)
     }
 
     override fun uploadTexture(texture: Texture) = textureBank.upload(texture)

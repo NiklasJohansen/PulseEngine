@@ -4,6 +4,7 @@ import gnu.trove.map.hash.TObjectIntHashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import org.joml.Vector2f
 import org.joml.Vector2i
 import org.joml.Vector3f
@@ -441,20 +442,23 @@ object Extensions
             path.endsWith(".hdr")  -> EnvMap(path, name)
             path.endsWith(".obj")  ||
             path.endsWith(".fbx")  ||
-            path.endsWith(".gltf") -> Mesh(path, name)
+            path.endsWith(".glb")  ||
+            path.endsWith(".gltf") -> Model(path, name)
             path.endsWith(".jpg")  ||
             path.endsWith(".jpeg") ||
             path.endsWith(".png")  ->
             {
-                val isPBR = "_normal" in name || "_ao" in name || "_metallic" in name || "_roughness" in name || "_emissive" in name || "_specular" in name
-                val format = if ("_lut" in name || "_linear" in name || isPBR) RGBA8 else SRGBA8
+                val isLut = "_lut" in name
+                val isPBR = "_normal" in name || "_ao" in name || "_metallic" in name || "_roughness" in name
+                val format = if (isLut || isPBR || "_linear" in name) RGBA8 else SRGBA8
+
                 spriteSheetRegex.find(path)?.let { SpriteSheet(
                     filePath = path,
                     name = name.substringBeforeLast("_"),
                     format = format,
                     horizontalCells = it.groupValues[1].toInt(),
                     verticalCells = it.groupValues[2].toInt()
-                ) } ?: Texture(path, name, format = format)
+                ) } ?: Texture(path, name, format = format, wrapping = CLAMP_TO_EDGE)
             }
             else -> null
         }

@@ -6,8 +6,8 @@ layout(location = 2) in vec3 tangent;
 layout(location = 3) in vec3 bitangent;
 layout(location = 4) in vec2 texCoord;
 
-uniform mat4 viewProjection;
-uniform mat4 model;
+uniform mat4 uViewProjection;
+uniform mat4 uModel;
 
 out vec3 vWorldPos;
 out vec3 vWorldNormal;
@@ -16,7 +16,7 @@ out vec2 vTexCoord;
 
 void main()
 {
-    mat3 M  = mat3(model);
+    mat3 M  = mat3(uModel);
     vec3 N  = normalize(M * normal);
     vec3 T  = normalize(M * tangent);
     vec3 B0 = normalize(M * bitangent);
@@ -26,12 +26,12 @@ void main()
     float sign = (dot(cross(N, T), B0) < 0.0) ? -1.0 : 1.0;
     vec3 B = normalize(cross(N, T)) * sign;
 
-    vec4 worldPos = model * vec4(position, 1.0);
+    vec4 worldPos = uModel * vec4(position, 1.0);
     
     vWorldPos = worldPos.xyz;
     vWorldNormal = N;
     vTBN = mat3(T, B, N);
     vTexCoord = vec2(texCoord.x, 1.0 - texCoord.y);
 
-    gl_Position = viewProjection * worldPos;
+    gl_Position = uViewProjection * worldPos;
 }

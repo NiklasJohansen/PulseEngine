@@ -1,7 +1,10 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.shared.primitives.Color
+
 class Material(
     name: String,
+    val baseColor: Color,
     val albedo: Texture?,
     val normal: Texture?,
     val aoMetalRough: Texture?,
@@ -9,7 +12,12 @@ class Material(
     val height: Texture?,
     val cullMode: CullMode,
     val blendMode: BlendMode,
-    val alphaCutoff: Float
+    val alphaCutoff: Float,
+    val metallicFactor: Float,
+    val roughnessFactor: Float,
+    val emissiveFactor: Color,
+    val occlusionStrength: Float,
+    val normalScale: Float
 ): Asset(name, name) {
 
     override fun load() {}

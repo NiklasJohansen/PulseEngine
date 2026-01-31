@@ -42,7 +42,7 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
         }
     }
 
-    fun resolveDepth() 
+    fun resolveDepth(engine: PulseEngineInternal) 
     {
         if (hasMultisampling)
         {

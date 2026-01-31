@@ -104,11 +104,13 @@ void main()
 
         if (NdotL > 0.0)
         {
-            float D = distributionGGX(NdotH, roughness);
+            float D = distributionGGX(NdotH, max(roughness, 1e-4));
             float pdf = (D * NdotH) / max(4.0 * HdotV, 1e-6);
 
             float saSample = 1.0 / max(float(SAMPLE_COUNT) * pdf, 1e-6);
-            float lod = max(0.0, 0.5 * log2(saSample / saTexel));
+            float lod = 0.5 * log2(saSample / saTexel);
+            if (roughness <= 1e-4) 
+                lod = 0.0;
 
             vec3 env = sampleEnvMap(L, lod);
             prefiltered += env * NdotL;

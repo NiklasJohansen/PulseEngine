@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.graphics
 
 import no.njoh.pulseengine.core.PulseEngineInternal
-import no.njoh.pulseengine.core.asset.types.Mesh
+import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -98,7 +98,7 @@ interface GraphicsInternal : Graphics
     val gpuName: String
 
     fun init(engine: PulseEngineInternal)
-    fun uploadMesh(mesh: Mesh)
+    fun uploadMesh(model: Model)
     fun uploadTexture(texture: Texture)
     fun deleteTexture(texture: Texture)
     fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean)

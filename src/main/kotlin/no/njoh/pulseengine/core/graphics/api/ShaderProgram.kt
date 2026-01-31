@@ -15,8 +15,7 @@ import org.joml.Vector4f
 import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL30.GL_TEXTURE_2D_ARRAY
-import org.lwjgl.opengl.GL30.glVertexAttribIPointer
-import org.lwjgl.opengl.GL33.glVertexAttribDivisor
+import org.lwjgl.opengl.GL32.GL_TEXTURE_2D_MULTISAMPLE
 
 class ShaderProgram(
     id: Int,
@@ -103,13 +102,19 @@ class ShaderProgram(
     }
 
     fun setUniformSampler(samplerName: String, texture: RenderTexture, filter: TextureFilter = texture.filter, wrapping: TextureWrapping = texture.wrapping) =
-        setUniformSampler(samplerName, texture.handle, filter, wrapping)
+        setUniformSampler(samplerName, texture.handle, filter, wrapping, texture.multisampling)
 
-    fun setUniformSampler(samplerName: String, textureHandle: TextureHandle, filter: TextureFilter = LINEAR, wrapping: TextureWrapping = CLAMP_TO_EDGE)
-    {
+    fun setUniformSampler(
+        samplerName: String,
+        textureHandle: TextureHandle,
+        filter: TextureFilter = LINEAR,
+        wrapping: TextureWrapping = CLAMP_TO_EDGE,
+        multisampling: Multisampling = Multisampling.NONE
+    ) {
         val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
+        val target = if (multisampling == Multisampling.NONE) GL_TEXTURE_2D else GL_TEXTURE_2D_MULTISAMPLE
         glActiveTexture(GL_TEXTURE0 + unit)
-        glBindTexture(GL_TEXTURE_2D, textureHandle.textureIndex)
+        glBindTexture(target, textureHandle.textureIndex)
         setUniform(samplerName, unit)
         TextureSampler.getFor(filter, wrapping).bind(unit)
     }

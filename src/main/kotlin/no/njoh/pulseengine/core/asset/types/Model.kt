@@ -1,19 +1,26 @@
 package no.njoh.pulseengine.core.asset.types
 
+import no.njoh.pulseengine.core.asset.types.Material.*
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
 import no.njoh.pulseengine.core.asset.types.Material.CullMode.BACK
 import no.njoh.pulseengine.core.asset.types.Material.CullMode.NONE
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
+import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Logger
+import org.joml.Matrix4f
+import org.joml.Vector3f
+import org.lwjgl.assimp.AIColor4D
 import org.lwjgl.assimp.AIMaterial
+import org.lwjgl.assimp.AIMatrix4x4
 import org.lwjgl.assimp.AIMesh
+import org.lwjgl.assimp.AINode
 import org.lwjgl.assimp.AIScene
 import org.lwjgl.assimp.AIString
 import org.lwjgl.assimp.Assimp.*
 
-class Mesh(filePath: String, name: String) : Asset(filePath, name) 
+class Model(filePath: String, name: String) : Asset(filePath, name) 
 {
     var vao: VertexArrayObject?  = null; private set
     var vbo: StaticBufferObject? = null; private set
@@ -22,8 +29,9 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
     var vertices = FloatArray(0); private set
     var indices  = IntArray(0);   private set
 
-    var subMeshes: List<SubMesh>      = emptyList(); private set
-    var materials: List<MeshMaterial> = emptyList(); private set
+    var subMeshInstances = emptyList<SubMeshInstance>(); private set
+    var subMeshes        = emptyList<SubMesh>();         private set
+    var materials        = emptyList<MeshMaterial>();    private set
 
     var hasNormals   = false; private set
     var hasTangents  = false; private set
@@ -62,20 +70,15 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
             aiProcess_GenNormals or
             aiProcess_ImproveCacheLocality or
             aiProcess_OptimizeMeshes or
-            aiProcess_SortByPType or
-            aiProcess_PreTransformVertices
+            aiProcess_SortByPType
 
         val scene = aiImportFile(filePath, flags) ?: throw RuntimeException(aiGetErrorString())
 
         try
         {
             readMeshes(scene)
+            buildSubMeshInstances(scene.mRootNode()!!, Matrix4f(), mutableListOf<SubMeshInstance>().also { subMeshInstances = it })
             readMaterial(scene)
-        }
-        catch (e: Exception)
-        {
-            aiReleaseImport(scene)
-            throw e
         }
         finally { aiReleaseImport(scene) }
     }
@@ -111,10 +114,11 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
         }
 
         val stride = 3 +
-                (if (hasNormals) 3 else 0) +
-                (if (hasTangents) 3 + 3 else 0) +
-                (if (hasTexCoords) 2 else 0)
+            (if (hasNormals) 3 else 0) +
+            (if (hasTangents) 3 + 3 else 0) +
+            (if (hasTexCoords) 2 else 0)
 
+        val subMeshes  = mutableListOf<SubMesh>()
         val vertexData = FloatArray(totalVertices * stride)
         val indices    = IntArray(totalIndices)
 
@@ -134,13 +138,31 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
             val texCoords    = mesh.mTextureCoords(0)
             val materialIdx  = mesh.mMaterialIndex()
 
+            var xMin = Float.POSITIVE_INFINITY
+            var yMin = Float.POSITIVE_INFINITY
+            var zMin = Float.POSITIVE_INFINITY
+            var xMax = Float.NEGATIVE_INFINITY
+            var yMax = Float.NEGATIVE_INFINITY
+            var zMax = Float.NEGATIVE_INFINITY
+
             // Vertices
             for (i in 0 until numVertices)
             {
                 val v = vertices[i]
-                vertexData[dst++] = v.x()
-                vertexData[dst++] = v.y()
-                vertexData[dst++] = v.z()
+                val x = v.x()
+                val y = v.y()
+                val z = v.z()
+                
+                if (x < xMin) xMin = x
+                if (y < yMin) yMin = y
+                if (z < zMin) zMin = z
+                if (x > xMax) xMax = x
+                if (y > yMax) yMax = y
+                if (z > zMax) zMax = z
+ 
+                vertexData[dst++] = x
+                vertexData[dst++] = y
+                vertexData[dst++] = z
 
                 if (hasNormals)
                 {
@@ -211,23 +233,101 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
             subMeshes += SubMesh(
                 indexStart = subMeshIndexStart,
                 indexCount = numFaces * 3,
-                materialIndex = materialIdx
+                materialIndex = materialIdx,
+                localBounds = Aabb(xMin, yMin, zMin, xMax, yMax, zMax)
             )
 
             globalVertexOffset += numVertices
         }
 
+        this.subMeshes    = subMeshes
         this.vertices     = vertexData
         this.indices      = indices
         this.hasNormals   = hasNormals
         this.hasTangents  = hasTangents
         this.hasTexCoords = hasTexCoords
     }
+
+    private fun buildSubMeshInstances(node: AINode, parentWorld: Matrix4f, instances: MutableList<SubMeshInstance>) 
+    {
+        val local = node.mTransformation().toMatrix4f()
+        val world = Matrix4f(parentWorld).mul(local)
+
+        val nodeName = node.mName().dataString()
+        val meshIndices = node.mMeshes()
+        
+        if (meshIndices != null) 
+        {
+            for (i in 0 until node.mNumMeshes()) 
+            {
+                val meshIndex   = meshIndices[i] // aiMesh index
+                val subMesh     = subMeshes[meshIndex]
+                val localBounds = subMesh.localBounds
+                val worldBounds = transformAabb(localBounds, world)
+
+                instances += SubMeshInstance(
+                    subMesh = subMesh,
+                    transform = Matrix4f(world),
+                    worldBounds = worldBounds,
+                    nodeName = nodeName
+                )
+            }
+        }
+
+        val children = node.mChildren() ?: return
+        for (i in 0 until node.mNumChildren())
+            buildSubMeshInstances(AINode.create(children[i]), world, instances)
+    }
+
+    private fun transformAabb(aabb: Aabb, transform: Matrix4f): Aabb 
+    {
+        val corners = floatArrayOf(
+            aabb.xMin, aabb.yMin, aabb.zMin,
+            aabb.xMax, aabb.yMin, aabb.zMin,
+            aabb.xMin, aabb.yMax, aabb.zMin,
+            aabb.xMax, aabb.yMax, aabb.zMin,
+            aabb.xMin, aabb.yMin, aabb.zMax,
+            aabb.xMax, aabb.yMin, aabb.zMax,
+            aabb.xMin, aabb.yMax, aabb.zMax,
+            aabb.xMax, aabb.yMax, aabb.zMax
+        )
+
+        val p = Vector3f()
+        var xMin = Float.POSITIVE_INFINITY
+        var yMin = Float.POSITIVE_INFINITY
+        var zMin = Float.POSITIVE_INFINITY
+        var xMax = Float.NEGATIVE_INFINITY
+        var yMax = Float.NEGATIVE_INFINITY
+        var zMax = Float.NEGATIVE_INFINITY
+        
+        for (i in corners.indices step 3)
+        {
+            p.set(corners[i], corners[i+1], corners[i+2]).mulPosition(transform)
+ 
+            if (p.x < xMin) xMin = p.x
+            if (p.y < yMin) yMin = p.y
+            if (p.z < zMin) zMin = p.z
+            if (p.x > xMax) xMax = p.x
+            if (p.y > yMax) yMax = p.y
+            if (p.z > zMax) zMax = p.z
+        }
+
+        return Aabb(xMin, yMin, zMin, xMax, yMax, zMax)
+    }
+
+    private fun AIMatrix4x4.toMatrix4f(): Matrix4f =
+        Matrix4f(
+            a1(), b1(), c1(), d1(),
+            a2(), b2(), c2(), d2(),
+            a3(), b3(), c3(), d3(),
+            a4(), b4(), c4(), d4()
+        )
     
     private fun readMaterial(scene: AIScene)
     {
         val numMaterials = scene.mNumMaterials()
         val materialPointers = scene.mMaterials() ?: return
+        val materials = mutableListOf<MeshMaterial>()
 
         for (i in 0 until numMaterials)
         {
@@ -235,12 +335,19 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
             val materialName = material.getMaterialStringProp(AI_MATKEY_NAME) ?: "material_${materials.size}"
             val basePath = this.filePath.substringBeforeLast("/") + "/"
             
+            val baseColor = material.getMaterialColorProp(AI_MATKEY_BASE_COLOR)
+                ?: material.getMaterialColorProp(AI_MATKEY_COLOR_DIFFUSE)
+                ?: Color(1f, 1f, 1f, 1f)
+
             val albedoPath = material.getTexturePath(aiTextureType_DIFFUSE) ?: material.getTexturePath(aiTextureType_BASE_COLOR)
 
             val normalPath = material.getTexturePath(aiTextureType_NORMALS)
 
-            val metalRoughPath =
-                material.getTexturePath(aiTextureType_METALNESS)
+            val aoPath = material.getTexturePath(aiTextureType_AMBIENT) 
+                ?: material.getTexturePath(aiTextureType_AMBIENT_OCCLUSION)
+                ?: material.getTexturePath(aiTextureType_LIGHTMAP)
+
+            val metalRoughPath = material.getTexturePath(aiTextureType_METALNESS)
                 ?: material.getTexturePath(aiTextureType_DIFFUSE_ROUGHNESS)
                 ?: material.getTexturePath(aiTextureType_UNKNOWN)
 
@@ -251,21 +358,43 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
                 if (it == 1) "NONE" else "BACK"
             }
 
-            val alphaMode = material.getMaterialStringProp(AI_MATKEY_GLTF_ALPHAMODE) ?: "OPAQUE"
-            
+            val alphaMode = material.getMaterialStringProp(AI_MATKEY_GLTF_ALPHAMODE)?.uppercase() ?: "OPAQUE"
+
+            val blendMode = when (alphaMode) 
+            {
+                "MASK"  -> MASK
+                "BLEND" -> TRANSPARENT
+                else    -> OPAQUE
+            }
+
             val alphaCutoff = material.getMaterialFloatProp(AI_MATKEY_GLTF_ALPHACUTOFF) ?: 0.5f
 
-            this.materials += MeshMaterial(
+            val metallicFactor = material.getMaterialFloatProp(AI_MATKEY_METALLIC_FACTOR)?.coerceIn(0f, 1f) ?: 1f
+            
+            val roughnessFactor = material.getMaterialFloatProp(AI_MATKEY_ROUGHNESS_FACTOR)?.coerceIn(0f, 1f) ?: 1f
+
+            val emissiveFactor = material.getMaterialColorProp(AI_MATKEY_COLOR_EMISSIVE) ?: Color(0f, 0f, 0f, 1f)
+
+            val emissiveStrength = material.getMaterialFloatProp(AI_MATKEY_EMISSIVE_INTENSITY) ?: 1f
+
+            materials += MeshMaterial(
                 name = this.name + "_" + materialName,
+                baseColor = baseColor,
                 albedoPath = albedoPath?.let { basePath + it.replace("%20", " ") },
                 normalPath = normalPath?.let { basePath + it.replace("%20", " ") },
                 aoMetalRoughPath = metalRoughPath?.let { basePath + it.replace("%20", " ") },
                 emissivePath = emissivePath?.let { basePath + it.replace("%20", " ") },
                 cullMode = cullMode,
-                alphaMode = alphaMode,
-                alphaCutoff = alphaCutoff
+                blendMode = blendMode,
+                alphaCutoff = alphaCutoff,
+                metallicFactor = metallicFactor,
+                roughnessFactor = roughnessFactor,
+                emissiveFactor = emissiveFactor.multiplyRgb(emissiveStrength),
+                occlusionStrength = if (aoPath != null && aoPath == metalRoughPath) 1f else 0f
             )
         }
+
+        this.materials = materials
     }
 
     private fun AIMaterial.getMaterialStringProp(prop: String): String? = AIString.calloc().use()
@@ -288,6 +417,12 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
         if (res == aiReturn_SUCCESS) tmp[0] else null
     }
 
+    private fun AIMaterial.getMaterialColorProp(prop: String): Color? = AIColor4D.calloc().use()
+    {
+        val res = aiGetMaterialColor(this, prop, aiTextureType_NONE, 0,it)
+        if (res == aiReturn_SUCCESS) Color(it.r(), it.g(), it.b(), it.a()) else null
+    }
+
     private fun AIMaterial.getTexturePath(type: Int): String? = AIString.calloc().use()
     {
         if (aiGetMaterialTextureCount(this, type) < 1)
@@ -304,27 +439,37 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
         val assets = mutableListOf<Asset>()
         for (mat in materials)
         {
-            val albedo    = mat.albedoPath?.let {       Texture(it, mat.name + "_albedo",       format = SRGBA8) }
-            val normal    = mat.normalPath?.let {       Texture(it, mat.name + "_normal",       format = RGBA8)  }
-            val aomr      = mat.aoMetalRoughPath?.let { Texture(it, mat.name + "_aoMetalRough", format = RGBA8)  }
-            val emissive  = mat.emissivePath?.let {     Texture(it, mat.name + "_emissive",     format = RGBA8)  }
-            val cullMode  = when (mat.cullMode.uppercase())
+            val albedo   = mat.albedoPath?.let {       Texture(it, mat.name + "_albedo",       format = SRGBA8)  }
+            val normal   = mat.normalPath?.let {       Texture(it, mat.name + "_normal",       format = RGBA8)   }
+            val aomr     = mat.aoMetalRoughPath?.let { Texture(it, mat.name + "_aoMetalRough", format = RGBA8)   }
+            val emissive = mat.emissivePath?.let {     Texture(it, mat.name + "_emissive",     format = SRGBA8)  }
+            val cullMode = when (mat.cullMode.uppercase())
             {
                 "NONE" -> NONE
                 else   -> BACK
-            }
-            val blendMode = when (mat.alphaMode.uppercase())
-            {
-                "BLEND" -> TRANSPARENT
-                "MASK"  -> MASK
-                else    -> OPAQUE
             }
 
             albedo?.let { assets += it }
             normal?.let { assets += it }
             aomr?.let { assets += it }
             emissive?.let { assets += it }
-            assets += Material(mat.name, albedo, normal, aomr, emissive, null, cullMode, blendMode, mat.alphaCutoff)
+            assets += Material(
+                name = mat.name,
+                baseColor = mat.baseColor,
+                albedo = albedo,
+                normal = normal,
+                aoMetalRough = aomr,
+                emissive = emissive,
+                height = null,
+                cullMode = cullMode,
+                blendMode = mat.blendMode,
+                alphaCutoff = mat.alphaCutoff,
+                metallicFactor = mat.metallicFactor,
+                roughnessFactor = mat.roughnessFactor,
+                emissiveFactor = mat.emissiveFactor,
+                occlusionStrength = mat.occlusionStrength,
+                normalScale = 1f
+            )
         }
         return assets  
     }
@@ -332,17 +477,39 @@ class Mesh(filePath: String, name: String) : Asset(filePath, name)
     data class SubMesh(
         val indexStart: Int,
         val indexCount: Int,
-        val materialIndex: Int
+        val materialIndex: Int,
+        val localBounds: Aabb
     )
 
+    data class SubMeshInstance(
+        val subMesh: SubMesh,
+        val transform: Matrix4f,
+        val worldBounds: Aabb,
+        val nodeName: String
+    )
+    
     data class MeshMaterial(
         val name: String,
+        val baseColor: Color,
         val albedoPath: String?,
         val normalPath: String?,
         val aoMetalRoughPath: String?,
         val emissivePath: String?,
         val cullMode: String,
-        val alphaMode: String,
-        val alphaCutoff: Float
+        val blendMode: BlendMode,
+        val alphaCutoff: Float,
+        val metallicFactor: Float,
+        val roughnessFactor: Float,
+        val emissiveFactor: Color,
+        val occlusionStrength: Float
+    )
+
+    data class Aabb(
+        val xMin: Float,
+        val yMin: Float,
+        val zMin: Float,
+        val xMax: Float,
+        val yMax: Float,
+        val zMax: Float
     )
 }
