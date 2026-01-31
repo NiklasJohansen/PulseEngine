@@ -32,14 +32,10 @@ class ModelRenderer : Renderer()
 
     private var currentCullMode: CullMode? = null
 
-    private val invViewMatrix = Matrix4f()
-    private val camPos        = Vector3f()
-    private val tmpPos        = Vector3f()
-
-    var iblBrdfTexture = "ibl_brdf_lut"
-    var iblDiffuseTexture  = ""
-    var iblSpecularTexture = ""
-    var iblIntensity       = 1f
+    private var iblBrdfTexture = "ibl_brdf_lut"
+    private val invViewMatrix  = Matrix4f()
+    private val camPos         = Vector3f()
+    private val tmpPos         = Vector3f()
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -83,8 +79,15 @@ class ModelRenderer : Renderer()
         invViewMatrix.getTranslation(camPos)
 
         val hasDepthPrepass = surface.config.hasDepthPrepass
+
         val aoRenderer = surface.getRenderer<GtaoRenderer>()
         val aoTex = aoRenderer?.getAoRenderTexture()
+        
+        val skyboxRenderer = surface.getRenderer<SkyboxRenderer>()
+        val iblIntensity = skyboxRenderer?.brightness ?: 1f
+        val iblDiffuseTexture = skyboxRenderer?.envDiffuseTexture ?: ""
+        val iblSpecularTexture = skyboxRenderer?.envSpecularTexture ?: ""
+
         val texBank = engine.gfx.textureBank
         val envSpecularMipCount = engine.asset.getOrNull<Texture>(iblSpecularTexture)
             ?.let { texBank.getTextureArray(it) }?.mipLevels?.toFloat() ?: 1f

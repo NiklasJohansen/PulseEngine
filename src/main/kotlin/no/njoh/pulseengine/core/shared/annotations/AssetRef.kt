@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.shared.annotations
 
 import no.njoh.pulseengine.core.asset.types.Asset
+import no.njoh.pulseengine.core.asset.types.EnvMap
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Sound
 import no.njoh.pulseengine.core.asset.types.SpriteSheet
@@ -27,6 +28,22 @@ annotation class AssetRef(
 @Retention(RUNTIME)
 @AssetRef(Texture::class)
 annotation class TexRef
+
+/**
+ * Lets the editor know that the field refers to a [EnvMap] asset and will provide an asset picker.
+ */
+@Target(PROPERTY, FUNCTION, PROPERTY_GETTER)
+@Retention(RUNTIME)
+@AssetRef(EnvMap::class)
+annotation class EnvMapRef
+
+/**
+ * Lets the editor know that the field refers to a [Model] asset and will provide an asset picker.
+ */
+@Target(PROPERTY, FUNCTION, PROPERTY_GETTER)
+@Retention(RUNTIME)
+@AssetRef(EnvMap::class)
+annotation class ModelRef
 
 /**
  * Lets the editor know that the field refers to a [SpriteSheet] asset and will provide an asset picker.

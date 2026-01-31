@@ -16,13 +16,16 @@ import org.lwjgl.opengl.GL11.GL_FLOAT
 import org.lwjgl.opengl.GL11.glDepthMask
 import org.lwjgl.opengl.GL11.glDisable
 
-class SkyboxRenderer() : Renderer()
-{
+class SkyboxRenderer(
+    var envTexture: String = "",
+    var envSpecularTexture: String = "",
+    var envDiffuseTexture: String = "",
+    var brightness: Float = 1f
+) : Renderer() {
+
     private lateinit var program: ShaderProgram
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: StaticBufferObject
-
-    var envTextureName = ""
 
     override fun init(engine: PulseEngineInternal, surface: Surface) 
     {
@@ -50,7 +53,7 @@ class SkyboxRenderer() : Renderer()
     {
         if (startIndex != 0) return
 
-        val tex = engine.asset.getOrNull<Texture>(envTextureName) ?: return
+        val tex = engine.asset.getOrNull<Texture>(envTexture) ?: return
         val texArray = engine.gfx.textureBank.getTextureArray(tex) ?: return
 
         glDepthMask(false) // Disable depth writes skybox
@@ -61,6 +64,7 @@ class SkyboxRenderer() : Renderer()
         program.setUniform("texDesc", tex.handle.textureIndex.toFloat(), tex.uMax, tex.vMax)
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", surface.camera.viewMatrix)
+        program.setUniform("brightness", brightness)
 
         drawTriangleVertices(vao, 0, 36) // 12 triangles * 3 verts
     }

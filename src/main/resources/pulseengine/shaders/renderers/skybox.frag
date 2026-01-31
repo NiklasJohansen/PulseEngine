@@ -7,6 +7,7 @@ out vec4 fragColor;
 
 uniform sampler2DArray textureArray;
 uniform vec3 texDesc; // x: layer, y: uMax, z: vMax
+uniform float brightness;
 
 vec2 dirToLatLong(vec3 dir)
 {
@@ -24,5 +25,7 @@ void main()
     vec2 uvMax = texDesc.yz;
     vec2 uv = dirToLatLong(worldDir) * uvMax;
 
-    fragColor = textureLod(textureArray, vec3(uv, layer), 0);
+    vec4 sky = textureLod(textureArray, vec3(uv, layer), 0);
+
+    fragColor = vec4(sky.rgb * brightness, sky.a);
 }
