@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.asset.types.Material.*
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
 import no.njoh.pulseengine.core.asset.types.Material.CullMode.BACK
 import no.njoh.pulseengine.core.asset.types.Material.CullMode.NONE
+import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
@@ -11,6 +12,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
 import org.joml.Vector3f
+import org.lwjgl.BufferUtils
 import org.lwjgl.assimp.AIColor4D
 import org.lwjgl.assimp.AIMaterial
 import org.lwjgl.assimp.AIMatrix4x4
@@ -18,7 +20,12 @@ import org.lwjgl.assimp.AIMesh
 import org.lwjgl.assimp.AINode
 import org.lwjgl.assimp.AIScene
 import org.lwjgl.assimp.AIString
+import org.lwjgl.assimp.AITexture
 import org.lwjgl.assimp.Assimp.*
+import org.lwjgl.stb.STBImage.STBI_rgb_alpha
+import org.lwjgl.stb.STBImage.stbi_failure_reason
+import org.lwjgl.stb.STBImage.stbi_load_from_memory
+import java.nio.ByteBuffer
 
 class Model(filePath: String, name: String) : Asset(filePath, name) 
 {
@@ -32,6 +39,8 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     var subMeshInstances = emptyList<SubMeshInstance>(); private set
     var subMeshes        = emptyList<SubMesh>();         private set
     var materials        = emptyList<MeshMaterial>();    private set
+    
+    private val embededTextures = mutableMapOf<Int, EmbeddedTexture>()
 
     var hasNormals   = false; private set
     var hasTangents  = false; private set
@@ -60,7 +69,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         this.vertices = FloatArray(0) // No longer needed
         this.indices = IntArray(0)
     }
-    
+
     private fun loadWithAssimp()
     {
         val flags =
@@ -77,8 +86,10 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         try
         {
             readMeshes(scene)
-            buildSubMeshInstances(scene.mRootNode()!!, Matrix4f(), mutableListOf<SubMeshInstance>().also { subMeshInstances = it })
+            readEmbeddedTextures(scene)
             readMaterial(scene)
+
+            buildSubMeshInstances(scene.mRootNode()!!, Matrix4f(), mutableListOf<SubMeshInstance>().also { subMeshInstances = it })
         }
         finally { aiReleaseImport(scene) }
     }
@@ -339,28 +350,24 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 ?: material.getMaterialColorProp(AI_MATKEY_COLOR_DIFFUSE)
                 ?: Color(1f, 1f, 1f, 1f)
 
-            val albedoPath = material.getTexturePath(aiTextureType_DIFFUSE) ?: material.getTexturePath(aiTextureType_BASE_COLOR)
+            val albedoPath = material.getTexturePath(aiTextureType_DIFFUSE, basePath) 
+                ?: material.getTexturePath(aiTextureType_BASE_COLOR, basePath)
 
-            val normalPath = material.getTexturePath(aiTextureType_NORMALS)
+            val normalPath = material.getTexturePath(aiTextureType_NORMALS, basePath)
 
-            val aoPath = material.getTexturePath(aiTextureType_AMBIENT) 
-                ?: material.getTexturePath(aiTextureType_AMBIENT_OCCLUSION)
-                ?: material.getTexturePath(aiTextureType_LIGHTMAP)
+            val aoPath = material.getTexturePath(aiTextureType_AMBIENT, basePath) 
+                ?: material.getTexturePath(aiTextureType_AMBIENT_OCCLUSION, basePath)
+                ?: material.getTexturePath(aiTextureType_LIGHTMAP, basePath)
 
-            val metalRoughPath = material.getTexturePath(aiTextureType_METALNESS)
-                ?: material.getTexturePath(aiTextureType_DIFFUSE_ROUGHNESS)
-                ?: material.getTexturePath(aiTextureType_UNKNOWN)
+            val metalRoughPath = material.getTexturePath(aiTextureType_METALNESS, basePath)
+                ?: material.getTexturePath(aiTextureType_DIFFUSE_ROUGHNESS, basePath)
+                ?: material.getTexturePath(aiTextureType_UNKNOWN, basePath)
 
-            val emissivePath = material.getTexturePath(aiTextureType_EMISSIVE)
+            val emissivePath = material.getTexturePath(aiTextureType_EMISSIVE, basePath)
 
-            val cullMode = material.getMaterialIntProp(AI_MATKEY_TWOSIDED).let()
-            {
-                if (it == 1) "NONE" else "BACK"
-            }
+            val cullMode = if (material.getMaterialIntProp(AI_MATKEY_TWOSIDED) == 1) "NONE" else "BACK"
 
-            val alphaMode = material.getMaterialStringProp(AI_MATKEY_GLTF_ALPHAMODE)?.uppercase() ?: "OPAQUE"
-
-            val blendMode = when (alphaMode) 
+            val blendMode = when (material.getMaterialStringProp(AI_MATKEY_GLTF_ALPHAMODE)?.uppercase()) 
             {
                 "MASK"  -> MASK
                 "BLEND" -> TRANSPARENT
@@ -380,10 +387,10 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             materials += MeshMaterial(
                 name = this.name + "_" + materialName,
                 baseColor = baseColor,
-                albedoPath = albedoPath?.let { basePath + it.replace("%20", " ") },
-                normalPath = normalPath?.let { basePath + it.replace("%20", " ") },
-                aoMetalRoughPath = metalRoughPath?.let { basePath + it.replace("%20", " ") },
-                emissivePath = emissivePath?.let { basePath + it.replace("%20", " ") },
+                albedoPath = albedoPath,
+                normalPath = normalPath,
+                aoMetalRoughPath = metalRoughPath,
+                emissivePath = emissivePath,
                 cullMode = cullMode,
                 blendMode = blendMode,
                 alphaCutoff = alphaCutoff,
@@ -423,7 +430,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         if (res == aiReturn_SUCCESS) Color(it.r(), it.g(), it.b(), it.a()) else null
     }
 
-    private fun AIMaterial.getTexturePath(type: Int): String? = AIString.calloc().use()
+    private fun AIMaterial.getTexturePath(type: Int, basePath: String): String? = AIString.calloc().use()
     {
         if (aiGetMaterialTextureCount(this, type) < 1)
             return null
@@ -431,7 +438,56 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         if (aiGetMaterialTexture(this, type, 0, it, null as IntArray?, null, null, null, null, null) != aiReturn_SUCCESS)
             return null
 
-        return it.dataString()
+        val path = it.dataString()
+
+        return if (path.startsWith("*")) path else basePath + path.replace("%20", " ")
+    }
+
+    private fun readEmbeddedTextures(scene: AIScene)
+    {
+        val numTex = scene.mNumTextures()
+        if (numTex == 0) return
+
+        val texPtrs = scene.mTextures() ?: return
+
+        for (i in 0 until numTex)
+        {
+            val tex = AITexture.create(texPtrs[i])
+
+            if (tex.mHeight() == 0)
+            {
+                // Compressed bytes (PNG/JPG/etc). mWidth == byte length.
+                val encoded = tex.pcDataCompressed()
+                encoded.position(0)
+                encoded.limit(tex.mWidth())
+
+                val w = IntArray(1)
+                val h = IntArray(1)
+                val comp = IntArray(1)
+
+                val pixels = stbi_load_from_memory(encoded, w, h, comp, STBI_rgb_alpha)
+                    ?: throw RuntimeException("stbi_load_from_memory failed for embedded *$i: ${stbi_failure_reason()}")
+
+                embededTextures[i] = EmbeddedTexture(w[0], h[0], pixels, freeWithStbi = true)
+            }
+            else
+            {
+                // Convert raw aiTexel array with format BGRA to RGBA
+                val w = tex.mWidth()
+                val h = tex.mHeight()
+                val texels = tex.pcData()
+
+                val rgba = BufferUtils.createByteBuffer(w * h * 4)
+                for (p in 0 until (w * h))
+                {
+                    val t = texels[p]
+                    rgba.put(t.r()).put(t.g()).put(t.b()).put(t.a())
+                }
+                rgba.flip()
+
+                embededTextures[i] = EmbeddedTexture(w, h, rgba, freeWithStbi = false)
+            }
+        }
     }
 
     override fun getSubAssets(): List<Asset> 
@@ -439,10 +495,11 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val assets = mutableListOf<Asset>()
         for (mat in materials)
         {
-            val albedo   = mat.albedoPath?.let {       Texture(it, mat.name + "_albedo",       format = SRGBA8)  }
-            val normal   = mat.normalPath?.let {       Texture(it, mat.name + "_normal",       format = RGBA8)   }
-            val aomr     = mat.aoMetalRoughPath?.let { Texture(it, mat.name + "_aoMetalRough", format = RGBA8)   }
-            val emissive = mat.emissivePath?.let {     Texture(it, mat.name + "_emissive",     format = SRGBA8)  }
+            val albedo   = createTexture(mat.albedoPath,       mat.name + "_albedo",       SRGBA8)
+            val normal   = createTexture(mat.normalPath,       mat.name + "_normal",       RGBA8)
+            val aomr     = createTexture(mat.aoMetalRoughPath, mat.name + "_aoMetalRough", RGBA8)
+            val emissive = createTexture(mat.emissivePath,     mat.name + "_emissive",     SRGBA8)
+            
             val cullMode = when (mat.cullMode.uppercase())
             {
                 "NONE" -> NONE
@@ -473,6 +530,24 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         }
         return assets  
     }
+
+    private fun createTexture(path: String?, assetName: String, format: TextureFormat): Texture?
+    {
+        if (path.isNullOrEmpty()) return null
+
+        val texture = Texture(path, assetName, format = format)
+        
+        if (path.startsWith("*")) // Embedded texture
+        {
+            val idx = path.substring(1).toIntOrNull() ?: return null
+            val tex = embededTextures[idx] ?: return null
+            texture.loadFrom(tex.rgbaPixels, tex.width, tex.height, freeWithStbi = tex.freeWithStbi)
+        }
+
+        return texture
+    }
+    
+    private data class EmbeddedTexture(val width: Int, val height: Int, val rgbaPixels: ByteBuffer, val freeWithStbi: Boolean)
 
     data class SubMesh(
         val indexStart: Int,

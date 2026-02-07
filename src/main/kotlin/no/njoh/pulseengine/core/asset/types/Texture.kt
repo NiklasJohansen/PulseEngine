@@ -42,7 +42,7 @@ open class Texture(
 
     override fun load()
     {
-        if (filePath.isBlank()) return
+        if (filePath.isBlank() || pixelsLDR != null || pixelsHDR != null) return
 
         try {
             val bytes = filePath.loadBytesFromDisk() ?: throw FileNotFoundException("File not found: $filePath")
@@ -83,11 +83,12 @@ open class Texture(
         }
     }
 
-    fun loadFrom(pixels: ByteBuffer?, width: Int, height: Int)
+    fun loadFrom(pixels: ByteBuffer?, width: Int, height: Int, freeWithStbi: Boolean)
     {
         this.pixelsLDR = pixels
         this.width = width
         this.height = height
+        this.afterUpload = { tex -> if (freeWithStbi) tex.pixelsLDR?.let { stbi_image_free(it) } }
     }
 
     open fun onUploaded(handle: TextureHandle, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
