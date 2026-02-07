@@ -101,44 +101,63 @@ class ShaderProgram(
         glUniform4f(uniformLocationOf(name), c.red, c.green, c.blue, c.alpha)
     }
 
-    fun setUniformSampler(samplerName: String, texture: RenderTexture, filter: TextureFilter = texture.filter, wrapping: TextureWrapping = texture.wrapping) =
-        setUniformSampler(samplerName, texture.handle, filter, wrapping, texture.multisampling)
+    fun setUniformSampler(
+        samplerName: String, 
+        texture: RenderTexture, 
+        filter: TextureFilter = texture.filter, 
+        wrapping: TextureWrapping = texture.wrapping,
+        compare: TextureCompare = TextureCompare.NONE,
+        borderColor: Color? = null
+    ) = setUniformSampler(samplerName, texture.handle, filter, wrapping, compare, borderColor, texture.multisampling)
 
     fun setUniformSampler(
         samplerName: String,
         textureHandle: TextureHandle,
         filter: TextureFilter = LINEAR,
         wrapping: TextureWrapping = CLAMP_TO_EDGE,
-        multisampling: Multisampling = Multisampling.NONE
+        compare: TextureCompare = TextureCompare.NONE,
+        borderColor: Color? = null,
+        multisampling: Multisampling = Multisampling.NONE,
     ) {
         val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
         val target = if (multisampling == Multisampling.NONE) GL_TEXTURE_2D else GL_TEXTURE_2D_MULTISAMPLE
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(target, textureHandle.textureIndex)
         setUniform(samplerName, unit)
-        TextureSampler.getFor(filter, wrapping).bind(unit)
+        TextureSampler.getFor(filter, wrapping, compare, borderColor).bind(unit)
     }
 
     fun setUniformSamplerArrays(textureArrays: List<TextureArray>, filter: TextureFilter? = null, wrapping: TextureWrapping? = null) =
         textureArrays.forEachFast { setUniformSamplerArray(it, filter ?: it.filter, wrapping ?: it.wrapping) }
 
-    fun setUniformSamplerArray(textureArray: TextureArray, filter: TextureFilter = textureArray.filter, wrapping: TextureWrapping = textureArray.wrapping)
-    {
+    fun setUniformSamplerArray(
+        textureArray: TextureArray, 
+        filter: TextureFilter = textureArray.filter, 
+        wrapping: TextureWrapping = textureArray.wrapping,
+        compare: TextureCompare = TextureCompare.NONE,
+        borderColor: Color? = null
+    ) {
         val samplerName = textureArrayNames[textureArray.samplerIndex]
         val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)
         setUniform(samplerName, unit)
-        TextureSampler.getFor(filter, wrapping).bind(unit)
+        TextureSampler.getFor(filter, wrapping, compare, borderColor).bind(unit)
     }
 
-    fun setUniformSamplerArray(samplerName: String, textureArray: TextureArray, filter: TextureFilter = textureArray.filter, wrapping: TextureWrapping = textureArray.wrapping)
-    {
+    fun setUniformSamplerArray(
+        samplerName: String, 
+        textureArray: TextureArray, 
+        filter: TextureFilter = textureArray.filter, 
+        wrapping: TextureWrapping = textureArray.wrapping,
+        compare: TextureCompare = TextureCompare.NONE,
+        borderColor: Color? = null
+    ) {
         val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)
         setUniform(samplerName, unit)
-        TextureSampler.getFor(filter, wrapping).bind(unit)
+        TextureSampler.getFor(filter, wrapping, compare, borderColor).bind(unit)
     }
 
     fun assignUniformBlockBinding(blockName: String, blockBinding: Int): Int
