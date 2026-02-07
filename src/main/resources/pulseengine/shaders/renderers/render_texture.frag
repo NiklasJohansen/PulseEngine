@@ -7,13 +7,16 @@ in vec4 vertexColor;
 out vec4 fragColor;
 
 uniform sampler2D tex;
+
 uniform bool sampleTexture;
+uniform bool isDepthTexture;
 uniform float cornerRadius;
 uniform vec2 size;
 
 void main()
 {
     vec4 textureColor = vec4(1.0, 1.0, 1.0, 1.0);
+    
     if (sampleTexture)
     {
         textureColor = texture(tex, uv);
@@ -26,6 +29,11 @@ void main()
             float distFromCorner = length(pos - corner) - border;
             textureColor.a *= 1.0f - smoothstep(0.0, 0.01, distFromCorner);
         }
+    }
+
+    if (isDepthTexture)
+    {
+        textureColor.rgb = vec3(textureColor.r);
     }
 
     fragColor = vertexColor * textureColor;

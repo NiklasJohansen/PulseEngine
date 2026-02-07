@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.graphics.renderers
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
+import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureHandle
@@ -28,7 +29,7 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : Rendere
     private var readOffset  = 0
     private var writeOffset = 0
     private val capacity    = 100
-    private val stride      = 15
+    private val stride      = 16
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -85,6 +86,7 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : Rendere
             val vMax         = data[base + 12]
             val rgba         = data[base + 13]
             val textureId    = data[base + 14].toInt()
+            val isDepth      = data[base + 15]
 
             // Bind texture
             if (textureId != TextureHandle.NONE.textureIndex)
@@ -99,6 +101,7 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : Rendere
             program.setUniform("cornerRadius", cornerRadius)
             program.setUniform("uvMinMax", uMin, vMin, uMax, vMax)
             program.setUniform("sampleTexture", textureId != TextureHandle.NONE.textureIndex)
+            program.setUniform("isDepthTexture", isDepth > 0)
 
             // Draw quad
             drawTriangleStripVertices(vao, 0, 4)
@@ -139,6 +142,7 @@ class RenderTextureRenderer(private val config: SurfaceConfigInternal) : Rendere
         data[base + 12] = vMax
         data[base + 13] = config.currentDrawColor
         data[base + 14] = texture.handle.textureIndex.toFloat()
+        data[base + 15] = if (texture.attachment == Attachment.DEPTH_TEXTURE) 1f else 0f
         writeCount++
         config.increaseDepth()
         increaseBatchSize()

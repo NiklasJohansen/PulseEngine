@@ -64,6 +64,7 @@ class FrostedGlassEffect(
         fbo.attachOutputTexture(sceneTex)
         fbo.clear()
         sceneProgram.bind()
+        sceneProgram.setUniform("isDepthTexture", false)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         engine.gfx.getAllSurfaces().forEachFiltered({ it.config.isVisible && it.config.zOrder > zThreshold })

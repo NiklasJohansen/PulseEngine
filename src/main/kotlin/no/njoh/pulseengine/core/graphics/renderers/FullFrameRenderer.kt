@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.renderers
 
+import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
@@ -36,6 +37,7 @@ class FullFrameRenderer(private val program: ShaderProgram)
     {
         program.bind()
         program.setUniformSampler("tex", texture)
+        program.setUniform("isDepthTexture", texture.attachment == DEPTH_TEXTURE)
         drawTriangleVertices(vao, 0, 3)
     }
 

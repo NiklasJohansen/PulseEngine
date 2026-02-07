@@ -6,8 +6,16 @@ out vec4 fragColor;
 
 uniform sampler2D tex;
 
+uniform bool isDepthTexture;
+
 void main()
 {
-    fragColor = texture(tex, uv);
-    fragColor = clamp(texture(tex, uv), 0.0, 1.0);
+    vec4 c = texture(tex, uv);
+
+    if (isDepthTexture)
+    {
+        textureColor.rgb = vec3(textureColor.r);
+    }
+
+    fragColor = clamp(c, 0.0, 1.0);
 }
