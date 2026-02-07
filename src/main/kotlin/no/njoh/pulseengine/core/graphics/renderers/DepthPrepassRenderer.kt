@@ -52,9 +52,9 @@ class DepthPrepassRenderer : Renderer()
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
 
-        for (renderPass in readDrawLists)
+        for (list in readDrawLists)
         {
-            for (item in renderPass.opaqueItems)
+            for (item in list.opaqueItems)
             {
                 val vao = item.model.vao ?: continue
                 val subMesh = item.subMesh

@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.shared.annotations
 import no.njoh.pulseengine.core.asset.types.Asset
 import no.njoh.pulseengine.core.asset.types.EnvMap
 import no.njoh.pulseengine.core.asset.types.Font
+import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Sound
 import no.njoh.pulseengine.core.asset.types.SpriteSheet
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -42,7 +43,7 @@ annotation class EnvMapRef
  */
 @Target(PROPERTY, FUNCTION, PROPERTY_GETTER)
 @Retention(RUNTIME)
-@AssetRef(EnvMap::class)
+@AssetRef(Model::class)
 annotation class ModelRef
 
 /**

@@ -18,8 +18,6 @@ import org.lwjgl.opengl.GL11.glDisable
 
 class SkyboxRenderer(
     var envTexture: String = "",
-    var envSpecularTexture: String = "",
-    var envDiffuseTexture: String = "",
     var brightness: Float = 1f
 ) : Renderer() {
 

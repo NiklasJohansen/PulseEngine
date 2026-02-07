@@ -11,11 +11,9 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 @Name("Skybox")
 class SkyboxSystem : SceneSystem()
 {
-    @Prop(i=0, min=0f)    var intensity          = 1f
-    @Prop(i=1) @EnvMapRef var skyboxTexture      = ""
-    @Prop(i=2) @EnvMapRef var envSpecularTexture = ""
-    @Prop(i=3) @EnvMapRef var envDiffuseTexture  = ""
-    @Prop(i=4)            var targetSurfaces     = "world"
+    @Prop(i=0, min=0f)    var brightness     = 1f
+    @Prop(i=1) @EnvMapRef var texture        = ""
+    @Prop(i=4)            var targetSurfaces = "world"
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()
@@ -59,9 +57,7 @@ class SkyboxSystem : SceneSystem()
             return
         }
 
-        renderer.brightness = intensity
-        renderer.envTexture = skyboxTexture
-        renderer.envSpecularTexture = envSpecularTexture
-        renderer.envDiffuseTexture = envDiffuseTexture
+        renderer.brightness = brightness
+        renderer.envTexture = texture
     }
 }

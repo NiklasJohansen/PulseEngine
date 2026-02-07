@@ -10,7 +10,7 @@ void main()
     // Current mip pixel coordinate (integer)
     ivec2 p = ivec2(gl_FragCoord.xy);
 
-    // Corresponding top-left pixel in previous mip (2x2 block)
+    // Corresponding bottom-left pixel in previous mip (2x2 block)
     ivec2 base = p * 2;
 
     // Clamp for odd sizes (last texel may map outside)

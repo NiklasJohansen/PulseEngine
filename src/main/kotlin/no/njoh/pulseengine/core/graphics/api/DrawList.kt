@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Material
+import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
 import no.njoh.pulseengine.core.asset.types.Model
 import org.joml.Matrix4f
 
@@ -27,11 +28,11 @@ class DrawList(
     fun submit(model: Model, subMesh: Model.SubMesh, material: Material?, transform: Matrix4f)
     {
         val item = RenderItem(model, subMesh, material, transform)
-        when (material?.blendMode ?: Material.BlendMode.OPAQUE)
+        when (material?.blendMode ?: OPAQUE)
         {
-            Material.BlendMode.OPAQUE -> opaqueItems += item
-            Material.BlendMode.MASK -> maskedItems += item
-            Material.BlendMode.TRANSPARENT -> transparentItems += item
+            OPAQUE -> opaqueItems += item
+            MASK -> maskedItems += item
+            TRANSPARENT -> transparentItems += item
         }
     }
 

@@ -13,9 +13,7 @@ void main()
     vec4 c = texture(tex, uv);
 
     if (isDepthTexture)
-    {
-        textureColor.rgb = vec3(textureColor.r);
-    }
+        c.rgb = vec3(c.r);
 
     fragColor = clamp(c, 0.0, 1.0);
 }

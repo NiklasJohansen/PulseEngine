@@ -1,14 +1,17 @@
 #version 330 core
 
 const float PI = 3.14159265359;
+const float TAU = 6.28318530718;
 
 in vec3 vWorldPos;
 in vec3 vWorldNormal;
 in mat3 vTBN;
 in vec2 vTexCoord;
+in vec4 vSunPos;
 
 out vec4 fragColor;
 
+// Textures
 uniform sampler2DArray textureArrays[16]; // TODO: Prefix with u
 uniform sampler2D uGtaoTex;
 
@@ -26,10 +29,22 @@ uniform vec4  uEmissiveFactor;
 uniform float uAlphaCutoff; // 0 for opaque/blend
 uniform float uAoIntensity;
 
+// Lighting
 uniform float uEnvIntensity;
 uniform float uEnvSpecularMipCount;
 uniform vec3  uCameraPos;
 uniform vec2  uScreenSize;
+uniform vec4  uSunColor;
+uniform vec3  uSunDirection;
+uniform float uSunRadius;
+
+// Shadow mapping
+uniform sampler2DShadow uShadowCompareTex;
+uniform sampler2D uShadowDepthTex;
+uniform float uShadowMapNear;
+uniform float uShadowMapFar;
+uniform float uShadowMapSizeMeters;
+uniform bool  uShadowContactHardening;
 
 // ------------------------------------------------------------------
 // Texture sampling
@@ -142,6 +157,89 @@ float specularOcclusion(float NdotV, float ao, float roughness)
 }
 
 // ------------------------------------------------------------------
+// Shadow mapping
+// ------------------------------------------------------------------
+
+const vec2 POISSON_DISK_16[16] = vec2[]
+(
+    vec2(-0.94201624, -0.39906216),
+    vec2( 0.94558609, -0.76890725),
+    vec2(-0.09418410, -0.92938870),
+    vec2( 0.34495938,  0.29387760),
+    vec2(-0.91588581,  0.45771432),
+    vec2(-0.81544232, -0.87912464),
+    vec2(-0.38277543,  0.27676845),
+    vec2( 0.97484398,  0.75648379),
+    vec2( 0.44323325, -0.97511554),
+    vec2( 0.53742981, -0.47373420),
+    vec2(-0.26496911, -0.41893023),
+    vec2( 0.79197514,  0.19090188),
+    vec2(-0.24188840,  0.99706507),
+    vec2(-0.81409955,  0.91437590),
+    vec2( 0.19984126,  0.78641367),
+    vec2( 0.14383161, -0.14100790)
+);
+
+float pcssShadow(vec3 N, vec3 L, vec4 lightPos, float lightRadius)
+{
+    // Project light position into shadow map
+    vec3 pos = (lightPos.xyz / lightPos.w) * 0.5 + 0.5; // NDC [-1,1] -> UV/depth01 [0,1]
+
+    if (pos.x < 0.0 || pos.x > 1.0 || pos.y < 0.0 || pos.y > 1.0 || pos.z < 0.0 || pos.z > 1.0)
+        return 1.0; // Outside shadow map, considered fully lit
+
+    // Stable per-texel rotation
+    vec2 shadowMapTexRes = vec2(textureSize(uShadowDepthTex, 0));
+    vec2 texelCoord = floor(pos.xy * shadowMapTexRes);
+    float angle = TAU * fract(sin(dot(texelCoord, vec2(127.1, 311.7))) * 43758.5453123);
+    float s = sin(angle), c = cos(angle);
+    mat2 R = mat2(c, -s, s, c);
+
+    float texelUv = 1.0 / shadowMapTexRes.x; // Square shadow map
+    float filterRadiusUv = lightRadius * texelUv;
+
+    if (uShadowContactHardening)
+    {
+        const float searchRadiusTexels = 8.0;
+        float searchRadiusUv = searchRadiusTexels * texelUv;
+
+        // Blocker search 
+        int numBlockers = 0;
+        float sumBlockerLinearDist = 0.0;
+        for (int i = 0; i < 16; i++)
+        {
+            vec2 offset = R * POISSON_DISK_16[i] * searchRadiusUv;
+            float d01 = texture(uShadowDepthTex, pos.xy + offset).r;
+            if (d01 < pos.z)
+            {
+                numBlockers++;
+                sumBlockerLinearDist += uShadowMapNear + d01 * (uShadowMapFar - uShadowMapNear);
+            }
+        }
+
+        if (numBlockers == 0) return 1.0; // No blockers, fully lit
+
+        float lightAngularRadius = lightRadius * 0.00465; // 0.00465 = earth-sun dist / earth radius
+        float avgBlockerLinearDist = (numBlockers > 0) ? (sumBlockerLinearDist / float(numBlockers)) : 0.0;
+        float depthLinear = uShadowMapNear + pos.z * (uShadowMapFar - uShadowMapNear);
+        float penumbraSizeMeters = max(depthLinear - avgBlockerLinearDist, 0.0) * lightAngularRadius;
+        float metersPerTexel = uShadowMapSizeMeters / shadowMapTexRes.x;
+        
+        filterRadiusUv = texelUv * clamp(penumbraSizeMeters / max(metersPerTexel, 1e-6), 0.0, 64.0);
+    }
+
+    float sum = 0.0;
+    for (int i = 0; i < 16; i++) 
+    {
+        // No bias is used, as lightPos is offset by the surface normal in the vertex shader
+        vec2 o = R * POISSON_DISK_16[i] * filterRadiusUv;
+        sum += texture(uShadowCompareTex, vec3(pos.xy + o, pos.z)); 
+    }
+
+    return sum / 16.0;
+}
+
+// ------------------------------------------------------------------
 // Main
 // ------------------------------------------------------------------
 
@@ -155,7 +253,7 @@ void main()
         // Coverage AA around the cutoff
         float w = max(fwidth(alpha), 1.0 / 255.0);
         float coverage = smoothstep(uAlphaCutoff - w, uAlphaCutoff + w, alpha);
-        if (coverage <= 0.0) discard; // Early-out
+        if (coverage < 0.2) discard; // Early-out
         alpha = coverage;
     }
 
@@ -189,8 +287,7 @@ void main()
     float aoCombined = gtao * ao;
 
     // Single directional light
-    vec3 L = normalize(vec3(0.4, 1.0, 0.2)); // Direction TO light
-    vec3 lightColor = vec3(0); // Default no direct light
+    vec3 L = normalize(-uSunDirection);
 
     vec3 H = normalize(V + L);
     float NdotL = max(dot(N, L), 0.0);
@@ -209,10 +306,11 @@ void main()
     float NDF   = distributionGGX(N, H, roughness);
     float denom = 4.0 * NdotV * NdotL + 0.000001;
 
-    vec3 radiance = lightColor;
+    vec3 radiance = uSunColor.rgb;
     vec3 diffuse  = kD_dir * baseColor.rgb / PI;
     vec3 specular = (NDF * G * F_dir) / denom;
-    vec3 Lo       = (diffuse + specular) * radiance * NdotL;
+    float shadow  = pcssShadow(N, L, vSunPos, uSunRadius);
+    vec3 Lo       = (diffuse + specular) * radiance * NdotL * shadow;
 
     //--------------------------------------------------
     // Image-based lighting (IBL)

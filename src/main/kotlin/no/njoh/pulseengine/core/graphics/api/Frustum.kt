@@ -19,14 +19,17 @@ class Frustum(
 ) {
     private val planes = arrayOf(left, right, bottom, top, near, far)
 
+    fun setForCamera(camera: Camera)
+    {
+        setForViewProjection(camera.viewProjectionMatrix)
+    }
+
     /**
      * Extracts frustum planes from a view-projection matrix.
      * Uses the Gribb/Hartmann method for plane extraction.
      */
-    fun setForCamera(camera: Camera)
+    fun setForViewProjection(vp: Matrix4f)
     {
-        val vp = camera.viewProjectionMatrix
-
         // Left plane: row3 + row0
         left.a = vp.m03() + vp.m00()
         left.b = vp.m13() + vp.m10()

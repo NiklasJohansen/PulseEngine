@@ -35,6 +35,10 @@ object BackBufferBaseState : RenderState
 {
     override fun onApply(surface: SurfaceInternal)
     {
+        // Set viewport size
+        val tex = surface.getTexture()
+        glViewport(0, 0, tex.width, tex.height)
+ 
         // Clear back-buffer with color of given surface
         val c = surface.config.backgroundColor.asLinear()
         glClearColor(c.red, c.green, c.blue, c.alpha)
@@ -50,9 +54,6 @@ object BackBufferBaseState : RenderState
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        // Set viewport size
-        glViewport(0, 0, surface.config.width, surface.config.height)
-
         // Enable sRGB color space
         glEnable(GL_FRAMEBUFFER_SRGB)
     }
@@ -67,6 +68,10 @@ object PostProcessingBaseState : RenderState
     {
         // Set polygon mode to fill
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
+        // Set viewport size
+        val tex = surface.getTexture()
+        glViewport(0, 0, tex.width, tex.height)
 
         // Clear back-buffer
         glClearColor(0f, 0f, 0f, 0f)
@@ -120,7 +125,8 @@ object BatchRenderBaseState : RenderState
         else glDisable(GL_BLEND)
 
         // Set viewport size
-        glViewport(0, 0, (surface.config.width * config.textureScale).toInt(), (surface.config.height * config.textureScale).toInt())
+        val tex = surface.getTexture()
+        glViewport(0, 0, tex.width, tex.height)
 
         // Set color and clear surface
         val c = config.backgroundColor

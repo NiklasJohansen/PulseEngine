@@ -158,7 +158,7 @@ open class GraphicsImpl : GraphicsInternal
     private fun renderOffscreenTargetsToBackBuffer()
     {
         // Set OpenGL state for rendering offscreen target textures to back-buffer
-        BackBufferBaseState.apply(surfaces.firstOrNull() ?: mainSurface)
+        BackBufferBaseState.apply(mainSurface)
 
         // Draw visible surfaces with content to back-buffer
         surfaces.forEachFiltered({ it.config.isVisible && (it.hasContent() || it.hasPostProcessingEffects()) })

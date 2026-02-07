@@ -5,9 +5,7 @@ import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.MASK
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.BrdfLutBuilder
@@ -17,6 +15,10 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
+import no.njoh.pulseengine.core.graphics.api.TextureCompare
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
+import no.njoh.pulseengine.core.shared.primitives.Color
 import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.lwjgl.opengl.GL11.*
@@ -33,9 +35,14 @@ class ModelRenderer : Renderer()
     private var currentCullMode: CullMode? = null
 
     private var iblBrdfTexture = "ibl_brdf_lut"
-    private val invViewMatrix  = Matrix4f()
     private val camPos         = Vector3f()
     private val tmpPos         = Vector3f()
+    private var sunColor       = Color(1f, 1f, 1f)
+
+    var shadowMapSurfaceName = ""
+    var iblDiffuseTexture    = ""
+    var iblSpecularTexture   = ""
+    var iblIntensity         = 1f
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -55,8 +62,8 @@ class ModelRenderer : Renderer()
                 initWidth = 512,
                 initHeight = 512,
                 format = TextureFormat.RGBA16F,
-                wrapping = TextureWrapping.CLAMP_TO_EDGE,
-                filter = TextureFilter.LINEAR,
+                wrapping = CLAMP_TO_EDGE,
+                filter = LINEAR,
                 maxMipLevels = 1
             )
             engine.asset.loadNow(brdfLutTex)
@@ -75,26 +82,39 @@ class ModelRenderer : Renderer()
         if (startIndex > 0) return // Only once per frame
 
         // Camera position
-        surface.camera.viewMatrix.invert(invViewMatrix)
-        invViewMatrix.getTranslation(camPos)
+        surface.camera.invViewMatrix.getTranslation(camPos)
 
         val hasDepthPrepass = surface.config.hasDepthPrepass
+        val texBank = engine.gfx.textureBank
 
         val aoRenderer = surface.getRenderer<GtaoRenderer>()
-        val aoTex = aoRenderer?.getAoRenderTexture()
+        val aoTex = aoRenderer?.getAoRenderTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
         
-        val skyboxRenderer = surface.getRenderer<SkyboxRenderer>()
-        val iblIntensity = skyboxRenderer?.brightness ?: 1f
-        val iblDiffuseTexture = skyboxRenderer?.envDiffuseTexture ?: ""
-        val iblSpecularTexture = skyboxRenderer?.envSpecularTexture ?: ""
+        val shadowMapSurface = engine.gfx.getSurface(shadowMapSurfaceName)
+        val shadowMapRenderer = shadowMapSurface?.getRenderer<ShadowMapRenderer>()
+        val shadowMapTex = shadowMapSurface?.getTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
+        val sunIntensity = shadowMapRenderer?.lightIntensity ?: 0f
+        val sunColor = sunColor.setFrom(shadowMapRenderer?.lightColor ?: WHITE).multiplyRgb(sunIntensity)
+        val sunViewProjection = shadowMapRenderer?.getViewProjectionMatrix() ?: Matrix4f()
 
-        val texBank = engine.gfx.textureBank
         val envSpecularMipCount = engine.asset.getOrNull<Texture>(iblSpecularTexture)
             ?.let { texBank.getTextureArray(it) }?.mipLevels?.toFloat() ?: 1f
 
         program.bind()
         program.setUniformSamplerArrays(texBank.getAllTextureArrays())
-        program.setUniformSampler("uGtaoTex", aoTex ?: texBank.getOrCreateFallbackTexture(WHITE))
+        program.setUniformSampler("uGtaoTex", aoTex)
+        
+        program.setUniformSampler("uShadowDepthTex", shadowMapTex, filter = NEAREST, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.NONE, borderColor = WHITE)
+        program.setUniformSampler("uShadowCompareTex", shadowMapTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
+        program.setUniform("uShadowMapNear", shadowMapRenderer?.nearPlane ?: 0.1f)
+        program.setUniform("uShadowMapFar", shadowMapRenderer?.farPlane ?: 300f)
+        program.setUniform("uShadowMapSizeMeters", shadowMapRenderer?.shadowMapSizeMeters ?: 15f)
+        program.setUniform("uShadowContactHardening", shadowMapRenderer?.shadowContactHardening ?: false)
+
+        program.setUniform("uSunColor", sunColor)
+        program.setUniform("uSunDirection", shadowMapRenderer?.lightDirection ?: Vector3f(0f, 1f, 0f))
+        program.setUniform("uSunRadius", shadowMapRenderer?.lightRadius ?: 1f)
+        program.setUniform("uSunViewProjection", sunViewProjection)
 
         program.setUniform("uScreenSize", surface.config.width.toFloat(), surface.config.height.toFloat())
         program.setUniform("uViewProjection", surface.camera.viewProjectionMatrix)
