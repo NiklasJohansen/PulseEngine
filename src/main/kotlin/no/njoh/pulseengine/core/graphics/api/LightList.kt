@@ -5,28 +5,55 @@ import org.joml.Vector3f
 
 class LightList
 {
-    private val pointLights = MutableList<PointLight>(64) { PointLight() }
-    private val culledLights = ArrayList<PointLight>(64)
-    private var pointLightCount = 0
+    private val lights = MutableList<Light>(64) { Light() }
+    private val culledLights = ArrayList<Light>(64)
+    private var lightCount = 0
 
-    fun reset() { pointLightCount = 0 }
+    fun reset() { lightCount = 0 }
 
     fun submitPointLight(x: Float, y: Float, z: Float, radius: Float, color: Color, intensity: Float)
     {
         ensurePointLightCapacity()
-        val light = pointLights[pointLightCount++]
+        val light = lights[lightCount++]
         light.position.set(x, y, z)
+        light.direction.set(0f, 0f, 0f)
         light.radius = radius
         light.color.setFrom(color)
         light.intensity = intensity
+        light.outerConeAngle = 180f
+        light.innerConeAngle = 180f
     }
 
-    fun getFrustumCulledList(frustum: Frustum): ArrayList<PointLight>
+    fun submitSpotLight(
+        xPos: Float,
+        yPos: Float,
+        zPos: Float,
+        xDir: Float,
+        yDir: Float,
+        zDir: Float,
+        radius: Float,
+        color: Color,
+        intensity: Float,
+        innerConeAngle: Float,
+        outerConeAngle: Float
+    ) {
+        ensurePointLightCapacity()
+        val light = lights[lightCount++]
+        light.position.set(xPos, yPos, zPos)
+        light.direction.set(xDir, yDir, zDir)
+        light.radius = radius
+        light.color.setFrom(color)
+        light.intensity = intensity
+        light.outerConeAngle = outerConeAngle
+        light.innerConeAngle = innerConeAngle
+    }
+
+    fun getFrustumCulledList(frustum: Frustum): ArrayList<Light>
     {
         culledLights.clear()
-        for (i in 0 until pointLightCount)
+        for (i in 0 until lightCount)
         {
-            val light = pointLights[i]
+            val light = lights[i]
             val p = light.position
             if (frustum.intersectsSphere(p.x, p.y, p.z, light.radius))
                 culledLights += light
@@ -36,13 +63,16 @@ class LightList
 
     private fun ensurePointLightCapacity()
     {
-        if (pointLightCount >= pointLights.size) repeat(10) { pointLights.add(PointLight()) }
+        if (lightCount >= lights.size) repeat(10) { lights.add(Light()) }
     }
 
-    data class PointLight(
+    data class Light(
         val position: Vector3f = Vector3f(),
+        val direction: Vector3f = Vector3f(),
         var radius: Float = 5f,
         val color: Color = Color(1f, 1f, 1f),
-        var intensity: Float = 50f
+        var intensity: Float = 50f,
+        var outerConeAngle: Float = 180f,
+        var innerConeAngle: Float = 180f,
     )
 }

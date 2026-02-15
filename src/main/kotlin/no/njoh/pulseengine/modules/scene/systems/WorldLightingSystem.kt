@@ -131,7 +131,7 @@ class WorldLightingSystem : SceneSystem()
         for (surface in targetSurfaceNames)
         {
             val renderer = engine.gfx.getSurface(surface)?.getRenderer<ModelRenderer>() ?: continue
-            culledLights.forEachFast { renderer.addLight(it.position, it.radius, it.color, it.intensity) }
+            culledLights.forEachFast { renderer.addLight(it.position, it.direction, it.radius, it.color, it.intensity, it.outerConeAngle, it.innerConeAngle) }
         }
     }
 

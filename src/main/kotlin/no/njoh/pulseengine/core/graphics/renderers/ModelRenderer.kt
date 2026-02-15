@@ -19,6 +19,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureCompare
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
 import org.joml.Vector3f
@@ -26,6 +27,7 @@ import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
+import kotlin.math.cos
 
 class ModelRenderer : Renderer()
 {
@@ -34,9 +36,9 @@ class ModelRenderer : Renderer()
     private var readDrawLists  = ArrayList<DrawList>()
     private var writeDrawLists = ArrayList<DrawList>()
     
-    // 3=Position, 1=Radius, 3=Color, 1=Intensity
-    private var readLightData   = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 8)
-    private var writeLightData  = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 8)
+    // 3=Position, 1=Radius, 3=Color, 1=Intensity, 3=Direction, 1=CosOuterCone, 1=CosInnerCone, 1=IsSpotLight, 2=Padding
+    private var readLightData   = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
+    private var writeLightData  = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
     private var readLightCount  = 0
     private var writeLightCount = 0
 
@@ -259,20 +261,28 @@ class ModelRenderer : Renderer()
         increaseBatchSize()
     }
 
-    fun addLight(pos: Vector3f, radius: Float, color: Color, intensity: Float)
+    fun addLight(pos: Vector3f, dir: Vector3f, radius: Float, color: Color, intensity: Float, outerConeDegrees: Float, innerConeDegrees: Float)
     {
-        if (writeLightCount >= MAX_POINT_LIGHTS){
-            Logger.info { "Too many point lights in scene, max is $MAX_POINT_LIGHTS" }
+        if (writeLightCount >= MAX_POINT_LIGHTS)
+        {
+            Logger.warn { "Too many lights in scene, max is $MAX_POINT_LIGHTS" }
             return
         }
 
         val col = color.asLinear()
+        val isSpotLight = if (outerConeDegrees < 180f) 1f else 0f
+
         writeLightCount++
         writeLightData
             .put(pos.x).put(pos.y).put(pos.z)
             .put(radius)
             .put(col.red).put(col.green).put(col.blue)
             .put(intensity)
+            .put(dir.x).put(dir.y).put(dir.z)
+            .put(cos(outerConeDegrees.toRadians()))
+            .put(cos(innerConeDegrees.toRadians()))
+            .put(isSpotLight)
+            .put(0f).put(0f) // Padding to 16 floats for alignment
     }
  
     companion object

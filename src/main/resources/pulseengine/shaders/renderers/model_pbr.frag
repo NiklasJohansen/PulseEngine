@@ -40,7 +40,7 @@ uniform vec4  uSunColor;
 uniform vec3  uSunDirection;
 uniform float uSunRadius;
 uniform int   uLightCount;
-uniform vec4  uLightData[MAX_POINT_LIGHTS * 2]; // xyz = world pos, w = radius (meters), rgb = color, a = intensity
+uniform vec4  uLightData[MAX_POINT_LIGHTS * 4]; // 4 vec4s per light: pos+radius, color+intensity, dir+outerCos, innerCos+isSpot+padding
 
 // Shadow mapping
 uniform sampler2DShadow uShadowCompareTex;
@@ -247,7 +247,7 @@ float pcssShadow(vec3 N, vec3 L, vec4 lightPos, float lightRadius)
 // Point lights
 // ------------------------------------------------------------------ 
 
-vec3 accumulatePointLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0) 
+vec3 accumulatePointLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0)
 {
     vec3 Lo = vec3(0.0);
 
@@ -255,39 +255,48 @@ vec3 accumulatePointLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float me
     {
         if (i >= uLightCount) break;
 
-        int index = i * 2;
-        vec3 lightPos = uLightData[index].xyz;
-        float radius  = uLightData[index].w;
+        int index = i * 4;
+        vec3  lightPos   = uLightData[index].xyz;
+        float radius     = uLightData[index].w;
+        vec3  lightColor = uLightData[index + 1].rgb;
+        float intensity  = uLightData[index + 1].a;
+        vec3  lightDir   = uLightData[index + 2].xyz;
+        float outerCos   = uLightData[index + 2].w;
+        float innerCos   = uLightData[index + 3].x;
+        float isSpot     = uLightData[index + 3].y;
 
         vec3 toL = lightPos - vWorldPos;
         float d2 = dot(toL, toL);
         float d  = sqrt(max(d2, 1e-6));
 
-        // Outside radius -> skip
         if (d >= radius) continue;
 
         vec3 L = toL / d;
         float NdotL = max(dot(N, L), 0.0);
         if (NdotL <= 0.0) continue;
 
-        // Inverse-square with smooth cutoff at radius
+        // Distance attenuation
         float x = d / max(radius, 1e-6);
         float smoothCutoff = clamp(1.0 - x*x*x*x, 0.0, 1.0);
         smoothCutoff *= smoothCutoff;
-    
         float invD2 = 1.0 / max(d2, 1e-4);
         float attenuation = invD2 * smoothCutoff;
 
-        vec3 lightColor = uLightData[index + 1].rgb;
-        float intensity = uLightData[index + 1].a;
-        vec3 radiance   = lightColor * intensity * attenuation;
-        
+        // Spot light cone attenuation
+        if (isSpot > 0.5)
+        {
+            float theta = dot(-L, normalize(lightDir));
+            float spotAtten = clamp((theta - outerCos) / max(innerCos - outerCos, 1e-4), 0.0, 1.0);
+            attenuation *= spotAtten * spotAtten; // Squared for smoother falloff
+        }
+
+        vec3 radiance = lightColor * intensity * attenuation;
+
         // Cook-Torrance BRDF
         vec3 H  = normalize(V + L);
         vec3 F  = fresnelSchlick(max(dot(H, V), 0.0), F0);
-        vec3 kS = F;
-        vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
-        
+        vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
+
         float G     = geometrySmith(N, V, L, roughness);
         float NDF   = distributionGGX(N, H, roughness);
         float denom = 4.0 * NdotV * NdotL + 0.000001;
