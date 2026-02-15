@@ -25,7 +25,7 @@ uniform mat4 uPrevInvProj;
 uniform mat4 uPrevViewProj;
 
 // Sizes
-uniform ivec2 resolution;
+uniform ivec2 uResolution;
 
 // Temporal controls
 uniform float uTemporalFeedback;     // (0..1) Higher = steadier, more ghost risk.
@@ -43,12 +43,12 @@ const float kEps = 1e-6;
 
 vec2 pixelToUv(ivec2 pixelPos)
 {
-    return (vec2(pixelPos) + 0.5) / vec2(resolution);
+    return (vec2(pixelPos) + 0.5) / vec2(uResolution);
 }
 
 float fetchDepth01(sampler2D depthTex, ivec2 pixelPos)
 {
-    pixelPos = clamp(pixelPos, ivec2(0), resolution - ivec2(1));
+    pixelPos = clamp(pixelPos, ivec2(0), uResolution - ivec2(1));
     return texelFetch(depthTex, pixelPos, 0).r;
 }
 
@@ -86,7 +86,7 @@ void computeAoStats3x3SameSurface(ivec2 centerPixelPos, float centerDepth01, out
     {
         for (int ox = -1; ox <= 1; ++ox)
         {
-            ivec2 pixelPos = clamp(centerPixelPos + ivec2(ox, oy), ivec2(0), resolution - ivec2(1));
+            ivec2 pixelPos = clamp(centerPixelPos + ivec2(ox, oy), ivec2(0), uResolution - ivec2(1));
 
             float depth = texelFetch(uDepthCurrent, pixelPos, 0).r;
             if (depth >= 1.0) continue;
@@ -160,7 +160,7 @@ void main()
     // Validate history via depth (disocclusion test)
     if (historyValid)
     {
-        ivec2 prevPixelPos = ivec2(uvPrev * vec2(resolution));
+        ivec2 prevPixelPos = ivec2(uvPrev * vec2(uResolution));
         float depthPrev = fetchDepth01(uDepthPrev, prevPixelPos);
         
         if (depthPrev >= 1.0)

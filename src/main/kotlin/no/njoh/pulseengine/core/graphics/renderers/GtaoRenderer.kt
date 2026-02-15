@@ -80,7 +80,7 @@ class GtaoRenderer(
         if (!this::aoProgram.isInitialized)
         {
             aoFbo = FrameBufferObject.create(surface.config.width, surface.config.height, aoTextureDescriptors)
-            denoiseFbo = FrameBufferObject.create(surface.config.width, surface.config.height, upsampleTextureDescriptors)
+            denoiseFbo = FrameBufferObject.create(surface.config.width, surface.config.height, denoiseTextureDescriptors)
             upsampleFbo = FrameBufferObject.create(surface.config.width, surface.config.height, upsampleTextureDescriptors)
             temporalFbo = FrameBufferObject.create(surface.config.width, surface.config.height, temporalTextureDescriptors)
             prevDepthFbo = FrameBufferObject.create(surface.config.width, surface.config.height, prevDepthTextureDescriptors)
@@ -271,7 +271,7 @@ class GtaoRenderer(
     }
 
     private fun temporallyAccumulate(
-        engine: PulseEngineInternal, 
+        engine: PulseEngineInternal,
         surface: SurfaceInternal, 
         aoTex: RenderTexture, 
         depthTex: RenderTexture
@@ -295,7 +295,7 @@ class GtaoRenderer(
         temporalProgram.setUniformSampler("uAoHistory", historyAoTex, filter = LINEAR)
         temporalProgram.setUniformSampler("uDepthCurrent", depthTex, filter = NEAREST)
         temporalProgram.setUniformSampler("uDepthPrev", prevDeptTex, filter = NEAREST)
-        temporalProgram.setUniform("resolution", outputAoTex.width, outputAoTex.height)
+        temporalProgram.setUniform("uResolution", outputAoTex.width, outputAoTex.height)
         temporalProgram.setUniform("uInvProj", surface.camera.invProjectionMatrix)
         temporalProgram.setUniform("uInvView", surface.camera.invViewMatrix)
         temporalProgram.setUniform("uPrevInvProj", prevInvProjection)

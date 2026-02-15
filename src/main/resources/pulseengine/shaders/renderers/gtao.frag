@@ -395,13 +395,13 @@ void main()
     // --------------------------------------------
 
     vec3 worldPos = (uInvView * vec4(viewPos, 1.0)).xyz;
-    
+
     ivec3 coarseCellId = ivec3(floor(worldPos / kCoarseNoiseCellMeters));
     ivec3 fineCellId   = ivec3(floor(worldPos / kFineNoiseCellMeters));
-    
+
     vec3 rndCoarse = hash(coarseCellId);
     vec3 rndFine   = hash(fineCellId);
-    
+
     float baseRotation01 = fract(rndCoarse.x + (rndFine.x - 0.5) * kNoiseAmount);
     float baseStepJitter = fract(rndCoarse.z + (rndFine.z - 0.5) * kNoiseAmount);
 
@@ -436,7 +436,7 @@ void main()
         phi = mod(phi, PI);
 
         vec2 screenDir = vec2(cos(phi), sin(phi));
-        
+
         // Jitter for stepping along the radius (changes where samples land).
         float stepJitter01 = fract(baseStepJitter + (rndPos.y - 0.5) * kNoiseAmount + float(s) * 0.61803398875);
 
@@ -453,7 +453,7 @@ void main()
 
         // Plane normal for this slice.
         vec3 slicePlaneNormal = normalize(cross(sliceTangent, toCameraDir));
-        
+
         // Project the surface normal into the slice plane.
         vec3 normalInPlane = viewNormal - slicePlaneNormal * dot(viewNormal, slicePlaneNormal);
         float normalInPlaneLen = length(normalInPlane);
@@ -491,7 +491,7 @@ void main()
         float occludedHi = min(max(horizonNeg, horizonPos), normalAngle + 0.5 * PI);
 
         float visibleArea = 0.0;
-        if (occludedHi > occludedLo) 
+        if (occludedHi > occludedLo)
             visibleArea = integrateVisibilityArc(occludedLo, occludedHi, normalAngle);
 
         float visibility = visibleArea / openArea; // 1 = fully visible, 0 = fully occluded

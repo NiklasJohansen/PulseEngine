@@ -204,7 +204,7 @@ class SceneEditor(
                 MenuBarItem("Reset") {
                     createSceneEditorUI(engine)
                     showGrid = true
-                    storedCameraState.apply { reset() }.loadInto(engine.gfx.mainCamera)
+                    storedCameraState.apply { reset() }.loadInto(engine.gfx.mainCamera, engine.window.width, engine.window.height)
                 }
             )),
             MenuBarButton("Run", listOf(
@@ -537,7 +537,7 @@ class SceneEditor(
     private fun stopGameAndStartEditor(engine: PulseEngine)
     {
         start() // Start editor service
-        storedCameraState.loadInto(activeCamera)
+        storedCameraState.loadInto(activeCamera, engine.window.width, engine.window.height)
 
         if (engine.scene.state != SceneState.STOPPED)
         {
@@ -1252,22 +1252,20 @@ data class CameraState(
     val pos: Vector3f,
     val rot: Vector3f,
     val scale: Vector3f,
-    val projectionMatrix: Matrix4f
 ) {
     fun saveFrom(camera: Camera)
     {
         pos.set(camera.position)
         rot.set(camera.rotation)
         scale.set(camera.scale)
-        projectionMatrix.set(camera.projectionMatrix)
     }
 
-    fun loadInto(camera: Camera)
+    fun loadInto(camera: Camera, width: Int, height: Int)
     {
         camera.position.set(pos)
         camera.rotation.set(rot)
         camera.scale.set(scale)
-        camera.projectionMatrix.set(projectionMatrix)
+        camera.updateProjection(width, height)
     }
 
     fun reset()
@@ -1279,7 +1277,10 @@ data class CameraState(
 
     companion object
     {
-        fun from(camera: Camera) = CameraState(Vector3f(camera.position), Vector3f(camera.rotation), Vector3f(camera.scale),
-            Matrix4f(camera.projectionMatrix))
+        fun from(camera: Camera) = CameraState(
+            pos = Vector3f(camera.position),
+            rot = Vector3f(camera.rotation),
+            scale = Vector3f(camera.scale)
+        )
     }
 }
