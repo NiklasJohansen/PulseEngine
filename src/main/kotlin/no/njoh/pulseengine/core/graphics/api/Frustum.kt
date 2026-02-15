@@ -169,6 +169,18 @@ class Frustum(
     }
 
     /**
+     * Tests if a sphere intersects the frustum.
+     */
+    fun intersectsSphere(x: Float, y: Float, z: Float, r: Float): Boolean
+    {
+        for (i in 0 until 6)
+        {
+            if (planes[i].distanceToPoint(x, y, z) < -r) return false
+        }
+        return true
+    }
+
+    /**
      * Represents a plane in 3D space using the equation: ax + by + cz + d = 0
      * The normal (a, b, c) points inward (toward the visible region).
      */

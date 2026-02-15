@@ -1,5 +1,7 @@
 #version 330 core
 
+#define MAX_POINT_LIGHTS 32
+
 const float PI = 3.14159265359;
 const float TAU = 6.28318530718;
 
@@ -37,6 +39,8 @@ uniform vec2  uScreenSize;
 uniform vec4  uSunColor;
 uniform vec3  uSunDirection;
 uniform float uSunRadius;
+uniform int   uLightCount;
+uniform vec4  uLightData[MAX_POINT_LIGHTS * 2]; // xyz = world pos, w = radius (meters), rgb = color, a = intensity
 
 // Shadow mapping
 uniform sampler2DShadow uShadowCompareTex;
@@ -240,6 +244,64 @@ float pcssShadow(vec3 N, vec3 L, vec4 lightPos, float lightRadius)
 }
 
 // ------------------------------------------------------------------
+// Point lights
+// ------------------------------------------------------------------ 
+
+vec3 accumulatePointLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0) 
+{
+    vec3 Lo = vec3(0.0);
+
+    for (int i = 0; i < MAX_POINT_LIGHTS; i++)
+    {
+        if (i >= uLightCount) break;
+
+        int index = i * 2;
+        vec3 lightPos = uLightData[index].xyz;
+        float radius  = uLightData[index].w;
+
+        vec3 toL = lightPos - vWorldPos;
+        float d2 = dot(toL, toL);
+        float d  = sqrt(max(d2, 1e-6));
+
+        // Outside radius -> skip
+        if (d >= radius) continue;
+
+        vec3 L = toL / d;
+        float NdotL = max(dot(N, L), 0.0);
+        if (NdotL <= 0.0) continue;
+
+        // Inverse-square with smooth cutoff at radius
+        float x = d / max(radius, 1e-6);
+        float smoothCutoff = clamp(1.0 - x*x*x*x, 0.0, 1.0);
+        smoothCutoff *= smoothCutoff;
+    
+        float invD2 = 1.0 / max(d2, 1e-4);
+        float attenuation = invD2 * smoothCutoff;
+
+        vec3 lightColor = uLightData[index + 1].rgb;
+        float intensity = uLightData[index + 1].a;
+        vec3 radiance   = lightColor * intensity * attenuation;
+        
+        // Cook-Torrance BRDF
+        vec3 H  = normalize(V + L);
+        vec3 F  = fresnelSchlick(max(dot(H, V), 0.0), F0);
+        vec3 kS = F;
+        vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+        
+        float G     = geometrySmith(N, V, L, roughness);
+        float NDF   = distributionGGX(N, H, roughness);
+        float denom = 4.0 * NdotV * NdotL + 0.000001;
+
+        vec3 diffuse  = kD * baseColor / PI;
+        vec3 specular = (NDF * G * F) / denom;
+
+        Lo += (diffuse + specular) * radiance * NdotL;
+    }
+
+    return Lo;
+}
+
+// ------------------------------------------------------------------
 // Main
 // ------------------------------------------------------------------
 
@@ -310,7 +372,11 @@ void main()
     vec3 diffuse  = kD_dir * baseColor.rgb / PI;
     vec3 specular = (NDF * G * F_dir) / denom;
     float shadow  = pcssShadow(N, L, vSunPos, uSunRadius);
-    vec3 Lo       = (diffuse + specular) * radiance * NdotL * shadow;
+    vec3 LoSun    = (diffuse + specular) * radiance * NdotL * shadow;
+
+    vec3 LoPointLighs = accumulatePointLights(N, V, NdotV, baseColor.rgb, metallic, roughness, F0);
+
+    vec3 Lo = LoSun + LoPointLighs;
 
     //--------------------------------------------------
     // Image-based lighting (IBL)

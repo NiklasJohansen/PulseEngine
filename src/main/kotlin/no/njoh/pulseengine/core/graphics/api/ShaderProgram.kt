@@ -16,6 +16,7 @@ import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL30.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.GL32.GL_TEXTURE_2D_MULTISAMPLE
+import java.nio.FloatBuffer
 
 class ShaderProgram(
     id: Int,
@@ -94,6 +95,9 @@ class ShaderProgram(
 
     fun setUniform(name: String, value1: Float, value2: Float, value3: Float, value4: Float) =
         glUniform4f(uniformLocationOf(name), value1, value2, value3, value4)
+
+    fun setUniformVec4Array(name: String, buffer: FloatBuffer) =
+        glUniform4fv(uniformLocationOf(name), buffer)
 
     fun setUniform(name: String, color: Color, convertFromSRgbToLinear: Boolean = true)
     {

@@ -132,11 +132,12 @@ data class Color(
      */
     fun asLinear(): Color
     {
-        REUSABLE_INSTANCE.red   = if (red   <= 0.04045f) red   / 12.92f else ((red   + 0.055f) / 1.055f).pow(2.4f)
-        REUSABLE_INSTANCE.green = if (green <= 0.04045f) green / 12.92f else ((green + 0.055f) / 1.055f).pow(2.4f)
-        REUSABLE_INSTANCE.blue  = if (blue  <= 0.04045f) blue  / 12.92f else ((blue  + 0.055f) / 1.055f).pow(2.4f)
-        REUSABLE_INSTANCE.alpha = alpha
-        return REUSABLE_INSTANCE
+        val instance = REUSABLE_INSTANCE.get()
+        instance.red   = if (red   <= 0.04045f) red   / 12.92f else ((red   + 0.055f) / 1.055f).pow(2.4f)
+        instance.green = if (green <= 0.04045f) green / 12.92f else ((green + 0.055f) / 1.055f).pow(2.4f)
+        instance.blue  = if (blue  <= 0.04045f) blue  / 12.92f else ((blue  + 0.055f) / 1.055f).pow(2.4f)
+        instance.alpha = alpha
+        return instance
     }
 
     companion object
@@ -148,6 +149,6 @@ data class Color(
         val GREEN = Color(0f, 1f, 0f, 1f)
         val BLUE  = Color(0f, 0f, 1f, 1f)
 
-        private val REUSABLE_INSTANCE = Color()
+        private val REUSABLE_INSTANCE = ThreadLocal.withInitial { Color() }
     }
 }

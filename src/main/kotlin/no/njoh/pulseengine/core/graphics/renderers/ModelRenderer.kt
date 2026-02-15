@@ -19,8 +19,10 @@ import no.njoh.pulseengine.core.graphics.api.TextureCompare
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
 import org.joml.Vector3f
+import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
@@ -31,6 +33,12 @@ class ModelRenderer : Renderer()
 
     private var readDrawLists  = ArrayList<DrawList>()
     private var writeDrawLists = ArrayList<DrawList>()
+    
+    // 3=Position, 1=Radius, 3=Color, 1=Intensity
+    private var readLightData   = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 8)
+    private var writeLightData  = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 8)
+    private var readLightCount  = 0
+    private var writeLightCount = 0
 
     private var currentCullMode: CullMode? = null
 
@@ -75,6 +83,12 @@ class ModelRenderer : Renderer()
     {
         writeDrawLists = readDrawLists.also { readDrawLists = writeDrawLists }
         writeDrawLists.clear()
+
+        readLightData = writeLightData.also { writeLightData = readLightData }
+        readLightCount = writeLightCount
+        readLightData.flip()
+        writeLightData.clear()
+        writeLightCount = 0
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -101,9 +115,15 @@ class ModelRenderer : Renderer()
             ?.let { texBank.getTextureArray(it) }?.mipLevels?.toFloat() ?: 1f
 
         program.bind()
-        program.setUniformSamplerArrays(texBank.getAllTextureArrays())
-        program.setUniformSampler("uGtaoTex", aoTex)
         
+        // Textures
+        program.setUniformSamplerArrays(texBank.getAllTextureArrays())
+        
+        // Ambient occlusion
+        program.setUniformSampler("uGtaoTex", aoTex)
+        program.setUniform("uAoIntensity", aoRenderer?.intensity ?: 0f)
+        
+        // Shadow mapping
         program.setUniformSampler("uShadowDepthTex", shadowMapTex, filter = NEAREST, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.NONE, borderColor = WHITE)
         program.setUniformSampler("uShadowCompareTex", shadowMapTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
         program.setUniform("uShadowMapNear", shadowMapRenderer?.nearPlane ?: 0.1f)
@@ -111,22 +131,28 @@ class ModelRenderer : Renderer()
         program.setUniform("uShadowMapSizeMeters", shadowMapRenderer?.shadowMapSizeMeters ?: 15f)
         program.setUniform("uShadowContactHardening", shadowMapRenderer?.shadowContactHardening ?: false)
 
+        // Sunlight
         program.setUniform("uSunColor", sunColor)
         program.setUniform("uSunDirection", shadowMapRenderer?.lightDirection ?: Vector3f(0f, 1f, 0f))
         program.setUniform("uSunRadius", shadowMapRenderer?.lightRadius ?: 1f)
         program.setUniform("uSunViewProjection", sunViewProjection)
 
-        program.setUniform("uScreenSize", surface.config.width.toFloat(), surface.config.height.toFloat())
-        program.setUniform("uViewProjection", surface.camera.viewProjectionMatrix)
-        program.setUniform("uCameraPos", camPos)
+        // Lights
+        program.setUniform("uLightCount", readLightCount)
+        program.setUniformVec4Array("uLightData", readLightData)
+
+        // Ambient lighting
         program.setUniform("uEnvSpecularMipCount", envSpecularMipCount)
         program.setUniform("uEnvIntensity", iblIntensity)
-        program.setUniform("uAoIntensity", aoRenderer?.intensity ?: 0f)
-
         program.setTexture("uEnvDiffuseTex",  engine.asset.getOrNull(iblDiffuseTexture))
         program.setTexture("uEnvSpecularTex", engine.asset.getOrNull(iblSpecularTexture))
         program.setTexture("uEnvBrdfLutTex",  engine.asset.getOrNull(iblBrdfTexture))
 
+        // Camera
+        program.setUniform("uScreenSize", surface.config.width.toFloat(), surface.config.height.toFloat())
+        program.setUniform("uViewProjection", surface.camera.viewProjectionMatrix)
+        program.setUniform("uCameraPos", camPos)
+        
         // -------- OPAQUE --------
 
         glEnable(GL_DEPTH_TEST)
@@ -210,7 +236,7 @@ class ModelRenderer : Renderer()
             setUniform(name, -1f, 0f, 0f, 0f)
     }
 
-    fun setCullMode(mode: CullMode)
+    private fun setCullMode(mode: CullMode)
     {
         if (mode == currentCullMode) return
         currentCullMode = mode
@@ -231,5 +257,26 @@ class ModelRenderer : Renderer()
     {
         writeDrawLists += drawList
         increaseBatchSize()
+    }
+
+    fun addLight(pos: Vector3f, radius: Float, color: Color, intensity: Float)
+    {
+        if (writeLightCount >= MAX_POINT_LIGHTS){
+            Logger.info { "Too many point lights in scene, max is $MAX_POINT_LIGHTS" }
+            return
+        }
+
+        val col = color.asLinear()
+        writeLightCount++
+        writeLightData
+            .put(pos.x).put(pos.y).put(pos.z)
+            .put(radius)
+            .put(col.red).put(col.green).put(col.blue)
+            .put(intensity)
+    }
+ 
+    companion object
+    { 
+        private const val MAX_POINT_LIGHTS = 32
     }
 }

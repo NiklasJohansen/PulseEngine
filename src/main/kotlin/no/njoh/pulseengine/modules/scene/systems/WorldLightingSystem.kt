@@ -2,8 +2,10 @@ package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.api.Attachment
+import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.Frustum
+import no.njoh.pulseengine.core.graphics.api.LightList
 import no.njoh.pulseengine.core.graphics.renderers.ModelRenderer
 import no.njoh.pulseengine.core.graphics.renderers.ShadowMapRenderer
 import no.njoh.pulseengine.core.scene.SceneEntity
@@ -31,13 +33,13 @@ class WorldLightingSystem : SceneSystem()
     @Prop(i=8, min=0f)           var envIntensity              = 1f
     @Prop(i=9)  @EnvMapRef       var envSpecularTexture        = ""
     @Prop(i=10) @EnvMapRef       var envDiffuseTexture         = ""
-    @Prop(i=11)                  var sourceCameraSurface       = "world"
-    @Prop(i=12)                  var targetSurfaces            = "world"
+    @Prop(i=11)                  var targetSurfaces            = "world"
 
     private var shadowMapSurfaceName = ""
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()
     private var frustum = Frustum()
+    private var lightList = LightList()
 
     override fun onUpdate(engine: PulseEngine)
     {
@@ -60,6 +62,15 @@ class WorldLightingSystem : SceneSystem()
 
     override fun onRender(engine: PulseEngine)
     {
+        val camera = targetSurfaceNames.firstOrNull()?.let { engine.gfx.getSurface(it) }?.camera ?: return
+        frustum.setForCamera(camera)
+ 
+        renderShadowMap(engine, camera)
+        renderWorldLights(engine, camera)
+    }
+
+    private fun renderShadowMap(engine: PulseEngine, camera: Camera)
+    {
         val shadowMapSurface = engine.gfx.getSurface(shadowMapSurfaceName)
         if (shadowMapSurface == null)
         {
@@ -81,7 +92,6 @@ class WorldLightingSystem : SceneSystem()
             return // Return now, surface ready next frame
         }
 
-        val camera = engine.gfx.getSurface(sourceCameraSurface)?.camera ?: return
         val shadowMapRenderer = shadowMapSurface.getRenderer<ShadowMapRenderer>() ?: return
         val shadowCasters = DrawList()
 
@@ -98,12 +108,31 @@ class WorldLightingSystem : SceneSystem()
         shadowMapRenderer.shadowMapResolution = sunShadowMapResolution
         shadowMapRenderer.shadowContactHardening = sunShadowContactHardening
 
-        val vp = shadowMapRenderer.getViewProjectionMatrix(read = false)
+        frustum.setForViewProjection(shadowMapRenderer.getViewProjectionMatrix(read = false))
 
-        frustum.setForViewProjection(vp)
         val culledShadowCasters = shadowCasters.getFrustumCulledList(frustum)
 
         shadowMapRenderer.draw(culledShadowCasters)
+    }
+
+    private fun renderWorldLights(engine: PulseEngine, camera: Camera)
+    {
+        lightList.reset()
+
+        engine.scene.forEachEntityOfType<WorldLight>()
+        {
+            if ((it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, lightList)
+        }
+
+        val culledLights = lightList.getFrustumCulledList(frustum)
+
+        culledLights.sortBy { camera.position.distanceSquared(it.position) }
+
+        for (surface in targetSurfaceNames)
+        {
+            val renderer = engine.gfx.getSurface(surface)?.getRenderer<ModelRenderer>() ?: continue
+            culledLights.forEachFast { renderer.addLight(it.position, it.radius, it.color, it.intensity) }
+        }
     }
 
     override fun onDestroy(engine: PulseEngine)
@@ -133,4 +162,9 @@ interface WorldShadowCaster
     var castShadows: Boolean
 
     fun onRender(engine: PulseEngine, drawList: DrawList)
+}
+
+interface WorldLight
+{
+    fun onRender(engine: PulseEngine, list: LightList)
 }
