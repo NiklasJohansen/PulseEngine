@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.window
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.config.ConfigurationInternal
+import no.njoh.pulseengine.core.shared.platform.PlatformEventBuffer
 
 interface Window
 {
@@ -56,7 +57,10 @@ interface WindowInternal : Window
 
     fun init(config: ConfigurationInternal)
     fun initFrame(engineInternal: PulseEngineInternal)
+    fun pollIncomingPlatformEvents(buffer: PlatformEventBuffer)
+    fun handleOutgoingPlatformEvents(buffer: PlatformEventBuffer)
     fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit)
+    fun setOnFileDropped(callback: (String) -> Unit)
     fun swapBuffers()
     fun isOpen(): Boolean
     fun destroy()

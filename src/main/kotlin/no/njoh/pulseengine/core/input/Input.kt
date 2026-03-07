@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.input
 import no.njoh.pulseengine.core.asset.types.Cursor
 import no.njoh.pulseengine.core.console.Subscription
+import no.njoh.pulseengine.core.shared.platform.PlatformEventBuffer
 
 interface Input
 {
@@ -136,11 +137,11 @@ interface InputInternal : Input
     override var xWorldMouse: Float
     override var yWorldMouse: Float
 
-    fun init(windowHandle: Long, cursorPosScale: Float)
+    fun init(cursorPosScale: Float)
     fun destroy()
-    fun pollEvents()
+    fun pollOutgoingPlatformEvents(buffer: PlatformEventBuffer)
+    fun handleIncomingPlatformEvents(buffer: PlatformEventBuffer)
     fun createCursor(cursor: Cursor)
     fun deleteCursor(cursor: Cursor)
-    fun getCursorsToLoad(): List<Cursor>
-    fun setOnFileDropped(callback: (String) -> Unit)
+    fun getDefaultCursorToLoad(): List<Cursor>
 }

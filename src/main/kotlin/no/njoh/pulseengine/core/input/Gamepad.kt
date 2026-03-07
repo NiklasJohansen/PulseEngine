@@ -2,8 +2,6 @@ package no.njoh.pulseengine.core.input
 
 import no.njoh.pulseengine.core.input.GamepadAxis.*
 import org.joml.Vector2f
-import org.lwjgl.glfw.GLFW.glfwGetJoystickAxes
-import org.lwjgl.glfw.GLFW.glfwGetJoystickButtons
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import kotlin.math.atan2
@@ -18,8 +16,6 @@ data class Gamepad(var id: Int)
     private var leftStick = Vector2f(0f, 0f)
     private var rightStick = Vector2f(0f, 0f)
 
-    init { updateState() }
-
     fun isPressed(button: GamepadButton): Boolean = buttons[button.code] > 0
 
     fun getAxis(axis: GamepadAxis): Float = axes[axis.code]
@@ -30,10 +26,10 @@ data class Gamepad(var id: Int)
     fun getRightStick(deadZone: Float = 0.2f): Vector2f =
         rightStick.set(getAxis(RIGHT_X), getAxis(RIGHT_Y)).filtered(deadZone)
 
-    fun updateState()
+    fun updateState(axes: FloatBuffer, buttons: ByteBuffer)
     {
-        glfwGetJoystickAxes(id)?.let { this.axes = it }
-        glfwGetJoystickButtons(id)?.let { this.buttons = it }
+        this.axes = axes
+        this.buttons = buttons
     }
 
     private fun Vector2f.filtered(deadZone: Float): Vector2f

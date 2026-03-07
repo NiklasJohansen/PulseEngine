@@ -4,18 +4,13 @@ import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Cursor
 import no.njoh.pulseengine.core.console.Subscription
 import no.njoh.pulseengine.core.input.CursorMode.*
+import no.njoh.pulseengine.core.shared.platform.*
+import no.njoh.pulseengine.core.shared.platform.KeyEvent.KeyAction
+import no.njoh.pulseengine.core.shared.platform.MouseButtonEvent.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.lastOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
-import no.njoh.pulseengine.core.shared.utils.Extensions.component1
-import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import no.njoh.pulseengine.core.shared.utils.Logger
-import org.joml.Vector2f
-import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
-import org.lwjgl.glfw.GLFW.*
-import org.lwjgl.glfw.GLFWImage
-import org.lwjgl.system.MemoryUtil.memPointerBuffer
-import org.lwjgl.system.MemoryUtil.memUTF8
 
 open class InputImpl : InputInternal
 {
@@ -38,7 +33,6 @@ open class InputImpl : InputInternal
 
     private var xMouseLast         = 0f
     private var yMouseLast         = 0f
-    private var windowHandle       = -1L
     private var cursorPosScale     = 1f
     private val clicked            = ByteArray(Key.LAST.code + 1)
     private val pressed            = ByteArray(Key.LAST.code + 1)
@@ -51,102 +45,19 @@ open class InputImpl : InputInternal
     private var previousFocusArea  = null as FocusArea?
     private var hoverFocusArea     = null as FocusArea?
 
-    private var cursorPosToSet     = null as Vector2f?
     private var cursors            = mutableMapOf<CursorType, Cursor>()
     private var selectedCursorType = ARROW
     private var activeCursorType   = ARROW
     private var selectedCursorMode = NORMAL
     private var activeCursorMode   = NORMAL
 
-    private var setClipboardTo     = null as String?
     private var onGetClipboard     = mutableListOf<(String) -> Unit>()
-    private var onFileDropped      = mutableListOf<(String) -> Unit>()
+    private var outgoingPlatformEvents = mutableListOf<PlatformEvent>()
 
-    override fun init(windowHandle: Long, cursorPosScale: Float)
+    override fun init(cursorPosScale: Float)
     {
         Logger.info { "Initializing input (InputImpl)" }
-
-        this.windowHandle = windowHandle
         this.cursorPosScale = cursorPosScale
-
-        glfwSetKeyCallback(windowHandle) { _, keyCode, _, action, _ ->
-            if (keyCode >= 0)
-            {
-                clicked[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) PRESSED else RELEASED
-                pressed[keyCode] = if (action == GLFW_PRESS || action == GLFW_REPEAT) PRESSED else UNCHANGED
-                if (action == GLFW_PRESS)
-                {
-                    Key.codes[keyCode]?.let { keyEnum ->
-                        onKeyPressed.forEachFast { it.invoke(keyEnum) }
-                        clickedKeys.add(keyEnum)
-                    }
-                }
-            }
-        }
-
-        glfwSetCharCallback(windowHandle) { _, character ->
-            textInput += character.toChar()
-        }
-
-        glfwSetCursorPosCallback(windowHandle) { _, xPos, yPos ->
-            xMouseLast = xMouse
-            yMouseLast = yMouse
-            xMouse = xPos.toFloat() * cursorPosScale
-            yMouse = yPos.toFloat() * cursorPosScale
-        }
-
-        glfwSetScrollCallback(windowHandle) { _, xOffset, yOffset ->
-            if (isPressed(Key.LEFT_SHIFT))
-            {
-                xScroll = yOffset.toFloat()
-            }
-            else
-            {
-                xScroll = xOffset.toFloat()
-                yScroll = yOffset.toFloat()
-            }
-        }
-
-        glfwSetMouseButtonCallback(windowHandle) { _, button, action, _ ->
-            clicked[button] = if (action == GLFW_PRESS) PRESSED else RELEASED
-            pressed[button] = if (action == GLFW_PRESS) PRESSED else UNCHANGED
-            if (action == GLFW_PRESS && focusStack.isNotEmpty())
-                focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }?.let { acquireFocus(it) }
-        }
-
-        glfwSetJoystickCallback { jid: Int, event: Int ->
-            if (glfwJoystickIsGamepad(jid))
-            {
-                if (event == GLFW_CONNECTED)
-                    gamepads.add(Gamepad(jid)).also { Logger.info { "Added joystick: $jid" } }
-                else if (event == GLFW_DISCONNECTED)
-                    gamepads.removeWhen { it.id == jid }.also { Logger.info { "Removed joystick: $jid" } }
-            }
-        }
-
-        glfwSetDropCallback(windowHandle) { _, count, names ->
-            val pointers = memPointerBuffer(names, count)
-            for (i in 0 until count) 
-            {
-                val path = memUTF8(pointers[i])
-                Logger.info { "Dropped file: $path" }
-                onFileDropped.forEachFast { it.invoke(path) }
-            }
-        }
-
-        gamepads = GLFW_JOYSTICK_1
-            .until(GLFW_JOYSTICK_LAST)
-            .filter { glfwJoystickPresent(it) && glfwJoystickIsGamepad(it) }
-            .map { Gamepad(id = it) }
-            .toMutableList()
-
-        // Create cursors from built in shapes
-        cursors[ARROW]             = createBuiltInCursor(ARROW,0x00036001)
-        cursors[HAND]              = createBuiltInCursor(HAND,0x00036004)
-        cursors[IBEAM]             = createBuiltInCursor(IBEAM,0x00036002)
-        cursors[CROSSHAIR]         = createBuiltInCursor(CROSSHAIR,0x00036003)
-        cursors[HORIZONTAL_RESIZE] = createBuiltInCursor(HORIZONTAL_RESIZE,0x00036005)
-        cursors[VERTICAL_RESIZE]   = createBuiltInCursor(VERTICAL_RESIZE,0x00036006)
     }
 
     override fun isPressed(btn: MouseButton) =
@@ -170,11 +81,12 @@ open class InputImpl : InputInternal
     override fun getClipboard(callback: (String) -> Unit)
     {
         onGetClipboard.add(callback)
+        outgoingPlatformEvents += ClipboardRequestUpdateEvent()
     }
 
     override fun setClipboard(content: String)
     {
-        setClipboardTo = content
+        outgoingPlatformEvents += ClipboardUpdateEvent(content)
     }
 
     override fun setOnKeyPressed(callback: (Key) -> Unit): Subscription
@@ -230,10 +142,33 @@ open class InputImpl : InputInternal
 
     override fun setCursorPosition(x: Float, y: Float)
     {
-        cursorPosToSet = cursorPos.set(x, y)
+        outgoingPlatformEvents += CursorSetPosEvent(x, y)
     }
 
-    override fun pollEvents()
+    override fun pollOutgoingPlatformEvents(buffer: PlatformEventBuffer)
+    {
+        if (activeCursorType != selectedCursorType)
+        {
+            cursors[selectedCursorType]?.let { cursor ->
+                if (cursor.handle != -1L) outgoingPlatformEvents += CursorSetEvent(cursor.handle)
+                else Logger.error { "Cursor of type: $selectedCursorType has not been loaded" }
+            } ?: run {
+                Logger.error { "Cursor of type: $selectedCursorType has not been registered in input module" }
+            }
+            activeCursorType = selectedCursorType
+        }
+
+        if (activeCursorMode != selectedCursorMode)
+        {
+            outgoingPlatformEvents += CursorModeEvent(selectedCursorMode)
+            activeCursorMode = selectedCursorMode
+        }
+
+        outgoingPlatformEvents.forEachFast { buffer.add(it) }
+        outgoingPlatformEvents.clear()
+    }
+
+    override fun handleIncomingPlatformEvents(buffer: PlatformEventBuffer)
     {
         // Reset
         isFocused = true
@@ -245,105 +180,113 @@ open class InputImpl : InputInternal
         clicked.fill(UNCHANGED)
         clickedKeys.clear()
 
-        // Poll all GLFW events
-        glfwPollEvents()
+        // Poll all incoming platform events
+        buffer.forEachEvent { handleEvent(it) }
 
-        // Update after polling
-        gamepads.forEachFast { it.updateState() }
         if (focusStack.size == 1)
             currentFocusArea = focusStack.first()
         hoverFocusArea = focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }
         focusStack.clear()
         currentFrame++
-        updateCursor()
-        updateClipboard()
     }
 
-    private fun updateCursor()
+    private fun handleEvent(e: PlatformEvent)
     {
-        if (activeCursorType != selectedCursorType)
+        when (e)
         {
-            cursors[selectedCursorType]?.let { cursor ->
-                if (cursor.handle != -1L) glfwSetCursor(windowHandle, cursor.handle)
-                else Logger.error { "Cursor of type: $selectedCursorType has not been loaded" }
-            } ?: run {
-                Logger.error { "Cursor of type: $selectedCursorType has not been registered in input module" }
-            }
-            activeCursorType = selectedCursorType
-        }
-
-        if (activeCursorMode != selectedCursorMode)
-        {
-            val glfwMode = when (selectedCursorMode)
+            is KeyEvent ->
             {
-                NORMAL  -> GLFW_CURSOR_NORMAL
-                HIDDEN  -> GLFW_CURSOR_HIDDEN
-                GRABBED -> GLFW_CURSOR_DISABLED
+                if (e.keyCode < 0) return
+                
+                clicked[e.keyCode] = if (e.action == KeyAction.PRESSED || e.action == KeyAction.REPEAT) PRESSED else RELEASED
+                pressed[e.keyCode] = if (e.action == KeyAction.PRESSED || e.action == KeyAction.REPEAT) PRESSED else UNCHANGED
+                if (e.action == KeyAction.PRESSED)
+                {
+                    Key.codes[e.keyCode]?.let { keyEnum ->
+                        onKeyPressed.forEachFast { it.invoke(keyEnum) }
+                        clickedKeys.add(keyEnum)
+                    }
+                }
             }
-            glfwSetInputMode(windowHandle, GLFW_CURSOR, glfwMode)
-            activeCursorMode = selectedCursorMode
-        }
-
-        if (cursorPosToSet != null)
-        {
-            val (x, y) = cursorPosToSet!!
-            glfwSetCursorPos(windowHandle, x.toDouble(), y.toDouble())
-            cursorPosToSet = null
+            is CharacterEvent ->
+            {
+                textInput += e.character
+            }
+            is MouseMoveEvent ->
+            {
+                xMouseLast = xMouse
+                yMouseLast = yMouse
+                xMouse = e.x * cursorPosScale
+                yMouse = e.y * cursorPosScale
+            }
+            is MouseButtonEvent ->
+            {
+                clicked[e.button] = if (e.action == MouseAction.PRESSED) PRESSED else RELEASED
+                pressed[e.button] = if (e.action == MouseAction.PRESSED) PRESSED else UNCHANGED
+                if (e.action == MouseAction.PRESSED && focusStack.isNotEmpty())
+                {
+                    focusStack.lastOrNullFast { it.isInside(xMouse, yMouse) }?.let { acquireFocus(it) }
+                }
+            }
+            is ScrollEvent ->
+            {
+                if (isPressed(Key.LEFT_SHIFT))
+                {
+                    xScroll = e.yOffset
+                }
+                else
+                {
+                    xScroll = e.xOffset
+                    yScroll = e.yOffset
+                }
+            }
+            is GamepadConnectionEvent ->
+            {
+                if (e.connected)
+                    gamepads += Gamepad(e.id).also { Logger.info { "Added joystick: ${e.id}" } }
+                else
+                    gamepads.removeWhen { it.id == e.id }.also { Logger.info { "Removed joystick: ${e.id}" } }
+            }
+            is GamepadUpdateEvent -> 
+            {
+                gamepads.find { it.id == e.id }?.updateState(e.axes, e.buttons)
+            }
+            is ClipboardUpdateEvent ->
+            {
+                onGetClipboard.forEachFast { it(e.content) }
+                onGetClipboard.clear()
+            }
         }
     }
 
-    private fun updateClipboard()
-    {
-        if (onGetClipboard.isNotEmpty())
-        {
-            val content = glfwGetClipboardString(windowHandle) ?: ""
-            onGetClipboard.forEachFast { it(content) }
-            onGetClipboard.clear()
-        }
-
-        if (setClipboardTo != null)
-        {
-            glfwSetClipboardString(windowHandle, setClipboardTo!!)
-            setClipboardTo = null
-        }
-    }
-
-    override fun getCursorsToLoad() = listOf(
+    override fun getDefaultCursorToLoad() = listOf(
+        Cursor("", "arrow_cursor", ARROW, 0, 0, 0x00036001),
+        Cursor("", "hand_cursor", HAND, 0, 0, 0x00036004),
+        Cursor("", "ibeam_cursor", IBEAM, 0, 0, 0x00036002),
+        Cursor("", "crosshair_cursor", CROSSHAIR, 0, 0, 0x00036003),
+        Cursor("", "horizontal_resize_cursor", HORIZONTAL_RESIZE, 0, 0, 0x00036005),
+        Cursor("", "vertical_resize_cursor", VERTICAL_RESIZE, 0, 0, 0x00036006),
         Cursor("/pulseengine/cursors/move.png", "move_cursor", MOVE, 8, 8),
         Cursor("/pulseengine/cursors/rotate.png", "rotate_cursor", ROTATE, 6, 6),
         Cursor("/pulseengine/cursors/resize_top_left.png", "top_left_resize_cursor", TOP_LEFT_RESIZE, 8, 8),
         Cursor("/pulseengine/cursors/resize_top_right.png", "top_right_resize_tcursor", TOP_RIGHT_RESIZE, 8, 8)
     )
 
-    override fun setOnFileDropped(callback: (String) -> Unit)
-    {
-        onFileDropped += callback
-    }
-
     override fun createCursor(cursor: Cursor)
     {
-        val cursorImg = GLFWImage.create()
-        cursorImg.width(cursor.width)
-        cursorImg.height(cursor.height)
-        cursorImg.pixels(cursor.pixelBuffer!!)
-        val handle = glfwCreateCursor(cursorImg, cursor.xHotspot, cursor.yHotspot)
-        cursor.finalize(handle)
+        outgoingPlatformEvents += CursorCreateEvent(cursor)
         cursors[cursor.type] = cursor
     }
 
     override fun deleteCursor(cursor: Cursor)
     {
-        glfwDestroyCursor(cursor.handle)
+        outgoingPlatformEvents += CursorDestroyEvent(cursor.handle)
     }
 
     override fun destroy()
     {
         Logger.info { "Destroying input (${this::class.simpleName})" }
-        glfwFreeCallbacks(windowHandle)
     }
-
-    private fun createBuiltInCursor(type: CursorType, shape: Int): Cursor =
-        Cursor("", "standard_cursor", type, 0, 0).apply { finalize(handle = glfwCreateStandardCursor(shape)) }
 
     companion object
     {
@@ -351,6 +294,5 @@ open class InputImpl : InputInternal
         private const val RELEASED: Byte = -1
         private const val UNCHANGED: Byte = 0
         private val NO_KEYS = mutableListOf<Key>()
-        private val cursorPos = Vector2f(0f, 0f)
     }
 }

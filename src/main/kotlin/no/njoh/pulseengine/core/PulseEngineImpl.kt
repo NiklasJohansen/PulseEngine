@@ -33,6 +33,7 @@ import no.njoh.pulseengine.core.service.ServiceManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
 import no.njoh.pulseengine.core.asset.types.Model
+import no.njoh.pulseengine.core.shared.platform.PlatformEventBuffer
 import no.njoh.pulseengine.core.shared.utils.Extensions.pathToAsset
 import java.util.concurrent.BrokenBarrierException
 import kotlin.math.min
@@ -61,6 +62,8 @@ class PulseEngineImpl(
     private val beginFrame               = ThreadBarrier(2)
     private val endFrame                 = ThreadBarrier(2)
     private val focusArea                = FocusArea(0f, 0f, 0f, 0f)
+    private val incomingEvents           = PlatformEventBuffer()
+    private val outgoingEvents           = PlatformEventBuffer()
     private val engineStartTimeNs        = System.nanoTime()
     private var lastFrameTimeNs          = System.nanoTime()
     private var fixedUpdateLastTimeNs    = System.nanoTime()
@@ -98,7 +101,7 @@ class PulseEngineImpl(
             focusArea.update(0f, 0f, w.toFloat(), h.toFloat())
             if (windowRecreated)
             {
-                input.init(window.windowHandle, window.cursorPosScale)
+                input.init(window.cursorPosScale)
                 asset.getAllOfType<Model>().forEachFast { gfx.uploadMesh(it) }
             }
         }
@@ -148,17 +151,17 @@ class PulseEngineImpl(
         }
 
         // Load custom cursors
-        input.getCursorsToLoad().forEachFast { asset.load(it) }
+        input.getDefaultCursorToLoad().forEachFast { asset.load(it) }
 
         // Watch for file drop and try load it as an asset 
-        input.setOnFileDropped { filePath -> pathToAsset(filePath)?.let { asset.load(it) } }
+        window.setOnFileDropped { filePath -> pathToAsset(filePath)?.let { asset.load(it) } }
 
         // Initialize engine components
         config.init()
         data.init()
         window.init(config)
         gfx.init(this)
-        input.init(window.windowHandle, window.cursorPosScale)
+        input.init(window.cursorPosScale)
         audio.init()
         network.init()
         console.init(this)
@@ -232,7 +235,24 @@ class PulseEngineImpl(
         gfx.initFrame(this)
         service.startFrame(this)
         console.update()
-        updateInput()
+
+        // Poll events from the platform
+        incomingEvents.clear()
+        window.pollIncomingPlatformEvents(incomingEvents)
+        input.handleIncomingPlatformEvents(incomingEvents)
+
+        // Send events from the game to the platform
+        outgoingEvents.clear()
+        input.pollOutgoingPlatformEvents(outgoingEvents)
+        window.handleOutgoingPlatformEvents(outgoingEvents)
+
+        // Update world mouse position
+        val pos = gfx.mainCamera.screenPosToWorldPos(input.xMouse, input.yMouse, 0f, gfx.mainSurface.config.width, gfx.mainSurface.config.height)
+        input.xWorldMouse = pos.x
+        input.yWorldMouse = pos.y
+
+        // Request base input focus for the whole window
+        input.requestFocus(focusArea)
     }
 
     private fun tick(game: PulseEngineGame)
@@ -311,19 +331,6 @@ class PulseEngineImpl(
             scene.render()
             service.render(this)
         }
-    }
-
-    private fun updateInput()
-    {
-        input.pollEvents()
-
-        // Update world mouse position
-        val pos = gfx.mainCamera.screenPosToWorldPos(input.xMouse, input.yMouse, 0f, gfx.mainSurface.config.width, gfx.mainSurface.config.height)
-        input.xWorldMouse = pos.x
-        input.yWorldMouse = pos.y
-
-        // Request base input focus for the whole window
-        input.requestFocus(focusArea)
     }
 
     private fun destroy(game: PulseEngineGame)

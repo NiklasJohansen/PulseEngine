@@ -2,6 +2,8 @@ package no.njoh.pulseengine.core.input
 
 import no.njoh.pulseengine.core.asset.types.Cursor
 import no.njoh.pulseengine.core.console.Subscription
+import no.njoh.pulseengine.core.shared.platform.PlatformEvent
+import no.njoh.pulseengine.core.shared.platform.PlatformEventBuffer
 
 class NoOpInput : InputInternal
 {
@@ -20,15 +22,15 @@ class NoOpInput : InputInternal
     override fun createCursor(cursor: Cursor) {}
     override fun deleteCursor(cursor: Cursor) {}
     override fun destroy() {}
+    override fun pollOutgoingPlatformEvents(buffer: PlatformEventBuffer) {}
+    override fun handleIncomingPlatformEvents(buffer: PlatformEventBuffer) {}
     override fun getClipboard(callback: (String) -> Unit) {}
-    override fun getCursorsToLoad() = emptyList<Cursor>()
-    override fun setOnFileDropped(callback: (String) -> Unit) {}
+    override fun getDefaultCursorToLoad() = emptyList<Cursor>()
     override fun hasFocus(focusArea: FocusArea) = false
     override fun hasHoverFocus(focusArea: FocusArea) = false
-    override fun init(windowHandle: Long, cursorPosScale: Float) {}
+    override fun init(cursorPosScale: Float) {}
     override fun isPressed(key: Key) = false
     override fun isPressed(btn: MouseButton) = false
-    override fun pollEvents() {}
     override fun releaseFocus(focusArea: FocusArea) {}
     override fun requestFocus(focusArea: FocusArea) {}
     override fun setClipboard(content: String) {}

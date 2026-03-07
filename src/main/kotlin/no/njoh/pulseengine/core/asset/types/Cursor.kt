@@ -15,7 +15,8 @@ class Cursor(
     name: String,
     val type: CursorType,
     val xHotspot: Int,
-    val yHotspot: Int
+    val yHotspot: Int,
+    val standardShape: Int? = null
 ) : Asset(filePath, name) {
 
     var handle: Long = -1
@@ -32,6 +33,8 @@ class Cursor(
 
     override fun load()
     {
+        if (filePath.isBlank()) return
+
         try {
             val bytes = filePath.loadBytesFromDisk() ?: throw FileNotFoundException("File not found: $filePath")
             val buffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer

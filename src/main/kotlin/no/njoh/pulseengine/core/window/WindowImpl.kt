@@ -2,6 +2,10 @@ package no.njoh.pulseengine.core.window
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.config.ConfigurationInternal
+import no.njoh.pulseengine.core.input.CursorMode.*
+import no.njoh.pulseengine.core.shared.platform.*
+import no.njoh.pulseengine.core.shared.platform.KeyEvent.*
+import no.njoh.pulseengine.core.shared.platform.MouseButtonEvent.*
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.component1
 import no.njoh.pulseengine.core.shared.utils.Extensions.component2
@@ -11,7 +15,10 @@ import no.njoh.pulseengine.core.window.ScreenMode.*
 import org.joml.Vector2i
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWErrorCallback
+import org.lwjgl.glfw.GLFWImage
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.system.MemoryUtil.memPointerBuffer
+import org.lwjgl.system.MemoryUtil.memUTF8
 import kotlin.math.max
 
 open class WindowImpl : WindowInternal
@@ -26,9 +33,12 @@ open class WindowImpl : WindowInternal
     override var wasResized = false
     override var title = ""
 
+    private val incomingEvents = ArrayList<PlatformEvent>()
     private var contentScaleChangedCallbacks = ArrayList<(Float) -> Unit>()
     private val onInitFrame = ArrayList<(PulseEngineInternal) -> Unit>()
-    private var resizeCallBack: (width: Int, height: Int, windowRecreated: Boolean) -> Unit = { _, _, _ -> }
+    private var onFileDropped = mutableListOf<(String) -> Unit>()
+    private var resizeCallback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit = { _, _, _ -> }
+    private var connectedGamepadIds = ArrayList<Int>()
     private var initWidth = 800
     private var initHeight = 600
 
@@ -109,7 +119,7 @@ open class WindowImpl : WindowInternal
             {
                 width = w
                 height = h
-                resizeCallBack(w, h, false)
+                resizeCallback(w, h, false)
                 wasResized = true
             }
         }
@@ -125,6 +135,62 @@ open class WindowImpl : WindowInternal
         }
 
         glfwSetWindowFocusCallback(windowHandle) { _, focused -> isFocused = focused }
+        
+        glfwSetCharCallback(windowHandle) { _, character -> incomingEvents += CharacterEvent(character.toChar()) }
+
+        glfwSetCursorPosCallback(windowHandle) { _, xPos, yPos -> incomingEvents += MouseMoveEvent(xPos.toFloat(), yPos.toFloat()) } 
+
+        glfwSetScrollCallback(windowHandle) { _, xOffset, yOffset -> incomingEvents += ScrollEvent(xOffset.toFloat(), yOffset.toFloat()) }
+
+        glfwSetMouseButtonCallback(windowHandle) { _, button, action, _ -> 
+            when (action)
+            {
+                GLFW_PRESS   -> incomingEvents += MouseButtonEvent(button, MouseAction.PRESSED)
+                GLFW_RELEASE -> incomingEvents += MouseButtonEvent(button, MouseAction.RELEASED)
+            }
+        }
+
+        glfwSetKeyCallback(windowHandle) { _, keyCode, _, action, _ ->
+            when (action)
+            {
+                GLFW_PRESS   -> incomingEvents += KeyEvent(keyCode, KeyAction.PRESSED)
+                GLFW_RELEASE -> incomingEvents += KeyEvent(keyCode, KeyAction.RELEASED)
+                GLFW_REPEAT  -> incomingEvents += KeyEvent(keyCode, KeyAction.REPEAT)
+            }
+        }
+
+        glfwSetJoystickCallback { jid: Int, event: Int ->
+            when (event)
+            {
+                GLFW_CONNECTED ->
+                {
+                    incomingEvents += GamepadConnectionEvent(jid, connected = true)
+                    connectedGamepadIds += jid
+                }
+                GLFW_DISCONNECTED ->
+                {
+                    incomingEvents += GamepadConnectionEvent(jid, connected = false)
+                    connectedGamepadIds -= jid
+                }
+            }
+        }
+
+        glfwSetDropCallback(windowHandle) { _, count, names ->
+            val pointers = memPointerBuffer(names, count)
+            for (i in 0 until count)
+            {
+                val path = memUTF8(pointers[i])
+                onFileDropped.forEachFast { it(path) }
+                Logger.info { "File dropped: $path" }
+            }
+        }
+
+        IntRange(GLFW_JOYSTICK_1, GLFW_JOYSTICK_LAST)
+            .filter { glfwJoystickPresent(it) && glfwJoystickIsGamepad(it) }
+            .forEach { 
+                incomingEvents += GamepadConnectionEvent(it, connected = true)
+                connectedGamepadIds += it
+            }
 
         updateTitle(title)
         glfwMakeContextCurrent(windowHandle)
@@ -132,6 +198,73 @@ open class WindowImpl : WindowInternal
         glfwShowWindow(windowHandle)
     }
 
+    override fun pollIncomingPlatformEvents(buffer: PlatformEventBuffer)
+    {
+        glfwPollEvents()
+        pollGamepads()
+
+        incomingEvents.forEachFast { buffer.add(it) }
+        incomingEvents.clear()
+    }
+
+    override fun handleOutgoingPlatformEvents(buffer: PlatformEventBuffer)
+    {
+        buffer.forEachEvent()
+        {
+            when (it)
+            {
+                is ClipboardUpdateEvent ->
+                {
+                    glfwSetClipboardString(windowHandle, it.content)
+                }
+                is ClipboardRequestUpdateEvent ->
+                {
+                    val content = glfwGetClipboardString(windowHandle) ?: ""
+                    incomingEvents += ClipboardUpdateEvent(content)
+                }
+                is CursorSetEvent ->
+                {
+                    glfwSetCursor(windowHandle, it.handle)
+                }
+                is CursorSetPosEvent ->
+                {
+                    glfwSetCursorPos(windowHandle, it.xPos.toDouble(), it.yPos.toDouble())
+                }
+                is CursorModeEvent ->
+                {
+                    val glfwMode = when (it.mode)
+                    {
+                        NORMAL  -> GLFW_CURSOR_NORMAL
+                        HIDDEN  -> GLFW_CURSOR_HIDDEN
+                        GRABBED -> GLFW_CURSOR_DISABLED
+                    }
+                    glfwSetInputMode(windowHandle, GLFW_CURSOR, glfwMode)
+                }
+                is CursorCreateEvent ->
+                {
+                    if (it.cursor.standardShape != null)
+                    {
+                        val handle = glfwCreateStandardCursor(it.cursor.standardShape!!)
+                        it.cursor.finalize(handle)
+                    }
+                    else
+                    {
+                        val cursorImg = GLFWImage.create()
+                        cursorImg.width(it.cursor.width)
+                        cursorImg.height(it.cursor.height)
+                        cursorImg.pixels(it.cursor.pixelBuffer!!)
+                        val handle = glfwCreateCursor(cursorImg, it.cursor.xHotspot, it.cursor.yHotspot)
+                        it.cursor.finalize(handle)
+                    }
+                }
+                is CursorDestroyEvent ->
+                {
+                    glfwDestroyCursor(it.handle)
+                }
+            }
+        }
+    }
+ 
     override fun updateScreenMode(mode: ScreenMode)
     {
         if (mode == screenMode)
@@ -141,7 +274,7 @@ open class WindowImpl : WindowInternal
         runOnInitFrame()
         {
             createWindow()
-            resizeCallBack(width, height, true)
+            resizeCallback(width, height, true)
             wasResized = true
         }
     }
@@ -160,8 +293,13 @@ open class WindowImpl : WindowInternal
         runOnInitFrame { glfwSetWindowShouldClose(windowHandle, true) }
     }
 
-    override fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit) { resizeCallBack = callback }
+    override fun setOnResizeEvent(callback: (width: Int, height: Int, windowRecreated: Boolean) -> Unit) { resizeCallback = callback }
 
+    override fun setOnFileDropped(callback: (String) -> Unit)
+    {
+        onFileDropped += callback
+    }
+    
     override fun swapBuffers() = glfwSwapBuffers(windowHandle)
 
     override fun isOpen(): Boolean = !glfwWindowShouldClose(windowHandle)
@@ -177,6 +315,17 @@ open class WindowImpl : WindowInternal
     override fun setOnContentScaleChanged(callback: (scale: Float) -> Unit)
     {
         contentScaleChangedCallbacks.add(callback)
+    }
+
+    private fun pollGamepads()
+    {
+        connectedGamepadIds.forEachFast() 
+        {
+            val axes = glfwGetJoystickAxes(it)
+            val buttons = glfwGetJoystickButtons(it)
+            if (axes != null && buttons != null)
+                incomingEvents += GamepadUpdateEvent(it, axes, buttons)
+        }
     }
 
     private fun updateCursorPosScale()
