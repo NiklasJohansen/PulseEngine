@@ -142,4 +142,5 @@ interface InputInternal : Input
     fun createCursor(cursor: Cursor)
     fun deleteCursor(cursor: Cursor)
     fun getCursorsToLoad(): List<Cursor>
+    fun setOnFileDropped(callback: (String) -> Unit)
 }

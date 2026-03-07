@@ -33,6 +33,7 @@ import no.njoh.pulseengine.core.service.ServiceManagerInternal
 import no.njoh.pulseengine.core.window.WindowImpl
 import no.njoh.pulseengine.core.window.WindowInternal
 import no.njoh.pulseengine.core.asset.types.Model
+import no.njoh.pulseengine.core.shared.utils.Extensions.pathToAsset
 import java.util.concurrent.BrokenBarrierException
 import kotlin.math.min
 
@@ -148,6 +149,9 @@ class PulseEngineImpl(
 
         // Load custom cursors
         input.getCursorsToLoad().forEachFast { asset.load(it) }
+
+        // Watch for file drop and try load it as an asset 
+        input.setOnFileDropped { filePath -> pathToAsset(filePath)?.let { asset.load(it) } }
 
         // Initialize engine components
         config.init()

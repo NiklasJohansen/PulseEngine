@@ -22,6 +22,7 @@ class NoOpInput : InputInternal
     override fun destroy() {}
     override fun getClipboard(callback: (String) -> Unit) {}
     override fun getCursorsToLoad() = emptyList<Cursor>()
+    override fun setOnFileDropped(callback: (String) -> Unit) {}
     override fun hasFocus(focusArea: FocusArea) = false
     override fun hasHoverFocus(focusArea: FocusArea) = false
     override fun init(windowHandle: Long, cursorPosScale: Float) {}

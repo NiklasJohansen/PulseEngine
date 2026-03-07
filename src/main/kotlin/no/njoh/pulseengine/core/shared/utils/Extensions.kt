@@ -432,7 +432,7 @@ object Extensions
      */
     fun pathToAsset(path: String): Asset?
     {
-        val name = path.substringAfterLast("/").substringBeforeLast(".")
+        val name = path.substringAfterLast("\\").substringAfterLast("/").substringBeforeLast(".")
         return when
         {
             path.endsWith(".ogg")  -> Sound(path, name)

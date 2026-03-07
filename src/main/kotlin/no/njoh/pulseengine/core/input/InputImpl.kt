@@ -14,6 +14,8 @@ import org.joml.Vector2f
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWImage
+import org.lwjgl.system.MemoryUtil.memPointerBuffer
+import org.lwjgl.system.MemoryUtil.memUTF8
 
 open class InputImpl : InputInternal
 {
@@ -58,6 +60,7 @@ open class InputImpl : InputInternal
 
     private var setClipboardTo     = null as String?
     private var onGetClipboard     = mutableListOf<(String) -> Unit>()
+    private var onFileDropped      = mutableListOf<(String) -> Unit>()
 
     override fun init(windowHandle: Long, cursorPosScale: Float)
     {
@@ -118,6 +121,16 @@ open class InputImpl : InputInternal
                     gamepads.add(Gamepad(jid)).also { Logger.info { "Added joystick: $jid" } }
                 else if (event == GLFW_DISCONNECTED)
                     gamepads.removeWhen { it.id == jid }.also { Logger.info { "Removed joystick: $jid" } }
+            }
+        }
+
+        glfwSetDropCallback(windowHandle) { _, count, names ->
+            val pointers = memPointerBuffer(names, count)
+            for (i in 0 until count) 
+            {
+                val path = memUTF8(pointers[i])
+                Logger.info { "Dropped file: $path" }
+                onFileDropped.forEachFast { it.invoke(path) }
             }
         }
 
@@ -301,6 +314,11 @@ open class InputImpl : InputInternal
         Cursor("/pulseengine/cursors/resize_top_left.png", "top_left_resize_cursor", TOP_LEFT_RESIZE, 8, 8),
         Cursor("/pulseengine/cursors/resize_top_right.png", "top_right_resize_tcursor", TOP_RIGHT_RESIZE, 8, 8)
     )
+
+    override fun setOnFileDropped(callback: (String) -> Unit)
+    {
+        onFileDropped += callback
+    }
 
     override fun createCursor(cursor: Cursor)
     {
