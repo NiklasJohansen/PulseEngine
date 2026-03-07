@@ -19,7 +19,7 @@ class BloomSystem : SceneSystem()
     @Prop(i=5) @TexRef          var lensDirtTexture    = ""
     @Prop(i=6)                  var targetSurfaces     = "main"
 
-    private var lastTargetSurfaces = targetSurfaces
+    private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()
 
     override fun onUpdate(engine: PulseEngine)

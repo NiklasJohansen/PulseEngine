@@ -21,7 +21,7 @@ class ColorGradingSystem : SceneSystem()
     @Prop(i=6, min=0f)         var vignette       = 0f
     @Prop(i=7)                 var targetSurfaces = "main"
 
-    private var lastTargetSurfaces = targetSurfaces
+    private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()
 
     override fun onUpdate(engine: PulseEngine)
