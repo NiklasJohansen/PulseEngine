@@ -13,8 +13,9 @@ uniform float intensity;
 // https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare/
 void main()
 {
-    float x = filterRadius;
-    float y = filterRadius;
+    vec2 texelSize = 1.0 / vec2(textureSize(srcTex, 0));
+    float x = filterRadius * texelSize.x;
+    float y = filterRadius * texelSize.y;
 
     vec3 a = texture(srcTex, vec2(uv.x - x, uv.y + y)).rgb;
     vec3 b = texture(srcTex, vec2(uv.x,     uv.y + y)).rgb;

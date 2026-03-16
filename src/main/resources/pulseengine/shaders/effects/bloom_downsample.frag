@@ -6,7 +6,6 @@ out vec3 fragColor;
 
 uniform sampler2D srcTex;
 
-uniform vec2 resolution;
 uniform vec4 prefilterParams;
 uniform bool prefilterEnabled;
 
@@ -24,7 +23,7 @@ vec3 prefilter(vec3 c)
 // https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare/
 void main()
 {
-    vec2 texelSize = 1.0 / resolution;
+    vec2 texelSize = 1.0 / vec2(textureSize(srcTex, 0));
     float x = texelSize.x;
     float y = texelSize.y;
 

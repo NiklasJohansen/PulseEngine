@@ -20,7 +20,7 @@ class BloomEffect(
     var intensity: Float = 1.5f,
     var threshold: Float = 1.3f,
     var thresholdSoftness: Float = 0.7f,
-    var radius: Float = 0.015f,
+    var radius: Float = 3f,
     var lensDirtIntensity: Float = 1f,
     var lensDirtTexture: String = ""
 ) : BaseEffect(
@@ -76,7 +76,6 @@ class BloomEffect(
         program.bind()
         program.setUniform("prefilterEnabled", true)
         program.setUniform("prefilterParams", threshold, threshold - knee, 2f * knee, 0.25f / (knee + 0.00001f))
-        program.setUniform("resolution", srcTexture.width.toFloat(), srcTexture.height.toFloat())
         program.setUniformSampler("srcTex", srcTexture)
 
         for (i in 1 until textures.size)
@@ -86,7 +85,6 @@ class BloomEffect(
             fbo.attachOutputTexture(texture)
             renderer.draw()
 
-            program.setUniform("resolution", texture.width.toFloat(), texture.height.toFloat())
             program.setUniform("prefilterEnabled", false)
             program.setUniformSampler("srcTex", texture)
         }
@@ -98,13 +96,14 @@ class BloomEffect(
         val program = programs[1] // bloom_upsample
         program.bind()
         program.setUniform("filterRadius", radius)
-        program.setUniform("intensity", intensity)
         enableAdditiveBlend()
 
         for (i in textures.lastIndex downTo 2)
         {
             val texture = textures[i]
             val nextTexture = textures[i - 1]
+            // Only apply intensity on the final upsample pass to avoid compounding
+            program.setUniform("intensity", if (i == 2) intensity else 1f)
             program.setUniformSampler("srcTex", texture)
             setViewportSizeToFit(nextTexture)
             fbo.attachOutputTexture(nextTexture)
