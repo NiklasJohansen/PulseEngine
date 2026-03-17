@@ -7,8 +7,8 @@ import no.njoh.pulseengine.core.asset.types.Model
 import org.joml.Matrix4f
 
 class DrawList(
-    val opaqueItems : ArrayList<RenderItem> = ArrayList(256),
-    val maskedItems : ArrayList<RenderItem> = ArrayList(256),
+    val opaqueItems: ArrayList<RenderItem> = ArrayList(256),
+    val maskedItems: ArrayList<RenderItem> = ArrayList(256),
     val transparentItems: ArrayList<RenderItem> = ArrayList(256)
 ) {
     fun submit(engine: PulseEngine, model: Model, transform: Matrix4f)
@@ -25,9 +25,9 @@ class DrawList(
         }
     }
 
-    fun submit(model: Model, subMesh: Model.SubMesh, material: Material?, transform: Matrix4f)
+    fun submit(model: Model, subMesh: Model.SubMesh, material: Material?, transform: Matrix4f, cullable: Boolean = true)
     {
-        val item = RenderItem(model, subMesh, material, transform)
+        val item = RenderItem(model, subMesh, material, transform, cullable)
         when (material?.blendMode ?: OPAQUE)
         {
             OPAQUE -> opaqueItems += item
@@ -51,7 +51,7 @@ class DrawList(
         for (i in indices)
         {
             val item = this[i]
-            if (frustum.intersectsAabb(item.subMesh.localBounds, item.transform))
+            if (!item.cullable || frustum.intersectsAabb(item.subMesh.localBounds, item.transform))
                 result += item
         }
         return result
@@ -61,6 +61,7 @@ class DrawList(
         val model: Model,
         val subMesh: Model.SubMesh,
         val material: Material?,
-        val transform: Matrix4f
+        val transform: Matrix4f,
+        val cullable: Boolean
     )
 }

@@ -31,28 +31,31 @@ import kotlin.math.cos
 
 class ModelRenderer : Renderer()
 {
+    // IBL parameters
+    var iblDiffuseTexture  = ""
+    var iblSpecularTexture = ""
+    var iblIntensity       = 1f
+
+    // Sun parameters
+    var sunColor                = Color(1f, 1f, 1f)
+    var sunRadius               = 1f
+    var sunShadowMapSurfaceName = ""
+
     private lateinit var program: ShaderProgram
 
     private var readDrawLists  = ArrayList<DrawList>()
     private var writeDrawLists = ArrayList<DrawList>()
-    
+
     // 3=Position, 1=Radius, 3=Color, 1=Intensity, 3=Direction, 1=CosOuterCone, 1=CosInnerCone, 1=IsSpotLight, 2=Padding
     private var readLightData   = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
     private var writeLightData  = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
     private var readLightCount  = 0
     private var writeLightCount = 0
 
-    private var currentCullMode: CullMode? = null
-
-    private var iblBrdfTexture = "ibl_brdf_lut"
-    private val camPos         = Vector3f()
-    private val tmpPos         = Vector3f()
-    private var sunColor       = Color(1f, 1f, 1f)
-
-    var shadowMapSurfaceName = ""
-    var iblDiffuseTexture    = ""
-    var iblSpecularTexture   = ""
-    var iblIntensity         = 1f
+    private var iblBrdfTexture  = "ibl_brdf_lut"
+    private val camPos          = Vector3f()
+    private val tmpPos          = Vector3f()
+    private var currentCullMode = null as CullMode?
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -97,53 +100,46 @@ class ModelRenderer : Renderer()
     {
         if (startIndex > 0) return // Only once per frame
 
-        // Camera position
-        surface.camera.invViewMatrix.getTranslation(camPos)
+        // Textures
 
-        val hasDepthPrepass = surface.config.hasDepthPrepass
         val texBank = engine.gfx.textureBank
+        program.bind()
+        program.setUniformSamplerArrays(texBank.getAllTextureArrays())
+
+        // Ambient occlusion
 
         val aoRenderer = surface.getRenderer<GtaoRenderer>()
         val aoTex = aoRenderer?.getAoRenderTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
-        
-        val shadowMapSurface = engine.gfx.getSurface(shadowMapSurfaceName)
-        val shadowMapRenderer = shadowMapSurface?.getRenderer<ShadowMapRenderer>()
-        val shadowMapTex = shadowMapSurface?.getTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
-        val sunIntensity = shadowMapRenderer?.lightIntensity ?: 0f
-        val sunColor = sunColor.setFrom(shadowMapRenderer?.lightColor ?: WHITE).multiplyRgb(sunIntensity)
-        val sunViewProjection = shadowMapRenderer?.getViewProjectionMatrix() ?: Matrix4f()
-
-        val envSpecularMipCount = engine.asset.getOrNull<Texture>(iblSpecularTexture)
-            ?.let { texBank.getTextureArray(it) }?.mipLevels?.toFloat() ?: 1f
-
-        program.bind()
-        
-        // Textures
-        program.setUniformSamplerArrays(texBank.getAllTextureArrays())
-        
-        // Ambient occlusion
         program.setUniformSampler("uGtaoTex", aoTex)
         program.setUniform("uAoIntensity", aoRenderer?.intensity ?: 0f)
-        
-        // Shadow mapping
-        program.setUniformSampler("uShadowDepthTex", shadowMapTex, filter = NEAREST, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.NONE, borderColor = WHITE)
-        program.setUniformSampler("uShadowCompareTex", shadowMapTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
-        program.setUniform("uShadowMapNear", shadowMapRenderer?.nearPlane ?: 0.1f)
-        program.setUniform("uShadowMapFar", shadowMapRenderer?.farPlane ?: 300f)
-        program.setUniform("uShadowMapSizeMeters", shadowMapRenderer?.shadowMapSizeMeters ?: 15f)
-        program.setUniform("uShadowContactHardening", shadowMapRenderer?.shadowContactHardening ?: false)
+
+        // Cascaded shadow mapping
+        val shadowMapSurface = engine.gfx.getSurface(sunShadowMapSurfaceName)
+        val shadowMapRenderer = shadowMapSurface?.getRenderer<CascadedShadowMapRenderer>()
+        val shadowMapTex = shadowMapSurface?.getTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
+        val sunViewProjections = shadowMapRenderer?.getViewProjectionMatrices() ?: fallbackShadowVPs
+        val splitDist = shadowMapRenderer?.getCascadeSplitDistances() ?: fallbackSplitDists
+        val cascadeSize = shadowMapRenderer?.getCascadeSizeMeters() ?: fallbackCascadeSizes
+        program.setUniformSampler("uShadowMapTex", shadowMapTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
+        program.setUniform("uShadowMapTexSize", shadowMapRenderer?.resolution?.toFloat() ?: 1024f)
+        program.setUniform("uShadowViewProjections", sunViewProjections)
+        program.setUniform("uShadowCascadeSplitDistances", splitDist[0], splitDist[1], splitDist[2], splitDist[3])
+        program.setUniform("uShadowCascadeSizeMeters", cascadeSize[0], cascadeSize[1], cascadeSize[2], cascadeSize[3])
 
         // Sunlight
-        program.setUniform("uSunColor", sunColor)
-        program.setUniform("uSunDirection", shadowMapRenderer?.lightDirection ?: Vector3f(0f, 1f, 0f))
-        program.setUniform("uSunRadius", shadowMapRenderer?.lightRadius ?: 1f)
-        program.setUniform("uSunViewProjection", sunViewProjection)
 
-        // Lights
+        program.setUniform("uSunColor", sunColor)
+        program.setUniform("uSunDirection", shadowMapRenderer?.getDirection() ?: Vector3f(0f, 1f, 0f))
+        program.setUniform("uSunRadius", sunRadius)
+
+        // Local lights
+        
         program.setUniform("uLightCount", readLightCount)
         program.setUniformVec4Array("uLightData", readLightData)
 
         // Ambient lighting
+
+        val envSpecularMipCount = engine.asset.getOrNull<Texture>(iblSpecularTexture)?.let { texBank.getTextureArray(it) }?.mipLevels?.toFloat() ?: 1f
         program.setUniform("uEnvSpecularMipCount", envSpecularMipCount)
         program.setUniform("uEnvIntensity", iblIntensity)
         program.setTexture("uEnvDiffuseTex",  engine.asset.getOrNull(iblDiffuseTexture))
@@ -151,21 +147,25 @@ class ModelRenderer : Renderer()
         program.setTexture("uEnvBrdfLutTex",  engine.asset.getOrNull(iblBrdfTexture))
 
         // Camera
+
+        surface.camera.invViewMatrix.getTranslation(camPos)
         program.setUniform("uScreenSize", surface.config.width.toFloat(), surface.config.height.toFloat())
         program.setUniform("uViewProjection", surface.camera.viewProjectionMatrix)
+        program.setUniform("uView", surface.camera.viewMatrix)
         program.setUniform("uCameraPos", camPos)
-        
-        // -------- OPAQUE --------
+
+        // Draw opaque meshes  
 
         glEnable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
 
+        val hasDepthPrepass = surface.config.hasDepthPrepass
         glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
         glDepthMask(!hasDepthPrepass) // Disable depth writes if depth prepass exists
 
         readDrawLists.forEachFast { list -> list.opaqueItems.forEachFast { drawItem(it) } }
 
-        // -------- MASK --------
+        // Draw masked meshes
 
         // Disable AO for masked and transparent meshes
         program.setUniformSampler("uGtaoTex", texBank.getOrCreateFallbackTexture(WHITE))
@@ -181,7 +181,7 @@ class ModelRenderer : Renderer()
             glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
         }
 
-        // -------- TRANSPARENT / BLEND --------
+        // Draw transparent/blended meshes
 
         if (readDrawLists.anyMatches { it.transparentItems.isNotEmpty() })
         {
@@ -196,16 +196,17 @@ class ModelRenderer : Renderer()
             }
         }
 
-        readDrawLists.clear()
- 
-        glDepthMask(true) // Restore for later renderers
+        // Restore for later renderers
+        
+        glDepthMask(true)
         setCullMode(CullMode.BACK)
+        readDrawLists.clear()
     }
 
     private fun drawItem(item: RenderItem)
     {
-        val vao      = item.model.vao ?: return
-        val subMesh  = item.subMesh
+        val vao = item.model.vao ?: return
+        val subMesh = item.subMesh
         val mat = item.material
         val alphaCutoff = if (mat?.blendMode == MASK) mat.alphaCutoff else 0.0f
 
@@ -286,7 +287,11 @@ class ModelRenderer : Renderer()
     }
  
     companion object
-    { 
+    {
         private const val MAX_POINT_LIGHTS = 32
+
+        val fallbackShadowVPs    = Array(CascadedShadowMapRenderer.CASCADE_COUNT) { Matrix4f() }
+        val fallbackSplitDists   = FloatArray(CascadedShadowMapRenderer.CASCADE_COUNT)
+        val fallbackCascadeSizes = FloatArray(CascadedShadowMapRenderer.CASCADE_COUNT) { 15f }
     }
 }

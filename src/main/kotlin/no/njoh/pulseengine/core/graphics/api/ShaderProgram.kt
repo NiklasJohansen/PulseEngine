@@ -67,7 +67,16 @@ class ShaderProgram(
         glUniform4f(uniformLocationOf(name), vec4.x, vec4.y, vec4.z, vec4.w)
 
     fun setUniform(name: String, matrix: Matrix4f) =
-        glUniformMatrix4fv(uniformLocationOf(name), false, matrix.get(floatArray16))
+        glUniformMatrix4fv(uniformLocationOf(name), false, matrix.get(matrixFloatArrays[1]))
+
+    fun setUniform(name: String, matrices: Array<Matrix4f>)
+    {
+        val count = matrices.size
+        val data = matrixFloatArrays[count]
+        for (i in matrices.indices)
+            matrices[i].get(data, i * 16)
+        glUniformMatrix4fv(uniformLocationOf(name), false, data)
+    }
 
     fun setUniform(name: String, value: Boolean) =
         glUniform1i(uniformLocationOf(name), if (value) 1 else 0)
@@ -208,7 +217,7 @@ class ShaderProgram(
     {
         private val shaderIds = IntArray(5)
         private val shaderCount = IntArray(1)
-        private val floatArray16 = FloatArray(16)
+        private val matrixFloatArrays = Array(8) { FloatArray(it * 16) }
         private val textureArrayNames = Array(64) { "textureArrays[$it]" }
 
         fun create(vararg shaders: Shader) = ShaderProgram(glCreateProgram(), shaders.toList())

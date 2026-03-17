@@ -8,13 +8,11 @@ layout(location = 4) in vec2 texCoord;
 
 uniform mat4 uViewProjection;
 uniform mat4 uModel;
-uniform mat4 uSunViewProjection;
 
 out vec3 vWorldPos;
 out vec3 vWorldNormal;
 out mat3 vTBN;
 out vec2 vTexCoord;
-out vec4 vSunPos;
 
 void main()
 {
@@ -29,11 +27,6 @@ void main()
     vec3 B = normalize(cross(N, T)) * sign;
 
     vec4 worldPos = uModel * vec4(position, 1.0);
-    
-    // Offset the sun position along the normal to reduce shadow acne
-    float normalOffsetScale = 0.02;
-    vec3 offsetWorldPos = worldPos.xyz + N * normalOffsetScale;
-    vSunPos = uSunViewProjection * vec4(offsetWorldPos.xyz, 1.0);
 
     vWorldPos = worldPos.xyz;
     vWorldNormal = N;

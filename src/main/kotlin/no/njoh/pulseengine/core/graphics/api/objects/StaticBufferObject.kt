@@ -51,9 +51,9 @@ class StaticBufferObject(
         fun createFullscreenUvTriangleArrayBuffer() = createArrayBuffer(
             // For GL_TRIANGLE_STRIP with CCW front face
             floatArrayOf(
-                -1f, -1f,   0f, 0f,
-                3f, -1f,    2f, 0f,
-                -1f,  3f,   0f, 2f
+                -1f, -1f, 0f, 0f,
+                 3f, -1f, 2f, 0f,
+                -1f,  3f, 0f, 2f
             )
         )
     }

@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.LightList
 import no.njoh.pulseengine.core.graphics.renderers.ModelRenderer
-import no.njoh.pulseengine.core.graphics.renderers.ShadowMapRenderer
+import no.njoh.pulseengine.core.graphics.renderers.CascadedShadowMapRenderer
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
@@ -21,25 +21,25 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 @Name("World Lighting (3D)")
 class WorldLightingSystem : SceneSystem()
 {
-    @Prop(i=0, min=0f)           var sunIntensity              = 1f
-    @Prop(i=1)                   var sunColor                  = Color(1f, 1f, 1f)
-    @Prop(i=2, min=0f, max=360f) var sunDirection              = 0f
-    @Prop(i=3, min=0f, max=90f)  var sunHeight                 = 70f
-    @Prop(i=4, min=0f)           var sunRadius                 = 1f
-    @Prop(i=5, min=1f)           var sunShadowMapMeters        = 15f
-    @Prop(i=6, min=1f)           var sunShadowMapResolution    = 4096
-    @Prop(i=7, min=1f)           var sunShadowContactHardening = true
-
-    @Prop(i=8, min=0f)           var envIntensity              = 1f
-    @Prop(i=9)  @EnvMapRef       var envSpecularTexture        = ""
-    @Prop(i=10) @EnvMapRef       var envDiffuseTexture         = ""
-    @Prop(i=11)                  var targetSurfaces            = "world"
+    @Prop(i=0, min=0f)           var sunIntensity                = 1f
+    @Prop(i=1)                   var sunColor                    = Color(1f, 1f, 1f)
+    @Prop(i=2, min=0f, max=360f) var sunDirection                = 0f
+    @Prop(i=3, min=0f, max=90f)  var sunHeight                   = 70f
+    @Prop(i=4, min=0f)           var sunRadius                   = 1f
+    @Prop(i=5, min=1f)           var sunShadowMapResolution      = 4096
+    @Prop(i=6, min=0f, max=1f)   var sunShadowCascadeSplitLambda = 0.5f
+    @Prop(i=7, min=0f)           var sunShadowDistance           = 0f
+    @Prop(i=8, min=0f)           var envIntensity                = 1f
+    @Prop(i=9)  @EnvMapRef       var envDiffuseTexture           = ""
+    @Prop(i=10) @EnvMapRef       var envSpecularTexture          = ""
+    @Prop(i=11)                  var targetSurfaces              = "world"
 
     private var shadowMapSurfaceName = ""
-    private var lastTargetSurfaces = ""
-    private var targetSurfaceNames = emptyList<String>()
-    private var frustum = Frustum()
-    private var lightList = LightList()
+    private var lastTargetSurfaces   = ""
+    private var targetSurfaceNames   = emptyList<String>()
+    private var lightFrustum         = Frustum()
+    private var shadowFrustum        = Frustum()
+    private var lightList            = LightList()
 
     override fun onUpdate(engine: PulseEngine)
     {
@@ -53,18 +53,19 @@ class WorldLightingSystem : SceneSystem()
         targetSurfaceNames.forEachFast() 
         {
             val r = engine.gfx.getSurface(it)?.getRenderer<ModelRenderer>()
-            r?.shadowMapSurfaceName = shadowMapSurfaceName
-            r?.iblDiffuseTexture    = envDiffuseTexture
-            r?.iblSpecularTexture   = envSpecularTexture
-            r?.iblIntensity         = envIntensity
+            r?.sunColor?.setFrom(sunColor)?.multiplyRgb(sunIntensity)
+            r?.sunRadius               = sunRadius
+            r?.sunShadowMapSurfaceName = shadowMapSurfaceName
+            r?.iblDiffuseTexture       = envDiffuseTexture
+            r?.iblSpecularTexture      = envSpecularTexture
+            r?.iblIntensity            = envIntensity
         }
     }
 
     override fun onRender(engine: PulseEngine)
     {
         val camera = targetSurfaceNames.firstOrNull()?.let { engine.gfx.getSurface(it) }?.camera ?: return
-        frustum.setForCamera(camera)
- 
+
         renderShadowMap(engine, camera)
         renderWorldLights(engine, camera)
     }
@@ -86,31 +87,31 @@ class WorldLightingSystem : SceneSystem()
                 attachments = listOf(Attachment.DEPTH_TEXTURE),
                 textureSizeFunc = { _,_,_ -> PackedSize(sunShadowMapResolution, sunShadowMapResolution) }
             ).apply {
-                addRenderer(ShadowMapRenderer())
+                addRenderer(CascadedShadowMapRenderer())
             }
 
             return // Return now, surface ready next frame
         }
 
-        val shadowMapRenderer = shadowMapSurface.getRenderer<ShadowMapRenderer>() ?: return
-        val shadowCasters = DrawList()
+        val shadowMapRenderer = shadowMapSurface.getRenderer<CascadedShadowMapRenderer>() ?: return
+        shadowMapRenderer.resolution     = sunShadowMapResolution
+        shadowMapRenderer.splitLambda    = sunShadowCascadeSplitLambda
+        shadowMapRenderer.shadowDistance = sunShadowDistance
+        shadowMapRenderer.setFor(camera, sunDirection, sunHeight)
 
+        val shadowCasters = DrawList()
         engine.scene.forEachEntityOfType<WorldShadowCaster>()
         {
             if (it.castShadows && (it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, shadowCasters)
         }
 
-        shadowMapRenderer.updateSunParameters(camera.position, sunDirection, sunHeight)
-        shadowMapRenderer.lightColor.setFrom(sunColor)
-        shadowMapRenderer.lightIntensity = sunIntensity
-        shadowMapRenderer.lightRadius = sunRadius
-        shadowMapRenderer.shadowMapSizeMeters = sunShadowMapMeters
-        shadowMapRenderer.shadowMapResolution = sunShadowMapResolution
-        shadowMapRenderer.shadowContactHardening = sunShadowContactHardening
+        // Frustum-cull shadow casters against an expanded culling volume that covers
+        // all cascades plus extra lateral space to catch shadow casters outside the
+        // camera frustum that still cast shadows into the visible area (e.g. roofs).
+        val shadowCullingVP = shadowMapRenderer.getShadowCullingMatrix()
+        shadowFrustum.setForViewProjection(shadowCullingVP)
 
-        frustum.setForViewProjection(shadowMapRenderer.getViewProjectionMatrix(read = false))
-
-        val culledShadowCasters = shadowCasters.getFrustumCulledList(frustum)
+        val culledShadowCasters = shadowCasters.getFrustumCulledList(shadowFrustum)
 
         shadowMapRenderer.draw(culledShadowCasters)
     }
@@ -124,7 +125,8 @@ class WorldLightingSystem : SceneSystem()
             if ((it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, lightList)
         }
 
-        val culledLights = lightList.getFrustumCulledList(frustum)
+        lightFrustum.setForCamera(camera)
+        val culledLights = lightList.getFrustumCulledList(lightFrustum)
 
         culledLights.sortBy { camera.position.distanceSquared(it.position) }
 
@@ -137,10 +139,10 @@ class WorldLightingSystem : SceneSystem()
 
     override fun onDestroy(engine: PulseEngine)
     {
-        for (targetSurfaceName in targetSurfaceNames)
+        for (surface in targetSurfaceNames)
         {
-            val r = engine.gfx.getSurface(targetSurfaceName)?.getRenderer<ModelRenderer>()
-            r?.shadowMapSurfaceName = ""
+            val r = engine.gfx.getSurface(surface)?.getRenderer<ModelRenderer>()
+            r?.sunShadowMapSurfaceName = ""
             r?.iblDiffuseTexture    = ""
             r?.iblSpecularTexture   = ""
             r?.iblIntensity         = 0f

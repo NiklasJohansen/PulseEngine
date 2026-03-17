@@ -12,7 +12,7 @@ import no.njoh.pulseengine.modules.scene.systems.WorldRenderable
 import no.njoh.pulseengine.modules.scene.systems.WorldShadowCaster
 import org.joml.Matrix4f
 
-class ModelEntity : SceneEntity(), WorldRenderable, WorldShadowCaster, Named
+class WorldModel : SceneEntity(), WorldRenderable, WorldShadowCaster, Named
 {
     override var name = ""
     override var castShadows = true

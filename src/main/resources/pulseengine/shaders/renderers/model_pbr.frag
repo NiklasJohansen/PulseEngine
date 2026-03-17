@@ -1,6 +1,7 @@
 #version 330 core
 
-#define MAX_POINT_LIGHTS 32
+#define MAX_LOCAL_LIGHTS 32
+#define CASCADE_COUNT 4
 
 const float PI = 3.14159265359;
 const float TAU = 6.28318530718;
@@ -9,7 +10,6 @@ in vec3 vWorldPos;
 in vec3 vWorldNormal;
 in mat3 vTBN;
 in vec2 vTexCoord;
-in vec4 vSunPos;
 
 out vec4 fragColor;
 
@@ -36,19 +36,22 @@ uniform float uEnvIntensity;
 uniform float uEnvSpecularMipCount;
 uniform vec3  uCameraPos;
 uniform vec2  uScreenSize;
+uniform mat4  uView;
 uniform vec4  uSunColor;
 uniform vec3  uSunDirection;
 uniform float uSunRadius;
 uniform int   uLightCount;
-uniform vec4  uLightData[MAX_POINT_LIGHTS * 4]; // 4 vec4s per light: pos+radius, color+intensity, dir+outerCos, innerCos+isSpot+padding
+uniform vec4  uLightData[MAX_LOCAL_LIGHTS * 4]; // 4 vec4s per light: pos+radius, color+intensity, dir+outerCos, innerCos+isSpot+padding
 
-// Shadow mapping
-uniform sampler2DShadow uShadowCompareTex;
-uniform sampler2D uShadowDepthTex;
-uniform float uShadowMapNear;
-uniform float uShadowMapFar;
-uniform float uShadowMapSizeMeters;
-uniform bool  uShadowContactHardening;
+// Cascaded shadow mapping
+uniform sampler2DShadow uShadowMapTex;
+uniform float           uShadowMapTexSize;
+uniform mat4            uShadowViewProjections[CASCADE_COUNT];
+uniform vec4            uShadowCascadeSplitDistances; // Far split distance for each cascade (view-space depth)
+uniform vec4            uShadowCascadeSizeMeters;     // World-space size of each cascade in meters
+
+// Atlas offsets for 2x2 layout: cascade 0=bottom-left, 1=bottom-right, 2=top-left, 3=top-right
+const vec2 CASCADE_OFFSETS[CASCADE_COUNT] = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0), vec2(0.0, 0.5), vec2(0.5, 0.5));
 
 // ------------------------------------------------------------------
 // Texture sampling
@@ -68,6 +71,7 @@ vec3 sampleWorldSpaceNormal(out float normalLenTS)
 {
     // Tangent-space normal
     vec3 normalTs = sampleTexOrDefault(uNormalTex, vec3(0.5, 0.5, 1.0)).rgb * 2.0 - 1.0;
+//    normalTs.y *= -1; // TODO: Intel Sponza haz flipped y normals
     normalTs.xy *= uAoMetalRoughNormalFactor.w; // Normal scale
 
     float len = max(length(normalTs), 1e-5);
@@ -184,74 +188,102 @@ const vec2 POISSON_DISK_16[16] = vec2[]
     vec2( 0.14383161, -0.14100790)
 );
 
-float pcssShadow(vec3 N, vec3 L, vec4 lightPos, float lightRadius)
+float pcssShadowCascade(vec3 shadowWorldPos, vec3 N, float lightRadius, int cascade)
 {
-    // Project light position into shadow map
-    vec3 pos = (lightPos.xyz / lightPos.w) * 0.5 + 0.5; // NDC [-1,1] -> UV/depth01 [0,1]
+    vec2 atlasOffset = CASCADE_OFFSETS[cascade];
+    float cascadeSizeMeters = uShadowCascadeSizeMeters[cascade];
+
+    // Project the normal-offset world position into cascade's light space
+    vec4 lightPos = uShadowViewProjections[cascade] * vec4(shadowWorldPos, 1.0);
+    vec3 pos = (lightPos.xyz / lightPos.w) * 0.5 + 0.5; // NDC [-1,1] -> [0,1]
 
     if (pos.x < 0.0 || pos.x > 1.0 || pos.y < 0.0 || pos.y > 1.0 || pos.z < 0.0 || pos.z > 1.0)
-        return 1.0; // Outside shadow map, considered fully lit
+        return 1.0; // Outside this cascade, fully lit
+
+    // Remap UV to atlas quadrant: [0,1] -> [offset, offset+0.5]
+    vec2 atlasUv = pos.xy * 0.5 + atlasOffset;
 
     // Stable per-texel rotation
-    vec2 shadowMapTexRes = vec2(textureSize(uShadowDepthTex, 0));
-    vec2 texelCoord = floor(pos.xy * shadowMapTexRes);
+    vec2 texelCoord = floor(atlasUv * uShadowMapTexSize);
     float angle = TAU * fract(sin(dot(texelCoord, vec2(127.1, 311.7))) * 43758.5453123);
     float s = sin(angle), c = cos(angle);
     mat2 R = mat2(c, -s, s, c);
 
-    float texelUv = 1.0 / shadowMapTexRes.x; // Square shadow map
+    // Half-res texel size in atlas UV space
+    float halfRes = uShadowMapTexSize * 0.5;
+    float texelUv = 1.0 / halfRes;
     float filterRadiusUv = lightRadius * texelUv;
 
-    if (uShadowContactHardening)
-    {
-        const float searchRadiusTexels = 8.0;
-        float searchRadiusUv = searchRadiusTexels * texelUv;
-
-        // Blocker search 
-        int numBlockers = 0;
-        float sumBlockerLinearDist = 0.0;
-        for (int i = 0; i < 16; i++)
-        {
-            vec2 offset = R * POISSON_DISK_16[i] * searchRadiusUv;
-            float d01 = texture(uShadowDepthTex, pos.xy + offset).r;
-            if (d01 < pos.z)
-            {
-                numBlockers++;
-                sumBlockerLinearDist += uShadowMapNear + d01 * (uShadowMapFar - uShadowMapNear);
-            }
-        }
-
-        if (numBlockers == 0) return 1.0; // No blockers, fully lit
-
-        float lightAngularRadius = lightRadius * 0.00465; // 0.00465 = earth-sun dist / earth radius
-        float avgBlockerLinearDist = (numBlockers > 0) ? (sumBlockerLinearDist / float(numBlockers)) : 0.0;
-        float depthLinear = uShadowMapNear + pos.z * (uShadowMapFar - uShadowMapNear);
-        float penumbraSizeMeters = max(depthLinear - avgBlockerLinearDist, 0.0) * lightAngularRadius;
-        float metersPerTexel = uShadowMapSizeMeters / shadowMapTexRes.x;
-        
-        filterRadiusUv = texelUv * clamp(penumbraSizeMeters / max(metersPerTexel, 1e-6), 0.0, 64.0);
-    }
+    // Clamp bounds with half-texel inset to prevent bleeding across quadrant edges
+    vec2 clampMin = atlasOffset + vec2(texelUv * 0.5);
+    vec2 clampMax = atlasOffset + vec2(0.5) - vec2(texelUv * 0.5);
 
     float sum = 0.0;
-    for (int i = 0; i < 16; i++) 
+    for (int i = 0; i < 16; i++)
     {
-        // No bias is used, as lightPos is offset by the surface normal in the vertex shader
         vec2 o = R * POISSON_DISK_16[i] * filterRadiusUv;
-        sum += texture(uShadowCompareTex, vec3(pos.xy + o, pos.z)); 
+        vec2 sampleUv = clamp(atlasUv + o, clampMin, clampMax);
+        sum += texture(uShadowMapTex, vec3(sampleUv, pos.z));
     }
 
     return sum / 16.0;
 }
 
+vec3 shadowWorldPos(vec3 worldPos, vec3 N, int cascade)
+{
+    // Scale the normal offset by the cascade's texel size so that larger cascades
+    // (which cover more world-space area) get a proportionally larger offset.
+    float halfRes = uShadowMapTexSize * 0.5;
+    float texelSize = uShadowCascadeSizeMeters[cascade] / halfRes;
+    return worldPos + N * texelSize;
+}
+
+float cascadedShadow(vec3 worldPos, vec3 N, float lightRadius)
+{
+    // Compute view-space depth for cascade selection
+    float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
+
+    // Find the first cascade that contains this fragment
+    int cascade = CASCADE_COUNT - 1;
+    for (int i = 0; i < CASCADE_COUNT; i++)
+    {
+        if (viewDepth < uShadowCascadeSplitDistances[i])
+        {
+            cascade = i;
+            break;
+        }
+    }
+
+    vec3 swp = shadowWorldPos(worldPos, N, cascade);
+    float shadow = pcssShadowCascade(swp, N, lightRadius, cascade);
+
+    // Blend between cascades at the transition boundary to hide seams
+    float splitDist = uShadowCascadeSplitDistances[cascade];
+    float prevSplitDist = (cascade > 0) ? uShadowCascadeSplitDistances[cascade - 1] : 0.0;
+    float cascadeRange = splitDist - prevSplitDist;
+    float blendZone = cascadeRange * 0.15; // 15% transition band
+    float distToEdge = splitDist - viewDepth;
+
+    if (distToEdge < blendZone && cascade < CASCADE_COUNT - 1)
+    {
+        vec3 nextSwp = shadowWorldPos(worldPos, N, cascade + 1);
+        float nextShadow = pcssShadowCascade(nextSwp, N, lightRadius, cascade + 1);
+        float t = smoothstep(0.0, blendZone, distToEdge);
+        shadow = mix(nextShadow, shadow, t);
+    }
+
+    return shadow;
+}
+
 // ------------------------------------------------------------------
-// Point lights
+// Local lights
 // ------------------------------------------------------------------ 
 
-vec3 accumulatePointLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0)
+vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0)
 {
     vec3 Lo = vec3(0.0);
 
-    for (int i = 0; i < MAX_POINT_LIGHTS; i++)
+    for (int i = 0; i < MAX_LOCAL_LIGHTS; i++)
     {
         if (i >= uLightCount) break;
 
@@ -380,12 +412,12 @@ void main()
     vec3 radiance = uSunColor.rgb;
     vec3 diffuse  = kD_dir * baseColor.rgb / PI;
     vec3 specular = (NDF * G * F_dir) / denom;
-    float shadow  = pcssShadow(N, L, vSunPos, uSunRadius);
+    float shadow  = cascadedShadow(vWorldPos, N, uSunRadius);
     vec3 LoSun    = (diffuse + specular) * radiance * NdotL * shadow;
 
-    vec3 LoPointLighs = accumulatePointLights(N, V, NdotV, baseColor.rgb, metallic, roughness, F0);
+    vec3 LoLocalLights = accumulateLocalLights(N, V, NdotV, baseColor.rgb, metallic, roughness, F0);
 
-    vec3 Lo = LoSun + LoPointLighs;
+    vec3 Lo = LoSun + LoLocalLights;
 
     //--------------------------------------------------
     // Image-based lighting (IBL)
