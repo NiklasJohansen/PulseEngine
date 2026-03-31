@@ -36,7 +36,7 @@ object BackBufferBaseState : RenderState
     override fun onApply(surface: SurfaceInternal)
     {
         // Set viewport size
-        val tex = surface.getTexture()
+        val tex = surface.getTexture(final = false)
         glViewport(0, 0, tex.width, tex.height)
  
         // Clear back-buffer with color of given surface
@@ -70,7 +70,7 @@ object PostProcessingBaseState : RenderState
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         // Set viewport size
-        val tex = surface.getTexture()
+        val tex = surface.getTexture(final = false)
         glViewport(0, 0, tex.width, tex.height)
 
         // Clear back-buffer
@@ -125,7 +125,7 @@ object BatchRenderBaseState : RenderState
         else glDisable(GL_BLEND)
 
         // Set viewport size
-        val tex = surface.getTexture()
+        val tex = surface.getTexture(final = false)
         glViewport(0, 0, tex.width, tex.height)
 
         // Set color and clear surface

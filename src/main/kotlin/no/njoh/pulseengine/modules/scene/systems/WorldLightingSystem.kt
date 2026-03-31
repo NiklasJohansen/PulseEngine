@@ -6,8 +6,8 @@ import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.LightList
-import no.njoh.pulseengine.core.graphics.renderers.ModelRenderer
 import no.njoh.pulseengine.core.graphics.renderers.CascadedShadowMapRenderer
+import no.njoh.pulseengine.core.graphics.renderers.ModelRenderer
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
@@ -25,10 +25,10 @@ class WorldLightingSystem : SceneSystem()
     @Prop(i=1)                   var sunColor                    = Color(1f, 1f, 1f)
     @Prop(i=2, min=0f, max=360f) var sunDirection                = 0f
     @Prop(i=3, min=0f, max=90f)  var sunHeight                   = 70f
-    @Prop(i=4, min=0f)           var sunRadius                   = 1f
+    @Prop(i=4, min=0f)           var sunRadius                   = 0.2f
     @Prop(i=5, min=1f)           var sunShadowMapResolution      = 4096
     @Prop(i=6, min=0f, max=1f)   var sunShadowCascadeSplitLambda = 0.5f
-    @Prop(i=7, min=0f)           var sunShadowDistance           = 0f
+    @Prop(i=7, min=0f)           var sunShadowDistance           = 50f
     @Prop(i=8, min=0f)           var envIntensity                = 1f
     @Prop(i=9)  @EnvMapRef       var envDiffuseTexture           = ""
     @Prop(i=10) @EnvMapRef       var envSpecularTexture          = ""
@@ -50,15 +50,15 @@ class WorldLightingSystem : SceneSystem()
             targetSurfaceNames = targetSurfaces.split(",").map { it.trim() }
         }
 
-        targetSurfaceNames.forEachFast() 
+        targetSurfaceNames.forEachFast()
         {
-            val r = engine.gfx.getSurface(it)?.getRenderer<ModelRenderer>()
-            r?.sunColor?.setFrom(sunColor)?.multiplyRgb(sunIntensity)
-            r?.sunRadius               = sunRadius
-            r?.sunShadowMapSurfaceName = shadowMapSurfaceName
-            r?.iblDiffuseTexture       = envDiffuseTexture
-            r?.iblSpecularTexture      = envSpecularTexture
-            r?.iblIntensity            = envIntensity
+            val renderer = engine.gfx.getSurface(it)?.getRenderer<ModelRenderer>()
+            renderer?.sunColor?.setFrom(sunColor)?.multiplyRgb(sunIntensity)
+            renderer?.sunRadius               = sunRadius
+            renderer?.sunShadowMapSurfaceName = shadowMapSurfaceName
+            renderer?.iblDiffuseTexture       = envDiffuseTexture
+            renderer?.iblSpecularTexture      = envSpecularTexture
+            renderer?.iblIntensity            = envIntensity
         }
     }
 
@@ -141,22 +141,25 @@ class WorldLightingSystem : SceneSystem()
     {
         for (surface in targetSurfaceNames)
         {
-            val r = engine.gfx.getSurface(surface)?.getRenderer<ModelRenderer>()
-            r?.sunShadowMapSurfaceName = ""
-            r?.iblDiffuseTexture    = ""
-            r?.iblSpecularTexture   = ""
-            r?.iblIntensity         = 0f
+            val renderer = engine.gfx.getSurface(surface)?.getRenderer<ModelRenderer>()
+            renderer?.sunShadowMapSurfaceName = ""
+            renderer?.iblDiffuseTexture       = ""
+            renderer?.iblSpecularTexture      = ""
+            renderer?.iblIntensity            = 0f
         }
         lastTargetSurfaces = ""
         targetSurfaceNames = emptyList()
-        
+
         engine.gfx.deleteSurface(shadowMapSurfaceName)
+        shadowMapSurfaceName = ""
     }
 
     override fun onStateChanged(engine: PulseEngine)
     {
         if (enabled) onCreate(engine) else onDestroy(engine)
     }
+
+    fun getShadowMapSurfaceName() = shadowMapSurfaceName
 }
 
 interface WorldShadowCaster
