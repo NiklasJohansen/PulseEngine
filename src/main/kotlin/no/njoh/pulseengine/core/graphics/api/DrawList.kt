@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.types.Animation
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
 import no.njoh.pulseengine.core.asset.types.Model
@@ -11,23 +12,39 @@ class DrawList(
     val maskedItems: ArrayList<RenderItem> = ArrayList(256),
     val transparentItems: ArrayList<RenderItem> = ArrayList(256)
 ) {
-    fun submit(engine: PulseEngine, model: Model, transform: Matrix4f)
-    {
+    fun submit(
+        engine: PulseEngine,
+        model: Model,
+        transform: Matrix4f,
+        material: Material? = null,
+        animation: Animation? = null,
+        animationTimeSeconds: Float = 0f
+    ) {
         for (instance in model.subMeshInstances)
         {
             val subMesh  = instance.subMesh
-            val matInfo  = model.materials.getOrNull(subMesh.materialIndex)
-            val material = matInfo?.name?.let { engine.asset.getOrNull<Material>(it) }
-            
+            val material = material ?: model.materials.getOrNull(subMesh.materialIndex)?.let { engine.asset.getOrNull(it.name) }
+
+            val animatedPose  = model.getAnimatedPose(instance.nodeName, animation, animationTimeSeconds, engine.data.frameNumber)
+            val boneMatrices  = animatedPose?.boneMatrices ?: model.getBindPoseBoneMatrices(instance.nodeName)
+            val cullingBounds = animatedPose?.getBounds(subMesh) ?: instance.cullingBounds
+
             val transform = Matrix4f(transform).mul(instance.transform)
 
-            submit(model, subMesh, material, transform)
+            submit(model, subMesh, material, transform, cullable = true, cullingBounds, boneMatrices)
         }
     }
 
-    fun submit(model: Model, subMesh: Model.SubMesh, material: Material?, transform: Matrix4f, cullable: Boolean = true)
-    {
-        val item = RenderItem(model, subMesh, material, transform, cullable)
+    fun submit(
+        model: Model,
+        subMesh: Model.SubMesh,
+        material: Material?,
+        transform: Matrix4f,
+        cullable: Boolean = true,
+        cullingBounds: Model.Aabb = subMesh.localBounds,
+        boneMatrices: Array<Matrix4f>? = null
+    ) {
+        val item = RenderItem(model, subMesh, material, transform, cullable, cullingBounds, boneMatrices)
         when (material?.blendMode ?: OPAQUE)
         {
             OPAQUE -> opaqueItems += item
@@ -51,7 +68,7 @@ class DrawList(
         for (i in indices)
         {
             val item = this[i]
-            if (!item.cullable || frustum.intersectsAabb(item.subMesh.localBounds, item.transform))
+            if (!item.cullable || frustum.intersectsAabb(item.cullingBounds, item.transform))
                 result += item
         }
         return result
@@ -62,6 +79,8 @@ class DrawList(
         val subMesh: Model.SubMesh,
         val material: Material?,
         val transform: Matrix4f,
-        val cullable: Boolean
+        val cullable: Boolean,
+        val cullingBounds: Model.Aabb,
+        val boneMatrices: Array<Matrix4f>?
     )
 }

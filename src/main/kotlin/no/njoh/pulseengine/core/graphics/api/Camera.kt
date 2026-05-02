@@ -165,7 +165,9 @@ class DefaultCamera(private var projectionType: CameraProjectionType) : CameraIn
                 invViewMatrix
                     .identity()
                     .translate(iPos)
-                    .rotateXYZ(iRot.x, iRot.y, iRot.z)
+                    .rotateY(iRot.y)
+                    .rotateX(iRot.x)
+                    .rotateZ(iRot.z)
 
                 viewMatrix.set(invViewMatrix).invert()
             }

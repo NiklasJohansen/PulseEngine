@@ -4,21 +4,22 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.MASK
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
+import no.njoh.pulseengine.core.graphics.api.DrawList
+import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.TextureCompare
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_BORDER
+import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.BrdfLutBuilder
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleIndices
-import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
-import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import no.njoh.pulseengine.core.graphics.api.DrawList
-import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
-import no.njoh.pulseengine.core.graphics.api.TextureCompare
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
@@ -31,22 +32,21 @@ import kotlin.math.cos
 
 class ModelRenderer : Renderer()
 {
-    // IBL parameters
     var iblDiffuseTexture  = ""
     var iblSpecularTexture = ""
     var iblIntensity       = 1f
 
-    // Sun parameters
     var sunColor                = Color(1f, 1f, 1f)
     var sunRadius               = 1f
     var sunShadowMapSurfaceName = ""
 
-    private lateinit var program: ShaderProgram
+    private lateinit var staticProgram: ShaderProgram
+    private lateinit var skinnedProgram: ShaderProgram
+    private var currentProgram = null as ShaderProgram?
 
     private var readDrawLists  = ArrayList<DrawList>()
     private var writeDrawLists = ArrayList<DrawList>()
 
-    // 3=Position, 1=Radius, 3=Color, 1=Intensity, 3=Direction, 1=CosOuterCone, 1=CosInnerCone, 1=IsSpotLight, 2=Padding
     private var readLightData   = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
     private var writeLightData  = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
     private var readLightCount  = 0
@@ -56,13 +56,18 @@ class ModelRenderer : Renderer()
     private val camPos          = Vector3f()
     private val tmpPos          = Vector3f()
     private var currentCullMode = null as CullMode?
+    private val warnedBoneLimitModels = HashSet<String>()
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
-        if (!this::program.isInitialized)
+        if (!this::staticProgram.isInitialized)
         {
-            program = ShaderProgram.create(
+            staticProgram = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr.vert")),
+                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_pbr.frag"))
+            )
+            skinnedProgram = ShaderProgram.create(
+                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr_skinned.vert")),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_pbr.frag"))
             )
         }
@@ -100,6 +105,70 @@ class ModelRenderer : Renderer()
     {
         if (startIndex > 0) return // Only once per frame
 
+        val opaqueCount      = readDrawLists.sumOf { it.opaqueItems.size }
+        val maskedCount      = readDrawLists.sumOf { it.maskedItems.size }
+        val transparentCount = readDrawLists.sumOf { it.transparentItems.size }
+        
+        configureProgram(staticProgram, engine, surface)
+        configureProgram(skinnedProgram, engine, surface)
+        currentProgram = null
+
+        glEnable(GL_DEPTH_TEST)
+        glDisable(GL_BLEND)
+
+        val hasDepthPrepass = surface.config.hasDepthPrepass
+        glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
+        glDepthMask(!hasDepthPrepass)
+
+        GpuProfiler.measure({"opaque" plus " (" plus opaqueCount plus ")"})
+        {
+            readDrawLists.forEachFast { list -> list.opaqueItems.forEachFast { drawItem(it) } }
+        }
+
+        staticProgram.bind()
+        staticProgram.setUniformSampler("uGtaoTex", engine.gfx.textureBank.getOrCreateFallbackTexture(WHITE))
+        skinnedProgram.bind()
+        skinnedProgram.setUniformSampler("uGtaoTex", engine.gfx.textureBank.getOrCreateFallbackTexture(WHITE))
+        currentProgram = null
+
+        if (maskedCount > 0)
+        {
+            GpuProfiler.measure({"masked" plus " (" plus maskedCount plus ")"})
+            {
+                glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
+                glDepthFunc(GL_LEQUAL)
+                glDepthMask(true)
+
+                readDrawLists.forEachFast { list -> list.maskedItems.forEachFast { drawItem(it) } }
+
+                glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
+            }
+        }
+
+        if (transparentCount > 0)
+        {
+            GpuProfiler.measure({"transparent" plus "(" plus transparentCount plus ")"})
+            {
+                glEnable(GL_BLEND)
+                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
+                glDepthFunc(GL_LEQUAL)
+                glDepthMask(false)
+
+                readDrawLists.forEachFast { list ->
+                    list.transparentItems.sortByDescending { camPos.distanceSquared(it.transform.getTranslation(tmpPos)) }
+                    list.transparentItems.forEachFast { drawItem(it) }
+                }
+            }
+        }
+
+        glDepthMask(true)
+        setCullMode(CullMode.BACK)
+        readDrawLists.clear()
+        currentProgram = null
+    }
+
+    private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: SurfaceInternal)
+    {
         // Textures
 
         val texBank = engine.gfx.textureBank
@@ -114,6 +183,7 @@ class ModelRenderer : Renderer()
         program.setUniform("uAoIntensity", aoRenderer?.intensity ?: 0f)
 
         // Cascaded shadow mapping
+
         val shadowMapSurface = engine.gfx.getSurface(sunShadowMapSurfaceName)
         val shadowMapRenderer = shadowMapSurface?.getRenderer<CascadedShadowMapRenderer>()
         val shadowMapTex = shadowMapSurface?.getTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
@@ -133,7 +203,7 @@ class ModelRenderer : Renderer()
         program.setUniform("uSunRadius", sunRadius)
 
         // Local lights
-        
+
         program.setUniform("uLightCount", readLightCount)
         program.setUniformVec4Array("uLightData", readLightData)
 
@@ -142,9 +212,9 @@ class ModelRenderer : Renderer()
         val envSpecularMipCount = engine.asset.getOrNull<Texture>(iblSpecularTexture)?.let { texBank.getTextureArray(it) }?.mipLevels?.toFloat() ?: 1f
         program.setUniform("uEnvSpecularMipCount", envSpecularMipCount)
         program.setUniform("uEnvIntensity", iblIntensity)
-        program.setTexture("uEnvDiffuseTex",  engine.asset.getOrNull(iblDiffuseTexture))
+        program.setTexture("uEnvDiffuseTex", engine.asset.getOrNull(iblDiffuseTexture))
         program.setTexture("uEnvSpecularTex", engine.asset.getOrNull(iblSpecularTexture))
-        program.setTexture("uEnvBrdfLutTex",  engine.asset.getOrNull(iblBrdfTexture))
+        program.setTexture("uEnvBrdfLutTex", engine.asset.getOrNull(iblBrdfTexture))
 
         // Camera
 
@@ -153,82 +223,58 @@ class ModelRenderer : Renderer()
         program.setUniform("uViewProjection", surface.camera.viewProjectionMatrix)
         program.setUniform("uView", surface.camera.viewMatrix)
         program.setUniform("uCameraPos", camPos)
-
-        // Draw opaque meshes  
-
-        glEnable(GL_DEPTH_TEST)
-        glDisable(GL_BLEND)
-
-        val hasDepthPrepass = surface.config.hasDepthPrepass
-        glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
-        glDepthMask(!hasDepthPrepass) // Disable depth writes if depth prepass exists
-
-        readDrawLists.forEachFast { list -> list.opaqueItems.forEachFast { drawItem(it) } }
-
-        // Draw masked meshes
-
-        // Disable AO for masked and transparent meshes
-        program.setUniformSampler("uGtaoTex", texBank.getOrCreateFallbackTexture(WHITE))
-
-        if (readDrawLists.anyMatches { it.maskedItems.isNotEmpty() })
-        {
-            glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
-            glDepthFunc(GL_LEQUAL)
-            glDepthMask(true)
-
-            readDrawLists.forEachFast { list -> list.maskedItems.forEachFast { drawItem(it) } }
-
-            glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
-        }
-
-        // Draw transparent/blended meshes
-
-        if (readDrawLists.anyMatches { it.transparentItems.isNotEmpty() })
-        {
-            glEnable(GL_BLEND)
-            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
-            glDepthFunc(GL_LEQUAL)
-            glDepthMask(false)
-
-            readDrawLists.forEachFast { list ->
-                list.transparentItems.sortByDescending { camPos.distanceSquared(it.transform.getTranslation(tmpPos)) }
-                list.transparentItems.forEachFast { drawItem(it) } 
-            }
-        }
-
-        // Restore for later renderers
-        
-        glDepthMask(true)
-        setCullMode(CullMode.BACK)
-        readDrawLists.clear()
     }
 
     private fun drawItem(item: RenderItem)
     {
         val vao = item.model.vao ?: return
         val subMesh = item.subMesh
-        val mat = item.material
-        val alphaCutoff = if (mat?.blendMode == MASK) mat.alphaCutoff else 0.0f
+        val material = item.material
+        val alphaCutoff = if (material?.blendMode == MASK) material.alphaCutoff else 0.0f
+        val program = getProgramFor(item.model)
 
-        program.setUniform("uModel",           item.transform)
-        program.setUniform("uAlphaCutoff",     alphaCutoff)
-        program.setUniform("uBaseColor",       mat?.baseColor ?: WHITE, false)
-        program.setUniform("uEmissiveFactor",  mat?.emissiveFactor ?: WHITE, false)
+        if (program != currentProgram)
+        {
+            program.bind()
+            currentProgram = program
+        }
+
+        if (program === skinnedProgram)
+            skinnedProgram.setUniform("uBoneMatrices", item.boneMatrices ?: emptyArray())
+
+        program.setUniform("uModel", item.transform)
+        program.setUniform("uAlphaCutoff", alphaCutoff)
+        program.setUniform("uBaseColor", material?.baseColor ?: WHITE, false)
+        program.setUniform("uEmissiveFactor", material?.emissiveFactor ?: WHITE, false)
         program.setUniform(
             name = "uAoMetalRoughNormalFactor",
-            value1 = mat?.occlusionStrength ?: 1f,
-            value2 = mat?.roughnessFactor ?: 1f,
-            value3 = mat?.metallicFactor ?: 1f,
-            value4 = mat?.normalScale ?: 1f
+            value1 = material?.occlusionStrength ?: 1f,
+            value2 = material?.roughnessFactor ?: 1f,
+            value3 = material?.metallicFactor ?: 1f,
+            value4 = material?.normalScale ?: 1f
         )
-        program.setTexture("uAlbedoTex",       mat?.albedo)
-        program.setTexture("uNormalTex",       mat?.normal)
-        program.setTexture("uAoMetalRoughTex", mat?.aoMetalRough)
-        program.setTexture("uEmissiveTex",     mat?.emissive)
+        program.setTexture("uAlbedoTex", material?.albedo)
+        program.setTexture("uNormalTex", material?.normal)
+        program.setTexture("uAoMetalRoughTex", material?.aoMetalRough)
+        program.setTexture("uEmissiveTex", material?.emissive)
 
-        setCullMode(mat?.cullMode ?: CullMode.BACK)
+        setCullMode(material?.cullMode ?: CullMode.BACK)
 
         drawTriangleIndices(vao, subMesh.indexStart, subMesh.indexCount)
+    }
+
+    private fun getProgramFor(model: Model): ShaderProgram
+    {
+        val canSkin = model.hasBones && model.bones.isNotEmpty() && model.bones.size <= MAX_SKINNING_BONES
+
+        if (!canSkin)
+        {
+            if (model.hasBones && model.bones.size > MAX_SKINNING_BONES && warnedBoneLimitModels.add(model.name))
+                Logger.warn { "Model '${model.name}' has ${model.bones.size} bones, but the shader limit is $MAX_SKINNING_BONES. Rendering it without skinning." }
+            return staticProgram
+        }
+
+        return skinnedProgram
     }
 
     private fun ShaderProgram.setTexture(name: String, tex: Texture?)
@@ -253,7 +299,8 @@ class ModelRenderer : Renderer()
 
     override fun destroy()
     {
-        program.destroy()
+        staticProgram.destroy()
+        skinnedProgram.destroy()
     }
 
     fun draw(drawList: DrawList)
@@ -285,9 +332,10 @@ class ModelRenderer : Renderer()
             .put(isSpotLight)
             .put(0f).put(0f) // Padding to 16 floats for alignment
     }
- 
+
     companion object
     {
+        const val MAX_SKINNING_BONES       = 128
         private const val MAX_POINT_LIGHTS = 32
 
         val fallbackShadowVPs    = Array(CascadedShadowMapRenderer.CASCADE_COUNT) { Matrix4f() }

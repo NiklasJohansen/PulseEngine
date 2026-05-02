@@ -263,16 +263,25 @@ open class GraphicsImpl : GraphicsInternal
 
         VertexAttributeLayout().apply() 
         {
-            withAttribute("position", 3, GL_FLOAT)
+            withAttribute("position", 3, GL_FLOAT, location = 0)
+            
             if (model.hasNormals) 
-                withAttribute("normal", 3, GL_FLOAT)
+                withAttribute("normal", 3, GL_FLOAT, location = 1)
+            
             if (model.hasTangents) 
             {
-                withAttribute("tangent", 3, GL_FLOAT)
-                withAttribute("bitangent", 3, GL_FLOAT)
+                withAttribute("tangent", 3, GL_FLOAT, location = 2)
+                withAttribute("bitangent", 3, GL_FLOAT, location = 3)
             }
+            
             if (model.hasTexCoords) 
-                withAttribute("texCoord", 2, GL_FLOAT)
+                withAttribute("texCoord", 2, GL_FLOAT, location = 4)
+            
+            if (model.hasBones)
+            {
+                withAttribute("boneIndices", 4, GL_FLOAT, location = 5)
+                withAttribute("boneWeights", 4, GL_FLOAT, location = 6)
+            }
         }.bind()
 
         val ebo = model.ebo ?: StaticBufferObject.createElementArrayBuffer(model.indices)

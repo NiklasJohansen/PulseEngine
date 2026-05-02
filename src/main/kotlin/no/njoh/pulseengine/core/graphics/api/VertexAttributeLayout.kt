@@ -12,11 +12,11 @@ class VertexAttributeLayout
     val attributes = mutableListOf<Attribute>()
     var strideInBytes = 0L
 
-    fun withAttribute(name: String, count: Int, type: Int, divisor: Int = 0, normalized: Boolean = false): VertexAttributeLayout
+    fun withAttribute(name: String, count: Int, type: Int, divisor: Int = 0, normalized: Boolean = false, location: Int? = null): VertexAttributeLayout
     {
         val size = count * sizeOf(type)
         strideInBytes += size
-        attributes.add(Attribute(name, count, type, size, divisor, normalized))
+        attributes.add(Attribute(name, count, type, size, divisor, normalized, location))
         return this
     }
 
@@ -25,7 +25,7 @@ class VertexAttributeLayout
         var index = 0
         var byteOffset = strideInBytes * instanceOffset
         for (attr in attributes) {
-            val location = program?.attributeLocationOf(attr.name) ?: index
+            val location = attr.location ?: program?.attributeLocationOf(attr.name) ?: index
             glEnableVertexAttribArray(location)
             when (attr.type) {
                 GL_INT,
@@ -44,7 +44,8 @@ class VertexAttributeLayout
         val type: Int,
         val bytes: Int,
         val divisor: Int,
-        val normalized: Boolean
+        val normalized: Boolean,
+        val location: Int?
     )
 }
 
