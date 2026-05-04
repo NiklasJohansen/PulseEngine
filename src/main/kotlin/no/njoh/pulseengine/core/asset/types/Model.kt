@@ -13,6 +13,7 @@ import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.buildSkinningBounds
 import no.njoh.pulseengine.core.shared.utils.collectAnimatedGlobalTransforms
+import no.njoh.pulseengine.core.shared.utils.collectBlendedAnimatedGlobalTransforms
 import no.njoh.pulseengine.core.shared.utils.getSkinnedSubMeshBounds
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.transformAabb
@@ -64,9 +65,9 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     private val nodesByName                    = HashMap<String, ModelNode>()
     private var nodeHierarchy                  = null as ModelNode?
     private val bindPoseBoneMatricesByNodeName = HashMap<String, Array<Matrix4f>>()
-    private val skeletonPoseCache       = ArrayList<AnimatedSkeletonPose>(4)
-    private var activeSkeletonPoseCacheCount   = 0
-    private var poseCacheFrameNumber           = Long.MIN_VALUE
+    private val skeletonPoseCaches             = Array(POSE_CACHE_FRAME_SLOT_COUNT) { ArrayList<AnimatedSkeletonPose>(4) }
+    private val activeSkeletonPoseCacheCounts  = IntArray(POSE_CACHE_FRAME_SLOT_COUNT)
+    private val poseCacheFrameNumbers          = LongArray(POSE_CACHE_FRAME_SLOT_COUNT) { Long.MIN_VALUE }
 
     override fun load()
     {
@@ -611,7 +612,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         bindPoseBoneMatricesByNodeName[cacheKey]?.let { return it }
 
         val meshNodeGlobalTransform = globalNodeTransforms[nodeName]
-        val inverseMeshNodeTransform = if (meshNodeGlobalTransform != null) Matrix4f(meshNodeGlobalTransform).invert() else Matrix4f()
+        val inverseMeshNodeTransform = meshNodeGlobalTransform?.let { Matrix4f(it).invert() } ?: Matrix4f()
 
         val palette = Array(bones.size)
         {
@@ -623,36 +624,93 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 Logger.warn { "Bone node '${bone.nodeName}' was not found in hierarchy for $filePath" }
                 Matrix4f()
             }
-            else
-            {
-                Matrix4f(inverseMeshNodeTransform)
-                    .mul(boneNodeTransform)
-                    .mul(bone.offsetMatrix)
-            }
+            else Matrix4f(inverseMeshNodeTransform).mul(boneNodeTransform).mul(bone.offsetMatrix)
         }
 
         bindPoseBoneMatricesByNodeName[cacheKey] = palette
         return palette
     }
 
-    /** 
-     * Returns the frame-local animated mesh pose for the given node and animation state. 
+    /**
+     * Returns the frame-local animated mesh pose for the given node from a full-body crossfade between two clips.
      */
-    fun getAnimatedPose(nodeName: String, animation: Animation?, animationTimeSeconds: Float, frameNumber: Long): AnimatedMeshPose?
-    {
-        if (bones.isEmpty() || animation == null || animation.modelName != name)
+    fun getAnimatedPose(
+        nodeName: String,
+        animation: Animation?,
+        animationTimeSeconds: Float,
+        frameNumber: Long,
+        blendAnimation: Animation? = null,
+        blendAnimationTimeSeconds: Float = 0f,
+        blendFactor: Float = 0f,
+    ): AnimatedMeshPose? {
+        if (bones.isEmpty())
             return null
 
-        val rootNode = nodeHierarchy ?: return null
+        val primaryAnimation = animation?.takeIf { it.modelName == name }
+        val secondaryAnimation = blendAnimation?.takeIf { it.modelName == name && it !== primaryAnimation }
+        val clampedBlendFactor = blendFactor.coerceIn(0f, 1f)
 
-        if (poseCacheFrameNumber != frameNumber)
+        val sampledPrimaryAnimation: Animation
+        var sampledPrimaryTimeSeconds = 0f
+        val sampledSecondaryAnimation: Animation?
+        var sampledSecondaryTimeSeconds = 0f
+        var sampledBlendFactor = 0f
+
+        when
         {
-            poseCacheFrameNumber = frameNumber
-            activeSkeletonPoseCacheCount = 0
+            primaryAnimation != null && (secondaryAnimation == null || clampedBlendFactor <= 0f) ->
+            {
+                sampledPrimaryAnimation = primaryAnimation
+                sampledPrimaryTimeSeconds = animationTimeSeconds
+                sampledSecondaryAnimation = null
+                sampledSecondaryTimeSeconds = 0f
+                sampledBlendFactor = 0f
+            }
+            primaryAnimation == null && secondaryAnimation != null && clampedBlendFactor > 0f ->
+            {
+                sampledPrimaryAnimation = secondaryAnimation
+                sampledPrimaryTimeSeconds = blendAnimationTimeSeconds
+                sampledSecondaryAnimation = null
+                sampledSecondaryTimeSeconds = 0f
+                sampledBlendFactor = 0f
+            }
+            primaryAnimation != null && secondaryAnimation != null && clampedBlendFactor >= 1f ->
+            {
+                sampledPrimaryAnimation = secondaryAnimation
+                sampledPrimaryTimeSeconds = blendAnimationTimeSeconds
+                sampledSecondaryAnimation = null
+                sampledSecondaryTimeSeconds = 0f
+                sampledBlendFactor = 0f
+            }
+            primaryAnimation != null && secondaryAnimation != null ->
+            {
+                sampledPrimaryAnimation = primaryAnimation
+                sampledPrimaryTimeSeconds = animationTimeSeconds
+                sampledSecondaryAnimation = secondaryAnimation
+                sampledSecondaryTimeSeconds = blendAnimationTimeSeconds
+                sampledBlendFactor = clampedBlendFactor
+            }
+            else -> return null
         }
 
-        val timeKey = animationTimeSeconds.toBits()
-        val skeletonPose = getAnimatedSkeletonPose(animation, animationTimeSeconds, timeKey, rootNode)
+        val rootNode = nodeHierarchy ?: return null
+        val poseCacheSlot = getPoseCacheSlot(frameNumber)
+
+        if (poseCacheFrameNumbers[poseCacheSlot] != frameNumber)
+        {
+            poseCacheFrameNumbers[poseCacheSlot] = frameNumber
+            activeSkeletonPoseCacheCounts[poseCacheSlot] = 0
+        }
+
+        val skeletonPose = getAnimatedSkeletonPose(
+            animation = sampledPrimaryAnimation,
+            animationTimeSeconds = sampledPrimaryTimeSeconds,
+            blendAnimation = sampledSecondaryAnimation,
+            blendAnimationTimeSeconds = sampledSecondaryTimeSeconds,
+            blendFactor = sampledBlendFactor,
+            poseCacheSlot = poseCacheSlot,
+            rootNode = rootNode
+        )
 
         return skeletonPose.getAnimatedMeshPose(nodeName)
     }
@@ -699,32 +757,75 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         return aabb
     }
     
-    private fun getAnimatedSkeletonPose(animation: Animation, animationTimeSeconds: Float, timeKey: Int, rootNode: ModelNode): AnimatedSkeletonPose
-    {
-        for (i in 0 until activeSkeletonPoseCacheCount)
+    private fun getAnimatedSkeletonPose(
+        animation: Animation,
+        animationTimeSeconds: Float,
+        blendAnimation: Animation?,
+        blendAnimationTimeSeconds: Float,
+        blendFactor: Float,
+        poseCacheSlot: Int,
+        rootNode: ModelNode
+    ): AnimatedSkeletonPose {
+
+        val animationTimeKey = animationTimeSeconds.toBits()
+        val blendAnimationIndex = blendAnimation?.index ?: -1
+        val blendAnimationTimeKey = if (blendAnimation != null) blendAnimationTimeSeconds.toBits() else 0
+        val blendFactorKey = if (blendAnimation != null) blendFactor.toBits() else 0
+        val skeletonPoseCache = skeletonPoseCaches[poseCacheSlot]
+        val activePoseCount = activeSkeletonPoseCacheCounts[poseCacheSlot]
+
+        for (i in 0 until activePoseCount)
         {
             val pose = skeletonPoseCache[i]
-            if (pose.matches(animation.index, timeKey))
+            if (pose.matches(animation.index, animationTimeKey, blendAnimationIndex, blendAnimationTimeKey, blendFactorKey))
                 return pose
         }
 
-        val poseIndex = activeSkeletonPoseCacheCount++
+        val poseIndex = activePoseCount
+        activeSkeletonPoseCacheCounts[poseCacheSlot] = poseIndex + 1
+
         val pose = skeletonPoseCache.getOrElse(poseIndex) { AnimatedSkeletonPose().also { skeletonPoseCache += it } }
         pose.animationIndex = animation.index
-        pose.animationTimeKey = timeKey
+        pose.animationTimeKey = animationTimeKey
+        pose.blendAnimationIndex = blendAnimationIndex
+        pose.blendAnimationTimeKey = blendAnimationTimeKey
+        pose.blendFactorKey = blendFactorKey
         pose.activeMeshPoseCacheCount = 0
 
-        collectAnimatedGlobalTransforms(
-            node = rootNode,
-            parentTransform = IDENTITY_MATRIX,
-            animation = animation,
-            animationTimeTicks = animation.wrapTimeSecondsToTicks(animationTimeSeconds.toDouble()),
-            localTransformScratch = pose.localTransformScratch,
-            translationScratch = pose.translationScratch,
-            rotationScratch = pose.rotationScratch,
-            scaleScratch = pose.scaleScratch,
-            outTransforms = pose.animatedGlobalTransforms
-        )
+        if (blendAnimation != null)
+        {
+            collectBlendedAnimatedGlobalTransforms(
+                node = rootNode,
+                parentTransform = IDENTITY_MATRIX,
+                animation = animation,
+                animationTimeTicks = animation.wrapTimeSecondsToTicks(animationTimeSeconds.toDouble()),
+                blendAnimation = blendAnimation,
+                blendAnimationTimeTicks = blendAnimation.wrapTimeSecondsToTicks(blendAnimationTimeSeconds.toDouble()),
+                blendFactor = blendFactor,
+                localTransformScratch = pose.localTransformScratch,
+                translationScratch = pose.translationScratch,
+                rotationScratch = pose.rotationScratch,
+                scaleScratch = pose.scaleScratch,
+                blendTranslationScratch = pose.blendTranslationScratch,
+                blendRotationScratch = pose.blendRotationScratch,
+                blendScaleScratch = pose.blendScaleScratch,
+                outTransforms = pose.animatedGlobalTransforms
+            )
+        }
+        else
+        {
+            collectAnimatedGlobalTransforms(
+                node = rootNode,
+                parentTransform = IDENTITY_MATRIX,
+                animation = animation,
+                animationTimeTicks = animation.wrapTimeSecondsToTicks(animationTimeSeconds.toDouble()),
+                localTransformScratch = pose.localTransformScratch,
+                translationScratch = pose.translationScratch,
+                rotationScratch = pose.rotationScratch,
+                scaleScratch = pose.scaleScratch,
+                outTransforms = pose.animatedGlobalTransforms
+            )
+        }
 
         return pose
     }
@@ -739,13 +840,12 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             collectGlobalNodeTransforms(child, globalTransform, outGlobalNodeTransforms)
     }
     
-    private fun AIMatrix4x4.toMatrix4f(): Matrix4f =
-        Matrix4f(
-            a1(), b1(), c1(), d1(),
-            a2(), b2(), c2(), d2(),
-            a3(), b3(), c3(), d3(),
-            a4(), b4(), c4(), d4()
-        )
+    private fun AIMatrix4x4.toMatrix4f() =Matrix4f(
+        a1(), b1(), c1(), d1(),
+        a2(), b2(), c2(), d2(),
+        a3(), b3(), c3(), d3(),
+        a4(), b4(), c4(), d4()
+    )
 
     private fun AIBone.readOptionalNodeName(): String? =
         runCatching { mNode() }
@@ -1052,13 +1152,29 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val translationScratch = Vector3f()
         val rotationScratch = Quaternionf()
         val scaleScratch = Vector3f()
+        val blendTranslationScratch = Vector3f()
+        val blendRotationScratch = Quaternionf()
+        val blendScaleScratch = Vector3f()
         val meshPoseCache = ArrayList<AnimatedMeshPose>(4)
         var activeMeshPoseCacheCount = 0
         var animationIndex = -1
         var animationTimeKey = 0
+        var blendAnimationIndex = -1
+        var blendAnimationTimeKey = 0
+        var blendFactorKey = 0
 
-        fun matches(animationIndex: Int, animationTimeKey: Int): Boolean =
-            this.animationIndex == animationIndex && this.animationTimeKey == animationTimeKey
+        fun matches(
+            animationIndex: Int,
+            animationTimeKey: Int,
+            blendAnimationIndex: Int,
+            blendAnimationTimeKey: Int,
+            blendFactorKey: Int
+        ): Boolean =
+            this.animationIndex == animationIndex &&
+                this.animationTimeKey == animationTimeKey &&
+                this.blendAnimationIndex == blendAnimationIndex &&
+                this.blendAnimationTimeKey == blendAnimationTimeKey &&
+                this.blendFactorKey == blendFactorKey
 
         /** 
          * Returns a node-specific mesh pose derived from this sampled skeleton pose. 
@@ -1125,5 +1241,8 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     {
         const val MAX_BONE_INFLUENCES = 4
         private val IDENTITY_MATRIX = Matrix4f()
+        private const val POSE_CACHE_FRAME_SLOT_COUNT = 2
     }
+
+    private fun getPoseCacheSlot(frameNumber: Long) = (frameNumber % POSE_CACHE_FRAME_SLOT_COUNT).toInt()
 }

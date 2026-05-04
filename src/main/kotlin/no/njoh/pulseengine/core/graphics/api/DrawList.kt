@@ -12,20 +12,44 @@ class DrawList(
     val maskedItems: ArrayList<RenderItem> = ArrayList(256),
     val transparentItems: ArrayList<RenderItem> = ArrayList(256)
 ) {
+    fun submit(engine: PulseEngine, model: Model, transform: Matrix4f, material: Material? = null)
+    {
+        for (instance in model.subMeshInstances)
+        {
+            val subMesh  = instance.subMesh
+            val material = material ?: model.materials.getOrNull(subMesh.materialIndex)?.let { engine.asset.getOrNull(it.name) }
+            val boneMatrices = model.getBindPoseBoneMatrices(instance.nodeName)
+            val transform = Matrix4f(transform).mul(instance.transform)
+
+            submit(model, subMesh, material, transform, cullable = true, instance.cullingBounds, boneMatrices)
+        }
+    }
+
     fun submit(
         engine: PulseEngine,
         model: Model,
         transform: Matrix4f,
         material: Material? = null,
-        animation: Animation? = null,
-        animationTimeSeconds: Float = 0f
+        animation: Animation?,
+        animationTimeSeconds: Float = 0f,
+        blendAnimation: Animation? = null,
+        blendAnimationTimeSeconds: Float = 0f,
+        blendFactor: Float = 0f
     ) {
         for (instance in model.subMeshInstances)
         {
             val subMesh  = instance.subMesh
             val material = material ?: model.materials.getOrNull(subMesh.materialIndex)?.let { engine.asset.getOrNull(it.name) }
 
-            val animatedPose  = model.getAnimatedPose(instance.nodeName, animation, animationTimeSeconds, engine.data.frameNumber)
+            val animatedPose = model.getAnimatedPose(
+                nodeName = instance.nodeName,
+                animation = animation,
+                animationTimeSeconds = animationTimeSeconds,
+                blendAnimation = blendAnimation,
+                blendAnimationTimeSeconds = blendAnimationTimeSeconds,
+                blendFactor = blendFactor,
+                frameNumber = engine.data.frameNumber
+            )
             val boneMatrices  = animatedPose?.boneMatrices ?: model.getBindPoseBoneMatrices(instance.nodeName)
             val cullingBounds = animatedPose?.getBounds(subMesh) ?: instance.cullingBounds
 

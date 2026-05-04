@@ -49,6 +49,67 @@ internal fun collectAnimatedGlobalTransforms(
     }
 }
 
+/**
+ * Recursively samples two animations, blends them in local space, and writes global node transforms into [outTransforms].
+ */
+internal fun collectBlendedAnimatedGlobalTransforms(
+    node: Model.ModelNode,
+    parentTransform: Matrix4f,
+    animation: Animation,
+    animationTimeTicks: Double,
+    blendAnimation: Animation,
+    blendAnimationTimeTicks: Double,
+    blendFactor: Float,
+    localTransformScratch: Matrix4f,
+    translationScratch: Vector3f,
+    rotationScratch: Quaternionf,
+    scaleScratch: Vector3f,
+    blendTranslationScratch: Vector3f,
+    blendRotationScratch: Quaternionf,
+    blendScaleScratch: Vector3f,
+    outTransforms: MutableMap<String, Matrix4f>
+) {
+    getBlendedAnimatedLocalTransform(
+        node = node,
+        animation = animation,
+        animationTimeTicks = animationTimeTicks,
+        blendAnimation = blendAnimation,
+        blendAnimationTimeTicks = blendAnimationTimeTicks,
+        blendFactor = blendFactor,
+        translation = translationScratch,
+        rotation = rotationScratch,
+        scale = scaleScratch,
+        blendTranslation = blendTranslationScratch,
+        blendRotation = blendRotationScratch,
+        blendScale = blendScaleScratch,
+        outTransform = localTransformScratch
+    )
+
+    val globalTransform = outTransforms[node.name] ?: Matrix4f().also { outTransforms[node.name] = it }
+    globalTransform.set(parentTransform).mul(localTransformScratch)
+
+    for (child in node.children)
+    {
+        collectBlendedAnimatedGlobalTransforms(
+            node = child,
+            parentTransform = globalTransform,
+            animation = animation,
+            animationTimeTicks = animationTimeTicks,
+            blendAnimation = blendAnimation,
+            blendAnimationTimeTicks = blendAnimationTimeTicks,
+            blendFactor = blendFactor,
+            localTransformScratch = localTransformScratch,
+            translationScratch = translationScratch,
+            rotationScratch = rotationScratch,
+            scaleScratch = scaleScratch,
+            blendTranslationScratch = blendTranslationScratch,
+            blendRotationScratch = blendRotationScratch,
+            blendScaleScratch = blendScaleScratch,
+            outTransforms = outTransforms
+        )
+    }
+}
+
 /** 
  * Resolves a node's animated local transform, falling back to its bind-pose transform. 
  * */
@@ -61,13 +122,68 @@ internal fun getAnimatedLocalTransform(
     scale: Vector3f,
     outTransform: Matrix4f
 ): Matrix4f {
-    val channel = animation.channelsByNodeName[node.name] ?: return outTransform.set(node.localTransform)
+    val hasChannel = sampleAnimatedLocalTransformComponents(node, animation, animationTimeTicks, translation, rotation, scale)
+    if (!hasChannel)
+        return outTransform.set(node.localTransform)
+
+    return outTransform.translationRotateScale(translation, rotation, scale)
+}
+
+/**
+ * Resolves a node's blended animated local transform, falling back to bind-pose components per clip when a channel is missing.
+ */
+internal fun getBlendedAnimatedLocalTransform(
+    node: Model.ModelNode,
+    animation: Animation,
+    animationTimeTicks: Double,
+    blendAnimation: Animation,
+    blendAnimationTimeTicks: Double,
+    blendFactor: Float,
+    translation: Vector3f,
+    rotation: Quaternionf,
+    scale: Vector3f,
+    blendTranslation: Vector3f,
+    blendRotation: Quaternionf,
+    blendScale: Vector3f,
+    outTransform: Matrix4f
+): Matrix4f {
+    val hasPrimaryChannel = sampleAnimatedLocalTransformComponents(node, animation, animationTimeTicks, translation, rotation, scale)
+    val hasBlendChannel = sampleAnimatedLocalTransformComponents(node, blendAnimation, blendAnimationTimeTicks, blendTranslation, blendRotation, blendScale)
+
+    if (!hasPrimaryChannel && !hasBlendChannel)
+        return outTransform.set(node.localTransform)
+
+    translation.lerp(blendTranslation, blendFactor)
+    rotation.slerp(blendRotation, blendFactor)
+    scale.lerp(blendScale, blendFactor)
+
+    return outTransform.translationRotateScale(translation, rotation, scale)
+}
+
+/**
+ * Samples the animated local TRS components for a node, falling back to the bind pose when no animation channel exists.
+ */
+internal fun sampleAnimatedLocalTransformComponents(
+    node: Model.ModelNode,
+    animation: Animation,
+    animationTimeTicks: Double,
+    translation: Vector3f,
+    rotation: Quaternionf,
+    scale: Vector3f
+): Boolean {
+    val channel = animation.channelsByNodeName[node.name]
+    if (channel == null)
+    {
+        translation.set(node.baseTranslation)
+        rotation.set(node.baseRotation)
+        scale.set(node.baseScale)
+        return false
+    }
 
     sampleVectorKeys(channel.positionKeys, animationTimeTicks, animation.durationTicks, node.baseTranslation, translation)
     sampleQuaternionKeys(channel.rotationKeys, animationTimeTicks, animation.durationTicks, node.baseRotation, rotation)
     sampleVectorKeys(channel.scalingKeys, animationTimeTicks, animation.durationTicks, node.baseScale, scale)
-
-    return outTransform.translationRotateScale(translation, rotation, scale)
+    return true
 }
 
 /** 
