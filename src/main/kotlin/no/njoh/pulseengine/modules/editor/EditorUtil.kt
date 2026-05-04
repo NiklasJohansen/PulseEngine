@@ -149,9 +149,39 @@ object EditorUtil
         }
 
     /**
-     * Returns the [Prop] annotations from the property if available, else null.
+     * Returns the [Prop] annotations from the property if available.
+     * Returns the annotation from another property if it has a template in its group name that matches this 
+     * property name. Example: @Prop("Position [*Pos]") var xPos = 0f; var yPos = 0f will return the Prop annotation 
+     * from xPos for both property xPos and yPos.
      */
-    fun Any.getPropInfo(prop: KProperty<*>): Prop? = this::class.findPropertyAnnotation<Prop>(prop.name)
+    fun Any.getPropInfo(prop: KProperty<*>): Prop?
+    {
+        this::class.findPropertyAnnotation<Prop>(prop.name)?.let { return it }
+
+        for (otherProp in this::class.memberProperties)
+        {
+            if (otherProp === prop) continue
+            val annotation = this::class.findPropertyAnnotation<Prop>(otherProp.name) ?: continue
+            if ('[' !in annotation.group) continue
+            var matchesTemplate = true
+            val template = annotation.group.substringAfter("[").substringBefore("]")
+            for ((i,c) in template.withIndex())
+            {
+                if (i >= prop.name.length || (prop.name[i] != c && c != '*'))
+                {
+                    matchesTemplate = false
+                    break
+                }
+            }
+            if (matchesTemplate) return annotation
+        }
+        return null // No Prop annotation found
+    }
+
+    /**
+     * Returns the group name of the property minus the template if available.
+     */
+    fun Any.getPropGroup(prop: KProperty<*>): String? = this.getPropInfo(prop)?.group?.substringBefore("[")?.trim()
 
     /**
      * Returns the name of the class.

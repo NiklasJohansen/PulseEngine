@@ -49,6 +49,7 @@ import no.njoh.pulseengine.modules.scene.systems.EntityRendererImpl
 import no.njoh.pulseengine.modules.scene.systems.EntityUpdater
 import no.njoh.pulseengine.modules.editor.EditorUtil.duplicateAndInsertEntities
 import no.njoh.pulseengine.modules.editor.EditorUtil.getName
+import no.njoh.pulseengine.modules.editor.EditorUtil.getPropGroup
 import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
@@ -966,7 +967,7 @@ class SceneEditor(
         val entityName = entity::class.getName()
         val propertyGroups = entity::class.memberProperties
             .filter { entity.getPropInfo(it)?.hidden != true }
-            .groupBy { entity.getPropInfo(it)?.group?.takeIf { it.isNotEmpty() } ?: entityName }
+            .groupBy { entity.getPropGroup(it)?.takeIf { it.isNotEmpty() } ?: entityName }
             .toList()
             .sortedBy { it.first } // Alphabetic order
             .sortedBy { it.first != entityName } // Entity type first
