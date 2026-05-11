@@ -15,16 +15,16 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 class SunVolumetricsSystem : SceneSystem()
 {
     /** Multiplies the brightness of the scattered sunlight contribution. */
-    @Prop(i=1, min=0f) var intensity = 1f
+    @Prop(i=1, min=0f) var intensity = 0.4f
 
     /** Controls how much participating media is present in the air. Higher values create thicker shafts and faster extinction. */
-    @Prop(i=2, min=0f) var density = 0.02f
+    @Prop(i=2, min=0f) var density = 0.2f
 
     /** Biases scattering toward the sun direction. Higher values make the rays tighter and more forward-focused. */
-    @Prop(i=3, min=-0.98f, max=0.98f) var anisotropy = 0.7f
+    @Prop(i=3, min=-0.98f, max=0.98f) var anisotropy = 0.6f
 
     /** Limits how far from the camera the medium is ray-marched, in world units. */
-    @Prop(i=4, min=0f) var maxDistance = 120f
+    @Prop(i=4, min=0f) var maxDistance = 64f
 
     /** Number of ray-march steps taken per pixel. Higher values reduce banding at a higher GPU cost. */
     @Prop(i=5, min=1f, max=96f) var stepCount = 32
@@ -33,7 +33,7 @@ class SunVolumetricsSystem : SceneSystem()
     @Prop(i=6, min=1f, max=4f) var downsample = 2
 
     /** Radius of the bilateral blur used to smooth the low-resolution volumetric buffer. */
-    @Prop(i=7, min=0f) var blurRadius = 1.75f
+    @Prop(i=7, min=0f) var blurRadius = 1.3f
 
     /** Depth difference tolerated by the low-resolution blur before it preserves an edge instead of blending across it. */
     @Prop(i=8, min=0f) var depthTolerance = 6f

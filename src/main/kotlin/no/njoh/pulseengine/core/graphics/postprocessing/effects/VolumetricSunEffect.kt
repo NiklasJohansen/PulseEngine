@@ -61,7 +61,6 @@ class VolumetricSunEffect(
         }
 
     private val cameraPos = Vector3f()
-    private var frameIndex =  0
     private val finalTextures = mutableListOf<RenderTexture>()
 
     override fun loadShaderPrograms(engine: PulseEngineInternal) = listOf(
@@ -118,7 +117,6 @@ class VolumetricSunEffect(
     private fun renderScattering(depthTex: RenderTexture, shadowTex: RenderTexture, shadowMapRenderer: CascadedShadowMapRenderer): RenderTexture = measure("scattering") 
     {
         val splitDist = shadowMapRenderer.getCascadeSplitDistances()
-        val sizes = shadowMapRenderer.getCascadeSizeMeters()
         val program = programs[0]
         val volumeTex = fbo.getTexture(1)
 
@@ -141,11 +139,9 @@ class VolumetricSunEffect(
         program.setUniform("uJitterStrength", jitterStrength)
         program.setUniform("uHeightFogStart", heightFogStart)
         program.setUniform("uHeightFogFalloff", heightFogFalloff)
-        program.setUniform("uFrameIndex", frameIndex++)
         program.setUniform("uShadowMapTexSize", shadowMapRenderer.resolution.toFloat())
         program.setUniform("uShadowViewProjections", shadowMapRenderer.getViewProjectionMatrices())
         program.setUniform("uShadowCascadeSplitDistances", splitDist[0], splitDist[1], splitDist[2], splitDist[3])
-        program.setUniform("uShadowCascadeSizeMeters", sizes[0], sizes[1], sizes[2], sizes[3])
 
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)

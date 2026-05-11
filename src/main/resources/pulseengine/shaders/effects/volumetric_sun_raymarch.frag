@@ -14,7 +14,6 @@ uniform mat4 uInvViewProjection;
 uniform mat4 uView;
 uniform mat4 uShadowViewProjections[CASCADE_COUNT];
 uniform vec4 uShadowCascadeSplitDistances;
-uniform vec4 uShadowCascadeSizeMeters;
 
 uniform vec3 uCameraPos;
 uniform vec3 uSunDirection;
@@ -31,7 +30,6 @@ uniform float uHeightFogFalloff;
 uniform float uShadowMapTexSize;
 
 uniform int uStepCount;
-uniform int uFrameIndex;
 
 const float PI = 3.14159265359;
 const vec2 CASCADE_OFFSETS[CASCADE_COUNT] = vec2[](
@@ -52,11 +50,9 @@ const vec2 SHADOW_TAPS[8] = vec2[](
     vec2( 0.7071,  0.7071)
 );
 
-float hash12(vec2 p)
+float interleavedGradientNoise(vec2 uv)
 {
-    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
+    return fract(52.9829189 * fract( dot( uv, vec2(.06711056, .00583715) ) ) );
 }
 
 vec3 reconstructWorldPosition(vec2 uvCoord, float depth01)
@@ -169,7 +165,7 @@ void main()
 
     int stepCount = clamp(uStepCount, 1, MAX_STEPS);
     float stepLength = rayLength / float(stepCount);
-    float jitter = (hash12(gl_FragCoord.xy + float(uFrameIndex)) - 0.5) * uJitterStrength;
+    float jitter = (interleavedGradientNoise(gl_FragCoord.xy) - 0.5) * uJitterStrength;
     float phase = phaseHenyeyGreenstein(clamp(dot(-rayDir, uSunDirection), -1.0, 1.0), clamp(uAnisotropy, -0.98, 0.98));
 
     float transmittance = 1.0;

@@ -25,7 +25,7 @@ class AminatedWorldModel : SceneEntity(), Updatable, WorldRenderable, WorldShado
 
     @Prop("Position [*P]", i=1) var xPos=0f;   var yPos=0f;   var zPos=0f
     @Prop("Rotation [*R]", i=2) var xRot=0f;   var yRot=0f;   var zRot=0f
-    @Prop("Scale    [*S]", i=3) var xScale=0f; var yScale=0f; var zScale=0f
+    @Prop("Scale    [*S]", i=3) var xScale=1f; var yScale=1f; var zScale=1f
 
     @AnimationRef
     @Prop("Animation", i=4) var animation = ""

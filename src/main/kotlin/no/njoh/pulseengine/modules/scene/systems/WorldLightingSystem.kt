@@ -25,7 +25,7 @@ class WorldLightingSystem : SceneSystem()
     @Prop(i=1)                   var sunColor                    = Color(1f, 1f, 1f)
     @Prop(i=2, min=0f, max=360f) var sunDirection                = 0f
     @Prop(i=3, min=0f, max=90f)  var sunHeight                   = 70f
-    @Prop(i=4, min=0f)           var sunRadius                   = 0.2f
+    @Prop(i=4, min=0f)           var sunRadius                   = 1.5f
     @Prop(i=5, min=1f)           var sunShadowMapResolution      = 4096
     @Prop(i=6, min=0f, max=1f)   var sunShadowCascadeSplitLambda = 0.5f
     @Prop(i=7, min=0f)           var sunShadowDistance           = 50f
