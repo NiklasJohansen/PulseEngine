@@ -246,6 +246,7 @@ class ModelRenderer : Renderer()
         program.setUniform("uAlphaCutoff", alphaCutoff)
         program.setUniform("uBaseColor", material?.baseColor ?: WHITE, false)
         program.setUniform("uEmissiveFactor", material?.emissiveFactor ?: WHITE, false)
+        program.setUniform("uTiling", material?.xTiling ?: 1f, material?.yTiling ?: 1f)
         program.setUniform(
             name = "uAoMetalRoughNormalFactor",
             value1 = material?.occlusionStrength ?: 1f,

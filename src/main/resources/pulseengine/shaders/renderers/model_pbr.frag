@@ -28,6 +28,7 @@ uniform vec4  uEnvSpecularTex;
 uniform vec4  uEnvBrdfLutTex;
 uniform vec4  uAoMetalRoughNormalFactor;
 uniform vec4  uEmissiveFactor;
+uniform vec2  uTiling;
 uniform float uAlphaCutoff; // 0 for opaque/blend
 uniform float uAoIntensity;
 
@@ -60,11 +61,12 @@ const vec2 CASCADE_OFFSETS[CASCADE_COUNT] = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0
 vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor)
 {
     int samplerIndex = int(texDesc.x);
-    if (samplerIndex < 0) return vec4(defaultColor, 1.0);
+    if (samplerIndex < 0) 
+        return vec4(defaultColor, 1.0);
 
     float layer = texDesc.y;
     vec2 uvMax = texDesc.zw;
-    return texture(textureArrays[samplerIndex], vec3(vTexCoord * uvMax, layer));
+    return texture(textureArrays[samplerIndex], vec3(fract(vTexCoord * uTiling) * uvMax, layer));
 }
 
 vec3 sampleWorldSpaceNormal(out float normalLenTS)
