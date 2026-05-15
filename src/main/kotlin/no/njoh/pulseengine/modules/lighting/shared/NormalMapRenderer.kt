@@ -15,8 +15,11 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import org.lwjgl.opengl.GL20.*
 
-class NormalMapRenderer(private val config: SurfaceConfigInternal) : Renderer()
-{
+class NormalMapRenderer(
+    private val config: SurfaceConfigInternal,
+    override val order: Int = 50
+) : Renderer() {
+
     private lateinit var vao: VertexArrayObject
     private lateinit var program: ShaderProgram
     private lateinit var vertexBuffer: StaticBufferObject

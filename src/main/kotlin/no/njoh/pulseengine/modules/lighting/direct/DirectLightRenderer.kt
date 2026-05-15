@@ -17,8 +17,11 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import org.lwjgl.opengl.GL31.*
 import kotlin.math.max
 
-class DirectLightRenderer(val config: SurfaceConfig) : Renderer()
-{
+class DirectLightRenderer(
+    val config: SurfaceConfig,
+    override val order: Int = 50
+) : Renderer() {
+
     var ambientColor = Color(0.1f, 0.1f, 0.1f)
     var normalMapTextureHandle: TextureHandle? = null
     var occluderMapTextureHandle: TextureHandle? = null

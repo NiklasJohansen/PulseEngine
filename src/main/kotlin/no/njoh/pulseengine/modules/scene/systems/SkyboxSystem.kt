@@ -46,14 +46,14 @@ class SkyboxSystem : SceneSystem()
     {
         if (!enabled) onDestroy(engine)
     }
-    
+
     private fun updateRenderer(engine: PulseEngine, surfaceName: String)
     {
         val surface = engine.gfx.getSurface(surfaceName) ?: return
         val renderer = surface.getRenderer<SkyboxRenderer>()
         if (renderer == null)
         {
-            surface.addRenderer(SkyboxRenderer(), 0)
+            surface.addRenderer(SkyboxRenderer())
             return
         }
 

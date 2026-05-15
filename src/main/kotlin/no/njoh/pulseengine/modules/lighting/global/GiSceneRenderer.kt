@@ -17,8 +17,11 @@ import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
 import org.joml.Vector2f
 import org.lwjgl.opengl.GL20.*
 
-class GiSceneRenderer(private val config: SurfaceConfigInternal) : Renderer()
-{
+class GiSceneRenderer(
+    private val config: SurfaceConfigInternal,
+    override val order: Int = 50
+) : Renderer() {
+
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject

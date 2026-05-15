@@ -30,7 +30,7 @@ import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import kotlin.math.cos
 
-class ModelRenderer : Renderer()
+class ModelRenderer(override val order: Int = 40) : Renderer()
 {
     var iblDiffuseTexture  = ""
     var iblSpecularTexture = ""

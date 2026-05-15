@@ -12,8 +12,10 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleIndices
 import org.lwjgl.opengl.GL11.*
 
-class QuadRenderer(private val config: SurfaceConfigInternal) : Renderer()
-{
+class QuadRenderer(
+    private val config: SurfaceConfigInternal,
+    override val order: Int = 60
+) : Renderer() {
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: DoubleBufferedFloatObject
     private lateinit var ebo: DoubleBufferedIntObject

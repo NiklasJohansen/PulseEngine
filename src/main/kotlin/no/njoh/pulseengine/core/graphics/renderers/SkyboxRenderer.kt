@@ -17,8 +17,9 @@ import org.lwjgl.opengl.GL11.glDepthMask
 import org.lwjgl.opengl.GL11.glDisable
 
 class SkyboxRenderer(
-    var envTexture: String = "",
-    var brightness: Float = 1f
+    override val order: Int = 10,
+    var envTexture: String  = "",
+    var brightness: Float   = 1f
 ) : Renderer() {
 
     private lateinit var program: ShaderProgram

@@ -25,8 +25,11 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-class TextRenderer(private val config: SurfaceConfigInternal) : Renderer()
-{
+class TextRenderer(
+    private val config: SurfaceConfigInternal,
+    override val order: Int = 55
+) : Renderer() {
+
     private lateinit var vao: VertexArrayObject
     private lateinit var vertexBuffer: StaticBufferObject
     private lateinit var instanceBuffer: DoubleBufferedFloatObject

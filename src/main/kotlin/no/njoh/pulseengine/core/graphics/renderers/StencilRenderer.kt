@@ -13,6 +13,8 @@ import org.lwjgl.opengl.GL20.*
 
 class StencilRenderer : Renderer()
 {
+    override val order: Int = 70
+
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram

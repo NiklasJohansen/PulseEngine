@@ -27,6 +27,7 @@ import org.lwjgl.opengl.GL11.*
 import kotlin.math.*
 
 class CascadedShadowMapRenderer(
+    override val order: Int   = 0, 
     var resolution: Int       = 4096,
     var splitLambda: Float    = 0.5f,
     var shadowDistance: Float = 0f

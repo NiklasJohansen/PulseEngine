@@ -16,7 +16,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL11.*
 
-class DepthPrepassRenderer : Renderer()
+class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
 {
     private lateinit var staticProgram: ShaderProgram
     private lateinit var skinnedProgram: ShaderProgram

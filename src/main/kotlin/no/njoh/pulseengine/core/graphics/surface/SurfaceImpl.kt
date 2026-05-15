@@ -66,6 +66,7 @@ class SurfaceImpl(
             config.mipmapGenerators.values.forEach { it.init(engine) }
         }
 
+        renderers.sortBy { it.order }
         renderTarget.init(width, height)
         shouldRerender = true
         initialized = true
@@ -368,14 +369,14 @@ class SurfaceImpl(
         writeRenderStates.add(state)
     }
 
-    override fun addRenderer(renderer: Renderer, index: Int)
+    override fun addRenderer(renderer: Renderer)
     {
         runOnInitFrame()
         {
             renderer.init(it, this)
-            val i = if (index < 0) renderers.size else index
-            renderers.add(i, renderer)
             rendererMap[renderer.javaClass] = renderer
+            renderers.add(renderer)
+            renderers.sortBy { it.order }
         }
     }
 

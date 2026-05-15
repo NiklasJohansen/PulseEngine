@@ -200,9 +200,8 @@ abstract class Surface
     /**
      * Adds a [Renderer] to the [Surface].
      * The renderer will be initialized and ready at the start of the next frame.
-     * @param index The index at which the renderer should be added. If -1, the renderer will be added to the end of the list.
      */
-    abstract fun addRenderer(renderer: Renderer, index: Int = -1)
+    abstract fun addRenderer(renderer: Renderer)
 
     /**
      * Deletes a [Renderer] from the [Surface]. The renderer will be deleted at the start of the next frame.

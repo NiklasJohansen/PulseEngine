@@ -17,8 +17,11 @@ import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL20.*
 import java.lang.Float.floatToRawIntBits
 
-class RenderTextureRenderer(private val config: SurfaceConfigInternal) : Renderer()
-{
+class RenderTextureRenderer(
+    private val config: SurfaceConfigInternal,
+    override val order: Int = 50
+) : Renderer() {
+
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram

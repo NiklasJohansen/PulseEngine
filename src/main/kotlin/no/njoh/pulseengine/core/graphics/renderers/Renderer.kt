@@ -13,6 +13,9 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler
  */
 abstract class Renderer
 {
+    /** The order in which the renderer is called. Higher values are called later. */
+    abstract val order: Int
+
     private val batchSize  = IntArray(MAX_BATCH_COUNT * 2)
     private val batchStart = IntArray(MAX_BATCH_COUNT * 2)
 

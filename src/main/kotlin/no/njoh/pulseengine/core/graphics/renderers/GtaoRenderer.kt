@@ -27,6 +27,7 @@ import org.lwjgl.opengl.GL11.glDisable
 import org.lwjgl.opengl.GL11.glViewport
 
 class GtaoRenderer(
+    override val order: Int              = 30,
     var intensity: Float                 = 1.5f,
     var slices: Int                      = 3,
     var maxSteps: Int                    = 8,
@@ -122,6 +123,8 @@ class GtaoRenderer(
     {
         if (startIndex != 0) return
 
+        // TODO: The resolved single sampled depth textures has jagged edges. Make custom MSAA resolver that writes coverage to a separate channel
+        // TODO: See latest reply here: https://chatgpt.com/share/697694a7-2ce0-8007-89e9-49ac8be5095d
         val depthTex = surface.renderTarget.getTextures().firstOrNull { it.attachment == DEPTH_TEXTURE } ?: return
 
         // Main GTAO render pass

@@ -13,8 +13,11 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawLineVertices
 import org.lwjgl.opengl.GL11.*
 
-class LineRenderer(private val config: SurfaceConfigInternal) : Renderer()
-{
+class LineRenderer(
+    private val config: SurfaceConfigInternal,
+    override val order: Int = 65
+) : Renderer() {
+
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: DoubleBufferedFloatObject
     private lateinit var program: ShaderProgram

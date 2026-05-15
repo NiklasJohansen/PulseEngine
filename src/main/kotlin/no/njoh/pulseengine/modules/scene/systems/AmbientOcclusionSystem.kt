@@ -2,7 +2,6 @@ package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.renderers.GtaoRenderer
-import no.njoh.pulseengine.core.graphics.renderers.ModelRenderer
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
@@ -75,8 +74,7 @@ class AmbientOcclusionSystem : SceneSystem()
         val renderer = surface.getRenderer<GtaoRenderer>()
         if (renderer == null)
         {
-            val index = surface.getRenderers().indexOfFirst { r -> r is ModelRenderer } // Insert before model renderer
-            surface.addRenderer(GtaoRenderer(), index)
+            surface.addRenderer(GtaoRenderer())
             return
         }
 

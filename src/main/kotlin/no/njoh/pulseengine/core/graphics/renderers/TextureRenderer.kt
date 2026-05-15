@@ -15,6 +15,7 @@ import org.lwjgl.opengl.GL20.*
 
 class TextureRenderer(
     private val config: SurfaceConfigInternal,
+    override val order: Int = 70,
     var alphaDiscardThreshold: Float = 0.4f
 ) : Renderer() {
 
@@ -124,7 +125,7 @@ class TextureRenderer(
     ) {
         instanceBuffer.fill(17)
         {
-            put(x, config.height- y, config.currentDepth)
+            put(x, config.height - y, config.currentDepth)
             put(w, h)
             put(xOrigin, 1f - yOrigin)
             put(-angle)
