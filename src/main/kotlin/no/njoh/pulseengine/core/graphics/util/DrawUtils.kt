@@ -40,7 +40,7 @@ object DrawUtils
         instanceIndexBuffer: DoubleBufferedIntObject?,
         firstIndex: Int,
         indexCount: Int,
-        firstInstanceIndex: Int,
+        instanceIndex: Int,
         instanceCount: Int
     ) {
         if (instanceCount == 0)
@@ -52,7 +52,7 @@ object DrawUtils
         {
             BASE_INSTANCE ->
             {
-                glDrawElementsInstancedBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, firstInstanceIndex)
+                glDrawElementsInstancedBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, instanceIndex)
             }
             INSTANCE_ATTRIBUTE ->
             {
@@ -61,12 +61,12 @@ object DrawUtils
                 glEnableVertexAttribArray(INSTANCE_INDEX_ATTRIBUTE_LOCATION)
                 glVertexAttribIPointer(INSTANCE_INDEX_ATTRIBUTE_LOCATION, 1, GL_UNSIGNED_INT, Int.SIZE_BYTES, 0L)
                 glVertexAttribDivisor(INSTANCE_INDEX_ATTRIBUTE_LOCATION, 1)
-                glDrawElementsInstancedBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, firstInstanceIndex)
+                glDrawElementsInstancedBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, instanceIndex)
                 indexBuffer.release()
             }
             UNIFORM_OFFSET ->
             {
-                program.setUniform("uInstanceOffset", firstInstanceIndex)
+                program.setUniform("uInstanceOffset", instanceIndex)
                 glDrawElementsInstanced(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount)
             }
         }

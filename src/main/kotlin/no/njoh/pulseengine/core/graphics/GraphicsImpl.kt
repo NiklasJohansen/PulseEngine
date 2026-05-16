@@ -30,6 +30,7 @@ open class GraphicsImpl : GraphicsInternal
     override lateinit var mainCamera: CameraInternal
     override lateinit var mainSurface: SurfaceInternal
     override lateinit var textureBank: TextureBank
+    override lateinit var materialBank: MaterialBank
     override lateinit var gpuName: String
     private  lateinit var fullFrameRenderer: FullFrameRenderer
 
@@ -46,6 +47,7 @@ open class GraphicsImpl : GraphicsInternal
         val viewPortHeight = engine.window.height
 
         textureBank = TextureBank()
+        materialBank = MaterialBank()
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",
@@ -75,6 +77,7 @@ open class GraphicsImpl : GraphicsInternal
             GlCapabilities.create()
             gpuName = glGetString(GL_RENDERER) ?: "Unknown GPU"
             Logger.debug { "Running OpenGL on GPU: $gpuName" }
+            materialBank.destroy()
 
             // Load error shaders
             errorShaders[VERTEX]   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/error/error.vert"))
@@ -122,6 +125,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         surfaces.forEachCamera { it.onFrameDraw(engine) }
 
+        materialBank.submitAndBind()
         renderSurfaceContentToOffscreenTarget(engine)
         renderPostProcessingEffectsToOffscreenTarget(engine)
         renderOffscreenTargetsToBackBuffer()
@@ -297,6 +301,10 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun deleteTexture(texture: Texture) = textureBank.delete(texture)
 
+    override fun uploadMaterial(material: Material) = materialBank.upload(material)
+
+    override fun deleteMaterial(material: Material) = materialBank.delete(material)
+
     override fun updateCameras() = surfaces.forEachCamera { it.updateLastState() }
 
     override fun compileShader(shader: Shader)
@@ -332,6 +340,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         Logger.info { "Destroying graphics (${this::class.simpleName})" }
         textureBank.destroy()
+        materialBank.destroy()
         fullFrameRenderer.destroy()
         surfaces.forEachFast { it.destroy() }
     }

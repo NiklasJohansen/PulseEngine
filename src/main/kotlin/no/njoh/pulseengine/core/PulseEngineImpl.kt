@@ -102,6 +102,7 @@ class PulseEngineImpl(
             if (windowRecreated)
             {
                 input.init(window.cursorPosScale)
+                asset.getAllOfType<Material>().forEachFast { gfx.uploadMaterial(it) }
                 asset.getAllOfType<Model>().forEachFast { gfx.uploadMesh(it) }
             }
         }
@@ -112,27 +113,29 @@ class PulseEngineImpl(
         // Reload sound buffers to new OpenAL context when output device changes
         audio.setOnOutputDeviceChanged { asset.getAllOfType<Sound>().forEachFast { audio.uploadSound(it) } }
 
-        // Notify gfx and audio implementation about loaded textures and sounds
+        // Notify modules about loaded assets
         asset.setOnAssetLoaded {
             when (it)
             {
-                is Texture -> gfx.uploadTexture(it)
-                is Font    -> gfx.uploadTexture(it.charTexture)
-                is Shader  -> gfx.compileShader(it)
-                is Model   -> gfx.uploadMesh(it)
-                is Sound   -> audio.uploadSound(it)
-                is Cursor  -> input.createCursor(it)
+                is Texture  -> gfx.uploadTexture(it)
+                is Font     -> gfx.uploadTexture(it.charTexture)
+                is Material -> gfx.uploadMaterial(it)
+                is Shader   -> gfx.compileShader(it)
+                is Model    -> gfx.uploadMesh(it)
+                is Sound    -> audio.uploadSound(it)
+                is Cursor   -> input.createCursor(it)
             }
         }
 
-        // Notify gfx and audio implementation about unloaded textures and sounds
+        // Notify modules about unloaded assets
         asset.setOnAssetUnloaded {
             when (it)
             {
-                is Texture -> gfx.deleteTexture(it)
-                is Font    -> gfx.deleteTexture(it.charTexture)
-                is Sound   -> audio.deleteSound(it)
-                is Cursor  -> input.deleteCursor(it)
+                is Texture  -> gfx.deleteTexture(it)
+                is Font     -> gfx.deleteTexture(it.charTexture)
+                is Material -> gfx.deleteMaterial(it)
+                is Sound    -> audio.deleteSound(it)
+                is Cursor   -> input.deleteCursor(it)
             }
         }
 

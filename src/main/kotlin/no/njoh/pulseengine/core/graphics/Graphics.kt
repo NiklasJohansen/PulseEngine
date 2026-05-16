@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -94,13 +95,17 @@ interface Graphics
 interface GraphicsInternal : Graphics
 {
     override val mainCamera: CameraInternal
+
     val textureBank: TextureBank
+    val materialBank: MaterialBank
     val gpuName: String
 
     fun init(engine: PulseEngineInternal)
     fun uploadMesh(model: Model)
     fun uploadTexture(texture: Texture)
     fun deleteTexture(texture: Texture)
+    fun uploadMaterial(material: Material)
+    fun deleteMaterial(material: Material)
     fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean)
     fun updateCameras()
     fun compileShader(shader: Shader)

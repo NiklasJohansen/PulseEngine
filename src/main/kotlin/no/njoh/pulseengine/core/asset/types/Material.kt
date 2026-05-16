@@ -22,6 +22,26 @@ class Material(
     var yTiling: Float = 1f
 ): Asset(name, name) {
 
+    var id = DEFAULT_ID; private set
+    var isDirty = true
+
+    fun markDirty()
+    {
+        isDirty = true
+    }
+
+    fun onUploaded(id: Int)
+    {
+        this.id = id
+        isDirty = false
+    }
+
+    fun onDeleted()
+    {
+        id = DEFAULT_ID
+        isDirty = true
+    }
+
     override fun load() {}
     override fun unload() {}
 
@@ -33,4 +53,9 @@ class Material(
     }
 
     enum class CullMode { NONE, BACK }
+
+    companion object
+    {
+        const val DEFAULT_ID = 0
+    }
 }

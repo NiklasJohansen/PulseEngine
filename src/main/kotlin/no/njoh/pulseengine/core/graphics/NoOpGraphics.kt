@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics
 
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -9,6 +10,7 @@ import no.njoh.pulseengine.core.graphics.api.BlendFunction
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.DefaultCamera
 import no.njoh.pulseengine.core.graphics.api.CameraProjectionType.ORTHOGRAPHIC
+import no.njoh.pulseengine.core.graphics.api.MaterialBank
 import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.TextureBank
@@ -25,6 +27,7 @@ class NoOpGraphics : GraphicsInternal
     override var mainCamera = DefaultCamera(ORTHOGRAPHIC)
     override var mainSurface = NoOpSurface()
     override var textureBank = TextureBank()
+    override var materialBank = MaterialBank()
     override val gpuName = "none"
     override fun createSurface(
         name: String,
@@ -55,6 +58,8 @@ class NoOpGraphics : GraphicsInternal
     override fun deleteSurface(name: String) {}
     override fun uploadTexture(texture: Texture) {}
     override fun deleteTexture(texture: Texture) {}
+    override fun uploadMaterial(material: Material) {}
+    override fun deleteMaterial(material: Material) {}
     override fun updateCameras() {}
     override fun setGpuLogLevel(logLevel: LogLevel) {}
     override fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat) {}
