@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
@@ -6,17 +6,39 @@ layout(location = 2) in vec3 tangent;
 layout(location = 3) in vec3 bitangent;
 layout(location = 4) in vec2 texCoord;
 
+#if USE_INSTANCE_INDEX_ATTRIBUTE
+layout(location = 7) in uint aInstanceIndex;
+#endif
+
 uniform mat4 uViewProjection;
-uniform mat4 uModel;
+
+#if USE_INSTANCE_OFFSET_UNIFORM
+uniform int uInstanceOffset;
+#endif
+
+struct InstanceData
+{
+    mat4 model;
+    vec4 params; // x=materialId, y=boneOffset, z/w=reserved
+};
+
+layout(std430, binding = 1) readonly buffer InstanceBuffer
+{
+    InstanceData uInstances[];
+};
 
 out vec3 vWorldPos;
 out vec3 vWorldNormal;
 out mat3 vTBN;
 out vec2 vTexCoord;
+flat out int vMaterialId;
 
 void main()
 {
-    mat3 M  = mat3(uModel);
+    InstanceData instance = uInstances[MODEL_INSTANCE_INDEX];
+
+    mat4 model = instance.model;
+    mat3 M  = mat3(model);
     vec3 N  = normalize(M * normal);
     vec3 T  = normalize(M * tangent);
     vec3 B0 = normalize(M * bitangent);
@@ -26,12 +48,13 @@ void main()
     float sign = (dot(cross(N, T), B0) < 0.0) ? -1.0 : 1.0;
     vec3 B = normalize(cross(N, T)) * sign;
 
-    vec4 worldPos = uModel * vec4(position, 1.0);
+    vec4 worldPos = model * vec4(position, 1.0);
 
     vWorldPos = worldPos.xyz;
     vWorldNormal = N;
     vTBN = mat3(T, B, N);
     vTexCoord = vec2(texCoord.x, 1.0 - texCoord.y);
+    vMaterialId = int(instance.params.x);
 
     gl_Position = uViewProjection * worldPos;
 }

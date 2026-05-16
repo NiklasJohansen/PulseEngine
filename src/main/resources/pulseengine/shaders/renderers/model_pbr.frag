@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 
 #define MAX_LOCAL_LIGHTS 32
 #define CASCADE_COUNT 4
@@ -10,6 +10,7 @@ in vec3 vWorldPos;
 in vec3 vWorldNormal;
 in mat3 vTBN;
 in vec2 vTexCoord;
+flat in int vMaterialId;
 
 out vec4 fragColor;
 
@@ -17,20 +18,30 @@ out vec4 fragColor;
 uniform sampler2DArray textureArrays[16]; // TODO: Prefix with u
 uniform sampler2D uGtaoTex;
 
-// Material
-uniform vec4  uBaseColor;
-uniform vec4  uAlbedoTex;
-uniform vec4  uNormalTex;
-uniform vec4  uAoMetalRoughTex;
-uniform vec4  uEmissiveTex;
+// Environment
 uniform vec4  uEnvDiffuseTex;
 uniform vec4  uEnvSpecularTex;
 uniform vec4  uEnvBrdfLutTex;
-uniform vec4  uAoMetalRoughNormalFactor;
-uniform vec4  uEmissiveFactor;
-uniform vec2  uTiling;
-uniform float uAlphaCutoff; // 0 for opaque/blend
 uniform float uAoIntensity;
+
+struct MaterialData
+{
+    vec4 baseColor;
+    vec4 emissiveFactor;
+    vec4 albedoTex;
+    vec4 normalTex;
+    vec4 aoMetalRoughTex;
+    vec4 emissiveTex;
+    vec4 aoMetalRoughNormalFactor;
+    vec4 tilingAlphaFlags; // x/y=tiling, z=alphaCutoff, w=flags
+};
+
+layout(std430, binding = 2) readonly buffer MaterialBuffer
+{
+    MaterialData uMaterials[];
+};
+
+const int MATERIAL_FLAG_FLIP_NORMALS = 1;
 
 // Lighting
 uniform float uEnvIntensity;
@@ -58,7 +69,7 @@ const vec2 CASCADE_OFFSETS[CASCADE_COUNT] = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0
 // Texture sampling
 // ------------------------------------------------------------------
 
-vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor)
+vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling)
 {
     int samplerIndex = int(texDesc.x);
     if (samplerIndex < 0) 
@@ -66,15 +77,21 @@ vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor)
 
     float layer = texDesc.y;
     vec2 uvMax = texDesc.zw;
-    return texture(textureArrays[samplerIndex], vec3(fract(vTexCoord * uTiling) * uvMax, layer));
+    return texture(textureArrays[samplerIndex], vec3(fract(vTexCoord * tiling) * uvMax, layer));
 }
 
-vec3 sampleWorldSpaceNormal(out float normalLenTS)
+vec3 sampleWorldSpaceNormal(MaterialData material, out float normalLenTS)
 {
+    vec2 tiling = material.tilingAlphaFlags.xy;
+    int flags = int(material.tilingAlphaFlags.w);
+
     // Tangent-space normal
-    vec3 normalTs = sampleTexOrDefault(uNormalTex, vec3(0.5, 0.5, 1.0)).rgb * 2.0 - 1.0;
-//    normalTs.y *= -1; // TODO: Intel Sponza haz flipped y normals
-    normalTs.xy *= uAoMetalRoughNormalFactor.w; // Normal scale
+    vec3 normalTs = sampleTexOrDefault(material.normalTex, vec3(0.5, 0.5, 1.0), tiling).rgb * 2.0 - 1.0;
+
+    if ((flags & MATERIAL_FLAG_FLIP_NORMALS) != 0)
+        normalTs.y *= -1;
+
+    normalTs.xy *= material.aoMetalRoughNormalFactor.w; // Normal scale
 
     float len = max(length(normalTs), 1e-5);
     normalLenTS = min(len, 1.0);
@@ -350,28 +367,32 @@ vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float me
 
 void main()
 {
-    vec4 baseColor = uBaseColor * sampleTexOrDefault(uAlbedoTex, vec3(1.0));
+    MaterialData material = uMaterials[vMaterialId];
+    vec2 tiling = material.tilingAlphaFlags.xy;
+    float alphaCutoff = material.tilingAlphaFlags.z;
+
+    vec4 baseColor = material.baseColor * sampleTexOrDefault(material.albedoTex, vec3(1.0), tiling);
     float alpha = baseColor.a;
 
-    if (uAlphaCutoff > 0.0)
+    if (alphaCutoff > 0.0)
     {
         // Coverage AA around the cutoff
         float w = max(fwidth(alpha), 1.0 / 255.0);
-        float coverage = smoothstep(uAlphaCutoff - w, uAlphaCutoff + w, alpha);
-        if (coverage < 0.2) discard; // Early-out
+        float coverage = smoothstep(alphaCutoff - w, alphaCutoff + w, alpha);
+        if (coverage < 0.5) discard; // Early-out
         alpha = coverage;
     }
 
     // PBR material properties
-    vec3 emissive   = sampleTexOrDefault(uEmissiveTex, vec3(1.0)).rgb * uEmissiveFactor.rgb;
-    vec3 aomr       = sampleTexOrDefault(uAoMetalRoughTex, vec3(1.0, 1.0, 0.0)).rgb; // Default AO=1, rough=1, metal=0
-    float ao        = clamp(mix(1.0, aomr.r, uAoMetalRoughNormalFactor.x), 0.0,  1.0);
-    float roughness = clamp(aomr.g * uAoMetalRoughNormalFactor.y, 0.04, 1.0);
-    float metallic  = clamp(aomr.b * uAoMetalRoughNormalFactor.z, 0.0,  1.0);
+    vec3 emissive   = sampleTexOrDefault(material.emissiveTex, vec3(1.0), tiling).rgb * material.emissiveFactor.rgb;
+    vec3 aomr       = sampleTexOrDefault(material.aoMetalRoughTex, vec3(1.0, 1.0, 0.0), tiling).rgb; // Default AO=1, rough=1, metal=0
+    float ao        = clamp(mix(1.0, aomr.r, material.aoMetalRoughNormalFactor.x), 0.0,  1.0);
+    float roughness = clamp(aomr.g * material.aoMetalRoughNormalFactor.y, 0.04, 1.0);
+    float metallic  = clamp(aomr.b * material.aoMetalRoughNormalFactor.z, 0.0,  1.0);
 
     // Normal + View
     float normalLength;
-    vec3 N = sampleWorldSpaceNormal(normalLength);
+    vec3 N = sampleWorldSpaceNormal(material, normalLength);
     vec3 V = normalize(uCameraPos - vWorldPos);
 
     // Roughness adjustment (Toksvig + screen-space normal variation) 

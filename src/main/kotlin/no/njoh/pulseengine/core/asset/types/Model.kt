@@ -95,6 +95,8 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
     private fun loadWithAssimp()
     {
+        Logger.debug { "Loading model $name..." }
+
         val flags =
             aiProcess_Triangulate or
             aiProcess_JoinIdenticalVertices or

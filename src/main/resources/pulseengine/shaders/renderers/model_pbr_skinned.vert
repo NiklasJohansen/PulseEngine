@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
@@ -8,16 +8,40 @@ layout(location = 4) in vec2 texCoord;
 layout(location = 5) in vec4 boneIndices;
 layout(location = 6) in vec4 boneWeights;
 
+#if USE_INSTANCE_INDEX_ATTRIBUTE
+layout(location = 7) in uint aInstanceIndex;
+#endif
+
 uniform mat4 uViewProjection;
-uniform mat4 uModel;
-uniform mat4 uBoneMatrices[128];
+
+#if USE_INSTANCE_OFFSET_UNIFORM
+uniform int uInstanceOffset;
+#endif
+
+struct InstanceData
+{
+    mat4 model;
+    vec4 params; // x=materialId, y=boneOffset, z/w=reserved
+};
+
+layout(std430, binding = 1) readonly buffer InstanceBuffer
+{
+    InstanceData uInstances[];
+};
+
+layout(std430, binding = 3) readonly buffer BoneBuffer
+{
+    mat4 uBoneMatrices[];
+};
 
 out vec3 vWorldPos;
 out vec3 vWorldNormal;
 out mat3 vTBN;
 out vec2 vTexCoord;
+flat out int vMaterialId;
 
 void accumulateBoneInfluence(
+    int boneOffset,
     int boneIndex,
     float boneWeight,
     inout vec4 skinnedPosition,
@@ -28,28 +52,31 @@ void accumulateBoneInfluence(
 ) {
     if (boneWeight <= 0.0) return;
 
-    mat4 boneMatrix = uBoneMatrices[boneIndex];
+    mat4 boneMatrix = uBoneMatrices[boneOffset + boneIndex];
     mat3 boneBasis = mat3(boneMatrix);
 
-    skinnedPosition += (boneMatrix * vec4(position, 1.0)) * boneWeight;
-    skinnedNormal += (boneBasis * normal) * boneWeight;
-    skinnedTangent += (boneBasis * tangent) * boneWeight;
+    skinnedPosition  += (boneMatrix * vec4(position, 1.0)) * boneWeight;
+    skinnedNormal    += (boneBasis * normal) * boneWeight;
+    skinnedTangent   += (boneBasis * tangent) * boneWeight;
     skinnedBitangent += (boneBasis * bitangent) * boneWeight;
     totalWeight += boneWeight;
 }
 
 void main()
 {
+    InstanceData instance = uInstances[MODEL_INSTANCE_INDEX];
+
+    int boneOffset = int(instance.params.y);
     vec4 skinnedPosition = vec4(0.0);
     vec3 skinnedNormal = vec3(0.0);
     vec3 skinnedTangent = vec3(0.0);
     vec3 skinnedBitangent = vec3(0.0);
     float totalWeight = 0.0;
 
-    accumulateBoneInfluence(int(boneIndices.x), boneWeights.x, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
-    accumulateBoneInfluence(int(boneIndices.y), boneWeights.y, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
-    accumulateBoneInfluence(int(boneIndices.z), boneWeights.z, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
-    accumulateBoneInfluence(int(boneIndices.w), boneWeights.w, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
+    accumulateBoneInfluence(boneOffset, int(boneIndices.x), boneWeights.x, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
+    accumulateBoneInfluence(boneOffset, int(boneIndices.y), boneWeights.y, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
+    accumulateBoneInfluence(boneOffset, int(boneIndices.z), boneWeights.z, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
+    accumulateBoneInfluence(boneOffset, int(boneIndices.w), boneWeights.w, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
 
     if (totalWeight <= 0.0)
     {
@@ -59,7 +86,8 @@ void main()
         skinnedBitangent = bitangent;
     }
 
-    mat3 M = mat3(uModel);
+    mat4 model = instance.model;
+    mat3 M = mat3(model);
     vec3 N = M * skinnedNormal;
     vec3 T = M * skinnedTangent;
     vec3 B0 = M * skinnedBitangent;
@@ -69,12 +97,13 @@ void main()
     float sign = (dot(cross(N, T), B0) < 0.0) ? -1.0 : 1.0;
     vec3 B = normalize(cross(N, T)) * sign;
 
-    vec4 worldPos = uModel * skinnedPosition;
+    vec4 worldPos = model * skinnedPosition;
 
     vWorldPos = worldPos.xyz;
     vWorldNormal = N;
     vTBN = mat3(T, B, N);
     vTexCoord = vec2(texCoord.x, 1.0 - texCoord.y);
+    vMaterialId = int(instance.params.x);
 
     gl_Position = uViewProjection * worldPos;
 }

@@ -307,6 +307,56 @@ object Extensions
         return destination
     }
 
+    /**
+    * Adds all elements of the [other] list to this list without creating an iterator or new array.
+    */
+    fun <T> MutableList<T>.addAllNoAlloc(other: List<T>)
+    {
+        var i = 0
+        val size = other.size
+        while (i < size) add(other[i++])
+    }
+
+    /**
+     * Sorts the list in-place using the quicksort algorithm and the given [comparator].
+     */
+    fun <T> MutableList<T>.quickSort(comparator: Comparator<T>)
+    {
+        if (size > 1) this.quickSort(0, size - 1, comparator)
+    }
+
+    /**
+     * Sorts the list in-place using the quicksort algorithm and the given [comparator].
+     * This does not allocate any memory.
+     */
+    internal fun <T> MutableList<T>.quickSort(left: Int, right: Int, comparator: Comparator<T>)
+    {
+        var i = left
+        var j = right
+        val pivot = this[(left + right) ushr 1]
+
+        while (i <= j)
+        {
+            while (comparator.compare(this[i], pivot) < 0) i++
+            while (comparator.compare(this[j], pivot) > 0) j--
+
+            if (i <= j)
+            {
+                if (i != j)
+                {
+                    val tmp = this[i]
+                    this[i] = this[j]
+                    this[j] = tmp
+                }
+                i++
+                j--
+            }
+        }
+
+        if (left < j) quickSort(left, j, comparator)
+        if (i < right) quickSort(i, right, comparator)
+    }
+
     /** Default return value from Trove hash maps when no entry was found */
     const val TROVE_NO_ENTRY = -2
 

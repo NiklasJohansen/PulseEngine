@@ -1,6 +1,5 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
-
 import org.lwjgl.opengl.GL30.*
 
 class VertexArrayObject(val id: Int)

@@ -49,7 +49,7 @@ open class Shader(
     }
 }
 
-class VertexShader(filePath: String) : Shader(filePath, ShaderType.VERTEX)
+class VertexShader(filePath: String, transform: (source: String) -> String = { it }) : Shader(filePath, ShaderType.VERTEX, transform)
 
 class FragmentShader(filePath: String) : Shader(filePath, ShaderType.FRAGMENT)
 
