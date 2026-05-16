@@ -2,8 +2,7 @@
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
-layout(location = 2) in vec3 tangent;
-layout(location = 3) in vec3 bitangent;
+layout(location = 2) in vec4 tangent;
 layout(location = 4) in vec2 texCoord;
 layout(location = 5) in vec4 boneIndices;
 layout(location = 6) in vec4 boneWeights;
@@ -47,7 +46,6 @@ void accumulateBoneInfluence(
     inout vec4 skinnedPosition,
     inout vec3 skinnedNormal,
     inout vec3 skinnedTangent,
-    inout vec3 skinnedBitangent,
     inout float totalWeight
 ) {
     if (boneWeight <= 0.0) return;
@@ -57,8 +55,7 @@ void accumulateBoneInfluence(
 
     skinnedPosition  += (boneMatrix * vec4(position, 1.0)) * boneWeight;
     skinnedNormal    += (boneBasis * normal) * boneWeight;
-    skinnedTangent   += (boneBasis * tangent) * boneWeight;
-    skinnedBitangent += (boneBasis * bitangent) * boneWeight;
+    skinnedTangent   += (boneBasis * tangent.xyz) * boneWeight;
     totalWeight += boneWeight;
 }
 
@@ -70,31 +67,28 @@ void main()
     vec4 skinnedPosition = vec4(0.0);
     vec3 skinnedNormal = vec3(0.0);
     vec3 skinnedTangent = vec3(0.0);
-    vec3 skinnedBitangent = vec3(0.0);
     float totalWeight = 0.0;
 
-    accumulateBoneInfluence(boneOffset, int(boneIndices.x), boneWeights.x, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
-    accumulateBoneInfluence(boneOffset, int(boneIndices.y), boneWeights.y, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
-    accumulateBoneInfluence(boneOffset, int(boneIndices.z), boneWeights.z, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
-    accumulateBoneInfluence(boneOffset, int(boneIndices.w), boneWeights.w, skinnedPosition, skinnedNormal, skinnedTangent, skinnedBitangent, totalWeight);
+    accumulateBoneInfluence(boneOffset, int(boneIndices.x), boneWeights.x, skinnedPosition, skinnedNormal, skinnedTangent, totalWeight);
+    accumulateBoneInfluence(boneOffset, int(boneIndices.y), boneWeights.y, skinnedPosition, skinnedNormal, skinnedTangent, totalWeight);
+    accumulateBoneInfluence(boneOffset, int(boneIndices.z), boneWeights.z, skinnedPosition, skinnedNormal, skinnedTangent, totalWeight);
+    accumulateBoneInfluence(boneOffset, int(boneIndices.w), boneWeights.w, skinnedPosition, skinnedNormal, skinnedTangent, totalWeight);
 
     if (totalWeight <= 0.0)
     {
         skinnedPosition = vec4(position, 1.0);
         skinnedNormal = normal;
-        skinnedTangent = tangent;
-        skinnedBitangent = bitangent;
+        skinnedTangent = tangent.xyz;
     }
 
     mat4 model = instance.model;
     mat3 M = mat3(model);
-    vec3 N = M * skinnedNormal;
-    vec3 T = M * skinnedTangent;
-    vec3 B0 = M * skinnedBitangent;
+    vec3 N = normalize(M * skinnedNormal);
+    vec3 T = normalize(M * skinnedTangent);
 
     T = normalize(T - N * dot(T, N));
 
-    float sign = (dot(cross(N, T), B0) < 0.0) ? -1.0 : 1.0;
+    float sign = tangent.w * ((determinant(M) < 0.0) ? -1.0 : 1.0);
     vec3 B = normalize(cross(N, T)) * sign;
 
     vec4 worldPos = model * skinnedPosition;

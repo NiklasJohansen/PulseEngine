@@ -274,8 +274,7 @@ open class GraphicsImpl : GraphicsInternal
             
             if (model.hasTangents) 
             {
-                withAttribute("tangent", 3, GL_FLOAT, location = 2)
-                withAttribute("bitangent", 3, GL_FLOAT, location = 3)
+                withAttribute("tangent", 4, GL_FLOAT, location = 2)
             }
             
             if (model.hasTexCoords) 

@@ -148,7 +148,7 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
         glDepthMask(!hasDepthPrepass)
 
         val opaqueCount = opaqueBatches.totalInstanceCount()
-        measure({"opaque" plus " (" plus opaqueCount plus ")"})
+        measure({"opaque" plus " (" plus opaqueCount plus "i, " plus opaqueBatches.size plus "b)"})
         {
             opaqueBatches.forEach { it.drawBatch() }
         }
@@ -162,7 +162,7 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
         val maskedCount = maskedBatches.totalInstanceCount()
         if (maskedCount > 0)
         {
-            measure({"masked" plus " (" plus maskedCount plus ")"})
+            measure({"masked" plus " (" plus maskedCount plus "i, " plus maskedBatches.size plus "b)"})
             {
                 glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
                 glDepthFunc(GL_LEQUAL)
@@ -177,7 +177,7 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
         val transparentCount = transparentBatches.totalInstanceCount()
         if (transparentCount > 0)
         {
-            measure({"transparent" plus "(" plus transparentCount plus ")"})
+            measure({"transparent" plus " (" plus transparentCount plus "i, " plus transparentBatches.size plus "b)"})
             {
                 glEnable(GL_BLEND)
                 glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)

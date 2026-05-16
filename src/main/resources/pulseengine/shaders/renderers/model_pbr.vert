@@ -2,8 +2,7 @@
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
-layout(location = 2) in vec3 tangent;
-layout(location = 3) in vec3 bitangent;
+layout(location = 2) in vec4 tangent;
 layout(location = 4) in vec2 texCoord;
 
 #if USE_INSTANCE_INDEX_ATTRIBUTE
@@ -40,12 +39,11 @@ void main()
     mat4 model = instance.model;
     mat3 M  = mat3(model);
     vec3 N  = normalize(M * normal);
-    vec3 T  = normalize(M * tangent);
-    vec3 B0 = normalize(M * bitangent);
+    vec3 T  = normalize(M * tangent.xyz);
 
     T = normalize(T - N * dot(T, N));
 
-    float sign = (dot(cross(N, T), B0) < 0.0) ? -1.0 : 1.0;
+    float sign = tangent.w * ((determinant(M) < 0.0) ? -1.0 : 1.0);
     vec3 B = normalize(cross(N, T)) * sign;
 
     vec4 worldPos = model * vec4(position, 1.0);

@@ -167,7 +167,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
         val stride = 3 +
             (if (hasNormals) 3 else 0) +
-            (if (hasTangents) 3 + 3 else 0) +
+            (if (hasTangents) 4 else 0) +
             (if (hasTexCoords) 2 else 0) +
             (if (hasBones) MAX_BONE_INFLUENCES + MAX_BONE_INFLUENCES else 0)
 
@@ -255,21 +255,28 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
                 if (hasTangents)
                 {
-                    if (tangents != null && bitangents != null)
+                    if (tangents != null)
                     {
                         val t = tangents[i]
-                        val b = bitangents[i]
+                        val sign = if (normals != null && bitangents != null)
+                        {
+                            val n = normals[i]
+                            val b = bitangents[i]
+                            val cx = n.y() * t.z() - n.z() * t.y()
+                            val cy = n.z() * t.x() - n.x() * t.z()
+                            val cz = n.x() * t.y() - n.y() * t.x()
+                            if (cx * b.x() + cy * b.y() + cz * b.z() < 0f) -1f else 1f
+                        }
+                        else 1f
+
                         vertexData[dst++] = t.x()
                         vertexData[dst++] = t.y()
                         vertexData[dst++] = t.z()
-                        vertexData[dst++] = b.x()
-                        vertexData[dst++] = b.y()
-                        vertexData[dst++] = b.z()
+                        vertexData[dst++] = sign
                     }
                     else
                     {
-                        vertexData[dst++] = 0f; vertexData[dst++] = 0f; vertexData[dst++] = 0f
-                        vertexData[dst++] = 0f; vertexData[dst++] = 0f; vertexData[dst++] = 0f
+                        vertexData[dst++] = 0f; vertexData[dst++] = 0f; vertexData[dst++] = 0f; vertexData[dst++] = 1f
                     }
                 }
 

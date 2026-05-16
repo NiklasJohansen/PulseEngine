@@ -134,7 +134,7 @@ internal fun buildSkinningBounds(
 
     val boneIndexOffset = 3 +
         (if (hasNormals) 3 else 0) +
-        (if (hasTangents) 6 else 0) +
+        (if (hasTangents) 4 else 0) +
         (if (hasTexCoords) 2 else 0)
     val boneWeightOffset = boneIndexOffset + Model.MAX_BONE_INFLUENCES
     val stride = subMesh.vertexStride

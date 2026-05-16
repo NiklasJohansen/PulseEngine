@@ -76,7 +76,13 @@ class ModelBatchList(initialCapacity: Int = 128)
 
     fun lastOrNull() = if (size == 0) null else batches[size - 1]
 
-    fun totalInstanceCount() = batches.sumOf { it.instanceCount }
+    fun totalInstanceCount(): Int
+    {
+        var count = 0
+        for (i in 0 until size)
+            count += batches[i].instanceCount
+        return count
+    }
 
     fun add(model: Model, subMesh: Model.SubMesh, program: ShaderProgram, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
     {
