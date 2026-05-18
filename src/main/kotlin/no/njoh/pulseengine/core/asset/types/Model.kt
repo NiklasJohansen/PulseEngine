@@ -16,6 +16,7 @@ import no.njoh.pulseengine.core.shared.utils.collectAnimatedGlobalTransforms
 import no.njoh.pulseengine.core.shared.utils.collectBlendedAnimatedGlobalTransforms
 import no.njoh.pulseengine.core.shared.utils.getSkinnedSubMeshBounds
 import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.shared.utils.ModelVertexCompressor
 import no.njoh.pulseengine.core.shared.utils.transformAabb
 import org.joml.Matrix4f
 import org.joml.Quaternionf
@@ -46,8 +47,9 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     var vbo: StaticBufferObject? = null; private set
     var ebo: StaticBufferObject? = null; private set
 
-    var vertices = FloatArray(0); private set
-    var indices  = IntArray(0);   private set
+    var vertices    = FloatArray(0); private set
+    var indices     = IntArray(0);   private set
+    var vertexBytes = ByteArray(0);  private set
 
     var subMeshInstances = emptyList<SubMeshInstance>(); private set
     var subMeshes        = emptyList<SubMesh>();         private set
@@ -81,6 +83,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         this.vbo = null
         this.ebo = null
         this.vertices = FloatArray(0)
+        this.vertexBytes = ByteArray(0)
         this.indices = IntArray(0)
     }
 
@@ -91,6 +94,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         this.vao = vao
         this.vertices = FloatArray(0) // CPU-side culling data is baked at import time
         this.indices = IntArray(0)
+        this.vertexBytes = ByteArray(0)
     }
 
     private fun loadWithAssimp()
@@ -333,12 +337,14 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             globalVertexOffset += numVertices
         }
 
+        val hasBoneAttributes = bones.isNotEmpty()
         this.vertices     = vertexData
+        this.vertexBytes  = ModelVertexCompressor.compress(vertexData, totalVertices, stride, hasNormals, hasTangents, hasTexCoords, hasBoneAttributes)
         this.indices      = indices
         this.hasNormals   = hasNormals
         this.hasTangents  = hasTangents
         this.hasTexCoords = hasTexCoords
-        this.hasBones     = bones.isNotEmpty()
+        this.hasBones     = hasBoneAttributes
         this.bones        = bones
         this.subMeshes    = if (this.hasBones)
         {

@@ -1,10 +1,10 @@
 #version 430 core
 
 layout(location = 0) in vec3 position;
-layout(location = 4) in vec2 texCoord;
+layout(location = 3) in vec2 texCoord;
 
 #if USE_INSTANCE_INDEX_ATTRIBUTE
-layout(location = 7) in uint aInstanceIndex;
+layout(location = 6) in uint aInstanceIndex;
 #endif
 
 uniform mat4 viewProjection;

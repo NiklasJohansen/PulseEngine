@@ -254,37 +254,36 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun uploadMesh(model: Model)
     {
-        if ((model.vbo == null && model.vertices.isEmpty()) || (model.ebo == null && model.indices.isEmpty()))
+        if ((model.vbo == null && model.vertexBytes.isEmpty()) || (model.ebo == null && model.indices.isEmpty()))
         {
             Logger.warn { "Attempted to upload empty mesh to GPU: ${model.name} (${model.filePath})" }
             return
         }
-        
+
         val vao = VertexArrayObject.createAndBind()
 
-        val vbo = model.vbo ?: StaticBufferObject.createArrayBuffer(model.vertices)
+        val vbo = model.vbo ?: StaticBufferObject.createArrayBuffer(model.vertexBytes)
         vbo.bind()
 
         VertexAttributeLayout().apply() 
         {
             withAttribute("position", 3, GL_FLOAT, location = 0)
-            
+
             if (model.hasNormals) 
-                withAttribute("normal", 3, GL_FLOAT, location = 1)
-            
-            if (model.hasTangents) 
-            {
-                withAttribute("tangent", 4, GL_FLOAT, location = 2)
-            }
-            
+                withAttribute("normal", 3, GL_SHORT, normalized = true, location = 1)
+
+            if (model.hasTangents)
+                withAttribute("tangent", 4, GL_SHORT, normalized = true, location = 2)
+
             if (model.hasTexCoords) 
-                withAttribute("texCoord", 2, GL_FLOAT, location = 4)
-            
+                withAttribute("texCoord", 2, GL_HALF_FLOAT, location = 3)
+
             if (model.hasBones)
             {
-                withAttribute("boneIndices", 4, GL_FLOAT, location = 5)
-                withAttribute("boneWeights", 4, GL_FLOAT, location = 6)
+                withAttribute("boneIndices", 4, GL_UNSIGNED_SHORT, integer = true, location = 4)
+                withAttribute("boneWeights", 4, GL_UNSIGNED_BYTE, normalized = true, location = 5)
             }
+            alignStride(4)
         }.bind()
 
         val ebo = model.ebo ?: StaticBufferObject.createElementArrayBuffer(model.indices)

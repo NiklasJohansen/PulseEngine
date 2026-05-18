@@ -135,7 +135,7 @@ object DrawUtils
         GpuProfiler.incrementDrawCalls()
     }
 
-    private const val INSTANCE_INDEX_ATTRIBUTE_LOCATION = 7
+    private const val INSTANCE_INDEX_ATTRIBUTE_LOCATION = 6
 }
 
 /**
@@ -152,7 +152,7 @@ enum class ModelInstanceIndexMode
 
     /**
      * Fallback path when base-instance draws are available, but shader draw parameters are not.
-     * A per-instance integer attribute at location 7 supplies the model instance index. The draw call
+     * A per-instance integer attribute at location 6 supplies the model instance index. The draw call
      * still uses `baseInstance` so OpenGL offsets the instanced attribute stream for each batch.
      */
     INSTANCE_ATTRIBUTE,
