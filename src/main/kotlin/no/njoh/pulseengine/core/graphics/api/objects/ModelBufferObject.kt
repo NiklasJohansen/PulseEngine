@@ -10,12 +10,11 @@ internal class ModelBufferObject
 {
     var instanceCount = 0; private set
     var instanceIndexMode = UNIFORM_OFFSET; private set
-    var instanceIndexBuffer = null as DoubleBufferedIntObject?; private set
+    var instanceIndexBuffer = null as StreamingIntBufferObject?; private set
 
-    private lateinit var instanceBuffer: DoubleBufferedFloatObject
-    private lateinit var boneBuffer: DoubleBufferedFloatObject
+    private lateinit var instanceBuffer: StreamingFloatBufferObject
+    private lateinit var boneBuffer: StreamingFloatBufferObject
 
-    private val matrixData         = FloatArray(16)
     private val bonePalettes       = ArrayList<Array<Matrix4f>>(128)
     private var bonePaletteOffsets = IntArray(128)
     private var boneMatrixCount    = 0
@@ -25,23 +24,26 @@ internal class ModelBufferObject
         if (this::instanceBuffer.isInitialized)
             return
 
-        instanceBuffer = DoubleBufferedFloatObject.createShaderStorageBuffer(
+        instanceBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(
             blockBinding = INSTANCE_BUFFER_BINDING,
             initCapacity = 20 * 512
         )
 
-        boneBuffer = DoubleBufferedFloatObject.createShaderStorageBuffer(
+        boneBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(
             blockBinding = BONE_BUFFER_BINDING,
             initCapacity = 16 * 512
         )
 
         instanceIndexMode = getSupportedModelInstanceIndexMode()
         if (instanceIndexMode == INSTANCE_ATTRIBUTE)
-            instanceIndexBuffer = DoubleBufferedIntObject.createArrayBuffer(initCapacity = 512)
+            instanceIndexBuffer = StreamingIntBufferObject.createArrayBuffer(initCapacity = 512)
     }
 
     fun clear()
     {
+        instanceBuffer.clear()
+        boneBuffer.clear()
+        instanceIndexBuffer?.clear()
         bonePalettes.clear()
         boneMatrixCount = 0
         instanceCount = 0
@@ -69,9 +71,16 @@ internal class ModelBufferObject
 
     fun submit()
     {
-        submit(instanceBuffer)
-        submit(boneBuffer)
-        instanceIndexBuffer?.let { submit(it) }
+        instanceBuffer.submit()
+        boneBuffer.submit()
+        instanceIndexBuffer?.submit()
+    }
+
+    fun markSubmittedDataInUse()
+    {
+        instanceBuffer.markSubmittedDataInUse()
+        boneBuffer.markSubmittedDataInUse()
+        instanceIndexBuffer?.markSubmittedDataInUse()
     }
 
     fun destroy()
@@ -79,22 +88,6 @@ internal class ModelBufferObject
         instanceBuffer.destroy()
         boneBuffer.destroy()
         instanceIndexBuffer?.destroy()
-    }
-
-    private fun submit(buffer: DoubleBufferedFloatObject)
-    {
-        buffer.swapBuffers()
-        buffer.bind()
-        buffer.submit()
-        buffer.release()
-    }
-
-    private fun submit(buffer: DoubleBufferedIntObject)
-    {
-        buffer.swapBuffers()
-        buffer.bind()
-        buffer.submit()
-        buffer.release()
     }
 
     private fun addBones(boneMatrices: Array<Matrix4f>?): Int
@@ -123,17 +116,12 @@ internal class ModelBufferObject
         return offset
     }
 
-    private fun DoubleBufferedFloatObject.putMatrix(matrix: Matrix4f)
+    private fun StreamingFloatBufferObject.putMatrix(matrix: Matrix4f)
     {
-        // TODO: Might be faster
-//        put(matrix.m00(), matrix.m01(), matrix.m02(), matrix.m03())
-//        put(matrix.m10(), matrix.m11(), matrix.m12(), matrix.m13())
-//        put(matrix.m20(), matrix.m21(), matrix.m22(), matrix.m23())
-//        put(matrix.m30(), matrix.m31(), matrix.m32(), matrix.m33())
-
-        matrix.get(matrixData)
-        for (value in matrixData)
-            put(value)
+        put(matrix.m00(), matrix.m01(), matrix.m02(), matrix.m03())
+        put(matrix.m10(), matrix.m11(), matrix.m12(), matrix.m13())
+        put(matrix.m20(), matrix.m21(), matrix.m22(), matrix.m23())
+        put(matrix.m30(), matrix.m31(), matrix.m32(), matrix.m33())
     }
 
     companion object
