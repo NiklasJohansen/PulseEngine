@@ -6,7 +6,6 @@ import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
-import no.njoh.pulseengine.core.graphics.api.ModelBatch
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
@@ -14,7 +13,7 @@ import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
-import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedTriangleIndices
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawModelBatches
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.graphics.util.ModelBatcher
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
@@ -91,14 +90,18 @@ class CascadedShadowMapRenderer(
     {
         if (startIndex != 0) return
 
-        val halfRes = resolution / 2
-
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LEQUAL)
         glColorMask(false, false, false, false)
         glEnable(GL_POLYGON_OFFSET_FILL)
         glPolygonOffset(SHADOW_SLOPE_BIAS, SHADOW_CONST_BIAS)
 
+        staticProgram.bind()
+        staticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+
+        skinnedProgram.bind()
+        skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+        
         renderItems.clear()
         readDrawLists.forEachFast()
         {
@@ -110,47 +113,31 @@ class CascadedShadowMapRenderer(
         val modelBatches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer)
         modelBuffer.submit()
 
-        val count = readDrawLists.sumOf { it.opaqueItems.size + it.maskedItems.size }
-
+        val count = modelBatches.totalInstanceCount()
+        val halfRes = resolution / 2
+        
         for (cascade in 0 until CASCADE_COUNT)
         {
-            GpuProfiler.measure({ "cascade" plus " #" plus cascade plus " (" plus count plus ")" })
+            GpuProfiler.measure({ "cascade #" plus cascade plus " (" plus count plus ")" })
             {
                 val col = cascade % 2
                 val row = cascade / 2
                 glViewport(col * halfRes, row * halfRes, halfRes, halfRes)
 
                 staticProgram.bind()
-                staticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
                 staticProgram.setUniform("viewProjection", readViewProjectionMatrices[cascade])
-
                 skinnedProgram.bind()
-                skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
                 skinnedProgram.setUniform("viewProjection", readViewProjectionMatrices[cascade])
 
-                ModelBatch.reset()
-                modelBatches.forEach { drawBatch(it) }
+                drawModelBatches(modelBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
             }
         }
+
+        modelBuffer.markSubmittedDataInUse()
 
         glViewport(0, 0, resolution, resolution)
         glDisable(GL_POLYGON_OFFSET_FILL)
         glColorMask(true, true, true, true)
-    }
-
-    private fun drawBatch(batch: ModelBatch)
-    {
-        batch.bind()
-        drawInstancedTriangleIndices(
-            batch.program,
-            batch.model.vao ?: return,
-            modelBuffer.instanceIndexMode,
-            modelBuffer.instanceIndexBuffer,
-            batch.subMesh.indexStart,
-            batch.subMesh.indexCount,
-            batch.instanceIndex,
-            batch.instanceCount
-        )
     }
 
     override fun destroy()

@@ -6,12 +6,12 @@ import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
-import no.njoh.pulseengine.core.graphics.api.ModelBatch
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
-import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedTriangleIndices
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawModelBatches
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelBatcher
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.utils.Extensions.addAllNoAlloc
@@ -65,50 +65,39 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
         glDepthFunc(GL_LESS)
         glViewport(0, 0, surface.config.width, surface.config.height)
 
+        staticProgram.bind()
+        staticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+        staticProgram.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+
+        skinnedProgram.bind()
+        skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+        skinnedProgram.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+
         renderItems.clear()
         readDrawLists.forEachFast()
         {
             renderItems.addAllNoAlloc(it.opaqueItems)
             renderItems.addAllNoAlloc(it.maskedItems)
         }
-
+        
         modelBuffer.clear()
-        val modelBatches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer)
+        val batches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer)
         modelBuffer.submit()
 
-        staticProgram.bind()
-        staticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        staticProgram.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-        
-        skinnedProgram.bind()
-        skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        skinnedProgram.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-
-        ModelBatch.reset()
-        modelBatches.forEach { drawBatch(it) }
+        measure({"draw opaque + masked (" plus batches.totalInstanceCount() plus "i, " plus batches.size plus "b)"})
+        {
+            drawModelBatches(batches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
+            modelBuffer.markSubmittedDataInUse()
+        }
 
         glColorMask(true, true, true, true)
         glDisable(GL_CULL_FACE)
+
         surface.renderTarget.resolveDepth(engine)
         surface.getTextures().firstOrNullFast { it.attachment == DEPTH_TEXTURE }?.generateMips(engine)
         surface.renderTarget.begin()
     }
 
-    private fun drawBatch(batch: ModelBatch)
-    {
-        batch.bind()
-        drawInstancedTriangleIndices(
-            batch.program,
-            batch.model.vao ?: return,
-            modelBuffer.instanceIndexMode,
-            modelBuffer.instanceIndexBuffer,
-            batch.subMesh.indexStart,
-            batch.subMesh.indexCount,
-            batch.instanceIndex,
-            batch.instanceCount
-        )
-    }
-    
     override fun destroy()
     {
         staticProgram.destroy()

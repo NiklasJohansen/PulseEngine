@@ -101,7 +101,7 @@ interface GraphicsInternal : Graphics
     val gpuName: String
 
     fun init(engine: PulseEngineInternal)
-    fun uploadMesh(model: Model)
+    fun uploadModel(model: Model)
     fun uploadTexture(texture: Texture)
     fun deleteTexture(texture: Texture)
     fun uploadMaterial(material: Material)

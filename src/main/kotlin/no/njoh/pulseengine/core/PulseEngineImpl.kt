@@ -103,7 +103,7 @@ class PulseEngineImpl(
             {
                 input.init(window.cursorPosScale)
                 asset.getAllOfType<Material>().forEachFast { gfx.uploadMaterial(it) }
-                asset.getAllOfType<Model>().forEachFast { gfx.uploadMesh(it) }
+                asset.getAllOfType<Model>().forEachFast { gfx.uploadModel(it) }
             }
         }
 
@@ -121,7 +121,7 @@ class PulseEngineImpl(
                 is Font     -> gfx.uploadTexture(it.charTexture)
                 is Material -> gfx.uploadMaterial(it)
                 is Shader   -> gfx.compileShader(it)
-                is Model    -> gfx.uploadMesh(it)
+                is Model    -> gfx.uploadModel(it)
                 is Sound    -> audio.uploadSound(it)
                 is Cursor   -> input.createCursor(it)
             }

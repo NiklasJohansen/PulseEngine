@@ -34,7 +34,7 @@ class ModelBatch
         this.program === program &&
         this.cullMode == cullMode
     
-    fun bind()
+    fun bindProgramAndSetCullMode()
     {
         if (program.id != currentProgramId)
         {
@@ -57,7 +57,7 @@ class ModelBatch
     {
         private var currentProgramId = -1
         private var currentCullMode = null as CullMode?
-        fun reset()
+        fun resetBoundProgramAndCullMode()
         { 
             currentProgramId = -1 
             currentCullMode = null 

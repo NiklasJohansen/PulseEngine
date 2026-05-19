@@ -23,7 +23,7 @@ object ModelVertexCompressor
         val boneIndexOffset = if (hasBones) offset.also { offset += MAX_BONE_INFLUENCES } else -1
         val boneWeightOffset = if (hasBones) offset else -1
 
-        val byteStride = getCompressedModelVertexStride(hasNormals, hasTangents, hasTexCoords, hasBones)
+        val byteStride = getCompressedVertexStride(hasNormals, hasTangents, hasTexCoords, hasBones)
         val result = ByteArray(vertexCount * byteStride)
         val quantizedWeights = IntArray(MAX_BONE_INFLUENCES)
         val weightFractions = FloatArray(MAX_BONE_INFLUENCES)
@@ -74,9 +74,9 @@ object ModelVertexCompressor
         return result
     }
 
-    private fun getCompressedModelVertexStride(hasNormals: Boolean, hasTangents: Boolean, hasTexCoords: Boolean, hasBones: Boolean): Int 
+    fun getCompressedVertexStride(hasNormals: Boolean, hasTangents: Boolean, hasTexCoords: Boolean, hasBones: Boolean): Int
     {
-        val bytes = 12 +                   // Position vec3
+        val bytes = 12 +                   // Position float4x3
             (if (hasNormals) 6 else 0) +   // Normal snorm16x3
             (if (hasTangents) 8 else 0) +  // Tangent snorm16x4
             (if (hasTexCoords) 4 else 0) + // Texcoord float16x2

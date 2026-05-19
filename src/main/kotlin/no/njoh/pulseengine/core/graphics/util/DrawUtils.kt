@@ -1,78 +1,49 @@
 package no.njoh.pulseengine.core.graphics.util
 
+import no.njoh.pulseengine.core.graphics.api.ModelBatch
+import no.njoh.pulseengine.core.graphics.api.ModelBatchList
 import no.njoh.pulseengine.core.graphics.api.GlCapabilities
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
-import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedIntObject
+import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
+import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.GL_LINES
 import org.lwjgl.opengl.GL11.GL_TRIANGLES
 import org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP
 import org.lwjgl.opengl.GL11.GL_UNSIGNED_INT
 import org.lwjgl.opengl.GL11.glDrawArrays
 import org.lwjgl.opengl.GL11.glDrawElements
+import org.lwjgl.opengl.GL15.GL_STREAM_DRAW
+import org.lwjgl.opengl.GL15.glBindBuffer
+import org.lwjgl.opengl.GL15.glBufferData
+import org.lwjgl.opengl.GL15.glGenBuffers
 import org.lwjgl.opengl.GL20.glEnableVertexAttribArray
 import org.lwjgl.opengl.GL30.glVertexAttribIPointer
 import org.lwjgl.opengl.GL31.glDrawArraysInstanced
 import org.lwjgl.opengl.GL31.glDrawElementsInstanced
+import org.lwjgl.opengl.GL32.glDrawElementsInstancedBaseVertex
 import org.lwjgl.opengl.GL33.glVertexAttribDivisor
 import org.lwjgl.opengl.GL42.glDrawArraysInstancedBaseInstance
 import org.lwjgl.opengl.GL42.glDrawElementsInstancedBaseInstance
+import org.lwjgl.opengl.GL42.glDrawElementsInstancedBaseVertexBaseInstance
+import org.lwjgl.opengl.GL40.GL_DRAW_INDIRECT_BUFFER
+import org.lwjgl.opengl.GL43.glMultiDrawElementsIndirect
 import kotlin.math.max
 
 object DrawUtils
 {
+    private var indirectCommandBuffer = BufferUtils.createByteBuffer(INDIRECT_COMMAND_STRIDE_BYTES * 256)
+    private var indirectCommandBufferId = 0
+
     fun drawTriangleIndices(vao: VertexArrayObject, firstIndex: Int, indexCount: Int)
     {
         vao.bind()
         glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES)
         vao.release()
         GpuProfiler.incrementTriangles(indexCount / 3L)
-        GpuProfiler.incrementDrawCalls()
-    }
-    
-    fun drawInstancedTriangleIndices(
-        program: ShaderProgram,
-        vao: VertexArrayObject,
-        instanceIndexMode: ModelInstanceIndexMode,
-        instanceIndexBuffer: DoubleBufferedIntObject?,
-        firstIndex: Int,
-        indexCount: Int,
-        instanceIndex: Int,
-        instanceCount: Int
-    ) {
-        if (instanceCount == 0)
-            return
-
-        vao.bind()
-
-        when (instanceIndexMode)
-        {
-            BASE_INSTANCE ->
-            {
-                glDrawElementsInstancedBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, instanceIndex)
-            }
-            INSTANCE_ATTRIBUTE ->
-            {
-                val indexBuffer = instanceIndexBuffer ?: throw IllegalStateException("Instance index buffer is required for INSTANCE_ATTRIBUTE mode")
-                indexBuffer.bind()
-                glEnableVertexAttribArray(INSTANCE_INDEX_ATTRIBUTE_LOCATION)
-                glVertexAttribIPointer(INSTANCE_INDEX_ATTRIBUTE_LOCATION, 1, GL_UNSIGNED_INT, Int.SIZE_BYTES, 0L)
-                glVertexAttribDivisor(INSTANCE_INDEX_ATTRIBUTE_LOCATION, 1)
-                glDrawElementsInstancedBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, instanceIndex)
-                indexBuffer.release()
-            }
-            UNIFORM_OFFSET ->
-            {
-                program.setUniform("uInstanceOffset", instanceIndex)
-                glDrawElementsInstanced(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount)
-            }
-        }
-
-        vao.release()
-        GpuProfiler.incrementTriangles(instanceCount * (indexCount / 3L))
         GpuProfiler.incrementDrawCalls()
     }
 
@@ -135,7 +106,195 @@ object DrawUtils
         GpuProfiler.incrementDrawCalls()
     }
 
+    fun drawModelBatches(
+        batches: ModelBatchList,
+        instanceIndexMode: ModelInstanceIndexMode,
+        instanceIndexBuffer: StreamingIntBufferObject?
+    ) {
+        ModelBatch.resetBoundProgramAndCullMode()
+        
+        if (!GlCapabilities.multiDrawIndirect || instanceIndexMode == UNIFORM_OFFSET)
+        {
+            batches.forEach { it.drawDirect(instanceIndexMode, instanceIndexBuffer) }
+            return
+        }
+
+        var groupStart = null as ModelBatch?
+        var groupVao = null as VertexArrayObject?
+        var commandCount = 0
+        var triangleCount = 0L
+
+        fun flushGroup()
+        {
+            val firstBatch = groupStart ?: return
+            val vao = groupVao ?: return
+
+            indirectCommandBuffer.flip()
+            firstBatch.bindProgramAndSetCullMode()
+            vao.bind()
+
+            if (instanceIndexMode == INSTANCE_ATTRIBUTE)
+                bindInstanceIndexAttribute(instanceIndexBuffer)
+
+            submitIndirectCommands()
+            glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0L, commandCount, 0)
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0)
+
+            if (instanceIndexMode == INSTANCE_ATTRIBUTE)
+                instanceIndexBuffer?.release()
+
+            vao.release()
+            GpuProfiler.incrementTriangles(triangleCount)
+            GpuProfiler.incrementDrawCalls()
+
+            groupStart = null
+            groupVao = null
+            commandCount = 0
+            triangleCount = 0L
+            indirectCommandBuffer.clear()
+        }
+
+        batches.forEach { batch ->
+
+            val vao = batch.model.vao ?: return@forEach
+            val firstBatch = groupStart
+
+            if (firstBatch == null)
+            {
+                groupStart = batch
+                groupVao = vao
+            }
+            else if (firstBatch.program !== batch.program || firstBatch.cullMode != batch.cullMode || groupVao !== vao)
+            {
+                flushGroup()
+                groupStart = batch
+                groupVao = vao
+            }
+
+            ensureIndirectCommandCapacity(commandCount + 1)
+            putIndirectCommand(
+                count = batch.subMesh.indexCount,
+                instanceCount = batch.instanceCount,
+                firstIndex = batch.subMesh.indexStart,
+                baseVertex = 0,
+                baseInstance = batch.instanceIndex
+            )
+            commandCount++
+            triangleCount += batch.instanceCount * (batch.subMesh.indexCount / 3L)
+        }
+
+        flushGroup()
+    }
+
+    private fun ModelBatch.drawDirect(instanceIndexMode: ModelInstanceIndexMode, instanceIndexBuffer: StreamingIntBufferObject?)
+    {
+        val vao = model.vao ?: return
+        bindProgramAndSetCullMode()
+        drawInstancedTriangleIndices(
+            program = program,
+            vao = vao,
+            instanceIndexMode = instanceIndexMode,
+            instanceIndexBuffer = instanceIndexBuffer,
+            firstIndex = subMesh.indexStart,
+            indexCount = subMesh.indexCount,
+            instanceIndex = instanceIndex,
+            instanceCount = instanceCount,
+            baseVertex = 0
+        )
+    }
+
+    fun drawInstancedTriangleIndices(
+        program: ShaderProgram,
+        vao: VertexArrayObject,
+        instanceIndexMode: ModelInstanceIndexMode,
+        instanceIndexBuffer: StreamingIntBufferObject?,
+        firstIndex: Int,
+        indexCount: Int,
+        instanceIndex: Int,
+        instanceCount: Int,
+        baseVertex: Int = 0
+    ) {
+        if (instanceCount == 0)
+            return
+
+        vao.bind()
+
+        when (instanceIndexMode)
+        {
+            BASE_INSTANCE ->
+            {
+                if (baseVertex == 0)
+                    glDrawElementsInstancedBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, instanceIndex)
+                else
+                    glDrawElementsInstancedBaseVertexBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, baseVertex, instanceIndex)
+            }
+            INSTANCE_ATTRIBUTE ->
+            {
+                bindInstanceIndexAttribute(instanceIndexBuffer)
+                if (baseVertex == 0)
+                    glDrawElementsInstancedBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, instanceIndex)
+                else
+                    glDrawElementsInstancedBaseVertexBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, baseVertex, instanceIndex)
+                instanceIndexBuffer?.release()
+            }
+            UNIFORM_OFFSET ->
+            {
+                program.setUniform("uInstanceOffset", instanceIndex)
+                if (baseVertex == 0)
+                    glDrawElementsInstanced(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount)
+                else
+                    glDrawElementsInstancedBaseVertex(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES, instanceCount, baseVertex)
+            }
+        }
+
+        vao.release()
+        GpuProfiler.incrementTriangles(instanceCount * (indexCount / 3L))
+        GpuProfiler.incrementDrawCalls()
+    }
+    
     private const val INSTANCE_INDEX_ATTRIBUTE_LOCATION = 6
+    private const val INDIRECT_COMMAND_STRIDE_BYTES = 5 * Int.SIZE_BYTES
+
+    private fun bindInstanceIndexAttribute(instanceIndexBuffer: StreamingIntBufferObject?)
+    {
+        val indexBuffer = instanceIndexBuffer ?: throw IllegalStateException("Instance index buffer is required for INSTANCE_ATTRIBUTE mode")
+        indexBuffer.bind()
+        glEnableVertexAttribArray(INSTANCE_INDEX_ATTRIBUTE_LOCATION)
+        glVertexAttribIPointer(INSTANCE_INDEX_ATTRIBUTE_LOCATION, 1, GL_UNSIGNED_INT, Int.SIZE_BYTES, indexBuffer.getSubmittedDataByteOffset())
+        glVertexAttribDivisor(INSTANCE_INDEX_ATTRIBUTE_LOCATION, 1)
+    }
+
+    private fun ensureIndirectCommandCapacity(commandCount: Int)
+    {
+        val requiredBytes = commandCount * INDIRECT_COMMAND_STRIDE_BYTES
+        if (requiredBytes <= indirectCommandBuffer.capacity())
+            return
+
+        val newCapacity = max(requiredBytes, indirectCommandBuffer.capacity() * 2)
+        val newBuffer = BufferUtils.createByteBuffer(newCapacity)
+        indirectCommandBuffer.flip()
+        newBuffer.put(indirectCommandBuffer)
+        indirectCommandBuffer = newBuffer
+    }
+
+    private fun putIndirectCommand(count: Int, instanceCount: Int, firstIndex: Int, baseVertex: Int, baseInstance: Int)
+    {
+        indirectCommandBuffer
+            .putInt(count)
+            .putInt(instanceCount)
+            .putInt(firstIndex)
+            .putInt(baseVertex)
+            .putInt(baseInstance)
+    }
+
+    private fun submitIndirectCommands()
+    {
+        if (indirectCommandBufferId == 0)
+            indirectCommandBufferId = glGenBuffers()
+
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirectCommandBufferId)
+        glBufferData(GL_DRAW_INDIRECT_BUFFER, indirectCommandBuffer, GL_STREAM_DRAW)
+    }
 }
 
 /**

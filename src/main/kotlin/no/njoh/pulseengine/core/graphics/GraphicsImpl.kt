@@ -252,7 +252,7 @@ open class GraphicsImpl : GraphicsInternal
         }
     }
 
-    override fun uploadMesh(model: Model)
+    override fun uploadModel(model: Model)
     {
         if ((model.vbo == null && model.vertexBytes.isEmpty()) || (model.ebo == null && model.indices.isEmpty()))
         {
@@ -265,17 +265,17 @@ open class GraphicsImpl : GraphicsInternal
         val vbo = model.vbo ?: StaticBufferObject.createArrayBuffer(model.vertexBytes)
         vbo.bind()
 
-        VertexAttributeLayout().apply() 
+        VertexAttributeLayout().apply()
         {
             withAttribute("position", 3, GL_FLOAT, location = 0)
 
-            if (model.hasNormals) 
+            if (model.hasNormals)
                 withAttribute("normal", 3, GL_SHORT, normalized = true, location = 1)
 
             if (model.hasTangents)
                 withAttribute("tangent", 4, GL_SHORT, normalized = true, location = 2)
 
-            if (model.hasTexCoords) 
+            if (model.hasTexCoords)
                 withAttribute("texCoord", 2, GL_HALF_FLOAT, location = 3)
 
             if (model.hasBones)

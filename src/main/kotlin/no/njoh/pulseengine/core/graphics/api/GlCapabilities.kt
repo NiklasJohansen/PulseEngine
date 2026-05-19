@@ -23,6 +23,20 @@ object GlCapabilities
     var shaderDrawParameters = false; private set
 
     /**
+     * True when multi-draw indirect entry points are available.
+     *
+     * Provided by OpenGL 4.3 or `GL_ARB_multi_draw_indirect`.
+     */
+    var multiDrawIndirect = false; private set
+
+    /**
+     * True when immutable persistent mapped buffer storage is available.
+     *
+     * Provided by OpenGL 4.4 or `GL_ARB_buffer_storage`.
+     */
+    var persistentMappedBuffers = false; private set
+
+    /**
      * True when shader draw parameters are available through core OpenGL 4.6.
      */
     var shaderDrawParametersCore = false; private set
@@ -43,5 +57,7 @@ object GlCapabilities
         shaderDrawParametersCore = caps.OpenGL46
         shaderDrawParametersArb = caps.GL_ARB_shader_draw_parameters
         shaderDrawParameters = shaderDrawParametersCore || shaderDrawParametersArb
+        multiDrawIndirect = caps.OpenGL43 || caps.GL_ARB_multi_draw_indirect
+        persistentMappedBuffers = caps.OpenGL44 || caps.GL_ARB_buffer_storage
     }
 }

@@ -51,7 +51,7 @@ class NoOpGraphics : GraphicsInternal
     override fun getSurfaceOrDefault(name: String) = mainSurface
     override fun compileShader(shader: Shader) {}
     override fun init(engine: PulseEngineInternal) {}
-    override fun uploadMesh(model: Model) {}
+    override fun uploadModel(model: Model) {}
     override fun initFrame(engine: PulseEngineInternal) {}
     override fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean) {}
     override fun drawFrame(engine: PulseEngineInternal) {}

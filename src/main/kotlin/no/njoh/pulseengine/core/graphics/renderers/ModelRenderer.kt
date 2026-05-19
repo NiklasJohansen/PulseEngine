@@ -4,7 +4,6 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
-import no.njoh.pulseengine.core.graphics.api.ModelBatch
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureCompare
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
@@ -15,7 +14,7 @@ import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.BrdfLutBuilder
-import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedTriangleIndices
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawModelBatches
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelBatcher
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
@@ -118,6 +117,16 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         if (startIndex > 0) return // Only once per frame
+
+        configureProgram(staticProgram, engine, surface)
+        configureProgram(skinnedProgram, engine, surface)
+
+        glEnable(GL_DEPTH_TEST)
+        glDisable(GL_BLEND)
+
+        val hasDepthPrepass = surface.config.hasDepthPrepass
+        glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
+        glDepthMask(!hasDepthPrepass)
         
         opaqueItems.clear()
         maskedItems.clear()
@@ -136,39 +145,27 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
         val transparentBatches = transparentBatcher.createBatchesAndFillBuffer(transparentItems, modelBuffer, sortForBatching = false)
         modelBuffer.submit()
 
-        configureProgram(staticProgram, engine, surface)
-        configureProgram(skinnedProgram, engine, surface)
-        ModelBatch.reset()
-
-        glEnable(GL_DEPTH_TEST)
-        glDisable(GL_BLEND)
-
-        val hasDepthPrepass = surface.config.hasDepthPrepass
-        glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
-        glDepthMask(!hasDepthPrepass)
-
         val opaqueCount = opaqueBatches.totalInstanceCount()
-        measure({"opaque" plus " (" plus opaqueCount plus "i, " plus opaqueBatches.size plus "b)"})
+        measure({"opaque (" plus opaqueCount plus "i, " plus opaqueBatches.size plus "b)"})
         {
-            opaqueBatches.forEach { it.drawBatch() }
+            drawModelBatches(opaqueBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
         }
 
         staticProgram.bind()
         staticProgram.setUniformSampler("uGtaoTex", engine.gfx.textureBank.getOrCreateFallbackTexture(WHITE))
         skinnedProgram.bind()
         skinnedProgram.setUniformSampler("uGtaoTex", engine.gfx.textureBank.getOrCreateFallbackTexture(WHITE))
-        ModelBatch.reset()
 
         val maskedCount = maskedBatches.totalInstanceCount()
         if (maskedCount > 0)
         {
-            measure({"masked" plus " (" plus maskedCount plus "i, " plus maskedBatches.size plus "b)"})
+            measure({"masked (" plus maskedCount plus "i, " plus maskedBatches.size plus "b)"})
             {
                 glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(true)
 
-                maskedBatches.forEach { it.drawBatch() }
+                drawModelBatches(maskedBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
 
                 glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
             }
@@ -177,33 +174,19 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
         val transparentCount = transparentBatches.totalInstanceCount()
         if (transparentCount > 0)
         {
-            measure({"transparent" plus " (" plus transparentCount plus "i, " plus transparentBatches.size plus "b)"})
+            measure({"transparent (" plus transparentCount plus "i, " plus transparentBatches.size plus "b)"})
             {
                 glEnable(GL_BLEND)
                 glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(false)
 
-                transparentBatches.forEach { it.drawBatch() }
+                drawModelBatches(transparentBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
             }
         }
 
+        modelBuffer.markSubmittedDataInUse()
         glDepthMask(true)
-    }
-
-    private fun ModelBatch.drawBatch()
-    {
-        bind()
-        drawInstancedTriangleIndices(
-            program,
-            model.vao ?: return,
-            modelBuffer.instanceIndexMode,
-            modelBuffer.instanceIndexBuffer,
-            subMesh.indexStart,
-            subMesh.indexCount,
-            instanceIndex,
-            instanceCount
-        )
     }
 
     private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: SurfaceInternal)
