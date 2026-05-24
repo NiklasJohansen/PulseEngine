@@ -80,6 +80,22 @@ class PersistentRingBufferObject(
         submitSegment(size)
     }
 
+    fun reserve(elementCount: Int)
+    {
+        ensureCapacity(elementCount, elementCount)
+        waitForSegment(writeSegmentIndex)
+        submitSegment(elementCount)
+    }
+
+    fun bindSubmittedRange()
+    {
+        if (blockBinding == null)
+            return
+
+        val rangeSize = max(submittedElementCount * elementSizeBytes, elementSizeBytes).toLong()
+        glBindBufferRange(target, blockBinding, id, submittedDataByteOffset, rangeSize)
+    }
+
     fun markSubmittedSegmentInUse()
     {
         val segmentIndex = submittedSegmentIndex
@@ -119,10 +135,7 @@ class PersistentRingBufferObject(
         submittedDataByteOffset = writeSegmentIndex * segmentStrideBytes.toLong()
 
         if (blockBinding != null)
-        {
-            val rangeSize = max(elementCount * elementSizeBytes, elementSizeBytes).toLong()
-            glBindBufferRange(target, blockBinding, id, submittedDataByteOffset, rangeSize)
-        }
+            bindSubmittedRange()
     }
 
     private fun ensureCapacity(requiredCapacity: Int, cpuCapacity: Int)

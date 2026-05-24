@@ -9,17 +9,13 @@ import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
-import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.GL_LINES
 import org.lwjgl.opengl.GL11.GL_TRIANGLES
 import org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP
 import org.lwjgl.opengl.GL11.GL_UNSIGNED_INT
 import org.lwjgl.opengl.GL11.glDrawArrays
 import org.lwjgl.opengl.GL11.glDrawElements
-import org.lwjgl.opengl.GL15.GL_STREAM_DRAW
 import org.lwjgl.opengl.GL15.glBindBuffer
-import org.lwjgl.opengl.GL15.glBufferData
-import org.lwjgl.opengl.GL15.glGenBuffers
 import org.lwjgl.opengl.GL20.glEnableVertexAttribArray
 import org.lwjgl.opengl.GL30.glVertexAttribIPointer
 import org.lwjgl.opengl.GL31.glDrawArraysInstanced
@@ -35,8 +31,7 @@ import kotlin.math.max
 
 object DrawUtils
 {
-    private var indirectCommandBuffer = BufferUtils.createByteBuffer(INDIRECT_COMMAND_STRIDE_BYTES * 256)
-    private var indirectCommandBufferId = 0
+    private var indirectCommandBuffer: StreamingIntBufferObject? = null
 
     fun drawTriangleIndices(vao: VertexArrayObject, firstIndex: Int, indexCount: Int)
     {
@@ -113,14 +108,40 @@ object DrawUtils
     ) {
         ModelBatch.resetBoundProgramAndCullMode()
         
-        if (!GlCapabilities.multiDrawIndirect || instanceIndexMode == UNIFORM_OFFSET)
+        if (!GlCapabilities.multiDrawIndirect || !GlCapabilities.persistentMappedBuffers || instanceIndexMode == UNIFORM_OFFSET)
         {
             batches.forEach { it.drawDirect(instanceIndexMode, instanceIndexBuffer) }
             return
         }
 
+        var totalCommandCount = 0
+        val commandBuffer = getIndirectCommandBuffer()
+        commandBuffer.clear()
+
+        batches.forEach { batch ->
+
+            if (batch.model.vao == null) return@forEach
+ 
+            commandBuffer.fill(INDIRECT_COMMAND_INTS)
+            {
+                put(batch.subMesh.indexCount) // Count
+                put(batch.instanceCount)      // Instance count
+                put(batch.subMesh.indexStart) // First index
+                put(0)                        // Base vertex
+                put(batch.instanceIndex)      // Base instance
+            }
+            totalCommandCount++
+        }
+
+        if (totalCommandCount == 0)
+            return
+
+        commandBuffer.submit()
+
         var groupStart = null as ModelBatch?
         var groupVao = null as VertexArrayObject?
+        var groupCommandStart = 0
+        var commandIndex = 0
         var commandCount = 0
         var triangleCount = 0L
 
@@ -129,15 +150,21 @@ object DrawUtils
             val firstBatch = groupStart ?: return
             val vao = groupVao ?: return
 
-            indirectCommandBuffer.flip()
             firstBatch.bindProgramAndSetCullMode()
+            firstBatch.program.setUniform("uUseVisibleInstanceBuffer", false)
             vao.bind()
 
             if (instanceIndexMode == INSTANCE_ATTRIBUTE)
                 bindInstanceIndexAttribute(instanceIndexBuffer)
 
-            submitIndirectCommands()
-            glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0L, commandCount, 0)
+            commandBuffer.bind()
+            glMultiDrawElementsIndirect(
+                GL_TRIANGLES,
+                GL_UNSIGNED_INT,
+                commandBuffer.getSubmittedDataByteOffset() + groupCommandStart.toLong() * INDIRECT_COMMAND_STRIDE_BYTES,
+                commandCount,
+                0
+            )
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0)
 
             if (instanceIndexMode == INSTANCE_ATTRIBUTE)
@@ -149,9 +176,9 @@ object DrawUtils
 
             groupStart = null
             groupVao = null
+            groupCommandStart = 0
             commandCount = 0
             triangleCount = 0L
-            indirectCommandBuffer.clear()
         }
 
         batches.forEach { batch ->
@@ -163,24 +190,95 @@ object DrawUtils
             {
                 groupStart = batch
                 groupVao = vao
+                groupCommandStart = commandIndex
             }
             else if (firstBatch.program !== batch.program || firstBatch.cullMode != batch.cullMode || groupVao !== vao)
             {
                 flushGroup()
                 groupStart = batch
                 groupVao = vao
+                groupCommandStart = commandIndex
             }
 
-            ensureIndirectCommandCapacity(commandCount + 1)
-            putIndirectCommand(
-                count = batch.subMesh.indexCount,
-                instanceCount = batch.instanceCount,
-                firstIndex = batch.subMesh.indexStart,
-                baseVertex = 0,
-                baseInstance = batch.instanceIndex
-            )
             commandCount++
             triangleCount += batch.instanceCount * (batch.subMesh.indexCount / 3L)
+            commandIndex++
+        }
+
+        flushGroup()
+        commandBuffer.markSubmittedDataInUse()
+    }
+
+    fun drawGpuCulledModelBatches(batches: ModelBatchList, culler: GpuModelCuller)
+    {
+        if (batches.size == 0) return
+
+        ModelBatch.resetBoundProgramAndCullMode()
+        culler.bindVisibleInstanceBuffer()
+
+        var groupStart = null as ModelBatch?
+        var groupVao = null as VertexArrayObject?
+        var groupCommandStart = 0
+        var commandIndex = 0
+        var commandCount = 0
+        var triangleCount = 0L
+
+        fun flushGroup()
+        {
+            val firstBatch = groupStart ?: return
+            val vao = groupVao ?: return
+
+            firstBatch.bindProgramAndSetCullMode()
+            firstBatch.program.setUniform("uUseVisibleInstanceBuffer", true)
+            vao.bind()
+            culler.bindIndirectCommandBuffer()
+
+            glMultiDrawElementsIndirect(
+                /* mode = */ GL_TRIANGLES,
+                /* type = */ GL_UNSIGNED_INT,
+                /* indirect = */ culler.getSubmittedIndirectCommandByteOffset() + groupCommandStart.toLong() * INDIRECT_COMMAND_STRIDE_BYTES,
+                /* drawcount = */ commandCount,
+                /* stride = */ 0
+            )
+
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0)
+            vao.release()
+            GpuProfiler.incrementTriangles(triangleCount)
+            GpuProfiler.incrementDrawCalls()
+
+            groupStart = null
+            groupVao = null
+            commandCount = 0
+            triangleCount = 0L
+        }
+
+        batches.forEach { batch ->
+            val vao = batch.model.vao
+            if (vao == null)
+            {
+                commandIndex++
+                return@forEach
+            }
+
+            val firstBatch = groupStart
+
+            if (firstBatch == null)
+            {
+                groupStart = batch
+                groupVao = vao
+                groupCommandStart = commandIndex
+            }
+            else if (firstBatch.program !== batch.program || firstBatch.cullMode != batch.cullMode || groupVao !== vao)
+            {
+                flushGroup()
+                groupStart = batch
+                groupVao = vao
+                groupCommandStart = commandIndex
+            }
+
+            commandCount++
+            triangleCount += batch.instanceCount * (batch.subMesh.indexCount / 3L)
+            commandIndex++
         }
 
         flushGroup()
@@ -190,6 +288,7 @@ object DrawUtils
     {
         val vao = model.vao ?: return
         bindProgramAndSetCullMode()
+        program.setUniform("uUseVisibleInstanceBuffer", false)
         drawInstancedTriangleIndices(
             program = program,
             vao = vao,
@@ -253,6 +352,7 @@ object DrawUtils
     }
     
     private const val INSTANCE_INDEX_ATTRIBUTE_LOCATION = 6
+    private const val INDIRECT_COMMAND_INTS = 5
     private const val INDIRECT_COMMAND_STRIDE_BYTES = 5 * Int.SIZE_BYTES
 
     private fun bindInstanceIndexAttribute(instanceIndexBuffer: StreamingIntBufferObject?)
@@ -264,37 +364,11 @@ object DrawUtils
         glVertexAttribDivisor(INSTANCE_INDEX_ATTRIBUTE_LOCATION, 1)
     }
 
-    private fun ensureIndirectCommandCapacity(commandCount: Int)
-    {
-        val requiredBytes = commandCount * INDIRECT_COMMAND_STRIDE_BYTES
-        if (requiredBytes <= indirectCommandBuffer.capacity())
-            return
-
-        val newCapacity = max(requiredBytes, indirectCommandBuffer.capacity() * 2)
-        val newBuffer = BufferUtils.createByteBuffer(newCapacity)
-        indirectCommandBuffer.flip()
-        newBuffer.put(indirectCommandBuffer)
-        indirectCommandBuffer = newBuffer
-    }
-
-    private fun putIndirectCommand(count: Int, instanceCount: Int, firstIndex: Int, baseVertex: Int, baseInstance: Int)
-    {
-        indirectCommandBuffer
-            .putInt(count)
-            .putInt(instanceCount)
-            .putInt(firstIndex)
-            .putInt(baseVertex)
-            .putInt(baseInstance)
-    }
-
-    private fun submitIndirectCommands()
-    {
-        if (indirectCommandBufferId == 0)
-            indirectCommandBufferId = glGenBuffers()
-
-        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirectCommandBufferId)
-        glBufferData(GL_DRAW_INDIRECT_BUFFER, indirectCommandBuffer, GL_STREAM_DRAW)
-    }
+    private fun getIndirectCommandBuffer(): StreamingIntBufferObject =
+        indirectCommandBuffer 
+            ?: StreamingIntBufferObject
+                .createDrawIndirectBuffer(initCapacity = INDIRECT_COMMAND_INTS * 256)
+                .also { indirectCommandBuffer = it }
 }
 
 /**
@@ -352,7 +426,7 @@ fun transformModelVertexShader(source: String): String
     else
         source.take(newLineIndex).trimEnd('\r')
 
-    val header = when (mode)
+    val drawIndexHeader = when (mode)
     {
         BASE_INSTANCE ->
         {
@@ -366,17 +440,34 @@ fun transformModelVertexShader(source: String): String
             else 
                 "#extension GL_ARB_shader_draw_parameters : require\n"
             
-            "$extension#define MODEL_INSTANCE_INDEX ($instanceIndex)\n"
+            "$extension#define MODEL_INSTANCE_DRAW_INDEX ($instanceIndex)\n"
         }
 
         INSTANCE_ATTRIBUTE -> 
             "#define USE_INSTANCE_INDEX_ATTRIBUTE 1\n" +
-            "#define MODEL_INSTANCE_INDEX int(aInstanceIndex)\n"
+            "#define MODEL_INSTANCE_DRAW_INDEX int(aInstanceIndex)\n"
 
         UNIFORM_OFFSET -> 
             "#define USE_INSTANCE_OFFSET_UNIFORM 1\n" +
-            "#define MODEL_INSTANCE_INDEX (uInstanceOffset + gl_InstanceID)\n"
+            "#define MODEL_INSTANCE_DRAW_INDEX (uInstanceOffset + gl_InstanceID)\n"
     }
 
-    return versionLine + "\n" + header + source.substring(newLineIndex + 1)
+    val visibleInstanceHeader = """
+        layout(std430, binding = ${GpuModelCuller.VISIBLE_INSTANCE_BUFFER_BINDING}) readonly buffer VisibleInstanceBuffer
+        {
+            uint uVisibleInstanceIndices[];
+        };
+
+        uniform bool uUseVisibleInstanceBuffer;
+
+        int resolveModelInstanceIndex()
+        {
+            int drawIndex = MODEL_INSTANCE_DRAW_INDEX;
+            return uUseVisibleInstanceBuffer ? int(uVisibleInstanceIndices[drawIndex]) : drawIndex;
+        }
+
+        #define MODEL_INSTANCE_INDEX resolveModelInstanceIndex()
+    """.trimIndent()
+
+    return versionLine + "\n" + drawIndexHeader + visibleInstanceHeader + source.substring(newLineIndex + 1)
 }

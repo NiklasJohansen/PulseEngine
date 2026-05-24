@@ -1,0 +1,95 @@
+#version 430 core
+
+layout(local_size_x = 64) in;
+
+struct InstanceData
+{
+    mat4 model;
+    vec4 params;
+};
+
+struct InstanceBounds
+{
+    vec4 centerHalfX;
+    vec4 halfYzBatchInstance;
+};
+
+struct DrawElementsIndirectCommand
+{
+    uint count;
+    uint instanceCount;
+    uint firstIndex;
+    uint baseVertex;
+    uint baseInstance;
+};
+
+layout(std430, binding = 1) readonly buffer InstanceBuffer
+{
+    InstanceData uInstances[];
+};
+
+layout(std430, binding = 4) writeonly buffer VisibleInstanceBuffer
+{
+    uint uVisibleInstanceIndices[];
+};
+
+layout(std430, binding = 5) readonly buffer BoundsBuffer
+{
+    InstanceBounds uBounds[];
+};
+
+layout(std430, binding = 6) buffer CommandBuffer
+{
+    DrawElementsIndirectCommand uCommands[];
+};
+
+uniform vec4 uFrustumPlanes[6];
+uniform int uInstanceCount;
+
+bool intersectsFrustum(vec3 worldCenter, vec3 worldHalfExtents)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        vec4 plane = uFrustumPlanes[i];
+        float radius = dot(worldHalfExtents, abs(plane.xyz));
+        float distance = dot(plane.xyz, worldCenter) + plane.w;
+        if (distance < -radius)
+            return false;
+    }
+    return true;
+}
+
+vec3 transformHalfExtents(mat4 transform, vec3 halfExtents)
+{
+    mat3 basis = mat3(transform);
+    return vec3(
+        dot(abs(vec3(basis[0].x, basis[1].x, basis[2].x)), halfExtents),
+        dot(abs(vec3(basis[0].y, basis[1].y, basis[2].y)), halfExtents),
+        dot(abs(vec3(basis[0].z, basis[1].z, basis[2].z)), halfExtents)
+    );
+}
+
+void main()
+{
+    uint boundsIndex = gl_GlobalInvocationID.x;
+    if (boundsIndex >= uint(uInstanceCount))
+        return;
+
+    InstanceBounds bounds = uBounds[boundsIndex];
+    uint batchIndex = uint(bounds.halfYzBatchInstance.z + 0.5);
+    uint instanceIndex = uint(bounds.halfYzBatchInstance.w + 0.5);
+
+    InstanceData instance = uInstances[instanceIndex];
+    vec3 localCenter = bounds.centerHalfX.xyz;
+    vec3 localHalfExtents = vec3(bounds.centerHalfX.w, bounds.halfYzBatchInstance.x, bounds.halfYzBatchInstance.y);
+
+    vec3 worldCenter = (instance.model * vec4(localCenter, 1.0)).xyz;
+    vec3 worldHalfExtents = transformHalfExtents(instance.model, localHalfExtents);
+
+    if (!intersectsFrustum(worldCenter, worldHalfExtents))
+        return;
+
+    uint visibleOffset = atomicAdd(uCommands[batchIndex].instanceCount, 1u);
+    uint visibleIndex = uCommands[batchIndex].baseInstance + visibleOffset;
+    uVisibleInstanceIndices[visibleIndex] = instanceIndex;
+}

@@ -3,7 +3,6 @@ package no.njoh.pulseengine.modules.scene.systems
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.DrawList
-import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.mipmap.DepthPyramidGenerator
@@ -19,8 +18,6 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 @Name("World Renderer (3D)")
 class WorldRenderSystem() : SceneSystem()
 {
-    private var frustum = Frustum()
-
     override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface(
@@ -56,11 +53,8 @@ class WorldRenderSystem() : SceneSystem()
             if ((it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, drawList)
         }
 
-        frustum.setForCamera(surface.camera)
-        val culledDrawList = drawList.getFrustumCulledList(frustum)
-        
-        surface.getRenderer<ModelRenderer>()?.draw(culledDrawList)
-        surface.getRenderer<DepthPrepassRenderer>()?.draw(culledDrawList)
+        surface.getRenderer<DepthPrepassRenderer>()?.draw(drawList)
+        surface.getRenderer<ModelRenderer>()?.draw(drawList)
     }
 
     override fun onStateChanged(engine: PulseEngine)

@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
+import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
@@ -13,9 +14,12 @@ import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawGpuCulledModelBatches
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawModelBatches
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.GpuModelCuller
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelBatcher
+import no.njoh.pulseengine.core.graphics.util.addVisibleItems
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.utils.Extensions.addAllNoAlloc
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -39,9 +43,11 @@ class CascadedShadowMapRenderer(
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: StaticBufferObject
 
-    private val modelBuffer  = ModelBufferObject()
-    private val renderItems  = ArrayList<RenderItem>(1024)
+    private var gpuCuller: GpuModelCuller? = null
 
+    private val modelBuffer    = ModelBufferObject()
+    private val renderItems    = ArrayList<RenderItem>(1024)
+    private val shadowFrustum  = Frustum()
     private val lightDirection = Vector3f()
     private var readDrawLists  = ArrayList<DrawList>()
     private var writeDrawLists = ArrayList<DrawList>()
@@ -51,7 +57,8 @@ class CascadedShadowMapRenderer(
     private var writeCascadeSplits = FloatArray(CASCADE_COUNT)
     private var readCascadeSizeMeters  = FloatArray(CASCADE_COUNT)
     private var writeCascadeSizeMeters = FloatArray(CASCADE_COUNT)
-    private var shadowCullingMatrix = Matrix4f()
+    private var readShadowCullingMatrix = Matrix4f()
+    private var writeShadowCullingMatrix = Matrix4f()
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -67,6 +74,7 @@ class CascadedShadowMapRenderer(
             )
             vbo = StaticBufferObject.createFullscreenUvTriangleArrayBuffer()
             modelBatcher = ModelBatcher(staticProgram, skinnedProgram)
+            gpuCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
             modelBuffer.init()
         }
 
@@ -82,6 +90,7 @@ class CascadedShadowMapRenderer(
         readViewProjectionMatrices = writeViewProjectionMatrices.also { writeViewProjectionMatrices = readViewProjectionMatrices }
         readCascadeSplits = writeCascadeSplits.also { writeCascadeSplits = readCascadeSplits }
         readCascadeSizeMeters = writeCascadeSizeMeters.also { writeCascadeSizeMeters = readCascadeSizeMeters }
+        readShadowCullingMatrix = writeShadowCullingMatrix.also { writeShadowCullingMatrix = readShadowCullingMatrix }
         readDrawLists = writeDrawLists.also { writeDrawLists = readDrawLists }
         writeDrawLists.clear()
     }
@@ -103,22 +112,35 @@ class CascadedShadowMapRenderer(
         skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
         
         renderItems.clear()
+        shadowFrustum.setForViewProjection(readShadowCullingMatrix)
+
         readDrawLists.forEachFast()
         {
-            renderItems.addAllNoAlloc(it.opaqueItems)
-            renderItems.addAllNoAlloc(it.maskedItems)
+            if (gpuCuller != null)
+            {
+                renderItems.addAllNoAlloc(it.opaqueItems)
+                renderItems.addAllNoAlloc(it.maskedItems)
+            }
+            else
+            {
+                renderItems.addVisibleItems(it.opaqueItems, shadowFrustum)
+                renderItems.addVisibleItems(it.maskedItems, shadowFrustum)
+            }
         }
-        
+
+        gpuCuller?.clear()
         modelBuffer.clear()
-        val modelBatches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer)
+        val modelBatches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer, gpuCuller)
         modelBuffer.submit()
+
+        gpuCuller?.submitAndCull(modelBatches, shadowFrustum)
 
         val count = modelBatches.totalInstanceCount()
         val halfRes = resolution / 2
-        
+
         for (cascade in 0 until CASCADE_COUNT)
         {
-            GpuProfiler.measure({ "cascade #" plus cascade plus " (" plus count plus ")" })
+            measure({ "cascade #" plus cascade plus " (" plus count plus ")" })
             {
                 val col = cascade % 2
                 val row = cascade / 2
@@ -129,10 +151,14 @@ class CascadedShadowMapRenderer(
                 skinnedProgram.bind()
                 skinnedProgram.setUniform("viewProjection", readViewProjectionMatrices[cascade])
 
-                drawModelBatches(modelBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
+                if (gpuCuller != null)
+                    drawGpuCulledModelBatches(modelBatches, gpuCuller!!)
+                else
+                    drawModelBatches(modelBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
             }
         }
 
+        gpuCuller?.markSubmittedDataInUse()
         modelBuffer.markSubmittedDataInUse()
 
         glViewport(0, 0, resolution, resolution)
@@ -147,6 +173,7 @@ class CascadedShadowMapRenderer(
         vbo.destroy()
         vao.destroy()
         modelBuffer.destroy()
+        gpuCuller?.destroy()
     }
 
     fun draw(drawList: DrawList)
@@ -246,7 +273,7 @@ class CascadedShadowMapRenderer(
             if (cascadeIdx == CASCADE_COUNT - 1)
             {
                 val expand = SHADOW_BACKOFF_METERS
-                shadowCullingMatrix
+                writeShadowCullingMatrix
                     .identity()
                     .ortho(xMin - expand, xMax + expand, yMin - expand, yMax + expand, -zMax, -zMin)
                     .mul(lightViewMatrix)
@@ -341,11 +368,6 @@ class CascadedShadowMapRenderer(
      * Returns the world-space size of each cascade in meters.
      */
     fun getCascadeSizeMeters() = readCascadeSizeMeters
-
-    /**
-     * Returns the expanded culling matrix that covers all potential shadow casters.
-     */
-    fun getShadowCullingMatrix() = shadowCullingMatrix
 
     companion object
     {

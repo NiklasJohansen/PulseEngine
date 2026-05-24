@@ -6,13 +6,17 @@ import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
+import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawGpuCulledModelBatches
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawModelBatches
+import no.njoh.pulseengine.core.graphics.util.GpuModelCuller
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelBatcher
+import no.njoh.pulseengine.core.graphics.util.addVisibleItems
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.utils.Extensions.addAllNoAlloc
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
@@ -25,10 +29,13 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
     private lateinit var skinnedProgram: ShaderProgram
     private lateinit var modelBatcher: ModelBatcher
 
+    private var gpuCuller: GpuModelCuller? = null
+
     private val modelBuffer    = ModelBufferObject()
     private val renderItems    = ArrayList<RenderItem>(1024)
     private var readDrawLists  = ArrayList<DrawList>()
     private var writeDrawLists = ArrayList<DrawList>()
+    private val frustum        = Frustum()
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -42,8 +49,9 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_depth_skinned.vert", ::transformModelVertexShader)),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_depth.frag"))
             )
-            modelBuffer.init()
             modelBatcher = ModelBatcher(staticProgram, skinnedProgram)
+            gpuCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
+            modelBuffer.init()
         }
     }
 
@@ -74,19 +82,37 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
         skinnedProgram.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
 
         renderItems.clear()
+        frustum.setForCamera(surface.camera)
         readDrawLists.forEachFast()
         {
-            renderItems.addAllNoAlloc(it.opaqueItems)
-            renderItems.addAllNoAlloc(it.maskedItems)
+            if (gpuCuller != null)
+            {
+                renderItems.addAllNoAlloc(it.opaqueItems)
+                renderItems.addAllNoAlloc(it.maskedItems)
+            }
+            else
+            {
+                renderItems.addVisibleItems(it.opaqueItems, frustum)
+                renderItems.addVisibleItems(it.maskedItems, frustum)
+            }
         }
-        
+
         modelBuffer.clear()
-        val batches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer)
+        gpuCuller?.clear()
+        val batches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer, gpuCuller)
         modelBuffer.submit()
 
         measure({"draw opaque + masked (" plus batches.totalInstanceCount() plus "i, " plus batches.size plus "b)"})
         {
-            drawModelBatches(batches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
+            val culler = gpuCuller
+            if (culler != null)
+            {
+                culler.submitAndCull(batches,frustum)
+                drawGpuCulledModelBatches(batches, culler)
+            }
+            else drawModelBatches(batches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
+
+            culler?.markSubmittedDataInUse()
             modelBuffer.markSubmittedDataInUse()
         }
 
@@ -103,6 +129,7 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
         staticProgram.destroy()
         skinnedProgram.destroy()
         modelBuffer.destroy()
+        gpuCuller?.destroy()
     }
 
     fun draw(drawList: DrawList)

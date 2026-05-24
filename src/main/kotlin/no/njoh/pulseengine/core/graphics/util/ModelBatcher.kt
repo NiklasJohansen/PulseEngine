@@ -15,8 +15,13 @@ internal class ModelBatcher(
     private val batchList = ModelBatchList()
     private val batchComparator = Comparator<RenderItem> { a, b -> compareForBatching(a, b) }
 
-    fun createBatchesAndFillBuffer(items: ArrayList<RenderItem>, modelBuffer: ModelBufferObject, sortForBatching: Boolean = true): ModelBatchList 
-    {
+    fun createBatchesAndFillBuffer(
+        items: ArrayList<RenderItem>,
+        modelBuffer: ModelBufferObject,
+        gpuCuller: GpuModelCuller? = null,
+        sortForBatching: Boolean = true
+    ): ModelBatchList {
+  
         batchList.clear()
         if (items.isEmpty())
             return batchList
@@ -36,6 +41,8 @@ internal class ModelBatcher(
                 lastBatch.instanceCount++
             else 
                 batchList.add(it.model, it.subMesh, program, cullMode, instanceIndex, instanceCount = 1)
+
+            gpuCuller?.addInstance(it, instanceIndex, batchIndex = batchList.size - 1)
         }
 
         return batchList

@@ -21,6 +21,8 @@ class StreamingFloatBufferObject private constructor(
 
     fun submit() = buffer.submit(data, size)
 
+    fun bindSubmittedRange() = buffer.bindSubmittedRange()
+
     fun markSubmittedDataInUse() = buffer.markSubmittedSegmentInUse()
 
     fun getSubmittedDataByteOffset() = buffer.submittedDataByteOffset

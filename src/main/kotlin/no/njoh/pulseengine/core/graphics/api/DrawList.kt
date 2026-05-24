@@ -77,27 +77,6 @@ class DrawList(
         }
     }
 
-    fun getFrustumCulledList(frustum: Frustum): DrawList
-    {
-        val opaque = opaqueItems.cullFor(frustum)
-        val masked = maskedItems.cullFor(frustum)
-        val transparent = transparentItems.cullFor(frustum)
-
-        return DrawList(opaque, masked, transparent)
-    }
-
-    private fun List<RenderItem>.cullFor(frustum: Frustum): ArrayList<RenderItem>
-    {
-        val result = ArrayList<RenderItem>(this.size)
-        for (i in indices)
-        {
-            val item = this[i]
-            if (!item.cullable || frustum.intersectsAabb(item.cullingBounds, item.transform))
-                result += item
-        }
-        return result
-    }
-
     data class RenderItem(
         val model: Model,
         val subMesh: Model.SubMesh,

@@ -38,7 +38,6 @@ class WorldLightingSystem : SceneSystem()
     private var lastTargetSurfaces   = ""
     private var targetSurfaceNames   = emptyList<String>()
     private var lightFrustum         = Frustum()
-    private var shadowFrustum        = Frustum()
     private var lightList            = LightList()
 
     override fun onUpdate(engine: PulseEngine)
@@ -105,15 +104,7 @@ class WorldLightingSystem : SceneSystem()
             if (it.castShadows && (it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, shadowCasters)
         }
 
-        // Frustum-cull shadow casters against an expanded culling volume that covers
-        // all cascades plus extra lateral space to catch shadow casters outside the
-        // camera frustum that still cast shadows into the visible area (e.g. roofs).
-        val shadowCullingVP = shadowMapRenderer.getShadowCullingMatrix()
-        shadowFrustum.setForViewProjection(shadowCullingVP)
-
-        val culledShadowCasters = shadowCasters.getFrustumCulledList(shadowFrustum)
-
-        shadowMapRenderer.draw(culledShadowCasters)
+        shadowMapRenderer.draw(shadowCasters)
     }
 
     private fun renderWorldLights(engine: PulseEngine, camera: Camera)
