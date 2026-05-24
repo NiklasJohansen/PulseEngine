@@ -1,16 +1,17 @@
 package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.asset.types.Animation
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
 import no.njoh.pulseengine.core.asset.types.Model
+import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.joml.Matrix4f
 
 class DrawList(
     val opaqueItems: ArrayList<RenderItem> = ArrayList(256),
     val maskedItems: ArrayList<RenderItem> = ArrayList(256),
-    val transparentItems: ArrayList<RenderItem> = ArrayList(256)
+    val blendedItems: ArrayList<RenderItem> = ArrayList(256)
 ) {
     fun submit(engine: PulseEngine, model: Model, transform: Matrix4f, material: Material? = null)
     {
@@ -73,7 +74,7 @@ class DrawList(
         {
             OPAQUE -> opaqueItems += item
             MASK -> maskedItems += item
-            TRANSPARENT -> transparentItems += item
+            BLEND -> blendedItems += item
         }
     }
 
@@ -86,4 +87,16 @@ class DrawList(
         val cullingBounds: Model.Aabb,
         val boneMatrices: Array<Matrix4f>?
     )
+}
+
+fun ArrayList<RenderItem>.addAllVisible(source: List<RenderItem>, frustum: Frustum? = null)
+{
+    if (frustum != null)
+    {
+        source.forEachFast()
+        {
+            if (!it.cullable || frustum.intersectsAabb(it.cullingBounds, it.transform)) add(it)
+        }
+    }
+    else source.forEachFast { add(it) }
 }

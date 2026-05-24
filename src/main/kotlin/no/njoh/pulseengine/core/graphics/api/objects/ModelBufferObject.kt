@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.api.objects
 
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
 import no.njoh.pulseengine.core.graphics.util.getSupportedModelInstanceIndexMode
 import org.joml.Matrix4f
@@ -69,14 +70,14 @@ internal class ModelBufferObject
         return instanceIndex
     }
 
-    fun submit()
+    fun submit() = measure("submit model buffers")
     {
         instanceBuffer.submit()
         boneBuffer.submit()
         instanceIndexBuffer?.submit()
     }
 
-    fun markSubmittedDataInUse()
+    fun markSubmittedDataInUse() = measure("sync model buffers")
     {
         instanceBuffer.markSubmittedDataInUse()
         boneBuffer.markSubmittedDataInUse()

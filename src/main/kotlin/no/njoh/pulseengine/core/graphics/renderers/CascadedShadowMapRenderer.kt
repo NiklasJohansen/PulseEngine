@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
 import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
+import no.njoh.pulseengine.core.graphics.api.addAllVisible
 import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
@@ -19,9 +20,7 @@ import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawModelBatches
 import no.njoh.pulseengine.core.graphics.util.GpuModelCuller
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelBatcher
-import no.njoh.pulseengine.core.graphics.util.addVisibleItems
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
-import no.njoh.pulseengine.core.shared.utils.Extensions.addAllNoAlloc
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Matrix4f
@@ -107,32 +106,24 @@ class CascadedShadowMapRenderer(
 
         staticProgram.bind()
         staticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-
         skinnedProgram.bind()
         skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+
+        shadowFrustum.setForViewProjection(readShadowCullingMatrix)
         
         renderItems.clear()
-        shadowFrustum.setForViewProjection(readShadowCullingMatrix)
+        modelBuffer.clear()
+        gpuCuller?.clear()
 
         readDrawLists.forEachFast()
         {
-            if (gpuCuller != null)
-            {
-                renderItems.addAllNoAlloc(it.opaqueItems)
-                renderItems.addAllNoAlloc(it.maskedItems)
-            }
-            else
-            {
-                renderItems.addVisibleItems(it.opaqueItems, shadowFrustum)
-                renderItems.addVisibleItems(it.maskedItems, shadowFrustum)
-            }
+            renderItems.addAllVisible(it.opaqueItems, frustum = if (gpuCuller == null) shadowFrustum else null)
+            renderItems.addAllVisible(it.maskedItems, frustum = if (gpuCuller == null) shadowFrustum else null)
         }
 
-        gpuCuller?.clear()
-        modelBuffer.clear()
         val modelBatches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer, gpuCuller)
-        modelBuffer.submit()
 
+        modelBuffer.submit()
         gpuCuller?.submitAndCull(modelBatches, shadowFrustum)
 
         val count = modelBatches.totalInstanceCount()

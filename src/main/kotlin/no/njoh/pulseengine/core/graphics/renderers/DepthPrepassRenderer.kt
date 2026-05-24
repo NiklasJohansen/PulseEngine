@@ -7,7 +7,9 @@ import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
 import no.njoh.pulseengine.core.graphics.api.Frustum
+import no.njoh.pulseengine.core.graphics.api.ModelBatchList
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.addAllVisible
 import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
@@ -16,41 +18,48 @@ import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawModelBatches
 import no.njoh.pulseengine.core.graphics.util.GpuModelCuller
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelBatcher
-import no.njoh.pulseengine.core.graphics.util.addVisibleItems
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
-import no.njoh.pulseengine.core.shared.utils.Extensions.addAllNoAlloc
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.lwjgl.opengl.GL11.*
 
 class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
 {
-    private lateinit var staticProgram: ShaderProgram
-    private lateinit var skinnedProgram: ShaderProgram
-    private lateinit var modelBatcher: ModelBatcher
+    private lateinit var opaqueStaticProgram: ShaderProgram
+    private lateinit var opaqueSkinnedProgram: ShaderProgram
+    private lateinit var maskedStaticProgram: ShaderProgram
+    private lateinit var maskedSkinnedProgram: ShaderProgram
+    private lateinit var opaqueBatcher: ModelBatcher
+    private lateinit var maskedBatcher: ModelBatcher
 
-    private var gpuCuller: GpuModelCuller? = null
+    private var opaqueCuller: GpuModelCuller? = null
+    private var maskedCuller: GpuModelCuller? = null
 
     private val modelBuffer    = ModelBufferObject()
-    private val renderItems    = ArrayList<RenderItem>(1024)
+    private val opaqueItems    = ArrayList<RenderItem>(1024)
+    private val maskedItems    = ArrayList<RenderItem>(256)
     private var readDrawLists  = ArrayList<DrawList>()
     private var writeDrawLists = ArrayList<DrawList>()
     private val frustum        = Frustum()
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
-        if (!this::staticProgram.isInitialized)
+        if (!this::opaqueStaticProgram.isInitialized)
         {
-            staticProgram = ShaderProgram.create(
-                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_depth.vert", ::transformModelVertexShader)),
-                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_depth.frag"))
-            )
-            skinnedProgram = ShaderProgram.create(
-                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_depth_skinned.vert", ::transformModelVertexShader)),
-                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_depth.frag"))
-            )
-            modelBatcher = ModelBatcher(staticProgram, skinnedProgram)
-            gpuCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
+            val staticVertex   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_depth.vert", ::transformModelVertexShader))
+            val skinnedVertex  = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_depth_skinned.vert", ::transformModelVertexShader))
+            val opaqueFragment = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_depth_opaque.frag"))
+            val maskedFragment = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_depth.frag"))
+
+            opaqueStaticProgram = ShaderProgram.create(staticVertex, opaqueFragment)
+            opaqueSkinnedProgram = ShaderProgram.create(skinnedVertex, opaqueFragment)
+            maskedStaticProgram = ShaderProgram.create(staticVertex, maskedFragment)
+            maskedSkinnedProgram = ShaderProgram.create(skinnedVertex, maskedFragment)
+
+            opaqueBatcher = ModelBatcher(opaqueStaticProgram, opaqueSkinnedProgram)
+            maskedBatcher = ModelBatcher(maskedStaticProgram, maskedSkinnedProgram)
+            opaqueCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
+            maskedCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
             modelBuffer.init()
         }
     }
@@ -73,48 +82,49 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
         glDepthFunc(GL_LESS)
         glViewport(0, 0, surface.config.width, surface.config.height)
 
-        staticProgram.bind()
-        staticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        staticProgram.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-
-        skinnedProgram.bind()
-        skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        skinnedProgram.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
-
-        renderItems.clear()
         frustum.setForCamera(surface.camera)
+        
+        opaqueItems.clear()
+        maskedItems.clear()
+        modelBuffer.clear()
+        opaqueCuller?.clear()
+        maskedCuller?.clear()
+
         readDrawLists.forEachFast()
         {
-            if (gpuCuller != null)
-            {
-                renderItems.addAllNoAlloc(it.opaqueItems)
-                renderItems.addAllNoAlloc(it.maskedItems)
-            }
-            else
-            {
-                renderItems.addVisibleItems(it.opaqueItems, frustum)
-                renderItems.addVisibleItems(it.maskedItems, frustum)
-            }
+            opaqueItems.addAllVisible(it.opaqueItems, frustum = if (opaqueCuller == null) frustum else null)
+            maskedItems.addAllVisible(it.maskedItems, frustum = if (maskedCuller == null) frustum else null)
         }
 
-        modelBuffer.clear()
-        gpuCuller?.clear()
-        val batches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer, gpuCuller)
+        val opaqueBatches = opaqueBatcher.createBatchesAndFillBuffer(opaqueItems, modelBuffer, opaqueCuller)
+        val maskedBatches = maskedBatcher.createBatchesAndFillBuffer(maskedItems, modelBuffer, maskedCuller)
         modelBuffer.submit()
 
-        measure({"draw opaque + masked (" plus batches.totalInstanceCount() plus "i, " plus batches.size plus "b)"})
+        val opaqueCount = opaqueBatches.totalInstanceCount()
+        if (opaqueCount > 0)
         {
-            val culler = gpuCuller
-            if (culler != null)
+            configureOpaqueProgram(opaqueStaticProgram, surface)
+            configureOpaqueProgram(opaqueSkinnedProgram, surface)
+            measure({"opaque depth (" plus opaqueCount plus "i, " plus opaqueBatches.size plus "b)"})
             {
-                culler.submitAndCull(batches,frustum)
-                drawGpuCulledModelBatches(batches, culler)
+                drawBatches(opaqueBatches, opaqueCuller)
             }
-            else drawModelBatches(batches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
-
-            culler?.markSubmittedDataInUse()
-            modelBuffer.markSubmittedDataInUse()
         }
+
+        val maskedCount = maskedBatches.totalInstanceCount()
+        if (maskedCount > 0)
+        {
+            configureMaskedProgram(maskedStaticProgram, engine, surface)
+            configureMaskedProgram(maskedSkinnedProgram, engine, surface)
+            measure({"masked depth (" plus maskedCount plus "i, " plus maskedBatches.size plus "b)"})
+            {
+                drawBatches(maskedBatches, maskedCuller)
+            }
+        }
+
+        opaqueCuller?.markSubmittedDataInUse()
+        maskedCuller?.markSubmittedDataInUse()
+        modelBuffer.markSubmittedDataInUse()
 
         glColorMask(true, true, true, true)
         glDisable(GL_CULL_FACE)
@@ -124,12 +134,38 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
         surface.renderTarget.begin()
     }
 
+    private fun configureOpaqueProgram(program: ShaderProgram, surface: SurfaceInternal)
+    {
+        program.bind()
+        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+    }
+
+    private fun configureMaskedProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: SurfaceInternal)
+    {
+        program.bind()
+        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+    }
+
+    private fun drawBatches(batches: ModelBatchList, culler: GpuModelCuller?)
+    {
+        if (culler != null)
+        {
+            culler.submitAndCull(batches, frustum)
+            drawGpuCulledModelBatches(batches, culler)
+        }
+        else drawModelBatches(batches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
+    }
+
     override fun destroy()
     {
-        staticProgram.destroy()
-        skinnedProgram.destroy()
+        opaqueStaticProgram.destroy()
+        opaqueSkinnedProgram.destroy()
+        maskedStaticProgram.destroy()
+        maskedSkinnedProgram.destroy()
         modelBuffer.destroy()
-        gpuCuller?.destroy()
+        opaqueCuller?.destroy()
+        maskedCuller?.destroy()
     }
 
     fun draw(drawList: DrawList)

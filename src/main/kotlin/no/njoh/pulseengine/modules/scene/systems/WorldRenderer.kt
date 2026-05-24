@@ -18,6 +18,8 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 @Name("World Renderer (3D)")
 class WorldRenderSystem() : SceneSystem()
 {
+    var useDepthPrepass = true
+
     override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface(
@@ -30,7 +32,8 @@ class WorldRenderSystem() : SceneSystem()
             mipmapGenerators = mapOf(DEPTH_TEXTURE to DepthPyramidGenerator()),
             textureFilter = TextureFilter.LINEAR
         ).apply {
-            addRenderer(DepthPrepassRenderer())
+            if (useDepthPrepass)
+                addRenderer(DepthPrepassRenderer())
             addRenderer(ModelRenderer())
         }
     }
@@ -41,6 +44,17 @@ class WorldRenderSystem() : SceneSystem()
 
         if (engine.input.wasClicked(Key.F12))
             surface.config.drawWireframe = !surface.config.drawWireframe
+
+        val depthPrepassRenderer = surface.getRenderer<DepthPrepassRenderer>()
+
+        if (useDepthPrepass && depthPrepassRenderer == null)
+        {
+            surface.addRenderer(DepthPrepassRenderer())
+        }
+        else if (!useDepthPrepass && depthPrepassRenderer != null)
+        {
+            surface.deleteRenderer(depthPrepassRenderer)
+        }
     }
 
     override fun onRender(engine: PulseEngine) 

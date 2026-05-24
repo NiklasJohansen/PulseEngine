@@ -47,9 +47,9 @@ class Material(
 
     enum class BlendMode 
     {
-        OPAQUE,     // Alpha ignored (solids)
-        MASK,       // Alpha-tested (fences, leaves, etc.)
-        TRANSPARENT // Alpha-blended (glass, smoke, etc.)
+        OPAQUE, // Alpha ignored (solids)
+        MASK,   // Alpha-tested (fences, leaves, etc.)
+        BLEND   // Alpha-blended (glass, smoke, etc.)
     }
 
     enum class CullMode { NONE, BACK }

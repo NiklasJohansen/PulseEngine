@@ -110,10 +110,13 @@ class GpuModelCuller private constructor()
         if (!this::program.isInitialized)
             return
 
-        cullItemBuffer.markSubmittedDataInUse()
-        dynamicBoundsBuffer.markSubmittedDataInUse()
-        visibleIndexBuffer.markSubmittedDataInUse()
-        commandBuffer.markSubmittedDataInUse()
+        measure("sync culling buffers")
+        {
+            cullItemBuffer.markSubmittedDataInUse()
+            dynamicBoundsBuffer.markSubmittedDataInUse()
+            visibleIndexBuffer.markSubmittedDataInUse()
+            commandBuffer.markSubmittedDataInUse()
+        }
     }
 
     fun destroy()

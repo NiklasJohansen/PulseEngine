@@ -478,7 +478,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             val blendMode = when (material.getMaterialStringProp(AI_MATKEY_GLTF_ALPHAMODE)?.uppercase())
             {
                 "MASK"  -> MASK
-                "BLEND" -> TRANSPARENT
+                "BLEND" -> BLEND
                 else    -> OPAQUE
             }
 

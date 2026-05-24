@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_BORDER
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
+import no.njoh.pulseengine.core.graphics.api.addAllVisible
 import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
@@ -20,11 +21,9 @@ import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawModelBatches
 import no.njoh.pulseengine.core.graphics.util.GpuModelCuller
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelBatcher
-import no.njoh.pulseengine.core.graphics.util.addVisibleItems
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
-import no.njoh.pulseengine.core.shared.utils.Extensions.addAllNoAlloc
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.quickSort
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
@@ -51,27 +50,27 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
     private lateinit var skinnedProgram: ShaderProgram
     private lateinit var opaqueBatcher: ModelBatcher
     private lateinit var maskedBatcher: ModelBatcher
-    private lateinit var transparentBatcher: ModelBatcher
+    private lateinit var blendedBatcher: ModelBatcher
 
     private var opaqueCuller: GpuModelCuller? = null
     private var maskedCuller: GpuModelCuller? = null
 
-    private val modelBuffer           = ModelBufferObject()
-    private var readDrawLists         = ArrayList<DrawList>()
-    private var writeDrawLists        = ArrayList<DrawList>()
-    private var readLightData         = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
-    private var writeLightData        = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
-    private var readLightCount        = 0
-    private var writeLightCount       = 0
-    private var iblBrdfTexture        = "ibl_brdf_lut"
-    private val camPos                = Vector3f()
-    private val tmpPos1               = Vector3f()
-    private val tmpPos2               = Vector3f()
-    private val opaqueItems           = ArrayList<RenderItem>(1024)
-    private val maskedItems           = ArrayList<RenderItem>(512)
-    private val transparentItems      = ArrayList<RenderItem>(256)
-    private val transparentComparator = Comparator<RenderItem> { a, b -> compareForTransparency(a, b) }
-    private val frustum               = Frustum()
+    private val modelBuffer     = ModelBufferObject()
+    private var readDrawLists   = ArrayList<DrawList>()
+    private var writeDrawLists  = ArrayList<DrawList>()
+    private var readLightData   = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
+    private var writeLightData  = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
+    private var readLightCount  = 0
+    private var writeLightCount = 0
+    private var iblBrdfTexture  = "ibl_brdf_lut"
+    private val camPos          = Vector3f()
+    private val tmpPos1         = Vector3f()
+    private val tmpPos2         = Vector3f()
+    private val opaqueItems     = ArrayList<RenderItem>(1024)
+    private val maskedItems     = ArrayList<RenderItem>(512)
+    private val blendedItems    = ArrayList<RenderItem>(256)
+    private val blendComparator = Comparator<RenderItem> { a, b -> compareForTransparency(a, b) }
+    private val frustum         = Frustum()
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -87,7 +86,7 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
             )
             opaqueBatcher = ModelBatcher(staticProgram, skinnedProgram)
             maskedBatcher = ModelBatcher(staticProgram, skinnedProgram)
-            transparentBatcher = ModelBatcher(staticProgram, skinnedProgram)
+            blendedBatcher = ModelBatcher(staticProgram, skinnedProgram)
             opaqueCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
             maskedCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
             modelBuffer.init()
@@ -135,34 +134,29 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
         val hasDepthPrepass = surface.config.hasDepthPrepass
         glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
         glDepthMask(!hasDepthPrepass)
-        
+
         frustum.setForCamera(surface.camera)
+        
         opaqueItems.clear()
         maskedItems.clear()
-        transparentItems.clear()
+        blendedItems.clear()
+        modelBuffer.clear()
+        opaqueCuller?.clear()
+        maskedCuller?.clear()
 
         readDrawLists.forEachFast()
         {
-            if (opaqueCuller != null && maskedCuller != null)
-            {
-                opaqueItems.addAllNoAlloc(it.opaqueItems)
-                maskedItems.addAllNoAlloc(it.maskedItems)
-            }
-            else
-            {
-                opaqueItems.addVisibleItems(it.opaqueItems, frustum)
-                maskedItems.addVisibleItems(it.maskedItems, frustum)
-            }
-            transparentItems.addVisibleItems(it.transparentItems, frustum)
+            opaqueItems.addAllVisible(it.opaqueItems, frustum = if (opaqueCuller == null) frustum else null)
+            maskedItems.addAllVisible(it.maskedItems, frustum = if (maskedCuller == null) frustum else null)
+            blendedItems.addAllVisible(it.blendedItems, frustum)
         }
-        transparentItems.quickSort(transparentComparator)
 
-        opaqueCuller?.clear()
-        maskedCuller?.clear()
-        modelBuffer.clear()
-        val opaqueBatches = opaqueBatcher.createBatchesAndFillBuffer(opaqueItems, modelBuffer, opaqueCuller, sortForBatching = true)
-        val maskedBatches = maskedBatcher.createBatchesAndFillBuffer(maskedItems, modelBuffer, maskedCuller, sortForBatching = true)
-        val transparentBatches = transparentBatcher.createBatchesAndFillBuffer(transparentItems, modelBuffer, sortForBatching = false)
+        blendedItems.quickSort(blendComparator)
+
+        val opaqueBatches  = opaqueBatcher.createBatchesAndFillBuffer(opaqueItems, modelBuffer, opaqueCuller, sortForBatching = true)
+        val maskedBatches  = maskedBatcher.createBatchesAndFillBuffer(maskedItems, modelBuffer, maskedCuller, sortForBatching = true)
+        val blendedBatches = blendedBatcher.createBatchesAndFillBuffer(blendedItems, modelBuffer, sortForBatching = false)
+
         modelBuffer.submit()
 
         val opaqueCount = opaqueBatches.totalInstanceCount()
@@ -201,17 +195,17 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
             }
         }
 
-        val transparentCount = transparentBatches.totalInstanceCount()
-        if (transparentCount > 0)
+        val blendedCount = blendedBatches.totalInstanceCount()
+        if (blendedCount > 0)
         {
-            measure({"transparent (" plus transparentCount plus "i, " plus transparentBatches.size plus "b)"})
+            measure({"blended (" plus blendedCount plus "i, " plus blendedBatches.size plus "b)"})
             {
                 glEnable(GL_BLEND)
                 glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(false)
 
-                drawModelBatches(transparentBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
+                drawModelBatches(blendedBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
             }
         }
 
