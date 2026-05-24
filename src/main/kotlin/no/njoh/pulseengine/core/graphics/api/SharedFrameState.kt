@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingFloatBufferObject
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.joml.Matrix4f
 
 class SharedFrameState
@@ -16,16 +17,14 @@ class SharedFrameState
 
     fun beginFrame()
     {
-        val modelBoneBuffer = modelBoneBuffer ?: return
-
-        modelBoneBuffer.clear()
+        modelBoneBuffer?.clear()
         modelBonePalettes.clear()
         modelBoneMatrixCount = 0
         modelBoneDataSubmitted = false
         modelBoneDataDirty = true
     }
 
-    fun getModelBoneOffset(boneMatrices: Array<Matrix4f>?): Int
+    fun addBoneMatricesAndGetBoneOffset(boneMatrices: Array<Matrix4f>?): Int
     {
         if (boneMatrices.isNullOrEmpty())
             return -1
@@ -49,7 +48,7 @@ class SharedFrameState
 
         modelBoneBuffer!!.fill(boneMatrices.size * 16)
         {
-            for (matrix in boneMatrices) putMatrix(matrix)
+            boneMatrices.forEachFast { putMatrix(it) }
         }
 
         modelBoneDataDirty = true
@@ -80,13 +79,15 @@ class SharedFrameState
     fun endFrame()
     {
         val modelBoneBuffer = modelBoneBuffer ?: return
-        if (!modelBoneDataSubmitted) return
 
-        GpuProfiler.measure("sync shared frame state")
+        if (modelBoneDataSubmitted)
         {
-            modelBoneBuffer.markSubmittedDataInUse()
+            GpuProfiler.measure("sync shared frame state")
+            {
+                modelBoneBuffer.markSubmittedDataInUse()
+            }
+            modelBoneDataSubmitted = false
         }
-        modelBoneDataSubmitted = false
     }
 
     fun destroy()

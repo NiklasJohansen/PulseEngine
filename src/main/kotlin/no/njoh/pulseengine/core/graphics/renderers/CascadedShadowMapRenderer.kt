@@ -44,12 +44,13 @@ class CascadedShadowMapRenderer(
 
     private var gpuCuller: GpuModelCuller? = null
 
-    private val modelBuffer    = ModelBufferObject()
-    private val renderItems    = ArrayList<RenderItem>(1024)
-    private val shadowFrustum  = Frustum()
-    private val lightDirection = Vector3f()
-    private var readDrawLists  = ArrayList<DrawList>()
-    private var writeDrawLists = ArrayList<DrawList>()
+    private val modelBuffer     = ModelBufferObject()
+    private val renderItems     = ArrayList<RenderItem>(1024)
+    private val shadowFrustum   = Frustum()
+    private val cascadeFrustums = Array(CASCADE_COUNT) { Frustum() }
+    private val lightDirection  = Vector3f()
+    private var readDrawLists   = ArrayList<DrawList>()
+    private var writeDrawLists  = ArrayList<DrawList>()
     private var readViewProjectionMatrices  = Array(CASCADE_COUNT) { Matrix4f() }
     private var writeViewProjectionMatrices = Array(CASCADE_COUNT) { Matrix4f() }
     private var readCascadeSplits  = FloatArray(CASCADE_COUNT)
@@ -124,7 +125,6 @@ class CascadedShadowMapRenderer(
         val modelBatches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer, gpuCuller)
 
         modelBuffer.submit()
-        gpuCuller?.submitAndCull(modelBatches, shadowFrustum)
 
         val count = modelBatches.totalInstanceCount()
         val halfRes = resolution / 2
@@ -143,13 +143,16 @@ class CascadedShadowMapRenderer(
                 skinnedProgram.setUniform("viewProjection", readViewProjectionMatrices[cascade])
 
                 if (gpuCuller != null)
+                {
+                    cascadeFrustums[cascade].setForViewProjection(readViewProjectionMatrices[cascade])
+                    gpuCuller!!.submitAndCull(modelBatches, cascadeFrustums[cascade])
                     drawGpuCulledModelBatches(modelBatches, gpuCuller!!)
-                else
-                    drawModelBatches(modelBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
+                    gpuCuller!!.markSubmittedDataInUse()
+                }
+                else drawModelBatches(modelBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
             }
         }
 
-        gpuCuller?.markSubmittedDataInUse()
         modelBuffer.markSubmittedDataInUse()
 
         glViewport(0, 0, resolution, resolution)

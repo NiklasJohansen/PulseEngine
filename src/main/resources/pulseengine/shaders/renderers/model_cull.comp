@@ -19,14 +19,15 @@ struct CullItem
 struct SubMeshMeta
 {
     uvec4 draw;
-    vec4 centerHalfX;
-    vec4 halfYzReserved;
+    vec4 centerXHalf;    // xyz=center, w=xHalf
+    vec4 yzHalfReserved; // xy=yzHalf, z/w=reserved
+    uvec4 skinning;      // x=boundsOffset, y=boundsCount, z=includeBaseBoundsInSkinning, w=reserved
 };
 
 struct DynamicBounds
 {
-    vec4 centerHalfX;
-    vec4 halfYzReserved;
+    vec4 centerXHalf;   // xyz=center, w=xHalf
+    vec4 yzHalfReserved;// xy=yzHalf, z/w=reserved
 };
 
 struct DrawElementsIndirectCommand
@@ -41,6 +42,11 @@ struct DrawElementsIndirectCommand
 layout(std430, binding = 1) readonly buffer InstanceBuffer
 {
     InstanceData uInstances[];
+};
+
+layout(std430, binding = 3) readonly buffer BoneBuffer
+{
+    mat4 uBoneMatrices[];
 };
 
 layout(std430, binding = 4) writeonly buffer VisibleInstanceBuffer
@@ -66,6 +72,11 @@ layout(std430, binding = 7) readonly buffer SubMeshMetaBuffer
 layout(std430, binding = 8) readonly buffer DynamicBoundsBuffer
 {
     DynamicBounds uDynamicBounds[];
+};
+
+layout(std430, binding = 12) readonly buffer SkinningBoundsBuffer
+{
+    uint uSkinningBounds[];
 };
 
 uniform vec4 uFrustumPlanes[6];
@@ -96,6 +107,79 @@ vec3 transformHalfExtents(mat4 transform, vec3 halfExtents)
     );
 }
 
+void includeBounds(vec3 boundsMin, vec3 boundsMax, inout vec3 outMin, inout vec3 outMax, inout bool hasBounds)
+{
+    if (!hasBounds)
+    {
+        outMin = boundsMin;
+        outMax = boundsMax;
+        hasBounds = true;
+        return;
+    }
+
+    outMin = min(outMin, boundsMin);
+    outMax = max(outMax, boundsMax);
+}
+
+void includeTransformedAabb(mat4 transform, vec3 localMin, vec3 localMax, inout vec3 outMin, inout vec3 outMax, inout bool hasBounds)
+{
+    vec3 localCenter = (localMin + localMax) * 0.5;
+    vec3 localHalfExtents = (localMax - localMin) * 0.5;
+    vec3 transformedCenter = (transform * vec4(localCenter, 1.0)).xyz;
+    vec3 transformedHalfExtents = transformHalfExtents(transform, localHalfExtents);
+
+    includeBounds(transformedCenter - transformedHalfExtents, transformedCenter + transformedHalfExtents, outMin, outMax, hasBounds);
+}
+
+float skinningBoundsFloat(uint recordBase, uint component)
+{
+    return uintBitsToFloat(uSkinningBounds[recordBase + component]);
+}
+
+bool getSkinnedBounds(SubMeshMeta meta, int boneOffset, out vec3 localCenter, out vec3 localHalfExtents)
+{
+    uint skinningBoundsOffset = meta.skinning.x;
+    uint skinningBoundsCount = meta.skinning.y;
+    if (boneOffset < 0 || skinningBoundsOffset == STATIC_BOUNDS_INDEX || skinningBoundsCount == 0u)
+        return false;
+
+    vec3 boundsMin = vec3(0.0);
+    vec3 boundsMax = vec3(0.0);
+    bool hasBounds = false;
+
+    // Include base bounds in skinning bounds
+    if (meta.skinning.z != 0u)
+        includeBounds(localCenter - localHalfExtents, localCenter + localHalfExtents, boundsMin, boundsMax, hasBounds);
+
+    for (uint i = 0u; i < skinningBoundsCount; i++)
+    {
+        uint recordBase = (skinningBoundsOffset + i) * 8u;
+        uint boneIndex = uSkinningBounds[recordBase + 6u];
+
+        mat4 boneMatrix = uBoneMatrices[boneOffset + int(boneIndex)];
+        vec3 localMin = vec3(
+            skinningBoundsFloat(recordBase, 0u),
+            skinningBoundsFloat(recordBase, 1u),
+            skinningBoundsFloat(recordBase, 2u)
+        );
+        vec3 localMax = vec3(
+            skinningBoundsFloat(recordBase, 3u),
+            skinningBoundsFloat(recordBase, 4u),
+            skinningBoundsFloat(recordBase, 5u)
+        );
+
+        includeTransformedAabb(boneMatrix, localMin, localMax, boundsMin, boundsMax, hasBounds);
+    }
+
+    if (hasBounds)
+    {
+        localCenter = (boundsMin + boundsMax) * 0.5;
+        localHalfExtents = (boundsMax - boundsMin) * 0.5;
+    }
+ 
+    return hasBounds;
+}
+
 void main()
 {
     uint itemIndex = gl_GlobalInvocationID.x;
@@ -104,20 +188,18 @@ void main()
 
     CullItem item = uCullItems[itemIndex];
     SubMeshMeta meta = uSubMeshes[item.subMeshMetaIndex];
-
     InstanceData instance = uInstances[item.instanceIndex];
-    vec4 centerHalfX = meta.centerHalfX;
-    vec4 halfYzReserved = meta.halfYzReserved;
 
-    if (item.dynamicBoundsIndex != STATIC_BOUNDS_INDEX)
+    vec3 localCenter = meta.centerXHalf.xyz;
+    vec3 localHalfExtents = vec3(meta.centerXHalf.w, meta.yzHalfReserved.x, meta.yzHalfReserved.y);
+    bool hasSkinnedBounds = getSkinnedBounds(meta, int(instance.params.y), localCenter, localHalfExtents);
+
+    if (!hasSkinnedBounds && item.dynamicBoundsIndex != STATIC_BOUNDS_INDEX)
     {
         DynamicBounds bounds = uDynamicBounds[item.dynamicBoundsIndex];
-        centerHalfX = bounds.centerHalfX;
-        halfYzReserved = bounds.halfYzReserved;
+        localCenter = bounds.centerXHalf.xyz;
+        localHalfExtents = vec3(bounds.centerXHalf.w, bounds.yzHalfReserved.x, bounds.yzHalfReserved.y);
     }
-
-    vec3 localCenter = centerHalfX.xyz;
-    vec3 localHalfExtents = vec3(centerHalfX.w, halfYzReserved.x, halfYzReserved.y);
 
     vec3 worldCenter = (instance.model * vec4(localCenter, 1.0)).xyz;
     vec3 worldHalfExtents = transformHalfExtents(instance.model, localHalfExtents);

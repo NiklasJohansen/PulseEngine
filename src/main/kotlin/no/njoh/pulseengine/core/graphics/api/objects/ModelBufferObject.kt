@@ -45,7 +45,7 @@ internal class ModelBufferObject
     {
         val instanceIndex = instanceCount++
         val materialId = item.material?.id ?: Material.DEFAULT_ID
-        val boneOffset = sharedFrameState.getModelBoneOffset(item.boneMatrices)
+        val boneOffset = sharedFrameState.addBoneMatricesAndGetBoneOffset(item.boneMatrices)
 
         instanceBuffer.fill(20) // 16 + 4
         {

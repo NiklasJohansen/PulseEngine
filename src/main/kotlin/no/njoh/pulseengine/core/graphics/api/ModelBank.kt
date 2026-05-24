@@ -15,7 +15,9 @@ import org.lwjgl.opengl.GL30.GL_HALF_FLOAT
 class ModelBank
 {
     private var metadataBuffer: DoubleBufferedIntObject? = null
+    private var skinningBoundsBuffer: DoubleBufferedIntObject? = null
     private val subMeshMetadata = ArrayList<SubMeshMetadata>(128)
+    private val skinningBoundsRecords = ArrayList<SkinningBoundsRecord>(512)
     private var metadataDirty = false
 
     fun upload(model: Model)
@@ -44,20 +46,36 @@ class ModelBank
             buffer.submit()
             buffer.release()
 
+            skinningBoundsBuffer?.let()
+            {
+                for (record in skinningBoundsRecords)
+                    it.writeRecord(record)
+
+                it.swapBuffers()
+                it.bind()
+                it.submit()
+                it.release()
+            }
+
             metadataDirty = false
         }
         else
         {
             buffer.bind()
             buffer.release()
+            skinningBoundsBuffer?.bind()
+            skinningBoundsBuffer?.release()
         }
     }
 
     fun destroy()
     {
         metadataBuffer?.destroy()
+        skinningBoundsBuffer?.destroy()
         metadataBuffer = null
+        skinningBoundsBuffer = null
         subMeshMetadata.clear()
+        skinningBoundsRecords.clear()
         metadataDirty = false
     }
 
@@ -104,17 +122,18 @@ class ModelBank
 
         for (subMesh in model.subMeshes)
         {
-            val record = SubMeshMetadata.from(subMesh)
+            val skinningBoundsOffset = appendSkinningBounds(subMesh.skinningBounds)
+            val metadata = SubMeshMetadata.from(subMesh, skinningBoundsOffset)
             val index = subMesh.gpuMetaIndex
 
             if (index in subMeshMetadata.indices)
             {
-                subMeshMetadata[index] = record
+                subMeshMetadata[index] = metadata
             }
             else
             {
                 subMesh.gpuMetaIndex = subMeshMetadata.size
-                subMeshMetadata += record
+                subMeshMetadata += metadata
             }
         }
 
@@ -132,6 +151,41 @@ class ModelBank
         )
     }
 
+    private fun ensureSkinningBoundsBuffer()
+    {
+        if (skinningBoundsBuffer != null || skinningBoundsRecords.isEmpty()) return
+
+        metadataDirty = true
+        skinningBoundsBuffer = DoubleBufferedIntObject.createShaderStorageBuffer(
+            blockBinding = SKINNING_BOUNDS_BUFFER_BINDING,
+            initCapacity = SKINNING_BOUNDS_RECORD_INTS * 512
+        )
+    }
+
+    private fun appendSkinningBounds(skinningBounds: Model.SkinningBounds?): Int
+    {
+        if (skinningBounds == null || skinningBounds.boneIndices.isEmpty())
+            return NO_SKINNING_BOUNDS_OFFSET
+
+        val offset = skinningBoundsRecords.size
+        val restPoseBounds = skinningBounds.restPoseBounds
+        for (i in skinningBounds.boneIndices.indices)
+        {
+            val boundsOffset = i * 6
+            skinningBoundsRecords += SkinningBoundsRecord(
+                boneIndex = skinningBounds.boneIndices[i],
+                xMin = restPoseBounds[boundsOffset],
+                yMin = restPoseBounds[boundsOffset + 1],
+                zMin = restPoseBounds[boundsOffset + 2],
+                xMax = restPoseBounds[boundsOffset + 3],
+                yMax = restPoseBounds[boundsOffset + 4],
+                zMax = restPoseBounds[boundsOffset + 5]
+            )
+        }
+        ensureSkinningBoundsBuffer()
+        return offset
+    }
+
     private fun DoubleBufferedIntObject.writeRecord(record: SubMeshMetadata)
     {
         fill(RECORD_INTS)
@@ -139,6 +193,16 @@ class ModelBank
             put(record.indexCount, record.indexStart, record.baseVertex, 0)
             put(record.xCenter.toRawBits(), record.yCenter.toRawBits(), record.zCenter.toRawBits(), record.xHalf.toRawBits())
             put(record.yHalf.toRawBits(), record.zHalf.toRawBits(), 0f.toRawBits(), 0f.toRawBits())
+            put(record.skinningBoundsOffset, record.skinningBoundsCount, if (record.includeBaseBoundsInSkinning) 1 else 0, 0)
+        }
+    }
+
+    private fun DoubleBufferedIntObject.writeRecord(record: SkinningBoundsRecord)
+    {
+        fill(SKINNING_BOUNDS_RECORD_INTS)
+        {
+            put(record.xMin.toRawBits(), record.yMin.toRawBits(), record.zMin.toRawBits(), record.xMax.toRawBits())
+            put(record.yMax.toRawBits(), record.zMax.toRawBits(), record.boneIndex, 0)
         }
     }
 
@@ -151,31 +215,58 @@ class ModelBank
         val zCenter: Float,
         val xHalf: Float,
         val yHalf: Float,
-        val zHalf: Float
+        val zHalf: Float,
+        val skinningBoundsOffset: Int,
+        val skinningBoundsCount: Int,
+        val includeBaseBoundsInSkinning: Boolean
     ) {
         companion object
         {
-            fun from(subMesh: SubMesh): SubMeshMetadata
+            fun from(subMesh: SubMesh, skinningBoundsOffset: Int): SubMeshMetadata
             {
-                val bounds = subMesh.animatedBounds ?: subMesh.localBounds
+                val staticBounds = subMesh.skinningBounds?.staticBounds
+                val hasGpuSkinningBounds = skinningBoundsOffset != NO_SKINNING_BOUNDS_OFFSET
+                val baseBounds = when
+                {
+                    hasGpuSkinningBounds && staticBounds != null -> staticBounds
+                    hasGpuSkinningBounds -> null
+                    else -> subMesh.animatedBounds ?: subMesh.localBounds
+                }
+
                 return SubMeshMetadata(
                     indexCount = subMesh.indexCount,
                     indexStart = subMesh.indexStart,
                     baseVertex = 0,
-                    xCenter = (bounds.xMin + bounds.xMax) * 0.5f,
-                    yCenter = (bounds.yMin + bounds.yMax) * 0.5f,
-                    zCenter = (bounds.zMin + bounds.zMax) * 0.5f,
-                    xHalf   = (bounds.xMax - bounds.xMin) * 0.5f,
-                    yHalf   = (bounds.yMax - bounds.yMin) * 0.5f,
-                    zHalf   = (bounds.zMax - bounds.zMin) * 0.5f
+                    xCenter = baseBounds?.let { (it.xMin + it.xMax) * 0.5f } ?: 0f,
+                    yCenter = baseBounds?.let { (it.yMin + it.yMax) * 0.5f } ?: 0f,
+                    zCenter = baseBounds?.let { (it.zMin + it.zMax) * 0.5f } ?: 0f,
+                    xHalf   = baseBounds?.let { (it.xMax - it.xMin) * 0.5f } ?: 0f,
+                    yHalf   = baseBounds?.let { (it.yMax - it.yMin) * 0.5f } ?: 0f,
+                    zHalf   = baseBounds?.let { (it.zMax - it.zMin) * 0.5f } ?: 0f,
+                    skinningBoundsOffset = skinningBoundsOffset,
+                    skinningBoundsCount = subMesh.skinningBounds?.boneIndices?.size ?: 0,
+                    includeBaseBoundsInSkinning = hasGpuSkinningBounds && staticBounds != null
                 )
             }
         }
     }
 
+    private data class SkinningBoundsRecord(
+        val boneIndex: Int,
+        val xMin: Float,
+        val yMin: Float,
+        val zMin: Float,
+        val xMax: Float,
+        val yMax: Float,
+        val zMax: Float
+    )
+
     companion object
     {
         const val METADATA_BUFFER_BINDING = 7
-        private const val RECORD_INTS = 12
+        const val SKINNING_BOUNDS_BUFFER_BINDING = 12
+        private const val RECORD_INTS = 16
+        private const val SKINNING_BOUNDS_RECORD_INTS = 8
+        private const val NO_SKINNING_BOUNDS_OFFSET = -1
     }
 }

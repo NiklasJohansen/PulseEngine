@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
 import no.njoh.pulseengine.core.asset.types.Model
-import no.njoh.pulseengine.core.asset.types.Model.AnimatedModelPose
+import no.njoh.pulseengine.core.asset.types.Model.AnimatedSkeletonPose
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.joml.Matrix4f
@@ -19,14 +19,14 @@ class DrawList(
         model: Model,
         transform: Matrix4f,
         material: Material? = null,
-        animationPose: AnimatedModelPose? = null
+        animationPose: AnimatedSkeletonPose? = null
     ) {
         for (instance in model.subMeshInstances)
         {
             val material      = material ?: model.materials.getOrNull(instance.subMesh.materialIndex)?.let { engine.asset.getOrNull(it.name) }
-            val animatedPose  = animationPose?.getMeshPose(instance.nodeName)
+            val animatedPose  = animationPose?.getAnimatedMeshPose(instance.nodeName)
             val boneMatrices  = animatedPose?.boneMatrices ?: model.getBindPoseBoneMatrices(instance.nodeName)
-            val cullingBounds = animatedPose?.getBounds(instance.subMesh) ?: instance.cullingBounds
+            val cullingBounds = instance.subMesh.animatedBounds?.takeIf { animatedPose != null } ?: instance.cullingBounds
 
             val transform = Matrix4f(transform).mul(instance.transform)
 

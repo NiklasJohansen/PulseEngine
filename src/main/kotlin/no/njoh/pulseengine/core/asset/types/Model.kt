@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.buildSkinningBounds
 import no.njoh.pulseengine.core.shared.utils.collectAnimatedGlobalTransforms
 import no.njoh.pulseengine.core.shared.utils.collectBlendedAnimatedGlobalTransforms
@@ -658,7 +659,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         blendAnimation: Animation? = null,
         blendAnimationTimeSeconds: Float = 0f,
         blendFactor: Float = 0f,
-    ): AnimatedModelPose? {
+    ): AnimatedSkeletonPose? {
         if (bones.isEmpty())
             return null
 
@@ -718,7 +719,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             activeSkeletonPoseCacheCounts[poseCacheSlot] = 0
         }
 
-        val skeletonPose = getAnimatedSkeletonPose(
+        return getAnimatedSkeletonPose(
             animation = sampledPrimaryAnimation,
             animationTimeSeconds = sampledPrimaryTimeSeconds,
             blendAnimation = sampledSecondaryAnimation,
@@ -727,8 +728,6 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             poseCacheSlot = poseCacheSlot,
             rootNode = rootNode
         )
-
-        return skeletonPose.modelPose
     }
     
     // Helpers ////////////////////////////////////////////////////////////////////////
@@ -796,20 +795,14 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
                 for (instance in subMeshInstances)
                 {
-                    val pose = getAnimationPose(
-                        animation = animation,
-                        animationTimeSeconds = sampleTimeSeconds,
-                        frameNumber = frameNumber
-                    ) ?: continue
-
-                    val meshPose = pose.getMeshPose(instance.nodeName)
+                    val skeletonPose = getAnimationPose(animation, sampleTimeSeconds, frameNumber) ?: continue
+                    val meshPose = skeletonPose.getAnimatedMeshPose(instance.nodeName)
                     boundsBySubMesh.include(instance.subMesh.index, meshPose.getBounds(instance.subMesh))
                 }
             }
         }
 
-        for (subMesh in subMeshes)
-            subMesh.animatedBounds = boundsBySubMesh[subMesh.index]
+        subMeshes.forEachFast { subMesh -> subMesh.animatedBounds = boundsBySubMesh[subMesh.index] }
     }
 
     private fun getAnimationBoundsSampleCount(animation: Animation): Int
@@ -1222,10 +1215,9 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val children: List<ModelNode>
     )
 
-    internal inner class AnimatedSkeletonPose
+    inner class AnimatedSkeletonPose
     {
         val animatedGlobalTransforms = HashMap<String, Matrix4f>(nodesByName.size)
-        val modelPose = AnimatedModelPose(this)
         val localTransformScratch = Matrix4f()
         val translationScratch = Vector3f()
         val rotationScratch = Quaternionf()
@@ -1294,12 +1286,6 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
             return pose
         }
-    }
-
-    inner class AnimatedModelPose internal constructor(private val skeletonPose: AnimatedSkeletonPose)
-    {
-        fun getMeshPose(nodeName: String): AnimatedMeshPose =
-            skeletonPose.getAnimatedMeshPose(nodeName)
     }
 
     inner class AnimatedMeshPose

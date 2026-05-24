@@ -37,10 +37,10 @@ class GpuModelCuller private constructor()
             return
         
         program = ShaderProgram.create(engine.asset.loadNow(ComputeShader("/pulseengine/shaders/renderers/model_cull.comp")))
-        cullItemBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_BUFFER_BINDING, CULL_ITEM_INTS * 512)
-        dynamicBoundsBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(DYNAMIC_BOUNDS_BUFFER_BINDING, DYNAMIC_BOUNDS_FLOATS * 128)
-        visibleIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(VISIBLE_INSTANCE_BUFFER_BINDING, 512)
-        commandBuffer = StreamingIntBufferObject.createShaderStorageBuffer(COMMAND_BUFFER_BINDING, INDIRECT_COMMAND_INTS * 128)
+        cullItemBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_BUFFER_BINDING, CULL_ITEM_INTS * 512, BUFFER_SEGMENTS)
+        dynamicBoundsBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(DYNAMIC_BOUNDS_BUFFER_BINDING, DYNAMIC_BOUNDS_FLOATS * 128, BUFFER_SEGMENTS)
+        visibleIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(VISIBLE_INSTANCE_BUFFER_BINDING, 512, BUFFER_SEGMENTS)
+        commandBuffer = StreamingIntBufferObject.createShaderStorageBuffer(COMMAND_BUFFER_BINDING, INDIRECT_COMMAND_INTS * 128, BUFFER_SEGMENTS)
     }
 
     fun clear()
@@ -66,10 +66,9 @@ class GpuModelCuller private constructor()
 
     fun addInstance(item: RenderItem, instanceIndex: Int, batchIndex: Int)
     {
-        val dynamicBoundsIndex = if (item.needsDynamicGpuBounds())
+        val boundsIndex = if (item.needsDynamicGpuBounds())
         {
             val bounds = item.cullingBounds
-            val index = dynamicBoundsCount++
             dynamicBoundsBuffer.fill(DYNAMIC_BOUNDS_FLOATS)
             {
                 put((bounds.xMin + bounds.xMax) * 0.5f) // X center
@@ -81,7 +80,7 @@ class GpuModelCuller private constructor()
                 put(0f)
                 put(0f)
             }
-            index
+            dynamicBoundsCount++
         }
         else STATIC_BOUNDS_INDEX
 
@@ -90,7 +89,7 @@ class GpuModelCuller private constructor()
             put(item.subMesh.gpuMetaIndex)
             put(batchIndex)
             put(instanceIndex)
-            put(dynamicBoundsIndex)
+            put(boundsIndex)
         }
         instanceCount++
     }
@@ -132,6 +131,7 @@ class GpuModelCuller private constructor()
 
     private fun submit(batches: ModelBatchList)
     {
+        commandBuffer.clear()
         commandBuffer.fill(batches.size * INDIRECT_COMMAND_INTS)
         {
             var visibleStart = 0
@@ -181,7 +181,10 @@ class GpuModelCuller private constructor()
     }
 
     private fun RenderItem.needsDynamicGpuBounds() =
-        boneMatrices != null || cullingBounds !== subMesh.localBounds
+        !usesGpuSkinnedBounds() && (boneMatrices != null || cullingBounds !== subMesh.localBounds)
+
+    private fun RenderItem.usesGpuSkinnedBounds() =
+        boneMatrices != null && subMesh.skinningBounds != null
 
     companion object
     {
@@ -202,6 +205,7 @@ class GpuModelCuller private constructor()
         private const val CULL_ITEM_BUFFER_BINDING = 5
         private const val COMMAND_BUFFER_BINDING = 6
         private const val DYNAMIC_BOUNDS_BUFFER_BINDING = 8
+        private const val BUFFER_SEGMENTS = 6
         private const val STATIC_BOUNDS_INDEX = -1
         private const val CULL_ITEM_INTS = 4
         private const val DYNAMIC_BOUNDS_FLOATS = 8
