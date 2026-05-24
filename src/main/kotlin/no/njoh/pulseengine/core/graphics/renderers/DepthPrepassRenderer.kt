@@ -60,7 +60,7 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
             maskedBatcher = ModelBatcher(maskedStaticProgram, maskedSkinnedProgram)
             opaqueCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
             maskedCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
-            modelBuffer.init()
+            modelBuffer.init(engine.gfx.sharedFrameState)
         }
     }
 

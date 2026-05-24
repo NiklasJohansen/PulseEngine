@@ -16,6 +16,7 @@ import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.CameraInternal
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
+import no.njoh.pulseengine.core.graphics.api.SharedFrameState
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.LogLevel
@@ -99,6 +100,7 @@ interface GraphicsInternal : Graphics
     val textureBank: TextureBank
     val materialBank: MaterialBank
     val modelBank: ModelBank
+    val sharedFrameState: SharedFrameState
     val gpuName: String
 
     fun init(engine: PulseEngineInternal)

@@ -74,7 +74,7 @@ class CascadedShadowMapRenderer(
             vbo = StaticBufferObject.createFullscreenUvTriangleArrayBuffer()
             modelBatcher = ModelBatcher(staticProgram, skinnedProgram)
             gpuCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
-            modelBuffer.init()
+            modelBuffer.init(engine.gfx.sharedFrameState)
         }
 
         vao = VertexArrayObject.createAndBind()

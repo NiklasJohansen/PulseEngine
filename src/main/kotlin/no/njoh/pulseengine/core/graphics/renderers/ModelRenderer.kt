@@ -89,7 +89,7 @@ class ModelRenderer(override val order: Int = 40) : Renderer()
             blendedBatcher = ModelBatcher(staticProgram, skinnedProgram)
             opaqueCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
             maskedCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
-            modelBuffer.init()
+            modelBuffer.init(engine.gfx.sharedFrameState)
         }
 
         if (engine.asset.getOrNull<Texture>(iblBrdfTexture) == null)
