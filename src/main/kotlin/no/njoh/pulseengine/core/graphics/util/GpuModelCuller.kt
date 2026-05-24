@@ -7,7 +7,6 @@ import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.GlCapabilities
 import no.njoh.pulseengine.core.graphics.api.ModelBatchList
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.objects.StreamingFloatBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.BASE_INSTANCE
@@ -22,7 +21,7 @@ import org.lwjgl.opengl.GL43.glMemoryBarrier
 class GpuModelCuller private constructor()
 {
     private lateinit var program: ShaderProgram
-    private lateinit var boundsBuffer: StreamingFloatBufferObject
+    private lateinit var cullItemBuffer: StreamingIntBufferObject
     private lateinit var visibleIndexBuffer: StreamingIntBufferObject
     private lateinit var commandBuffer: StreamingIntBufferObject
 
@@ -35,7 +34,7 @@ class GpuModelCuller private constructor()
             return
         
         program = ShaderProgram.create(engine.asset.loadNow(ComputeShader("/pulseengine/shaders/renderers/model_cull.comp")))
-        boundsBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(BOUNDS_BUFFER_BINDING, INSTANCE_BOUNDS_FLOATS * 512)
+        cullItemBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_BUFFER_BINDING, CULL_ITEM_INTS * 512)
         visibleIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(VISIBLE_INSTANCE_BUFFER_BINDING, 512)
         commandBuffer = StreamingIntBufferObject.createShaderStorageBuffer(COMMAND_BUFFER_BINDING, INDIRECT_COMMAND_INTS * 128)
     }
@@ -44,7 +43,7 @@ class GpuModelCuller private constructor()
     {
         instanceCount = 0
         commandCount = 0
-        boundsBuffer.clear()
+        cullItemBuffer.clear()
         commandBuffer.clear()
     }
 
@@ -61,18 +60,12 @@ class GpuModelCuller private constructor()
 
     fun addInstance(item: RenderItem, instanceIndex: Int, batchIndex: Int)
     {
-        val bounds = item.cullingBounds
-
-        boundsBuffer.fill(INSTANCE_BOUNDS_FLOATS)
+        cullItemBuffer.fill(CULL_ITEM_INTS)
         {
-            put((bounds.xMin + bounds.xMax) * 0.5f) // X center
-            put((bounds.yMin + bounds.yMax) * 0.5f) // Y center
-            put((bounds.zMin + bounds.zMax) * 0.5f) // Z center
-            put((bounds.xMax - bounds.xMin) * 0.5f) // X half
-            put((bounds.yMax - bounds.yMin) * 0.5f) // Y half
-            put((bounds.zMax - bounds.zMin) * 0.5f) // Z half
-            put(batchIndex.toFloat())
-            put(instanceIndex.toFloat())
+            put(item.subMesh.gpuMetaIndex)
+            put(batchIndex)
+            put(instanceIndex)
+            put(0)
         }
         instanceCount++
     }
@@ -92,7 +85,7 @@ class GpuModelCuller private constructor()
         if (!this::program.isInitialized)
             return
 
-        boundsBuffer.markSubmittedDataInUse()
+        cullItemBuffer.markSubmittedDataInUse()
         visibleIndexBuffer.markSubmittedDataInUse()
         commandBuffer.markSubmittedDataInUse()
     }
@@ -100,7 +93,7 @@ class GpuModelCuller private constructor()
     fun destroy()
     {
         if (this::program.isInitialized) program.destroy()
-        if (this::boundsBuffer.isInitialized) boundsBuffer.destroy()
+        if (this::cullItemBuffer.isInitialized) cullItemBuffer.destroy()
         if (this::visibleIndexBuffer.isInitialized) visibleIndexBuffer.destroy()
         if (this::commandBuffer.isInitialized) commandBuffer.destroy()
     }
@@ -124,7 +117,7 @@ class GpuModelCuller private constructor()
             }
         }
 
-        boundsBuffer.submit()
+        cullItemBuffer.submit()
         commandBuffer.submit()
         visibleIndexBuffer.reserve(instanceCount) // Reserve space for the compute shader to write visible instance indices
     }
@@ -134,7 +127,7 @@ class GpuModelCuller private constructor()
         if (instanceCount == 0 || commandCount == 0) return
 
         visibleIndexBuffer.bindSubmittedRange()
-        boundsBuffer.bindSubmittedRange()
+        cullItemBuffer.bindSubmittedRange()
         commandBuffer.bindSubmittedRange()
 
         program.bind()
@@ -171,9 +164,9 @@ class GpuModelCuller private constructor()
         }
 
         const val VISIBLE_INSTANCE_BUFFER_BINDING = 4
-        private const val BOUNDS_BUFFER_BINDING = 5
+        private const val CULL_ITEM_BUFFER_BINDING = 5
         private const val COMMAND_BUFFER_BINDING = 6
-        private const val INSTANCE_BOUNDS_FLOATS = 8
+        private const val CULL_ITEM_INTS = 4
         private const val INDIRECT_COMMAND_INTS = 5
         private const val WORK_GROUP_SIZE = 64
     }

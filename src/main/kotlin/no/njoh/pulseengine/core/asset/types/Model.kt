@@ -1086,7 +1086,8 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val materialIndex: Int,
         val vertexStride: Int,
         val localBounds: Aabb,
-        val skinningBounds: SkinningBounds? = null
+        val skinningBounds: SkinningBounds? = null,
+        var gpuMetaIndex: Int = -1
     )
 
     data class SubMeshInstance(

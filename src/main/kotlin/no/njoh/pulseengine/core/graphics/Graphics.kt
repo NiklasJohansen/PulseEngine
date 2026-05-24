@@ -98,6 +98,7 @@ interface GraphicsInternal : Graphics
 
     val textureBank: TextureBank
     val materialBank: MaterialBank
+    val modelBank: ModelBank
     val gpuName: String
 
     fun init(engine: PulseEngineInternal)

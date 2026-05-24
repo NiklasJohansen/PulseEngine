@@ -10,8 +10,6 @@ import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
-import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
-import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
@@ -31,6 +29,7 @@ open class GraphicsImpl : GraphicsInternal
     override lateinit var mainSurface: SurfaceInternal
     override lateinit var textureBank: TextureBank
     override lateinit var materialBank: MaterialBank
+    override lateinit var modelBank: ModelBank
     override lateinit var gpuName: String
     private  lateinit var fullFrameRenderer: FullFrameRenderer
 
@@ -48,6 +47,7 @@ open class GraphicsImpl : GraphicsInternal
 
         textureBank = TextureBank()
         materialBank = MaterialBank()
+        modelBank = ModelBank()
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",
@@ -78,6 +78,7 @@ open class GraphicsImpl : GraphicsInternal
             gpuName = glGetString(GL_RENDERER) ?: "Unknown GPU"
             Logger.debug { "Running OpenGL on GPU: $gpuName" }
             materialBank.destroy()
+            modelBank.destroy()
 
             // Load error shaders
             errorShaders[VERTEX]   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/error/error.vert"))
@@ -126,6 +127,7 @@ open class GraphicsImpl : GraphicsInternal
         surfaces.forEachCamera { it.onFrameDraw(engine) }
 
         materialBank.submitAndBind()
+        modelBank.submitAndBind()
         renderSurfaceContentToOffscreenTarget(engine)
         renderPostProcessingEffectsToOffscreenTarget(engine)
         renderOffscreenTargetsToBackBuffer()
@@ -252,48 +254,7 @@ open class GraphicsImpl : GraphicsInternal
         }
     }
 
-    override fun uploadModel(model: Model)
-    {
-        if ((model.vbo == null && model.vertexBytes.isEmpty()) || (model.ebo == null && model.indices.isEmpty()))
-        {
-            Logger.warn { "Attempted to upload empty mesh to GPU: ${model.name} (${model.filePath})" }
-            return
-        }
-
-        val vao = VertexArrayObject.createAndBind()
-
-        val vbo = model.vbo ?: StaticBufferObject.createArrayBuffer(model.vertexBytes)
-        vbo.bind()
-
-        VertexAttributeLayout().apply()
-        {
-            withAttribute("position", 3, GL_FLOAT, location = 0)
-
-            if (model.hasNormals)
-                withAttribute("normal", 3, GL_SHORT, normalized = true, location = 1)
-
-            if (model.hasTangents)
-                withAttribute("tangent", 4, GL_SHORT, normalized = true, location = 2)
-
-            if (model.hasTexCoords)
-                withAttribute("texCoord", 2, GL_HALF_FLOAT, location = 3)
-
-            if (model.hasBones)
-            {
-                withAttribute("boneIndices", 4, GL_UNSIGNED_SHORT, integer = true, location = 4)
-                withAttribute("boneWeights", 4, GL_UNSIGNED_BYTE, normalized = true, location = 5)
-            }
-            alignStride(4)
-        }.bind()
-
-        val ebo = model.ebo ?: StaticBufferObject.createElementArrayBuffer(model.indices)
-        ebo.bind()
-
-        vao.release()
-        vbo.release()
-        ebo.release()
-        model.onUploaded(vao, vbo, ebo)
-    }
+    override fun uploadModel(model: Model) = modelBank.upload(model)
 
     override fun uploadTexture(texture: Texture) = textureBank.upload(texture)
 
@@ -339,6 +300,7 @@ open class GraphicsImpl : GraphicsInternal
         Logger.info { "Destroying graphics (${this::class.simpleName})" }
         textureBank.destroy()
         materialBank.destroy()
+        modelBank.destroy()
         fullFrameRenderer.destroy()
         surfaces.forEachFast { it.destroy() }
     }

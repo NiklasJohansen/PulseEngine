@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.DefaultCamera
 import no.njoh.pulseengine.core.graphics.api.CameraProjectionType.ORTHOGRAPHIC
 import no.njoh.pulseengine.core.graphics.api.MaterialBank
+import no.njoh.pulseengine.core.graphics.api.ModelBank
 import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.TextureBank
@@ -28,6 +29,7 @@ class NoOpGraphics : GraphicsInternal
     override var mainSurface = NoOpSurface()
     override var textureBank = TextureBank()
     override var materialBank = MaterialBank()
+    override var modelBank = ModelBank()
     override val gpuName = "none"
     override fun createSurface(
         name: String,

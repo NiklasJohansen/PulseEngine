@@ -8,10 +8,19 @@ struct InstanceData
     vec4 params;
 };
 
-struct InstanceBounds
+struct CullItem
 {
+    uint subMeshMetaIndex;
+    uint batchIndex;
+    uint instanceIndex;
+    uint flags;
+};
+
+struct SubMeshMeta
+{
+    uvec4 draw;
     vec4 centerHalfX;
-    vec4 halfYzBatchInstance;
+    vec4 halfYzReserved;
 };
 
 struct DrawElementsIndirectCommand
@@ -33,14 +42,19 @@ layout(std430, binding = 4) writeonly buffer VisibleInstanceBuffer
     uint uVisibleInstanceIndices[];
 };
 
-layout(std430, binding = 5) readonly buffer BoundsBuffer
+layout(std430, binding = 5) readonly buffer CullItemBuffer
 {
-    InstanceBounds uBounds[];
+    CullItem uCullItems[];
 };
 
 layout(std430, binding = 6) buffer CommandBuffer
 {
     DrawElementsIndirectCommand uCommands[];
+};
+
+layout(std430, binding = 7) readonly buffer SubMeshMetaBuffer
+{
+    SubMeshMeta uSubMeshes[];
 };
 
 uniform vec4 uFrustumPlanes[6];
@@ -71,17 +85,16 @@ vec3 transformHalfExtents(mat4 transform, vec3 halfExtents)
 
 void main()
 {
-    uint boundsIndex = gl_GlobalInvocationID.x;
-    if (boundsIndex >= uint(uInstanceCount))
+    uint itemIndex = gl_GlobalInvocationID.x;
+    if (itemIndex >= uint(uInstanceCount))
         return;
 
-    InstanceBounds bounds = uBounds[boundsIndex];
-    uint batchIndex = uint(bounds.halfYzBatchInstance.z + 0.5);
-    uint instanceIndex = uint(bounds.halfYzBatchInstance.w + 0.5);
+    CullItem item = uCullItems[itemIndex];
+    SubMeshMeta meta = uSubMeshes[item.subMeshMetaIndex];
 
-    InstanceData instance = uInstances[instanceIndex];
-    vec3 localCenter = bounds.centerHalfX.xyz;
-    vec3 localHalfExtents = vec3(bounds.centerHalfX.w, bounds.halfYzBatchInstance.x, bounds.halfYzBatchInstance.y);
+    InstanceData instance = uInstances[item.instanceIndex];
+    vec3 localCenter = meta.centerHalfX.xyz;
+    vec3 localHalfExtents = vec3(meta.centerHalfX.w, meta.halfYzReserved.x, meta.halfYzReserved.y);
 
     vec3 worldCenter = (instance.model * vec4(localCenter, 1.0)).xyz;
     vec3 worldHalfExtents = transformHalfExtents(instance.model, localHalfExtents);
@@ -89,7 +102,7 @@ void main()
     if (!intersectsFrustum(worldCenter, worldHalfExtents))
         return;
 
-    uint visibleOffset = atomicAdd(uCommands[batchIndex].instanceCount, 1u);
-    uint visibleIndex = uCommands[batchIndex].baseInstance + visibleOffset;
-    uVisibleInstanceIndices[visibleIndex] = instanceIndex;
+    uint visibleOffset = atomicAdd(uCommands[item.batchIndex].instanceCount, 1u);
+    uint visibleIndex = uCommands[item.batchIndex].baseInstance + visibleOffset;
+    uVisibleInstanceIndices[visibleIndex] = item.instanceIndex;
 }
