@@ -40,6 +40,7 @@ import org.lwjgl.stb.STBImage.STBI_rgb_alpha
 import org.lwjgl.stb.STBImage.stbi_failure_reason
 import org.lwjgl.stb.STBImage.stbi_load_from_memory
 import java.nio.ByteBuffer
+import kotlin.math.ceil
 
 class Model(filePath: String, name: String) : Asset(filePath, name) 
 {
@@ -127,6 +128,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 collectGlobalNodeTransforms(nodeHierarchy!!, Matrix4f(), globalNodeTransforms)
                 bindPoseBoneMatricesByNodeName.clear()
                 buildSubMeshInstances(it, Matrix4f(), mutableListOf<SubMeshInstance>().also { subMeshInstances = it })
+                buildConservativeAnimatedBounds()
             }
         }
         catch (e: Exception) { throw e }
@@ -771,6 +773,54 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         getSkinnedSubMeshBounds(subMesh, boneMatrices, hasBones, aabb)
         return aabb
     }
+
+    private fun buildConservativeAnimatedBounds()
+    {
+        if (!hasBones || animations.isEmpty() || subMeshInstances.isEmpty())
+            return
+
+        val boundsBySubMesh = arrayOfNulls<Aabb>(subMeshes.size)
+
+        for (instance in subMeshInstances)
+            boundsBySubMesh.include(instance.subMesh.index, instance.cullingBounds)
+
+        var frameNumber = 0L
+        for (animation in animations)
+        {
+            val sampleCount = getAnimationBoundsSampleCount(animation)
+            val durationSeconds = animation.durationSeconds.takeIf { it > 0.0 && !it.isNaN() && !it.isInfinite() } ?: 0.0
+
+            for (sampleIndex in 0 until sampleCount)
+            {
+                val sampleTimeSeconds = if (sampleCount == 1) 0f else (durationSeconds * sampleIndex / sampleCount).toFloat()
+                frameNumber++
+
+                for (instance in subMeshInstances)
+                {
+                    val pose = getAnimatedPose(
+                        nodeName = instance.nodeName,
+                        animation = animation,
+                        animationTimeSeconds = sampleTimeSeconds,
+                        frameNumber = frameNumber
+                    ) ?: continue
+
+                    boundsBySubMesh.include(instance.subMesh.index, pose.getBounds(instance.subMesh))
+                }
+            }
+        }
+
+        for (subMesh in subMeshes)
+            subMesh.animatedBounds = boundsBySubMesh[subMesh.index]
+    }
+
+    private fun getAnimationBoundsSampleCount(animation: Animation): Int
+    {
+        val durationSeconds = animation.durationSeconds
+        if (durationSeconds <= 0.0 || durationSeconds.isNaN() || durationSeconds.isInfinite())
+            return 1
+
+        return ceil(durationSeconds * ANIMATION_BOUNDS_SAMPLE_RATE).toInt().coerceIn(1, MAX_ANIMATION_BOUNDS_SAMPLES_PER_CLIP)
+    }
     
     private fun getAnimatedSkeletonPose(
         animation: Animation,
@@ -1087,6 +1137,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val vertexStride: Int,
         val localBounds: Aabb,
         val skinningBounds: SkinningBounds? = null,
+        var animatedBounds: Aabb? = null,
         var gpuMetaIndex: Int = -1
     )
 
@@ -1135,6 +1186,17 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
         fun set(other: Aabb): Aabb =
             set(other.xMin, other.yMin, other.zMin, other.xMax, other.yMax, other.zMax)
+
+        fun include(other: Aabb): Aabb
+        {
+            if (other.xMin < xMin) xMin = other.xMin
+            if (other.yMin < yMin) yMin = other.yMin
+            if (other.zMin < zMin) zMin = other.zMin
+            if (other.xMax > xMax) xMax = other.xMax
+            if (other.yMax > yMax) yMax = other.yMax
+            if (other.zMax > zMax) zMax = other.zMax
+            return this
+        }
     }
 
     data class SkinningBounds(
@@ -1258,7 +1320,18 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         const val MAX_BONE_INFLUENCES = 4
         private val IDENTITY_MATRIX = Matrix4f()
         private const val POSE_CACHE_FRAME_SLOT_COUNT = 2
+        private const val ANIMATION_BOUNDS_SAMPLE_RATE = 15.0
+        private const val MAX_ANIMATION_BOUNDS_SAMPLES_PER_CLIP = 120
     }
 
     private fun getPoseCacheSlot(frameNumber: Long) = (frameNumber % POSE_CACHE_FRAME_SLOT_COUNT).toInt()
+
+    private fun Array<Aabb?>.include(index: Int, bounds: Aabb)
+    {
+        val currentBounds = this[index]
+        if (currentBounds == null)
+            this[index] = Aabb().set(bounds)
+        else
+            currentBounds.include(bounds)
+    }
 }

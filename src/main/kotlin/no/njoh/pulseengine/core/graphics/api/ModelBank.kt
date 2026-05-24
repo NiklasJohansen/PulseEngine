@@ -157,7 +157,7 @@ class ModelBank
         {
             fun from(subMesh: SubMesh): SubMeshMetadata
             {
-                val bounds = subMesh.localBounds
+                val bounds = subMesh.animatedBounds ?: subMesh.localBounds
                 return SubMeshMetadata(
                     indexCount = subMesh.indexCount,
                     indexStart = subMesh.indexStart,

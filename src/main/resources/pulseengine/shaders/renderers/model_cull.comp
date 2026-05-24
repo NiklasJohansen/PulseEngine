@@ -13,12 +13,18 @@ struct CullItem
     uint subMeshMetaIndex;
     uint batchIndex;
     uint instanceIndex;
-    uint flags;
+    uint dynamicBoundsIndex;
 };
 
 struct SubMeshMeta
 {
     uvec4 draw;
+    vec4 centerHalfX;
+    vec4 halfYzReserved;
+};
+
+struct DynamicBounds
+{
     vec4 centerHalfX;
     vec4 halfYzReserved;
 };
@@ -57,8 +63,15 @@ layout(std430, binding = 7) readonly buffer SubMeshMetaBuffer
     SubMeshMeta uSubMeshes[];
 };
 
+layout(std430, binding = 8) readonly buffer DynamicBoundsBuffer
+{
+    DynamicBounds uDynamicBounds[];
+};
+
 uniform vec4 uFrustumPlanes[6];
 uniform int uInstanceCount;
+
+const uint STATIC_BOUNDS_INDEX = 0xFFFFFFFFu;
 
 bool intersectsFrustum(vec3 worldCenter, vec3 worldHalfExtents)
 {
@@ -93,8 +106,18 @@ void main()
     SubMeshMeta meta = uSubMeshes[item.subMeshMetaIndex];
 
     InstanceData instance = uInstances[item.instanceIndex];
-    vec3 localCenter = meta.centerHalfX.xyz;
-    vec3 localHalfExtents = vec3(meta.centerHalfX.w, meta.halfYzReserved.x, meta.halfYzReserved.y);
+    vec4 centerHalfX = meta.centerHalfX;
+    vec4 halfYzReserved = meta.halfYzReserved;
+
+    if (item.dynamicBoundsIndex != STATIC_BOUNDS_INDEX)
+    {
+        DynamicBounds bounds = uDynamicBounds[item.dynamicBoundsIndex];
+        centerHalfX = bounds.centerHalfX;
+        halfYzReserved = bounds.halfYzReserved;
+    }
+
+    vec3 localCenter = centerHalfX.xyz;
+    vec3 localHalfExtents = vec3(centerHalfX.w, halfYzReserved.x, halfYzReserved.y);
 
     vec3 worldCenter = (instance.model * vec4(localCenter, 1.0)).xyz;
     vec3 worldHalfExtents = transformHalfExtents(instance.model, localHalfExtents);
