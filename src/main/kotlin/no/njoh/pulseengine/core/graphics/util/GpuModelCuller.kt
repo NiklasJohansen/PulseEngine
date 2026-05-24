@@ -30,6 +30,7 @@ class GpuModelCuller private constructor()
     private var instanceCount = 0
     private var dynamicBoundsCount = 0
     private var commandCount = 0
+    private var submittedCommandSetCount = 0
 
     fun init(engine: PulseEngineInternal)
     {
@@ -48,6 +49,7 @@ class GpuModelCuller private constructor()
         instanceCount = 0
         dynamicBoundsCount = 0
         commandCount = 0
+        submittedCommandSetCount = 0
         cullItemBuffer.clear()
         dynamicBoundsBuffer.clear()
         commandBuffer.clear()
@@ -59,8 +61,19 @@ class GpuModelCuller private constructor()
         
         measure({"frustum culling (" plus instanceCount plus "i, " plus commandCount plus "c)"})
         {
-            submit(batches)
-            cull(frustum)
+            submit(batches, commandSetCount = 1)
+            cull(frustumCount = 1) { setFrustumUniforms(frustum, index = 0) }
+        }
+    }
+
+    fun submitAndCullCascades(batches: ModelBatchList, frustums: Array<Frustum>)
+    {
+        commandCount = batches.size
+
+        measure({"cascade frustum culling (" plus instanceCount plus "i, " plus frustums.size plus "x" plus commandCount plus "c)"})
+        {
+            submit(batches, frustums.size)
+            cull(frustums.size) { repeat(frustums.size) { setFrustumUniforms(frustums[it], it) } }
         }
     }
 
@@ -127,33 +140,41 @@ class GpuModelCuller private constructor()
         if (this::commandBuffer.isInitialized) commandBuffer.destroy()
     }
 
-    fun getSubmittedIndirectCommandByteOffset() = commandBuffer.getSubmittedDataByteOffset()
-
-    private fun submit(batches: ModelBatchList)
+    fun getSubmittedIndirectCommandByteOffset(commandSetIndex: Int = 0): Long
     {
+        require(commandSetIndex in 0 until maxOf(submittedCommandSetCount, 1)) { "Command set index out of range: $commandSetIndex" }
+        return commandBuffer.getSubmittedDataByteOffset() + commandSetIndex.toLong() * commandCount * INDIRECT_COMMAND_STRIDE_BYTES
+    }
+
+    private fun submit(batches: ModelBatchList, commandSetCount: Int)
+    {
+        submittedCommandSetCount = commandSetCount
         commandBuffer.clear()
-        commandBuffer.fill(batches.size * INDIRECT_COMMAND_INTS)
+        commandBuffer.fill(batches.size * commandSetCount * INDIRECT_COMMAND_INTS)
         {
-            var visibleStart = 0
-            batches.forEach()
+            for (commandSetIndex in 0 until commandSetCount)
             {
-                // Index count
-                // Instance count (written by the culling compute shader)
-                // First index
-                // Base vertex
-                // Base instance
-                put(it.subMesh.indexCount, 0, it.subMesh.indexStart, 0, visibleStart)
-                visibleStart += it.instanceCount
+                var visibleStart = commandSetIndex * instanceCount
+                batches.forEach()
+                {
+                    // Index count
+                    // Instance count (written by the culling compute shader)
+                    // First index
+                    // Base vertex
+                    // Base instance
+                    put(it.subMesh.indexCount, 0, it.subMesh.indexStart, 0, visibleStart)
+                    visibleStart += it.instanceCount
+                }
             }
         }
 
         cullItemBuffer.submit()
         dynamicBoundsBuffer.submit()
         commandBuffer.submit()
-        visibleIndexBuffer.reserve(instanceCount) // Reserve space for the compute shader to write visible instance indices
+        visibleIndexBuffer.reserve(instanceCount * commandSetCount) // Reserve space for the compute shader to write visible instance indices
     }
 
-    private fun cull(frustum: Frustum)
+    private inline fun cull(frustumCount: Int, setFrustums: ShaderProgram.() -> Unit)
     {
         if (instanceCount == 0 || commandCount == 0) return
 
@@ -164,15 +185,23 @@ class GpuModelCuller private constructor()
 
         program.bind()
         program.setUniform("uInstanceCount", instanceCount)
-        program.setPlaneUniform("uFrustumPlanes[0]", frustum.left)
-        program.setPlaneUniform("uFrustumPlanes[1]", frustum.right)
-        program.setPlaneUniform("uFrustumPlanes[2]", frustum.bottom)
-        program.setPlaneUniform("uFrustumPlanes[3]", frustum.top)
-        program.setPlaneUniform("uFrustumPlanes[4]", frustum.near)
-        program.setPlaneUniform("uFrustumPlanes[5]", frustum.far)
+        program.setUniform("uBatchCount", commandCount)
+        program.setUniform("uFrustumCount", frustumCount)
+        program.setFrustums()
 
         glDispatchCompute((instanceCount + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1)
         glMemoryBarrier(GL_COMMAND_BARRIER_BIT or GL_SHADER_STORAGE_BARRIER_BIT)
+    }
+
+    private fun ShaderProgram.setFrustumUniforms(frustum: Frustum, index: Int)
+    {
+        val offset = index * FRUSTUM_PLANE_COUNT
+        setPlaneUniform(frustumPlaneUniformNames[offset + 0], frustum.left)
+        setPlaneUniform(frustumPlaneUniformNames[offset + 1], frustum.right)
+        setPlaneUniform(frustumPlaneUniformNames[offset + 2], frustum.bottom)
+        setPlaneUniform(frustumPlaneUniformNames[offset + 3], frustum.top)
+        setPlaneUniform(frustumPlaneUniformNames[offset + 4], frustum.near)
+        setPlaneUniform(frustumPlaneUniformNames[offset + 5], frustum.far)
     }
 
     private fun ShaderProgram.setPlaneUniform(name: String, plane: Frustum.FrustumPlane)
@@ -210,6 +239,10 @@ class GpuModelCuller private constructor()
         private const val CULL_ITEM_INTS = 4
         private const val DYNAMIC_BOUNDS_FLOATS = 8
         private const val INDIRECT_COMMAND_INTS = 5
+        private const val INDIRECT_COMMAND_STRIDE_BYTES = INDIRECT_COMMAND_INTS * Int.SIZE_BYTES
+        private const val FRUSTUM_PLANE_COUNT = 6
+        private const val MAX_FRUSTUMS = 4
         private const val WORK_GROUP_SIZE = 64
+        private val frustumPlaneUniformNames = Array(MAX_FRUSTUMS * FRUSTUM_PLANE_COUNT) { "uFrustumPlanes[$it]" }
     }
 }

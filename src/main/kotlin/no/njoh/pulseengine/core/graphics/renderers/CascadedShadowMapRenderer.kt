@@ -129,6 +129,14 @@ class CascadedShadowMapRenderer(
         val count = modelBatches.totalInstanceCount()
         val halfRes = resolution / 2
 
+        if (gpuCuller != null)
+        {
+            for (cascade in 0 until CASCADE_COUNT)
+                cascadeFrustums[cascade].setForViewProjection(readViewProjectionMatrices[cascade])
+
+            gpuCuller!!.submitAndCullCascades(modelBatches, cascadeFrustums)
+        }
+
         for (cascade in 0 until CASCADE_COUNT)
         {
             measure({ "cascade #" plus cascade plus " (" plus count plus ")" })
@@ -143,16 +151,13 @@ class CascadedShadowMapRenderer(
                 skinnedProgram.setUniform("viewProjection", readViewProjectionMatrices[cascade])
 
                 if (gpuCuller != null)
-                {
-                    cascadeFrustums[cascade].setForViewProjection(readViewProjectionMatrices[cascade])
-                    gpuCuller!!.submitAndCull(modelBatches, cascadeFrustums[cascade])
-                    drawGpuCulledModelBatches(modelBatches, gpuCuller!!)
-                    gpuCuller!!.markSubmittedDataInUse()
-                }
-                else drawModelBatches(modelBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
+                    drawGpuCulledModelBatches(modelBatches, gpuCuller!!, commandSetIndex = cascade)
+                else 
+                    drawModelBatches(modelBatches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
             }
         }
 
+        gpuCuller?.markSubmittedDataInUse()
         modelBuffer.markSubmittedDataInUse()
 
         glViewport(0, 0, resolution, resolution)

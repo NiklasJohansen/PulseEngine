@@ -79,16 +79,20 @@ layout(std430, binding = 12) readonly buffer SkinningBoundsBuffer
     uint uSkinningBounds[];
 };
 
-uniform vec4 uFrustumPlanes[6];
+uniform vec4 uFrustumPlanes[24];
 uniform int uInstanceCount;
+uniform int uBatchCount;
+uniform int uFrustumCount;
 
 const uint STATIC_BOUNDS_INDEX = 0xFFFFFFFFu;
+const int FRUSTUM_PLANE_COUNT = 6;
 
-bool intersectsFrustum(vec3 worldCenter, vec3 worldHalfExtents)
+bool intersectsFrustum(vec3 worldCenter, vec3 worldHalfExtents, int frustumIndex)
 {
-    for (int i = 0; i < 6; i++)
+    int planeOffset = frustumIndex * FRUSTUM_PLANE_COUNT;
+    for (int i = 0; i < FRUSTUM_PLANE_COUNT; i++)
     {
-        vec4 plane = uFrustumPlanes[i];
+        vec4 plane = uFrustumPlanes[planeOffset + i];
         float radius = dot(worldHalfExtents, abs(plane.xyz));
         float distance = dot(plane.xyz, worldCenter) + plane.w;
         if (distance < -radius)
@@ -204,10 +208,14 @@ void main()
     vec3 worldCenter = (instance.model * vec4(localCenter, 1.0)).xyz;
     vec3 worldHalfExtents = transformHalfExtents(instance.model, localHalfExtents);
 
-    if (!intersectsFrustum(worldCenter, worldHalfExtents))
-        return;
+    for (int frustum = 0; frustum < uFrustumCount; frustum++)
+    {
+        if (!intersectsFrustum(worldCenter, worldHalfExtents, frustum))
+            continue;
 
-    uint visibleOffset = atomicAdd(uCommands[item.batchIndex].instanceCount, 1u);
-    uint visibleIndex = uCommands[item.batchIndex].baseInstance + visibleOffset;
-    uVisibleInstanceIndices[visibleIndex] = item.instanceIndex;
+        uint commandIndex = uint(frustum) * uint(uBatchCount) + item.batchIndex;
+        uint visibleOffset = atomicAdd(uCommands[commandIndex].instanceCount, 1u);
+        uint visibleIndex = uCommands[commandIndex].baseInstance + visibleOffset;
+        uVisibleInstanceIndices[visibleIndex] = item.instanceIndex;
+    }
 }

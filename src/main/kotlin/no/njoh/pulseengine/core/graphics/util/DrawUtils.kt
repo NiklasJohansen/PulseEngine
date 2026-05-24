@@ -209,7 +209,7 @@ object DrawUtils
         commandBuffer.markSubmittedDataInUse()
     }
 
-    fun drawGpuCulledModelBatches(batches: ModelBatchList, culler: GpuModelCuller)
+    fun drawGpuCulledModelBatches(batches: ModelBatchList, culler: GpuModelCuller, commandSetIndex: Int = 0)
     {
         if (batches.size == 0) return
 
@@ -236,7 +236,7 @@ object DrawUtils
             glMultiDrawElementsIndirect(
                 /* mode = */ GL_TRIANGLES,
                 /* type = */ GL_UNSIGNED_INT,
-                /* indirect = */ culler.getSubmittedIndirectCommandByteOffset() + groupCommandStart.toLong() * INDIRECT_COMMAND_STRIDE_BYTES,
+                /* indirect = */ culler.getSubmittedIndirectCommandByteOffset(commandSetIndex) + groupCommandStart.toLong() * INDIRECT_COMMAND_STRIDE_BYTES,
                 /* drawcount = */ commandCount,
                 /* stride = */ 0
             )
