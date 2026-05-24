@@ -649,17 +649,16 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     }
 
     /**
-     * Returns the frame-local animated mesh pose for the given node from a full-body crossfade between two clips.
+     * Returns a frame-local animated model pose from a full-body crossfade between two clips.
      */
-    fun getAnimatedPose(
-        nodeName: String,
+    fun getAnimationPose(
         animation: Animation?,
         animationTimeSeconds: Float,
         frameNumber: Long,
         blendAnimation: Animation? = null,
         blendAnimationTimeSeconds: Float = 0f,
         blendFactor: Float = 0f,
-    ): AnimatedMeshPose? {
+    ): AnimatedModelPose? {
         if (bones.isEmpty())
             return null
 
@@ -729,7 +728,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             rootNode = rootNode
         )
 
-        return skeletonPose.getAnimatedMeshPose(nodeName)
+        return skeletonPose.modelPose
     }
     
     // Helpers ////////////////////////////////////////////////////////////////////////
@@ -797,14 +796,14 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
                 for (instance in subMeshInstances)
                 {
-                    val pose = getAnimatedPose(
-                        nodeName = instance.nodeName,
+                    val pose = getAnimationPose(
                         animation = animation,
                         animationTimeSeconds = sampleTimeSeconds,
                         frameNumber = frameNumber
                     ) ?: continue
 
-                    boundsBySubMesh.include(instance.subMesh.index, pose.getBounds(instance.subMesh))
+                    val meshPose = pose.getMeshPose(instance.nodeName)
+                    boundsBySubMesh.include(instance.subMesh.index, meshPose.getBounds(instance.subMesh))
                 }
             }
         }
@@ -1226,6 +1225,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     internal inner class AnimatedSkeletonPose
     {
         val animatedGlobalTransforms = HashMap<String, Matrix4f>(nodesByName.size)
+        val modelPose = AnimatedModelPose(this)
         val localTransformScratch = Matrix4f()
         val translationScratch = Vector3f()
         val rotationScratch = Quaternionf()
@@ -1294,6 +1294,12 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
             return pose
         }
+    }
+
+    inner class AnimatedModelPose internal constructor(private val skeletonPose: AnimatedSkeletonPose)
+    {
+        fun getMeshPose(nodeName: String): AnimatedMeshPose =
+            skeletonPose.getAnimatedMeshPose(nodeName)
     }
 
     inner class AnimatedMeshPose

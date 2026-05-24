@@ -53,6 +53,14 @@ class AminatedWorldModel : SceneEntity(), Updatable, WorldRenderable, WorldShado
         val animation = engine.asset.getOrNull<Animation>(animation)
         val blendAnimation = engine.asset.getOrNull<Animation>(blendAnimation)
         val time = animationTime.interpolateFrom(lastAnimationTime)
+        val animationPose = model.getAnimationPose(
+            animation = animation,
+            animationTimeSeconds = time + animationOffsetTime,
+            frameNumber = engine.data.frameNumber,
+            blendAnimation = blendAnimation,
+            blendAnimationTimeSeconds = time + blendAnimationOffsetTime,
+            blendFactor = blendFactor
+        )
 
         transform.identity()
             .translation(xPos, yPos, zPos)
@@ -64,11 +72,7 @@ class AminatedWorldModel : SceneEntity(), Updatable, WorldRenderable, WorldShado
             model = model,
             transform = transform,
             material = null,
-            animation = animation,
-            animationTimeSeconds = time + animationOffsetTime,
-            blendAnimation = blendAnimation,
-            blendAnimationTimeSeconds = time + blendAnimationOffsetTime,
-            blendFactor = blendFactor
+            animationPose = animationPose
         )
     }
 
