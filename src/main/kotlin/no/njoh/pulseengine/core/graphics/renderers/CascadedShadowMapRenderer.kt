@@ -7,6 +7,8 @@ import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
 import no.njoh.pulseengine.core.graphics.api.Frustum
+import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlane
+import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.addAllVisible
@@ -57,6 +59,8 @@ class CascadedShadowMapRenderer(
     private var writeCascadeSplits = FloatArray(CASCADE_COUNT)
     private var readCascadeSizeMeters  = FloatArray(CASCADE_COUNT)
     private var writeCascadeSizeMeters = FloatArray(CASCADE_COUNT)
+    private var readCascadeFrustumPlaneSets  = Array(CASCADE_COUNT) { FrustumPlaneSet(MAX_FRUSTUM_PLANES) }
+    private var writeCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet(MAX_FRUSTUM_PLANES) }
     private var readShadowCullingMatrix = Matrix4f()
     private var writeShadowCullingMatrix = Matrix4f()
 
@@ -90,6 +94,7 @@ class CascadedShadowMapRenderer(
         readViewProjectionMatrices = writeViewProjectionMatrices.also { writeViewProjectionMatrices = readViewProjectionMatrices }
         readCascadeSplits = writeCascadeSplits.also { writeCascadeSplits = readCascadeSplits }
         readCascadeSizeMeters = writeCascadeSizeMeters.also { writeCascadeSizeMeters = readCascadeSizeMeters }
+        readCascadeFrustumPlaneSets = writeCascadeFrustumPlaneSets.also { writeCascadeFrustumPlaneSets = readCascadeFrustumPlaneSets }
         readShadowCullingMatrix = writeShadowCullingMatrix.also { writeShadowCullingMatrix = readShadowCullingMatrix }
         readDrawLists = writeDrawLists.also { writeDrawLists = readDrawLists }
         writeDrawLists.clear()
@@ -130,12 +135,7 @@ class CascadedShadowMapRenderer(
         val halfRes = resolution / 2
 
         if (gpuCuller != null)
-        {
-            for (cascade in 0 until CASCADE_COUNT)
-                cascadeFrustums[cascade].setForViewProjection(readViewProjectionMatrices[cascade])
-
-            gpuCuller!!.submitAndCullCascades(modelBatches, cascadeFrustums)
-        }
+            gpuCuller!!.submitAndCullCascades(modelBatches, readCascadeFrustumPlaneSets)
 
         for (cascade in 0 until CASCADE_COUNT)
         {
@@ -266,6 +266,15 @@ class CascadedShadowMapRenderer(
                 .ortho(xMin, xMax, yMin, yMax, -zMax, -zMin)
                 .mul(lightViewMatrix)
 
+            // Build the frustum for this cascade slice
+            cascadeFrustums[cascadeIdx].setForViewProjection(writeViewProjectionMatrices[cascadeIdx])
+
+            // Build the caster-side frustum planes for this cascade slice
+            writeCascadeFrustumPlaneSets[cascadeIdx].buildCascadeCasterCullPlanes(
+                shadowFrustum = cascadeFrustums[cascadeIdx],
+                receiverCorners = frustumSliceCorners
+            )
+
             // Build an expanded culling matrix from the outermost cascade to catch
             // shadow casters that are outside the tight cascade frustum but still
             // cast shadows into the visible area (e.g. roofs, overhangs).
@@ -351,8 +360,57 @@ class CascadedShadowMapRenderer(
         return worldFrustumCorners
     }
 
+    /**
+     * Builds the conservative shadow-caster culling volume for one cascade.
+     *
+     * The volume starts with the cascade shadow-map box, then adds planes derived from the
+     * receiver frustum slice. Faces pointing away from the light reject casters behind the
+     * receiver volume, while silhouette edges extruded along [lightDirection] reject casters
+     * whose projected shadows pass beside the visible cascade slice.
+     */
+    private fun FrustumPlaneSet.buildCascadeCasterCullPlanes(shadowFrustum: Frustum, receiverCorners: Array<Vector3f>)
+    {
+        this.clear()
+        this.add(shadowFrustum)
+
+        for (faceIdx in RECEIVER_FACE_CORNERS.indices)
+        {
+            val face = RECEIVER_FACE_CORNERS[faceIdx]
+            val plane = receiverFacePlane
+            plane.setFromPoints(
+                p0 = receiverCorners[face[0]],
+                p1 = receiverCorners[face[1]],
+                p2 = receiverCorners[face[2]],
+                insidePoint = frustumSliceCenter
+            )
+
+            receiverFaceLightDots[faceIdx] =
+                plane.a * lightDirection.x +
+                plane.b * lightDirection.y +
+                plane.c * lightDirection.z
+
+            if (receiverFaceLightDots[faceIdx] <= 0f)
+                this.add(plane)
+        }
+
+        for (edge in RECEIVER_EDGES)
+        {
+            val dot0 = receiverFaceLightDots[edge[2]]
+            val dot1 = receiverFaceLightDots[edge[3]]
+            if (dot0 * dot1 < 0f)
+            {
+                this.addExtrusionPlane(
+                    direction = lightDirection,
+                    insidePoint = frustumSliceCenter,
+                    p0 = receiverCorners[edge[0]],
+                    p1 = receiverCorners[edge[1]]
+                )
+            }
+        }
+    }
+
     fun getDirection() = lightDirection
-    
+
     /**
      * Returns the cascade view-projection matrices.
      */
@@ -373,6 +431,7 @@ class CascadedShadowMapRenderer(
         private val WORLD_UP = Vector3f(0f, 1f, 0f)
 
         const val CASCADE_COUNT                 = 4
+        private const val MAX_FRUSTUM_PLANES    = 24
         private const val SHADOW_BACKOFF_METERS = 150f
         private const val SHADOW_SLOPE_BIAS     = 3.0f
         private const val SHADOW_CONST_BIAS     = 1.0f
@@ -384,5 +443,31 @@ class CascadedShadowMapRenderer(
         private val tmpVec4                       = Vector4f()
         private val worldFrustumCorners           = Array(8) { Vector3f() }
         private val ndcCorners                    = Array(8) { Vector4f() }
+        private val receiverFacePlane             = FrustumPlane()
+        private val receiverFaceLightDots         = FloatArray(6)
+
+        private val RECEIVER_FACE_CORNERS = arrayOf(
+            intArrayOf(0, 1, 3), // Near
+            intArrayOf(4, 6, 7), // Far
+            intArrayOf(0, 2, 6), // Left
+            intArrayOf(1, 5, 7), // Right
+            intArrayOf(0, 4, 5), // Bottom
+            intArrayOf(2, 3, 7)  // Top
+        )
+
+        private val RECEIVER_EDGES = arrayOf(
+            intArrayOf(0, 1, 0, 4),
+            intArrayOf(1, 3, 0, 3),
+            intArrayOf(3, 2, 0, 5),
+            intArrayOf(2, 0, 0, 2),
+            intArrayOf(4, 5, 1, 4),
+            intArrayOf(5, 7, 1, 3),
+            intArrayOf(7, 6, 1, 5),
+            intArrayOf(6, 4, 1, 2),
+            intArrayOf(0, 4, 2, 4),
+            intArrayOf(1, 5, 3, 4),
+            intArrayOf(3, 7, 3, 5),
+            intArrayOf(2, 6, 2, 5)
+        )
     }
 }

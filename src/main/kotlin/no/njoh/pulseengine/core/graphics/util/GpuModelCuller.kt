@@ -4,6 +4,8 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.ComputeShader
 import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
 import no.njoh.pulseengine.core.graphics.api.Frustum
+import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlane
+import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.api.GlCapabilities
 import no.njoh.pulseengine.core.graphics.api.ModelBatchList
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
@@ -66,14 +68,14 @@ class GpuModelCuller private constructor()
         }
     }
 
-    fun submitAndCullCascades(batches: ModelBatchList, frustums: Array<Frustum>)
+    fun submitAndCullCascades(batches: ModelBatchList, frustumPaneSets: Array<FrustumPlaneSet>)
     {
         commandCount = batches.size
 
-        measure({"cascade frustum culling (" plus instanceCount plus "i, " plus frustums.size plus "x" plus commandCount plus "c)"})
+        measure({"cascade frustum culling (" plus instanceCount plus "i, " plus frustumPaneSets.size plus "x" plus commandCount plus "c)"})
         {
-            submit(batches, frustums.size)
-            cull(frustums.size) { repeat(frustums.size) { setFrustumUniforms(frustums[it], it) } }
+            submit(batches, frustumPaneSets.size)
+            cull(frustumPaneSets.size) { repeat(frustumPaneSets.size) { setPlaneSetUniforms(frustumPaneSets[it], it) } }
         }
     }
 
@@ -195,7 +197,8 @@ class GpuModelCuller private constructor()
 
     private fun ShaderProgram.setFrustumUniforms(frustum: Frustum, index: Int)
     {
-        val offset = index * FRUSTUM_PLANE_COUNT
+        val offset = index * MAX_PLANES_PER_FRUSTUM
+        setUniform(frustumPlaneCountUniformNames[index], FRUSTUM_PLANE_COUNT)
         setPlaneUniform(frustumPlaneUniformNames[offset + 0], frustum.left)
         setPlaneUniform(frustumPlaneUniformNames[offset + 1], frustum.right)
         setPlaneUniform(frustumPlaneUniformNames[offset + 2], frustum.bottom)
@@ -204,7 +207,16 @@ class GpuModelCuller private constructor()
         setPlaneUniform(frustumPlaneUniformNames[offset + 5], frustum.far)
     }
 
-    private fun ShaderProgram.setPlaneUniform(name: String, plane: Frustum.FrustumPlane)
+    private fun ShaderProgram.setPlaneSetUniforms(frustumPlaneSet: FrustumPlaneSet, index: Int)
+    {
+        val offset = index * MAX_PLANES_PER_FRUSTUM
+        setUniform(frustumPlaneCountUniformNames[index], frustumPlaneSet.planeCount)
+
+        for (i in 0 until frustumPlaneSet.planeCount)
+            setPlaneUniform(frustumPlaneUniformNames[offset + i], frustumPlaneSet.planes[i])
+    }
+
+    private fun ShaderProgram.setPlaneUniform(name: String, plane: FrustumPlane)
     {
         setUniform(name, plane.a, plane.b, plane.c, plane.d)
     }

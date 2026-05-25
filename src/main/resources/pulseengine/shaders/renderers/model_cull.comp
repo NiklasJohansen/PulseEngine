@@ -79,18 +79,20 @@ layout(std430, binding = 12) readonly buffer SkinningBoundsBuffer
     uint uSkinningBounds[];
 };
 
-uniform vec4 uFrustumPlanes[24];
+uniform vec4 uFrustumPlanes[96];
+uniform int uFrustumPlaneCounts[4];
 uniform int uInstanceCount;
 uniform int uBatchCount;
 uniform int uFrustumCount;
 
 const uint STATIC_BOUNDS_INDEX = 0xFFFFFFFFu;
-const int FRUSTUM_PLANE_COUNT = 6;
+const int MAX_PLANES_PER_FRUSTUM = 24;
 
 bool intersectsFrustum(vec3 worldCenter, vec3 worldHalfExtents, int frustumIndex)
 {
-    int planeOffset = frustumIndex * FRUSTUM_PLANE_COUNT;
-    for (int i = 0; i < FRUSTUM_PLANE_COUNT; i++)
+    int planeOffset = frustumIndex * MAX_PLANES_PER_FRUSTUM;
+    int planeCount = uFrustumPlaneCounts[frustumIndex];
+    for (int i = 0; i < planeCount; i++)
     {
         vec4 plane = uFrustumPlanes[planeOffset + i];
         float radius = dot(worldHalfExtents, abs(plane.xyz));
@@ -140,7 +142,7 @@ float skinningBoundsFloat(uint recordBase, uint component)
     return uintBitsToFloat(uSkinningBounds[recordBase + component]);
 }
 
-bool getSkinnedBounds(SubMeshMeta meta, int boneOffset, out vec3 localCenter, out vec3 localHalfExtents)
+bool getSkinnedBounds(SubMeshMeta meta, int boneOffset, inout vec3 localCenter, inout vec3 localHalfExtents)
 {
     uint skinningBoundsOffset = meta.skinning.x;
     uint skinningBoundsCount = meta.skinning.y;
@@ -191,18 +193,23 @@ void main()
         return;
 
     CullItem item = uCullItems[itemIndex];
-    SubMeshMeta meta = uSubMeshes[item.subMeshMetaIndex];
     InstanceData instance = uInstances[item.instanceIndex];
 
-    vec3 localCenter = meta.centerXHalf.xyz;
-    vec3 localHalfExtents = vec3(meta.centerXHalf.w, meta.yzHalfReserved.x, meta.yzHalfReserved.y);
-    bool hasSkinnedBounds = getSkinnedBounds(meta, int(instance.params.y), localCenter, localHalfExtents);
+    vec3 localCenter;
+    vec3 localHalfExtents;
 
-    if (!hasSkinnedBounds && item.dynamicBoundsIndex != STATIC_BOUNDS_INDEX)
+    if (item.dynamicBoundsIndex != STATIC_BOUNDS_INDEX)
     {
         DynamicBounds bounds = uDynamicBounds[item.dynamicBoundsIndex];
         localCenter = bounds.centerXHalf.xyz;
         localHalfExtents = vec3(bounds.centerXHalf.w, bounds.yzHalfReserved.x, bounds.yzHalfReserved.y);
+    }
+    else
+    {
+        SubMeshMeta meta = uSubMeshes[item.subMeshMetaIndex];
+        localCenter = meta.centerXHalf.xyz;
+        localHalfExtents = vec3(meta.centerXHalf.w, meta.yzHalfReserved.x, meta.yzHalfReserved.y);
+        getSkinnedBounds(meta, int(instance.params.y), localCenter, localHalfExtents);
     }
 
     vec3 worldCenter = (instance.model * vec4(localCenter, 1.0)).xyz;

@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Model
 import org.joml.Matrix4f
+import org.joml.Vector3f
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -196,7 +197,107 @@ class Frustum(
             d *= invLen
         }
 
+        /** Builds a plane from three points and orients it so [insidePoint] is on the positive side. */
+        fun setFromPoints(p0: Vector3f, p1: Vector3f, p2: Vector3f, insidePoint: Vector3f)
+        {
+            val abx = p1.x - p0.x
+            val aby = p1.y - p0.y
+            val abz = p1.z - p0.z
+            val acx = p2.x - p0.x
+            val acy = p2.y - p0.y
+            val acz = p2.z - p0.z
+
+            a = aby * acz - abz * acy
+            b = abz * acx - abx * acz
+            c = abx * acy - aby * acx
+            normalize()
+            d = -(a * p0.x + b * p0.y + c * p0.z)
+
+            if (distanceToPoint(insidePoint.x, insidePoint.y, insidePoint.z) < 0f)
+            {
+                a = -a
+                b = -b
+                c = -c
+                d = -d
+            }
+        }
+
         /** Returns signed distance from point to plane (positive = inside/front) */
         inline fun distanceToPoint(x: Float, y: Float, z: Float): Float = a * x + b * y + c * z + d
+    }
+
+    /**
+     * Reusable collection of inward-facing culling planes.
+     *
+     * A normal [Frustum] always has six planes, but some GPU culling paths need richer convex
+     * volumes. Cascaded shadow maps use this to combine the shadow map box with extra receiver
+     * frustum caster planes, so objects are kept only when their shadow can reach the visible
+     * cascade slice.
+     */
+    class FrustumPlaneSet(private val capacity: Int)
+    {
+        val planes = Array(capacity) { FrustumPlane() }
+        var planeCount = 0; private set
+ 
+        fun clear() { planeCount = 0 }
+
+        /**
+         * Adds a plane passing through the edge [p0]-[p1] and extending along [direction].
+         * The plane is oriented so [insidePoint] is on the positive side.
+         */
+        fun addExtrusionPlane(direction: Vector3f, insidePoint: Vector3f, p0: Vector3f, p1: Vector3f)
+        {
+            val xEdge = p1.x - p0.x
+            val yEdge = p1.y - p0.y
+            val zEdge = p1.z - p0.z
+            var a = yEdge * direction.z - zEdge * direction.y
+            var b = zEdge * direction.x - xEdge * direction.z
+            var c = xEdge * direction.y - yEdge * direction.x
+
+            val length = sqrt(a * a + b * b + c * c)
+            if (length <= 0.00001f) return
+
+            val invLength = 1f / length
+            a *= invLength
+            b *= invLength
+            c *= invLength
+
+            var d = -(a * p0.x + b * p0.y + c * p0.z)
+
+            if (a * insidePoint.x + b * insidePoint.y + c * insidePoint.z + d < 0f)
+            {
+                a = -a
+                b = -b
+                c = -c
+                d = -d
+            }
+
+            add(a, b, c, d)
+        }
+        
+        fun add(frustum: Frustum)
+        {
+            add(frustum.left)
+            add(frustum.right)
+            add(frustum.bottom)
+            add(frustum.top)
+            add(frustum.near)
+            add(frustum.far)
+        }
+        
+        fun add(plane: FrustumPlane)
+        {
+            add(plane.a, plane.b, plane.c, plane.d)
+        }
+        
+        fun add(a: Float, b: Float, c: Float, d: Float)
+        {
+            require(planeCount < capacity) { "Culling plane set capacity exceeded: $capacity" }
+            planes[planeCount].a = a
+            planes[planeCount].b = b
+            planes[planeCount].c = c
+            planes[planeCount].d = d
+            planeCount++
+        }
     }
 }
