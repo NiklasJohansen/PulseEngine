@@ -14,9 +14,12 @@ object GpuProfiler
     private var shouldBeEnabled = false
     private var drawCallCounter = 0L
     private var triangleCounter = 0L
+    private var instanceCounter = 0L
+    private var statsReader = null as GpuStatsReader?
 
     var drawCalls = 0L; private set
     var triangles = 0L; private set
+    var instances = 0L; private set
 
     /**
      * Measures the time it takes to execute the given [action].
@@ -76,11 +79,14 @@ object GpuProfiler
      */
     internal fun initFrame()
     {
+        statsReader?.pollResults()
         enabled = shouldBeEnabled
         drawCalls = drawCallCounter
         triangles = triangleCounter
+        instances = instanceCounter
         drawCallCounter = 0
         triangleCounter = 0
+        instanceCounter = 0
 
         if (!enabled) return
 
@@ -113,5 +119,35 @@ object GpuProfiler
     fun incrementTriangles(count: Long)
     {
         triangleCounter += count
+    }
+
+    /**
+     * Increments the instance counter by the given [count].
+     */
+    fun incrementInstances(count: Long)
+    {
+        instanceCounter += count
+    }
+
+    /**
+     * Increments all draw work counters.
+     */
+    fun incrementDrawStats(drawCommands: Long, triangles: Long = 0L, instances: Long = 0L)
+    {
+        drawCallCounter += drawCommands
+        triangleCounter += triangles
+        instanceCounter += instances
+    }
+
+    /**
+     * Asynchronously captures visible draw stats from a GPU-written indirect command buffer.
+     */
+    fun captureIndirectDrawStats(commandBufferId: Int, byteOffset: Long, commandCount: Int)
+    {
+        if (commandBufferId <= 0 || commandCount <= 0) return
+
+        val reader = statsReader ?: GpuStatsReader().also { statsReader = it }
+
+        reader.capture(commandBufferId, byteOffset, commandCount)
     }
 }

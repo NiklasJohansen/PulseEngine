@@ -8,6 +8,8 @@ import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.captureIndirectDrawStats
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementDrawStats
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
 import org.lwjgl.opengl.GL11.GL_LINES
 import org.lwjgl.opengl.GL11.GL_TRIANGLES
@@ -38,8 +40,7 @@ object DrawUtils
         vao.bind()
         glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, firstIndex.toLong() * Int.SIZE_BYTES)
         vao.release()
-        GpuProfiler.incrementTriangles(indexCount / 3L)
-        GpuProfiler.incrementDrawCalls()
+        incrementDrawStats(drawCommands = 1L, triangles = indexCount / 3L, instances = 1L)
     }
 
     fun drawTriangleVertices(vao: VertexArrayObject, firstVertexIndex: Int, vertexCount: Int)
@@ -47,8 +48,7 @@ object DrawUtils
         vao.bind()
         glDrawArrays(GL_TRIANGLES, firstVertexIndex, vertexCount)
         vao.release()
-        GpuProfiler.incrementTriangles(vertexCount / 3L)
-        GpuProfiler.incrementDrawCalls()
+        incrementDrawStats(drawCommands = 1L, triangles = vertexCount / 3L, instances = 1L)
     }
 
     fun drawTriangleStripVertices(vao: VertexArrayObject, firstVertex: Int, vertexCount: Int)
@@ -56,8 +56,7 @@ object DrawUtils
         vao.bind()
         glDrawArrays(GL_TRIANGLE_STRIP, firstVertex, vertexCount)
         vao.release()
-        GpuProfiler.incrementTriangles(max(0, vertexCount - 2L))
-        GpuProfiler.incrementDrawCalls()
+        incrementDrawStats(drawCommands = 1L, triangles = max(0, vertexCount - 2L), instances = 1L)
     }
 
     fun drawInstancedTriangleStripVertices(vao: VertexArrayObject, firstVertex: Int, vertexCount: Int, instanceCount: Int)
@@ -65,8 +64,11 @@ object DrawUtils
         vao.bind()
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, firstVertex, vertexCount, instanceCount)
         vao.release()
-        GpuProfiler.incrementTriangles(instanceCount * max(0, vertexCount - 2L))
-        GpuProfiler.incrementDrawCalls()
+        incrementDrawStats(
+            drawCommands = 1L,
+            triangles = instanceCount * max(0, vertexCount - 2L),
+            instances = instanceCount.toLong()
+        )
     }
 
     fun drawLineVertices(vao: VertexArrayObject, firstVertex: Int, vertexCount: Int)
@@ -74,7 +76,7 @@ object DrawUtils
         vao.bind()
         glDrawArrays(GL_LINES, firstVertex, vertexCount)
         vao.release()
-        GpuProfiler.incrementDrawCalls()
+        incrementDrawStats(drawCommands = 1L, instances = 1L)
     }
 
     fun drawInstancedQuads(
@@ -97,8 +99,7 @@ object DrawUtils
             glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, instanceCount)
         }
         vao.release()
-        GpuProfiler.incrementTriangles(instanceCount * 2L)
-        GpuProfiler.incrementDrawCalls()
+        incrementDrawStats(drawCommands = 1L, triangles = instanceCount * 2L, instances = instanceCount.toLong())
     }
 
     fun drawModelBatches(
@@ -144,6 +145,7 @@ object DrawUtils
         var commandIndex = 0
         var commandCount = 0
         var triangleCount = 0L
+        var instanceCount = 0L
 
         fun flushGroup()
         {
@@ -171,14 +173,14 @@ object DrawUtils
                 instanceIndexBuffer?.release()
 
             vao.release()
-            GpuProfiler.incrementTriangles(triangleCount)
-            GpuProfiler.incrementDrawCalls()
+            incrementDrawStats(drawCommands = commandCount.toLong(), triangles = triangleCount, instances = instanceCount)
 
             groupStart = null
             groupVao = null
             groupCommandStart = 0
             commandCount = 0
             triangleCount = 0L
+            instanceCount = 0L
         }
 
         batches.forEach { batch ->
@@ -202,6 +204,7 @@ object DrawUtils
 
             commandCount++
             triangleCount += batch.instanceCount * (batch.subMesh.indexCount / 3L)
+            instanceCount += batch.instanceCount
             commandIndex++
         }
 
@@ -221,7 +224,6 @@ object DrawUtils
         var groupCommandStart = 0
         var commandIndex = 0
         var commandCount = 0
-        var triangleCount = 0L
 
         fun flushGroup()
         {
@@ -232,24 +234,25 @@ object DrawUtils
             firstBatch.program.setUniform("uUseVisibleInstanceBuffer", true)
             vao.bind()
             culler.bindIndirectCommandBuffer()
+            val commandByteOffset =
+                culler.getSubmittedIndirectCommandByteOffset(commandSetIndex) +
+                groupCommandStart.toLong() * INDIRECT_COMMAND_STRIDE_BYTES
 
             glMultiDrawElementsIndirect(
                 /* mode = */ GL_TRIANGLES,
                 /* type = */ GL_UNSIGNED_INT,
-                /* indirect = */ culler.getSubmittedIndirectCommandByteOffset(commandSetIndex) + groupCommandStart.toLong() * INDIRECT_COMMAND_STRIDE_BYTES,
+                /* indirect = */ commandByteOffset,
                 /* drawcount = */ commandCount,
                 /* stride = */ 0
             )
 
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0)
             vao.release()
-            GpuProfiler.incrementTriangles(triangleCount)
-            GpuProfiler.incrementDrawCalls()
+            captureIndirectDrawStats(culler.getSubmittedIndirectCommandBufferId(), commandByteOffset, commandCount)
 
             groupStart = null
             groupVao = null
             commandCount = 0
-            triangleCount = 0L
         }
 
         batches.forEach { batch ->
@@ -277,7 +280,6 @@ object DrawUtils
             }
 
             commandCount++
-            triangleCount += batch.instanceCount * (batch.subMesh.indexCount / 3L)
             commandIndex++
         }
 
@@ -347,10 +349,9 @@ object DrawUtils
         }
 
         vao.release()
-        GpuProfiler.incrementTriangles(instanceCount * (indexCount / 3L))
-        GpuProfiler.incrementDrawCalls()
+        incrementDrawStats(drawCommands = 1L, triangles = instanceCount * (indexCount / 3L), instances = instanceCount.toLong())
     }
-    
+
     private const val INSTANCE_INDEX_ATTRIBUTE_LOCATION = 6
     private const val INDIRECT_COMMAND_INTS = 5
     private const val INDIRECT_COMMAND_STRIDE_BYTES = 5 * Int.SIZE_BYTES

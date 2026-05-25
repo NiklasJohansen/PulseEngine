@@ -148,6 +148,8 @@ class GpuModelCuller private constructor()
         return commandBuffer.getSubmittedDataByteOffset() + commandSetIndex.toLong() * commandCount * INDIRECT_COMMAND_STRIDE_BYTES
     }
 
+    fun getSubmittedIndirectCommandBufferId() = commandBuffer.id
+
     private fun submit(batches: ModelBatchList, commandSetCount: Int)
     {
         submittedCommandSetCount = commandSetCount
@@ -254,7 +256,9 @@ class GpuModelCuller private constructor()
         private const val INDIRECT_COMMAND_STRIDE_BYTES = INDIRECT_COMMAND_INTS * Int.SIZE_BYTES
         private const val FRUSTUM_PLANE_COUNT = 6
         private const val MAX_FRUSTUMS = 4
+        private const val MAX_PLANES_PER_FRUSTUM = 24
         private const val WORK_GROUP_SIZE = 64
-        private val frustumPlaneUniformNames = Array(MAX_FRUSTUMS * FRUSTUM_PLANE_COUNT) { "uFrustumPlanes[$it]" }
+        private val frustumPlaneUniformNames = Array(MAX_FRUSTUMS * MAX_PLANES_PER_FRUSTUM) { "uFrustumPlanes[$it]" }
+        private val frustumPlaneCountUniformNames = Array(MAX_FRUSTUMS) { "uFrustumPlaneCounts[$it]" }
     }
 }
