@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementUploadedBytes
 import no.njoh.pulseengine.core.shared.utils.Extensions.formatted
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.ARBUniformBufferObject.*
@@ -55,6 +56,7 @@ class DoubleBufferedFloatObject private constructor(
         mappedFloatBuffer.clear()
         mappedFloatBuffer.put(readArray, 0, readSize)
         mappedFloatBuffer.flip()
+        incrementUploadedBytes(readSize.toLong() * Float.SIZE_BYTES)
 
         glUnmapBuffer(target)
     }

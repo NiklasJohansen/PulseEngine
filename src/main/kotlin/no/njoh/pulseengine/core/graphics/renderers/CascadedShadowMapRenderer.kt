@@ -130,16 +130,12 @@ class CascadedShadowMapRenderer(
         val modelBatches = modelBatcher.createBatchesAndFillBuffer(renderItems, modelBuffer, gpuCuller)
 
         modelBuffer.submit()
+        gpuCuller?.submitAndCullCascades(modelBatches, readCascadeFrustumPlaneSets)
 
-        val count = modelBatches.totalInstanceCount()
         val halfRes = resolution / 2
-
-        if (gpuCuller != null)
-            gpuCuller!!.submitAndCullCascades(modelBatches, readCascadeFrustumPlaneSets)
-
         for (cascade in 0 until CASCADE_COUNT)
         {
-            measure({ "cascade #" plus cascade plus " (" plus count plus ")" })
+            measure({ "cascade #" plus cascade })
             {
                 val col = cascade % 2
                 val row = cascade / 2

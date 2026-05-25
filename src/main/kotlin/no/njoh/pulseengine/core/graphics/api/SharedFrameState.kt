@@ -55,11 +55,11 @@ class SharedFrameState
         return offset
     }
 
-    fun submitModelData() = GpuProfiler.measure("submit shared model data")
+    fun submitModelData()
     {
-        val modelBoneBuffer = modelBoneBuffer ?: return@measure
+        val modelBoneBuffer = modelBoneBuffer ?: return
         if (modelBoneMatrixCount == 0)
-            return@measure
+            return
 
         if (modelBoneDataSubmitted && modelBoneDataDirty)
         {

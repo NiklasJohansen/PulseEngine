@@ -68,9 +68,10 @@ open class GraphicsImpl : GraphicsInternal
 
         GpuLogger.setLogLevel(engine.config.gpuLogLevel)
 
-        engine.data.addMetric("DRAW_CALLS") { sample(GpuProfiler.drawCalls.toFloat()) }
-        engine.data.addMetric("TRIANGLES")  { sample(GpuProfiler.triangles.toFloat()) }
-        engine.data.addMetric("INSTANCES")  { sample(GpuProfiler.instances.toFloat()) }
+        engine.data.addMetric("DRAW_CALLS")             { sample(GpuProfiler.drawCalls.toFloat()) }
+        engine.data.addMetric("TRIANGLES")              { sample(GpuProfiler.triangles.toFloat()) }
+        engine.data.addMetric("INSTANCES")              { sample(GpuProfiler.instances.toFloat()) }
+        engine.data.addMetric("GPU MEMORY UPLOAD (kB)") { sample(GpuProfiler.uploadedBytes.toFloat() / 1024f) }
     }
 
     override fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean)

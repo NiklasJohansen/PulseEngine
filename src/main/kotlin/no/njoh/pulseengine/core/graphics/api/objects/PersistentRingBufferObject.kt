@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
 import no.njoh.pulseengine.core.graphics.api.GlCapabilities
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementUploadedBytes
 import no.njoh.pulseengine.core.shared.utils.Extensions.formatted
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.ARBBufferStorage.GL_DYNAMIC_STORAGE_BIT
@@ -61,6 +62,7 @@ class PersistentRingBufferObject(
             val offset = getSegmentElementOffset(writeSegmentIndex)
             mappedFloatBuffer.position(offset)
             mappedFloatBuffer.put(data, 0, size)
+            incrementUploadedBytes(size.toLong() * elementSizeBytes)
         }
 
         submitSegment(size)
@@ -75,6 +77,7 @@ class PersistentRingBufferObject(
         {
             mappedIntBuffer.position(getSegmentElementOffset(writeSegmentIndex))
             mappedIntBuffer.put(data, 0, size)
+            incrementUploadedBytes(size.toLong() * elementSizeBytes)
         }
 
         submitSegment(size)
