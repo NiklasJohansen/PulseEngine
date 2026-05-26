@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.scene.interfaces.Renderable
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.quickSort
 import java.util.*
 
 /**
@@ -129,7 +130,7 @@ open class EntityRendererImpl : EntityRenderer()
             val drawFunction = task.drawFunction
             if (entities.isNotEmpty())
             {
-                entities.sortWith(BackToFrontEntityComparator) // TODO: This creates alot of garbage internally
+                entities.quickSort(BackToFrontEntityComparator)
                 when (drawFunction)
                 {
                     null -> entities.forEachFast { it.onRender(engine, surface) }
