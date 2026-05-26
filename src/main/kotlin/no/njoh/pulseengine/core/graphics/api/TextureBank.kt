@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.api
 
 import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.api.TextureAnisotropy.OFF
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
@@ -29,7 +30,7 @@ class TextureBank
 {
     private val capacitySpecs = mutableListOf<TextureCapacitySpec>().apply { addAll(DEFAULT_CAPACITIES) }
     private val textureArrays = mutableListOf<TextureArray>()
-    private val emptyTextureArray = TextureArray(0, 0, 0, RGBA8, LINEAR, CLAMP_TO_EDGE, 1)
+    private val emptyTextureArray = TextureArray(0, 0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
     private val fallbackTextures = THashMap<Color, RenderTexture>()
 
     fun upload(texture: Texture)
@@ -111,6 +112,7 @@ class TextureBank
             it.textureSize >= textureSize &&
             it.format == texture.format &&
             it.filter == texture.filter &&
+            it.anisotropy == texture.anisotropy &&
             it.wrapping == texture.wrapping &&
             it.maxMipLevels == texture.maxMipLevels
         }
@@ -129,7 +131,7 @@ class TextureBank
             Logger.error()
             {
                 "Failed to load texture: name=${texture.name}, size=${textureSize}px, format=${texture.format}, " +
-                "filter=${texture.filter}, wrapping=${texture.wrapping} and maxMipLevels=${texture.maxMipLevels}.\n" +
+                "filter=${texture.filter}, anisotropy=${texture.anisotropy}, wrapping=${texture.wrapping} and maxMipLevels=${texture.maxMipLevels}.\n" +
                 "All $MAX_TEXTURE_SLOTS texture array slots are in use:\n\n" +
                 textureArrays.joinToString("\n") { "  $it" } +
                 "\n\nConsider reducing the number of texture sampler permutations."
@@ -145,7 +147,7 @@ class TextureBank
             return null
         }
 
-        val newArray = TextureArray(textureArrays.size, spec.texSize, spec.capacity, texture.format, texture.filter, texture.wrapping, texture.maxMipLevels)
+        val newArray = TextureArray(textureArrays.size, spec.texSize, spec.capacity, texture.format, texture.filter, texture.anisotropy, texture.wrapping, texture.maxMipLevels)
         textureArrays.add(newArray)
         textureArrays.sortBy { it.textureSize }
         Logger.debug { "New texture array created: $newArray" }

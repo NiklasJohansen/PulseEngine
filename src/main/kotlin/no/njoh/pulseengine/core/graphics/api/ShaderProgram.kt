@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Shader
+import no.njoh.pulseengine.core.graphics.api.TextureAnisotropy.Companion.defaultFor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -121,16 +122,18 @@ class ShaderProgram(
     fun setUniformSampler(
         samplerName: String, 
         texture: RenderTexture, 
-        filter: TextureFilter = texture.filter, 
+        filter: TextureFilter = texture.filter,
+        anisotropy: TextureAnisotropy = defaultFor(filter),
         wrapping: TextureWrapping = texture.wrapping,
         compare: TextureCompare = TextureCompare.NONE,
         borderColor: Color? = null
-    ) = setUniformSampler(samplerName, texture.handle, filter, wrapping, compare, borderColor, texture.multisampling)
+    ) = setUniformSampler(samplerName, texture.handle, filter, anisotropy, wrapping, compare, borderColor, texture.multisampling)
 
     fun setUniformSampler(
         samplerName: String,
         textureHandle: TextureHandle,
         filter: TextureFilter = LINEAR,
+        anisotropy: TextureAnisotropy = defaultFor(filter),
         wrapping: TextureWrapping = CLAMP_TO_EDGE,
         compare: TextureCompare = TextureCompare.NONE,
         borderColor: Color? = null,
@@ -141,40 +144,42 @@ class ShaderProgram(
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(target, textureHandle.textureIndex)
         setUniform(samplerName, unit)
-        TextureSampler.getFor(filter, wrapping, compare, borderColor).bind(unit)
+        TextureSampler.getFor(filter, anisotropy, wrapping, compare, borderColor).bind(unit)
     }
 
-    fun setUniformSamplerArrays(textureArrays: List<TextureArray>, filter: TextureFilter? = null, wrapping: TextureWrapping? = null) =
-        textureArrays.forEachFast { setUniformSamplerArray(it, filter ?: it.filter, wrapping ?: it.wrapping) }
+    fun setUniformSamplerArrays(textureArrays: List<TextureArray>, filter: TextureFilter? = null, anisotropy: TextureAnisotropy? = null, wrapping: TextureWrapping? = null) =
+        textureArrays.forEachFast { setUniformSamplerArray(it, filter ?: it.filter, anisotropy ?: it.anisotropy, wrapping ?: it.wrapping) }
 
     fun setUniformSamplerArray(
         textureArray: TextureArray, 
-        filter: TextureFilter = textureArray.filter, 
+        filter: TextureFilter = textureArray.filter,
+        anisotropy: TextureAnisotropy = textureArray.anisotropy,
         wrapping: TextureWrapping = textureArray.wrapping,
         compare: TextureCompare = TextureCompare.NONE,
-        borderColor: Color? = null
+        borderColor: Color? = null,
     ) {
         val samplerName = textureArrayNames[textureArray.samplerIndex]
         val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)
         setUniform(samplerName, unit)
-        TextureSampler.getFor(filter, wrapping, compare, borderColor).bind(unit)
+        TextureSampler.getFor(filter, anisotropy, wrapping, compare, borderColor).bind(unit)
     }
 
     fun setUniformSamplerArray(
         samplerName: String, 
         textureArray: TextureArray, 
-        filter: TextureFilter = textureArray.filter, 
+        filter: TextureFilter = textureArray.filter,
+        anisotropy: TextureAnisotropy = textureArray.anisotropy,
         wrapping: TextureWrapping = textureArray.wrapping,
         compare: TextureCompare = TextureCompare.NONE,
-        borderColor: Color? = null
+        borderColor: Color? = null,
     ) {
         val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)
         setUniform(samplerName, unit)
-        TextureSampler.getFor(filter, wrapping, compare, borderColor).bind(unit)
+        TextureSampler.getFor(filter, anisotropy, wrapping, compare, borderColor).bind(unit)
     }
 
     fun assignUniformBlockBinding(blockName: String, blockBinding: Int): Int

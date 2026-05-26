@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.graphics.api.*
+import no.njoh.pulseengine.core.graphics.api.TextureAnisotropy.Companion.defaultFor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR_MIPMAP
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureHandle.Companion.INVALID
@@ -21,6 +22,7 @@ open class Texture(
     initWidth: Int = 1,
     initHeight: Int = 1,
     val filter: TextureFilter = LINEAR_MIPMAP,
+    val anisotropy: TextureAnisotropy = defaultFor(filter),
     val wrapping: TextureWrapping = REPEAT,
     val format: TextureFormat = SRGBA8,
     val maxMipLevels: Int = 15

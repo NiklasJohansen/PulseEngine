@@ -8,8 +8,10 @@ import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureCompare
+import no.njoh.pulseengine.core.graphics.api.TextureCompare.*
 import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.graphics.renderers.CascadedShadowMapRenderer
@@ -32,10 +34,10 @@ class VolumetricSunEffect(
     private val camera: Camera,
     downsampleFactor: Int = 2
 ) : BaseEffect(
-    TextureDescriptor(RGBA16F, TextureFilter.LINEAR, CLAMP_TO_EDGE, scale = 1f),                              // 0: Output
-    TextureDescriptor(RGB16F,  TextureFilter.LINEAR, CLAMP_TO_EDGE, scale = 1f / downsampleFactor.toFloat()), // 1: Volume (downsampled)
-    TextureDescriptor(RGB16F,  TextureFilter.LINEAR, CLAMP_TO_EDGE, scale = 1f / downsampleFactor.toFloat()), // 2: Blur   (downsampled)
-    TextureDescriptor(RGB16F,  TextureFilter.LINEAR, CLAMP_TO_EDGE, scale = 1f)                               // 3: Upsample (full resolution)
+    TextureDescriptor(RGBA16F, LINEAR, CLAMP_TO_EDGE, scale = 1f),                              // 0: Output
+    TextureDescriptor(RGB16F, LINEAR, CLAMP_TO_EDGE, scale = 1f / downsampleFactor.toFloat()), // 1: Volume (downsampled)
+    TextureDescriptor(RGB16F, LINEAR, CLAMP_TO_EDGE, scale = 1f / downsampleFactor.toFloat()), // 2: Blur   (downsampled)
+    TextureDescriptor(RGB16F, LINEAR, CLAMP_TO_EDGE, scale = 1f)                               // 3: Upsample (full resolution)
 ) {
     var shadowMapSurfaceName  = ""
     var sunColor              = Color(1f, 1f, 1f)
@@ -123,8 +125,8 @@ class VolumetricSunEffect(
         camera.invViewMatrix.getTranslation(cameraPos)
 
         program.bind()
-        program.setUniformSampler("uDepthTex", depthTex, TextureFilter.NEAREST)
-        program.setUniformSampler("uShadowMapTex", shadowTex, TextureFilter.LINEAR, CLAMP_TO_BORDER, TextureCompare.LEQUAL, Color.WHITE)
+        program.setUniformSampler("uDepthTex", depthTex, NEAREST)
+        program.setUniformSampler("uShadowMapTex", shadowTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = LEQUAL, borderColor = Color.WHITE)
         program.setUniform("uInvViewProjection", camera.invViewProjectionMatrix)
         program.setUniform("uView", camera.viewMatrix)
         program.setUniform("uCameraPos", cameraPos)
@@ -162,7 +164,7 @@ class VolumetricSunEffect(
         val yTexelSize = 1f / scatterTex.height.toFloat()
 
         program.bind()
-        program.setUniformSampler("uDepthTex", depthTex, filter = TextureFilter.NEAREST)
+        program.setUniformSampler("uDepthTex", depthTex, filter = NEAREST)
         program.setUniform("uInvProjection", camera.invProjectionMatrix)
         program.setUniform("uBlurRadius", blurRadius)
         program.setUniform("uDepthTolerance", blurDepthTolerance)
@@ -195,8 +197,8 @@ class VolumetricSunEffect(
         val upsampleTex = fbo.getTexture(3)
 
         program.bind()
-        program.setUniformSampler("uVolumeTex", volumeTex, filter = TextureFilter.NEAREST)
-        program.setUniformSampler("uDepthTex", depthTex, filter = TextureFilter.NEAREST)
+        program.setUniformSampler("uVolumeTex", volumeTex, filter = NEAREST)
+        program.setUniformSampler("uDepthTex", depthTex, filter = NEAREST)
         program.setUniform("uResolution", upsampleTex.width, upsampleTex.height)
         program.setUniform("uVolumeTexSize", volumeTex.width, volumeTex.height)
         program.setUniform("uInvProjection", camera.invProjectionMatrix)
@@ -219,8 +221,8 @@ class VolumetricSunEffect(
         val outputTex = fbo.getTexture(0)
 
         program.bind()
-        program.setUniformSampler("uSceneColorTex", sceneColorTex, filter = TextureFilter.LINEAR)
-        program.setUniformSampler("uVolumeTex", volumeTex, filter = TextureFilter.LINEAR)
+        program.setUniformSampler("uSceneColorTex", sceneColorTex, filter = LINEAR)
+        program.setUniformSampler("uVolumeTex", volumeTex, filter = LINEAR)
 
         glViewport(0, 0, outputTex.width, outputTex.height)
         fbo.attachOutputTexture(outputTex)

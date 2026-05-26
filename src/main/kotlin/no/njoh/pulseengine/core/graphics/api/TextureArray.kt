@@ -20,6 +20,7 @@ class TextureArray(
     val maxCapacity: Int,
     val format: TextureFormat,
     val filter: TextureFilter,
+    val anisotropy: TextureAnisotropy,
     val wrapping: TextureWrapping,
     val maxMipLevels: Int
 ) {
@@ -104,5 +105,5 @@ class TextureArray(
         freeSlots.clear()
     } 
 
-    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, mips=$mipLevels"
+    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, anisotropy=$anisotropy, wrapping=$wrapping, mips=$mipLevels"
 }

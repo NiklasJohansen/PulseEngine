@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.api.*
+import no.njoh.pulseengine.core.graphics.api.TextureAnisotropy.Companion.defaultFor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR_MIPMAP
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA32F
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.REPEAT
@@ -15,12 +16,13 @@ class EnvMap(
     initWidth: Int = 1,
     initHeight: Int = 1,
     filter: TextureFilter = LINEAR_MIPMAP,
+    anisotropy: TextureAnisotropy = defaultFor(filter),
     wrapping: TextureWrapping = REPEAT,
     format: TextureFormat = RGBA32F,
     maxMipLevels: Int = 10,
     val buildIblMaps: Boolean = true,
     val iblSourceName: String? = null
-) : Texture(filePath, name, initWidth, initHeight, filter, wrapping, format, maxMipLevels) {
+) : Texture(filePath, name, initWidth, initHeight, filter, anisotropy, wrapping, format, maxMipLevels) {
 
     override fun getSubAssets(): List<Asset>
     {
@@ -43,7 +45,8 @@ class EnvMap(
             format = format,
             maxMipLevels = mipCount.coerceAtMost(8),
             buildIblMaps = false,
-            iblSourceName = name
+            iblSourceName = name,
+            anisotropy = anisotropy
         )
 
         // Diffuse map
@@ -59,7 +62,8 @@ class EnvMap(
             format = format,
             maxMipLevels = 1,
             buildIblMaps = false,
-            iblSourceName = name
+            iblSourceName = name,
+            anisotropy = defaultFor(TextureFilter.LINEAR)
         )
 
         return listOf(specularTex, diffuseTex)

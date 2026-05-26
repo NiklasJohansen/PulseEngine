@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.graphics.api.*
+import no.njoh.pulseengine.core.graphics.api.TextureAnisotropy.Companion.defaultFor
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR_MIPMAP
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.SRGBA8
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.REPEAT
@@ -11,12 +12,13 @@ class SpriteSheet(
     filePath: String,
     name: String,
     filter: TextureFilter = LINEAR_MIPMAP,
+    anisotropy: TextureAnisotropy = defaultFor(filter),
     wrapping: TextureWrapping = REPEAT,
     format: TextureFormat = SRGBA8,
     maxMipLevels: Int = 5,
     private val horizontalCells: Int,
     private val verticalCells: Int,
-) : Texture(filePath, name, initWidth = 1, initHeight = 1, filter, wrapping, format, maxMipLevels), Iterable<Texture> {
+) : Texture(filePath, name, initWidth = 1, initHeight = 1, filter, anisotropy, wrapping, format, maxMipLevels), Iterable<Texture> {
 
     private lateinit var textures: Array<Texture>
 
@@ -42,7 +44,7 @@ class SpriteSheet(
             val vMaxCell = vMinCell + vCellSize * vTexSize
             val cellWidth = (width * uCellSize).toInt()
             val cellHeight = (height * vCellSize).toInt()
-            Texture(filePath, name, cellWidth, cellHeight, filter, wrapping, format, maxMipLevels).also()
+            Texture(filePath, name, cellWidth, cellHeight, filter, anisotropy, wrapping, format, maxMipLevels).also()
             {
                 it.onUploaded(handle, uMinCell, vMinCell, uMaxCell, vMaxCell)
             }

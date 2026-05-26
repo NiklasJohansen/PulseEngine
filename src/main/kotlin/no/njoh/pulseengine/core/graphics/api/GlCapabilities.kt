@@ -1,6 +1,8 @@
 package no.njoh.pulseengine.core.graphics.api
 
+import org.lwjgl.opengl.EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT
 import org.lwjgl.opengl.GL
+import org.lwjgl.opengl.GL11.glGetFloatv
 
 /**
  * Cached OpenGL feature flags for the current context.
@@ -47,6 +49,18 @@ object GlCapabilities
     var shaderDrawParametersArb = false; private set
 
     /**
+     * True when anisotropic texture filtering is available.
+     *
+     * Provided by OpenGL 4.6, `GL_ARB_texture_filter_anisotropic`, or `GL_EXT_texture_filter_anisotropic`.
+     */
+    var textureFilterAnisotropic = false; private set
+
+    /**
+     * Maximum anisotropy supported by the current OpenGL context.
+     */
+    var maxTextureAnisotropy = 1f; private set
+
+    /**
      * Creates LWJGL's capability table for the current OpenGL context and caches selected feature flags.
      * Must be called after an OpenGL context has been made current.
      */
@@ -59,5 +73,9 @@ object GlCapabilities
         shaderDrawParameters = shaderDrawParametersCore || shaderDrawParametersArb
         multiDrawIndirect = caps.OpenGL43 || caps.GL_ARB_multi_draw_indirect
         persistentMappedBuffers = caps.OpenGL44 || caps.GL_ARB_buffer_storage
+        textureFilterAnisotropic = caps.OpenGL46 || caps.GL_ARB_texture_filter_anisotropic || caps.GL_EXT_texture_filter_anisotropic
+        maxTextureAnisotropy = 
+            if (textureFilterAnisotropic) FloatArray(1).also { glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, it) }.first().coerceAtLeast(1f) 
+            else 1f
     }
 }
