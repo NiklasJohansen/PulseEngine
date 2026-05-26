@@ -4,10 +4,10 @@ import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.shared.utils.Extensions.emptyObjectIntHashMap
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import no.njoh.pulseengine.core.shared.utils.Extensions.getOrPut
 import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.shared.utils.emptyObjectIntHashMap
+import no.njoh.pulseengine.core.shared.utils.getOrPut
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f

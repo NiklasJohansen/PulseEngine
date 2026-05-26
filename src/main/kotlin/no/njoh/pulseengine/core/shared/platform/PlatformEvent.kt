@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.shared.platform
 
+import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.asset.types.Cursor
 import no.njoh.pulseengine.core.input.CursorMode
 import java.nio.ByteBuffer
@@ -14,8 +15,8 @@ abstract class PlatformEvent()
     companion object
     {
         @PublishedApi
-        internal val pool = mutableMapOf<Class<*>, MutableList<PlatformEvent>>()
-        
+        internal val pool = THashMap<Class<*>, MutableList<PlatformEvent>>()
+
         inline fun <reified T: PlatformEvent> create(new: () -> T, set: (T) -> Unit): T
         {
             val obj = pool.getOrPut(T::class.java) { mutableListOf() }.removeLastOrNull() ?: new()

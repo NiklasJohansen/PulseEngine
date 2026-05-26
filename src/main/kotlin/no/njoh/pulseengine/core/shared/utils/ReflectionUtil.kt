@@ -1,5 +1,7 @@
 package no.njoh.pulseengine.core.shared.utils
 
+import gnu.trove.map.hash.THashMap
+import gnu.trove.set.hash.THashSet
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import java.io.File
 import java.io.File.pathSeparator
@@ -16,7 +18,7 @@ import kotlin.use
 
 object ReflectionUtil
 {
-    val annotationCache = mutableMapOf<String, MutableMap<String, MutableSet<*>>>()
+    val annotationCache = THashMap<String, THashMap<String, THashSet<*>>>()
 
     /**
      * Finds all classes in the specified packages and sub-packages down to the specified depth.
@@ -95,10 +97,10 @@ object ReflectionUtil
         val foundAnnotations = functions
             .filter { it.name.startsWith(functionName) && it.name.getOrNull(functionName.length)?.isLetter() != true }
             .flatMap { f -> (f.annotations + f.annotations.flatMap { it.annotationClass.annotations }).filterIsInstance<T>() }
-            .toMutableSet()
+            .let { THashSet(it) }
 
         // Add annotations to cache and return
-        val annotationTypes = annotationCache.getOrPut(classPropKey) { mutableMapOf() }
+        val annotationTypes = annotationCache.getOrPut(classPropKey) { THashMap() }
         return annotationTypes.getOrPut(annotationName) { foundAnnotations } as Set<T>
     }
 

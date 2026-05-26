@@ -1,5 +1,8 @@
 package no.njoh.pulseengine.core.asset.types
 
+import gnu.trove.map.hash.THashMap
+import gnu.trove.map.hash.TIntObjectHashMap
+import gnu.trove.map.hash.TObjectIntHashMap
 import no.njoh.pulseengine.core.asset.types.Animation.QuaternionKey
 import no.njoh.pulseengine.core.asset.types.Animation.VectorKey
 import no.njoh.pulseengine.core.asset.types.Material.*
@@ -19,6 +22,8 @@ import no.njoh.pulseengine.core.shared.utils.getSkinnedSubMeshBounds
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ModelVertexCompressor
 import no.njoh.pulseengine.core.shared.utils.transformAabb
+import no.njoh.pulseengine.core.shared.utils.getOrPut
+import no.njoh.pulseengine.core.shared.utils.set
 import org.joml.Matrix4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -64,11 +69,11 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     var hasBones     = false; private set
 
     private var animations                     = ArrayList<Animation>()
-    private val embeddedTextures               = HashMap<Int, EmbeddedTexture>()
-    private val globalNodeTransforms           = HashMap<String, Matrix4f>()
-    private val nodesByName                    = HashMap<String, ModelNode>()
+    private val embeddedTextures               = TIntObjectHashMap<EmbeddedTexture>()
+    private val globalNodeTransforms           = THashMap<String, Matrix4f>()
+    private val nodesByName                    = THashMap<String, ModelNode>()
     private var nodeHierarchy                  = null as ModelNode?
-    private val bindPoseBoneMatricesByNodeName = HashMap<String, Array<Matrix4f>>()
+    private val bindPoseBoneMatricesByNodeName = THashMap<String, Array<Matrix4f>>()
     private val skeletonPoseCaches             = Array(POSE_CACHE_FRAME_SLOT_COUNT) { ArrayList<AnimatedSkeletonPose>(4) }
     private val activeSkeletonPoseCacheCounts  = IntArray(POSE_CACHE_FRAME_SLOT_COUNT)
     private val poseCacheFrameNumbers          = LongArray(POSE_CACHE_FRAME_SLOT_COUNT) { Long.MIN_VALUE }
@@ -180,7 +185,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
         val subMeshes       = mutableListOf<SubMesh>()
         val bones           = mutableListOf<Bone>()
-        val boneIndexByName = HashMap<String, Int>()
+        val boneIndexByName = TObjectIntHashMap<String>()
         val vertexData      = FloatArray(totalVertices * stride)
         val indices         = IntArray(totalIndices)
 
@@ -373,7 +378,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         globalVertexOffset: Int,
         vertexInfluences: Array<VertexInfluence>,
         bones: MutableList<Bone>,
-        boneIndexByName: MutableMap<String, Int>
+        boneIndexByName: TObjectIntHashMap<String>
     ) {
         val bonePointers = mesh.mBones() ?: return
 
@@ -887,7 +892,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         return pose
     }
 
-    private fun collectGlobalNodeTransforms(node: ModelNode, parentTransform: Matrix4f, outGlobalNodeTransforms: MutableMap<String, Matrix4f>)
+    private fun collectGlobalNodeTransforms(node: ModelNode, parentTransform: Matrix4f, outGlobalNodeTransforms: THashMap<String, Matrix4f>)
     {
         val globalTransform = Matrix4f(parentTransform).mul(node.localTransform)
         outGlobalNodeTransforms[node.name] = globalTransform
@@ -1217,7 +1222,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
     inner class AnimatedSkeletonPose
     {
-        val animatedGlobalTransforms = HashMap<String, Matrix4f>(nodesByName.size)
+        val animatedGlobalTransforms = THashMap<String, Matrix4f>(nodesByName.size)
         val localTransformScratch = Matrix4f()
         val translationScratch = Vector3f()
         val rotationScratch = Quaternionf()

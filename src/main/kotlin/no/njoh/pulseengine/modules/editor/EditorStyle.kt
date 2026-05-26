@@ -1,15 +1,15 @@
 package no.njoh.pulseengine.modules.editor
 
+import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.shared.primitives.Color
-import kotlin.collections.get
 
 class EditorStyle
 {
-    val colors = mutableMapOf<String, Color>()
-    val fonts = mutableMapOf<String, Font>()
-    val sizes = mutableMapOf<String, Float>()
-    val icons = mutableMapOf<String, String>()
+    val colors = THashMap<String, Color>()
+    val fonts = THashMap<String, Font>()
+    val sizes = THashMap<String, Float>()
+    val icons = THashMap<String, String>()
     val iconFontName = "icon_font"
 
     fun getColor(name: String) = colors[name] ?: DEFAULT_COLOR

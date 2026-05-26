@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.surface
 
+import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -30,7 +31,7 @@ class SurfaceImpl(
     private var writeRenderStates     = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private val postEffects           = ArrayList<PostProcessingEffect>()
     private val renderers             = ArrayList<Renderer>()
-    private val rendererMap           = HashMap<Class<out Renderer>, Renderer>()
+    private val rendererMap           = THashMap<Class<out Renderer>, Renderer>()
     private var textRenderer          = null as TextRenderer?
     private var quadRenderer          = null as QuadRenderer?
     private var lineRenderer          = null as LineRenderer?

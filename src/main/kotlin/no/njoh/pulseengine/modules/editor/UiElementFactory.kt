@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.editor
 
+import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.scene.SceneSystem
@@ -20,7 +21,6 @@ import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.modules.editor.EditorUtil.setArrayProperty
 import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
 import java.lang.IllegalArgumentException
-import kotlin.collections.get
 import kotlin.math.min
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.createInstance
@@ -36,7 +36,7 @@ open class UiElementFactory(
     val style: EditorStyle = EditorStyle()
 ) {
     /** Property UI factory functions for specific class types. */
-    val propertyUiFactories = mutableMapOf(
+    val propertyUiFactories = THashMap(mapOf(
         String::class to ::createStringPropertyUi,
         Boolean::class to ::createBooleanPropertyUi,
         Enum::class to ::createEnumPropertyUi,
@@ -47,7 +47,7 @@ open class UiElementFactory(
         ByteArray::class to ::createInputFieldUI,
         FloatArray::class to ::createInputFieldUI,
         DoubleArray::class to ::createInputFieldUI,
-    )
+    ))
 
     /**
      * Creates an [AssetPicker] if the property is annotated with [AssetRef] or a default [InputField].

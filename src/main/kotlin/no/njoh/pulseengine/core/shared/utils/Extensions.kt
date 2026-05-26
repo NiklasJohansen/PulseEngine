@@ -1,6 +1,5 @@
 package no.njoh.pulseengine.core.shared.utils
 
-import gnu.trove.map.hash.TObjectIntHashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
@@ -310,7 +309,7 @@ object Extensions
     /**
     * Adds all elements of the [other] list to this list without creating an iterator or new array.
     */
-    fun <T> MutableList<T>.addAllNoAlloc(other: List<T>)
+    fun <T> MutableList<T>.addAllFast(other: List<T>)
     {
         var i = 0
         val size = other.size
@@ -355,28 +354,6 @@ object Extensions
 
         if (left < j) quickSort(left, j, comparator)
         if (i < right) quickSort(i, right, comparator)
-    }
-
-    /** Default return value from Trove hash maps when no entry was found */
-    const val TROVE_NO_ENTRY = -2
-
-    /**
-     * Creates a new [TObjectIntHashMap] with the given [capacity].
-     */
-    inline fun <reified T> emptyObjectIntHashMap(capacity: Int = 10, noEntryValue: Int = TROVE_NO_ENTRY) =
-        TObjectIntHashMap<T>(capacity, 0.5f, noEntryValue)
-
-    /**
-     * Gets the element associated with the given key, or inserts and returns the result of the [defaultValue] function.
-     */
-    inline fun <K> TObjectIntHashMap<K>.getOrPut(key: K, noEntryValue: Int = TROVE_NO_ENTRY, defaultValue: (key: K) -> Int): Int
-    {
-        val value = get(key)
-        if (value != noEntryValue)
-            return value
-        val answer = defaultValue(key)
-        put(key, answer)
-        return answer
     }
 
     /**

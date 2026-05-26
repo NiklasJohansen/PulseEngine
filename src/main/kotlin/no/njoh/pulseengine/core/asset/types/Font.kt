@@ -1,5 +1,7 @@
 package no.njoh.pulseengine.core.asset.types
 
+import gnu.trove.map.hash.TFloatObjectHashMap
+import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.SRGBA8
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
@@ -26,7 +28,7 @@ class Font(
     private val advanceWidth = IntArray(1)
     private val leftSideBearing = IntArray(1)
     private val leftSideBearingCache = IntArray(MAX_CHAR_COUNT) { -1 }
-    private val textWidthCache = mutableMapOf<CharSequence, MutableMap<Float, FloatArray>>()
+    private val textWidthCache = THashMap<CharSequence, TFloatObjectHashMap<FloatArray>>()
 
     private val quadCache = FloatArray(QUAD_STRIDE * MAX_CHAR_COUNT) { -1f }
     private val stbQuad = STBTTAlignedQuad.malloc()
@@ -122,7 +124,7 @@ class Font(
             i += cp.advanceCount
         }
 
-        if (useCache) textWidthCache.getOrPut(text) { mutableMapOf() }.putIfAbsent(fontSize, widths)
+        if (useCache) textWidthCache.getOrPut(text) { TFloatObjectHashMap() }.putIfAbsent(fontSize, widths)
 
         return widths
     }

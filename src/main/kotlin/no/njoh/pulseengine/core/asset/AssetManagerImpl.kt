@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.asset
 
+import gnu.trove.map.hash.THashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -13,7 +14,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
 
 open class AssetManagerImpl : AssetManagerInternal()
 {
-    private val assets = mutableMapOf<String, Asset>()
+    private val assets = THashMap<String, Asset>()
     private val assetsToLoad = mutableListOf<Asset>(Font.DEFAULT)
     private val assetsToUnload = mutableListOf<Asset>()
     private val assetsToReload = mutableListOf<Asset>()

@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.scene
 import com.fasterxml.jackson.annotation.JsonAutoDetect
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY
 import com.fasterxml.jackson.annotation.JsonIgnore
+import gnu.trove.map.hash.THashMap
 import gnu.trove.map.hash.TLongObjectHashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.data.FileFormat
@@ -139,7 +140,7 @@ open class Scene(
     }
 
     private fun createEntityTypeMap(entities: MutableList<SceneEntityList<SceneEntity>>) =
-        HashMap<Class<*>, SceneEntityList<SceneEntity>>(entities.size).also { map ->
+        THashMap<Class<*>, SceneEntityList<SceneEntity>>(entities.size).also { map ->
             entities.forEachFast { list -> list.firstOrNull()?.let { map[it::class.java] = list } }
         }
 

@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api
 
+import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
@@ -29,7 +30,7 @@ class TextureBank
     private val capacitySpecs = mutableListOf<TextureCapacitySpec>().apply { addAll(DEFAULT_CAPACITIES) }
     private val textureArrays = mutableListOf<TextureArray>()
     private val emptyTextureArray = TextureArray(0, 0, 0, RGBA8, LINEAR, CLAMP_TO_EDGE, 1)
-    private val fallbackTextures = mutableMapOf<Color, RenderTexture>()
+    private val fallbackTextures = THashMap<Color, RenderTexture>()
 
     fun upload(texture: Texture)
     {

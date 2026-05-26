@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.editor
 
+import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Asset
 import no.njoh.pulseengine.core.asset.types.Font
@@ -37,7 +38,7 @@ class AssetPicker(
     var rowHeight = 30f
 
     private var onChanged: (String) -> Unit = { }
-    private val rowValues = mutableMapOf<String, UiElement>()
+    private val rowValues = THashMap<String, UiElement>()
 
     init
     {

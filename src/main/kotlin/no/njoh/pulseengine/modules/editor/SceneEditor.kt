@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.editor
 
+import gnu.trove.map.hash.THashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -72,7 +73,7 @@ class SceneEditor(
     lateinit var systemPropertiesUI: RowPanel
     lateinit var dockingUI: DockingPanel
 
-    private var entityPropertyUiRows = mutableMapOf<String, UiElement>()
+    private var entityPropertyUiRows = THashMap<String, UiElement>()
     private var collapsedPropertyHeaders = mutableListOf<String>()
     private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
     private var showGrid = true
