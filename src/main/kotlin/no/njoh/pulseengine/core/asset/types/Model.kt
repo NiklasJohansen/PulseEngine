@@ -21,6 +21,7 @@ import no.njoh.pulseengine.core.shared.utils.collectBlendedAnimatedGlobalTransfo
 import no.njoh.pulseengine.core.shared.utils.getSkinnedSubMeshBounds
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ModelVertexCompressor
+import no.njoh.pulseengine.core.shared.utils.emptyObjectIntHashMap
 import no.njoh.pulseengine.core.shared.utils.transformAabb
 import no.njoh.pulseengine.core.shared.utils.getOrPut
 import no.njoh.pulseengine.core.shared.utils.set
@@ -185,7 +186,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
         val subMeshes       = mutableListOf<SubMesh>()
         val bones           = mutableListOf<Bone>()
-        val boneIndexByName = TObjectIntHashMap<String>()
+        val boneIndexByName = emptyObjectIntHashMap<String>()
         val vertexData      = FloatArray(totalVertices * stride)
         val indices         = IntArray(totalIndices)
 

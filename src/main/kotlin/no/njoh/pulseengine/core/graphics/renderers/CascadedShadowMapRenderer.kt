@@ -199,7 +199,8 @@ class CascadedShadowMapRenderer(
         // Derive aspect ratio from the camera's projection matrix
         val aspectRatio = camera.projectionMatrix.m11() / camera.projectionMatrix.m00()
         
-        // Build a stable light-view matrix with only rotation (no translation).
+        // Build a stable light-view orientation from the light direction. The lookAt
+        // translation is arbitrary here, each cascade is centered explicitly below.
         lightViewMatrix.identity().lookAt(
             -lightDirection.x, -lightDirection.y, -lightDirection.z, // Eye
             0f, 0f, 0f,                                              // Center = origin
@@ -208,11 +209,15 @@ class CascadedShadowMapRenderer(
 
         for (cascadeIdx in 0 until CASCADE_COUNT)
         {
-            val splitNear = if (cascadeIdx == 0) camNear else cascadeSplitDistances[cascadeIdx - 1]
-            val splitFar  = cascadeSplitDistances[cascadeIdx]
+            val splitFar = cascadeSplitDistances[cascadeIdx]
+            val overlappedSplitNear = getOverlappedCascadeSplitNear(cascadeIdx, camNear, cascadeSplitDistances)
 
-            // Build a sub-frustum projection for this cascade slice and get corners in world space
-            val frustumSliceCorners = getFrustumSliceCorners(camera, aspectRatio, splitNear, splitFar)
+            // Build the receiver slice for this cascade and get its corners in world space.
+            frustumSliceViewProjection
+                .identity()
+                .perspective(camera.fov.toRadians(), aspectRatio, overlappedSplitNear, splitFar)
+                .mul(camera.viewMatrix)
+            val frustumSliceCorners = getFrustumSliceCorners(frustumSliceViewProjection)
 
             // Compute the frustum center from the corners
             frustumSliceCenter.set(0f)
@@ -221,7 +226,7 @@ class CascadedShadowMapRenderer(
 
             // Compute the radius of a bounding sphere that encompasses the frustum slice. 
             // This is used to create a tight orthographic projection for the cascade.
-            val frustumBoundingSphereRadius = getFrustumBoundingSphereRadius(camera.fov.toRadians(), aspectRatio, splitNear, splitFar)
+            val frustumBoundingSphereRadius = getFrustumBoundingSphereRadius(camera.fov.toRadians(), aspectRatio, overlappedSplitNear, splitFar)
             val cascadeWorldSize = frustumBoundingSphereRadius * 2f
             writeCascadeSizeMeters[cascadeIdx] = cascadeWorldSize
 
@@ -249,10 +254,9 @@ class CascadedShadowMapRenderer(
                 zMax = max(zMax, depth)
             }
 
-            // Extend the depth range in both directions to catch shadow casters that lie outside
-            // the tight camera frustum slice but still cast shadows into the visible area.
-            // zMax is extended toward the light (catches objects above/behind the frustum),
-            // zMin is extended away from the light (catches objects on the far side of the frustum).
+            // Extend the light-space depth range in both directions to keep casters outside
+            // the receiver slice that can still project shadows into it.
+            // zMax extends toward the light source, and zMin extends along the light direction.
             zMax += SHADOW_BACKOFF_METERS
             zMin -= SHADOW_BACKOFF_METERS
 
@@ -262,18 +266,19 @@ class CascadedShadowMapRenderer(
                 .ortho(xMin, xMax, yMin, yMax, -zMax, -zMin)
                 .mul(lightViewMatrix)
 
-            // Build the frustum for this cascade slice
+            // Build the cascade and receiver frustum for this cascade slice
             cascadeFrustums[cascadeIdx].setForViewProjection(writeViewProjectionMatrices[cascadeIdx])
+            receiverFrustum.setForViewProjection(frustumSliceViewProjection)
 
-            // Build the caster-side frustum planes for this cascade slice
+            // Build receiver-based caster culling planes for this cascade slice
             writeCascadeFrustumPlaneSets[cascadeIdx].buildCascadeCasterCullPlanes(
                 shadowFrustum = cascadeFrustums[cascadeIdx],
-                receiverCorners = frustumSliceCorners
+                receiverFrustum = receiverFrustum,
+                receiverCenter = frustumSliceCenter
             )
 
-            // Build an expanded culling matrix from the outermost cascade to catch
-            // shadow casters that are outside the tight cascade frustum but still
-            // cast shadows into the visible area (e.g. roofs, overhangs).
+            // Build the broad CPU fallback culling matrix from the outermost cascade.
+            // The GPU path uses the per-cascade receiver plane sets above.
             if (cascadeIdx == CASCADE_COUNT - 1)
             {
                 val expand = SHADOW_BACKOFF_METERS
@@ -301,6 +306,27 @@ class CascadedShadowMapRenderer(
     }
 
     /**
+     * Returns the near distance used to fit and cull a cascade.
+     *
+     * Cascade split distances are still the canonical boundaries used by the lighting shader
+     * for selecting the primary cascade. However, the shader also samples the next cascade
+     * through the last [SHADOW_CASCADE_BLEND_RATIO] of the current cascade to hide seams.
+     * If cascade N+1 is fitted/cull-tested from its exact split near plane, it can omit
+     * casters needed by those blended pixels and create a bright band at the split. Expanding
+     * the next cascade backward by the previous cascade's blend width keeps both cascades
+     * valid for every pixel that can sample them.
+     */
+    private fun getOverlappedCascadeSplitNear(cascadeIdx: Int, camNear: Float, cascadeSplitDistances: FloatArray): Float
+    {
+        if (cascadeIdx == 0) return camNear
+
+        val previousSplitNear = if (cascadeIdx == 1) camNear else cascadeSplitDistances[cascadeIdx - 2]
+        val previousSplitFar = cascadeSplitDistances[cascadeIdx - 1]
+        val previousCascadeRange = previousSplitFar - previousSplitNear
+        return max(camNear, previousSplitFar - previousCascadeRange * SHADOW_CASCADE_BLEND_RATIO)
+    }
+
+    /**
      * Computes the minimum bounding sphere radius of a perspective frustum slice.
      * The optimal sphere center along the view axis is computed to minimize the radius,
      * rather than using the naive midpoint which overestimates significantly for wide FOVs.
@@ -325,16 +351,11 @@ class CascadedShadowMapRenderer(
     }
 
     /**
-     * Returns the 8 corners of the camera frustum slice between splitNear and splitFar, transformed to world space.
+     * Returns the 8 world-space corners of the frustum described by [frustumSliceViewProjection].
      */
-    private fun getFrustumSliceCorners(camera: Camera, aspect: Float, splitNear: Float, splitFar: Float): Array<Vector3f>
+    private fun getFrustumSliceCorners(frustumSliceViewProjection: Matrix4f): Array<Vector3f>
     {
-        // Builds an inverse view projection matrix for the frustum slice between splitNear and splitFar
-        frustumSliceInvViewProjection
-            .identity()
-            .perspective(camera.fov.toRadians(), aspect, splitNear, splitFar)
-            .mul(camera.viewMatrix)
-            .invert()
+        frustumSliceInvViewProjection.set(frustumSliceViewProjection).invert()
 
         // 8 NDC corners of the unit cube [-1,1]^3   
         ndcCorners[0].set(-1f, -1f, -1f, 1f)
@@ -357,51 +378,60 @@ class CascadedShadowMapRenderer(
     }
 
     /**
-     * Builds the conservative shadow-caster culling volume for one cascade.
+     * Builds a conservative shadow-caster culling volume for one cascade.
      *
-     * The volume starts with the cascade shadow-map box, then adds planes derived from the
-     * receiver frustum slice. Faces pointing away from the light reject casters behind the
-     * receiver volume, while silhouette edges extruded along [lightDirection] reject casters
-     * whose projected shadows pass beside the visible cascade slice.
+     * The shadow-map orthographic box is kept as the outer bound. The receiver frustum adds
+     * conservative planes that reject casters whose shadows cannot reach this cascade's visible
+     * receiver slice.
+     *
+     * Receiver frustum planes point inward. When dot(plane.normal, lightDirection) is negative,
+     * moving along the light direction exits the receiver through that plane. These are the
+     * receiver "back planes", and they are safe caster-side culling planes.
+     *
+     * The remaining receiver planes are not added directly. Casters in front of the receiver
+     * along the light direction can still cast into it, so front planes are only used to find
+     * silhouette edges: every receiver-frustum edge shared by one back plane and one front plane
+     * is extruded along [lightDirection]. The plane through that edge and the light direction
+     * cuts away side regions where projected shadows pass beside the receiver.
      */
-    private fun FrustumPlaneSet.buildCascadeCasterCullPlanes(shadowFrustum: Frustum, receiverCorners: Array<Vector3f>)
+    private fun FrustumPlaneSet.buildCascadeCasterCullPlanes(shadowFrustum: Frustum, receiverFrustum: Frustum, receiverCenter: Vector3f)
     {
-        this.clear()
-        this.add(shadowFrustum)
+        clear()
+        shadowFrustum.planes.forEachFast { add(it) }
 
-        for (faceIdx in RECEIVER_FACE_CORNERS.indices)
+        var planeIndex = 0
+        var backPlaneCount = 0
+        for (plane in receiverFrustum.planes)
         {
-            val face = RECEIVER_FACE_CORNERS[faceIdx]
-            val plane = receiverFacePlane
-            plane.setFromPoints(
-                p0 = receiverCorners[face[0]],
-                p1 = receiverCorners[face[1]],
-                p2 = receiverCorners[face[2]],
-                insidePoint = frustumSliceCenter
-            )
+            val lightDot = plane.a * lightDirection.x + plane.b * lightDirection.y + plane.c * lightDirection.z
+            val isBackPlane = lightDot < -0.0001f
+            receiverPlaneIsBackFacing[planeIndex++] = isBackPlane
 
-            receiverFaceLightDots[faceIdx] =
-                plane.a * lightDirection.x +
-                plane.b * lightDirection.y +
-                plane.c * lightDirection.z
-
-            if (receiverFaceLightDots[faceIdx] <= 0f)
-                this.add(plane)
+            if (isBackPlane)
+            {
+                addPlaneFacingPoint(plane, receiverCenter)
+                backPlaneCount++
+            }
         }
 
-        for (edge in RECEIVER_EDGES)
+        if (backPlaneCount == 0)
+            return // No receiver trimming can be derived - keep the shadow-map box only
+
+        for (edgeIndex in 0 until RECEIVER_PLANE_EDGES.size / 2)
         {
-            val dot0 = receiverFaceLightDots[edge[2]]
-            val dot1 = receiverFaceLightDots[edge[3]]
-            if (dot0 * dot1 < 0f)
-            {
-                this.addExtrusionPlane(
-                    direction = lightDirection,
-                    insidePoint = frustumSliceCenter,
-                    p0 = receiverCorners[edge[0]],
-                    p1 = receiverCorners[edge[1]]
-                )
-            }
+            val p0 = RECEIVER_PLANE_EDGES[edgeIndex * 2]
+            val p1 = RECEIVER_PLANE_EDGES[edgeIndex * 2 + 1]
+            val p0IsBack = receiverPlaneIsBackFacing[p0]
+            val p1IsBack = receiverPlaneIsBackFacing[p1]
+            if (p0IsBack == p1IsBack)
+                continue
+
+            addLightExtrusionPlane(
+                plane0 = receiverFrustum.planes[p0],
+                plane1 = receiverFrustum.planes[p1],
+                insidePoint = receiverCenter,
+                lightDirection = lightDirection,
+            )
         }
     }
 
@@ -426,44 +456,37 @@ class CascadedShadowMapRenderer(
     {
         private val WORLD_UP = Vector3f(0f, 1f, 0f)
 
-        const val CASCADE_COUNT                 = 4
-        private const val MAX_FRUSTUM_PLANES    = 24
-        private const val SHADOW_BACKOFF_METERS = 150f
-        private const val SHADOW_SLOPE_BIAS     = 3.0f
-        private const val SHADOW_CONST_BIAS     = 1.0f
+                const val CASCADE_COUNT              = 4
+        private const val MAX_FRUSTUM_PLANES         = 24
+        private const val SHADOW_CASCADE_BLEND_RATIO = 0.15f
+        private const val SHADOW_BACKOFF_METERS      = 150f
+        private const val SHADOW_SLOPE_BIAS          = 3.0f
+        private const val SHADOW_CONST_BIAS          = 1.0f
 
         // Temp variables to avoid allocations every frame
+        private val receiverFrustum               = Frustum()
         private val lightViewMatrix               = Matrix4f()
+        private val frustumSliceViewProjection    = Matrix4f()
         private val frustumSliceInvViewProjection = Matrix4f()
         private val frustumSliceCenter            = Vector3f()
         private val tmpVec4                       = Vector4f()
         private val worldFrustumCorners           = Array(8) { Vector3f() }
         private val ndcCorners                    = Array(8) { Vector4f() }
-        private val receiverFacePlane             = FrustumPlane()
-        private val receiverFaceLightDots         = FloatArray(6)
+        private val receiverPlaneIsBackFacing     = BooleanArray(6)
 
-        private val RECEIVER_FACE_CORNERS = arrayOf(
-            intArrayOf(0, 1, 3), // Near
-            intArrayOf(4, 6, 7), // Far
-            intArrayOf(0, 2, 6), // Left
-            intArrayOf(1, 5, 7), // Right
-            intArrayOf(0, 4, 5), // Bottom
-            intArrayOf(2, 3, 7)  // Top
-        )
-
-        private val RECEIVER_EDGES = arrayOf(
-            intArrayOf(0, 1, 0, 4),
-            intArrayOf(1, 3, 0, 3),
-            intArrayOf(3, 2, 0, 5),
-            intArrayOf(2, 0, 0, 2),
-            intArrayOf(4, 5, 1, 4),
-            intArrayOf(5, 7, 1, 3),
-            intArrayOf(7, 6, 1, 5),
-            intArrayOf(6, 4, 1, 2),
-            intArrayOf(0, 4, 2, 4),
-            intArrayOf(1, 5, 3, 4),
-            intArrayOf(3, 7, 3, 5),
-            intArrayOf(2, 6, 2, 5)
+        private val RECEIVER_PLANE_EDGES = arrayOf(
+            0, 2, // Left, bottom
+            0, 3, // Left, top
+            0, 4, // Left, near
+            0, 5, // Left, far
+            1, 2, // Right, bottom
+            1, 3, // Right, top
+            1, 4, // Right, near
+            1, 5, // Right, far
+            2, 4, // Bottom, near
+            2, 5, // Bottom, far
+            3, 4, // Top, near
+            3, 5  // Top, far
         )
     }
 }

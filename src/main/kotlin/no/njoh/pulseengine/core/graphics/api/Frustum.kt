@@ -18,7 +18,7 @@ class Frustum(
     val near:   FrustumPlane = FrustumPlane(),
     val far:    FrustumPlane = FrustumPlane()
 ) {
-    private val planes = arrayOf(left, right, bottom, top, near, far)
+    val planes = arrayOf(left, right, bottom, top, near, far)
 
     fun setForCamera(camera: Camera)
     {
@@ -76,10 +76,11 @@ class Frustum(
 
     /**
      * Sets the frustum planes for a stereo camera pair (e.g., VR left/right eyes).
-     * Creates a combined frustum that encompasses both views by using:
+     * Combines the horizontal outer planes from both views and uses the left camera for
+     * the remaining planes, which are expected to match in symmetric stereo projections:
      * - Left plane from the left camera (outer edge)
      * - Right plane from the right camera (outer edge)
-     * - Most conservative top/bottom/near/far planes from both cameras
+     * - Top/bottom/near/far planes from the left camera (typically identical for symmetric stereo)
      */
     fun setForStereoCamera(leftCam: Camera, rightCam: Camera)
     {
@@ -100,8 +101,8 @@ class Frustum(
         right.d = vpr.m33() - vpr.m30()
         right.normalize()
 
-        // For top/bottom/near/far, use the planes that create the larger combined frustum
-        // Extract from left camera and use directly (typically identical for symmetric stereo)
+        // For top/bottom/near/far, use the left camera planes directly.
+        // They are typically identical for symmetric stereo projections.
         bottom.a = vpl.m03() + vpl.m01()
         bottom.b = vpl.m13() + vpl.m11()
         bottom.c = vpl.m23() + vpl.m21()
@@ -129,7 +130,7 @@ class Frustum(
 
     /**
      * Tests if an AABB (transformed by the given matrix) intersects the frustum.
-     * Uses the "p-vertex" optimization for early rejection.
+     * Uses a center/half-extent plane test for early rejection.
      */
     fun intersectsAabb(aabb: Model.Aabb, transform: Matrix4f): Boolean
     {
@@ -197,31 +198,6 @@ class Frustum(
             d *= invLen
         }
 
-        /** Builds a plane from three points and orients it so [insidePoint] is on the positive side. */
-        fun setFromPoints(p0: Vector3f, p1: Vector3f, p2: Vector3f, insidePoint: Vector3f)
-        {
-            val abx = p1.x - p0.x
-            val aby = p1.y - p0.y
-            val abz = p1.z - p0.z
-            val acx = p2.x - p0.x
-            val acy = p2.y - p0.y
-            val acz = p2.z - p0.z
-
-            a = aby * acz - abz * acy
-            b = abz * acx - abx * acz
-            c = abx * acy - aby * acx
-            normalize()
-            d = -(a * p0.x + b * p0.y + c * p0.z)
-
-            if (distanceToPoint(insidePoint.x, insidePoint.y, insidePoint.z) < 0f)
-            {
-                a = -a
-                b = -b
-                c = -c
-                d = -d
-            }
-        }
-
         /** Returns signed distance from point to plane (positive = inside/front) */
         inline fun distanceToPoint(x: Float, y: Float, z: Float): Float = a * x + b * y + c * z + d
     }
@@ -230,9 +206,8 @@ class Frustum(
      * Reusable collection of inward-facing culling planes.
      *
      * A normal [Frustum] always has six planes, but some GPU culling paths need richer convex
-     * volumes. Cascaded shadow maps use this to combine the shadow map box with extra receiver
-     * frustum caster planes, so objects are kept only when their shadow can reach the visible
-     * cascade slice.
+     * volumes. Cascaded shadow maps use this to combine the shadow-map box with extra receiver
+     * caster planes, so objects outside the conservative caster volume can be rejected.
      */
     class FrustumPlaneSet(private val capacity: Int)
     {
@@ -242,28 +217,57 @@ class Frustum(
         fun clear() { planeCount = 0 }
 
         /**
-         * Adds a plane passing through the edge [p0]-[p1] and extending along [direction].
-         * The plane is oriented so [insidePoint] is on the positive side.
+         * Adds a side culling plane from a receiver silhouette edge.
+         *
+         * [plane0] and [plane1] are expected to be adjacent receiver-frustum planes where exactly
+         * one is back-facing to the light. Their intersection is then part of the receiver
+         * silhouette. Extruding that edge along [lightDirection] adds a plane that rejects casters
+         * whose shadows pass beside the receiver slice.
          */
-        fun addExtrusionPlane(direction: Vector3f, insidePoint: Vector3f, p0: Vector3f, p1: Vector3f)
+        fun addLightExtrusionPlane(plane0: FrustumPlane, plane1: FrustumPlane, insidePoint: Vector3f, lightDirection: Vector3f)
         {
-            val xEdge = p1.x - p0.x
-            val yEdge = p1.y - p0.y
-            val zEdge = p1.z - p0.z
-            var a = yEdge * direction.z - zEdge * direction.y
-            var b = zEdge * direction.x - xEdge * direction.z
-            var c = xEdge * direction.y - yEdge * direction.x
+            // Computes the start point and the direction for the line where the two planes intersect
+            // Direction is the cross-product of the plane normals
+            val xDir = plane0.b * plane1.c - plane0.c * plane1.b
+            val yDir = plane0.c * plane1.a - plane0.a * plane1.c
+            val zDir = plane0.a * plane1.b - plane0.b * plane1.a
+
+            val denominator = xDir * xDir + yDir * yDir + zDir * zDir
+            if (denominator <= 0.000001f)
+                return // Parallel or nearly parallel planes do not produce a stable line
+
+            val cx = plane1.d * plane0.a - plane0.d * plane1.a
+            val cy = plane1.d * plane0.b - plane0.d * plane1.b
+            val cz = plane1.d * plane0.c - plane0.d * plane1.c
+
+            // The line start point is the closest point on the intersection line to the origin
+            val xLineStart = (cy * zDir - cz * yDir) / denominator
+            val yLineStart = (cz * xDir - cx * zDir) / denominator
+            val zLineStart = (cx * yDir - cy * xDir) / denominator
+
+            val xLineEnd = xLineStart + xDir
+            val yLineEnd = yLineStart + yDir
+            val zLineEnd = zLineStart + zDir
+
+            // Create a plane passing through the edge (lineStart - lineEnd) and extending along lightDirection
+            val xEdge = xLineEnd - xLineStart
+            val yEdge = yLineEnd - yLineStart
+            val zEdge = zLineEnd - zLineStart
+            var a = yEdge * lightDirection.z - zEdge * lightDirection.y
+            var b = zEdge * lightDirection.x - xEdge * lightDirection.z
+            var c = xEdge * lightDirection.y - yEdge * lightDirection.x
 
             val length = sqrt(a * a + b * b + c * c)
-            if (length <= 0.00001f) return
+            if (length <= 0.00001f)
+                return // The edge and light direction do not span a stable plane
 
             val invLength = 1f / length
             a *= invLength
             b *= invLength
             c *= invLength
+            var d = -(a * xLineStart + b * yLineStart + c * zLineStart)
 
-            var d = -(a * p0.x + b * p0.y + c * p0.z)
-
+            // Orient the plane so insidePoint is on the positive side
             if (a * insidePoint.x + b * insidePoint.y + c * insidePoint.z + d < 0f)
             {
                 a = -a
@@ -274,17 +278,16 @@ class Frustum(
 
             add(a, b, c, d)
         }
-        
-        fun add(frustum: Frustum)
+
+        fun addPlaneFacingPoint(plane: FrustumPlane, point: Vector3f)
         {
-            add(frustum.left)
-            add(frustum.right)
-            add(frustum.bottom)
-            add(frustum.top)
-            add(frustum.near)
-            add(frustum.far)
+            // If the point is on the negative side, flip the plane before adding it.
+            if (plane.distanceToPoint(point.x, point.y, point.z) >= 0f)
+                add(plane)
+            else
+                add(-plane.a, -plane.b, -plane.c, -plane.d)
         }
-        
+
         fun add(plane: FrustumPlane)
         {
             add(plane.a, plane.b, plane.c, plane.d)
