@@ -81,6 +81,7 @@ class GpuModelCuller private constructor()
 
     fun addInstance(item: RenderItem, instanceIndex: Int, batchIndex: Int)
     {
+        val flags = if (item.cullable) 0 else CULL_FLAG_ALWAYS_VISIBLE
         val boundsIndex = if (item.needsDynamicGpuBounds())
         {
             val bounds = item.cullingBounds
@@ -105,6 +106,7 @@ class GpuModelCuller private constructor()
             put(batchIndex)
             put(instanceIndex)
             put(boundsIndex)
+            put(flags)
         }
         instanceCount++
     }
@@ -224,7 +226,7 @@ class GpuModelCuller private constructor()
     }
 
     private fun RenderItem.needsDynamicGpuBounds() =
-        !usesGpuSkinnedBounds() && (boneMatrices != null || cullingBounds !== subMesh.localBounds)
+        cullable && !usesGpuSkinnedBounds() && (boneMatrices != null || cullingBounds !== subMesh.localBounds)
 
     private fun RenderItem.usesGpuSkinnedBounds() =
         boneMatrices != null && subMesh.skinningBounds != null
@@ -250,10 +252,11 @@ class GpuModelCuller private constructor()
         private const val DYNAMIC_BOUNDS_BUFFER_BINDING = 8
         private const val BUFFER_SEGMENTS = 6
         private const val STATIC_BOUNDS_INDEX = -1
-        private const val CULL_ITEM_INTS = 4
+        private const val CULL_ITEM_INTS = 5
         private const val DYNAMIC_BOUNDS_FLOATS = 8
         private const val INDIRECT_COMMAND_INTS = 5
         private const val INDIRECT_COMMAND_STRIDE_BYTES = INDIRECT_COMMAND_INTS * Int.SIZE_BYTES
+        private const val CULL_FLAG_ALWAYS_VISIBLE = 1
         private const val FRUSTUM_PLANE_COUNT = 6
         private const val MAX_FRUSTUMS = 4
         private const val MAX_PLANES_PER_FRUSTUM = 24

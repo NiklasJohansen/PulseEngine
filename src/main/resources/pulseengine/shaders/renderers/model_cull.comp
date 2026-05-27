@@ -14,6 +14,7 @@ struct CullItem
     uint batchIndex;
     uint instanceIndex;
     uint dynamicBoundsIndex;
+    uint flags;
 };
 
 struct SubMeshMeta
@@ -86,6 +87,7 @@ uniform int uBatchCount;
 uniform int uFrustumCount;
 
 const uint STATIC_BOUNDS_INDEX = 0xFFFFFFFFu;
+const uint CULL_FLAG_ALWAYS_VISIBLE = 1u;
 const int MAX_PLANES_PER_FRUSTUM = 24;
 
 bool intersectsFrustum(vec3 worldCenter, vec3 worldHalfExtents, int frustumIndex)
@@ -186,6 +188,14 @@ bool getSkinnedBounds(SubMeshMeta meta, int boneOffset, inout vec3 localCenter, 
     return hasBounds;
 }
 
+void appendVisibleInstance(CullItem item, int frustum)
+{
+    uint commandIndex = uint(frustum) * uint(uBatchCount) + item.batchIndex;
+    uint visibleOffset = atomicAdd(uCommands[commandIndex].instanceCount, 1u);
+    uint visibleIndex = uCommands[commandIndex].baseInstance + visibleOffset;
+    uVisibleInstanceIndices[visibleIndex] = item.instanceIndex;
+}
+
 void main()
 {
     uint itemIndex = gl_GlobalInvocationID.x;
@@ -194,6 +204,13 @@ void main()
 
     CullItem item = uCullItems[itemIndex];
     InstanceData instance = uInstances[item.instanceIndex];
+
+    if ((item.flags & CULL_FLAG_ALWAYS_VISIBLE) != 0u)
+    {
+        for (int frustum = 0; frustum < uFrustumCount; frustum++)
+            appendVisibleInstance(item, frustum);
+        return;
+    }
 
     vec3 localCenter;
     vec3 localHalfExtents;
@@ -220,9 +237,6 @@ void main()
         if (!intersectsFrustum(worldCenter, worldHalfExtents, frustum))
             continue;
 
-        uint commandIndex = uint(frustum) * uint(uBatchCount) + item.batchIndex;
-        uint visibleOffset = atomicAdd(uCommands[commandIndex].instanceCount, 1u);
-        uint visibleIndex = uCommands[commandIndex].baseInstance + visibleOffset;
-        uVisibleInstanceIndices[visibleIndex] = item.instanceIndex;
+        appendVisibleInstance(item, frustum);
     }
 }
