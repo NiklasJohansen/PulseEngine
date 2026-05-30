@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
-import no.njoh.pulseengine.core.graphics.api.DrawList
+import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.shared.annotations.MaterialRef
 import no.njoh.pulseengine.core.shared.annotations.ModelRef
@@ -35,7 +35,7 @@ class WorldModel : SceneEntity(), Initiable, WorldRenderable, WorldShadowCaster,
         startTime = System.currentTimeMillis().toDouble()
     }
 
-    override fun onRender(engine: PulseEngine, drawList: DrawList) 
+    override fun onRender(engine: PulseEngine, frame: WorldRenderFrame)
     {
         val model = engine.asset.getOrNull<Model>(model) ?: return
         val material = engine.asset.getOrNull<Material>(material)
@@ -45,6 +45,6 @@ class WorldModel : SceneEntity(), Initiable, WorldRenderable, WorldShadowCaster,
             .rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
             .scale(xScale, yScale, zScale)
 
-        drawList.submit(engine, model, transform, material)
+        frame.submit(engine, model, transform, material)
     }
 }

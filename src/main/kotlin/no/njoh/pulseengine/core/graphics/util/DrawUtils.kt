@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.graphics.util
 import no.njoh.pulseengine.core.graphics.api.ModelBatch
 import no.njoh.pulseengine.core.graphics.api.ModelBatchList
 import no.njoh.pulseengine.core.graphics.api.GlCapabilities
+import no.njoh.pulseengine.core.graphics.api.ModelProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
@@ -104,6 +105,7 @@ object DrawUtils
 
     fun drawModelBatches(
         batches: ModelBatchList,
+        programs: ModelProgramSet,
         instanceIndexMode: ModelInstanceIndexMode,
         instanceIndexBuffer: StreamingIntBufferObject?
     ) {
@@ -111,7 +113,7 @@ object DrawUtils
         
         if (!GlCapabilities.multiDrawIndirect || !GlCapabilities.persistentMappedBuffers || instanceIndexMode == UNIFORM_OFFSET)
         {
-            batches.forEach { it.drawDirect(instanceIndexMode, instanceIndexBuffer) }
+            batches.forEach { it.drawDirect(programs, instanceIndexMode, instanceIndexBuffer) }
             return
         }
 
@@ -152,8 +154,8 @@ object DrawUtils
             val firstBatch = groupStart ?: return
             val vao = groupVao ?: return
 
-            firstBatch.bindProgramAndSetCullMode()
-            firstBatch.program.setUniform("uUseVisibleInstanceBuffer", false)
+            firstBatch.bindProgramAndSetCullMode(programs)
+            programs[firstBatch.shaderVariant].setUniform("uUseVisibleInstanceBuffer", false)
             vao.bind()
 
             if (instanceIndexMode == INSTANCE_ATTRIBUTE)
@@ -194,7 +196,7 @@ object DrawUtils
                 groupVao = vao
                 groupCommandStart = commandIndex
             }
-            else if (firstBatch.program !== batch.program || firstBatch.cullMode != batch.cullMode || groupVao !== vao)
+            else if (firstBatch.shaderVariant != batch.shaderVariant || firstBatch.cullMode != batch.cullMode || groupVao !== vao)
             {
                 flushGroup()
                 groupStart = batch
@@ -212,7 +214,7 @@ object DrawUtils
         commandBuffer.markSubmittedDataInUse()
     }
 
-    fun drawGpuCulledModelBatches(batches: ModelBatchList, culler: GpuModelCuller, commandSetIndex: Int = 0)
+    fun drawGpuCulledModelBatches(batches: ModelBatchList, programs: ModelProgramSet, culler: GpuModelCuller, commandSetIndex: Int = 0)
     {
         if (batches.size == 0) return
 
@@ -230,8 +232,8 @@ object DrawUtils
             val firstBatch = groupStart ?: return
             val vao = groupVao ?: return
 
-            firstBatch.bindProgramAndSetCullMode()
-            firstBatch.program.setUniform("uUseVisibleInstanceBuffer", true)
+            firstBatch.bindProgramAndSetCullMode(programs)
+            programs[firstBatch.shaderVariant].setUniform("uUseVisibleInstanceBuffer", true)
             vao.bind()
             culler.bindIndirectCommandBuffer()
             val commandByteOffset =
@@ -271,7 +273,7 @@ object DrawUtils
                 groupVao = vao
                 groupCommandStart = commandIndex
             }
-            else if (firstBatch.program !== batch.program || firstBatch.cullMode != batch.cullMode || groupVao !== vao)
+            else if (firstBatch.shaderVariant != batch.shaderVariant || firstBatch.cullMode != batch.cullMode || groupVao !== vao)
             {
                 flushGroup()
                 groupStart = batch
@@ -286,10 +288,11 @@ object DrawUtils
         flushGroup()
     }
 
-    private fun ModelBatch.drawDirect(instanceIndexMode: ModelInstanceIndexMode, instanceIndexBuffer: StreamingIntBufferObject?)
+    private fun ModelBatch.drawDirect(programs: ModelProgramSet, instanceIndexMode: ModelInstanceIndexMode, instanceIndexBuffer: StreamingIntBufferObject?)
     {
         val vao = model.vao ?: return
-        bindProgramAndSetCullMode()
+        val program = programs[shaderVariant]
+        bindProgramAndSetCullMode(programs)
         program.setUniform("uUseVisibleInstanceBuffer", false)
         drawInstancedTriangleIndices(
             program = program,

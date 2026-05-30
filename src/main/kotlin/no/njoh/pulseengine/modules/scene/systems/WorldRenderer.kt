@@ -1,10 +1,12 @@
 package no.njoh.pulseengine.modules.scene.systems
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
-import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame
+import no.njoh.pulseengine.core.graphics.api.WorldRenderState
 import no.njoh.pulseengine.core.graphics.api.mipmap.DepthPyramidGenerator
 import no.njoh.pulseengine.core.graphics.renderers.DepthPrepassRenderer
 import no.njoh.pulseengine.core.graphics.renderers.ModelRenderer
@@ -20,6 +22,10 @@ class WorldRenderSystem() : SceneSystem()
 {
     var useDepthPrepass = true
 
+    private val worldRenderState = WorldRenderState()
+    private val worldFrames = Array(2) { WorldRenderFrame() }
+    private var worldFrameIndex = 0
+
     override fun onCreate(engine: PulseEngine)
     {
         engine.gfx.createSurface(
@@ -33,8 +39,9 @@ class WorldRenderSystem() : SceneSystem()
             textureFilter = TextureFilter.LINEAR
         ).apply {
             if (useDepthPrepass)
-                addRenderer(DepthPrepassRenderer())
-            addRenderer(ModelRenderer())
+                addRenderer(DepthPrepassRenderer(worldRenderState))
+
+            addRenderer(ModelRenderer(worldRenderState))
         }
     }
 
@@ -49,7 +56,7 @@ class WorldRenderSystem() : SceneSystem()
 
         if (useDepthPrepass && depthPrepassRenderer == null)
         {
-            surface.addRenderer(DepthPrepassRenderer())
+            surface.addRenderer(DepthPrepassRenderer(worldRenderState))
         }
         else if (!useDepthPrepass && depthPrepassRenderer != null)
         {
@@ -60,15 +67,17 @@ class WorldRenderSystem() : SceneSystem()
     override fun onRender(engine: PulseEngine) 
     {
         val surface = engine.gfx.getSurface("world") ?: return
-        val drawList = DrawList()
+        val frame = worldFrames[worldFrameIndex]
+        frame.clear()
+        worldFrameIndex = (worldFrameIndex + 1) and 1
         
         engine.scene.forEachEntityOfType<WorldRenderable>() 
         {
-            if ((it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, drawList)
+            if ((it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, frame)
         }
 
-        surface.getRenderer<DepthPrepassRenderer>()?.draw(drawList)
-        surface.getRenderer<ModelRenderer>()?.draw(drawList)
+        surface.getRenderer<DepthPrepassRenderer>()?.draw(frame)
+        surface.getRenderer<ModelRenderer>()?.draw(frame)
     }
 
     override fun onStateChanged(engine: PulseEngine)
@@ -80,9 +89,12 @@ class WorldRenderSystem() : SceneSystem()
     {
         engine.gfx.deleteSurface("world")
     }
+
+    @JsonIgnore
+    fun getRenderState() = worldRenderState
 }
 
 interface WorldRenderable
 {
-    fun onRender(engine: PulseEngine, drawList: DrawList)
+    fun onRender(engine: PulseEngine, frame: WorldRenderFrame)
 }

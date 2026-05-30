@@ -1,25 +1,24 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
 import no.njoh.pulseengine.core.asset.types.Material
-import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
-import no.njoh.pulseengine.core.graphics.api.SharedFrameState
+import no.njoh.pulseengine.core.graphics.api.RenderItem
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
 import no.njoh.pulseengine.core.graphics.util.getSupportedModelInstanceIndexMode
 import org.joml.Matrix4f
 
-internal class ModelBufferObject
+class ModelBufferObject
 {
     var instanceCount = 0; private set
     var instanceIndexMode = UNIFORM_OFFSET; private set
     var instanceIndexBuffer = null as StreamingIntBufferObject?; private set
 
     private lateinit var instanceBuffer: StreamingFloatBufferObject
-    private lateinit var sharedFrameState: SharedFrameState
+    private lateinit var boneBuffer: ModelBoneBuffer
 
-    fun init(sharedFrameState: SharedFrameState)
+    fun init(boneBuffer: ModelBoneBuffer)
     {
-        this.sharedFrameState = sharedFrameState
+        this.boneBuffer = boneBuffer
 
         if (this::instanceBuffer.isInitialized)
             return
@@ -45,7 +44,7 @@ internal class ModelBufferObject
     {
         val instanceIndex = instanceCount++
         val materialId = item.material?.id ?: Material.DEFAULT_ID
-        val boneOffset = sharedFrameState.addBoneMatricesAndGetBoneOffset(item.boneMatrices)
+        val boneOffset = boneBuffer.addBoneMatricesAndGetOffset(item.boneMatrices)
 
         instanceBuffer.fill(20) // 16 + 4
         {
@@ -65,7 +64,7 @@ internal class ModelBufferObject
     {
         instanceBuffer.submit()
         instanceIndexBuffer?.submit()
-        sharedFrameState.submitModelData()
+        boneBuffer.submit()
     }
 
     fun markSubmittedDataInUse() = measure("sync model buffers")
@@ -76,6 +75,8 @@ internal class ModelBufferObject
 
     fun destroy()
     {
+        if (!this::instanceBuffer.isInitialized)
+            return
         instanceBuffer.destroy()
         instanceIndexBuffer?.destroy()
     }

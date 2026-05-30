@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.graphics.util
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.ComputeShader
-import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
+import no.njoh.pulseengine.core.graphics.api.RenderItem
 import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlane
 import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlaneSet

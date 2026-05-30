@@ -1,11 +1,13 @@
 package no.njoh.pulseengine.modules.scene.systems
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.api.Camera
-import no.njoh.pulseengine.core.graphics.api.DrawList
 import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.LightList
+import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame
+import no.njoh.pulseengine.core.graphics.api.WorldRenderState
 import no.njoh.pulseengine.core.graphics.renderers.CascadedShadowMapRenderer
 import no.njoh.pulseengine.core.graphics.renderers.ModelRenderer
 import no.njoh.pulseengine.core.scene.SceneEntity
@@ -39,6 +41,8 @@ class WorldLightingSystem : SceneSystem()
     private var targetSurfaceNames   = emptyList<String>()
     private var lightFrustum         = Frustum()
     private var lightList            = LightList()
+    private val shadowFrames         = Array(2) { WorldRenderFrame() }
+    private var shadowFrameIndex     = 0
 
     override fun onUpdate(engine: PulseEngine)
     {
@@ -63,13 +67,15 @@ class WorldLightingSystem : SceneSystem()
 
     override fun onRender(engine: PulseEngine)
     {
-        val camera = targetSurfaceNames.firstOrNull()?.let { engine.gfx.getSurface(it) }?.camera ?: return
+        val targetSurface = targetSurfaceNames.firstOrNull()?.let { engine.gfx.getSurface(it) } ?: return
+        val worldRenderState = engine.scene.getSystemOfType<WorldRenderSystem>()?.getRenderState() ?: return
+        val camera = targetSurface.camera
 
-        renderShadowMap(engine, camera)
+        renderShadowMap(engine, camera, worldRenderState)
         renderWorldLights(engine, camera)
     }
 
-    private fun renderShadowMap(engine: PulseEngine, camera: Camera)
+    private fun renderShadowMap(engine: PulseEngine, camera: Camera, worldRenderState: WorldRenderState)
     {
         val shadowMapSurface = engine.gfx.getSurface(shadowMapSurfaceName)
         if (shadowMapSurface == null)
@@ -86,25 +92,29 @@ class WorldLightingSystem : SceneSystem()
                 attachments = listOf(Attachment.DEPTH_TEXTURE),
                 textureSizeFunc = { _,_,_ -> PackedSize(sunShadowMapResolution, sunShadowMapResolution) }
             ).apply {
-                addRenderer(CascadedShadowMapRenderer())
+                addRenderer(CascadedShadowMapRenderer(worldRenderState))
             }
 
             return // Return now, surface ready next frame
         }
 
         val shadowMapRenderer = shadowMapSurface.getRenderer<CascadedShadowMapRenderer>() ?: return
-        shadowMapRenderer.resolution     = sunShadowMapResolution
-        shadowMapRenderer.splitLambda    = sunShadowCascadeSplitLambda
-        shadowMapRenderer.shadowDistance = sunShadowDistance
+        shadowMapRenderer.worldRenderState = worldRenderState
+        shadowMapRenderer.resolution       = sunShadowMapResolution
+        shadowMapRenderer.splitLambda      = sunShadowCascadeSplitLambda
+        shadowMapRenderer.shadowDistance   = sunShadowDistance
         shadowMapRenderer.setFor(camera, sunDirection, sunHeight)
 
-        val shadowCasters = DrawList()
+        val frame = shadowFrames[shadowFrameIndex]
+        shadowFrameIndex = (shadowFrameIndex + 1) and 1
+        frame.clear()
+
         engine.scene.forEachEntityOfType<WorldShadowCaster>()
         {
-            if (it.castShadows && (it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, shadowCasters)
+            if (it.castShadows && (it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, frame)
         }
 
-        shadowMapRenderer.draw(shadowCasters)
+        shadowMapRenderer.draw(frame)
     }
 
     private fun renderWorldLights(engine: PulseEngine, camera: Camera)
@@ -150,6 +160,7 @@ class WorldLightingSystem : SceneSystem()
         if (enabled) onCreate(engine) else onDestroy(engine)
     }
 
+    @JsonIgnore
     fun getShadowMapSurfaceName() = shadowMapSurfaceName
 }
 
@@ -157,7 +168,7 @@ interface WorldShadowCaster
 {
     var castShadows: Boolean
 
-    fun onRender(engine: PulseEngine, drawList: DrawList)
+    fun onRender(engine: PulseEngine, frame: WorldRenderFrame)
 }
 
 interface WorldLight

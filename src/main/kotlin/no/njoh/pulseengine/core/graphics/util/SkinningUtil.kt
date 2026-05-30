@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.core.graphics.util
 
 import no.njoh.pulseengine.core.asset.types.Model
-import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.ModelShaderVariant
 
-fun Model.selectProgram(skinnedProgram: ShaderProgram, staticProgram: ShaderProgram): ShaderProgram
+fun Model.selectShaderVariant(): ModelShaderVariant
 {
-    return if (hasBones && bones.isNotEmpty()) skinnedProgram else staticProgram
+    return if (hasBones && bones.isNotEmpty()) ModelShaderVariant.SKINNED else ModelShaderVariant.STATIC
 }

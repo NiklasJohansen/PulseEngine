@@ -11,7 +11,6 @@ import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
-import no.njoh.pulseengine.core.graphics.api.SharedFrameState
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
@@ -32,7 +31,6 @@ open class GraphicsImpl : GraphicsInternal
     override lateinit var textureBank: TextureBank
     override lateinit var materialBank: MaterialBank
     override lateinit var modelBank: ModelBank
-    override lateinit var sharedFrameState: SharedFrameState
     override lateinit var gpuName: String
     private  lateinit var fullFrameRenderer: FullFrameRenderer
 
@@ -51,7 +49,6 @@ open class GraphicsImpl : GraphicsInternal
         textureBank = TextureBank()
         materialBank = MaterialBank()
         modelBank = ModelBank()
-        sharedFrameState = SharedFrameState()
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",
@@ -85,7 +82,6 @@ open class GraphicsImpl : GraphicsInternal
             Logger.debug { "Running OpenGL on GPU: $gpuName" }
             materialBank.destroy()
             modelBank.destroy()
-            sharedFrameState.destroy()
 
             // Load error shaders
             errorShaders[VERTEX]   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/error/error.vert"))
@@ -117,7 +113,6 @@ open class GraphicsImpl : GraphicsInternal
     override fun initFrame(engine: PulseEngineInternal)
     {
         GpuProfiler.initFrame()
-        sharedFrameState.beginFrame()
 
         onInitFrame.forEachFast { it.invoke(engine) }
         onInitFrame.clear()
@@ -139,7 +134,6 @@ open class GraphicsImpl : GraphicsInternal
         renderSurfaceContentToOffscreenTarget(engine)
         renderPostProcessingEffectsToOffscreenTarget(engine)
         renderOffscreenTargetsToBackBuffer()
-        sharedFrameState.endFrame()
         GpuProfiler.endFrame()
     }
 
@@ -310,7 +304,6 @@ open class GraphicsImpl : GraphicsInternal
         textureBank.destroy()
         materialBank.destroy()
         modelBank.destroy()
-        sharedFrameState.destroy()
         fullFrameRenderer.destroy()
         surfaces.forEachFast { it.destroy() }
     }

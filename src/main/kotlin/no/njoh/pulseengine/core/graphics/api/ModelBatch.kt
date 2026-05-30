@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
 import no.njoh.pulseengine.core.asset.types.Model
+import no.njoh.pulseengine.core.graphics.api.ModelShaderVariant.*
 import org.lwjgl.opengl.GL11.GL_BACK
 import org.lwjgl.opengl.GL11.GL_CULL_FACE
 import org.lwjgl.opengl.GL11.glCullFace
@@ -12,30 +13,31 @@ class ModelBatch
 {
     lateinit var model: Model
     lateinit var subMesh: Model.SubMesh
-    lateinit var program: ShaderProgram
     lateinit var cullMode: CullMode
+    lateinit var shaderVariant: ModelShaderVariant
 
     var instanceIndex = 0
     var instanceCount = 0
 
-    fun set(model: Model, subMesh: Model.SubMesh, program: ShaderProgram, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
+    fun set(model: Model, subMesh: Model.SubMesh, shaderVariant: ModelShaderVariant, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
     {
         this.model = model
         this.subMesh = subMesh
-        this.program = program
+        this.shaderVariant = shaderVariant
         this.cullMode = cullMode
         this.instanceIndex = instanceIndex
         this.instanceCount = instanceCount
     }
 
-    fun matches(model: Model, subMesh: Model.SubMesh, program: ShaderProgram, cullMode: CullMode): Boolean =
+    fun matches(model: Model, subMesh: Model.SubMesh, shaderVariant: ModelShaderVariant, cullMode: CullMode): Boolean =
         this.model === model &&
         this.subMesh === subMesh &&
-        this.program === program &&
+        this.shaderVariant == shaderVariant &&
         this.cullMode == cullMode
     
-    fun bindProgramAndSetCullMode()
+    fun bindProgramAndSetCullMode(programs: ModelProgramSet)
     {
+        val program = programs[shaderVariant]
         if (program.id != currentProgramId)
         {
             program.bind()
@@ -65,6 +67,22 @@ class ModelBatch
     }
 }
 
+enum class ModelShaderVariant
+{
+    STATIC, SKINNED
+}
+
+class ModelProgramSet(
+    val staticProgram: ShaderProgram,
+    val skinnedProgram: ShaderProgram
+) {
+    operator fun get(variant: ModelShaderVariant) = when (variant)
+    {
+        STATIC -> staticProgram
+        SKINNED -> skinnedProgram
+    }
+}
+
 class ModelBatchList(initialCapacity: Int = 128)
 {
     @PublishedApi
@@ -84,10 +102,10 @@ class ModelBatchList(initialCapacity: Int = 128)
         return count
     }
 
-    fun add(model: Model, subMesh: Model.SubMesh, program: ShaderProgram, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
+    fun add(model: Model, subMesh: Model.SubMesh, shaderVariant: ModelShaderVariant, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
     {
         val batch = if (size < batches.size) batches[size] else ModelBatch().also { batches += it }
-        batch.set(model, subMesh, program, cullMode, instanceIndex, instanceCount)
+        batch.set(model, subMesh, shaderVariant, cullMode, instanceIndex, instanceCount)
         size++
     }
 

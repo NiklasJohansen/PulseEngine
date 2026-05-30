@@ -5,15 +5,24 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.AnimatedSkeletonPose
-import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import org.joml.Matrix4f
 
-class DrawList(
-    val opaqueItems: ArrayList<RenderItem> = ArrayList(256),
-    val maskedItems: ArrayList<RenderItem> = ArrayList(256),
-    val blendedItems: ArrayList<RenderItem> = ArrayList(256)
+class WorldRenderFrame(
+    val opaqueItems: DynamicList<RenderItem> = DynamicList(1024),
+    val maskedItems: DynamicList<RenderItem> = DynamicList(512),
+    val blendedItems: DynamicList<RenderItem> = DynamicList(256)
 ) {
+    internal var version = 0; private set
+
+    fun clear()
+    {
+        version++
+        opaqueItems.clear()
+        maskedItems.clear()
+        blendedItems.clear()
+    }
+
     fun submit(
         engine: PulseEngine,
         model: Model,
@@ -51,26 +60,14 @@ class DrawList(
             BLEND  -> blendedItems += item
         }
     }
-
-    data class RenderItem(
-        val model: Model,
-        val subMesh: Model.SubMesh,
-        val material: Material?,
-        val transform: Matrix4f,
-        val cullable: Boolean,
-        val cullingBounds: Model.Aabb,
-        val boneMatrices: Array<Matrix4f>?
-    )
 }
 
-fun ArrayList<RenderItem>.addAllVisible(source: List<RenderItem>, frustum: Frustum? = null)
-{
-    if (frustum != null)
-    {
-        source.forEachFast()
-        {
-            if (!it.cullable || frustum.intersectsAabb(it.cullingBounds, it.transform)) add(it)
-        }
-    }
-    else source.forEachFast { add(it) }
-}
+data class RenderItem(
+    val model: Model,
+    val subMesh: Model.SubMesh,
+    val material: Material?,
+    val transform: Matrix4f,
+    val cullable: Boolean,
+    val cullingBounds: Model.Aabb,
+    val boneMatrices: Array<Matrix4f>?
+)

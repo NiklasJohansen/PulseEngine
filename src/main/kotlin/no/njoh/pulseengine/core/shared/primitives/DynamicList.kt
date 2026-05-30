@@ -172,6 +172,42 @@ class DynamicList<T>(
         size = 0
     }
 
+    //////////////////////////////////////////////////////////////////////// SORT
+
+    fun sortWith(comparator: Comparator<T>)
+    {
+        if (size > 1) quickSort(0, size - 1, comparator)
+    }
+
+    private fun quickSort(left: Int, right: Int, comparator: Comparator<T>)
+    {
+        var i = left
+        var j = right
+        val data = data
+        val pivot = data[(left + right) ushr 1] as T
+
+        while (i <= j)
+        {
+            while (comparator.compare(data[i] as T, pivot) < 0) i++
+            while (comparator.compare(data[j] as T, pivot) > 0) j--
+
+            if (i <= j)
+            {
+                if (i != j)
+                {
+                    val tmp = data[i]
+                    data[i] = data[j]
+                    data[j] = tmp
+                }
+                i++
+                j--
+            }
+        }
+
+        if (left < j)  quickSort(left, j,  comparator)
+        if (i < right) quickSort(i, right, comparator)
+    }
+
     //////////////////////////////////////////////////////////////////////// COPY & GROW
 
     private fun listCopy(src: List<T>, srcPos: Int, dest: Array<Any?>, destPos: Int, length: Int)

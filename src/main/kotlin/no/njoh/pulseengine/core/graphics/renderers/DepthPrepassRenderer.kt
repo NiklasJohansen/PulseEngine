@@ -4,43 +4,36 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_TEXTURE
-import no.njoh.pulseengine.core.graphics.api.DrawList
-import no.njoh.pulseengine.core.graphics.api.DrawList.RenderItem
-import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.ModelBatchList
+import no.njoh.pulseengine.core.graphics.api.ModelProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.addAllVisible
-import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
+import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame
+import no.njoh.pulseengine.core.graphics.api.WorldRenderState
+import no.njoh.pulseengine.core.graphics.api.WorldRenderView
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawGpuCulledModelBatches
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawModelBatches
 import no.njoh.pulseengine.core.graphics.util.GpuModelCuller
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
-import no.njoh.pulseengine.core.graphics.util.ModelBatcher
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.lwjgl.opengl.GL11.*
 
-class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
-{
+class DepthPrepassRenderer(
+    private val worldRenderState: WorldRenderState,
+    override val order: Int = 20
+) : Renderer() {
+
     private lateinit var opaqueStaticProgram: ShaderProgram
     private lateinit var opaqueSkinnedProgram: ShaderProgram
     private lateinit var maskedStaticProgram: ShaderProgram
     private lateinit var maskedSkinnedProgram: ShaderProgram
-    private lateinit var opaqueBatcher: ModelBatcher
-    private lateinit var maskedBatcher: ModelBatcher
+    private lateinit var opaquePrograms: ModelProgramSet
+    private lateinit var maskedPrograms: ModelProgramSet
 
-    private var opaqueCuller: GpuModelCuller? = null
-    private var maskedCuller: GpuModelCuller? = null
-
-    private val modelBuffer    = ModelBufferObject()
-    private val opaqueItems    = ArrayList<RenderItem>(1024)
-    private val maskedItems    = ArrayList<RenderItem>(256)
-    private var readDrawLists  = ArrayList<DrawList>()
-    private var writeDrawLists = ArrayList<DrawList>()
-    private val frustum        = Frustum()
+    private var readFrames  = ArrayList<WorldRenderFrame>()
+    private var writeFrames = ArrayList<WorldRenderFrame>()
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -56,18 +49,15 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
             maskedStaticProgram = ShaderProgram.create(staticVertex, maskedFragment)
             maskedSkinnedProgram = ShaderProgram.create(skinnedVertex, maskedFragment)
 
-            opaqueBatcher = ModelBatcher(opaqueStaticProgram, opaqueSkinnedProgram)
-            maskedBatcher = ModelBatcher(maskedStaticProgram, maskedSkinnedProgram)
-            opaqueCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
-            maskedCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
-            modelBuffer.init(engine.gfx.sharedFrameState)
+            opaquePrograms = ModelProgramSet(opaqueStaticProgram, opaqueSkinnedProgram)
+            maskedPrograms = ModelProgramSet(maskedStaticProgram, maskedSkinnedProgram)
         }
     }
 
     override fun onInitFrame()
     {
-        writeDrawLists = readDrawLists.also { readDrawLists = writeDrawLists }
-        writeDrawLists.clear()
+        writeFrames = readFrames.also { readFrames = writeFrames }
+        writeFrames.clear()
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -82,49 +72,18 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
         glDepthFunc(GL_LESS)
         glViewport(0, 0, surface.config.width, surface.config.height)
 
-        frustum.setForCamera(surface.camera)
-        
-        opaqueItems.clear()
-        maskedItems.clear()
-        modelBuffer.clear()
-        opaqueCuller?.clear()
-        maskedCuller?.clear()
-
-        readDrawLists.forEachFast()
-        {
-            opaqueItems.addAllVisible(it.opaqueItems, frustum = if (opaqueCuller == null) frustum else null)
-            maskedItems.addAllVisible(it.maskedItems, frustum = if (maskedCuller == null) frustum else null)
-        }
-
-        val opaqueBatches = opaqueBatcher.createBatchesAndFillBuffer(opaqueItems, modelBuffer, opaqueCuller)
-        val maskedBatches = maskedBatcher.createBatchesAndFillBuffer(maskedItems, modelBuffer, maskedCuller)
-        modelBuffer.submit()
-
-        val opaqueCount = opaqueBatches.totalInstanceCount()
-        if (opaqueCount > 0)
+        for (frame in readFrames)
         {
             configureOpaqueProgram(opaqueStaticProgram, surface)
             configureOpaqueProgram(opaqueSkinnedProgram, surface)
-            measure({"opaque depth (" plus opaqueCount plus "i, " plus opaqueBatches.size plus "b)"})
-            {
-                drawBatches(opaqueBatches, opaqueCuller)
-            }
-        }
-
-        val maskedCount = maskedBatches.totalInstanceCount()
-        if (maskedCount > 0)
-        {
             configureMaskedProgram(maskedStaticProgram, engine, surface)
             configureMaskedProgram(maskedSkinnedProgram, engine, surface)
-            measure({"masked depth (" plus maskedCount plus "i, " plus maskedBatches.size plus "b)"})
+
+            worldRenderState.getRenderView(engine, surface.camera, frame)
             {
-                drawBatches(maskedBatches, maskedCuller)
+                view -> renderView(view)
             }
         }
-
-        opaqueCuller?.markSubmittedDataInUse()
-        maskedCuller?.markSubmittedDataInUse()
-        modelBuffer.markSubmittedDataInUse()
 
         glColorMask(true, true, true, true)
         glDisable(GL_CULL_FACE)
@@ -147,14 +106,35 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
     }
 
-    private fun drawBatches(batches: ModelBatchList, culler: GpuModelCuller?)
+    private fun renderView(view: WorldRenderView)
+    {
+        val opaqueBatches = view.getOpaqueBatches()
+        val opaqueCount = opaqueBatches.totalInstanceCount()
+        if (opaqueCount > 0)
+        {
+            measure({"opaque depth (" plus opaqueCount plus "i, " plus opaqueBatches.size plus "b)"})
+            {
+                drawWorldBatches(opaqueBatches, opaquePrograms, view.getOpaqueCuller(), view)
+            }
+        }
+
+        val maskedBatches = view.getMaskedBatches()
+        val maskedCount = maskedBatches.totalInstanceCount()
+        if (maskedCount > 0)
+        {
+            measure({"masked depth (" plus maskedCount plus "i, " plus maskedBatches.size plus "b)"})
+            {
+                drawWorldBatches(maskedBatches, maskedPrograms, view.getMaskedCuller(), view)
+            }
+        }
+    }
+
+    private fun drawWorldBatches(batches: ModelBatchList, programs: ModelProgramSet, culler: GpuModelCuller?, view: WorldRenderView)
     {
         if (culler != null)
-        {
-            culler.submitAndCull(batches, frustum)
-            drawGpuCulledModelBatches(batches, culler)
-        }
-        else drawModelBatches(batches, modelBuffer.instanceIndexMode, modelBuffer.instanceIndexBuffer)
+            drawGpuCulledModelBatches(batches, programs, culler)
+        else 
+            drawModelBatches(batches, programs, view.modelBuffer.instanceIndexMode, view.modelBuffer.instanceIndexBuffer)
     }
 
     override fun destroy()
@@ -163,14 +143,12 @@ class DepthPrepassRenderer(override val order: Int = 20) : Renderer()
         opaqueSkinnedProgram.destroy()
         maskedStaticProgram.destroy()
         maskedSkinnedProgram.destroy()
-        modelBuffer.destroy()
-        opaqueCuller?.destroy()
-        maskedCuller?.destroy()
     }
 
-    fun draw(drawList: DrawList)
+    fun draw(frame: WorldRenderFrame)
     {
-        writeDrawLists += drawList
+        writeFrames += frame
+        worldRenderState.queue(frame)
         increaseBatchSize()
     }
 }
