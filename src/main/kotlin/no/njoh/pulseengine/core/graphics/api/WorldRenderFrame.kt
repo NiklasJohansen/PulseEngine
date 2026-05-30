@@ -28,7 +28,8 @@ class WorldRenderFrame(
         model: Model,
         transform: Matrix4f,
         material: Material? = null,
-        animationPose: AnimatedSkeletonPose? = null
+        animationPose: AnimatedSkeletonPose? = null,
+        passes: Int = CAMERA_PASS or SHADOW_PASS
     ) {
         for (instance in model.subMeshInstances)
         {
@@ -39,7 +40,7 @@ class WorldRenderFrame(
 
             val transform = Matrix4f(transform).mul(instance.transform)
 
-            submit(model, instance.subMesh, material, transform, cullable = true, cullingBounds, boneMatrices)
+            submit(model, instance.subMesh, material, transform, cullable = true, cullingBounds, boneMatrices, passes)
         }
     }
 
@@ -50,15 +51,22 @@ class WorldRenderFrame(
         transform: Matrix4f,
         cullable: Boolean = true,
         cullingBounds: Model.Aabb = subMesh.localBounds,
-        boneMatrices: Array<Matrix4f>? = null
+        boneMatrices: Array<Matrix4f>? = null,
+        passes: Int = CAMERA_PASS or SHADOW_PASS
     ) {
-        val item = RenderItem(model, subMesh, material, transform, cullable, cullingBounds, boneMatrices)
+        val item = RenderItem(model, subMesh, material, transform, cullable, cullingBounds, boneMatrices, passes)
         when (material?.blendMode ?: OPAQUE)
         {
             OPAQUE -> opaqueItems  += item
             MASK   -> maskedItems  += item
             BLEND  -> blendedItems += item
         }
+    }
+
+    companion object
+    {
+        const val CAMERA_PASS = 1
+        const val SHADOW_PASS = 1 shl 1
     }
 }
 
@@ -69,5 +77,11 @@ data class RenderItem(
     val transform: Matrix4f,
     val cullable: Boolean,
     val cullingBounds: Model.Aabb,
-    val boneMatrices: Array<Matrix4f>?
-)
+    val boneMatrices: Array<Matrix4f>?,
+    val renderPasses: Int
+) {
+    var gpuInstanceIndex = -1
+    var gpuCullItemIndex = -1
+
+    fun isInPass(renderPass: Int) = (renderPasses and renderPass) != 0
+}

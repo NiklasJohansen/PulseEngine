@@ -13,13 +13,11 @@ import no.njoh.pulseengine.core.shared.annotations.AnimationRef
 import no.njoh.pulseengine.core.shared.annotations.ModelRef
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import no.njoh.pulseengine.modules.scene.systems.WorldRenderable
-import no.njoh.pulseengine.modules.scene.systems.WorldShadowCaster
 import org.joml.Matrix4f
 
-class AminatedWorldModel : SceneEntity(), Updatable, WorldRenderable, WorldShadowCaster, Named
+class AminatedWorldModel : SceneEntity(), Updatable, WorldRenderable, Named
 {
     override var name = ""
-    override var castShadows = true
 
     @ModelRef var model = ""
 

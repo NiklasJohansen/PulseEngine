@@ -1,16 +1,20 @@
 package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.PulseEngineInternal
-import no.njoh.pulseengine.core.graphics.api.objects.ModelBoneBuffer
 import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
 import no.njoh.pulseengine.core.graphics.util.GpuModelCuller
 import no.njoh.pulseengine.core.graphics.util.RenderItemBatcher
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame.Companion.SHADOW_PASS
 import org.joml.Matrix4f
 
-class WorldShadowRenderView()
+class WorldRenderShadowView()
 {
-    val modelBuffer = ModelBufferObject()
+    var frame: WorldRenderFrame? = null
+        private set
+
+    val modelBuffer: ModelBufferObject
+        get() = gpuResource?.modelBuffer ?: throw IllegalStateException("World shadow render view has not been prepared")
 
     private var gpuCuller: GpuModelCuller? = null
 
@@ -19,38 +23,45 @@ class WorldShadowRenderView()
     private val shadowFrustum = Frustum()
 
     private var initialized = false
+    private var gpuResource = null as GpuFrameResource?
     private var hasSubmittedGpuData = false
 
     fun update(
         engine: PulseEngineInternal,
         frame: WorldRenderFrame,
-        boneBuffer: ModelBoneBuffer,
+        gpuResource: GpuFrameResource,
         shadowCullingMatrix: Matrix4f,
         cascadeFrustumPlaneSets: Array<Frustum.FrustumPlaneSet>
-    ): WorldShadowRenderView {
+    ): WorldRenderShadowView {
 
         if (!initialized)
         {
-            modelBuffer.init(boneBuffer)
             gpuCuller = GpuModelCuller.createIfSupported()?.apply { init(engine) }
             initialized = true
         }
 
         shadowFrustum.setForViewProjection(shadowCullingMatrix)
 
-        modelBuffer.clear()
-        gpuCuller?.clear()
+        gpuCuller?.clear(gpuResource.cullData)
         allItems.clear()
 
         allItems += frame.opaqueItems
         allItems += frame.maskedItems
 
-        val batches = batcher.buildBatches(allItems, modelBuffer, shadowFrustum, gpuCuller, sortForBatching = true)
+        val batches = batcher.buildBatches(
+            items = allItems,
+            frustum = shadowFrustum,
+            gpuCuller = gpuCuller,
+            sortForBatching = true,
+            requiredRenderPass = SHADOW_PASS
+        )
 
-        modelBuffer.submit()
-        gpuCuller?.submitAndCullCascades(batches, cascadeFrustumPlaneSets)
+        gpuCuller?.submitAndCullCascades(batches, cascadeFrustumPlaneSets, gpuResource.cullData)
 
-        hasSubmittedGpuData = true
+        this.frame = frame
+        this.gpuResource = gpuResource
+        this.hasSubmittedGpuData = true
+ 
         return this
     }
 
@@ -60,15 +71,14 @@ class WorldShadowRenderView()
             return
 
         gpuCuller?.markSubmittedDataInUse()
-        modelBuffer.markSubmittedDataInUse()
         hasSubmittedGpuData = false
     }
 
     fun destroy()
     {
         gpuCuller?.destroy()
-        modelBuffer.destroy()
         initialized = false
+        gpuResource = null
         hasSubmittedGpuData = false
     }
 

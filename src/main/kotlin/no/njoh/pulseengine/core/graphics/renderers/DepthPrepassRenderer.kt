@@ -9,7 +9,8 @@ import no.njoh.pulseengine.core.graphics.api.ModelProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame
 import no.njoh.pulseengine.core.graphics.api.WorldRenderState
-import no.njoh.pulseengine.core.graphics.api.WorldRenderView
+import no.njoh.pulseengine.core.graphics.api.WorldRenderCameraView
+import no.njoh.pulseengine.core.graphics.api.WorldRenderFrameQueue
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawGpuCulledModelBatches
@@ -32,8 +33,7 @@ class DepthPrepassRenderer(
     private lateinit var opaquePrograms: ModelProgramSet
     private lateinit var maskedPrograms: ModelProgramSet
 
-    private var readFrames  = ArrayList<WorldRenderFrame>()
-    private var writeFrames = ArrayList<WorldRenderFrame>()
+    private var renderFrameQueue = WorldRenderFrameQueue(worldRenderState)
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -56,8 +56,7 @@ class DepthPrepassRenderer(
 
     override fun onInitFrame()
     {
-        writeFrames = readFrames.also { readFrames = writeFrames }
-        writeFrames.clear()
+        renderFrameQueue.initFrame()
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -72,16 +71,16 @@ class DepthPrepassRenderer(
         glDepthFunc(GL_LESS)
         glViewport(0, 0, surface.config.width, surface.config.height)
 
-        for (frame in readFrames)
+        renderFrameQueue.forEachReadable()
         {
             configureOpaqueProgram(opaqueStaticProgram, surface)
             configureOpaqueProgram(opaqueSkinnedProgram, surface)
             configureMaskedProgram(maskedStaticProgram, engine, surface)
             configureMaskedProgram(maskedSkinnedProgram, engine, surface)
 
-            worldRenderState.getRenderView(engine, surface.camera, frame)
+            worldRenderState.withCameraView(engine, surface.camera, frame = it)
             {
-                view -> renderView(view)
+                view -> render(view)
             }
         }
 
@@ -106,7 +105,7 @@ class DepthPrepassRenderer(
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
     }
 
-    private fun renderView(view: WorldRenderView)
+    private fun render(view: WorldRenderCameraView)
     {
         val opaqueBatches = view.getOpaqueBatches()
         val opaqueCount = opaqueBatches.totalInstanceCount()
@@ -129,7 +128,7 @@ class DepthPrepassRenderer(
         }
     }
 
-    private fun drawWorldBatches(batches: ModelBatchList, programs: ModelProgramSet, culler: GpuModelCuller?, view: WorldRenderView)
+    private fun drawWorldBatches(batches: ModelBatchList, programs: ModelProgramSet, culler: GpuModelCuller?, view: WorldRenderCameraView)
     {
         if (culler != null)
             drawGpuCulledModelBatches(batches, programs, culler)
@@ -147,8 +146,7 @@ class DepthPrepassRenderer(
 
     fun draw(frame: WorldRenderFrame)
     {
-        writeFrames += frame
-        worldRenderState.queue(frame)
+        renderFrameQueue.submit(frame)
         increaseBatchSize()
     }
 }

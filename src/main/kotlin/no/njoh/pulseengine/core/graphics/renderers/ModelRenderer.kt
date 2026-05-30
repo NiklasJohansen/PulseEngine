@@ -11,7 +11,8 @@ import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_BORDER
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame
 import no.njoh.pulseengine.core.graphics.api.WorldRenderState
-import no.njoh.pulseengine.core.graphics.api.WorldRenderView
+import no.njoh.pulseengine.core.graphics.api.WorldRenderCameraView
+import no.njoh.pulseengine.core.graphics.api.WorldRenderFrameQueue
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.BrdfLutBuilder
@@ -21,6 +22,7 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
+import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
@@ -32,7 +34,7 @@ import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import kotlin.math.cos
 
 class ModelRenderer(
-    private val worldRenderState: WorldRenderState,
+    val worldRenderState: WorldRenderState,
     override val order: Int = 40
 ) : Renderer() {
 
@@ -48,14 +50,13 @@ class ModelRenderer(
     private lateinit var skinnedProgram: ShaderProgram
     private lateinit var programs: ModelProgramSet
 
-    private var readFrames      = ArrayList<WorldRenderFrame>()
-    private var writeFrames     = ArrayList<WorldRenderFrame>()
-    private var readLightData   = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
-    private var writeLightData  = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
-    private var readLightCount  = 0
-    private var writeLightCount = 0
-    private var iblBrdfTexture  = "ibl_brdf_lut"
-    private val camPos          = Vector3f()
+    private var renderFrameQueue = WorldRenderFrameQueue(worldRenderState)
+    private var readLightData    = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
+    private var writeLightData   = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
+    private var readLightCount   = 0
+    private var writeLightCount  = 0
+    private var iblBrdfTexture   = "ibl_brdf_lut"
+    private val camPos           = Vector3f()
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -91,9 +92,7 @@ class ModelRenderer(
 
     override fun onInitFrame()
     {
-        writeFrames = readFrames.also { readFrames = writeFrames }
-        writeFrames.clear()
-
+        renderFrameQueue.initFrame()
         readLightData = writeLightData.also { writeLightData = readLightData }
         readLightCount = writeLightCount
         readLightData.flip()
@@ -112,12 +111,12 @@ class ModelRenderer(
         glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
         glDepthMask(!hasDepthPrepass)
 
-        for (frame in readFrames)
+        renderFrameQueue.forEachReadable()
         {
             configureProgram(staticProgram, engine, surface)
             configureProgram(skinnedProgram, engine, surface)
 
-            worldRenderState.getRenderView(engine, surface.camera, frame)
+            worldRenderState.withCameraView(engine, surface.camera, frame = it)
             {
                 view -> render(engine, view)
             }
@@ -126,7 +125,7 @@ class ModelRenderer(
         glDepthMask(true)
     }
 
-    private fun render(engine: PulseEngineInternal, view: WorldRenderView)
+    private fun render(engine: PulseEngineInternal, view: WorldRenderCameraView)
     {
         val opaqueBatches = view.getOpaqueBatches()
         val opaqueCount = opaqueBatches.totalInstanceCount()
@@ -175,7 +174,11 @@ class ModelRenderer(
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(false)
 
-                drawModelBatches(blendedBatches, programs, view.modelBuffer.instanceIndexMode, view.modelBuffer.instanceIndexBuffer)
+                val culler = view.getBlendedCuller()
+                if (culler != null)
+                    drawGpuCulledModelBatches(blendedBatches, programs, culler)
+                else
+                    drawModelBatches(blendedBatches, programs, view.modelBuffer.instanceIndexMode, view.modelBuffer.instanceIndexBuffer)
             }
         }
     }
@@ -255,8 +258,7 @@ class ModelRenderer(
 
     fun draw(frame: WorldRenderFrame)
     {
-        writeFrames += frame
-        worldRenderState.queue(frame)
+        renderFrameQueue.submit(frame)
         increaseBatchSize()
     }
 
@@ -283,6 +285,8 @@ class ModelRenderer(
             .put(isSpotLight)
             .put(0f).put(0f) // Padding to 16 floats for alignment
     }
+
+    fun getStagedFrames(): DynamicList<WorldRenderFrame> = renderFrameQueue.writeFrames
 
     companion object
     {

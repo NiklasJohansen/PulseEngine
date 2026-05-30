@@ -10,8 +10,9 @@ import no.njoh.pulseengine.core.graphics.api.ModelProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame
+import no.njoh.pulseengine.core.graphics.api.WorldRenderFrameQueue
 import no.njoh.pulseengine.core.graphics.api.WorldRenderState
-import no.njoh.pulseengine.core.graphics.api.WorldShadowRenderView
+import no.njoh.pulseengine.core.graphics.api.WorldRenderShadowView
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
@@ -43,16 +44,15 @@ class CascadedShadowMapRenderer(
     private lateinit var vbo: StaticBufferObject
 
     private val cascadeFrustums = Array(CASCADE_COUNT) { Frustum() }
-    private val lightDirection  = Vector3f()
-    private var readFrames      = ArrayList<WorldRenderFrame>()
-    private var writeFrames     = ArrayList<WorldRenderFrame>()
-    private var readViewProjectionMatrices  = Array(CASCADE_COUNT) { Matrix4f() }
+    private val lightDirection = Vector3f()
+    private var renderFrameQueue = WorldRenderFrameQueue(worldRenderState)
+    private var readViewProjectionMatrices = Array(CASCADE_COUNT) { Matrix4f() }
     private var writeViewProjectionMatrices = Array(CASCADE_COUNT) { Matrix4f() }
-    private var readCascadeSplits  = FloatArray(CASCADE_COUNT)
+    private var readCascadeSplits = FloatArray(CASCADE_COUNT)
     private var writeCascadeSplits = FloatArray(CASCADE_COUNT)
-    private var readCascadeSizeMeters  = FloatArray(CASCADE_COUNT)
+    private var readCascadeSizeMeters = FloatArray(CASCADE_COUNT)
     private var writeCascadeSizeMeters = FloatArray(CASCADE_COUNT)
-    private var readCascadeFrustumPlaneSets  = Array(CASCADE_COUNT) { FrustumPlaneSet(MAX_FRUSTUM_PLANES) }
+    private var readCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet(MAX_FRUSTUM_PLANES) }
     private var writeCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet(MAX_FRUSTUM_PLANES) }
     private var readShadowCullingMatrix = Matrix4f()
     private var writeShadowCullingMatrix = Matrix4f()
@@ -87,8 +87,7 @@ class CascadedShadowMapRenderer(
         readCascadeSizeMeters = writeCascadeSizeMeters.also { writeCascadeSizeMeters = readCascadeSizeMeters }
         readCascadeFrustumPlaneSets = writeCascadeFrustumPlaneSets.also { writeCascadeFrustumPlaneSets = readCascadeFrustumPlaneSets }
         readShadowCullingMatrix = writeShadowCullingMatrix.also { writeShadowCullingMatrix = readShadowCullingMatrix }
-        readFrames = writeFrames.also { writeFrames = readFrames }
-        writeFrames.clear()
+        renderFrameQueue.initFrame()
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -106,11 +105,11 @@ class CascadedShadowMapRenderer(
         skinnedProgram.bind()
         skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
 
-        for (frame in readFrames)
+        renderFrameQueue.forEachReadable()
         {
-            worldRenderState.getShadowRenderView(engine, frame, readShadowCullingMatrix, readCascadeFrustumPlaneSets)
+            worldRenderState.withShadowView(engine, frame = it, readShadowCullingMatrix, readCascadeFrustumPlaneSets)
             {
-                view -> renderShadowView(view)
+                view -> render(view)
             }
         }
 
@@ -119,7 +118,7 @@ class CascadedShadowMapRenderer(
         glColorMask(true, true, true, true)
     }
 
-    private fun renderShadowView(view: WorldShadowRenderView)
+    private fun render(view: WorldRenderShadowView)
     {
         val modelBatches = view.getBatches()
         val gpuCuller = view.getGpuCuller()
@@ -156,8 +155,7 @@ class CascadedShadowMapRenderer(
 
     fun draw(frame: WorldRenderFrame)
     {
-        writeFrames += frame
-        worldRenderState.queue(frame)
+        renderFrameQueue.submit(frame)
         increaseBatchSize()
     }
 

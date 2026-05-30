@@ -12,13 +12,11 @@ import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.shared.annotations.MaterialRef
 import no.njoh.pulseengine.core.shared.annotations.ModelRef
 import no.njoh.pulseengine.modules.scene.systems.WorldRenderable
-import no.njoh.pulseengine.modules.scene.systems.WorldShadowCaster
 import org.joml.Matrix4f
 
-class WorldModel : SceneEntity(), Initiable, WorldRenderable, WorldShadowCaster, Named
+class WorldModel : SceneEntity(), Initiable, WorldRenderable, Named
 {
     override var name = ""
-    override var castShadows = true
 
     @ModelRef var model = ""
     @MaterialRef var material = ""

@@ -88,9 +88,17 @@ class ModelBatchList(initialCapacity: Int = 128)
     @PublishedApi
     internal val batches = ArrayList<ModelBatch>(initialCapacity)
 
-    var size = 0; private set
+    var commandStartIndex = 0
+        private set
 
-    fun clear() { size = 0 }
+    var size = 0
+        private set
+
+    fun clear(commandStartIndex: Int = 0)
+    {
+        this.size = 0
+        this.commandStartIndex = commandStartIndex
+    }
 
     fun lastOrNull() = if (size == 0) null else batches[size - 1]
 

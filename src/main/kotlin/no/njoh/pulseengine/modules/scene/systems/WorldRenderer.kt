@@ -1,6 +1,5 @@
 package no.njoh.pulseengine.modules.scene.systems
 
-import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling
@@ -70,7 +69,7 @@ class WorldRenderSystem() : SceneSystem()
         val frame = worldFrames[worldFrameIndex]
         frame.clear()
         worldFrameIndex = (worldFrameIndex + 1) and 1
-        
+
         engine.scene.forEachEntityOfType<WorldRenderable>() 
         {
             if ((it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, frame)
@@ -89,9 +88,6 @@ class WorldRenderSystem() : SceneSystem()
     {
         engine.gfx.deleteSurface("world")
     }
-
-    @JsonIgnore
-    fun getRenderState() = worldRenderState
 }
 
 interface WorldRenderable

@@ -14,9 +14,9 @@ class ModelBufferObject
     var instanceIndexBuffer = null as StreamingIntBufferObject?; private set
 
     private lateinit var instanceBuffer: StreamingFloatBufferObject
-    private lateinit var boneBuffer: ModelBoneBuffer
+    private lateinit var boneBuffer: ModelBoneBufferObject
 
-    fun init(boneBuffer: ModelBoneBuffer)
+    fun init(boneBuffer: ModelBoneBufferObject)
     {
         this.boneBuffer = boneBuffer
 
@@ -67,6 +67,13 @@ class ModelBufferObject
         boneBuffer.submit()
     }
 
+    fun bindSubmittedRange()
+    {
+        instanceBuffer.bindSubmittedRange()
+        instanceIndexBuffer?.bindSubmittedRange()
+        boneBuffer.submit()
+    }
+
     fun markSubmittedDataInUse() = measure("sync model buffers")
     {
         instanceBuffer.markSubmittedDataInUse()
@@ -92,5 +99,8 @@ class ModelBufferObject
     companion object
     {
         const val INSTANCE_BUFFER_BINDING = 1
+        const val INVALID_INSTANCE_INDEX = -1
+
+        fun isValidInstanceIndex(index: Int) = index != INVALID_INSTANCE_INDEX
     }
 }

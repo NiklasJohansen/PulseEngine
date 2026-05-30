@@ -223,8 +223,8 @@ object DrawUtils
 
         var groupStart = null as ModelBatch?
         var groupVao = null as VertexArrayObject?
-        var groupCommandStart = 0
-        var commandIndex = 0
+        var groupCommandStart = batches.commandStartIndex
+        var commandIndex = batches.commandStartIndex
         var commandCount = 0
 
         fun flushGroup()
@@ -236,9 +236,7 @@ object DrawUtils
             programs[firstBatch.shaderVariant].setUniform("uUseVisibleInstanceBuffer", true)
             vao.bind()
             culler.bindIndirectCommandBuffer()
-            val commandByteOffset =
-                culler.getSubmittedIndirectCommandByteOffset(commandSetIndex) +
-                groupCommandStart.toLong() * INDIRECT_COMMAND_STRIDE_BYTES
+            val commandByteOffset = culler.getSubmittedIndirectCommandByteOffset(commandSetIndex, groupCommandStart)
 
             glMultiDrawElementsIndirect(
                 /* mode = */ GL_TRIANGLES,
@@ -435,9 +433,9 @@ fun transformModelVertexShader(source: String): String
         BASE_INSTANCE ->
         {
             val instanceIndex = if (GlCapabilities.shaderDrawParametersCore)
-                "int(gl_BaseInstance) + gl_InstanceID"
+                "uint(gl_BaseInstance) + uint(gl_InstanceID)"
             else
-                "int(gl_BaseInstanceARB) + gl_InstanceID"
+                "uint(gl_BaseInstanceARB) + uint(gl_InstanceID)"
 
             val extension = if (GlCapabilities.shaderDrawParametersCore) 
                 "" 
@@ -449,11 +447,11 @@ fun transformModelVertexShader(source: String): String
 
         INSTANCE_ATTRIBUTE -> 
             "#define USE_INSTANCE_INDEX_ATTRIBUTE 1\n" +
-            "#define MODEL_INSTANCE_DRAW_INDEX int(aInstanceIndex)\n"
+            "#define MODEL_INSTANCE_DRAW_INDEX aInstanceIndex\n"
 
         UNIFORM_OFFSET -> 
             "#define USE_INSTANCE_OFFSET_UNIFORM 1\n" +
-            "#define MODEL_INSTANCE_DRAW_INDEX (uInstanceOffset + gl_InstanceID)\n"
+            "#define MODEL_INSTANCE_DRAW_INDEX (uint(uInstanceOffset) + uint(gl_InstanceID))\n"
     }
 
     val visibleInstanceHeader = """
@@ -464,14 +462,16 @@ fun transformModelVertexShader(source: String): String
 
         uniform bool uUseVisibleInstanceBuffer;
 
-        int resolveModelInstanceIndex()
+        uint resolveModelInstanceIndex()
         {
-            int drawIndex = MODEL_INSTANCE_DRAW_INDEX;
-            return uUseVisibleInstanceBuffer ? int(uVisibleInstanceIndices[drawIndex]) : drawIndex;
+            uint drawIndex = MODEL_INSTANCE_DRAW_INDEX;
+            return uUseVisibleInstanceBuffer ? uVisibleInstanceIndices[int(drawIndex)] : drawIndex;
         }
 
         #define MODEL_INSTANCE_INDEX resolveModelInstanceIndex()
     """.trimIndent()
 
-    return versionLine + "\n" + drawIndexHeader + visibleInstanceHeader + source.substring(newLineIndex + 1)
+    val transformedSource = source.substring(newLineIndex + 1)
+
+    return versionLine + "\n" + drawIndexHeader + visibleInstanceHeader + transformedSource
 }

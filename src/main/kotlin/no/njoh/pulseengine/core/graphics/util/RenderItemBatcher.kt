@@ -14,13 +14,15 @@ class RenderItemBatcher
 
     fun buildBatches(
         items: DynamicList<RenderItem>,
-        modelBuffer: ModelBufferObject,
         frustum: Frustum,
         gpuCuller: GpuModelCuller? = null,
-        sortForBatching: Boolean = true
+        sortForBatching: Boolean = true,
+        requiredRenderPass: Int = 0,
+        commandStartIndex: Int = 0,
+        preserveItemOrder: Boolean = false
     ): ModelBatchList {
 
-        batchList.clear()
+        batchList.clear(commandStartIndex)
         if (items.isEmpty())
             return batchList
 
@@ -29,24 +31,34 @@ class RenderItemBatcher
 
         items.forEach()
         {
+            if (requiredRenderPass != 0 && !it.isInPass(requiredRenderPass))
+                return@forEach
+
             if (gpuCuller == null && it.cullable)
             {
                 if (!frustum.intersectsAabb(it.cullingBounds, it.transform))
                     return@forEach // Skip items that are outside the view frustum when GPU culling is not used
             }
 
-            val instanceIndex = modelBuffer.addItem(it)
+            val instanceIndex = it.gpuInstanceIndex
+            if (!ModelBufferObject.isValidInstanceIndex(instanceIndex))
+                throw IllegalStateException("Render item has not been uploaded to the shared world GPU frame")
 
             val shaderVariant = it.model.selectShaderVariant()
             val cullMode      = it.material?.cullMode ?: Material.CullMode.BACK
             val lastBatch     = batchList.lastOrNull()
 
-            if (lastBatch?.matches(it.model, it.subMesh, shaderVariant, cullMode) == true)
+            val canAppendToBatch = 
+                !preserveItemOrder &&
+                lastBatch?.matches(it.model, it.subMesh, shaderVariant, cullMode) == true &&
+                (gpuCuller != null || lastBatch.instanceIndex + lastBatch.instanceCount == instanceIndex)
+
+            if (canAppendToBatch)
                 lastBatch.instanceCount++
             else
                 batchList.add(it.model, it.subMesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
 
-            gpuCuller?.addInstance(it, instanceIndex, batchIndex = batchList.size - 1)
+            gpuCuller?.addInstance(it.gpuCullItemIndex, batchIndex = batchList.commandStartIndex + batchList.size - 1)
         }
   
         return batchList

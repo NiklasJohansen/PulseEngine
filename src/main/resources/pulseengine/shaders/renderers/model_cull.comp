@@ -11,7 +11,6 @@ struct InstanceData
 struct CullItem
 {
     uint subMeshMetaIndex;
-    uint batchIndex;
     uint instanceIndex;
     uint dynamicBoundsIndex;
     uint flags;
@@ -73,6 +72,11 @@ layout(std430, binding = 7) readonly buffer SubMeshMetaBuffer
 layout(std430, binding = 8) readonly buffer DynamicBoundsBuffer
 {
     DynamicBounds uDynamicBounds[];
+};
+
+layout(std430, binding = 10) readonly buffer CullItemBatchIndexBuffer
+{
+    int uCullItemBatchIndices[];
 };
 
 layout(std430, binding = 12) readonly buffer SkinningBoundsBuffer
@@ -188,9 +192,9 @@ bool getSkinnedBounds(SubMeshMeta meta, int boneOffset, inout vec3 localCenter, 
     return hasBounds;
 }
 
-void appendVisibleInstance(CullItem item, int frustum)
+void appendVisibleInstance(CullItem item, uint batchIndex, int frustum)
 {
-    uint commandIndex = uint(frustum) * uint(uBatchCount) + item.batchIndex;
+    uint commandIndex = uint(frustum) * uint(uBatchCount) + batchIndex;
     uint visibleOffset = atomicAdd(uCommands[commandIndex].instanceCount, 1u);
     uint visibleIndex = uCommands[commandIndex].baseInstance + visibleOffset;
     uVisibleInstanceIndices[visibleIndex] = item.instanceIndex;
@@ -203,12 +207,16 @@ void main()
         return;
 
     CullItem item = uCullItems[itemIndex];
+    int batchIndex = uCullItemBatchIndices[itemIndex];
+    if (batchIndex < 0)
+        return;
+
     InstanceData instance = uInstances[item.instanceIndex];
 
     if ((item.flags & CULL_FLAG_ALWAYS_VISIBLE) != 0u)
     {
         for (int frustum = 0; frustum < uFrustumCount; frustum++)
-            appendVisibleInstance(item, frustum);
+            appendVisibleInstance(item, uint(batchIndex), frustum);
         return;
     }
 
@@ -237,6 +245,6 @@ void main()
         if (!intersectsFrustum(worldCenter, worldHalfExtents, frustum))
             continue;
 
-        appendVisibleInstance(item, frustum);
+        appendVisibleInstance(item, uint(batchIndex), frustum);
     }
 }
