@@ -35,7 +35,8 @@ import kotlin.math.cos
 
 class ModelRenderer(
     val worldRenderState: WorldRenderState,
-    override val order: Int = 40
+    override val order: Int = 40,
+    private val ownsWorldRenderState: Boolean = true
 ) : Renderer() {
 
     var iblDiffuseTexture  = ""
@@ -253,7 +254,8 @@ class ModelRenderer(
     {
         staticProgram.destroy()
         skinnedProgram.destroy()
-        worldRenderState.destroy()
+        if (ownsWorldRenderState)
+            worldRenderState.destroy()
     }
 
     fun draw(frame: WorldRenderFrame)

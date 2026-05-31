@@ -114,8 +114,6 @@ class PersistentRingBufferObject(
         }
 
         writeSegmentIndex = (segmentIndex + 1) % segmentCount
-        submittedSegmentIndex = -1
-        submittedElementCount = 0
     }
 
     fun destroy()

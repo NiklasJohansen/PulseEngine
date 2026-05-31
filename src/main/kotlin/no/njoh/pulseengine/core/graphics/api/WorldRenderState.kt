@@ -42,7 +42,7 @@ class WorldRenderState
 
     fun registerUse(frame: WorldRenderFrame) = synchronized(this)
     {
-        frameUsages[frame] = (frameUsages[frame] ?: 1) + 1
+        frameUsages[frame] = (frameUsages[frame] ?: 0) + 1
     }
 
     fun release(frame: WorldRenderFrame): Unit = synchronized(this)
@@ -66,9 +66,10 @@ class WorldRenderState
     fun destroy()
     {
         gpuFrameResources.values.forEach { it.destroy() }
+        gpuFrameResources.clear()
+        frameUsages.clear()
         cameraView.destroy()
         shadowView.destroy()
-        gpuFrameResources.clear()
         boneBuffer.destroy()
         boneFrame = null
         boneFrameVersion = -1
