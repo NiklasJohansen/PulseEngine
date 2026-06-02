@@ -68,7 +68,7 @@ class TextRenderer(
         vao.release()
     }
 
-    override fun onInitFrame()
+    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         instanceBuffer.swapBuffers()
     }

@@ -54,7 +54,7 @@ class DepthPrepassRenderer(
         }
     }
 
-    override fun onInitFrame()
+    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         renderFrameQueue.initFrame()
     }

@@ -91,7 +91,7 @@ class ModelRenderer(
         }
     }
 
-    override fun onInitFrame()
+    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         renderFrameQueue.initFrame()
         readLightData = writeLightData.also { writeLightData = readLightData }

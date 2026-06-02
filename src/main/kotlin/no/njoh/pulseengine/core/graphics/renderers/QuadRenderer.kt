@@ -49,7 +49,7 @@ class QuadRenderer(
         vao.release()
     }
 
-    override fun onInitFrame()
+    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         vbo.swapBuffers()
         ebo.swapBuffers()

@@ -46,7 +46,7 @@ class LineRenderer(
         vao.release()
     }
 
-    override fun onInitFrame()
+    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         vbo.swapBuffers()
     }

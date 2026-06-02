@@ -43,7 +43,7 @@ class SkyboxRenderer(
         vao.release()
     }
 
-    override fun onInitFrame()
+    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         increaseBatchSize() // To ensure the batch is rendered
     }

@@ -55,7 +55,7 @@ class RenderTextureRenderer(
         vao.release()
     }
 
-    override fun onInitFrame()
+    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         readOffset = writeOffset.also { writeOffset = readOffset }
         readCount = writeCount.also { writeCount = 0 }

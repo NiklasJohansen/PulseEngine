@@ -78,7 +78,7 @@ class DirectLightRenderer(
         vao.release()
     }
 
-    override fun onInitFrame()
+    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         lightBuffer.swapBuffers()
         edgeBuffer.swapBuffers()

@@ -80,7 +80,7 @@ class CascadedShadowMapRenderer(
         vao.release()
     }
 
-    override fun onInitFrame()
+    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         readViewProjectionMatrices = writeViewProjectionMatrices.also { writeViewProjectionMatrices = readViewProjectionMatrices }
         readCascadeSplits = writeCascadeSplits.also { writeCascadeSplits = readCascadeSplits }

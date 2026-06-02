@@ -32,10 +32,10 @@ abstract class Renderer
     /**
      * Called once at the beginning of every frame.
      */
-    fun initFrame()
+    fun initFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         finishCurrentBatch()
-        onInitFrame()
+        onInitFrame(engine, surface)
 
         readOffset = writeOffset.also { writeOffset = readOffset }
         hadContent = hasContent || wasUpdated
@@ -106,7 +106,7 @@ abstract class Renderer
     /**
      * Called once at the start of every frame.
      */
-    open fun onInitFrame() {}
+    open fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal) { }
 
     /**
      * Called every frame on every none-empty batch.
