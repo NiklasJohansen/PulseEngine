@@ -5,16 +5,15 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.asset.types.Model
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
-import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame
-import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.shared.annotations.MaterialRef
 import no.njoh.pulseengine.core.shared.annotations.ModelRef
 import no.njoh.pulseengine.modules.scene.systems.WorldRenderable
 import org.joml.Matrix4f
 
-class WorldModel : SceneEntity(), Initiable, WorldRenderable, Named
+class WorldModel : SceneEntity(), WorldRenderable, Named
 {
     override var name = ""
 
@@ -26,14 +25,8 @@ class WorldModel : SceneEntity(), Initiable, WorldRenderable, Named
     @Prop("Scale    [*S]", i=3) var xScale=1f; var yScale=1f; var zScale=1f
 
     private val transform = Matrix4f()
-    private var startTime = 0.0
 
-    override fun onStart(engine: PulseEngine)
-    {
-        startTime = System.currentTimeMillis().toDouble()
-    }
-
-    override fun onRender(engine: PulseEngine, frame: WorldRenderFrame)
+    override fun onRender(engine: PulseEngine, context: WorldRenderContext)
     {
         val model = engine.asset.getOrNull<Model>(model) ?: return
         val material = engine.asset.getOrNull<Material>(material)
@@ -43,6 +36,6 @@ class WorldModel : SceneEntity(), Initiable, WorldRenderable, Named
             .rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
             .scale(xScale, yScale, zScale)
 
-        frame.submit(engine, model, transform, material)
+        context.submit(engine, model, transform, material)
     }
 }

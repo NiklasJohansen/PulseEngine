@@ -2,27 +2,27 @@ package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
-import no.njoh.pulseengine.core.graphics.api.ModelProgramSet
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldCameraRenderView
+import no.njoh.pulseengine.core.graphics.api.RenderItemBatchList
+import no.njoh.pulseengine.core.graphics.api.ProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureCompare
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_BORDER
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
-import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame
-import no.njoh.pulseengine.core.graphics.api.WorldRenderState
-import no.njoh.pulseengine.core.graphics.api.WorldRenderCameraView
-import no.njoh.pulseengine.core.graphics.api.WorldRenderFrameQueue
+import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.BrdfLutBuilder
-import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawGpuCulledModelBatches
-import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawModelBatches
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawGpuCulledRenderItemBatches
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderItemBatches
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItemGpuCuller
+import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.MAIN_CAMERA_VIEW
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
@@ -34,9 +34,8 @@ import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import kotlin.math.cos
 
 class ModelRenderer(
-    val worldRenderState: WorldRenderState,
     override val order: Int = 40,
-    private val ownsWorldRenderState: Boolean = true
+    val viewId: Int = MAIN_CAMERA_VIEW
 ) : Renderer() {
 
     var iblDiffuseTexture  = ""
@@ -49,9 +48,8 @@ class ModelRenderer(
 
     private lateinit var staticProgram: ShaderProgram
     private lateinit var skinnedProgram: ShaderProgram
-    private lateinit var programs: ModelProgramSet
+    private lateinit var programs: ProgramSet
 
-    private var renderFrameQueue = WorldRenderFrameQueue(worldRenderState)
     private var readLightData    = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
     private var writeLightData   = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
     private var readLightCount   = 0
@@ -71,7 +69,7 @@ class ModelRenderer(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr_skinned.vert", ::transformModelVertexShader)),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_pbr.frag"))
             )
-            programs = ModelProgramSet(staticProgram, skinnedProgram)
+            programs = ProgramSet(staticProgram, skinnedProgram)
         }
 
         if (engine.asset.getOrNull<Texture>(iblBrdfTexture) == null)
@@ -89,16 +87,22 @@ class ModelRenderer(
             engine.asset.loadNow(brdfLutTex)
             BrdfLutBuilder.generate(engine, brdfLutTex)
         }
+        
+        engine.gfx.worldRenderContext.addView(viewId) { WorldCameraRenderView(viewId) }
     }
 
     override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
-        renderFrameQueue.initFrame()
         readLightData = writeLightData.also { writeLightData = readLightData }
         readLightCount = writeLightCount
         readLightData.flip()
         writeLightData.clear()
         writeLightCount = 0
+        increaseBatchSize() // Ensure that the batch size is at least 1
+
+        engine.gfx.worldRenderContext
+            .getRenderView<WorldCameraRenderView>(viewId)
+            ?.prepare(surface.camera)
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -112,31 +116,22 @@ class ModelRenderer(
         glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
         glDepthMask(!hasDepthPrepass)
 
-        renderFrameQueue.forEachReadable()
-        {
-            configureProgram(staticProgram, engine, surface)
-            configureProgram(skinnedProgram, engine, surface)
+        configureProgram(staticProgram, engine, surface)
+        configureProgram(skinnedProgram, engine, surface)
 
-            worldRenderState.withCameraView(engine, surface.camera, frame = it)
-            {
-                view -> render(engine, view)
-            }
-        }
+        engine.gfx.worldRenderContext
+            .getRenderView<WorldCameraRenderView>(viewId)
+            ?.let { view -> render(engine, view, engine.gfx.worldRenderContext.getInstancesBuffer()) }
 
         glDepthMask(true)
     }
 
-    private fun render(engine: PulseEngineInternal, view: WorldRenderCameraView)
+    private fun render(engine: PulseEngineInternal, view: WorldCameraRenderView, instanceBuffer: InstanceBufferObject)
     {
-        val opaqueBatches = view.getOpaqueBatches()
-        val opaqueCount = opaqueBatches.totalInstanceCount()
-        measure({"opaque (" plus opaqueCount plus "i, " plus opaqueBatches.size plus "b)"})
+        val opaqueCount = view.opaqueBatches.totalInstanceCount()
+        measure({"opaque (" plus opaqueCount plus "i, " plus view.opaqueBatches.size plus "b)"})
         {
-            val culler = view.getOpaqueCuller()
-            if (culler != null)
-                drawGpuCulledModelBatches(opaqueBatches, programs, culler)
-            else
-                drawModelBatches(opaqueBatches, programs, view.modelBuffer.instanceIndexMode, view.modelBuffer.instanceIndexBuffer)
+            drawWorldBatches(view.opaqueBatches, programs, view.culler, instanceBuffer)
         }
 
         staticProgram.bind()
@@ -144,44 +139,42 @@ class ModelRenderer(
         skinnedProgram.bind()
         skinnedProgram.setUniformSampler("uGtaoTex", engine.gfx.textureBank.getOrCreateFallbackTexture(WHITE))
 
-        val maskedBatches = view.getMaskedBatches()
-        val maskedCount = maskedBatches.totalInstanceCount()
+        val maskedCount = view.maskedBatches.totalInstanceCount()
         if (maskedCount > 0)
         {
-            measure({"masked (" plus maskedCount plus "i, " plus maskedBatches.size plus "b)"})
+            measure({"masked (" plus maskedCount plus "i, " plus view.maskedBatches.size plus "b)"})
             {
                 glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(true)
 
-                val culler = view.getMaskedCuller()
-                if (culler != null)
-                    drawGpuCulledModelBatches(maskedBatches, programs, culler)
-                else
-                    drawModelBatches(maskedBatches, programs, view.modelBuffer.instanceIndexMode, view.modelBuffer.instanceIndexBuffer)
+                drawWorldBatches(view.maskedBatches, programs, view.culler, instanceBuffer)
 
                 glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
             }
         }
 
-        val blendedBatches = view.getBlendedBatches()
-        val blendedCount = blendedBatches.totalInstanceCount()
+        val blendedCount = view.blendedBatches.totalInstanceCount()
         if (blendedCount > 0)
         {
-            measure({"blended (" plus blendedCount plus "i, " plus blendedBatches.size plus "b)"})
+            measure({"blended (" plus blendedCount plus "i, " plus view.blendedBatches.size plus "b)"})
             {
                 glEnable(GL_BLEND)
                 glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(false)
 
-                val culler = view.getBlendedCuller()
-                if (culler != null)
-                    drawGpuCulledModelBatches(blendedBatches, programs, culler)
-                else
-                    drawModelBatches(blendedBatches, programs, view.modelBuffer.instanceIndexMode, view.modelBuffer.instanceIndexBuffer)
+                drawWorldBatches(view.blendedBatches, programs, view.culler, instanceBuffer)
             }
         }
+    }
+
+    private fun drawWorldBatches(batches: RenderItemBatchList, programs: ProgramSet, culler: WorldRenderItemGpuCuller?, instanceBuffer: InstanceBufferObject)
+    {
+        if (culler != null)
+            drawGpuCulledRenderItemBatches(batches, programs, culler)
+        else
+            drawRenderItemBatches(batches, programs, instanceBuffer)
     }
 
     private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: SurfaceInternal)
@@ -254,14 +247,6 @@ class ModelRenderer(
     {
         staticProgram.destroy()
         skinnedProgram.destroy()
-        if (ownsWorldRenderState)
-            worldRenderState.destroy()
-    }
-
-    fun draw(frame: WorldRenderFrame)
-    {
-        renderFrameQueue.submit(frame)
-        increaseBatchSize()
     }
 
     fun addLight(pos: Vector3f, dir: Vector3f, radius: Float, color: Color, intensity: Float, outerConeDegrees: Float, innerConeDegrees: Float)
@@ -287,8 +272,6 @@ class ModelRenderer(
             .put(isSpotLight)
             .put(0f).put(0f) // Padding to 16 floats for alignment
     }
-
-    fun getStagedFrames(): DynamicList<WorldRenderFrame> = renderFrameQueue.writeFrames
 
     companion object
     {

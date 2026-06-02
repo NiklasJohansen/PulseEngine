@@ -1,10 +1,10 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.joml.Matrix4f
 
-class ModelBoneBufferObject
+class BoneBufferObject
 {
     private var boneBuffer         = null as StreamingFloatBufferObject?
     private val bonePalettes       = ArrayList<Array<Matrix4f>>(128)
@@ -74,16 +74,13 @@ class ModelBoneBufferObject
         else boneBuffer.bindSubmittedRange()
     }
 
-    fun markGpuDataInUse()
+    fun markGpuDataInUse() = measure("sync bone buffer")
     {
         val boneBuffer = boneBuffer ?: return
         if (!dataSubmitted)
             return
 
-        GpuProfiler.measure("sync model bone buffers")
-        {
-            boneBuffer.markSubmittedDataInUse()
-        }
+        boneBuffer.markSubmittedDataInUse()
         dataSubmitted = false
     }
 

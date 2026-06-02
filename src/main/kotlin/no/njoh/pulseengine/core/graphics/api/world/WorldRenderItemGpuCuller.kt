@@ -1,25 +1,20 @@
-package no.njoh.pulseengine.core.graphics.util
+package no.njoh.pulseengine.core.graphics.api.world
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.ComputeShader
 import no.njoh.pulseengine.core.graphics.api.Frustum
-import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlane
-import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.api.GlCapabilities
-import no.njoh.pulseengine.core.graphics.api.ModelBatchList
+import no.njoh.pulseengine.core.graphics.api.RenderItemBatchList
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
-import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.BASE_INSTANCE
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode
+import no.njoh.pulseengine.core.graphics.util.getSupportedModelInstanceIndexMode
 import no.njoh.pulseengine.core.shared.utils.Logger
-import org.lwjgl.opengl.GL15.glBindBuffer
-import org.lwjgl.opengl.GL40.GL_DRAW_INDIRECT_BUFFER
-import org.lwjgl.opengl.GL43.GL_COMMAND_BARRIER_BIT
-import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BARRIER_BIT
-import org.lwjgl.opengl.GL43.glDispatchCompute
-import org.lwjgl.opengl.GL43.glMemoryBarrier
+import org.lwjgl.opengl.GL40.*
+import org.lwjgl.opengl.GL43.*
 
-class GpuModelCuller private constructor()
+class WorldRenderItemGpuCuller private constructor()
 {
     private lateinit var program: ShaderProgram
     private lateinit var cullItemBatchIndexBuffer: StreamingIntBufferObject
@@ -42,7 +37,7 @@ class GpuModelCuller private constructor()
         commandBuffer = StreamingIntBufferObject.createShaderStorageBuffer(COMMAND_BUFFER_BINDING, INDIRECT_COMMAND_INTS * 128, BUFFER_SEGMENTS)
     }
 
-    fun clear(cullData: GpuModelCullData)
+    fun clear(cullData: WorldRenderItemCullingData)
     {
         cullItemCount = cullData.itemCount
         candidateInstanceCount = 0
@@ -52,22 +47,22 @@ class GpuModelCuller private constructor()
         commandBuffer.clear()
     }
 
-    fun submitAndCull(batchLists: List<ModelBatchList>, frustum: Frustum, cullData: GpuModelCullData)
+    fun submitAndCull(batchLists: List<RenderItemBatchList>, frustum: Frustum, cullData: WorldRenderItemCullingData)
     {
         commandCount = batchLists.sumOf { it.size }
-        
-        measure({"frustum culling (" plus candidateInstanceCount plus "i, " plus commandCount plus "c)"})
+
+        GpuProfiler.measure({ "frustum culling (" plus candidateInstanceCount plus "i, " plus commandCount plus "c)" })
         {
             submit(batchLists, commandSetCount = 1)
             cull(cullData, frustumCount = 1) { setFrustumUniforms(frustum, index = 0) }
         }
     }
 
-    fun submitAndCullCascades(batches: ModelBatchList, frustumPaneSets: Array<FrustumPlaneSet>, cullData: GpuModelCullData)
+    fun submitAndCullCascades(batches: RenderItemBatchList, frustumPaneSets: Array<Frustum.FrustumPlaneSet>, cullData: WorldRenderItemCullingData)
     {
         commandCount = batches.size
 
-        measure({"cascade frustum culling (" plus candidateInstanceCount plus "i, " plus frustumPaneSets.size plus "x" plus commandCount plus "c)"})
+        GpuProfiler.measure({ "cascade frustum culling (" plus candidateInstanceCount plus "i, " plus frustumPaneSets.size plus "x" plus commandCount plus "c)" })
         {
             submit(listOf(batches), frustumPaneSets.size)
             cull(cullData, frustumPaneSets.size) { repeat(frustumPaneSets.size) { setPlaneSetUniforms(frustumPaneSets[it], it) } }
@@ -98,7 +93,7 @@ class GpuModelCuller private constructor()
         if (!this::program.isInitialized)
             return
 
-        measure("sync culling buffers")
+        GpuProfiler.measure("sync gpu culling buffers")
         {
             cullItemBatchIndexBuffer.markSubmittedDataInUse()
             visibleIndexBuffer.markSubmittedDataInUse()
@@ -123,7 +118,7 @@ class GpuModelCuller private constructor()
 
     fun getSubmittedIndirectCommandBufferId() = commandBuffer.id
 
-    private fun submit(batchLists: List<ModelBatchList>, commandSetCount: Int)
+    private fun submit(batchLists: List<RenderItemBatchList>, commandSetCount: Int)
     {
         submittedCommandSetCount = commandSetCount
         commandBuffer.clear()
@@ -160,7 +155,7 @@ class GpuModelCuller private constructor()
         visibleIndexBuffer.reserve(candidateInstanceCount * commandSetCount) // Reserve space for the compute shader to write visible instance indices
     }
 
-    private inline fun cull(cullData: GpuModelCullData, frustumCount: Int, setFrustums: ShaderProgram.() -> Unit)
+    private inline fun cull(cullData: WorldRenderItemCullingData, frustumCount: Int, setFrustums: ShaderProgram.() -> Unit)
     {
         if (cullItemCount == 0 || candidateInstanceCount == 0 || commandCount == 0) return
 
@@ -191,7 +186,7 @@ class GpuModelCuller private constructor()
         setPlaneUniform(frustumPlaneUniformNames[offset + 5], frustum.far)
     }
 
-    private fun ShaderProgram.setPlaneSetUniforms(frustumPlaneSet: FrustumPlaneSet, index: Int)
+    private fun ShaderProgram.setPlaneSetUniforms(frustumPlaneSet: Frustum.FrustumPlaneSet, index: Int)
     {
         val offset = index * MAX_PLANES_PER_FRUSTUM
         setUniform(frustumPlaneCountUniformNames[index], frustumPlaneSet.planeCount)
@@ -200,24 +195,24 @@ class GpuModelCuller private constructor()
             setPlaneUniform(frustumPlaneUniformNames[offset + i], frustumPlaneSet.planes[i])
     }
 
-    private fun ShaderProgram.setPlaneUniform(name: String, plane: FrustumPlane)
+    private fun ShaderProgram.setPlaneUniform(name: String, plane: Frustum.FrustumPlane)
     {
         setUniform(name, plane.a, plane.b, plane.c, plane.d)
     }
 
     companion object
     {
-        fun createIfSupported(): GpuModelCuller?
+        fun createIfSupported(): WorldRenderItemGpuCuller?
         {
             if (!GlCapabilities.multiDrawIndirect ||
                 !GlCapabilities.persistentMappedBuffers ||
-                getSupportedModelInstanceIndexMode() != BASE_INSTANCE
+                getSupportedModelInstanceIndexMode() != ModelInstanceIndexMode.BASE_INSTANCE
             ) {
                 Logger.warn { "GpuModelCuller not supported on this platform" }
                 return null // Not supported 
             }
 
-            return GpuModelCuller()
+            return WorldRenderItemGpuCuller()
         }
 
         const val VISIBLE_INSTANCE_BUFFER_BINDING = 4

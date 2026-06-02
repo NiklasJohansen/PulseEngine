@@ -16,6 +16,7 @@ import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.CameraInternal
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.LogLevel
@@ -96,6 +97,7 @@ interface GraphicsInternal : Graphics
 {
     override val mainCamera: CameraInternal
 
+    val worldRenderContext: WorldRenderContext
     val textureBank: TextureBank
     val materialBank: MaterialBank
     val modelBank: ModelBank

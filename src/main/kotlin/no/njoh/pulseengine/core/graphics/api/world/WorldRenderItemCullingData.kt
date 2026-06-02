@@ -1,19 +1,24 @@
-package no.njoh.pulseengine.core.graphics.util
+package no.njoh.pulseengine.core.graphics.api.world
 
-import no.njoh.pulseengine.core.graphics.api.RenderItem
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingFloatBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 
-class GpuModelCullData
+class WorldRenderItemCullingData
 {
-    private val cullItemBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_BUFFER_BINDING, CULL_ITEM_INTS * 512, BUFFER_SEGMENTS)
-    private val dynamicBoundsBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(DYNAMIC_BOUNDS_BUFFER_BINDING, DYNAMIC_BOUNDS_FLOATS * 128, BUFFER_SEGMENTS)
+    private lateinit var cullItemBuffer: StreamingIntBufferObject
+    private lateinit var dynamicBoundsBuffer: StreamingFloatBufferObject
 
     var itemCount = 0
         private set
 
     private var dynamicBoundsCount = 0
+
+    fun init()
+    {
+        cullItemBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_BUFFER_BINDING, CULL_ITEM_INTS * 512, BUFFER_SEGMENTS)
+        dynamicBoundsBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(DYNAMIC_BOUNDS_BUFFER_BINDING, DYNAMIC_BOUNDS_FLOATS * 128, BUFFER_SEGMENTS)
+    }
 
     fun clear()
     {
@@ -23,7 +28,7 @@ class GpuModelCullData
         dynamicBoundsBuffer.clear()
     }
 
-    fun addItem(item: RenderItem, instanceIndex: Int)
+    fun addItem(item: WorldRenderItem)
     {
         val flags = if (item.cullable) 0 else CULL_FLAG_ALWAYS_VISIBLE
         val boundsIndex = if (item.needsDynamicGpuBounds())
@@ -48,15 +53,15 @@ class GpuModelCullData
         item.gpuCullItemIndex = itemCount
         cullItemBuffer.fill(CULL_ITEM_INTS)
         {
-            put(item.subMesh.gpuMetaIndex)
-            put(instanceIndex)
+            put(item.subMesh.gpuMetaDataIndex)
+            put(item.gpuInstanceIndex)
             put(boundsIndex)
             put(flags)
         }
         itemCount++
     }
 
-    fun submit() = measure("submit cull item buffers")
+    fun submit() = GpuProfiler.measure("submit cull item buffers")
     {
         cullItemBuffer.submit()
         dynamicBoundsBuffer.submit()
@@ -68,7 +73,7 @@ class GpuModelCullData
         dynamicBoundsBuffer.bindSubmittedRange()
     }
 
-    fun markSubmittedDataInUse() = measure("sync cull item buffers")
+    fun markSubmittedDataInUse() = GpuProfiler.measure("sync cull item buffers")
     {
         cullItemBuffer.markSubmittedDataInUse()
         dynamicBoundsBuffer.markSubmittedDataInUse()
@@ -80,10 +85,10 @@ class GpuModelCullData
         dynamicBoundsBuffer.destroy()
     }
 
-    private fun RenderItem.needsDynamicGpuBounds() =
+    private fun WorldRenderItem.needsDynamicGpuBounds() =
         cullable && !usesGpuSkinnedBounds() && (boneMatrices != null || cullingBounds !== subMesh.localBounds)
 
-    private fun RenderItem.usesGpuSkinnedBounds() =
+    private fun WorldRenderItem.usesGpuSkinnedBounds() =
         boneMatrices != null && subMesh.skinningBounds != null
 
     companion object

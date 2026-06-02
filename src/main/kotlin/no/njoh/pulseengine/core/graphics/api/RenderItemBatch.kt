@@ -2,24 +2,24 @@ package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
 import no.njoh.pulseengine.core.asset.types.Model
-import no.njoh.pulseengine.core.graphics.api.ModelShaderVariant.*
+import no.njoh.pulseengine.core.graphics.api.ShaderVariant.*
 import org.lwjgl.opengl.GL11.GL_BACK
 import org.lwjgl.opengl.GL11.GL_CULL_FACE
 import org.lwjgl.opengl.GL11.glCullFace
 import org.lwjgl.opengl.GL11.glDisable
 import org.lwjgl.opengl.GL11.glEnable
 
-class ModelBatch
+class RenderItemBatch
 {
     lateinit var model: Model
     lateinit var subMesh: Model.SubMesh
     lateinit var cullMode: CullMode
-    lateinit var shaderVariant: ModelShaderVariant
+    lateinit var shaderVariant: ShaderVariant
 
     var instanceIndex = 0
     var instanceCount = 0
 
-    fun set(model: Model, subMesh: Model.SubMesh, shaderVariant: ModelShaderVariant, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
+    fun set(model: Model, subMesh: Model.SubMesh, shaderVariant: ShaderVariant, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
     {
         this.model = model
         this.subMesh = subMesh
@@ -29,13 +29,13 @@ class ModelBatch
         this.instanceCount = instanceCount
     }
 
-    fun matches(model: Model, subMesh: Model.SubMesh, shaderVariant: ModelShaderVariant, cullMode: CullMode): Boolean =
+    fun matches(model: Model, subMesh: Model.SubMesh, shaderVariant: ShaderVariant, cullMode: CullMode): Boolean =
         this.model === model &&
         this.subMesh === subMesh &&
         this.shaderVariant == shaderVariant &&
         this.cullMode == cullMode
     
-    fun bindProgramAndSetCullMode(programs: ModelProgramSet)
+    fun bindProgramAndSetCullMode(programs: ProgramSet)
     {
         val program = programs[shaderVariant]
         if (program.id != currentProgramId)
@@ -67,26 +67,26 @@ class ModelBatch
     }
 }
 
-enum class ModelShaderVariant
+enum class ShaderVariant
 {
     STATIC, SKINNED
 }
 
-class ModelProgramSet(
+class ProgramSet(
     val staticProgram: ShaderProgram,
     val skinnedProgram: ShaderProgram
 ) {
-    operator fun get(variant: ModelShaderVariant) = when (variant)
+    operator fun get(variant: ShaderVariant) = when (variant)
     {
         STATIC -> staticProgram
         SKINNED -> skinnedProgram
     }
 }
 
-class ModelBatchList(initialCapacity: Int = 128)
+class RenderItemBatchList(initialCapacity: Int = 128)
 {
     @PublishedApi
-    internal val batches = ArrayList<ModelBatch>(initialCapacity)
+    internal val batches = ArrayList<RenderItemBatch>(initialCapacity)
 
     var commandStartIndex = 0
         private set
@@ -110,14 +110,14 @@ class ModelBatchList(initialCapacity: Int = 128)
         return count
     }
 
-    fun add(model: Model, subMesh: Model.SubMesh, shaderVariant: ModelShaderVariant, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
+    fun add(model: Model, subMesh: Model.SubMesh, shaderVariant: ShaderVariant, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
     {
-        val batch = if (size < batches.size) batches[size] else ModelBatch().also { batches += it }
+        val batch = if (size < batches.size) batches[size] else RenderItemBatch().also { batches += it }
         batch.set(model, subMesh, shaderVariant, cullMode, instanceIndex, instanceCount)
         size++
     }
 
-    inline fun forEach(action: (ModelBatch) -> Unit)
+    inline fun forEach(action: (RenderItemBatch) -> Unit)
     {
         for (i in 0 until size) action(batches[i])
     }

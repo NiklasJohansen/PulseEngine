@@ -81,7 +81,8 @@ class SurfaceImpl(
         onInitFrame.forEachFast { it.invoke(engine) }
         onInitFrame.clear()
 
-        renderers.forEachFast { it.initFrame() }
+        renderers.forEachFast { it.initFrame(engine, this) }
+
         config.resetDepth(camera.nearPlane)
         applyRenderState(BatchRenderBaseState)
     }

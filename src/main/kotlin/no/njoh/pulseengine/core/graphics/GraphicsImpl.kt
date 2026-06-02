@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
@@ -31,6 +32,7 @@ open class GraphicsImpl : GraphicsInternal
     override lateinit var textureBank: TextureBank
     override lateinit var materialBank: MaterialBank
     override lateinit var modelBank: ModelBank
+    override lateinit var worldRenderContext: WorldRenderContext
     override lateinit var gpuName: String
     private  lateinit var fullFrameRenderer: FullFrameRenderer
 
@@ -49,6 +51,7 @@ open class GraphicsImpl : GraphicsInternal
         textureBank = TextureBank()
         materialBank = MaterialBank()
         modelBank = ModelBank()
+        worldRenderContext = WorldRenderContext()
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",
@@ -80,8 +83,6 @@ open class GraphicsImpl : GraphicsInternal
             GlCapabilities.create()
             gpuName = glGetString(GL_RENDERER) ?: "Unknown GPU"
             Logger.debug { "Running OpenGL on GPU: $gpuName" }
-            materialBank.destroy()
-            modelBank.destroy()
 
             // Load error shaders
             errorShaders[VERTEX]   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/error/error.vert"))
@@ -117,6 +118,8 @@ open class GraphicsImpl : GraphicsInternal
         onInitFrame.forEachFast { it.invoke(engine) }
         onInitFrame.clear()
 
+        worldRenderContext.initFrame()
+
         surfaces.forEachFast { it.initFrame(engine) }
         
         surfaces.forEachCamera()
@@ -127,6 +130,8 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun drawFrame(engine: PulseEngineInternal)
     {
+        worldRenderContext.prepareFrameDraw(engine)
+
         surfaces.forEachCamera { it.onFrameDraw(engine) }
 
         materialBank.submitAndBind()
@@ -134,6 +139,9 @@ open class GraphicsImpl : GraphicsInternal
         renderSurfaceContentToOffscreenTarget(engine)
         renderPostProcessingEffectsToOffscreenTarget(engine)
         renderOffscreenTargetsToBackBuffer()
+        
+        worldRenderContext.endFrame()
+
         GpuProfiler.endFrame()
     }
 
@@ -305,6 +313,7 @@ open class GraphicsImpl : GraphicsInternal
         materialBank.destroy()
         modelBank.destroy()
         fullFrameRenderer.destroy()
+        worldRenderContext.destroy()
         surfaces.forEachFast { it.destroy() }
     }
 

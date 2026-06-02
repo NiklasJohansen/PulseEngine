@@ -1,25 +1,22 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
 import no.njoh.pulseengine.core.asset.types.Material
-import no.njoh.pulseengine.core.graphics.api.RenderItem
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItem
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
 import no.njoh.pulseengine.core.graphics.util.getSupportedModelInstanceIndexMode
 import org.joml.Matrix4f
 
-class ModelBufferObject
+class InstanceBufferObject
 {
     var instanceCount = 0; private set
     var instanceIndexMode = UNIFORM_OFFSET; private set
     var instanceIndexBuffer = null as StreamingIntBufferObject?; private set
 
     private lateinit var instanceBuffer: StreamingFloatBufferObject
-    private lateinit var boneBuffer: ModelBoneBufferObject
 
-    fun init(boneBuffer: ModelBoneBufferObject)
+    fun init()
     {
-        this.boneBuffer = boneBuffer
-
         if (this::instanceBuffer.isInitialized)
             return
 
@@ -40,16 +37,15 @@ class ModelBufferObject
         instanceCount = 0
     }
 
-    fun addItem(item: RenderItem): Int
+    fun addItem(item: WorldRenderItem, boneOffsetIndex: Int): Int
     {
         val instanceIndex = instanceCount++
         val materialId = item.material?.id ?: Material.DEFAULT_ID
-        val boneOffset = boneBuffer.addBoneMatricesAndGetOffset(item.boneMatrices)
 
         instanceBuffer.fill(20) // 16 + 4
         {
             putMatrix(item.transform)
-            put(materialId.toFloat(), boneOffset.toFloat(), 0f, 0f)
+            put(materialId.toFloat(), boneOffsetIndex.toFloat(), 0f, 0f)
         }
 
         instanceIndexBuffer?.fill(1)
@@ -64,17 +60,9 @@ class ModelBufferObject
     {
         instanceBuffer.submit()
         instanceIndexBuffer?.submit()
-        boneBuffer.submit()
     }
 
-    fun bindSubmittedRange()
-    {
-        instanceBuffer.bindSubmittedRange()
-        instanceIndexBuffer?.bindSubmittedRange()
-        boneBuffer.submit()
-    }
-
-    fun markSubmittedDataInUse() = measure("sync model buffers")
+    fun markSubmittedDataInUse() = measure("sync instance buffers")
     {
         instanceBuffer.markSubmittedDataInUse()
         instanceIndexBuffer?.markSubmittedDataInUse()
@@ -84,6 +72,7 @@ class ModelBufferObject
     {
         if (!this::instanceBuffer.isInitialized)
             return
+
         instanceBuffer.destroy()
         instanceIndexBuffer?.destroy()
     }

@@ -1,14 +1,16 @@
 package no.njoh.pulseengine.core.graphics.util
 
-import no.njoh.pulseengine.core.graphics.api.ModelBatch
-import no.njoh.pulseengine.core.graphics.api.ModelBatchList
+import no.njoh.pulseengine.core.graphics.api.RenderItemBatch
+import no.njoh.pulseengine.core.graphics.api.RenderItemBatchList
 import no.njoh.pulseengine.core.graphics.api.GlCapabilities
-import no.njoh.pulseengine.core.graphics.api.ModelProgramSet
+import no.njoh.pulseengine.core.graphics.api.ProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
+import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItemGpuCuller
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.captureIndirectDrawStats
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementDrawStats
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
@@ -103,17 +105,16 @@ object DrawUtils
         incrementDrawStats(drawCommands = 1L, triangles = instanceCount * 2L, instances = instanceCount.toLong())
     }
 
-    fun drawModelBatches(
-        batches: ModelBatchList,
-        programs: ModelProgramSet,
-        instanceIndexMode: ModelInstanceIndexMode,
-        instanceIndexBuffer: StreamingIntBufferObject?
+    fun drawRenderItemBatches(
+        batches: RenderItemBatchList,
+        programs: ProgramSet,
+        instanceBuffer: InstanceBufferObject
     ) {
-        ModelBatch.resetBoundProgramAndCullMode()
+        RenderItemBatch.resetBoundProgramAndCullMode()
         
-        if (!GlCapabilities.multiDrawIndirect || !GlCapabilities.persistentMappedBuffers || instanceIndexMode == UNIFORM_OFFSET)
+        if (!GlCapabilities.multiDrawIndirect || !GlCapabilities.persistentMappedBuffers || instanceBuffer.instanceIndexMode == UNIFORM_OFFSET)
         {
-            batches.forEach { it.drawDirect(programs, instanceIndexMode, instanceIndexBuffer) }
+            batches.forEach { it.drawDirect(programs, instanceBuffer) }
             return
         }
 
@@ -141,7 +142,7 @@ object DrawUtils
 
         commandBuffer.submit()
 
-        var groupStart = null as ModelBatch?
+        var groupStart = null as RenderItemBatch?
         var groupVao = null as VertexArrayObject?
         var groupCommandStart = 0
         var commandIndex = 0
@@ -158,8 +159,8 @@ object DrawUtils
             programs[firstBatch.shaderVariant].setUniform("uUseVisibleInstanceBuffer", false)
             vao.bind()
 
-            if (instanceIndexMode == INSTANCE_ATTRIBUTE)
-                bindInstanceIndexAttribute(instanceIndexBuffer)
+            if (instanceBuffer.instanceIndexMode == INSTANCE_ATTRIBUTE)
+                bindInstanceIndexAttribute(instanceBuffer.instanceIndexBuffer)
 
             commandBuffer.bind()
             glMultiDrawElementsIndirect(
@@ -171,8 +172,8 @@ object DrawUtils
             )
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0)
 
-            if (instanceIndexMode == INSTANCE_ATTRIBUTE)
-                instanceIndexBuffer?.release()
+            if (instanceBuffer.instanceIndexMode == INSTANCE_ATTRIBUTE)
+                instanceBuffer.instanceIndexBuffer?.release()
 
             vao.release()
             incrementDrawStats(drawCommands = commandCount.toLong(), triangles = triangleCount, instances = instanceCount)
@@ -214,14 +215,14 @@ object DrawUtils
         commandBuffer.markSubmittedDataInUse()
     }
 
-    fun drawGpuCulledModelBatches(batches: ModelBatchList, programs: ModelProgramSet, culler: GpuModelCuller, commandSetIndex: Int = 0)
+    fun drawGpuCulledRenderItemBatches(batches: RenderItemBatchList, programs: ProgramSet, culler: WorldRenderItemGpuCuller, commandSetIndex: Int = 0)
     {
         if (batches.size == 0) return
 
-        ModelBatch.resetBoundProgramAndCullMode()
+        RenderItemBatch.resetBoundProgramAndCullMode()
         culler.bindVisibleInstanceBuffer()
 
-        var groupStart = null as ModelBatch?
+        var groupStart = null as RenderItemBatch?
         var groupVao = null as VertexArrayObject?
         var groupCommandStart = batches.commandStartIndex
         var commandIndex = batches.commandStartIndex
@@ -286,7 +287,7 @@ object DrawUtils
         flushGroup()
     }
 
-    private fun ModelBatch.drawDirect(programs: ModelProgramSet, instanceIndexMode: ModelInstanceIndexMode, instanceIndexBuffer: StreamingIntBufferObject?)
+    private fun RenderItemBatch.drawDirect(programs: ProgramSet, instanceBuffer: InstanceBufferObject)
     {
         val vao = model.vao ?: return
         val program = programs[shaderVariant]
@@ -295,8 +296,8 @@ object DrawUtils
         drawInstancedTriangleIndices(
             program = program,
             vao = vao,
-            instanceIndexMode = instanceIndexMode,
-            instanceIndexBuffer = instanceIndexBuffer,
+            instanceIndexMode = instanceBuffer.instanceIndexMode,
+            instanceIndexBuffer = instanceBuffer.instanceIndexBuffer,
             firstIndex = subMesh.indexStart,
             indexCount = subMesh.indexCount,
             instanceIndex = instanceIndex,
@@ -455,7 +456,7 @@ fun transformModelVertexShader(source: String): String
     }
 
     val visibleInstanceHeader = """
-        layout(std430, binding = ${GpuModelCuller.VISIBLE_INSTANCE_BUFFER_BINDING}) readonly buffer VisibleInstanceBuffer
+        layout(std430, binding = ${WorldRenderItemGpuCuller.VISIBLE_INSTANCE_BUFFER_BINDING}) readonly buffer VisibleInstanceBuffer
         {
             uint uVisibleInstanceIndices[];
         };

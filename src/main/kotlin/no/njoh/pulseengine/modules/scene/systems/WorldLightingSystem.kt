@@ -88,22 +88,18 @@ class WorldLightingSystem : SceneSystem()
                 attachments = listOf(Attachment.DEPTH_TEXTURE),
                 textureSizeFunc = { _,_,_ -> PackedSize(sunShadowMapResolution, sunShadowMapResolution) }
             ).apply {
-                addRenderer(CascadedShadowMapRenderer(modelRenderer.worldRenderState))
+                addRenderer(CascadedShadowMapRenderer())
             }
 
             return // Return now, surface ready next frame
         }
 
         val shadowMapRenderer = shadowMapSurface.getRenderer<CascadedShadowMapRenderer>() ?: return
-        
-        shadowMapRenderer.worldRenderState = modelRenderer.worldRenderState
+
         shadowMapRenderer.resolution       = sunShadowMapResolution
         shadowMapRenderer.splitLambda      = sunShadowCascadeSplitLambda
         shadowMapRenderer.shadowDistance   = sunShadowDistance
         shadowMapRenderer.setFor(camera, sunDirection, sunHeight)
-
-        // Draw the shadow map based on the frames submitted to the model renderer
-        modelRenderer.getStagedFrames().forEach { shadowMapRenderer.draw(it) }
     }
 
     private fun collectWorldLights(engine: PulseEngine, camera: Camera)

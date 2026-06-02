@@ -1,37 +1,35 @@
-package no.njoh.pulseengine.core.graphics.util
+package no.njoh.pulseengine.core.graphics.api.world
 
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.graphics.api.Frustum
-import no.njoh.pulseengine.core.graphics.api.RenderItem
-import no.njoh.pulseengine.core.graphics.api.ModelBatchList
-import no.njoh.pulseengine.core.graphics.api.objects.ModelBufferObject
+import no.njoh.pulseengine.core.graphics.api.RenderItemBatchList
+import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
+import no.njoh.pulseengine.core.graphics.util.selectShaderVariant
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 
-class RenderItemBatcher
+object WorldRenderItemBatcher
 {
-    private val batchList = ModelBatchList()
-    private val batchComparator = Comparator<RenderItem> { a, b -> compareForBatching(a, b) }
-
     fun buildBatches(
-        items: DynamicList<RenderItem>,
+        out: RenderItemBatchList,
+        items: DynamicList<WorldRenderItem>,
         frustum: Frustum,
-        gpuCuller: GpuModelCuller? = null,
+        gpuCuller: WorldRenderItemGpuCuller? = null,
         sortForBatching: Boolean = true,
-        requiredRenderPass: Int = 0,
+        requiredView: Int = 0,
         commandStartIndex: Int = 0,
         preserveItemOrder: Boolean = false
-    ): ModelBatchList {
+    ): RenderItemBatchList {
 
-        batchList.clear(commandStartIndex)
+        out.clear(commandStartIndex)
         if (items.isEmpty())
-            return batchList
+            return out
 
         if (sortForBatching)
-            items.sortWith(batchComparator)
+            items.sortWith(::compareForBatching)
 
         items.forEach()
         {
-            if (requiredRenderPass != 0 && !it.isInPass(requiredRenderPass))
+            if (requiredView != 0 && !it.isInView(requiredView))
                 return@forEach
 
             if (gpuCuller == null && it.cullable)
@@ -41,14 +39,14 @@ class RenderItemBatcher
             }
 
             val instanceIndex = it.gpuInstanceIndex
-            if (!ModelBufferObject.isValidInstanceIndex(instanceIndex))
-                throw IllegalStateException("Render item has not been uploaded to the shared world GPU frame")
+            if (!InstanceBufferObject.isValidInstanceIndex(instanceIndex))
+                throw IllegalStateException("Render item has not been uploaded to the GPU instance buffer")
 
             val shaderVariant = it.model.selectShaderVariant()
             val cullMode      = it.material?.cullMode ?: Material.CullMode.BACK
-            val lastBatch     = batchList.lastOrNull()
+            val lastBatch     = out.lastOrNull()
 
-            val canAppendToBatch = 
+            val canAppendToBatch =
                 !preserveItemOrder &&
                 lastBatch?.matches(it.model, it.subMesh, shaderVariant, cullMode) == true &&
                 (gpuCuller != null || lastBatch.instanceIndex + lastBatch.instanceCount == instanceIndex)
@@ -56,15 +54,15 @@ class RenderItemBatcher
             if (canAppendToBatch)
                 lastBatch.instanceCount++
             else
-                batchList.add(it.model, it.subMesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
+                out.add(it.model, it.subMesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
 
-            gpuCuller?.addInstance(it.gpuCullItemIndex, batchIndex = batchList.commandStartIndex + batchList.size - 1)
+            gpuCuller?.addInstance(it.gpuCullItemIndex, batchIndex = out.commandStartIndex + out.size - 1)
         }
-  
-        return batchList
+
+        return out
     }
 
-    private fun compareForBatching(a: RenderItem, b: RenderItem): Int
+    private fun compareForBatching(a: WorldRenderItem, b: WorldRenderItem): Int
     {
         var result = System.identityHashCode(a.model) - System.identityHashCode(b.model)
         if (result != 0) return result
@@ -77,6 +75,4 @@ class RenderItemBatcher
 
         return (a.material?.cullMode ?: Material.CullMode.BACK).ordinal - (b.material?.cullMode ?: Material.CullMode.BACK).ordinal
     }
-
-    fun getBuiltBatches(): ModelBatchList = batchList
 }

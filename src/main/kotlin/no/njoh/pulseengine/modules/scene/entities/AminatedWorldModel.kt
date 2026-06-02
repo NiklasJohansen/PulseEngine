@@ -5,9 +5,9 @@ import no.njoh.pulseengine.core.asset.types.Animation
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.asset.types.Model
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
-import no.njoh.pulseengine.core.graphics.api.WorldRenderFrame
 import no.njoh.pulseengine.core.scene.interfaces.Updatable
 import no.njoh.pulseengine.core.shared.annotations.AnimationRef
 import no.njoh.pulseengine.core.shared.annotations.ModelRef
@@ -45,7 +45,7 @@ class AminatedWorldModel : SceneEntity(), Updatable, WorldRenderable, Named
         animationTime += animationSpeed * engine.data.fixedDeltaTime
     }
 
-    override fun onRender(engine: PulseEngine, frame: WorldRenderFrame)
+    override fun onRender(engine: PulseEngine, context: WorldRenderContext)
     {
         val model = engine.asset.getOrNull<Model>(model) ?: return
         val animation = engine.asset.getOrNull<Animation>(animation)
@@ -65,7 +65,7 @@ class AminatedWorldModel : SceneEntity(), Updatable, WorldRenderable, Named
             .rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
             .scale(xScale, yScale, zScale)
 
-        frame.submit(engine, model, transform, null, animationPose)
+        context.submit(engine, model, transform, null, animationPose)
     }
 
     override fun onUpdate(engine: PulseEngine) {}

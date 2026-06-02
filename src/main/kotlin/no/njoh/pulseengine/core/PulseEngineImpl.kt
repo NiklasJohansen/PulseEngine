@@ -102,7 +102,6 @@ class PulseEngineImpl(
             if (windowRecreated)
             {
                 input.init(window.cursorPosScale)
-                asset.getAllOfType<Material>().forEachFast { gfx.uploadMaterial(it) }
                 asset.getAllOfType<Model>().forEachFast { gfx.uploadModel(it) }
             }
         }

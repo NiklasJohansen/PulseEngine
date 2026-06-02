@@ -28,8 +28,9 @@ class ModelBank
             return
         }
 
-        uploadMesh(model)
-        uploadMetadata(model)
+        val wasUploaded = uploadMesh(model)
+        if (wasUploaded)
+            uploadMetadata(model)
     }
 
     fun submitAndBind()
@@ -79,10 +80,12 @@ class ModelBank
         metadataDirty = false
     }
 
-    private fun uploadMesh(model: Model)
+    private fun uploadMesh(model: Model): Boolean
     {
+        // Always recreate VAO as this is destroyed when the window is recreated
         val vao = VertexArrayObject.createAndBind()
 
+        // VBO and EBO survive window recreation, so keep them if they already exist
         val vbo = model.vbo ?: StaticBufferObject.createArrayBuffer(model.vertexBytes)
         vbo.bind()
 
@@ -110,10 +113,14 @@ class ModelBank
         val ebo = model.ebo ?: StaticBufferObject.createElementArrayBuffer(model.indices)
         ebo.bind()
 
+        val wasUploaded = (vbo !== model.vbo)
+
         vao.release()
         vbo.release()
         ebo.release()
         model.onUploaded(vao, vbo, ebo)
+        
+        return wasUploaded
     }
 
     private fun uploadMetadata(model: Model)
@@ -124,7 +131,7 @@ class ModelBank
         {
             val skinningBoundsOffset = appendSkinningBounds(subMesh.skinningBounds)
             val metadata = SubMeshMetadata.from(subMesh, skinningBoundsOffset)
-            val index = subMesh.gpuMetaIndex
+            val index = subMesh.gpuMetaDataIndex
 
             if (index in subMeshMetadata.indices)
             {
@@ -132,7 +139,7 @@ class ModelBank
             }
             else
             {
-                subMesh.gpuMetaIndex = subMeshMetadata.size
+                subMesh.gpuMetaDataIndex = subMeshMetadata.size
                 subMeshMetadata += metadata
             }
         }

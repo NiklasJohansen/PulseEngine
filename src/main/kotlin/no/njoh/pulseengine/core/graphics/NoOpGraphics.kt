@@ -17,19 +17,21 @@ import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.TextureBank
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
 import no.njoh.pulseengine.core.graphics.surface.NoOpSurface
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 
-class NoOpGraphics : GraphicsInternal
+class NoOpGraphics() : GraphicsInternal
 {
     override var mainCamera = DefaultCamera(ORTHOGRAPHIC)
     override var mainSurface = NoOpSurface()
     override var textureBank = TextureBank()
     override var materialBank = MaterialBank()
     override var modelBank = ModelBank()
+    override val worldRenderContext: WorldRenderContext = WorldRenderContext()
     override val gpuName = "none"
     override fun createSurface(
         name: String,
