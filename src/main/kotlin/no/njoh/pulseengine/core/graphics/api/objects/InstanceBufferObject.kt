@@ -56,7 +56,7 @@ class InstanceBufferObject
         return instanceIndex
     }
 
-    fun submit() = measure("submit model buffers")
+    fun submit() = measure("submit instance buffers")
     {
         instanceBuffer.submit()
         instanceIndexBuffer?.submit()
@@ -89,7 +89,5 @@ class InstanceBufferObject
     {
         const val INSTANCE_BUFFER_BINDING = 1
         const val INVALID_INSTANCE_INDEX = -1
-
-        fun isValidInstanceIndex(index: Int) = index != INVALID_INSTANCE_INDEX
     }
 }

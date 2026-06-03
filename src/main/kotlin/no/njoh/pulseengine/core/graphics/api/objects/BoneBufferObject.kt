@@ -13,6 +13,11 @@ class BoneBufferObject
     private var dataSubmitted      = false
     private var dataDirty          = true
 
+    fun init()
+    {
+        boneBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(MODEL_BONE_BUFFER_BINDING, initCapacity = 16 * 512)
+    }
+
     fun clear()
     {
         boneBuffer?.clear()
@@ -26,9 +31,6 @@ class BoneBufferObject
     {
         if (boneMatrices.isNullOrEmpty())
             return -1
-
-        if (boneBuffer == null)
-            boneBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(MODEL_BONE_BUFFER_BINDING, initCapacity = 16 * 512)
 
         for (i in 0 until bonePalettes.size)
         {

@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.graphics.util
 
 import no.njoh.pulseengine.core.asset.types.Model
-import no.njoh.pulseengine.core.graphics.api.ShaderVariant
+import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet.ShaderVariant
 
 fun Model.selectShaderVariant(): ShaderVariant
 {

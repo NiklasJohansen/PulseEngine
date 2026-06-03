@@ -89,6 +89,8 @@ uniform int uFrustumPlaneCounts[4];
 uniform int uInstanceCount;
 uniform int uBatchCount;
 uniform int uFrustumCount;
+uniform int uCommandBaseIndex;
+uniform int uCullItemBatchIndexOffset;
 
 const uint STATIC_BOUNDS_INDEX = 0xFFFFFFFFu;
 const uint CULL_FLAG_ALWAYS_VISIBLE = 1u;
@@ -194,7 +196,7 @@ bool getSkinnedBounds(SubMeshMeta meta, int boneOffset, inout vec3 localCenter, 
 
 void appendVisibleInstance(CullItem item, uint batchIndex, int frustum)
 {
-    uint commandIndex = uint(frustum) * uint(uBatchCount) + batchIndex;
+    uint commandIndex = uint(uCommandBaseIndex) + uint(frustum) * uint(uBatchCount) + batchIndex;
     uint visibleOffset = atomicAdd(uCommands[commandIndex].instanceCount, 1u);
     uint visibleIndex = uCommands[commandIndex].baseInstance + visibleOffset;
     uVisibleInstanceIndices[visibleIndex] = item.instanceIndex;
@@ -207,7 +209,7 @@ void main()
         return;
 
     CullItem item = uCullItems[itemIndex];
-    int batchIndex = uCullItemBatchIndices[itemIndex];
+    int batchIndex = uCullItemBatchIndices[uCullItemBatchIndexOffset + int(itemIndex)];
     if (batchIndex < 0)
         return;
 

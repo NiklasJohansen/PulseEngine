@@ -3,21 +3,17 @@ package no.njoh.pulseengine.core.graphics.renderers
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldCameraRenderView
-import no.njoh.pulseengine.core.graphics.api.RenderItemBatchList
-import no.njoh.pulseengine.core.graphics.api.ProgramSet
+import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.TextureCompare
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_BORDER
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
-import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.BrdfLutBuilder
-import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawGpuCulledRenderItemBatches
-import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderItemBatches
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItemGpuCuller
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawWorldRenderBucket
 import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.MAIN_CAMERA_VIEW
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
@@ -48,7 +44,7 @@ class ModelRenderer(
 
     private lateinit var staticProgram: ShaderProgram
     private lateinit var skinnedProgram: ShaderProgram
-    private lateinit var programs: ProgramSet
+    private lateinit var programs: ShaderProgramSet
 
     private var readLightData    = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
     private var writeLightData   = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
@@ -69,7 +65,7 @@ class ModelRenderer(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr_skinned.vert", ::transformModelVertexShader)),
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_pbr.frag"))
             )
-            programs = ProgramSet(staticProgram, skinnedProgram)
+            programs = ShaderProgramSet(staticProgram, skinnedProgram)
         }
 
         if (engine.asset.getOrNull<Texture>(iblBrdfTexture) == null)
@@ -87,8 +83,9 @@ class ModelRenderer(
             engine.asset.loadNow(brdfLutTex)
             BrdfLutBuilder.generate(engine, brdfLutTex)
         }
-        
-        engine.gfx.worldRenderContext.addView(viewId) { WorldCameraRenderView(viewId) }
+
+        if (engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId) == null)
+            engine.gfx.worldContext.addView(WorldCameraRenderView(viewId))
     }
 
     override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
@@ -100,9 +97,7 @@ class ModelRenderer(
         writeLightCount = 0
         increaseBatchSize() // Ensure that the batch size is at least 1
 
-        engine.gfx.worldRenderContext
-            .getRenderView<WorldCameraRenderView>(viewId)
-            ?.prepare(surface.camera)
+        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)?.setCamera(surface.camera)
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -119,19 +114,16 @@ class ModelRenderer(
         configureProgram(staticProgram, engine, surface)
         configureProgram(skinnedProgram, engine, surface)
 
-        engine.gfx.worldRenderContext
-            .getRenderView<WorldCameraRenderView>(viewId)
-            ?.let { view -> render(engine, view, engine.gfx.worldRenderContext.getInstancesBuffer()) }
+        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)?.let { view -> render(engine, view) }
 
         glDepthMask(true)
     }
 
-    private fun render(engine: PulseEngineInternal, view: WorldCameraRenderView, instanceBuffer: InstanceBufferObject)
+    private fun render(engine: PulseEngineInternal, view: WorldCameraRenderView)
     {
-        val opaqueCount = view.opaqueBatches.totalInstanceCount()
-        measure({"opaque (" plus opaqueCount plus "i, " plus view.opaqueBatches.size plus "b)"})
+        measure({"opaque (" plus view.opaqueBucket.totalInstanceCount() plus "i, " plus view.opaqueBucket.size plus "b)"})
         {
-            drawWorldBatches(view.opaqueBatches, programs, view.culler, instanceBuffer)
+            drawWorldRenderBucket(view.opaqueBucket, programs)
         }
 
         staticProgram.bind()
@@ -139,42 +131,34 @@ class ModelRenderer(
         skinnedProgram.bind()
         skinnedProgram.setUniformSampler("uGtaoTex", engine.gfx.textureBank.getOrCreateFallbackTexture(WHITE))
 
-        val maskedCount = view.maskedBatches.totalInstanceCount()
+        val maskedCount = view.maskedBucket.totalInstanceCount()
         if (maskedCount > 0)
         {
-            measure({"masked (" plus maskedCount plus "i, " plus view.maskedBatches.size plus "b)"})
+            measure({"masked (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)"})
             {
                 glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(true)
 
-                drawWorldBatches(view.maskedBatches, programs, view.culler, instanceBuffer)
+                drawWorldRenderBucket(view.maskedBucket, programs)
 
                 glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
             }
         }
 
-        val blendedCount = view.blendedBatches.totalInstanceCount()
+        val blendedCount = view.blendedBucket.totalInstanceCount()
         if (blendedCount > 0)
         {
-            measure({"blended (" plus blendedCount plus "i, " plus view.blendedBatches.size plus "b)"})
+            measure({"blended (" plus blendedCount plus "i, " plus view.blendedBucket.size plus "b)"})
             {
                 glEnable(GL_BLEND)
                 glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(false)
 
-                drawWorldBatches(view.blendedBatches, programs, view.culler, instanceBuffer)
+                drawWorldRenderBucket(view.blendedBucket, programs)
             }
         }
-    }
-
-    private fun drawWorldBatches(batches: RenderItemBatchList, programs: ProgramSet, culler: WorldRenderItemGpuCuller?, instanceBuffer: InstanceBufferObject)
-    {
-        if (culler != null)
-            drawGpuCulledRenderItemBatches(batches, programs, culler)
-        else
-            drawRenderItemBatches(batches, programs, instanceBuffer)
     }
 
     private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: SurfaceInternal)

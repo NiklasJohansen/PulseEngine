@@ -11,7 +11,8 @@ import no.njoh.pulseengine.core.graphics.api.ShaderType.*
 import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextImpl
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextInternal
 import no.njoh.pulseengine.core.graphics.renderers.*
 import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
@@ -32,7 +33,7 @@ open class GraphicsImpl : GraphicsInternal
     override lateinit var textureBank: TextureBank
     override lateinit var materialBank: MaterialBank
     override lateinit var modelBank: ModelBank
-    override lateinit var worldRenderContext: WorldRenderContext
+    override lateinit var worldContext: WorldRenderContextInternal
     override lateinit var gpuName: String
     private  lateinit var fullFrameRenderer: FullFrameRenderer
 
@@ -51,7 +52,7 @@ open class GraphicsImpl : GraphicsInternal
         textureBank = TextureBank()
         materialBank = MaterialBank()
         modelBank = ModelBank()
-        worldRenderContext = WorldRenderContext()
+        worldContext = WorldRenderContextImpl()
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",
@@ -118,7 +119,7 @@ open class GraphicsImpl : GraphicsInternal
         onInitFrame.forEachFast { it.invoke(engine) }
         onInitFrame.clear()
 
-        worldRenderContext.initFrame()
+        worldContext.initFrame()
 
         surfaces.forEachFast { it.initFrame(engine) }
         
@@ -130,7 +131,7 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun drawFrame(engine: PulseEngineInternal)
     {
-        worldRenderContext.prepareFrameDraw(engine)
+        worldContext.buildFrame(engine)
 
         surfaces.forEachCamera { it.onFrameDraw(engine) }
 
@@ -140,7 +141,7 @@ open class GraphicsImpl : GraphicsInternal
         renderPostProcessingEffectsToOffscreenTarget(engine)
         renderOffscreenTargetsToBackBuffer()
         
-        worldRenderContext.endFrame()
+        worldContext.endFrame()
 
         GpuProfiler.endFrame()
     }
@@ -313,7 +314,7 @@ open class GraphicsImpl : GraphicsInternal
         materialBank.destroy()
         modelBank.destroy()
         fullFrameRenderer.destroy()
-        worldRenderContext.destroy()
+        worldContext.destroy()
         surfaces.forEachFast { it.destroy() }
     }
 

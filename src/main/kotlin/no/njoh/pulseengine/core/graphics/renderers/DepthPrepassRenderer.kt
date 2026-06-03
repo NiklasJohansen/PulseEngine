@@ -5,15 +5,11 @@ import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldCameraRenderView
-import no.njoh.pulseengine.core.graphics.api.RenderItemBatchList
-import no.njoh.pulseengine.core.graphics.api.ProgramSet
+import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
-import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawGpuCulledRenderItemBatches
-import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderItemBatches
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItemGpuCuller
+import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawWorldRenderBucket
 import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.MAIN_CAMERA_VIEW
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
@@ -29,8 +25,8 @@ class DepthPrepassRenderer(
     private lateinit var opaqueSkinnedProgram: ShaderProgram
     private lateinit var maskedStaticProgram: ShaderProgram
     private lateinit var maskedSkinnedProgram: ShaderProgram
-    private lateinit var opaquePrograms: ProgramSet
-    private lateinit var maskedPrograms: ProgramSet
+    private lateinit var opaquePrograms: ShaderProgramSet
+    private lateinit var maskedPrograms: ShaderProgramSet
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -46,20 +42,19 @@ class DepthPrepassRenderer(
             maskedStaticProgram = ShaderProgram.create(staticVertex, maskedFragment)
             maskedSkinnedProgram = ShaderProgram.create(skinnedVertex, maskedFragment)
 
-            opaquePrograms = ProgramSet(opaqueStaticProgram, opaqueSkinnedProgram)
-            maskedPrograms = ProgramSet(maskedStaticProgram, maskedSkinnedProgram)
+            opaquePrograms = ShaderProgramSet(opaqueStaticProgram, opaqueSkinnedProgram)
+            maskedPrograms = ShaderProgramSet(maskedStaticProgram, maskedSkinnedProgram)
         }
 
-        engine.gfx.worldRenderContext.addView(viewId) { WorldCameraRenderView(viewId) }
+        if (engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId) == null)
+            engine.gfx.worldContext.addView(WorldCameraRenderView(viewId))
     }
 
     override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         increaseBatchSize() // Ensure that the batch size is at least 1
 
-        engine.gfx.worldRenderContext
-            .getRenderView<WorldCameraRenderView>(viewId)
-            ?.prepare(surface.camera)
+        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)?.setCamera(surface.camera)
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -79,9 +74,7 @@ class DepthPrepassRenderer(
         configureMaskedProgram(maskedStaticProgram, engine, surface)
         configureMaskedProgram(maskedSkinnedProgram, engine, surface)
 
-        engine.gfx.worldRenderContext
-            .getRenderView<WorldCameraRenderView>(viewId)
-            ?.let { view -> render(view, engine.gfx.worldRenderContext.getInstancesBuffer()) }
+        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)?.let { view -> render(view) }
 
         glColorMask(true, true, true, true)
         glDisable(GL_CULL_FACE)
@@ -104,39 +97,25 @@ class DepthPrepassRenderer(
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
     }
 
-    private fun render(view: WorldCameraRenderView, instanceBuffer: InstanceBufferObject)
+    private fun render(view: WorldCameraRenderView)
     {
-        val opaqueBatches = view.opaqueBatches
-        val opaqueCount = opaqueBatches.totalInstanceCount()
+        val opaqueCount = view.opaqueBucket.totalInstanceCount()
         if (opaqueCount > 0)
         {
-            measure({"opaque depth (" plus opaqueCount plus "i, " plus opaqueBatches.size plus "b)"})
+            measure({"opaque depth (" plus opaqueCount plus "i, " plus view.opaqueBucket.size plus "b)"})
             {
-                drawWorldBatches(opaqueBatches, opaquePrograms, view.culler, instanceBuffer)
+                drawWorldRenderBucket(view.opaqueBucket, opaquePrograms)
             }
         }
 
-        val maskedBatches = view.maskedBatches
-        val maskedCount = maskedBatches.totalInstanceCount()
+        val maskedCount = view.maskedBucket.totalInstanceCount()
         if (maskedCount > 0)
         {
-            measure({"masked depth (" plus maskedCount plus "i, " plus maskedBatches.size plus "b)"})
+            measure({"masked depth (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)"})
             {
-                drawWorldBatches(maskedBatches, maskedPrograms, view.culler, instanceBuffer)
+                drawWorldRenderBucket(view.maskedBucket, maskedPrograms)
             }
         }
-    }
-
-    private fun drawWorldBatches(
-        batches: RenderItemBatchList,
-        programs: ProgramSet,
-        culler: WorldRenderItemGpuCuller?,
-        instanceBuffer: InstanceBufferObject
-    ) {
-        if (culler != null)
-            drawGpuCulledRenderItemBatches(batches, programs, culler)
-        else
-            drawRenderItemBatches(batches, programs, instanceBuffer)
     }
 
     override fun destroy()

@@ -59,20 +59,12 @@ class StreamingIntBufferObject private constructor(
         data[i + 4] = v4
     }
 
-    fun set(index: Int, v: Int)
+    operator fun set(index: Int, value: Int)
     {
         ensureWriteCapacity(index + 1)
-        data[index] = v
+        data[index] = value
         if (index >= size) 
             size = index + 1
-    }
-
-    fun fillValue(amount: Int, v: Int)
-    {
-        ensureWriteCapacity(amount)
-        for (i in 0 until amount)
-            data[i] = v
-        size = amount
     }
 
     @PublishedApi

@@ -1,15 +1,14 @@
-package no.njoh.pulseengine.core.graphics.api.world
+package no.njoh.pulseengine.core.graphics.api.objects
 
-import no.njoh.pulseengine.core.graphics.api.objects.StreamingFloatBufferObject
-import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItem
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 
-class WorldRenderItemCullingData
+class CullingBufferObject
 {
     private lateinit var cullItemBuffer: StreamingIntBufferObject
     private lateinit var dynamicBoundsBuffer: StreamingFloatBufferObject
 
-    var itemCount = 0
+    var size = 0
         private set
 
     private var dynamicBoundsCount = 0
@@ -22,7 +21,7 @@ class WorldRenderItemCullingData
 
     fun clear()
     {
-        itemCount = 0
+        size = 0
         dynamicBoundsCount = 0
         cullItemBuffer.clear()
         dynamicBoundsBuffer.clear()
@@ -50,7 +49,7 @@ class WorldRenderItemCullingData
         }
         else STATIC_BOUNDS_INDEX
 
-        item.gpuCullItemIndex = itemCount
+        item.gpuCullItemIndex = size
         cullItemBuffer.fill(CULL_ITEM_INTS)
         {
             put(item.subMesh.gpuMetaDataIndex)
@@ -58,10 +57,10 @@ class WorldRenderItemCullingData
             put(boundsIndex)
             put(flags)
         }
-        itemCount++
+        size++
     }
 
-    fun submit() = GpuProfiler.measure("submit cull item buffers")
+    fun submit() = GpuProfiler.measure("submit culling buffers")
     {
         cullItemBuffer.submit()
         dynamicBoundsBuffer.submit()
@@ -73,7 +72,7 @@ class WorldRenderItemCullingData
         dynamicBoundsBuffer.bindSubmittedRange()
     }
 
-    fun markSubmittedDataInUse() = GpuProfiler.measure("sync cull item buffers")
+    fun markSubmittedDataInUse() = GpuProfiler.measure("sync culling buffers")
     {
         cullItemBuffer.markSubmittedDataInUse()
         dynamicBoundsBuffer.markSubmittedDataInUse()

@@ -17,6 +17,7 @@ import no.njoh.pulseengine.core.graphics.api.CameraInternal
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.LogLevel
@@ -33,6 +34,11 @@ interface Graphics
      * A reference to camera associated with the main surface.
      */
     val mainCamera: Camera
+
+    /**
+     * The context holding all the world rendering state.
+     */
+    val worldContext: WorldRenderContext
 
     /**
      * Returns the [Surface] with the given name or null if it does not exist.
@@ -96,8 +102,8 @@ interface Graphics
 interface GraphicsInternal : Graphics
 {
     override val mainCamera: CameraInternal
+    override val worldContext: WorldRenderContextInternal
 
-    val worldRenderContext: WorldRenderContext
     val textureBank: TextureBank
     val materialBank: MaterialBank
     val modelBank: ModelBank

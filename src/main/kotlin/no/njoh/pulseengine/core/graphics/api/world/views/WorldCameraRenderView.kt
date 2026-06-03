@@ -1,26 +1,20 @@
 package no.njoh.pulseengine.core.graphics.api.world.views
 
-import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.CameraProjectionType.PERSPECTIVE
 import no.njoh.pulseengine.core.graphics.api.DefaultCamera
 import no.njoh.pulseengine.core.graphics.api.Frustum
-import no.njoh.pulseengine.core.graphics.api.RenderItemBatchList
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderBucket
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawBuffer
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItem
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItemBatcher.buildBatches
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderScene
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItemCullingData
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItemGpuCuller
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import org.joml.Vector3f
 
 class WorldCameraRenderView(override val viewId: Int) : WorldRenderView 
 {
-    val opaqueBatches  = RenderItemBatchList()
-    val maskedBatches  = RenderItemBatchList()
-    val blendedBatches = RenderItemBatchList()
-
-    override val culler = WorldRenderItemGpuCuller.createIfSupported()
+    val opaqueBucket  = WorldRenderBucket()
+    val maskedBucket  = WorldRenderBucket()
+    val blendedBucket = WorldRenderBucket()
 
     private var camera: Camera = DefaultCamera(PERSPECTIVE)
     private val frustum = Frustum()
@@ -28,84 +22,54 @@ class WorldCameraRenderView(override val viewId: Int) : WorldRenderView
     private val tmpPos1 = Vector3f()
     private val tmpPos2 = Vector3f()
 
-    fun prepare(camera: Camera)
+    fun setCamera(camera: Camera)
     {
         this.camera = camera
     }
 
-    override fun update(
-        engine: PulseEngineInternal, 
-        scene: WorldRenderScene, 
-        commandBufferStarIndex: Int, 
-        cullData: WorldRenderItemCullingData
-    ): Int = measure(
-        label = "cull world camera view"
-    ) {
-        culler?.init(engine)
-        culler?.clear(cullData)
-        
+    override fun update(scene: WorldRenderScene, drawBuffer: WorldRenderDrawBuffer)
+    {
         camera.invViewMatrix.getTranslation(camPos)
         frustum.setForCamera(camera)
 
-        scene.blendedItems.sortWith(::compareForTransparency)
+        drawBuffer.beginCullPass()
 
-        var commandStartIndex = if (culler != null) 0 else commandBufferStarIndex
-        buildBatches(
-            out = opaqueBatches,
+        opaqueBucket.fill(
+            drawBuffer = drawBuffer,
             items = scene.opaqueItems,
             frustum = frustum,
-            gpuCuller = culler,
-            sortForBatching = true,
             requiredView = viewId,
-            commandStartIndex = commandStartIndex
+            commandStartIndex = 0
         )
 
-        commandStartIndex += opaqueBatches.size
-        buildBatches(
-            out = maskedBatches,
+        maskedBucket.fill(
+            drawBuffer = drawBuffer,
             items = scene.maskedItems,
             frustum = frustum,
-            gpuCuller = culler,
-            sortForBatching = true,
             requiredView = viewId,
-            commandStartIndex = commandStartIndex
+            commandStartIndex = opaqueBucket.size
         )
 
-        commandStartIndex += maskedBatches.size
-        buildBatches(
-            out = blendedBatches,
+        blendedBucket.fill(
+            drawBuffer = drawBuffer,
             items = scene.blendedItems,
             frustum = frustum,
-            gpuCuller = culler,
-            sortForBatching = false,
+            sortFunc = ::compareForTransparency,
+            preserveItemOrder = true,
             requiredView = viewId,
-            commandStartIndex = commandStartIndex,
-            preserveItemOrder = true
+            commandStartIndex = opaqueBucket.size + maskedBucket.size
         )
 
-        commandStartIndex += blendedBatches.size
-        culler?.submitAndCull(listOf(opaqueBatches, maskedBatches, blendedBatches), frustum, cullData)
-
-        return commandStartIndex
-    }
-
-    override fun finish()
-    {
-        culler?.markSubmittedDataInUse()
+        drawBuffer.submitCullPass(listOf(opaqueBucket, maskedBucket, blendedBucket), frustum)
     }
 
     override fun clear()
     {
-        opaqueBatches.clear()
-        maskedBatches.clear()
-        blendedBatches.clear()
+        opaqueBucket.clear()
+        maskedBucket.clear()
+        blendedBucket.clear()
     }
 
-    override fun destroy()
-    {
-        culler?.destroy()
-    }
-    
     private fun compareForTransparency(a: WorldRenderItem, b: WorldRenderItem): Int
     {
         val aDist = camPos.distanceSquared(a.transform.getTranslation(tmpPos1))

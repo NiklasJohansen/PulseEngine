@@ -61,7 +61,7 @@ class WorldRenderSystem() : SceneSystem()
 
     override fun onRender(engine: PulseEngine) 
     {
-        val context = (engine.gfx as GraphicsInternal).worldRenderContext
+        val context = engine.gfx.worldContext
         engine.scene.forEachEntityOfType<WorldRenderable>() 
         {
             if ((it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, context)
