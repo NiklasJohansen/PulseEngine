@@ -15,6 +15,7 @@ import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.EmptyD
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.IndirectDrawPayload
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.captureIndirectDrawStats
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementDrawStats
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementWorldInstances
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
 import org.lwjgl.opengl.GL11.GL_LINES
 import org.lwjgl.opengl.GL11.GL_TRIANGLES
@@ -156,9 +157,14 @@ object DrawUtils
             vao.release()
 
             if (payload.useVisibleInstanceBuffer)
+            {
                 captureIndirectDrawStats(payload.commandBuffer.id, commandByteOffset, commandCount)
+            }
             else
-                incrementDrawStats(drawCommands = commandCount.toLong(), triangles = triangleCount, instances = instanceCount)
+            {
+                incrementDrawStats(commandCount.toLong(), triangleCount, instanceCount)
+                incrementWorldInstances(instanceCount)
+            }
 
             groupStart = null
             groupVao = null
@@ -224,9 +230,10 @@ object DrawUtils
                 instanceCount = it.instanceCount,
                 baseVertex = 0
             )
+            incrementWorldInstances(it.instanceCount.toLong())
         }
     }
-    
+
     fun drawInstancedTriangleIndices(
         program: ShaderProgram,
         vao: VertexArrayObject,

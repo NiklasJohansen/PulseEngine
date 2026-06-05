@@ -76,8 +76,8 @@ class WorldRenderBucket(initialCapacity: Int = 128)
             else
             {
                 val batch = if (size < batches.size) batches[size] else RenderItemBatch().also { batches += it }
-                batch.set(it.model, it.subMesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
                 batch.set(it.mesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
+                builder.currentCommandIndex++
                 size++
             }
 

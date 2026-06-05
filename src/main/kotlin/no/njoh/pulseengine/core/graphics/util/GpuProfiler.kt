@@ -15,13 +15,15 @@ object GpuProfiler
     private var drawCallCounter = 0L
     private var triangleCounter = 0L
     private var instanceCounter = 0L
+    private var worldInstanceCounter = 0L
     private var uploadedBytesCounter = 0L
     private var statsReader = null as GpuStatsReader?
 
-    var drawCalls = 0L;     private set
-    var triangles = 0L;     private set
-    var instances = 0L;     private set
-    var uploadedBytes = 0L; private set
+    var drawCalls = 0L;      private set
+    var triangles = 0L;      private set
+    var instances = 0L;      private set
+    var worldInstances = 0L; private set
+    var uploadedBytes  = 0L; private set
 
     /**
      * Measures the time it takes to execute the given [action].
@@ -86,10 +88,12 @@ object GpuProfiler
         drawCalls = drawCallCounter
         triangles = triangleCounter
         instances = instanceCounter
+        worldInstances = worldInstanceCounter
         uploadedBytes = uploadedBytesCounter
         drawCallCounter = 0
         triangleCounter = 0
         instanceCounter = 0
+        worldInstanceCounter = 0
         uploadedBytesCounter = 0
 
         if (!enabled) return
@@ -117,6 +121,14 @@ object GpuProfiler
         drawCallCounter += drawCommands
         triangleCounter += triangles
         instanceCounter += instances
+    }
+
+    /**
+     * Increments the number of world instances rendered this frame.
+     */
+    fun incrementWorldInstances(count: Long)
+    {
+        worldInstanceCounter += count
     }
 
     /**
