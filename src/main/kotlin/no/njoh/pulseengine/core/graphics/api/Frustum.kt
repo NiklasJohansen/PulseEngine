@@ -18,7 +18,7 @@ class Frustum(
     val near:   FrustumPlane = FrustumPlane(),
     val far:    FrustumPlane = FrustumPlane()
 ) {
-    val planes = arrayOf(left, right, bottom, top, near, far)
+    val planeSet = FrustumPlaneSet.ofPlanes(arrayOf(left, right, bottom, top, near, far))
 
     fun setForCamera(camera: Camera)
     {
@@ -156,7 +156,7 @@ class Frustum(
         // Test against each frustum plane
         for (i in 0 until 6)
         {
-            val plane = planes[i]
+            val plane = planeSet[i]
 
             // Compute the "radius" of the AABB projected onto the plane normal
             val r = whx * abs(plane.a) + why * abs(plane.b) + whz * abs(plane.c)
@@ -177,7 +177,7 @@ class Frustum(
     {
         for (i in 0 until 6)
         {
-            if (planes[i].distanceToPoint(x, y, z) < -r) return false
+            if (planeSet[i].distanceToPoint(x, y, z) < -r) return false
         }
         return true
     }
@@ -209,12 +209,11 @@ class Frustum(
      * volumes. Cascaded shadow maps use this to combine the shadow-map box with extra receiver
      * caster planes, so objects outside the conservative caster volume can be rejected.
      */
-    class FrustumPlaneSet(private val capacity: Int)
+    class FrustumPlaneSet private constructor(private val planes: Array<FrustumPlane>)
     {
-        val planes = Array(capacity) { FrustumPlane() }
-        var planeCount = 0; private set
+        var size = 0; private set
  
-        fun clear() { planeCount = 0 }
+        fun clear() { size = 0 }
 
         /**
          * Adds a side culling plane from a receiver silhouette edge.
@@ -292,15 +291,29 @@ class Frustum(
         {
             add(plane.a, plane.b, plane.c, plane.d)
         }
-        
+
         fun add(a: Float, b: Float, c: Float, d: Float)
         {
-            require(planeCount < capacity) { "Culling plane set capacity exceeded: $capacity" }
-            planes[planeCount].a = a
-            planes[planeCount].b = b
-            planes[planeCount].c = c
-            planes[planeCount].d = d
-            planeCount++
+            require(size < planes.size) { "Culling plane set capacity exceeded: ${planes.size}" }
+            planes[size].a = a
+            planes[size].b = b
+            planes[size].c = c
+            planes[size].d = d
+            size++
+        }
+
+        operator fun get(index: Int) = planes[index]
+
+        inline fun forEach(action: (FrustumPlane) -> Unit)
+        {
+            for (i in 0 until size) action(this[i])
+        } 
+
+        companion object
+        {
+            fun ofCapacity(capacity: Int) = FrustumPlaneSet(Array(capacity) { FrustumPlane() })
+
+            fun ofPlanes(planes: Array<FrustumPlane>) = FrustumPlaneSet(planes).apply { size = planes.size }
         }
     }
 }

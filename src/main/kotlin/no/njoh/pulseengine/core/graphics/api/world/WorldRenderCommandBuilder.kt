@@ -2,16 +2,19 @@ package no.njoh.pulseengine.core.graphics.api.world
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.ComputeShader
-import no.njoh.pulseengine.core.graphics.api.Frustum
+import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.api.GlCapabilities
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.objects.CullingBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.DirectDrawPayload
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.IndirectDrawPayload
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.BASE_INSTANCE
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.UNIFORM_OFFSET
 import no.njoh.pulseengine.core.graphics.util.getSupportedModelInstanceIndexMode
+import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL43.GL_COMMAND_BARRIER_BIT
@@ -19,10 +22,12 @@ import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BARRIER_BIT
 import org.lwjgl.opengl.GL43.glDispatchCompute
 import org.lwjgl.opengl.GL43.glMemoryBarrier
 
-class WorldRenderDrawBuffer(
-    val instanceBuffer: InstanceBufferObject
+class WorldRenderCommandBuilder(
+    val instanceBuffer: InstanceBufferObject,
+    val cullingBuffer: CullingBufferObject
 ) {
     var gpuCullingSupported = false; private set
+    var currentCommandIndex = 0
     
     private lateinit var program: ShaderProgram
     private lateinit var cullItemBatchIndexBuffer: StreamingIntBufferObject
@@ -30,16 +35,13 @@ class WorldRenderDrawBuffer(
     private lateinit var gpuCommandBuffer: StreamingIntBufferObject
     private lateinit var cpuCommandBuffer: StreamingIntBufferObject
 
-    private val pendingGpuCullDispatches = ArrayList<GpuCullDispatch>(8)
+    private val pendingGpuCullDispatches = DynamicList<GpuCullDispatch>(8)
     private var currentGpuCullPass = null as GpuCullPass?
     private var visibleInstanceCapacity = 0
-    private var cullItemCount = 0
+
     private var initialized = false
-    
-    private var cpuCommandsSubmitted = false
-    private var gpuCommandsSubmitted = false
-    private var gpuCullMapSubmitted = false
-    private var visibleIndicesSubmitted = false
+    private var cpuCommandsBufferSubmitted = false
+    private var gpuBuffersSubmitted = false
 
     fun init(engine: PulseEngineInternal)
     {
@@ -67,16 +69,15 @@ class WorldRenderDrawBuffer(
         initialized = true
     }
 
-    fun beginFrame(cullingBuffer: CullingBufferObject)
+    fun beginFrame()
     {
-        cullItemCount = cullingBuffer.size
         visibleInstanceCapacity = 0
         currentGpuCullPass = null
+        currentCommandIndex = 0
         pendingGpuCullDispatches.clear()
-        cpuCommandsSubmitted = false
-        gpuCommandsSubmitted = false
-        gpuCullMapSubmitted = false
-        visibleIndicesSubmitted = false
+
+        cpuCommandsBufferSubmitted = false
+        gpuBuffersSubmitted = false
 
         if (this::cpuCommandBuffer.isInitialized)
             cpuCommandBuffer.clear()
@@ -90,11 +91,14 @@ class WorldRenderDrawBuffer(
 
     fun beginCullPass()
     {
+        if (gpuCullingSupported)
+            require(currentGpuCullPass == null) { "A GPU culling pass is already being built" }
+
+        currentCommandIndex = 0
         if (!gpuCullingSupported) return
 
-        require(currentGpuCullPass == null) { "A GPU culling pass is already being built" }
-
         val cullItemBatchIndexOffset = cullItemBatchIndexBuffer.size
+        val cullItemCount = cullingBuffer.size
         cullItemBatchIndexBuffer.fill(cullItemCount)
         {
             repeat(cullItemCount) { put(INVALID_BATCH_INDEX) }
@@ -103,106 +107,32 @@ class WorldRenderDrawBuffer(
         currentGpuCullPass = GpuCullPass(cullItemBatchIndexOffset)
     }
 
-    fun addCullCandidate(cullItemIndex: Int, commandIndex: Int)
+    fun addGpuCullItem(cullItemIndex: Int, commandIndex: Int)
     {
         if (!gpuCullingSupported) return
 
         val pass = currentGpuCullPass ?: return
-        if (cullItemIndex !in 0 until cullItemCount)
-            return
+        if (cullItemIndex >= cullingBuffer.size)
+            throw IllegalArgumentException("Cull item index out of bounds: $cullItemIndex")
 
         cullItemBatchIndexBuffer[pass.cullItemBatchIndexOffset + cullItemIndex] = commandIndex
-        pass.candidateInstanceCount++
+        pass.cullInstanceCount++
     }
 
-    fun submitCullPass(buckets: List<WorldRenderBucket>, frustum: Frustum)
+    fun submitCullPass(buckets: Array<WorldRenderBucket>, frustumPlaneSets: Array<FrustumPlaneSet>)
     {
-        if (!gpuCullingSupported)
-        {
-            submitCpuDraw(buckets, instanceBuffer)
-            return
-        }
-
-        submitGpuCulledDraw(
-            buckets = buckets,
-            frustumSet = GpuCullFrustumSet.Single(frustum),
-            commandSetCount = 1,
-            // TODO: Clean up label passing
-            label = { commandCount, candidateCount -> "frustum culling (${candidateCount}i, ${commandCount}c)" },
-            instanceBuffer = instanceBuffer
-        )
+        if (gpuCullingSupported)
+            submitGpuCulledDraw(buckets, frustumPlaneSets)
+        else 
+            submitCpuDraw(buckets)
     }
 
-    fun submitCullPass(bucket: WorldRenderBucket, frustumPlaneSets: Array<Frustum.FrustumPlaneSet>)
-    {
-        if (!gpuCullingSupported)
-        {
-            submitCpuDraw(listOf(bucket), instanceBuffer)
-            return
-        }
-
-        submitGpuCulledDraw(
-            buckets = listOf(bucket),
-            frustumSet = GpuCullFrustumSet.PlaneSets(frustumPlaneSets),
-            commandSetCount = frustumPlaneSets.size,
-            label = { commandCount, candidateCount -> "cascade frustum culling (${candidateCount}i, ${frustumPlaneSets.size}x${commandCount}c)" },
-            instanceBuffer = instanceBuffer
-        )
-    }
-
-    private fun submitCpuDraw(buckets: List<WorldRenderBucket>, instanceBuffer: InstanceBufferObject)
-    {
-        if (!supportsCpuIndirect(instanceBuffer))
-        {
-            val payload = WorldRenderDrawPayload.DirectDrawPayload(
-                instanceIndexMode = instanceBuffer.instanceIndexMode,
-                instanceIndexBuffer = instanceBuffer.instanceIndexBuffer
-            )
-            buckets.forEach { it.drawPayload = payload }
-            return
-        }
-
-        val commandBaseIndex = cpuCommandBuffer.size / INDIRECT_COMMAND_INTS
-        var commandIndex = 0
-
-        buckets.forEach { bucket ->
-            require(bucket.commandStartIndex == commandIndex)
-            {
-                "CPU command layout is not contiguous: expected $commandIndex, got ${bucket.commandStartIndex}"
-            }
-
-            bucket.forEachBatch { batch ->
-                cpuCommandBuffer.fill(INDIRECT_COMMAND_INTS)
-                {
-                    put(batch.mesh.indexCount) // Count
-                    put(batch.instanceCount)   // Instance count
-                    put(batch.mesh.indexStart) // First index
-                    put(0)                     // Base vertex
-                    put(batch.instanceIndex)   // Base instance
-                }
-                commandIndex++
-            }
-        }
-
-        val payload = WorldRenderDrawPayload.IndirectDrawPayload(
-            commandBuffer = cpuCommandBuffer,
-            commandBaseIndex = commandBaseIndex,
-            commandSetStride = 0,
-            useVisibleInstanceBuffer = false,
-            visibleInstanceBuffer = null,
-            instanceIndexMode = instanceBuffer.instanceIndexMode,
-            instanceIndexBuffer = instanceBuffer.instanceIndexBuffer
-        )
-
-        buckets.forEach { it.drawPayload = payload }
-    }
-
-    fun finishPreparation(cullData: CullingBufferObject)
+    fun finishFramePreparation()
     {
         if (this::cpuCommandBuffer.isInitialized && cpuCommandBuffer.size > 0)
         {
             cpuCommandBuffer.submit()
-            cpuCommandsSubmitted = true
+            cpuCommandsBufferSubmitted = true
         }
 
         if (pendingGpuCullDispatches.isEmpty())
@@ -211,27 +141,24 @@ class WorldRenderDrawBuffer(
         gpuCommandBuffer.submit()
         cullItemBatchIndexBuffer.submit()
         visibleIndexBuffer.reserve(visibleInstanceCapacity)
-        gpuCommandsSubmitted = true
-        gpuCullMapSubmitted = true
-        visibleIndicesSubmitted = true
+        gpuBuffersSubmitted = true
 
-        pendingGpuCullDispatches.forEach()
-        {
-            GpuProfiler.measure(it.label)
-            {
-                cull(cullData, it)
-            }
-        }
+        pendingGpuCullDispatches.forEach { cull(it) }
     }
 
     fun markSubmittedDataInUse()
     {
-        GpuProfiler.measure("sync world render draw buffers")
+        GpuProfiler.measure("fence draw buffers")
         {
-            if (cpuCommandsSubmitted)    cpuCommandBuffer.markSubmittedDataInUse()
-            if (gpuCommandsSubmitted)    gpuCommandBuffer.markSubmittedDataInUse()
-            if (gpuCullMapSubmitted)     cullItemBatchIndexBuffer.markSubmittedDataInUse()
-            if (visibleIndicesSubmitted) visibleIndexBuffer.markSubmittedDataInUse()
+            if (cpuCommandsBufferSubmitted) 
+                cpuCommandBuffer.markSubmittedDataInUse()
+
+            if (gpuBuffersSubmitted)
+            {
+                gpuCommandBuffer.markSubmittedDataInUse()
+                cullItemBatchIndexBuffer.markSubmittedDataInUse()
+                visibleIndexBuffer.markSubmittedDataInUse()
+            }
         }
     }
 
@@ -250,13 +177,50 @@ class WorldRenderDrawBuffer(
         GlCapabilities.persistentMappedBuffers &&
         instanceBuffer.instanceIndexMode != UNIFORM_OFFSET
 
-    private fun submitGpuCulledDraw(
-        buckets: List<WorldRenderBucket>,
-        frustumSet: GpuCullFrustumSet,
-        commandSetCount: Int,
-        label: (commandCount: Int, candidateCount: Int) -> String,
-        instanceBuffer: InstanceBufferObject
-    ) {
+    private fun submitCpuDraw(buckets: Array<WorldRenderBucket>)
+    {
+        if (!supportsCpuIndirect(instanceBuffer))
+        {
+            val payload = DirectDrawPayload(instanceBuffer.instanceIndexMode, instanceBuffer.instanceIndexBuffer)
+            buckets.forEach { it.drawPayload = payload }
+            return
+        }
+
+        val commandBaseIndex = cpuCommandBuffer.size / INDIRECT_COMMAND_INTS
+        var commandIndex = 0
+
+        buckets.forEach { bucket ->
+
+            require(bucket.commandStartIndex == commandIndex) { "CPU command layout is not contiguous: expected $commandIndex, got ${bucket.commandStartIndex}" }
+
+            bucket.forEachBatch { batch ->
+                cpuCommandBuffer.fill(INDIRECT_COMMAND_INTS)
+                {
+                    put(batch.mesh.indexCount) // Count
+                    put(batch.instanceCount)   // Instance count
+                    put(batch.mesh.indexStart) // First index
+                    put(0)                     // Base vertex
+                    put(batch.instanceIndex)   // Base instance
+                }
+                commandIndex++
+            }
+        }
+
+        val payload = IndirectDrawPayload(
+            commandBuffer = cpuCommandBuffer,
+            commandBaseIndex = commandBaseIndex,
+            commandSetStride = 0,
+            useVisibleInstanceBuffer = false,
+            visibleInstanceBuffer = null,
+            instanceIndexMode = instanceBuffer.instanceIndexMode,
+            instanceIndexBuffer = instanceBuffer.instanceIndexBuffer
+        )
+
+        buckets.forEach { it.drawPayload = payload }
+    }
+
+    private fun submitGpuCulledDraw(buckets: Array<WorldRenderBucket>, frustumPlaneSets: Array<FrustumPlaneSet>) 
+    {
         val pass = currentGpuCullPass ?: throw IllegalStateException("beginCullPass() must be called before submitting GPU culled draw data")
         val commandCount = buckets.sumOf { it.size }
         val commandBaseIndex = gpuCommandBuffer.size / INDIRECT_COMMAND_INTS
@@ -264,14 +228,14 @@ class WorldRenderDrawBuffer(
 
         appendGpuCommands(
             buckets = buckets,
-            commandSetCount = commandSetCount,
-            candidateInstanceCount = pass.candidateInstanceCount,
+            commandSetCount = frustumPlaneSets.size,
+            cullInstanceCount = pass.cullInstanceCount,
             visibleBaseIndex = visibleBaseIndex
         )
 
-        visibleInstanceCapacity += pass.candidateInstanceCount * commandSetCount
+        visibleInstanceCapacity += pass.cullInstanceCount * frustumPlaneSets.size
 
-        val payload = WorldRenderDrawPayload.IndirectDrawPayload(
+        val payload = IndirectDrawPayload(
             commandBuffer = gpuCommandBuffer,
             commandBaseIndex = commandBaseIndex,
             commandSetStride = commandCount,
@@ -285,30 +249,27 @@ class WorldRenderDrawBuffer(
         pendingGpuCullDispatches += GpuCullDispatch(
             commandBaseIndex = commandBaseIndex,
             commandCount = commandCount,
-            candidateInstanceCount = pass.candidateInstanceCount,
+            cullInstanceCount = pass.cullInstanceCount,
             cullItemBatchIndexOffset = pass.cullItemBatchIndexOffset,
-            frustumSet = frustumSet,
-            label = label(commandCount, pass.candidateInstanceCount)
+            frustumPlaneSets = frustumPlaneSets
         )
 
         currentGpuCullPass = null
     }
 
-    private fun appendGpuCommands(buckets: List<WorldRenderBucket>, commandSetCount: Int, candidateInstanceCount: Int, visibleBaseIndex: Int) 
+    private fun appendGpuCommands(buckets: Array<WorldRenderBucket>, commandSetCount: Int, cullInstanceCount: Int, visibleBaseIndex: Int) 
     {
         for (commandSetIndex in 0 until commandSetCount)
         {
-            var visibleStart = visibleBaseIndex + commandSetIndex * candidateInstanceCount
+            var visibleStart = visibleBaseIndex + commandSetIndex * cullInstanceCount
             var commandIndex = 0
 
             buckets.forEachFast { bucket ->
 
-                require(bucket.commandStartIndex == commandIndex)
-                {
-                    "GPU command layout is not contiguous: expected $commandIndex, got ${bucket.commandStartIndex}"
-                }
+                require(bucket.commandStartIndex == commandIndex) { "GPU command layout is not contiguous: expected $commandIndex, got ${bucket.commandStartIndex}" }
 
                 bucket.forEachBatch { batch ->
+                    
                     gpuCommandBuffer.fill(INDIRECT_COMMAND_INTS)
                     {
                         put(batch.mesh.indexCount) // Count
@@ -317,6 +278,7 @@ class WorldRenderDrawBuffer(
                         put(0)                     // Base vertex
                         put(visibleStart)          // Base instance into visible index buffer
                     }
+
                     visibleStart += batch.instanceCount
                     commandIndex++
                 }
@@ -324,91 +286,60 @@ class WorldRenderDrawBuffer(
         }
     }
 
-    private fun cull(cullingBuffer: CullingBufferObject, dispatch: GpuCullDispatch)
+    private fun cull(dispatch: GpuCullDispatch)
     {
-        if (cullItemCount == 0 || dispatch.candidateInstanceCount == 0 || dispatch.commandCount == 0)
+        if (cullingBuffer.size == 0 || dispatch.cullInstanceCount == 0 || dispatch.commandCount == 0)
             return
 
-        cullingBuffer.bindSubmittedRanges()
-        visibleIndexBuffer.bindSubmittedRange()
-        cullItemBatchIndexBuffer.bindSubmittedRange()
-        gpuCommandBuffer.bindSubmittedRange()
-
-        program.bind()
-        program.setUniform("uInstanceCount", cullItemCount)
-        program.setUniform("uBatchCount", dispatch.commandCount)
-        program.setUniform("uFrustumCount", dispatch.frustumSet.count)
-        program.setUniform("uCommandBaseIndex", dispatch.commandBaseIndex)
-        program.setUniform("uCullItemBatchIndexOffset", dispatch.cullItemBatchIndexOffset)
-        program.setDispatchFrustums(dispatch.frustumSet)
-
-        glDispatchCompute((cullItemCount + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1)
-        glMemoryBarrier(GL_COMMAND_BARRIER_BIT or GL_SHADER_STORAGE_BARRIER_BIT)
-    }
-
-    private fun ShaderProgram.setDispatchFrustums(frustumSet: GpuCullFrustumSet)
-    {
-        when (frustumSet)
+        GpuProfiler.measure({ "frustum culling (" plus dispatch.cullInstanceCount plus "i, " plus dispatch.frustumPlaneSets.size plus "x" plus dispatch.commandCount plus "c)" })
         {
-            is GpuCullFrustumSet.Single -> setFrustumUniforms(frustumSet.frustum, index = 0)
-            is GpuCullFrustumSet.PlaneSets -> repeat(frustumSet.planeSets.size) { setPlaneSetUniforms(frustumSet.planeSets[it], it) }
+            cullingBuffer.bindSubmittedRanges()
+            visibleIndexBuffer.bindSubmittedRange()
+            cullItemBatchIndexBuffer.bindSubmittedRange()
+            gpuCommandBuffer.bindSubmittedRange()
+
+            program.bind()
+            program.setUniform("uInstanceCount", cullingBuffer.size)
+            program.setUniform("uBatchCount", dispatch.commandCount)
+            program.setUniform("uFrustumCount", dispatch.frustumPlaneSets.size)
+            program.setUniform("uCommandBaseIndex", dispatch.commandBaseIndex)
+            program.setUniform("uCullItemBatchIndexOffset", dispatch.cullItemBatchIndexOffset)
+            program.setFrustums(dispatch)
+
+            glDispatchCompute((cullingBuffer.size + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1)
+            glMemoryBarrier(GL_COMMAND_BARRIER_BIT or GL_SHADER_STORAGE_BARRIER_BIT)
         }
     }
 
-    private fun ShaderProgram.setFrustumUniforms(frustum: Frustum, index: Int)
+    private fun ShaderProgram.setFrustums(dispatch: GpuCullDispatch)
     {
-        val offset = index * MAX_PLANES_PER_FRUSTUM
-        setUniform(frustumPlaneCountUniformNames[index], FRUSTUM_PLANE_COUNT)
-        setPlaneUniform(frustumPlaneUniformNames[offset + 0], frustum.left)
-        setPlaneUniform(frustumPlaneUniformNames[offset + 1], frustum.right)
-        setPlaneUniform(frustumPlaneUniformNames[offset + 2], frustum.bottom)
-        setPlaneUniform(frustumPlaneUniformNames[offset + 3], frustum.top)
-        setPlaneUniform(frustumPlaneUniformNames[offset + 4], frustum.near)
-        setPlaneUniform(frustumPlaneUniformNames[offset + 5], frustum.far)
-    }
+        for (setIdx in 0 until dispatch.frustumPlaneSets.size)
+        {
+            val offset = setIdx * MAX_PLANES_PER_FRUSTUM
+            val frustumPlaneSet = dispatch.frustumPlaneSets[setIdx]
+            
+            setUniform(frustumPlaneCountUniformNames[setIdx], frustumPlaneSet.size)
 
-    private fun ShaderProgram.setPlaneSetUniforms(frustumPlaneSet: Frustum.FrustumPlaneSet, index: Int)
-    {
-        val offset = index * MAX_PLANES_PER_FRUSTUM
-        setUniform(frustumPlaneCountUniformNames[index], frustumPlaneSet.planeCount)
-
-        for (i in 0 until frustumPlaneSet.planeCount)
-            setPlaneUniform(frustumPlaneUniformNames[offset + i], frustumPlaneSet.planes[i])
-    }
-
-    private fun ShaderProgram.setPlaneUniform(name: String, plane: Frustum.FrustumPlane)
-    {
-        setUniform(name, plane.a, plane.b, plane.c, plane.d)
+            for (planeIdx in 0 until frustumPlaneSet.size)
+            {
+                val plane = frustumPlaneSet[planeIdx]
+                setUniform(frustumPlaneUniformNames[offset + planeIdx], plane.a, plane.b, plane.c, plane.d)
+            }
+        }
     }
 
     private class GpuCullPass(
         val cullItemBatchIndexOffset: Int,
-        var candidateInstanceCount: Int = 0
+        var cullInstanceCount: Int = 0
     )
 
     private data class GpuCullDispatch(
         val commandBaseIndex: Int,
         val commandCount: Int,
-        val candidateInstanceCount: Int,
+        val cullInstanceCount: Int,
         val cullItemBatchIndexOffset: Int,
-        val frustumSet: GpuCullFrustumSet,
-        val label: String
+        val frustumPlaneSets: Array<FrustumPlaneSet>
     )
-
-    private sealed interface GpuCullFrustumSet
-    {
-        val count: Int
-
-        data class Single(val frustum: Frustum) : GpuCullFrustumSet
-        {
-            override val count = 1
-        }
-
-        data class PlaneSets(val planeSets: Array<Frustum.FrustumPlaneSet>) : GpuCullFrustumSet
-        {
-            override val count = planeSets.size
-        }
-    }
 
     companion object
     {
@@ -418,7 +349,6 @@ class WorldRenderDrawBuffer(
         private const val BUFFER_SEGMENTS = 6
         private const val INDIRECT_COMMAND_INTS = WorldRenderDrawPayload.INDIRECT_COMMAND_INTS
         private const val INVALID_BATCH_INDEX = -1
-        private const val FRUSTUM_PLANE_COUNT = 6
         private const val MAX_FRUSTUMS = 4
         private const val MAX_PLANES_PER_FRUSTUM = 24
         private const val WORK_GROUP_SIZE = 64

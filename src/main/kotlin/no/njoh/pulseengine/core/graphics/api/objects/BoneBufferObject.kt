@@ -46,7 +46,7 @@ class BoneBufferObject
         bonePaletteOffsets[bonePalettes.lastIndex] = offset
         boneMatrixCount += boneMatrices.size
 
-        boneBuffer!!.fill(boneMatrices.size * 16)
+        boneBuffer?.fill(boneMatrices.size * 16)
         {
             boneMatrices.forEachFast { putMatrix(it) }
         }
@@ -76,7 +76,7 @@ class BoneBufferObject
         else boneBuffer.bindSubmittedRange()
     }
 
-    fun markGpuDataInUse() = measure("sync bone buffer")
+    fun markGpuDataInUse() = measure("fence bone buffer")
     {
         val boneBuffer = boneBuffer ?: return
         if (!dataSubmitted)

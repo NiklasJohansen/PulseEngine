@@ -1,13 +1,13 @@
 package no.njoh.pulseengine.core.graphics.api.world.views
 
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawBuffer
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderCommandBuilder
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderScene
 
 interface WorldRenderView
 {
     val viewId: Int
 
-    fun update(scene: WorldRenderScene, drawBuffer: WorldRenderDrawBuffer)
+    fun update(scene: WorldRenderScene, builder: WorldRenderCommandBuilder)
 
     fun clear()
 }

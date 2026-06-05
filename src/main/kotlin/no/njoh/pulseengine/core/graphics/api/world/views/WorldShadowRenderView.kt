@@ -1,8 +1,9 @@
 package no.njoh.pulseengine.core.graphics.api.world.views
 
 import no.njoh.pulseengine.core.graphics.api.Frustum
+import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderBucket
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawBuffer
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderCommandBuilder
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItem
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderScene
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
@@ -13,36 +14,33 @@ class WorldShadowRenderView(override val viewId: Int) : WorldRenderView
     val bucket = WorldRenderBucket()
 
     private val shadowFrustum = Frustum()
+    private var cascadeFrustumPlaneSets = arrayOf<FrustumPlaneSet>()
     private val allItems = DynamicList<WorldRenderItem>(1024)
-    private var shadowCullingMatrix = Matrix4f()
-    private var cascadeFrustumPlaneSets = arrayOf<Frustum.FrustumPlaneSet>()
 
     fun prepare(
         shadowCullingMatrix: Matrix4f,
-        cascadeFrustumPlaneSets: Array<Frustum.FrustumPlaneSet>
+        cascadeFrustumPlaneSets: Array<FrustumPlaneSet>
     ) {
-        this.shadowCullingMatrix = shadowCullingMatrix
+        this.shadowFrustum.setForViewProjection(shadowCullingMatrix)
         this.cascadeFrustumPlaneSets = cascadeFrustumPlaneSets
     }
 
-    override fun update(scene: WorldRenderScene, drawBuffer: WorldRenderDrawBuffer)
+    override fun update(scene: WorldRenderScene, builder: WorldRenderCommandBuilder)
     {
-        shadowFrustum.setForViewProjection(shadowCullingMatrix)
+        builder.beginCullPass()
+
         allItems.clear()
         allItems += scene.opaqueItems
         allItems += scene.maskedItems
 
-        drawBuffer.beginCullPass()
-
         bucket.fill(
-            drawBuffer = drawBuffer,
+            builder = builder,
             items = allItems,
             frustum = shadowFrustum,
-            requiredView = viewId,
-            commandStartIndex = 0
+            requiredView = viewId
         )
 
-        drawBuffer.submitCullPass(bucket, cascadeFrustumPlaneSets)
+        builder.submitCullPass(arrayOf(bucket), cascadeFrustumPlaneSets)
     }
 
     override fun clear()

@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
+import no.njoh.pulseengine.core.asset.types.Model.*
 import no.njoh.pulseengine.core.graphics.api.objects.BoneBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.CullingBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
@@ -23,7 +24,7 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
     private val instanceBuffer = InstanceBufferObject()
     private val cullingBuffer  = CullingBufferObject()
     private val boneBuffer     = BoneBufferObject()
-    private val drawBuffer     = WorldRenderDrawBuffer(instanceBuffer)
+    private val commandBuilder = WorldRenderCommandBuilder(instanceBuffer, cullingBuffer)
  
     private var initialized = false
 
@@ -46,7 +47,7 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
             instanceBuffer.init()
             cullingBuffer.init()
             boneBuffer.init()
-            drawBuffer.init(engine)
+            commandBuilder.init(engine)
             initialized = true
         }
 
@@ -58,31 +59,31 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
         thisFrameScene.maskedItems.addToBuffers()
         thisFrameScene.blendedItems.addToBuffers()
 
-        cullingBuffer.submit()
         instanceBuffer.submit()
+        cullingBuffer.submit()
         boneBuffer.submit()
 
-        drawBuffer.beginFrame(cullingBuffer)
+        commandBuilder.beginFrame()
 
         for (view in views)
         {
             view.clear()
-            view.update(thisFrameScene, drawBuffer)
+            view.update(thisFrameScene, commandBuilder)
         }
 
-        drawBuffer.finishPreparation(cullingBuffer)
+        commandBuilder.finishFramePreparation()
     }
     
     override fun endFrame()
     {
         if (!thisFrameScene.hasAnyItems()) return
 
-        GpuProfiler.measure("sync context buffers")
+        GpuProfiler.measure("fence context buffers")
         {
             instanceBuffer.markSubmittedDataInUse()
             cullingBuffer.markSubmittedDataInUse()
             boneBuffer.markGpuDataInUse()
-            drawBuffer.markSubmittedDataInUse()
+            commandBuilder.markSubmittedDataInUse()
         }
     }
 
@@ -91,7 +92,7 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
         instanceBuffer.destroy()
         cullingBuffer.destroy()
         boneBuffer.destroy()
-        drawBuffer.destroy()
+        commandBuilder.destroy()
     }
 
     override fun addView(view: WorldRenderView)

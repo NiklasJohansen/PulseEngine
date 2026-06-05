@@ -9,7 +9,7 @@ import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderBucket
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawBuffer
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderCommandBuilder
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.DirectDrawPayload
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.EmptyDrawPayload
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.IndirectDrawPayload
@@ -376,7 +376,7 @@ fun transformModelVertexShader(source: String): String
     }
 
     val visibleInstanceHeader = """
-        layout(std430, binding = ${WorldRenderDrawBuffer.VISIBLE_INSTANCE_BUFFER_BINDING}) readonly buffer VisibleInstanceBuffer
+        layout(std430, binding = ${WorldRenderCommandBuilder.VISIBLE_INSTANCE_BUFFER_BINDING}) readonly buffer VisibleInstanceBuffer
         {
             uint uVisibleInstanceIndices[];
         };

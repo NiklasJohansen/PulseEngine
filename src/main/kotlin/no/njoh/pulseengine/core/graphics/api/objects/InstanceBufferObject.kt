@@ -62,7 +62,7 @@ class InstanceBufferObject
         instanceIndexBuffer?.submit()
     }
 
-    fun markSubmittedDataInUse() = measure("sync instance buffers")
+    fun markSubmittedDataInUse() = measure("fence instance buffers")
     {
         instanceBuffer.markSubmittedDataInUse()
         instanceIndexBuffer?.markSubmittedDataInUse()

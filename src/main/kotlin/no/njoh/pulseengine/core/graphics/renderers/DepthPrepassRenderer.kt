@@ -54,7 +54,7 @@ class DepthPrepassRenderer(
     {
         increaseBatchSize() // Ensure that the batch size is at least 1
 
-        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)?.setCamera(surface.camera)
+        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)?.setForCamera(surface.camera)
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)

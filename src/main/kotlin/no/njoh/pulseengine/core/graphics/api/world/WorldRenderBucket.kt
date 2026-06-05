@@ -1,10 +1,12 @@
 package no.njoh.pulseengine.core.graphics.api.world
 
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
+import no.njoh.pulseengine.core.asset.types.Model.*
 import no.njoh.pulseengine.core.graphics.api.Frustum
+import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet.ShaderVariant
+import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet.ShaderVariant.*
 import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject.Companion.INVALID_INSTANCE_INDEX
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.EmptyDrawPayload
-import no.njoh.pulseengine.core.graphics.util.selectShaderVariant
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.primitives.StaticList
 
@@ -28,31 +30,31 @@ class WorldRenderBucket(initialCapacity: Int = 128)
     }
 
     fun fill(
-        drawBuffer: WorldRenderDrawBuffer,
+        builder: WorldRenderCommandBuilder,
         items: DynamicList<WorldRenderItem>,
-        commandStartIndex: Int,
         frustum: Frustum,
         sortFunc: ((a: WorldRenderItem, b: WorldRenderItem) -> Int)? = ::compareForBatching,
         preserveItemOrder: Boolean = false,
         requiredView: Int = 0
     ) {
-        clear(commandStartIndex)
+        clear(builder.currentCommandIndex)
         if (items.isEmpty()) 
             return
 
         if (sortFunc != null)
             items.sortWith(sortFunc)
         
-        val useGpuCulling = drawBuffer.gpuCullingSupported
+        val useGpuCulling = builder.gpuCullingSupported
         
         items.forEach()
         {
             if (requiredView != 0 && !it.isInView(requiredView))
                 return@forEach
 
-            if (!useGpuCulling && it.cullable)
+            val bounds = it.cullingBounds
+            if (!useGpuCulling && bounds != null)
             {
-                if (!frustum.intersectsAabb(it.cullingBounds, it.transform))
+                if (!frustum.intersectsAabb(bounds, it.transform))
                     return@forEach // Skip items that are outside the view frustum when GPU culling is not used
             }
 
@@ -62,11 +64,11 @@ class WorldRenderBucket(initialCapacity: Int = 128)
 
             val shaderVariant = it.mesh.selectShaderVariant()
             val cullMode      = it.material?.cullMode ?: CullMode.BACK
-            val lastBatch     = lastOrNull()
+            val lastBatch     = if (size > 0) batches[size - 1] else null
 
             val canAppendToBatch =
                 !preserveItemOrder &&
-                 lastBatch?.matches(it.model, it.subMesh, shaderVariant, cullMode) == true &&
+                 lastBatch?.matches(it.mesh, shaderVariant, cullMode) == true &&
                  (useGpuCulling || lastBatch.instanceIndex + lastBatch.instanceCount == instanceIndex)
 
             if (canAppendToBatch)
@@ -81,8 +83,7 @@ class WorldRenderBucket(initialCapacity: Int = 128)
                 size++
             }
 
-            if (useGpuCulling)
-                drawBuffer.addCullCandidate(it.gpuCullItemIndex, commandStartIndex + size - 1)
+            if (useGpuCulling) builder.addGpuCullItem(it.gpuCullItemIndex, builder.currentCommandIndex - 1)
         }
     }
 
@@ -99,8 +100,6 @@ class WorldRenderBucket(initialCapacity: Int = 128)
         val batches = getBackingList()
         for (i in 0 until size) action(batches[i])
     }
-
-    fun lastOrNull() = if (size == 0) null else batches[size - 1]
 
     @PublishedApi
     internal fun getBackingList(): StaticList<RenderItemBatch> = batches

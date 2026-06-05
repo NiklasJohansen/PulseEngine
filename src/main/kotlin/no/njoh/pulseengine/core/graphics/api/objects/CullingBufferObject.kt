@@ -29,11 +29,11 @@ class CullingBufferObject
 
     fun addItem(item: WorldRenderItem)
     {
-        val flags = if (item.cullable) 0 else CULL_FLAG_ALWAYS_VISIBLE
-        val boundsIndex = if (item.needsDynamicGpuBounds())
+        val bounds = item.cullingBounds
+        val flags = if (bounds == null) CULL_FLAG_ALWAYS_VISIBLE else 0
+        val boundsIndex = if (bounds != null && item.needsDynamicGpuBounds())
         {
             val boundsIndex = dynamicBoundsCount++
-            val bounds = item.cullingBounds
             dynamicBoundsBuffer.fill(DYNAMIC_BOUNDS_FLOATS)
             {
                 put((bounds.xMin + bounds.xMax) * 0.5f) // X center
@@ -72,7 +72,7 @@ class CullingBufferObject
         dynamicBoundsBuffer.bindSubmittedRange()
     }
 
-    fun markSubmittedDataInUse() = GpuProfiler.measure("sync culling buffers")
+    fun markSubmittedDataInUse() = GpuProfiler.measure("fence culling buffers")
     {
         cullItemBuffer.markSubmittedDataInUse()
         dynamicBoundsBuffer.markSubmittedDataInUse()
@@ -85,7 +85,7 @@ class CullingBufferObject
     }
 
     private fun WorldRenderItem.needsDynamicGpuBounds() =
-        cullable && !usesGpuSkinnedBounds() && (boneMatrices != null || cullingBounds !== subMesh.localBounds)
+        cullingBounds != null && !usesGpuSkinnedBounds() && (boneMatrices != null || cullingBounds !== mesh.localBounds)
 
     private fun WorldRenderItem.usesGpuSkinnedBounds() =
         boneMatrices != null && mesh.skinningBounds != null

@@ -48,8 +48,8 @@ class CascadedShadowMapRenderer(
     private var writeCascadeSplits = FloatArray(CASCADE_COUNT)
     private var readCascadeSizeMeters = FloatArray(CASCADE_COUNT)
     private var writeCascadeSizeMeters = FloatArray(CASCADE_COUNT)
-    private var readCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet(MAX_FRUSTUM_PLANES) }
-    private var writeCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet(MAX_FRUSTUM_PLANES) }
+    private var readCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
+    private var writeCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
     private var readShadowCullingMatrix = Matrix4f()
     private var writeShadowCullingMatrix = Matrix4f()
 
@@ -365,20 +365,20 @@ class CascadedShadowMapRenderer(
      */
     private fun FrustumPlaneSet.buildCascadeCasterCullPlanes(shadowFrustum: Frustum, receiverFrustum: Frustum, receiverCenter: Vector3f)
     {
-        clear()
-        shadowFrustum.planes.forEachFast { add(it) }
+        this.clear()
+        shadowFrustum.planeSet.forEach { this.add(it) }
 
         var planeIndex = 0
         var backPlaneCount = 0
-        for (plane in receiverFrustum.planes)
+        receiverFrustum.planeSet.forEach()
         {
-            val lightDot = plane.a * lightDirection.x + plane.b * lightDirection.y + plane.c * lightDirection.z
+            val lightDot = it.a * lightDirection.x + it.b * lightDirection.y + it.c * lightDirection.z
             val isBackPlane = lightDot < -0.0001f
             receiverPlaneIsBackFacing[planeIndex++] = isBackPlane
 
             if (isBackPlane)
             {
-                addPlaneFacingPoint(plane, receiverCenter)
+                this.addPlaneFacingPoint(it, receiverCenter)
                 backPlaneCount++
             }
         }
@@ -395,9 +395,9 @@ class CascadedShadowMapRenderer(
             if (p0IsBack == p1IsBack)
                 continue
 
-            addLightExtrusionPlane(
-                plane0 = receiverFrustum.planes[p0],
-                plane1 = receiverFrustum.planes[p1],
+            this.addLightExtrusionPlane(
+                plane0 = receiverFrustum.planeSet[p0],
+                plane1 = receiverFrustum.planeSet[p1],
                 insidePoint = receiverCenter,
                 lightDirection = lightDirection,
             )
