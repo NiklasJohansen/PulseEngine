@@ -4,15 +4,13 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import org.joml.Matrix4f
 
-data class WorldRenderItem(
-    val model: Model,
-    val subMesh: Model.SubMesh,
-    val material: Material?,
-    val transform: Matrix4f,
-    val cullable: Boolean,
-    val cullingBounds: Model.Aabb,
-    val boneMatrices: Array<Matrix4f>?,
-    val viewIds: Int
+class WorldRenderItem(
+    var mesh: Model.Mesh,
+    var material: Material?,
+    var transform: Matrix4f,
+    var cullingBounds: Model.Aabb?,
+    var boneMatrices: Array<Matrix4f>?,
+    var viewIds: Int
 ) {
     var gpuInstanceIndex = -1
     var gpuCullItemIndex = -1

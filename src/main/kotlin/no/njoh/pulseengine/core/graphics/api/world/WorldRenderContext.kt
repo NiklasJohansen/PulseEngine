@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.AnimatedSkeletonPose
+import no.njoh.pulseengine.core.asset.types.Model.Mesh
 import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderView
 import org.joml.Matrix4f
@@ -21,12 +22,10 @@ abstract class WorldRenderContext()
     )
 
     abstract fun submit(
-        model: Model,
-        subMesh: Model.SubMesh,
+        mesh: Mesh,
         material: Material?,
         transform: Matrix4f,
-        cullable: Boolean = true,
-        cullingBounds: Model.Aabb = subMesh.localBounds,
+        cullingBounds: Model.Aabb? = mesh.localBounds,
         boneMatrices: Array<Matrix4f>? = null,
         viewIds: Int = ViewIds.MAIN_CAMERA_VIEW or ViewIds.SHADOW_VIEW
     )

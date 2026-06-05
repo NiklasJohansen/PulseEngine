@@ -1,8 +1,7 @@
 package no.njoh.pulseengine.core.graphics.api.world
 
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
-import no.njoh.pulseengine.core.asset.types.Model
-import no.njoh.pulseengine.core.asset.types.Model.SubMesh
+import no.njoh.pulseengine.core.asset.types.Model.Mesh
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet.ShaderVariant
 import org.lwjgl.opengl.GL11.GL_BACK
@@ -13,30 +12,27 @@ import org.lwjgl.opengl.GL11.glEnable
 
 class RenderItemBatch
 {
-    lateinit var model: Model
-    lateinit var subMesh: SubMesh
+    lateinit var mesh: Mesh
     lateinit var cullMode: CullMode
     lateinit var shaderVariant: ShaderVariant
 
     var instanceIndex = 0
     var instanceCount = 0
 
-    fun set(model: Model, subMesh: SubMesh, shaderVariant: ShaderVariant, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
+    fun set(mesh: Mesh, shaderVariant: ShaderVariant, cullMode: CullMode, instanceIndex: Int, instanceCount: Int)
     {
-        this.model = model
-        this.subMesh = subMesh
+        this.mesh = mesh
         this.shaderVariant = shaderVariant
         this.cullMode = cullMode
         this.instanceIndex = instanceIndex
         this.instanceCount = instanceCount
     }
 
-    fun matches(model: Model, subMesh: SubMesh, shaderVariant: ShaderVariant, cullMode: CullMode): Boolean =
-        this.model === model &&
-        this.subMesh === subMesh &&
+    fun matches(mesh: Mesh, shaderVariant: ShaderVariant, cullMode: CullMode): Boolean =
+        this.mesh === mesh &&
         this.shaderVariant == shaderVariant &&
         this.cullMode == cullMode
-    
+
     fun bindProgramAndSetCullMode(programs: ShaderProgramSet)
     {
         val program = programs[shaderVariant]

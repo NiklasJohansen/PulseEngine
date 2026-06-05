@@ -108,24 +108,24 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
     override fun <T> getView(viewId: Int, type: Class<T>) =
         views.firstOrNull { it.viewId == viewId && it.javaClass == type || type.isAssignableFrom(it.javaClass) } as T?
 
-    override fun submit(engine: PulseEngine, model: Model, transform: Matrix4f, material: Material?, animationPose: Model.AnimatedSkeletonPose?, viewIds: Int) 
+    override fun submit(engine: PulseEngine, model: Model, transform: Matrix4f, material: Material?, animationPose: AnimatedSkeletonPose?, viewIds: Int) 
     {
-        for (instance in model.subMeshInstances)
+        for (instance in model.meshInstances)
         {
-            val material      = material ?: model.materials.getOrNull(instance.subMesh.materialIndex)?.let { engine.asset.getOrNull(it.name) }
+            val material      = material ?: model.materials.getOrNull(instance.mesh.materialIndex)?.let { engine.asset.getOrNull(it.name) }
             val animatedPose  = animationPose?.getAnimatedMeshPose(instance.nodeName)
             val boneMatrices  = animatedPose?.boneMatrices ?: model.getBindPoseBoneMatrices(instance.nodeName)
-            val cullingBounds = instance.subMesh.animatedBounds?.takeIf { animatedPose != null } ?: instance.cullingBounds
+            val cullingBounds = instance.mesh.animatedBounds?.takeIf { animatedPose != null } ?: instance.cullingBounds
 
             val transform = Matrix4f(transform).mul(instance.transform)
 
-            submit(model, instance.subMesh, material, transform, cullable = true, cullingBounds, boneMatrices, viewIds)
+            nextFrameScene.add(instance.mesh, material, transform, cullingBounds, boneMatrices, viewIds)
         }
     }
 
-    override fun submit(model: Model, subMesh: Model.SubMesh, material: Material?, transform: Matrix4f, cullable: Boolean, cullingBounds: Model.Aabb, boneMatrices: Array<Matrix4f>?, viewIds: Int) 
+    override fun submit(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, viewIds: Int) 
     {
-        nextFrameScene.add(WorldRenderItem(model, subMesh, material, transform, cullable, cullingBounds, boneMatrices, viewIds))
+        nextFrameScene.add(mesh, material, transform, cullingBounds, boneMatrices, viewIds)
     }
 
     private fun DynamicList<WorldRenderItem>.addToBuffers() =

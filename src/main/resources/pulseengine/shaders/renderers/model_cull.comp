@@ -8,20 +8,20 @@ struct InstanceData
     vec4 params;
 };
 
-struct CullItem
-{
-    uint subMeshMetaIndex;
-    uint instanceIndex;
-    uint dynamicBoundsIndex;
-    uint flags;
-};
-
-struct SubMeshMeta
+struct MeshMetadata
 {
     uvec4 draw;
     vec4 centerXHalf;    // xyz=center, w=xHalf
     vec4 yzHalfReserved; // xy=yzHalf, z/w=reserved
     uvec4 skinning;      // x=boundsOffset, y=boundsCount, z=includeBaseBoundsInSkinning, w=reserved
+};
+
+struct CullItem
+{
+    uint meshMetadataIndex;
+    uint instanceIndex;
+    uint dynamicBoundsIndex;
+    uint flags;
 };
 
 struct DynamicBounds
@@ -64,9 +64,9 @@ layout(std430, binding = 6) buffer CommandBuffer
     DrawElementsIndirectCommand uCommands[];
 };
 
-layout(std430, binding = 7) readonly buffer SubMeshMetaBuffer
+layout(std430, binding = 7) readonly buffer MeshMetaBuffer
 {
-    SubMeshMeta uSubMeshes[];
+    MeshMetadata uMeshMetadata[];
 };
 
 layout(std430, binding = 8) readonly buffer DynamicBoundsBuffer
@@ -150,7 +150,7 @@ float skinningBoundsFloat(uint recordBase, uint component)
     return uintBitsToFloat(uSkinningBounds[recordBase + component]);
 }
 
-bool getSkinnedBounds(SubMeshMeta meta, int boneOffset, inout vec3 localCenter, inout vec3 localHalfExtents)
+bool getSkinnedBounds(MeshMetadata meta, int boneOffset, inout vec3 localCenter, inout vec3 localHalfExtents)
 {
     uint skinningBoundsOffset = meta.skinning.x;
     uint skinningBoundsCount = meta.skinning.y;
@@ -233,10 +233,10 @@ void main()
     }
     else
     {
-        SubMeshMeta meta = uSubMeshes[item.subMeshMetaIndex];
-        localCenter = meta.centerXHalf.xyz;
-        localHalfExtents = vec3(meta.centerXHalf.w, meta.yzHalfReserved.x, meta.yzHalfReserved.y);
-        getSkinnedBounds(meta, int(instance.params.y), localCenter, localHalfExtents);
+        MeshMetadata metadata = uMeshMetadata[item.meshMetadataIndex];
+        localCenter = metadata.centerXHalf.xyz;
+        localHalfExtents = vec3(metadata.centerXHalf.w, metadata.yzHalfReserved.x, metadata.yzHalfReserved.y);
+        getSkinnedBounds(metadata, int(instance.params.y), localCenter, localHalfExtents);
     }
 
     vec3 worldCenter = (instance.model * vec4(localCenter, 1.0)).xyz;

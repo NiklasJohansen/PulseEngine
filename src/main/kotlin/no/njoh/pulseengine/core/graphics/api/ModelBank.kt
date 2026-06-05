@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.graphics.api
 
 import no.njoh.pulseengine.core.asset.types.Model
-import no.njoh.pulseengine.core.asset.types.Model.SubMesh
+import no.njoh.pulseengine.core.asset.types.Model.Mesh
 import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedIntObject
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
@@ -16,7 +16,7 @@ class ModelBank
 {
     private var metadataBuffer: DoubleBufferedIntObject? = null
     private var skinningBoundsBuffer: DoubleBufferedIntObject? = null
-    private val subMeshMetadata = ArrayList<SubMeshMetadata>(128)
+    private val meshMetadata = ArrayList<MeshMetadata>(128)
     private val skinningBoundsRecords = ArrayList<SkinningBoundsRecord>(512)
     private var metadataDirty = false
 
@@ -39,8 +39,8 @@ class ModelBank
 
         if (metadataDirty)
         {
-            for (record in subMeshMetadata)
-                buffer.writeRecord(record)
+            for (metadata in meshMetadata)
+                buffer.writeRecord(metadata)
 
             buffer.swapBuffers()
             buffer.bind()
@@ -75,7 +75,7 @@ class ModelBank
         skinningBoundsBuffer?.destroy()
         metadataBuffer = null
         skinningBoundsBuffer = null
-        subMeshMetadata.clear()
+        meshMetadata.clear()
         skinningBoundsRecords.clear()
         metadataDirty = false
     }
@@ -127,20 +127,20 @@ class ModelBank
     {
         ensureMetadataBuffer()
 
-        for (subMesh in model.subMeshes)
+        for (mesh in model.meshes)
         {
-            val skinningBoundsOffset = appendSkinningBounds(subMesh.skinningBounds)
-            val metadata = SubMeshMetadata.from(subMesh, skinningBoundsOffset)
-            val index = subMesh.gpuMetaDataIndex
+            val skinningBoundsOffset = appendSkinningBounds(mesh.skinningBounds)
+            val metadata = MeshMetadata.from(mesh, skinningBoundsOffset)
+            val index = mesh.gpuMetadataIndex
 
-            if (index in subMeshMetadata.indices)
+            if (index in meshMetadata.indices)
             {
-                subMeshMetadata[index] = metadata
+                meshMetadata[index] = metadata
             }
             else
             {
-                subMesh.gpuMetaDataIndex = subMeshMetadata.size
-                subMeshMetadata += metadata
+                mesh.gpuMetadataIndex = meshMetadata.size
+                meshMetadata += metadata
             }
         }
 
@@ -193,27 +193,27 @@ class ModelBank
         return offset
     }
 
-    private fun DoubleBufferedIntObject.writeRecord(record: SubMeshMetadata)
+    private fun DoubleBufferedIntObject.writeRecord(metadata: MeshMetadata)
     {
         fill(RECORD_INTS)
         {
-            put(record.indexCount, record.indexStart, record.baseVertex, 0)
-            put(record.xCenter.toRawBits(), record.yCenter.toRawBits(), record.zCenter.toRawBits(), record.xHalf.toRawBits())
-            put(record.yHalf.toRawBits(), record.zHalf.toRawBits(), 0f.toRawBits(), 0f.toRawBits())
-            put(record.skinningBoundsOffset, record.skinningBoundsCount, if (record.includeBaseBoundsInSkinning) 1 else 0, 0)
+            put(metadata.indexCount, metadata.indexStart, metadata.baseVertex, 0)
+            put(metadata.xCenter.toRawBits(), metadata.yCenter.toRawBits(), metadata.zCenter.toRawBits(), metadata.xHalf.toRawBits())
+            put(metadata.yHalf.toRawBits(), metadata.zHalf.toRawBits(), 0f.toRawBits(), 0f.toRawBits())
+            put(metadata.skinningBoundsOffset, metadata.skinningBoundsCount, if (metadata.includeBaseBoundsInSkinning) 1 else 0, 0)
         }
     }
 
-    private fun DoubleBufferedIntObject.writeRecord(record: SkinningBoundsRecord)
+    private fun DoubleBufferedIntObject.writeRecord(metadata: SkinningBoundsRecord)
     {
         fill(SKINNING_BOUNDS_RECORD_INTS)
         {
-            put(record.xMin.toRawBits(), record.yMin.toRawBits(), record.zMin.toRawBits(), record.xMax.toRawBits())
-            put(record.yMax.toRawBits(), record.zMax.toRawBits(), record.boneIndex, 0)
+            put(metadata.xMin.toRawBits(), metadata.yMin.toRawBits(), metadata.zMin.toRawBits(), metadata.xMax.toRawBits())
+            put(metadata.yMax.toRawBits(), metadata.zMax.toRawBits(), metadata.boneIndex, 0)
         }
     }
 
-    private data class SubMeshMetadata(
+    private data class MeshMetadata(
         val indexCount: Int,
         val indexStart: Int,
         val baseVertex: Int,
@@ -229,20 +229,20 @@ class ModelBank
     ) {
         companion object
         {
-            fun from(subMesh: SubMesh, skinningBoundsOffset: Int): SubMeshMetadata
+            fun from(mesh: Mesh, skinningBoundsOffset: Int): MeshMetadata
             {
-                val staticBounds = subMesh.skinningBounds?.staticBounds
+                val staticBounds = mesh.skinningBounds?.staticBounds
                 val hasGpuSkinningBounds = skinningBoundsOffset != NO_SKINNING_BOUNDS_OFFSET
                 val baseBounds = when
                 {
                     hasGpuSkinningBounds && staticBounds != null -> staticBounds
                     hasGpuSkinningBounds -> null
-                    else -> subMesh.animatedBounds ?: subMesh.localBounds
+                    else -> mesh.animatedBounds ?: mesh.localBounds
                 }
 
-                return SubMeshMetadata(
-                    indexCount = subMesh.indexCount,
-                    indexStart = subMesh.indexStart,
+                return MeshMetadata(
+                    indexCount = mesh.indexCount,
+                    indexStart = mesh.indexStart,
                     baseVertex = 0,
                     xCenter = baseBounds?.let { (it.xMin + it.xMax) * 0.5f } ?: 0f,
                     yCenter = baseBounds?.let { (it.yMin + it.yMax) * 0.5f } ?: 0f,
@@ -251,7 +251,7 @@ class ModelBank
                     yHalf   = baseBounds?.let { (it.yMax - it.yMin) * 0.5f } ?: 0f,
                     zHalf   = baseBounds?.let { (it.zMax - it.zMin) * 0.5f } ?: 0f,
                     skinningBoundsOffset = skinningBoundsOffset,
-                    skinningBoundsCount = subMesh.skinningBounds?.boneIndices?.size ?: 0,
+                    skinningBoundsCount = mesh.skinningBounds?.boneIndices?.size ?: 0,
                     includeBaseBoundsInSkinning = hasGpuSkinningBounds && staticBounds != null
                 )
             }

@@ -168,7 +168,7 @@ object DrawUtils
         }
 
         bucket.forEachBatch { batch ->
-            val vao = batch.model.vao
+            val vao = batch.mesh.vao
             if (vao == null)
             {
                 flushGroup()
@@ -195,7 +195,7 @@ object DrawUtils
             commandCount++
             if (!payload.useVisibleInstanceBuffer)
             {
-                triangleCount += batch.instanceCount * (batch.subMesh.indexCount / 3L)
+                triangleCount += batch.instanceCount * (batch.mesh.indexCount / 3L)
                 instanceCount += batch.instanceCount
             }
             commandIndex++
@@ -209,7 +209,7 @@ object DrawUtils
         RenderItemBatch.resetBoundProgramAndCullMode()
         bucket.forEachBatch()
         {
-            val vao = it.model.vao ?: return
+            val vao = it.mesh.vao ?: return
             val program = programs[it.shaderVariant]
             it.bindProgramAndSetCullMode(programs)
             program.setUniform("uUseVisibleInstanceBuffer", false)
@@ -218,8 +218,8 @@ object DrawUtils
                 vao = vao,
                 instanceIndexMode = payload.instanceIndexMode,
                 instanceIndexBuffer = payload.instanceIndexBuffer,
-                firstIndex = it.subMesh.indexStart,
-                indexCount = it.subMesh.indexCount,
+                firstIndex = it.mesh.indexStart,
+                indexCount = it.mesh.indexCount,
                 instanceIndex = it.instanceIndex,
                 instanceCount = it.instanceCount,
                 baseVertex = 0

@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.shared.utils
 
 import no.njoh.pulseengine.core.asset.types.Model
+import no.njoh.pulseengine.core.asset.types.Model.Mesh
 import org.joml.Matrix4f
 import kotlin.math.abs
 
@@ -34,24 +35,24 @@ internal fun transformAabb(source: Model.Aabb, transform: Matrix4f, outAabb: Mod
 }
 
 /** 
- * Combines transformed per-bone bounds into a conservative skinned submesh AABB. 
+ * Combines transformed per-bone bounds into a conservative skinned mesh AABB. 
  */
-internal fun getSkinnedSubMeshBounds(
-    subMesh: Model.SubMesh,
+internal fun getSkinnedMeshBounds(
+    mesh: Mesh,
     boneMatrices: Array<Matrix4f>,
     hasBones: Boolean,
     outAabb: Model.Aabb
 ) {
     if (!hasBones || boneMatrices.isEmpty())
     {
-        outAabb.set(subMesh.localBounds)
+        outAabb.set(mesh.localBounds)
         return
     }
 
-    val skinningBounds = subMesh.skinningBounds
+    val skinningBounds = mesh.skinningBounds
     if (skinningBounds == null)
     {
-        outAabb.set(subMesh.localBounds)
+        outAabb.set(mesh.localBounds)
         return
     }
 
@@ -113,14 +114,14 @@ internal fun getSkinnedSubMeshBounds(
     if (hasAnyBounds)
         outAabb.set(xMin, yMin, zMin, xMax, yMax, zMax)
     else
-        outAabb.set(subMesh.localBounds)
+        outAabb.set(mesh.localBounds)
 }
 
 /** 
- * Builds per-bone rest-pose bounds for a submesh from its weighted vertices. 
+ * Builds per-bone rest-pose bounds for a mesh from its weighted vertices. 
  */
 internal fun buildSkinningBounds(
-    subMesh: Model.SubMesh,
+    mesh: Mesh,
     vertices: FloatArray,
     bones: List<Model.Bone>,
     hasBones: Boolean,
@@ -137,7 +138,7 @@ internal fun buildSkinningBounds(
         (if (hasTangents) 4 else 0) +
         (if (hasTexCoords) 2 else 0)
     val boneWeightOffset = boneIndexOffset + Model.MAX_BONE_INFLUENCES
-    val stride = subMesh.vertexStride
+    val stride = mesh.vertexStride
 
     val localSlotByBone = IntArray(bones.size) { -1 }
     val boneIndices = IntArray(bones.size)
@@ -152,7 +153,7 @@ internal fun buildSkinningBounds(
     var staticYMax = 0f
     var staticZMax = 0f
 
-    for (vertexIndex in subMesh.vertexStart until (subMesh.vertexStart + subMesh.vertexCount))
+    for (vertexIndex in mesh.vertexStart until (mesh.vertexStart + mesh.vertexCount))
     {
         val baseOffset = vertexIndex * stride
         val x = vertices[baseOffset]

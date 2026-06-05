@@ -52,7 +52,7 @@ class CullingBufferObject
         item.gpuCullItemIndex = size
         cullItemBuffer.fill(CULL_ITEM_INTS)
         {
-            put(item.subMesh.gpuMetaDataIndex)
+            put(item.mesh.gpuMetadataIndex)
             put(item.gpuInstanceIndex)
             put(boundsIndex)
             put(flags)
@@ -88,7 +88,7 @@ class CullingBufferObject
         cullable && !usesGpuSkinnedBounds() && (boneMatrices != null || cullingBounds !== subMesh.localBounds)
 
     private fun WorldRenderItem.usesGpuSkinnedBounds() =
-        boneMatrices != null && subMesh.skinningBounds != null
+        boneMatrices != null && mesh.skinningBounds != null
 
     companion object
     {

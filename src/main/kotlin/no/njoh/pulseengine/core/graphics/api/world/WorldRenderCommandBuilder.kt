@@ -174,11 +174,11 @@ class WorldRenderDrawBuffer(
             bucket.forEachBatch { batch ->
                 cpuCommandBuffer.fill(INDIRECT_COMMAND_INTS)
                 {
-                    put(batch.subMesh.indexCount) // Count
-                    put(batch.instanceCount)      // Instance count
-                    put(batch.subMesh.indexStart) // First index
-                    put(0)                        // Base vertex
-                    put(batch.instanceIndex)      // Base instance
+                    put(batch.mesh.indexCount) // Count
+                    put(batch.instanceCount)   // Instance count
+                    put(batch.mesh.indexStart) // First index
+                    put(0)                     // Base vertex
+                    put(batch.instanceIndex)   // Base instance
                 }
                 commandIndex++
             }
@@ -311,11 +311,11 @@ class WorldRenderDrawBuffer(
                 bucket.forEachBatch { batch ->
                     gpuCommandBuffer.fill(INDIRECT_COMMAND_INTS)
                     {
-                        put(batch.subMesh.indexCount) // Count
-                        put(0)                        // Instance count, written by compute culling
-                        put(batch.subMesh.indexStart) // First index
-                        put(0)                        // Base vertex
-                        put(visibleStart)             // Base instance into visible index buffer
+                        put(batch.mesh.indexCount) // Count
+                        put(0)                     // Instance count, written by compute culling
+                        put(batch.mesh.indexStart) // First index
+                        put(0)                     // Base vertex
+                        put(visibleStart)          // Base instance into visible index buffer
                     }
                     visibleStart += batch.instanceCount
                     commandIndex++

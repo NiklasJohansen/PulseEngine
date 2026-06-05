@@ -60,7 +60,7 @@ class WorldRenderBucket(initialCapacity: Int = 128)
             if (instanceIndex == INVALID_INSTANCE_INDEX)
                 throw IllegalStateException("Render item has not been uploaded to the GPU instance buffer")
 
-            val shaderVariant = it.model.selectShaderVariant()
+            val shaderVariant = it.mesh.selectShaderVariant()
             val cullMode      = it.material?.cullMode ?: CullMode.BACK
             val lastBatch     = lastOrNull()
 
@@ -77,6 +77,7 @@ class WorldRenderBucket(initialCapacity: Int = 128)
             {
                 val batch = if (size < batches.size) batches[size] else RenderItemBatch().also { batches += it }
                 batch.set(it.model, it.subMesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
+                batch.set(it.mesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
                 size++
             }
 
@@ -106,15 +107,17 @@ class WorldRenderBucket(initialCapacity: Int = 128)
 
     private fun compareForBatching(a: WorldRenderItem, b: WorldRenderItem): Int
     {
-        var result = System.identityHashCode(a.model) - System.identityHashCode(b.model)
+        var result = System.identityHashCode(a.mesh) - System.identityHashCode(b.mesh)
         if (result != 0) return result
 
-        result = a.subMesh.index - b.subMesh.index
-        if (result != 0) return result
-
-        result = a.model.selectShaderVariant().ordinal - b.model.selectShaderVariant().ordinal
+        result = a.mesh.selectShaderVariant().ordinal - b.mesh.selectShaderVariant().ordinal
         if (result != 0) return result
 
         return (a.material?.cullMode ?: CullMode.BACK).ordinal - (b.material?.cullMode ?: CullMode.BACK).ordinal
+    }
+
+    private fun Mesh.selectShaderVariant(): ShaderVariant
+    {
+        return if (skinningBounds != null) SKINNED else STATIC
     }
 }

@@ -18,7 +18,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.buildSkinningBounds
 import no.njoh.pulseengine.core.shared.utils.collectAnimatedGlobalTransforms
 import no.njoh.pulseengine.core.shared.utils.collectBlendedAnimatedGlobalTransforms
-import no.njoh.pulseengine.core.shared.utils.getSkinnedSubMeshBounds
+import no.njoh.pulseengine.core.shared.utils.getSkinnedMeshBounds
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ModelVertexCompressor
 import no.njoh.pulseengine.core.shared.utils.emptyObjectIntHashMap
@@ -59,10 +59,10 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     var indices     = IntArray(0);   private set
     var vertexBytes = ByteArray(0);  private set
 
-    var subMeshInstances = emptyList<SubMeshInstance>(); private set
-    var subMeshes        = emptyList<SubMesh>();         private set
-    var materials        = emptyList<MeshMaterial>();    private set
-    var bones            = emptyList<Bone>();            private set
+    var meshes        = emptyList<Mesh>();         private set
+    var meshInstances = emptyList<MeshInstance>(); private set
+    var materials     = emptyList<MeshMaterial>(); private set
+    var bones         = emptyList<Bone>();         private set
 
     var hasNormals   = false; private set
     var hasTangents  = false; private set
@@ -93,6 +93,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         this.vertices = FloatArray(0)
         this.vertexBytes = ByteArray(0)
         this.indices = IntArray(0)
+        this.meshes.forEachFast { it.vao = null }
     }
 
     fun onUploaded(vao: VertexArrayObject, vbo: StaticBufferObject, ebo: StaticBufferObject)
@@ -103,6 +104,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         this.vertices = FloatArray(0) // CPU-side culling data is baked at import time
         this.indices = IntArray(0)
         this.vertexBytes = ByteArray(0)
+        this.meshes.forEachFast { it.vao = vao }
     }
 
     private fun loadWithAssimp()
@@ -134,7 +136,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 nodesByName.clear()
                 collectGlobalNodeTransforms(nodeHierarchy!!, Matrix4f(), globalNodeTransforms)
                 bindPoseBoneMatricesByNodeName.clear()
-                buildSubMeshInstances(it, Matrix4f(), mutableListOf<SubMeshInstance>().also { subMeshInstances = it })
+                buildSubMeshInstances(it, Matrix4f(), mutableListOf<MeshInstance>().also { meshInstances = it })
                 buildConservativeAnimatedBounds()
             }
         }
@@ -184,7 +186,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             (if (hasTexCoords) 2 else 0) +
             (if (hasBones) MAX_BONE_INFLUENCES + MAX_BONE_INFLUENCES else 0)
 
-        val subMeshes       = mutableListOf<SubMesh>()
+        val meshes          = mutableListOf<Mesh>()
         val bones           = mutableListOf<Bone>()
         val boneIndexByName = emptyObjectIntHashMap<String>()
         val vertexData      = FloatArray(totalVertices * stride)
@@ -194,7 +196,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val vertexInfluences = Array(totalVertices) { VertexInfluence() }
 
         var dst = 0                 // write cursor in vertexData
-        var globalVertexOffset = 0  // index offset per submesh
+        var globalVertexOffset = 0  // index offset per mesh
         var indexOffset = 0         // write cursor in indices[]
 
         for (m in 0 until meshCount)
@@ -321,7 +323,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
             // Indices
             val faces = mesh.mFaces()
-            val subMeshIndexStart = indexOffset
+            val meshIndexStart = indexOffset
             for (i in 0 until numFaces)
             {
                 val face   = faces[i]
@@ -332,9 +334,9 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 indexOffset += 3
             }
 
-            subMeshes += SubMesh(
-                index = subMeshes.size,
-                indexStart = subMeshIndexStart,
+            meshes += Mesh(
+                index = meshes.size,
+                indexStart = meshIndexStart,
                 indexCount = numFaces * 3,
                 vertexStart = globalVertexOffset,
                 vertexCount = numVertices,
@@ -355,12 +357,12 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         this.hasTexCoords = hasTexCoords
         this.hasBones     = hasBoneAttributes
         this.bones        = bones
-        this.subMeshes    = if (this.hasBones)
+        this.meshes       = if (this.hasBones)
         {
-            subMeshes.map {
+            meshes.map {
                 it.copy(
                     skinningBounds = buildSkinningBounds(
-                        subMesh = it,
+                        mesh = it,
                         vertices = vertexData,
                         bones = bones,
                         hasBones = this.hasBones,
@@ -371,7 +373,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 )
             }
         }
-        else subMeshes
+        else meshes
     }
 
     private fun readBoneWeights(
@@ -738,7 +740,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     
     // Helpers ////////////////////////////////////////////////////////////////////////
 
-    private fun buildSubMeshInstances(node: AINode, parentWorld: Matrix4f, instances: MutableList<SubMeshInstance>)
+    private fun buildSubMeshInstances(node: AINode, parentWorld: Matrix4f, instances: MutableList<MeshInstance>)
     {
         val local = node.mTransformation().toMatrix4f()
         val world = Matrix4f(parentWorld).mul(local)
@@ -751,12 +753,12 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             for (i in 0 until node.mNumMeshes())
             {
                 val meshIndex   = meshIndices[i] // aiMesh index
-                val subMesh     = subMeshes[meshIndex]
-                val localBounds = if (hasBones) getBindPoseSubMeshBounds(subMesh, nodeName) else subMesh.localBounds
+                val mesh        = meshes[meshIndex]
+                val localBounds = if (hasBones) getBindPoseSubMeshBounds(mesh, nodeName) else mesh.localBounds
                 val worldBounds = transformAabb(localBounds, world)
 
-                instances += SubMeshInstance(
-                    subMesh = subMesh,
+                instances += MeshInstance(
+                    mesh = mesh,
                     transform = Matrix4f(world),
                     cullingBounds = localBounds,
                     worldBounds = worldBounds,
@@ -770,23 +772,23 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             buildSubMeshInstances(AINode.create(children[i]), world, instances)
     }
     
-    private fun getBindPoseSubMeshBounds(subMesh: SubMesh, nodeName: String): Aabb
+    private fun getBindPoseSubMeshBounds(mesh: Mesh, nodeName: String): Aabb
     {
         val aabb = Aabb()
         val boneMatrices = getBindPoseBoneMatrices(nodeName) ?: emptyArray()
-        getSkinnedSubMeshBounds(subMesh, boneMatrices, hasBones, aabb)
+        getSkinnedMeshBounds(mesh, boneMatrices, hasBones, aabb)
         return aabb
     }
 
     private fun buildConservativeAnimatedBounds()
     {
-        if (!hasBones || animations.isEmpty() || subMeshInstances.isEmpty())
+        if (!hasBones || animations.isEmpty() || meshInstances.isEmpty())
             return
 
-        val boundsBySubMesh = arrayOfNulls<Aabb>(subMeshes.size)
+        val boundsByMesh = arrayOfNulls<Aabb>(meshes.size)
 
-        for (instance in subMeshInstances)
-            boundsBySubMesh.include(instance.subMesh.index, instance.cullingBounds)
+        for (instance in meshInstances)
+            boundsByMesh.include(instance.mesh.index, instance.cullingBounds)
 
         var frameNumber = 0L
         for (animation in animations)
@@ -799,16 +801,16 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 val sampleTimeSeconds = if (sampleCount == 1) 0f else (durationSeconds * sampleIndex / sampleCount).toFloat()
                 frameNumber++
 
-                for (instance in subMeshInstances)
+                for (instance in meshInstances)
                 {
                     val skeletonPose = getAnimationPose(animation, sampleTimeSeconds, frameNumber) ?: continue
                     val meshPose = skeletonPose.getAnimatedMeshPose(instance.nodeName)
-                    boundsBySubMesh.include(instance.subMesh.index, meshPose.getBounds(instance.subMesh))
+                    boundsByMesh.include(instance.mesh.index, meshPose.getBounds(instance.mesh))
                 }
             }
         }
 
-        subMeshes.forEachFast { subMesh -> subMesh.animatedBounds = boundsBySubMesh[subMesh.index] }
+        meshes.forEachFast { mesh -> mesh.animatedBounds = boundsByMesh[mesh.index] }
     }
 
     private fun getAnimationBoundsSampleCount(animation: Animation): Int
@@ -1125,7 +1127,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         }
     }
 
-    data class SubMesh(
+    data class Mesh(
         val index: Int,
         val indexStart: Int,
         val indexCount: Int,
@@ -1136,11 +1138,12 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val localBounds: Aabb,
         val skinningBounds: SkinningBounds? = null,
         var animatedBounds: Aabb? = null,
-        var gpuMetaDataIndex: Int = -1
+        var gpuMetadataIndex: Int = -1,
+        var vao: VertexArrayObject? = null
     )
 
-    data class SubMeshInstance(
-        val subMesh: SubMesh,
+    data class MeshInstance(
+        val mesh: Mesh,
         val transform: Matrix4f,
         val cullingBounds: Aabb,
         val worldBounds: Aabb,
@@ -1268,7 +1271,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             val poseIndex = activeMeshPoseCacheCount++
             val pose = meshPoseCache.getOrElse(poseIndex) { AnimatedMeshPose().also { meshPoseCache += it } }
             pose.nodeKey = nodeKey
-            pose.subMeshBoundsValid.fill(false)
+            pose.meshBoundsValid.fill(false)
             globalNodeTransforms[nodeName]
                 ?.let { pose.inverseMeshNodeTransform.set(it).invert() } 
                 ?: run { pose.inverseMeshNodeTransform.identity() }
@@ -1299,17 +1302,17 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         var nodeKey = ""
         val boneMatrices = Array(bones.size) { Matrix4f() }
         val inverseMeshNodeTransform = Matrix4f()
-        val subMeshBounds = Array(subMeshes.size) { Aabb() }
-        val subMeshBoundsValid = BooleanArray(subMeshes.size)
+        val meshBounds = Array(meshes.size) { Aabb() }
+        val meshBoundsValid = BooleanArray(meshes.size)
 
-        fun getBounds(subMesh: SubMesh): Aabb
+        fun getBounds(mesh: Mesh): Aabb
         {
-            if (!subMeshBoundsValid[subMesh.index])
+            if (!meshBoundsValid[mesh.index])
             {
-                getSkinnedSubMeshBounds(subMesh, boneMatrices, hasBones, subMeshBounds[subMesh.index])
-                subMeshBoundsValid[subMesh.index] = true
+                getSkinnedMeshBounds(mesh, boneMatrices, hasBones, meshBounds[mesh.index])
+                meshBoundsValid[mesh.index] = true
             }
-            return subMeshBounds[subMesh.index]
+            return meshBounds[mesh.index]
         }
     }
 
