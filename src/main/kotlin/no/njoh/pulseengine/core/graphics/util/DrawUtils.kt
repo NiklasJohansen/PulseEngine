@@ -10,9 +10,11 @@ import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderBucket
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderCommandBuilder
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.DirectDrawPayload
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.EmptyDrawPayload
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderDrawPayload.IndirectDrawPayload
+import no.njoh.pulseengine.core.graphics.api.world.CullViewIndex
+import no.njoh.pulseengine.core.graphics.api.world.DrawPayload.DirectDrawPayload
+import no.njoh.pulseengine.core.graphics.api.world.DrawPayload.EmptyDrawPayload
+import no.njoh.pulseengine.core.graphics.api.world.DrawPayload.IndirectDrawPayload
+import no.njoh.pulseengine.core.graphics.api.world.PreparedRenderPass
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.captureIndirectDrawStats
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementDrawStats
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementWorldInstances
@@ -106,19 +108,23 @@ object DrawUtils
         incrementDrawStats(drawCommands = 1L, triangles = instanceCount * 2L, instances = instanceCount.toLong())
     }
 
-    fun drawWorldRenderBucket(bucket: WorldRenderBucket, programs: ShaderProgramSet, commandSetIndex: Int = 0)
-    {
+    fun drawWorldRenderBucket(
+        bucket: WorldRenderBucket,
+        preparedPass: PreparedRenderPass,
+        programs: ShaderProgramSet,
+        cullView: CullViewIndex = CullViewIndex(0)
+    ) {
         if (bucket.size == 0) return
 
-        when (val payload = bucket.drawPayload)
+        when (val payload = preparedPass.drawPayload)
         {
             is EmptyDrawPayload    -> return
             is DirectDrawPayload   -> drawDirectWorldRenderBucket(bucket, programs, payload)
-            is IndirectDrawPayload -> drawIndirectWorldRenderBucket(bucket, programs, payload, commandSetIndex)
+            is IndirectDrawPayload -> drawIndirectWorldRenderBucket(bucket, programs, payload, cullView)
         }
     }
 
-    private fun drawIndirectWorldRenderBucket(bucket: WorldRenderBucket, programs: ShaderProgramSet, payload: IndirectDrawPayload, commandSetIndex: Int) 
+    private fun drawIndirectWorldRenderBucket(bucket: WorldRenderBucket, programs: ShaderProgramSet, payload: IndirectDrawPayload, cullView: CullViewIndex) 
     {
         RenderItemBatch.resetBoundProgramAndCullMode()
 
@@ -145,7 +151,7 @@ object DrawUtils
             if (!payload.useVisibleInstanceBuffer && payload.instanceIndexMode == INSTANCE_ATTRIBUTE)
                 bindInstanceIndexAttribute(payload.instanceIndexBuffer)
 
-            val commandByteOffset = payload.getCommandByteOffset(commandSetIndex, groupCommandStart)
+            val commandByteOffset = payload.getCommandByteOffset(cullView, groupCommandStart)
  
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, payload.commandBuffer.id)
             glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, commandByteOffset, commandCount, 0)

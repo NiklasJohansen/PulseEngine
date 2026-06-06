@@ -50,8 +50,6 @@ class CascadedShadowMapRenderer(
     private var writeCascadeSizeMeters = FloatArray(CASCADE_COUNT)
     private var readCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
     private var writeCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
-    private var readShadowCullingMatrix = Matrix4f()
-    private var writeShadowCullingMatrix = Matrix4f()
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -85,12 +83,11 @@ class CascadedShadowMapRenderer(
         readCascadeSplits = writeCascadeSplits.also { writeCascadeSplits = readCascadeSplits }
         readCascadeSizeMeters = writeCascadeSizeMeters.also { writeCascadeSizeMeters = readCascadeSizeMeters }
         readCascadeFrustumPlaneSets = writeCascadeFrustumPlaneSets.also { writeCascadeFrustumPlaneSets = readCascadeFrustumPlaneSets }
-        readShadowCullingMatrix = writeShadowCullingMatrix.also { writeShadowCullingMatrix = readShadowCullingMatrix }
         increaseBatchSize() // Ensure that the batch size is at least 1
 
         engine.gfx.worldContext
             .getView<WorldShadowRenderView>(viewId)
-            ?.prepare(readShadowCullingMatrix, readCascadeFrustumPlaneSets)
+            ?.prepare(readCascadeFrustumPlaneSets)
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -132,7 +129,12 @@ class CascadedShadowMapRenderer(
                 skinnedProgram.bind()
                 skinnedProgram.setUniform("viewProjection", readViewProjectionMatrices[cascade])
 
-                drawWorldRenderBucket(view.bucket, programs, commandSetIndex = cascade)
+                drawWorldRenderBucket(
+                    bucket = view.bucket,
+                    preparedPass = view.preparedPass,
+                    programs = programs,
+                    cullView = view.getCascadeCullView(cascade)
+                )
             }
         }
     }
@@ -245,17 +247,6 @@ class CascadedShadowMapRenderer(
                 receiverFrustum = receiverFrustum,
                 receiverCenter = frustumSliceCenter
             )
-
-            // Build the broad CPU fallback culling matrix from the outermost cascade.
-            // The GPU path uses the per-cascade receiver plane sets above.
-            if (cascadeIdx == CASCADE_COUNT - 1)
-            {
-                val expand = SHADOW_BACKOFF_METERS
-                writeShadowCullingMatrix
-                    .identity()
-                    .ortho(xMin - expand, xMax + expand, yMin - expand, yMax + expand, -zMax, -zMin)
-                    .mul(lightViewMatrix)
-            }
         }
     }
 

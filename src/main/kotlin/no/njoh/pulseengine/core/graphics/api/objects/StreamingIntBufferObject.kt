@@ -48,15 +48,20 @@ class StreamingIntBufferObject private constructor(
         data[size++] = v
     }
 
-    fun put(v0: Int, v1: Int, v2: Int, v3: Int, v4: Int)
-    {
+    fun putCommand(
+        indexCount: Int,    // Number of indices to draw for this mesh
+        instanceCount: Int, // Number of instances to draw
+        firstIndex: Int,    // Index offset inside the index buffer
+        vertexOffset: Int,  // Value added to each index before indexing the vertex buffer
+        baseInstance: Int   // ID of the first instance for instance data offsets
+    ) {
         val i = size
         size += 5
-        data[i    ] = v0
-        data[i + 1] = v1
-        data[i + 2] = v2
-        data[i + 3] = v3
-        data[i + 4] = v4
+        data[i    ] = indexCount
+        data[i + 1] = instanceCount
+        data[i + 2] = firstIndex
+        data[i + 3] = vertexOffset
+        data[i + 4] = baseInstance
     }
 
     operator fun set(index: Int, value: Int)

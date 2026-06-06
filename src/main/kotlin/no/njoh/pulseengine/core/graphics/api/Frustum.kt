@@ -129,48 +129,6 @@ class Frustum(
     }
 
     /**
-     * Tests if an AABB (transformed by the given matrix) intersects the frustum.
-     * Uses a center/half-extent plane test for early rejection.
-     */
-    fun intersectsAabb(aabb: Model.Aabb, transform: Matrix4f): Boolean
-    {
-        // Compute center and half-extents in local space
-        val cx = (aabb.xMin + aabb.xMax) * 0.5f
-        val cy = (aabb.yMin + aabb.yMax) * 0.5f
-        val cz = (aabb.zMin + aabb.zMax) * 0.5f
-        val hx = (aabb.xMax - aabb.xMin) * 0.5f
-        val hy = (aabb.yMax - aabb.yMin) * 0.5f
-        val hz = (aabb.zMax - aabb.zMin) * 0.5f
-
-        // Transform center to world space
-        val wcx = transform.m00() * cx + transform.m10() * cy + transform.m20() * cz + transform.m30()
-        val wcy = transform.m01() * cx + transform.m11() * cy + transform.m21() * cz + transform.m31()
-        val wcz = transform.m02() * cx + transform.m12() * cy + transform.m22() * cz + transform.m32()
-
-        // Compute world-space half-extents using absolute values of rotation/scale matrix
-        // This creates an AABB that bounds the transformed OBB
-        val whx = abs(transform.m00()) * hx + abs(transform.m10()) * hy + abs(transform.m20()) * hz
-        val why = abs(transform.m01()) * hx + abs(transform.m11()) * hy + abs(transform.m21()) * hz
-        val whz = abs(transform.m02()) * hx + abs(transform.m12()) * hy + abs(transform.m22()) * hz
-
-        // Test against each frustum plane
-        for (i in 0 until 6)
-        {
-            val plane = planeSet[i]
-
-            // Compute the "radius" of the AABB projected onto the plane normal
-            val r = whx * abs(plane.a) + why * abs(plane.b) + whz * abs(plane.c)
-
-            // Distance from center to plane
-            val dist = plane.distanceToPoint(wcx, wcy, wcz)
-
-            // If the AABB is completely behind this plane, it's outside the frustum
-            if (dist < -r) return false
-        }
-        return true
-    }
-
-    /**
      * Tests if a sphere intersects the frustum.
      */
     fun intersectsSphere(x: Float, y: Float, z: Float, r: Float): Boolean
@@ -307,7 +265,49 @@ class Frustum(
         inline fun forEach(action: (FrustumPlane) -> Unit)
         {
             for (i in 0 until size) action(this[i])
-        } 
+        }
+
+        /**
+         * Tests if an AABB (transformed by the given matrix) intersects the frustum plane sets.
+         * Uses a center/half-extent plane test for early rejection.
+         */
+        fun intersectsAabb(aabb: Model.Aabb, transform: Matrix4f): Boolean
+        {
+            // Compute center and half-extents in local space
+            val cx = (aabb.xMin + aabb.xMax) * 0.5f
+            val cy = (aabb.yMin + aabb.yMax) * 0.5f
+            val cz = (aabb.zMin + aabb.zMax) * 0.5f
+            val hx = (aabb.xMax - aabb.xMin) * 0.5f
+            val hy = (aabb.yMax - aabb.yMin) * 0.5f
+            val hz = (aabb.zMax - aabb.zMin) * 0.5f
+
+            // Transform center to world space
+            val wcx = transform.m00() * cx + transform.m10() * cy + transform.m20() * cz + transform.m30()
+            val wcy = transform.m01() * cx + transform.m11() * cy + transform.m21() * cz + transform.m31()
+            val wcz = transform.m02() * cx + transform.m12() * cy + transform.m22() * cz + transform.m32()
+
+            // Compute world-space half-extents using absolute values of rotation/scale matrix
+            // This creates an AABB that bounds the transformed OBB
+            val whx = abs(transform.m00()) * hx + abs(transform.m10()) * hy + abs(transform.m20()) * hz
+            val why = abs(transform.m01()) * hx + abs(transform.m11()) * hy + abs(transform.m21()) * hz
+            val whz = abs(transform.m02()) * hx + abs(transform.m12()) * hy + abs(transform.m22()) * hz
+
+            // Test against each frustum plane
+            for (i in 0 until size)
+            {
+                val plane = planes[i]
+                
+                // Compute the "radius" of the AABB projected onto the plane normal
+                val r = whx * abs(plane.a) + why * abs(plane.b) + whz * abs(plane.c)
+
+                // Distance from center to plane
+                val dist = plane.distanceToPoint(wcx, wcy, wcz)
+
+                // If the AABB is completely behind this plane, it's outside the frustum
+                if (dist < -r) return false
+            }
+            return true
+        }
 
         companion object
         {

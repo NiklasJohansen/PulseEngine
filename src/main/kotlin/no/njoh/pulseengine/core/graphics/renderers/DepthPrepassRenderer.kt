@@ -104,7 +104,7 @@ class DepthPrepassRenderer(
         {
             measure({"opaque depth (" plus opaqueCount plus "i, " plus view.opaqueBucket.size plus "b)"})
             {
-                drawWorldRenderBucket(view.opaqueBucket, opaquePrograms)
+                drawWorldRenderBucket(view.opaqueBucket, view.preparedPass, opaquePrograms)
             }
         }
 
@@ -113,7 +113,7 @@ class DepthPrepassRenderer(
         {
             measure({"masked depth (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)"})
             {
-                drawWorldRenderBucket(view.maskedBucket, maskedPrograms)
+                drawWorldRenderBucket(view.maskedBucket, view.preparedPass, maskedPrograms)
             }
         }
     }

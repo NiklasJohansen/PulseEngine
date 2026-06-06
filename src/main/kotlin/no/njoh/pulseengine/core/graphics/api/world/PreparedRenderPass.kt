@@ -1,30 +1,51 @@
 package no.njoh.pulseengine.core.graphics.api.world
 
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
+import no.njoh.pulseengine.core.graphics.api.world.DrawPayload.EmptyDrawPayload
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode
 
-sealed interface WorldRenderDrawPayload
+class PreparedRenderPass(
+    val drawPayload: DrawPayload,
+    val cullViewCount: Int
+) {
+    fun cullView(index: Int): CullViewIndex
+    {
+        require(index in 0 until cullViewCount) { "Cull view index $index is outside prepared pass range 0 until $cullViewCount" }
+        return CullViewIndex(index)
+    }
+
+    companion object
+    {
+        val EMPTY = PreparedRenderPass(EmptyDrawPayload, cullViewCount = 1)
+    }
+}
+
+@JvmInline
+value class CullViewIndex(val value: Int)
+
+sealed interface DrawPayload
 {
-    data object EmptyDrawPayload : WorldRenderDrawPayload
+    data object EmptyDrawPayload : DrawPayload
 
     data class DirectDrawPayload(
         val instanceIndexMode: ModelInstanceIndexMode,
         val instanceIndexBuffer: StreamingIntBufferObject?
-    ) : WorldRenderDrawPayload
+    ) : DrawPayload
 
     data class IndirectDrawPayload(
         val commandBuffer: StreamingIntBufferObject,
         val commandBaseIndex: Int,
-        val commandSetStride: Int,
+        val cullViewCommandStride: Int,
         val useVisibleInstanceBuffer: Boolean,
         val visibleInstanceBuffer: StreamingIntBufferObject?,
         val instanceIndexMode: ModelInstanceIndexMode,
         val instanceIndexBuffer: StreamingIntBufferObject?
-    ) : WorldRenderDrawPayload {
-        fun getCommandByteOffset(commandSetIndex: Int, commandStartIndex: Int): Long
+    ) : DrawPayload {
+
+        fun getCommandByteOffset(cullView: CullViewIndex, commandStartIndex: Int): Long
         {
-            val commandSetOffset = if (commandSetStride == 0) 0 else commandSetIndex * commandSetStride
-            val commandIndex = commandBaseIndex + commandSetOffset + commandStartIndex
+            val cullViewCommandOffset = cullViewCommandStride * cullView.value
+            val commandIndex = commandBaseIndex + cullViewCommandOffset + commandStartIndex
             return commandBuffer.getSubmittedDataByteOffset() + commandIndex.toLong() * INDIRECT_COMMAND_STRIDE_BYTES
         }
     }

@@ -30,7 +30,7 @@ struct DynamicBounds
     vec4 yzHalfReserved;// xy=yzHalf, z/w=reserved
 };
 
-struct DrawElementsIndirectCommand
+struct IndirectCommand
 {
     uint count;
     uint instanceCount;
@@ -61,7 +61,7 @@ layout(std430, binding = 5) readonly buffer CullItemBuffer
 
 layout(std430, binding = 6) buffer CommandBuffer
 {
-    DrawElementsIndirectCommand uCommands[];
+    IndirectCommand uCommands[];
 };
 
 layout(std430, binding = 7) readonly buffer MeshMetaBuffer

@@ -1,50 +1,45 @@
 package no.njoh.pulseengine.core.graphics.api.world.views
 
-import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderBucket
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderCommandBuilder
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItem
+import no.njoh.pulseengine.core.graphics.api.world.PreparedRenderPass
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderScene
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
-import org.joml.Matrix4f
 
 class WorldShadowRenderView(override val viewId: Int) : WorldRenderView
 {
     val bucket = WorldRenderBucket()
 
-    private val shadowFrustum = Frustum()
+    var preparedPass: PreparedRenderPass = PreparedRenderPass.EMPTY
+        private set
+
     private var cascadeFrustumPlaneSets = arrayOf<FrustumPlaneSet>()
     private val allItems = DynamicList<WorldRenderItem>(1024)
 
-    fun prepare(
-        shadowCullingMatrix: Matrix4f,
-        cascadeFrustumPlaneSets: Array<FrustumPlaneSet>
-    ) {
-        this.shadowFrustum.setForViewProjection(shadowCullingMatrix)
+    fun prepare(cascadeFrustumPlaneSets: Array<FrustumPlaneSet>)
+    {
         this.cascadeFrustumPlaneSets = cascadeFrustumPlaneSets
     }
 
+    fun getCascadeCullView(cascade: Int) = preparedPass.cullView(cascade)
+
     override fun update(scene: WorldRenderScene, builder: WorldRenderCommandBuilder)
     {
-        builder.beginCullPass()
-
         allItems.clear()
         allItems += scene.opaqueItems
         allItems += scene.maskedItems
 
-        bucket.fill(
-            builder = builder,
-            items = allItems,
-            frustum = shadowFrustum,
-            requiredView = viewId
-        )
-
-        builder.submitCullPass(arrayOf(bucket), cascadeFrustumPlaneSets)
+        preparedPass = builder.prepareCullPass(cascadeFrustumPlaneSets)
+        {
+            bucket.fill(allItems, requiredView = viewId)
+        }
     }
 
     override fun clear()
     {
+        preparedPass = PreparedRenderPass.EMPTY
         bucket.clear()
     }
 }

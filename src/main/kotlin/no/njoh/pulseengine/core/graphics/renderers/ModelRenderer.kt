@@ -123,7 +123,7 @@ class ModelRenderer(
     {
         measure({"opaque (" plus view.opaqueBucket.totalInstanceCount() plus "i, " plus view.opaqueBucket.size plus "b)"})
         {
-            drawWorldRenderBucket(view.opaqueBucket, programs)
+            drawWorldRenderBucket(view.opaqueBucket, view.preparedPass, programs)
         }
 
         staticProgram.bind()
@@ -140,7 +140,7 @@ class ModelRenderer(
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(true)
 
-                drawWorldRenderBucket(view.maskedBucket, programs)
+                drawWorldRenderBucket(view.maskedBucket, view.preparedPass, programs)
 
                 glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
             }
@@ -156,7 +156,7 @@ class ModelRenderer(
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(false)
 
-                drawWorldRenderBucket(view.blendedBucket, programs)
+                drawWorldRenderBucket(view.blendedBucket, view.preparedPass, programs)
             }
         }
     }
