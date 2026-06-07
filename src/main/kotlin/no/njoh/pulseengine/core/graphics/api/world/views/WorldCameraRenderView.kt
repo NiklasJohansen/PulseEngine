@@ -6,11 +6,17 @@ import no.njoh.pulseengine.core.graphics.api.world.WorldRenderBucket
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderCommandBuilder
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItem
 import no.njoh.pulseengine.core.graphics.api.world.PreparedRenderPass
+import no.njoh.pulseengine.core.graphics.api.TransparencyMode
+import no.njoh.pulseengine.core.graphics.api.TransparencyMode.SORTED_BLEND
+import no.njoh.pulseengine.core.graphics.api.TransparencyMode.WEIGHTED_BLENDED_OIT
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderScene
 import org.joml.Vector3f
 
-class WorldCameraRenderView(override val viewId: Int) : WorldRenderView 
-{
+class WorldCameraRenderView(
+    override val viewId: Int,
+    var transparencyMode: TransparencyMode = SORTED_BLEND
+) : WorldRenderView {
+
     val opaqueBucket  = WorldRenderBucket()
     val maskedBucket  = WorldRenderBucket()
     val blendedBucket = WorldRenderBucket()
@@ -37,12 +43,19 @@ class WorldCameraRenderView(override val viewId: Int) : WorldRenderView
 
             maskedBucket.fill(scene.maskedItems, requiredView = viewId)
 
-            blendedBucket.fill(
-                from = scene.blendedItems,
-                sortFunc = ::compareForTransparency,
-                preserveDrawOrder = true,
-                requiredView = viewId
-            )
+            when (transparencyMode)
+            {
+                SORTED_BLEND -> blendedBucket.fill(
+                    from = scene.blendedItems,
+                    sortFunc = ::sortedBlendComparator,
+                    preserveDrawOrder = true,
+                    requiredView = viewId
+                )
+                WEIGHTED_BLENDED_OIT -> blendedBucket.fill(
+                    from = scene.blendedItems,
+                    requiredView = viewId
+                )
+            }
         }
     }
 
@@ -54,7 +67,7 @@ class WorldCameraRenderView(override val viewId: Int) : WorldRenderView
         blendedBucket.clear()
     }
 
-    private fun compareForTransparency(a: WorldRenderItem, b: WorldRenderItem): Int
+    private fun sortedBlendComparator(a: WorldRenderItem, b: WorldRenderItem): Int
     {
         val aDist = camPos.distanceSquared(a.transform.getTranslation(tmpPos1))
         val bDist = camPos.distanceSquared(b.transform.getTranslation(tmpPos2))

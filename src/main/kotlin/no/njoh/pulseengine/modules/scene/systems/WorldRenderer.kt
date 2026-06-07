@@ -1,10 +1,10 @@
 package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.GraphicsInternal
 import no.njoh.pulseengine.core.graphics.api.Attachment.*
 import no.njoh.pulseengine.core.graphics.api.Multisampling
 import no.njoh.pulseengine.core.graphics.api.TextureFilter
+import no.njoh.pulseengine.core.graphics.api.TransparencyMode.WEIGHTED_BLENDED_OIT
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
 import no.njoh.pulseengine.core.graphics.api.mipmap.DepthPyramidGenerator
 import no.njoh.pulseengine.core.graphics.renderers.DepthPrepassRenderer
@@ -14,12 +14,16 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
+import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
 
 @Name("World Renderer (3D)")
 class WorldRenderSystem() : SceneSystem()
 {
-    var useDepthPrepass = true
+    @Prop(i=0) var useDepthPrepass = true
+
+    @Prop(i=1) var transparencyMode = WEIGHTED_BLENDED_OIT
+    @Prop(i=2, min=0f, max=1f) var wightedBlendAlphaCutoff = 0.04f
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -35,7 +39,6 @@ class WorldRenderSystem() : SceneSystem()
         ).apply {
             if (useDepthPrepass)
                 addRenderer(DepthPrepassRenderer())
-
             addRenderer(ModelRenderer())
         }
     }
@@ -48,6 +51,10 @@ class WorldRenderSystem() : SceneSystem()
             surface.config.drawWireframe = !surface.config.drawWireframe
 
         val depthPrepassRenderer = surface.getRenderer<DepthPrepassRenderer>()
+        val modelRenderer = surface.getRenderer<ModelRenderer>()
+        
+        modelRenderer?.transparencyMode = transparencyMode
+        modelRenderer?.weightedBlendAlphaCutoff = wightedBlendAlphaCutoff
 
         if (useDepthPrepass && depthPrepassRenderer == null)
         {

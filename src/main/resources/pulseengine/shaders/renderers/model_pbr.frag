@@ -12,7 +12,11 @@ in mat3 vTBN;
 in vec2 vTexCoord;
 flat in int vMaterialId;
 
-out vec4 fragColor;
+#ifdef PBR_OUTPUT_WBOIT_ACCUM
+layout(location = 0) out vec4 outAccum;
+#else
+layout(location = 0) out vec4 fragColor;
+#endif
 
 // Textures
 uniform sampler2DArray textureArrays[16]; // TODO: Prefix with u
@@ -49,6 +53,14 @@ uniform float uEnvSpecularMipCount;
 uniform vec3  uCameraPos;
 uniform vec2  uScreenSize;
 uniform mat4  uView;
+
+#ifdef PBR_OUTPUT_WBOIT_ACCUM
+uniform sampler2D uOpaqueDepthTex;
+uniform bool      uUseOpaqueDepthTex;
+uniform vec2      uOpaqueDepthTexSize;
+uniform float     uWboitAlphaCutoff;
+#endif
+
 uniform vec4  uSunColor;
 uniform vec3  uSunDirection;
 uniform float uSunRadius;
@@ -362,6 +374,28 @@ vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float me
 }
 
 // ------------------------------------------------------------------
+// Weighted blended OIT
+// ------------------------------------------------------------------
+
+#ifdef PBR_OUTPUT_WBOIT_ACCUM
+float computeWboitWeight(float alpha)
+{
+    float alphaWeight = pow(min(1.0, alpha * 10.0) + 0.01, 3.0);
+    float depthWeight = pow(1.0 - gl_FragCoord.z * 0.9, 3.0);
+    return clamp(alphaWeight * 100000000.0 * depthWeight, 0.01, 3000.0);
+}
+
+bool isBehindOpaqueDepth()
+{
+    if (!uUseOpaqueDepthTex) return false;
+
+    vec2 uv = gl_FragCoord.xy / uOpaqueDepthTexSize;
+    float opaqueDepth = texture(uOpaqueDepthTex, uv).r;
+    return gl_FragCoord.z > opaqueDepth + 0.000001;
+}
+#endif
+
+// ------------------------------------------------------------------
 // Main
 // ------------------------------------------------------------------
 
@@ -382,6 +416,11 @@ void main()
         if (coverage < 0.5) discard; // Early-out
         alpha = coverage;
     }
+
+    // Check wighted blend alpha cutoff and opaque depth before doing expensive PBR calculations
+    #ifdef PBR_OUTPUT_WBOIT_ACCUM
+    if (alpha <= uWboitAlphaCutoff || isBehindOpaqueDepth()) discard;
+    #endif
 
     // PBR material properties
     vec3 emissive   = sampleTexOrDefault(material.emissiveTex, vec3(1.0), tiling).rgb * material.emissiveFactor.rgb;
@@ -468,5 +507,10 @@ void main()
     vec3 ambient = diffuseIBL + specularIBL;
     vec3 color = ambient * uEnvIntensity + Lo + emissive;
 
+    #ifdef PBR_OUTPUT_WBOIT_ACCUM
+    float weight = computeWboitWeight(alpha);
+    outAccum = vec4(color * alpha * weight, alpha * weight);
+    #else
     fragColor = vec4(color, alpha);
+    #endif
 }
