@@ -6,8 +6,9 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.loadTextFromDisk
 open class Shader(
     filePath: String,
     val type: ShaderType,
-    val transform: (source: String) -> String = { it }
-) : Asset(filePath, filePath) {
+    val transform: (source: String) -> String = { it },
+    name: String = filePath
+) : Asset(filePath, name) {
 
     var currentId = INVALID_ID
         private set
@@ -49,8 +50,20 @@ open class Shader(
     }
 }
 
-class VertexShader(filePath: String, transform: (source: String) -> String = { it }) : Shader(filePath, ShaderType.VERTEX, transform)
+class VertexShader(
+    filePath: String,
+    transform: (source: String) -> String = { it },
+    name: String = filePath
+) : Shader(filePath, ShaderType.VERTEX, transform, name)
 
-class FragmentShader(filePath: String) : Shader(filePath, ShaderType.FRAGMENT)
+class FragmentShader(
+    filePath: String,
+    transform: (source: String) -> String = { it },
+    name: String = filePath
+) : Shader(filePath, ShaderType.FRAGMENT, transform, name)
 
-class ComputeShader(filePath: String) : Shader(filePath, ShaderType.COMPUTE)
+class ComputeShader(
+    filePath: String,
+    transform: (source: String) -> String = { it },
+    name: String = filePath
+) : Shader(filePath, ShaderType.COMPUTE, transform, name)

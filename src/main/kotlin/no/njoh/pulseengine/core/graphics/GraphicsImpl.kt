@@ -283,14 +283,14 @@ open class GraphicsImpl : GraphicsInternal
     {
         val id = shader.currentId.takeIf { it != INVALID_ID } ?: glCreateShader(shader.type.value)
 
-        Logger.debug { "Compiling shader #$id (${shader.filePath})" }
+        Logger.debug { "Compiling shader #$id (${shader.name})" }
         glShaderSource(id, shader.transform(shader.sourceCode))
         glCompileShader(id)
 
         if (glGetShaderi(id, GL_COMPILE_STATUS) != GL_TRUE)
         {
             val info = glGetShaderInfoLog(id).removeSuffix("\n")
-            Logger.error { "Failed to compile shader #$id (${shader.filePath}) \n$info" }
+            Logger.error { "Failed to compile shader #$id (${shader.name}) \n$info" }
             shader.setId(INVALID_ID)
             shader.setErrorId(errorShaders[shader.type]!!.currentId)
             glDeleteShader(id)

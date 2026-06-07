@@ -93,14 +93,17 @@ open class AssetManagerImpl : AssetManagerInternal()
 
     override fun reloadAssetFromPath(filePath: String)
     {
+        var foundLoadedAsset = false
         assets.forEach { (_, asset) ->
             if (asset.filePath.isNotEmpty() && filePath.endsWith(asset.filePath))
             {
                 asset.filePath = filePath
                 reload(asset)
-                return
+                foundLoadedAsset = true
             }
         }
+
+        if (foundLoadedAsset) return
 
         pathToAsset(filePath)?.let() // If the asset is new and not loaded, try to load it
         {
