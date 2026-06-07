@@ -116,24 +116,24 @@ class CascadedShadowMapRenderer(
     {
         val halfRes = resolution / 2
 
-        for (cascade in 0 until CASCADE_COUNT)
+        for (cascadeIdx in 0 until CASCADE_COUNT)
         {
-            measure({ "cascade #" plus cascade })
+            measure({ "cascadeIdx #" plus cascadeIdx })
             {
-                val col = cascade % 2
-                val row = cascade / 2
+                val col = cascadeIdx % 2
+                val row = cascadeIdx / 2
                 glViewport(col * halfRes, row * halfRes, halfRes, halfRes)
 
                 staticProgram.bind()
-                staticProgram.setUniform("viewProjection", readViewProjectionMatrices[cascade])
+                staticProgram.setUniform("viewProjection", readViewProjectionMatrices[cascadeIdx])
                 skinnedProgram.bind()
-                skinnedProgram.setUniform("viewProjection", readViewProjectionMatrices[cascade])
+                skinnedProgram.setUniform("viewProjection", readViewProjectionMatrices[cascadeIdx])
 
                 drawWorldRenderBucket(
                     bucket = view.bucket,
                     preparedPass = view.preparedPass,
                     programs = programs,
-                    cullView = view.getCascadeCullView(cascade)
+                    cullViewIndex = cascadeIdx
                 )
             }
         }
