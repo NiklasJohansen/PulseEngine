@@ -15,6 +15,8 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import org.lwjgl.opengl.GL11.*
+import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE
+import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_ONE
 
 class DepthPrepassRenderer(
     override val order: Int = 20,
@@ -113,7 +115,13 @@ class DepthPrepassRenderer(
         {
             measure({"masked depth (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)"})
             {
+                glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
+                glEnable(GL_SAMPLE_ALPHA_TO_ONE)
+
                 drawWorldRenderBucket(view.maskedBucket, view.preparedPass, maskedPrograms)
+
+                glDisable(GL_SAMPLE_ALPHA_TO_ONE)
+                glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
             }
         }
     }

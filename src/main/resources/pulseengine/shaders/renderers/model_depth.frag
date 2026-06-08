@@ -3,6 +3,8 @@
 in vec2 vTexCoord;
 flat in int vMaterialId;
 
+layout(location = 0) out vec4 fragColor;
+
 uniform sampler2DArray textureArrays[16];
 
 struct MaterialData
@@ -34,8 +36,17 @@ vec4 sampleTexOrDefault(vec4 texDesc, vec2 tiling)
 void main()
 {
     MaterialData material = uMaterials[vMaterialId];
+    vec2 tiling = material.tilingAlphaFlags.xy;
     float alphaCutoff = material.tilingAlphaFlags.z;
+    float alpha = material.baseColor.a * sampleTexOrDefault(material.albedoTex, tiling).a;
 
-    if (alphaCutoff > 0.0 && sampleTexOrDefault(material.albedoTex, material.tilingAlphaFlags.xy).a < alphaCutoff)
-        discard;
+    if (alphaCutoff > 0.0)
+    {
+        float w = max(fwidth(alpha), 1.0 / 255.0);
+        float coverage = smoothstep(alphaCutoff - w, alphaCutoff + w, alpha);
+        if (coverage < 0.5) discard;
+        alpha = coverage;
+    }
+
+    fragColor = vec4(1.0, 1.0, 1.0, alpha);
 }

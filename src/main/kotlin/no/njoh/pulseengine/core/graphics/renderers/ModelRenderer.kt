@@ -28,6 +28,7 @@ import org.joml.Vector3f
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE
+import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_ONE
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import kotlin.math.cos
 
@@ -145,11 +146,13 @@ class ModelRenderer(
             measure({"masked (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)"})
             {
                 glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
+                glEnable(GL_SAMPLE_ALPHA_TO_ONE)
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(true)
 
                 drawWorldRenderBucket(view.maskedBucket, view.preparedPass, programs)
 
+                glDisable(GL_SAMPLE_ALPHA_TO_ONE)
                 glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
             }
         }
