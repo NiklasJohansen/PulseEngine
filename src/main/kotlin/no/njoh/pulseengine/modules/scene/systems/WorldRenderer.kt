@@ -32,7 +32,7 @@ class WorldRenderSystem() : SceneSystem()
             isVisible = true,
             camera = engine.gfx.mainCamera,
             multisampling = Multisampling.MSAA4,
-            backgroundColor = Color(143, 231, 255),
+            clearColor = Color(143, 231, 255),
             attachments = listOf(COLOR_TEXTURE_0, DEPTH_TEXTURE),
             mipmapGenerators = mapOf(DEPTH_TEXTURE to DepthPyramidGenerator()),
             textureFilter = TextureFilter.LINEAR

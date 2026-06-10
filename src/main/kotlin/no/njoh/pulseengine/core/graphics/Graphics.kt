@@ -79,7 +79,7 @@ interface Graphics
         multisampling: Multisampling = NONE,
         blendFunction: BlendFunction = BlendFunction.NORMAL,
         attachments: List<Attachment> = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
-        backgroundColor: Color = Color.BLANK
+        clearColor: Color? = Color.BLANK
     ) : Surface
 
     /**

@@ -176,7 +176,7 @@ open class DirectLightingSystem : SceneSystem()
                 name = NORMAL_SURFACE_NAME,
                 camera = engine.gfx.mainCamera,
                 zOrder = lightSurface.config.zOrder + 1, // Render normal map before lightmap
-                backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
+                clearColor = Color(0.5f, 0.5f, 1.0f, 1f),
                 textureFormat = TextureFormat.RGBA16F,
                 isVisible = false
             )

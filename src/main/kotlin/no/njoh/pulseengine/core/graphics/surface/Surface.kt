@@ -98,14 +98,10 @@ abstract class Surface
     abstract fun setDrawColor(color: Color): Surface
 
     /**
-     * Sets the background color used when clearing the [Surface].
+     * Sets the color used when clearing the [Surface].
+     * If the color is null, no clearing will be performed.
      */
-    abstract fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float = 0f): Surface
-
-    /**
-     * Sets the background color used when clearing the [Surface].
-     */
-    abstract fun setBackgroundColor(color: Color): Surface
+    abstract fun setClearColor(color: Color?): Surface
 
     /**
      * Sets the blending function to be used when transparent textures, quads, etc. are overlapping

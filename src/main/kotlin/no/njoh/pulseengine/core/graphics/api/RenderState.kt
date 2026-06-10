@@ -39,10 +39,13 @@ object BackBufferBaseState : RenderState
         val tex = surface.getTexture(final = false)
         glViewport(0, 0, tex.width, tex.height)
  
-        // Clear back-buffer with color of given surface
-        val c = surface.config.backgroundColor.asLinear()
-        glClearColor(c.red, c.green, c.blue, c.alpha)
-        glClear(GL_COLOR_BUFFER_BIT)
+        // Clear back-buffer with clear color if given
+        val c = surface.config.clearColor?.asLinear()
+        if (c != null)
+        {
+            glClearColor(c.red, c.green, c.blue, c.alpha)
+            glClear(GL_COLOR_BUFFER_BIT)
+        }
 
         // Enable color writing
         glColorMask(true, true, true, true)
@@ -128,11 +131,14 @@ object BatchRenderBaseState : RenderState
         val tex = surface.getTexture(final = false)
         glViewport(0, 0, tex.width, tex.height)
 
-        // Set color and clear surface
-        val c = config.backgroundColor
-        glClearColor(c.red, c.green, c.blue, c.alpha)
-        glColorMask(true, true, true, true)
-        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+        // Set color and clear surface if clear color is given
+        val c = config.clearColor?.asLinear()
+        if (c != null)
+        {
+            glClearColor(c.red, c.green, c.blue, c.alpha)
+            glColorMask(true, true, true, true)
+            glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+        }
 
         // Disable sRGB color space
         glDisable(GL_FRAMEBUFFER_SRGB)

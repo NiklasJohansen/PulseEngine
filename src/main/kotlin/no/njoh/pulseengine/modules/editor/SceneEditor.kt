@@ -141,7 +141,7 @@ class SceneEditor(
         lastSaveLoadDirectory = engine.config.saveDirectory
 
         // Create surfaces
-        engine.gfx.createSurface("scene_editor_grid",        zOrder = 20, camera = activeCamera, backgroundColor = Color(0.043f, 0.047f, 0.054f, 0f))
+        engine.gfx.createSurface("scene_editor_grid",        zOrder = 20, camera = activeCamera, clearColor = Color(0.001f, 0.001f, 0.001f, 1f))
         engine.gfx.createSurface("scene_editor_gizmo",       zOrder = -50)
         engine.gfx.createSurface("scene_editor_ui_base_bg",  zOrder = -90)
         engine.gfx.createSurface("scene_editor_ui_base",     zOrder = -92, multisampling = MSAA16)

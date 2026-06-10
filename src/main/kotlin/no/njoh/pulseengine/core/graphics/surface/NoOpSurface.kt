@@ -35,7 +35,7 @@ class NoOpSurface: SurfaceInternal()
         multisampling = Multisampling.NONE,
         blendFunction = BlendFunction.NORMAL,
         attachments = emptyList(),
-        backgroundColor = Color.BLANK,
+        clearColor = Color.BLANK,
         mipmapGenerators = emptyMap()
     )
     override val renderTarget = RenderTarget(emptyList())
@@ -66,8 +66,7 @@ class NoOpSurface: SurfaceInternal()
     override fun initFrame(engine: PulseEngineInternal) {}
     override fun renderToOffScreenTarget(engine: PulseEngineInternal) {}
     override fun runPostProcessingPipeline(engine: PulseEngineInternal) {}
-    override fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float) = this
-    override fun setBackgroundColor(color: Color) = this
+    override fun setClearColor(color: Color?) = this
     override fun setBlendFunction(func: BlendFunction) = this
     override fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float) = this
     override fun setDrawColor(color: Color) = this

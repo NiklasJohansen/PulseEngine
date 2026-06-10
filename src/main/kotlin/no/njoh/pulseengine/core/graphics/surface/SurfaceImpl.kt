@@ -231,20 +231,18 @@ class SurfaceImpl(
         return this
     }
 
-    override fun setBackgroundColor(red: Float, green: Float, blue: Float, alpha: Float): Surface
+    override fun setClearColor(color: Color?): Surface
     {
-        val bgColor = config.backgroundColor
-        if (red != bgColor.red || green != bgColor.green || blue != bgColor.blue || alpha != alpha)
+        if (config.clearColor != color)
             shouldRerender = true
-        bgColor.setFromRgba(red, green, blue, alpha)
-        return this
-    }
+        
+        if (color == null)
+            config.clearColor = null
+        else if (config.clearColor == null)
+            config.clearColor = color.copy()
+        else 
+            config.clearColor!!.setFrom(color)
 
-    override fun setBackgroundColor(color: Color): Surface
-    {
-        if (config.backgroundColor != color)
-            shouldRerender = true
-        config.backgroundColor.setFrom(color)
         return this
     }
 

@@ -48,7 +48,7 @@ class NoOpGraphics() : GraphicsInternal
         multisampling: Multisampling,
         blendFunction: BlendFunction,
         attachments: List<Attachment>,
-        backgroundColor: Color
+        clearColor: Color?
     ): Surface = mainSurface
     override fun getAllSurfaces() = emptyList<Surface>()
     override fun getSurface(name: String) = null

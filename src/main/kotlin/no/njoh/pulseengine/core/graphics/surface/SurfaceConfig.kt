@@ -22,7 +22,7 @@ interface SurfaceConfig
     val multisampling: Multisampling
     val blendFunction: BlendFunction
     val attachments: List<Attachment>
-    val backgroundColor: Color
+    val clearColor: Color?
     val mipmapGenerators: Map<Attachment, MipmapGenerator>
 }
 
@@ -40,7 +40,7 @@ class SurfaceConfigInternal(
     override var multisampling: Multisampling,
     override var blendFunction: BlendFunction,
     override val attachments: List<Attachment>,
-    override var backgroundColor: Color,
+    override var clearColor: Color?,
     override val mipmapGenerators: Map<Attachment, MipmapGenerator>
 ) : SurfaceConfig {
 

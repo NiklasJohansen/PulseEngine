@@ -130,7 +130,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 5,
             isVisible = false,
-            backgroundColor = Color(0.5f, 0.5f, 1.0f, 1f),
+            clearColor = Color(0.5f, 0.5f, 1.0f, 1f),
             textureFilter = LINEAR_MIPMAP,
             mipmapGenerators = mapOf(COLOR_TEXTURE_0 to CustomMipmapGenerator())
         ).apply {
@@ -163,7 +163,7 @@ open class GlobalIlluminationSystem : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 2,
             isVisible = false,
-            backgroundColor = Color.WHITE,
+            clearColor = Color.WHITE,
             blendFunction = NONE,
             attachments = listOf(COLOR_TEXTURE_0)
         ).apply {

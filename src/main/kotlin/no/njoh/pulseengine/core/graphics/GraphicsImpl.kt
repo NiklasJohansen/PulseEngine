@@ -62,7 +62,7 @@ open class GraphicsImpl : GraphicsInternal
             multisampling = MSAA4,
             textureFormat = RGBA16F,
             textureFilter = LINEAR,
-            backgroundColor = defaultClearColor.copy(),
+            clearColor = defaultClearColor.copy(),
             attachments = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
         )
 
@@ -204,7 +204,7 @@ open class GraphicsImpl : GraphicsInternal
         multisampling: Multisampling,
         blendFunction: BlendFunction,
         attachments: List<Attachment>,
-        backgroundColor: Color
+        clearColor: Color?
     ): SurfaceInternal {
 
         val surfaceWidth = width ?: mainSurface.config.width
@@ -227,7 +227,7 @@ open class GraphicsImpl : GraphicsInternal
                 multisampling = multisampling,
                 blendFunction = blendFunction,
                 attachments = attachments,
-                backgroundColor = backgroundColor
+                clearColor = clearColor
             )
         )
 
