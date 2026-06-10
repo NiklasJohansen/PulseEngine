@@ -1001,26 +1001,23 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     
     override fun getSubAssets(): List<Asset> 
     {
-        val assets = mutableListOf<Asset>()
-        assets += animations
+        val textureAssets = THashMap<TextureAssetKey, Texture>()
+        val materialAssets = mutableListOf<Material>()
+
         for (mat in materials)
         {
-            val albedo   = createTexture(mat.albedoPath,       mat.name + "_albedo",       SRGBA8)
-            val normal   = createTexture(mat.normalPath,       mat.name + "_normal",       RGBA8)
-            val aomr     = createTexture(mat.aoMetalRoughPath, mat.name + "_aoMetalRough", RGBA8)
-            val emissive = createTexture(mat.emissivePath,     mat.name + "_emissive",     SRGBA8)
-            
+            val albedo   = createTexture(mat.albedoPath,       mat.name + "_albedo",       SRGBA8, textureAssets)
+            val normal   = createTexture(mat.normalPath,       mat.name + "_normal",       RGBA8,  textureAssets)
+            val aomr     = createTexture(mat.aoMetalRoughPath, mat.name + "_aoMetalRough", RGBA8,  textureAssets)
+            val emissive = createTexture(mat.emissivePath,     mat.name + "_emissive",     SRGBA8, textureAssets)
+
             val cullMode = when (mat.cullMode.uppercase())
             {
                 "NONE" -> NONE
                 else   -> BACK
             }
 
-            albedo?.let { assets += it }
-            normal?.let { assets += it }
-            aomr?.let { assets += it }
-            emissive?.let { assets += it }
-            assets += Material(
+            materialAssets += Material(
                 name = mat.name,
                 baseColor = mat.baseColor,
                 albedo = albedo,
@@ -1038,27 +1035,36 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 normalScale = 1f
             )
         }
+
+        val assets = ArrayList<Asset>(animations.size + textureAssets.size + materialAssets.size)
+        assets += animations
+        assets += textureAssets.values
+        assets += materialAssets
+
         return assets  
     }
 
-    private fun createTexture(path: String?, assetName: String, format: TextureFormat): Texture?
+    private fun createTexture(path: String?, assetName: String, format: TextureFormat, textureAssets: THashMap<TextureAssetKey, Texture>): Texture? 
     {
         if (path.isNullOrEmpty()) return null
-
-        val texture = Texture(path, assetName, format = format)
-        
-        if (path.startsWith("*")) // Embedded texture
+        val key = TextureAssetKey(path, format)
+        return textureAssets.getOrPut(key)
         {
-            val idx = path.substring(1).toIntOrNull() ?: return null
-            val tex = embeddedTextures[idx] ?: return null
-            texture.loadFrom(tex.rgbaPixels, tex.width, tex.height, freeWithStbi = tex.freeWithStbi)
+            val texture = Texture(path, assetName, format = format)
+            if (path.startsWith("*")) // Embedded texture
+            {
+                val idx = path.substring(1).toIntOrNull() ?: return null
+                val tex = embeddedTextures[idx] ?: return null
+                texture.loadFrom(tex.rgbaPixels.duplicate(), tex.width, tex.height, freeWithStbi = tex.freeWithStbi)
+            }
+            texture
         }
-
-        return texture
     }
 
     // Data classes ////////////////////////////////////////////////////////////////////////
-    
+
+    private data class TextureAssetKey(val path: String, val format: TextureFormat)
+
     private data class EmbeddedTexture(
         val width: Int, 
         val height: Int, 
