@@ -8,11 +8,15 @@ import no.njoh.pulseengine.core.asset.types.Model.*
 import no.njoh.pulseengine.core.graphics.api.objects.BoneBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.CullingBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldCameraRenderView
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderView
+import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
+import org.joml.Vector3f
+import org.joml.Vector3fc
 
 class WorldRenderContextImpl : WorldRenderContextInternal()
 {
@@ -21,10 +25,11 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
     private var nextFrameScene = WorldRenderScene()
     private var thisFrameScene = WorldRenderScene()
 
-    private val instanceBuffer = InstanceBufferObject()
-    private val cullingBuffer  = CullingBufferObject()
-    private val boneBuffer     = BoneBufferObject()
-    private val commandBuilder = WorldRenderCommandBuilder(instanceBuffer, cullingBuffer)
+    private val instanceBuffer   = InstanceBufferObject()
+    private val cullingBuffer    = CullingBufferObject()
+    private val boneBuffer       = BoneBufferObject()
+    private val commandBuilder   = WorldRenderCommandBuilder(instanceBuffer, cullingBuffer)
+    private val localShadowAtlas = LocalShadowAtlas()
  
     private var initialized = false
 
@@ -39,6 +44,7 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
         if (!thisFrameScene.hasAnyItems())
         {
             views.forEach { it.clear() }
+            localShadowAtlas.prepare(thisFrameScene, getPrimaryCameraPosition())
             return
         }
 
@@ -64,6 +70,7 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
         boneBuffer.submit()
 
         commandBuilder.beginFrame()
+        localShadowAtlas.prepare(thisFrameScene, getPrimaryCameraPosition())
 
         for (view in views)
         {
@@ -73,10 +80,10 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
 
         commandBuilder.finishFramePreparation()
     }
-    
+
     override fun endFrame()
     {
-        if (!thisFrameScene.hasAnyItems()) return
+        if (!initialized || !thisFrameScene.hasAnyItems()) return
 
         GpuProfiler.measure("fence context buffers")
         {
@@ -89,10 +96,13 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
 
     override fun destroy()
     {
+        if (!initialized) return
+
         instanceBuffer.destroy()
         cullingBuffer.destroy()
         boneBuffer.destroy()
         commandBuilder.destroy()
+        initialized = false
     }
 
     override fun addView(view: WorldRenderView)
@@ -107,9 +117,9 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> getView(viewId: Int, type: Class<T>) =
-        views.firstOrNull { it.viewId == viewId && it.javaClass == type || type.isAssignableFrom(it.javaClass) } as T?
+        views.firstOrNull { it.viewId == viewId && (it.javaClass == type || type.isAssignableFrom(it.javaClass)) } as T?
 
-    override fun submit(engine: PulseEngine, model: Model, transform: Matrix4f, material: Material?, animationPose: AnimatedSkeletonPose?, viewIds: Int) 
+    override fun submitModel(engine: PulseEngine, model: Model, transform: Matrix4f, material: Material?, animationPose: AnimatedSkeletonPose?, viewIds: Int)
     {
         for (instance in model.meshInstances)
         {
@@ -120,13 +130,44 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
 
             val transform = Matrix4f(transform).mul(instance.transform)
 
-            nextFrameScene.add(instance.mesh, material, transform, cullingBounds, boneMatrices, viewIds)
+            nextFrameScene.addMesh(instance.mesh, material, transform, cullingBounds, boneMatrices, viewIds)
         }
     }
 
-    override fun submit(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, viewIds: Int) 
+    override fun submitMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, viewIds: Int)
     {
-        nextFrameScene.add(mesh, material, transform, cullingBounds, boneMatrices, viewIds)
+        nextFrameScene.addMesh(mesh, material, transform, cullingBounds, boneMatrices, viewIds)
+    }
+
+    override fun submitPointLight(position: Vector3f, radius: Float, color: Color, shadowEnabled: Boolean, shadowResolution: Int, shadowBias: Float, shadowImportance: Float, shadowId: Long)
+    {
+        nextFrameScene.addLight(position, null, radius, color, 180f, 180f, shadowEnabled, shadowResolution, shadowBias, shadowImportance, shadowId)
+    }
+
+    override fun submitSpotLight(
+        position: Vector3f,
+        direction: Vector3f,
+        radius: Float,
+        color: Color,
+        innerConeAngle: Float,
+        outerConeAngle: Float,
+        shadowEnabled: Boolean,
+        shadowResolution: Int,
+        shadowBias: Float,
+        shadowImportance: Float,
+        shadowId: Long
+    ) {
+        nextFrameScene.addLight(position, direction, radius, color, innerConeAngle, outerConeAngle, shadowEnabled, shadowResolution, shadowBias, shadowImportance, shadowId)
+    }
+
+    override fun getLocalShadowAtlas() = localShadowAtlas
+
+    private fun getPrimaryCameraPosition(): Vector3fc?
+    {
+        for (view in views)
+            if (view is WorldCameraRenderView)
+                return view.cameraPosition
+        return null
     }
 
     private fun DynamicList<WorldRenderItem>.addToBuffers() =

@@ -48,7 +48,7 @@ class BoneBufferObject
 
         boneBuffer?.fill(boneMatrices.size * 16)
         {
-            boneMatrices.forEachFast { putMatrix(it) }
+            boneMatrices.forEachFast { put(it) }
         }
 
         dataDirty = true

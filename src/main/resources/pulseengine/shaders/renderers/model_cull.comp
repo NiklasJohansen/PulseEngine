@@ -26,8 +26,8 @@ struct CullItem
 
 struct DynamicBounds
 {
-    vec4 centerXHalf;   // xyz=center, w=xHalf
-    vec4 yzHalfReserved;// xy=yzHalf, z/w=reserved
+    vec4 centerXHalf;    // xyz=center, w=xHalf
+    vec4 yzHalfReserved; // xy=yzHalf, z/w=reserved
 };
 
 struct IndirectCommand
@@ -74,9 +74,19 @@ layout(std430, binding = 8) readonly buffer DynamicBoundsBuffer
     DynamicBounds uDynamicBounds[];
 };
 
+layout(std430, binding = 9) readonly buffer CullItemIndexBuffer
+{
+    int uCullItemIndices[];
+};
+
 layout(std430, binding = 10) readonly buffer CullItemBatchIndexBuffer
 {
     int uCullItemBatchIndices[];
+};
+
+layout(std430, binding = 11) readonly buffer FrustumMetadataBuffer
+{
+    int uFrustumMetadata[];
 };
 
 layout(std430, binding = 12) readonly buffer SkinningBoundsBuffer
@@ -84,22 +94,27 @@ layout(std430, binding = 12) readonly buffer SkinningBoundsBuffer
     uint uSkinningBounds[];
 };
 
-uniform vec4 uFrustumPlanes[96];
-uniform int uFrustumPlaneCounts[4];
+layout(std430, binding = 2) readonly buffer FrustumPlaneBuffer
+{
+    vec4 uFrustumPlanes[];
+};
+
 uniform int uInstanceCount;
 uniform int uBatchCount;
 uniform int uFrustumCount;
 uniform int uCommandBaseIndex;
+uniform int uCullItemIndexOffset;
 uniform int uCullItemBatchIndexOffset;
+uniform int uFrustumMetadataOffset;
 
 const uint STATIC_BOUNDS_INDEX = 0xFFFFFFFFu;
 const uint CULL_FLAG_ALWAYS_VISIBLE = 1u;
-const int MAX_PLANES_PER_FRUSTUM = 24;
 
 bool intersectsFrustum(vec3 worldCenter, vec3 worldHalfExtents, int frustumIndex)
 {
-    int planeOffset = frustumIndex * MAX_PLANES_PER_FRUSTUM;
-    int planeCount = uFrustumPlaneCounts[frustumIndex];
+    int metadataIndex = (uFrustumMetadataOffset + frustumIndex) * 2;
+    int planeOffset = uFrustumMetadata[metadataIndex];
+    int planeCount = uFrustumMetadata[metadataIndex + 1];
     for (int i = 0; i < planeCount; i++)
     {
         vec4 plane = uFrustumPlanes[planeOffset + i];
@@ -204,12 +219,16 @@ void appendVisibleInstance(CullItem item, uint batchIndex, int frustum)
 
 void main()
 {
-    uint itemIndex = gl_GlobalInvocationID.x;
-    if (itemIndex >= uint(uInstanceCount))
+    uint compactItemIndex = gl_GlobalInvocationID.x;
+    if (compactItemIndex >= uint(uInstanceCount))
+        return;
+
+    int itemIndex = uCullItemIndices[uCullItemIndexOffset + int(compactItemIndex)];
+    if (itemIndex < 0)
         return;
 
     CullItem item = uCullItems[itemIndex];
-    int batchIndex = uCullItemBatchIndices[uCullItemBatchIndexOffset + int(itemIndex)];
+    int batchIndex = uCullItemBatchIndices[uCullItemBatchIndexOffset + int(compactItemIndex)];
     if (batchIndex < 0)
         return;
 

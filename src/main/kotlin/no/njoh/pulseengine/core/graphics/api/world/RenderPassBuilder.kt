@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.api.world
 
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
+import no.njoh.pulseengine.core.asset.types.Model.Aabb
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
 import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet.ShaderVariant
@@ -9,11 +10,15 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet.ShaderVariant.STAT
 import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject.Companion.INVALID_INSTANCE_INDEX
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import org.joml.Matrix4f
 
 class RenderPassBuilder(
     val frustumPlaneSets: Array<FrustumPlaneSet>,
+    val gpuCullItemIndices: StreamingIntBufferObject?,
+    val gpuCullItemIndexOffset: Int,
     val gpuCullItemBatchIndices: StreamingIntBufferObject?,
-    val gpuCullItemBatchIndexOffset: Int
+    val gpuCullItemBatchIndexOffset: Int,
+    val frustumPlaneSetCount: Int = frustumPlaneSets.size
 ) {
     internal val batches = DynamicList<RenderItemBatch>()
     internal var gpuCullInstanceCount = 0
@@ -26,11 +31,11 @@ class RenderPassBuilder(
         from: DynamicList<WorldRenderItem>,
         sortFunc: ((a: WorldRenderItem, b: WorldRenderItem) -> Int)? = ::compareForBatching,
         preserveDrawOrder: Boolean = false,
-        requiredView: Int = 0
+        requiredView: Int = 0,
     ) {
         val bucket = this
-        val useGpuCulling = (gpuCullItemBatchIndices != null)
-        
+        val useGpuCulling = (gpuCullItemIndices != null && gpuCullItemBatchIndices != null)
+
         bucket.clear(commandIndex)
         scratchItems.clear()
 
@@ -45,19 +50,33 @@ class RenderPassBuilder(
             val bounds = it.cullingBounds
             if (!useGpuCulling && bounds != null)
             {
-                if (frustumPlaneSets.none { set -> set.intersectsAabb(bounds, it.transform) })
-                    return@forEach // Skip items that are outside the view frustum when GPU culling is not used
+                if (intersectsAnyFrustumPlaneSet(bounds, it.transform))
+                    scratchItems += it
             }
-
-            scratchItems += it
+            else scratchItems += it
         }
 
         if (sortFunc != null)
             scratchItems.sortWith(sortFunc)
 
+        bucket.appendScratchItems(scratchItems, preserveDrawOrder, useGpuCulling)
+    }
+
+    private fun WorldRenderBucket.appendScratchItems(
+        items: DynamicList<WorldRenderItem>,
+        preserveDrawOrder: Boolean,
+        useGpuCulling: Boolean
+    ) {
+        if (useGpuCulling)
+        {
+            // Ensure space for all items in the bucket
+            gpuCullItemIndices?.fill(scratchItems.size) {}
+            gpuCullItemBatchIndices?.fill(scratchItems.size) {}
+        }
+
         var lastBatch = null as RenderItemBatch?
 
-        scratchItems.forEach()
+        items.forEach()
         {
             val instanceIndex = it.gpuInstanceIndex
             if (instanceIndex == INVALID_INSTANCE_INDEX)
@@ -77,14 +96,16 @@ class RenderPassBuilder(
             }
             else
             {
-                lastBatch = bucket.addBatch(it.mesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
-                batches += lastBatch
+                val batch = addBatch(it.mesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
+                lastBatch = batch
+                batches += batch
                 commandIndex++
             }
 
             if (useGpuCulling)
             {
-                gpuCullItemBatchIndices[gpuCullItemBatchIndexOffset + it.gpuCullItemIndex] = commandIndex - 1
+                gpuCullItemIndices?.put(it.gpuCullItemIndex)
+                gpuCullItemBatchIndices?.put(commandIndex - 1)
                 gpuCullInstanceCount++
             }
         }
@@ -99,6 +120,15 @@ class RenderPassBuilder(
         if (result != 0) return result
 
         return (a.material?.cullMode ?: CullMode.BACK).ordinal - (b.material?.cullMode ?: CullMode.BACK).ordinal
+    }
+
+    private fun intersectsAnyFrustumPlaneSet(bounds: Aabb, transform: Matrix4f): Boolean
+    {
+        for (i in 0 until frustumPlaneSetCount)
+        {
+            if (frustumPlaneSets[i].intersectsAabb(bounds, transform)) return true
+        }
+        return false
     }
 
     private fun Mesh.selectShaderVariant(): ShaderVariant

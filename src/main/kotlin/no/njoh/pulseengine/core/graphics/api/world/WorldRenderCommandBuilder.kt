@@ -7,10 +7,12 @@ import no.njoh.pulseengine.core.graphics.api.GlCapabilities
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.objects.CullingBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
+import no.njoh.pulseengine.core.graphics.api.objects.StreamingFloatBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.api.world.DrawPayload.DirectDrawPayload
 import no.njoh.pulseengine.core.graphics.api.world.DrawPayload.IndirectDrawPayload
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.BASE_INSTANCE
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.UNIFORM_OFFSET
 import no.njoh.pulseengine.core.graphics.util.getSupportedModelInstanceIndexMode
@@ -28,7 +30,10 @@ class WorldRenderCommandBuilder(
     var gpuCullingSupported = false; private set
     
     private lateinit var program: ShaderProgram
+    private lateinit var cullItemIndexBuffer: StreamingIntBufferObject
     private lateinit var cullItemBatchIndexBuffer: StreamingIntBufferObject
+    private lateinit var frustumMetadataBuffer: StreamingIntBufferObject
+    private lateinit var frustumPlaneBuffer: StreamingFloatBufferObject
     private lateinit var visibleIndexBuffer: StreamingIntBufferObject
     private lateinit var gpuCommandBuffer: StreamingIntBufferObject
     private lateinit var cpuCommandBuffer: StreamingIntBufferObject
@@ -57,7 +62,10 @@ class WorldRenderCommandBuilder(
         if (gpuCullingSupported)
         {
             program = ShaderProgram.create(engine.asset.loadNow(ComputeShader("/pulseengine/shaders/renderers/model_cull.comp")))
+            cullItemIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_INDEX_BUFFER_BINDING, 512, BUFFER_SEGMENTS)
             cullItemBatchIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_BATCH_INDEX_BUFFER_BINDING, 512, BUFFER_SEGMENTS)
+            frustumMetadataBuffer = StreamingIntBufferObject.createShaderStorageBuffer(FRUSTUM_METADATA_BUFFER_BINDING, FRUSTUM_METADATA_INTS * 32, BUFFER_SEGMENTS)
+            frustumPlaneBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(FRUSTUM_PLANE_BUFFER_BINDING, FRUSTUM_PLANE_FLOATS * 128, BUFFER_SEGMENTS)
             visibleIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(VISIBLE_INSTANCE_BUFFER_BINDING, 512, BUFFER_SEGMENTS)
             gpuCommandBuffer = StreamingIntBufferObject.createShaderStorageBuffer(COMMAND_BUFFER_BINDING, INDIRECT_COMMAND_INTS * 128, BUFFER_SEGMENTS)
         }
@@ -80,36 +88,45 @@ class WorldRenderCommandBuilder(
         if (this::gpuCommandBuffer.isInitialized)
             gpuCommandBuffer.clear()
 
+        if (this::cullItemIndexBuffer.isInitialized)
+            cullItemIndexBuffer.clear()
+
         if (this::cullItemBatchIndexBuffer.isInitialized)
             cullItemBatchIndexBuffer.clear()
+
+        if (this::frustumMetadataBuffer.isInitialized)
+            frustumMetadataBuffer.clear()
+
+        if (this::frustumPlaneBuffer.isInitialized)
+            frustumPlaneBuffer.clear()
     }
 
-    inline fun prepareCullPass(frustumPlaneSets: Array<FrustumPlaneSet>, build: RenderPassBuilder.() -> Unit): PreparedRenderPass
+    inline fun prepareCullPass(
+        frustumPlaneSets: Array<FrustumPlaneSet>,
+        frustumPlaneSetCount: Int = frustumPlaneSets.size,
+        build: RenderPassBuilder.() -> Unit
+    ): PreparedRenderPass
     {
-        val builder = createRenderPassBuilder(frustumPlaneSets)
+        val builder = createRenderPassBuilder(frustumPlaneSets, frustumPlaneSetCount)
         builder.build()
         return submitRenderPassBuilder(builder)
     }
 
-    fun createRenderPassBuilder(frustumPlaneSets: Array<FrustumPlaneSet>): RenderPassBuilder
+    fun createRenderPassBuilder(frustumPlaneSets: Array<FrustumPlaneSet>, frustumPlaneSetCount: Int = frustumPlaneSets.size): RenderPassBuilder
     {
         if (!gpuCullingSupported) 
-            return RenderPassBuilder(frustumPlaneSets, null, 0)
+            return RenderPassBuilder(frustumPlaneSets, null, 0, null, 0, frustumPlaneSetCount)
 
+        val cullItemIndexOffset = cullItemIndexBuffer.size
         val cullItemBatchIndexOffset = cullItemBatchIndexBuffer.size
-        val cullItemCount = cullingBuffer.size
-        cullItemBatchIndexBuffer.fill(cullItemCount)
-        {
-            repeat(cullItemCount) { put(INVALID_BATCH_INDEX) }
-        }
 
-        return RenderPassBuilder(frustumPlaneSets, cullItemBatchIndexBuffer, cullItemBatchIndexOffset)
+        return RenderPassBuilder(frustumPlaneSets, cullItemIndexBuffer, cullItemIndexOffset, cullItemBatchIndexBuffer, cullItemBatchIndexOffset, frustumPlaneSetCount)
     }
 
     fun submitRenderPassBuilder(builder: RenderPassBuilder): PreparedRenderPass
     {
         val payload = if (gpuCullingSupported) submitGpuCulledDraw(builder) else submitCpuDraw(builder)
-        val cullViewCount = if (builder.frustumPlaneSets.isEmpty()) 1 else builder.frustumPlaneSets.size
+        val cullViewCount = if (builder.frustumPlaneSetCount == 0) 1 else builder.frustumPlaneSetCount
 
         return PreparedRenderPass(payload, cullViewCount)
     }
@@ -125,17 +142,26 @@ class WorldRenderCommandBuilder(
         if (pendingGpuCullDispatches.isEmpty())
             return
 
-        gpuCommandBuffer.submit()
-        cullItemBatchIndexBuffer.submit()
-        visibleIndexBuffer.reserve(visibleInstanceCapacity)
-        gpuBuffersSubmitted = true
+        measure("command buffers submit")
+        {
+            gpuCommandBuffer.submit()
+            cullItemIndexBuffer.submit()
+            cullItemBatchIndexBuffer.submit()
+            frustumMetadataBuffer.submit()
+            frustumPlaneBuffer.submit()
+            visibleIndexBuffer.reserve(visibleInstanceCapacity)
+            gpuBuffersSubmitted = true
+        }
 
-        pendingGpuCullDispatches.forEach { cull(it) }
+        measure("frustum culling")
+        {
+            pendingGpuCullDispatches.forEach { cull(it) }
+        }
     }
 
     fun markSubmittedDataInUse()
     {
-        GpuProfiler.measure("fence draw buffers")
+        measure("fence draw buffers")
         {
             if (cpuCommandsBufferSubmitted) 
                 cpuCommandBuffer.markSubmittedDataInUse()
@@ -143,7 +169,10 @@ class WorldRenderCommandBuilder(
             if (gpuBuffersSubmitted)
             {
                 gpuCommandBuffer.markSubmittedDataInUse()
+                cullItemIndexBuffer.markSubmittedDataInUse()
                 cullItemBatchIndexBuffer.markSubmittedDataInUse()
+                frustumMetadataBuffer.markSubmittedDataInUse()
+                frustumPlaneBuffer.markSubmittedDataInUse()
                 visibleIndexBuffer.markSubmittedDataInUse()
             }
         }
@@ -154,7 +183,10 @@ class WorldRenderCommandBuilder(
         if (this::program.isInitialized) program.destroy()
         if (this::cpuCommandBuffer.isInitialized) cpuCommandBuffer.destroy()
         if (this::gpuCommandBuffer.isInitialized) gpuCommandBuffer.destroy()
+        if (this::cullItemIndexBuffer.isInitialized) cullItemIndexBuffer.destroy()
         if (this::cullItemBatchIndexBuffer.isInitialized) cullItemBatchIndexBuffer.destroy()
+        if (this::frustumMetadataBuffer.isInitialized) frustumMetadataBuffer.destroy()
+        if (this::frustumPlaneBuffer.isInitialized) frustumPlaneBuffer.destroy()
         if (this::visibleIndexBuffer.isInitialized) visibleIndexBuffer.destroy()
     }
 
@@ -192,10 +224,11 @@ class WorldRenderCommandBuilder(
 
     private fun submitGpuCulledDraw(builder: RenderPassBuilder): DrawPayload
     {
-        val cullViewCount    = builder.frustumPlaneSets.size
+        val cullViewCount    = builder.frustumPlaneSetCount
         val commandCount     = builder.batches.size
         val commandBaseIndex = gpuCommandBuffer.size / INDIRECT_COMMAND_INTS
         val visibleBaseIndex = visibleInstanceCapacity
+        val frustumMetadataOffset = appendFrustumPlaneSets(builder.frustumPlaneSets, builder.frustumPlaneSetCount)
         var instanceCount    = 0
         
         gpuCommandBuffer.fill(cullViewCount * commandCount * INDIRECT_COMMAND_INTS)
@@ -222,8 +255,10 @@ class WorldRenderCommandBuilder(
             commandBaseIndex = commandBaseIndex,
             commandCount = commandCount,
             cullInstanceCount = builder.gpuCullInstanceCount,
+            cullItemIndexOffset = builder.gpuCullItemIndexOffset,
             cullItemBatchIndexOffset = builder.gpuCullItemBatchIndexOffset,
-            frustumPlaneSets = builder.frustumPlaneSets
+            frustumMetadataOffset = frustumMetadataOffset,
+            frustumCount = cullViewCount
         )
 
         return IndirectDrawPayload(
@@ -242,41 +277,63 @@ class WorldRenderCommandBuilder(
         if (cullingBuffer.size == 0 || dispatch.cullInstanceCount == 0 || dispatch.commandCount == 0)
             return
 
-        GpuProfiler.measure({ "frustum culling (" plus dispatch.cullInstanceCount plus "i, " plus dispatch.frustumPlaneSets.size plus "x" plus dispatch.commandCount plus "c)" })
+        measure({ "cull dispatch (" plus dispatch.cullInstanceCount plus "i, " plus dispatch.frustumCount plus "x" plus dispatch.commandCount plus "c)" })
         {
             cullingBuffer.bindSubmittedRanges()
             visibleIndexBuffer.bindSubmittedRange()
+            cullItemIndexBuffer.bindSubmittedRange()
             cullItemBatchIndexBuffer.bindSubmittedRange()
+            frustumMetadataBuffer.bindSubmittedRange()
+            frustumPlaneBuffer.bindSubmittedRange()
             gpuCommandBuffer.bindSubmittedRange()
 
             program.bind()
-            program.setUniform("uInstanceCount", cullingBuffer.size)
+            program.setUniform("uInstanceCount", dispatch.cullInstanceCount)
             program.setUniform("uBatchCount", dispatch.commandCount)
-            program.setUniform("uFrustumCount", dispatch.frustumPlaneSets.size)
+            program.setUniform("uFrustumCount", dispatch.frustumCount)
             program.setUniform("uCommandBaseIndex", dispatch.commandBaseIndex)
+            program.setUniform("uCullItemIndexOffset", dispatch.cullItemIndexOffset)
             program.setUniform("uCullItemBatchIndexOffset", dispatch.cullItemBatchIndexOffset)
-            program.setFrustums(dispatch)
+            program.setUniform("uFrustumMetadataOffset", dispatch.frustumMetadataOffset)
 
-            glDispatchCompute((cullingBuffer.size + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1)
+            glDispatchCompute((dispatch.cullInstanceCount + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1)
             glMemoryBarrier(GL_COMMAND_BARRIER_BIT or GL_SHADER_STORAGE_BARRIER_BIT)
         }
     }
 
-    private fun ShaderProgram.setFrustums(dispatch: GpuCullDispatch)
+    private fun appendFrustumPlaneSets(frustumPlaneSets: Array<FrustumPlaneSet>, frustumPlaneSetCount: Int): Int
     {
-        for (setIdx in 0 until dispatch.frustumPlaneSets.size)
-        {
-            val offset = setIdx * MAX_PLANES_PER_FRUSTUM
-            val frustumPlaneSet = dispatch.frustumPlaneSets[setIdx]
-            
-            setUniform(frustumPlaneCountUniformNames[setIdx], frustumPlaneSet.size)
+        val metadataOffset = frustumMetadataBuffer.size / FRUSTUM_METADATA_INTS
+        var planeOffset = frustumPlaneBuffer.size / FRUSTUM_PLANE_FLOATS
+        var planeCount = 0
 
-            for (planeIdx in 0 until frustumPlaneSet.size)
+        for (i in 0 until frustumPlaneSetCount)
+            planeCount += frustumPlaneSets[i].size
+
+        frustumMetadataBuffer.fill(frustumPlaneSetCount * FRUSTUM_METADATA_INTS)
+        {
+            for (i in 0 until frustumPlaneSetCount)
             {
-                val plane = frustumPlaneSet[planeIdx]
-                setUniform(frustumPlaneUniformNames[offset + planeIdx], plane.a, plane.b, plane.c, plane.d)
+                val planeSet = frustumPlaneSets[i]
+                put(planeOffset, planeSet.size)
+                planeOffset += planeSet.size
             }
         }
+
+        frustumPlaneBuffer.fill(planeCount * FRUSTUM_PLANE_FLOATS)
+        {
+            for (i in 0 until frustumPlaneSetCount)
+            {
+                val planeSet = frustumPlaneSets[i]
+                for (planeIdx in 0 until planeSet.size)
+                {
+                    val plane = planeSet[planeIdx]
+                    put(plane.a, plane.b, plane.c, plane.d)
+                }
+            }
+        }
+
+        return metadataOffset
     }
 
     private fun supportsCpuIndirect(instanceBuffer: InstanceBufferObject) =
@@ -289,22 +346,24 @@ class WorldRenderCommandBuilder(
         val commandBaseIndex: Int,
         val commandCount: Int,
         val cullInstanceCount: Int,
+        val cullItemIndexOffset: Int,
         val cullItemBatchIndexOffset: Int,
-        val frustumPlaneSets: Array<FrustumPlaneSet>
+        val frustumMetadataOffset: Int,
+        val frustumCount: Int
     )
 
     companion object
     {
         const val VISIBLE_INSTANCE_BUFFER_BINDING = 4
+        private const val CULL_ITEM_INDEX_BUFFER_BINDING = 9
         private const val CULL_ITEM_BATCH_INDEX_BUFFER_BINDING = 10
+        private const val FRUSTUM_METADATA_BUFFER_BINDING = 11
+        private const val FRUSTUM_PLANE_BUFFER_BINDING = 2
         private const val COMMAND_BUFFER_BINDING = 6
         private const val BUFFER_SEGMENTS = 6
         private const val INDIRECT_COMMAND_INTS = DrawPayload.INDIRECT_COMMAND_INTS
-        private const val INVALID_BATCH_INDEX = -1
-        private const val MAX_FRUSTUMS = 4
-        private const val MAX_PLANES_PER_FRUSTUM = 24
+        private const val FRUSTUM_METADATA_INTS = 2
+        private const val FRUSTUM_PLANE_FLOATS = 4
         private const val WORK_GROUP_SIZE = 64
-        private val frustumPlaneUniformNames = Array(MAX_FRUSTUMS * MAX_PLANES_PER_FRUSTUM) { "uFrustumPlanes[$it]" }
-        private val frustumPlaneCountUniformNames = Array(MAX_FRUSTUMS) { "uFrustumPlaneCounts[$it]" }
     }
 }

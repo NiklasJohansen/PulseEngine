@@ -21,16 +21,12 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
-import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
-import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
 import org.joml.Vector3f
-import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE
 import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_ONE
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
-import kotlin.math.cos
 
 class ModelRenderer(
     override val order: Int = 40,
@@ -45,6 +41,7 @@ class ModelRenderer(
     var sunColor                = Color(1f, 1f, 1f)
     var sunRadius               = 1f
     var sunShadowMapSurfaceName = ""
+    var localShadowAtlasSurfaceName = ""
 
     var transparencyMode         = WEIGHTED_BLENDED_OIT
     var weightedBlendAlphaCutoff = 0.04f
@@ -54,10 +51,6 @@ class ModelRenderer(
     private lateinit var programs: ShaderProgramSet
 
     private val weightedBlendedRenderer = WeightedBlendedOitRenderer()
-    private var readLightData           = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
-    private var writeLightData          = BufferUtils.createFloatBuffer(MAX_POINT_LIGHTS * 12)
-    private var readLightCount          = 0
-    private var writeLightCount         = 0
     private val camPos                  = Vector3f()
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
@@ -97,15 +90,10 @@ class ModelRenderer(
 
     override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
-        readLightData = writeLightData.also { writeLightData = readLightData }
-        readLightCount = writeLightCount
-        readLightData.flip()
-        writeLightData.clear()
-        writeLightCount = 0
         increaseBatchSize() // Ensure that the batch size is at least 1
 
         val view = engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)
-        view?.setForCamera(camera = surface.camera)
+        view?.setForCamera(surface.camera, surface.config.width, surface.config.height)
         view?.transparencyMode = transparencyMode
     }
 
@@ -120,10 +108,11 @@ class ModelRenderer(
         glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
         glDepthMask(!hasDepthPrepass)
 
-        configureProgram(staticProgram, engine, surface)
-        configureProgram(skinnedProgram, engine, surface)
-
-        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)?.let { view -> render(engine, surface, view) }
+        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)?.let { view ->
+            configureProgram(staticProgram, engine, surface, view)
+            configureProgram(skinnedProgram, engine, surface, view)
+            render(engine, surface, view)
+        }
 
         glDepthMask(true)
     }
@@ -179,14 +168,14 @@ class ModelRenderer(
                         surface = surface,
                         bucket = view.blendedBucket,
                         preparedPass = view.preparedPass,
-                        configureAccumProgram = ::configureProgram
+                        configureAccumProgram = { program, e, s -> configureProgram(program, e, s, view) }
                     )
                 }
             }
         }
     }
 
-    private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface)
+    private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface, view: WorldCameraRenderView)
     {
         // Textures
 
@@ -214,6 +203,14 @@ class ModelRenderer(
         program.setUniform("uShadowViewProjections", sunViewProjections)
         program.setUniform("uShadowCascadeSplitDistances", splitDist[0], splitDist[1], splitDist[2], splitDist[3])
         program.setUniform("uShadowCascadeSizeMeters", cascadeSize[0], cascadeSize[1], cascadeSize[2], cascadeSize[3])
+
+        // Local shadow atlas
+
+        val localShadowAtlasSurface = engine.gfx.getSurface(localShadowAtlasSurfaceName)
+        val localShadowAtlasTex = localShadowAtlasSurface?.getTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
+        val localShadowAtlas = engine.gfx.worldContext.getLocalShadowAtlas()
+        program.setUniformSampler("uLocalShadowAtlasTex", localShadowAtlasTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
+        program.setUniform("uLocalShadowAtlasTexSize", localShadowAtlas.resolution.toFloat())
 
         // Sunlight
 
@@ -259,34 +256,8 @@ class ModelRenderer(
         weightedBlendedRenderer.destroy()
     }
 
-    fun addLight(pos: Vector3f, dir: Vector3f, radius: Float, color: Color, intensity: Float, outerConeDegrees: Float, innerConeDegrees: Float)
-    {
-        if (writeLightCount >= MAX_POINT_LIGHTS)
-        {
-            Logger.warn { "Too many lights in scene, max is $MAX_POINT_LIGHTS" }
-            return
-        }
-
-        val col = color.asLinear()
-        val isSpotLight = if (outerConeDegrees < 180f) 1f else 0f
-
-        writeLightCount++
-        writeLightData
-            .put(pos.x).put(pos.y).put(pos.z)
-            .put(radius)
-            .put(col.red).put(col.green).put(col.blue)
-            .put(intensity)
-            .put(dir.x).put(dir.y).put(dir.z)
-            .put(cos(outerConeDegrees.toRadians()))
-            .put(cos(innerConeDegrees.toRadians()))
-            .put(isSpotLight)
-            .put(0f).put(0f) // Padding to 16 floats for alignment
-    }
-
     companion object
     {
-        private const val MAX_POINT_LIGHTS = 32
-
         val fallbackShadowVPs    = Array(CascadedShadowMapRenderer.CASCADE_COUNT) { Matrix4f() }
         val fallbackSplitDists   = FloatArray(CascadedShadowMapRenderer.CASCADE_COUNT)
         val fallbackCascadeSizes = FloatArray(CascadedShadowMapRenderer.CASCADE_COUNT) { 15f }

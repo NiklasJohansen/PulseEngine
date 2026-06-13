@@ -74,6 +74,10 @@ uniform mat4            uShadowViewProjections[CASCADE_COUNT];
 uniform vec4            uShadowCascadeSplitDistances; // Far split distance for each cascade (view-space depth)
 uniform vec4            uShadowCascadeSizeMeters;     // World-space size of each cascade in meters
 
+// Local shadow atlas
+uniform sampler2DShadow uLocalShadowAtlasTex;
+uniform float           uLocalShadowAtlasTexSize;
+
 // Atlas offsets for 2x2 layout: cascade 0=bottom-left, 1=bottom-right, 2=top-left, 3=top-right
 const vec2 CASCADE_OFFSETS[CASCADE_COUNT] = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0), vec2(0.0, 0.5), vec2(0.5, 0.5));
 

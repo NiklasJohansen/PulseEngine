@@ -30,6 +30,7 @@ class WorldCameraRenderView(
     private val tmpPos2 = Vector3f()
 
     fun setForCamera(camera: Camera)
+    fun setForCamera(camera: Camera, screenWidth: Int = 1, screenHeight: Int = 1)
     {
         camera.invViewMatrix.getTranslation(camPos)
         frustum.setForCamera(camera)

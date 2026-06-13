@@ -14,6 +14,7 @@ interface WorldRenderView
 
 object ViewIds
 {
-    const val MAIN_CAMERA_VIEW = 1
-    const val SHADOW_VIEW      = 1 shl 1
+    const val MAIN_CAMERA_VIEW   = 1 shl 0
+    const val GLOBAL_SHADOW_VIEW = 1 shl 1
+    const val LOCAL_SHADOW_VIEW  = 1 shl 2
 }

@@ -23,8 +23,6 @@ class WorldShadowRenderView(override val viewId: Int) : WorldRenderView
         this.cascadeFrustumPlaneSets = cascadeFrustumPlaneSets
     }
 
-    fun getCascadeCullView(cascade: Int) = preparedPass.cullView(cascade)
-
     override fun update(scene: WorldRenderScene, builder: WorldRenderCommandBuilder)
     {
         allItems.clear()

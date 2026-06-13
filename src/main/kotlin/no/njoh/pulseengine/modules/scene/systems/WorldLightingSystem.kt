@@ -4,9 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.api.Camera
-import no.njoh.pulseengine.core.graphics.api.Frustum
-import no.njoh.pulseengine.core.graphics.api.LightList
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
 import no.njoh.pulseengine.core.graphics.renderers.CascadedShadowMapRenderer
+import no.njoh.pulseengine.core.graphics.renderers.LocalShadowAtlasRenderer
 import no.njoh.pulseengine.core.graphics.renderers.ModelRenderer
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
@@ -33,12 +33,16 @@ class WorldLightingSystem : SceneSystem()
     @Prop(i=9)  @EnvMapRef       var envDiffuseTexture           = ""
     @Prop(i=10) @EnvMapRef       var envSpecularTexture          = ""
     @Prop(i=11)                  var targetSurfaces              = "world"
+    @Prop(i=12)                  var localShadowsEnabled         = true
+    @Prop(i=13, min=256f)        var localShadowAtlasResolution  = 4096
+    @Prop(i=14, min=64f)         var localShadowTileResolution   = 512
+    @Prop(i=15, min=0f)          var localShadowMaxFacesPerFrame = 3
 
-    private var shadowMapSurfaceName = ""
-    private var lastTargetSurfaces   = ""
-    private var targetSurfaceNames   = emptyList<String>()
-    private var lightFrustum         = Frustum()
-    private var lightList            = LightList()
+    private var shadowMapSurfaceName        = ""
+    private var localShadowAtlasSurfaceName = ""
+    private var lastTargetSurfaces          = ""
+    private var targetSurfaceNames          = emptyList<String>()
+    private var lastLocalAtlasResolution    = 0
 
     override fun onUpdate(engine: PulseEngine)
     {
@@ -53,25 +57,34 @@ class WorldLightingSystem : SceneSystem()
         {
             val renderer = engine.gfx.getSurface(it)?.getRenderer<ModelRenderer>()
             renderer?.sunColor?.setFrom(sunColor)?.multiplyRgb(sunIntensity)
-            renderer?.sunRadius               = sunRadius
-            renderer?.sunShadowMapSurfaceName = shadowMapSurfaceName
-            renderer?.iblDiffuseTexture       = envDiffuseTexture
-            renderer?.iblSpecularTexture      = envSpecularTexture
-            renderer?.iblIntensity            = envIntensity
+            renderer?.sunRadius                   = sunRadius
+            renderer?.sunShadowMapSurfaceName     = shadowMapSurfaceName
+            renderer?.localShadowAtlasSurfaceName = localShadowAtlasSurfaceName
+            renderer?.iblDiffuseTexture           = envDiffuseTexture
+            renderer?.iblSpecularTexture          = envSpecularTexture
+            renderer?.iblIntensity                = envIntensity
+        }
+
+        engine.gfx.worldContext.getLocalShadowAtlas().apply {
+            enabled = localShadowsEnabled
+            resolution = localShadowAtlasResolution
+            tileResolution = localShadowTileResolution
+            maxFacesPerFrame = localShadowMaxFacesPerFrame
         }
     }
 
     override fun onRender(engine: PulseEngine)
     {
         val targetSurface = targetSurfaceNames.firstOrNull()?.let { engine.gfx.getSurface(it) } ?: return
-        val modelRenderer = targetSurface.getRenderer<ModelRenderer>() ?: return
+        targetSurface.getRenderer<ModelRenderer>() ?: return
         val camera = targetSurface.camera
 
-        renderShadowMap(engine, camera, modelRenderer)
-        collectWorldLights(engine, camera)
+        setUpSunShadowMap(engine, camera)
+        setUpLocalShadowAtlas(engine)
+        collectWorldLightSources(engine)
     }
 
-    private fun renderShadowMap(engine: PulseEngine, camera: Camera, modelRenderer: ModelRenderer)
+    private fun setUpSunShadowMap(engine: PulseEngine, camera: Camera)
     {
         val shadowMapSurface = engine.gfx.getSurface(shadowMapSurfaceName)
         if (shadowMapSurface == null)
@@ -102,24 +115,51 @@ class WorldLightingSystem : SceneSystem()
         shadowMapRenderer.setFor(camera, sunDirection, sunHeight)
     }
 
-    private fun collectWorldLights(engine: PulseEngine, camera: Camera)
+    private fun setUpLocalShadowAtlas(engine: PulseEngine)
     {
-        lightList.reset()
+        val atlas = engine.gfx.worldContext.getLocalShadowAtlas()
+        val resolution = atlas.resolution
 
-        engine.scene.forEachEntityOfType<WorldLight>()
+        if (!localShadowsEnabled)
         {
-            if ((it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, lightList)
+            if (localShadowAtlasSurfaceName.isNotBlank())
+                engine.gfx.deleteSurface(localShadowAtlasSurfaceName)
+            localShadowAtlasSurfaceName = ""
+            lastLocalAtlasResolution = 0
+            return
         }
 
-        lightFrustum.setForCamera(camera)
-        val culledLights = lightList.getFrustumCulledList(lightFrustum)
-
-        culledLights.sortBy { camera.position.distanceSquared(it.position) }
-
-        for (surface in targetSurfaceNames)
+        val atlasSurface = engine.gfx.getSurface(localShadowAtlasSurfaceName)
+        if (atlasSurface == null || resolution != lastLocalAtlasResolution)
         {
-            val renderer = engine.gfx.getSurface(surface)?.getRenderer<ModelRenderer>() ?: continue
-            culledLights.forEachFast { renderer.addLight(it.position, it.direction, it.radius, it.color, it.intensity, it.outerConeAngle, it.innerConeAngle) }
+            if (localShadowAtlasSurfaceName.isNotBlank())
+                engine.gfx.deleteSurface(localShadowAtlasSurfaceName)
+
+            val index = 1 + (engine.gfx.getAllSurfaces().maxOfOrNull { it.config.name.substringAfterLast("_").toIntOrNull() ?: 0 } ?: 0)
+            localShadowAtlasSurfaceName = "local_shadow_atlas_$index"
+            lastLocalAtlasResolution = resolution
+
+            engine.gfx.createSurface(
+                name = localShadowAtlasSurfaceName,
+                width = resolution,
+                height = resolution,
+                isVisible = false,
+                clearColor = null, // Dont clear surface each frame
+                zOrder = 49,
+                attachments = listOf(Attachment.DEPTH_TEXTURE),
+                textureSizeFunc = { _,_,_ -> PackedSize(resolution, resolution) }
+            ).apply {
+                addRenderer(LocalShadowAtlasRenderer())
+            }
+        }
+    }
+
+    private fun collectWorldLightSources(engine: PulseEngine)
+    {
+        val context = engine.gfx.worldContext
+        engine.scene.forEachEntityOfType<WorldLightSource>()
+        {
+            if ((it as SceneEntity).isNot(HIDDEN)) it.onRenderLight(engine, context)
         }
     }
 
@@ -129,6 +169,7 @@ class WorldLightingSystem : SceneSystem()
         {
             val renderer = engine.gfx.getSurface(surface)?.getRenderer<ModelRenderer>()
             renderer?.sunShadowMapSurfaceName = ""
+            renderer?.localShadowAtlasSurfaceName = ""
             renderer?.iblDiffuseTexture       = ""
             renderer?.iblSpecularTexture      = ""
             renderer?.iblIntensity            = 0f
@@ -137,7 +178,9 @@ class WorldLightingSystem : SceneSystem()
         targetSurfaceNames = emptyList()
 
         engine.gfx.deleteSurface(shadowMapSurfaceName)
+        engine.gfx.deleteSurface(localShadowAtlasSurfaceName)
         shadowMapSurfaceName = ""
+        localShadowAtlasSurfaceName = ""
     }
 
     override fun onStateChanged(engine: PulseEngine)
@@ -147,9 +190,12 @@ class WorldLightingSystem : SceneSystem()
 
     @JsonIgnore
     fun getShadowMapSurfaceName() = shadowMapSurfaceName
+
+    @JsonIgnore
+    fun getLocalShadowAtlasSurfaceName() = localShadowAtlasSurfaceName
 }
 
-interface WorldLight
+interface WorldLightSource
 {
-    fun onRender(engine: PulseEngine, list: LightList)
+    fun onRenderLight(engine: PulseEngine, context: WorldRenderContext)
 }

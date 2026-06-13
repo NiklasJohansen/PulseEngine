@@ -5,7 +5,6 @@ import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItem
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
 import no.njoh.pulseengine.core.graphics.util.getSupportedModelInstanceIndexMode
-import org.joml.Matrix4f
 
 class InstanceBufferObject
 {
@@ -44,7 +43,7 @@ class InstanceBufferObject
 
         instanceBuffer.fill(20) // 16 + 4
         {
-            putMatrix(item.transform)
+            put(item.transform)
             put(materialId.toFloat(), boneOffsetIndex.toFloat(), 0f, 0f)
         }
 
@@ -75,14 +74,6 @@ class InstanceBufferObject
 
         instanceBuffer.destroy()
         instanceIndexBuffer?.destroy()
-    }
-
-    private fun StreamingFloatBufferObject.putMatrix(matrix: Matrix4f)
-    {
-        put(matrix.m00(), matrix.m01(), matrix.m02(), matrix.m03())
-        put(matrix.m10(), matrix.m11(), matrix.m12(), matrix.m13())
-        put(matrix.m20(), matrix.m21(), matrix.m22(), matrix.m23())
-        put(matrix.m30(), matrix.m31(), matrix.m32(), matrix.m33())
     }
 
     companion object

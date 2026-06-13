@@ -65,7 +65,7 @@ class AminatedWorldModel : SceneEntity(), Updatable, WorldRenderable, Named
             .rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
             .scale(xScale, yScale, zScale)
 
-        context.submit(engine, model, transform, null, animationPose)
+        context.submitModel(engine, model, transform, null, animationPose)
     }
 
     override fun onUpdate(engine: PulseEngine) {}

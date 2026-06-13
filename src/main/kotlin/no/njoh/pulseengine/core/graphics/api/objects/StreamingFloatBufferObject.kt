@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
+import org.joml.Matrix4f
 import org.lwjgl.opengl.GL15.glBindBuffer
 import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BUFFER
 import kotlin.math.max
@@ -50,6 +51,28 @@ class StreamingFloatBufferObject private constructor(
         data[i + 1] = v1
         data[i + 2] = v2
         data[i + 3] = v3
+    }
+
+    fun put(matrix: Matrix4f)
+    {
+        val i = size
+        size += 16
+        data[i +  0] = matrix.m00()
+        data[i +  1] = matrix.m01()
+        data[i +  2] = matrix.m02()
+        data[i +  3] = matrix.m03()
+        data[i +  4] = matrix.m10()
+        data[i +  5] = matrix.m11()
+        data[i +  6] = matrix.m12()
+        data[i +  7] = matrix.m13()
+        data[i +  8] = matrix.m20()
+        data[i +  9] = matrix.m21()
+        data[i + 10] = matrix.m22()
+        data[i + 11] = matrix.m23()
+        data[i + 12] = matrix.m30()
+        data[i + 13] = matrix.m31()
+        data[i + 14] = matrix.m32()
+        data[i + 15] = matrix.m33()
     }
 
     @PublishedApi

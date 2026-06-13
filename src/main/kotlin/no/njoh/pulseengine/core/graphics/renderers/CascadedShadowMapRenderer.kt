@@ -12,7 +12,7 @@ import no.njoh.pulseengine.core.graphics.api.world.views.WorldShadowRenderView
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
-import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.SHADOW_VIEW
+import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.GLOBAL_SHADOW_VIEW
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawWorldRenderBucket
@@ -31,7 +31,7 @@ class CascadedShadowMapRenderer(
     var splitLambda: Float    = 0.5f,
     var shadowDistance: Float = 0f,
     override val order: Int   = 0,
-    val viewId: Int = SHADOW_VIEW
+    val viewId: Int           = GLOBAL_SHADOW_VIEW
 ) : Renderer() {
 
     private lateinit var staticProgram: ShaderProgram
@@ -118,7 +118,7 @@ class CascadedShadowMapRenderer(
 
         for (cascadeIdx in 0 until CASCADE_COUNT)
         {
-            measure({ "cascadeIdx #" plus cascadeIdx })
+            measure({ "cascade #" plus cascadeIdx })
             {
                 val col = cascadeIdx % 2
                 val row = cascadeIdx / 2
