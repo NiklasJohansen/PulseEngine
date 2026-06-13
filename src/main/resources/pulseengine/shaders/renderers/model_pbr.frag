@@ -1,6 +1,5 @@
 #version 430 core
 
-#define MAX_LOCAL_LIGHTS 32
 #define CASCADE_COUNT 4
 
 const float PI = 3.14159265359;
@@ -64,8 +63,50 @@ uniform float     uWboitAlphaCutoff;
 uniform vec4  uSunColor;
 uniform vec3  uSunDirection;
 uniform float uSunRadius;
-uniform int   uLightCount;
-uniform vec4  uLightData[MAX_LOCAL_LIGHTS * 4]; // 4 vec4s per light: pos+radius, color+intensity, dir+outerCos, innerCos+isSpot+padding
+
+// Clustered local lighting
+struct LocalLightData
+{
+    vec4 positionRadius;
+    vec4 colorDirectionX;
+    vec4 directionYZOuterInnerCos;
+    vec4 isSpotShadowInfo;  // x=isSpotLight, y=ShadowBias, z=firstFace, w=faceCount,
+};
+
+struct LocalShadowFaceData
+{
+    vec4 atlasScaleBias;        // xy=scale, zw=bias
+    mat4 shadowViewProjection;
+};
+
+layout(std430, binding = 13) readonly buffer LocalLightBuffer
+{
+    LocalLightData uLocalLights[];
+};
+
+layout(std430, binding = 14) readonly buffer ClusterBuffer
+{
+    uvec2 uClusterRanges[]; // x=offset into uClusterLightIndices, y=count
+};
+
+layout(std430, binding = 15) readonly buffer ClusterLightIndexBuffer
+{
+    uint uClusterLightIndices[];
+};
+
+layout(std430, binding = 16) readonly buffer LocalShadowFaceBuffer
+{
+    LocalShadowFaceData uLocalShadowFaces[];
+};
+
+uniform bool  uClusteredLightingEnabled;
+uniform ivec3 uClusterGridSize;
+uniform vec2  uClusterTileSize;
+uniform float uClusterNearPlane;
+uniform float uClusterDepthSliceScale;
+uniform int   uClusterCount;
+uniform int   uClusterLightCount;
+uniform int   uLocalShadowFaceCount;
 
 // Cascaded shadow mapping
 uniform sampler2DShadow uShadowMapTex;
@@ -314,23 +355,109 @@ float cascadedShadow(vec3 worldPos, vec3 N, float lightRadius)
 // Local lights
 // ------------------------------------------------------------------ 
 
+int clusterIndexForFragment(float viewDepth)
+{
+    ivec2 tile = ivec2(floor(gl_FragCoord.xy / uClusterTileSize));
+    if (tile.x < 0 || tile.y < 0 || tile.x >= uClusterGridSize.x || tile.y >= uClusterGridSize.y)
+        return -1;
+
+    float z = log(max(viewDepth, uClusterNearPlane) / uClusterNearPlane) * uClusterDepthSliceScale;
+    int zSlice = int(clamp(floor(z), 0.0, float(uClusterGridSize.z - 1)));
+    int clusterIndex = (zSlice * uClusterGridSize.y + tile.y) * uClusterGridSize.x + tile.x;
+    return (clusterIndex >= 0 && clusterIndex < uClusterCount) ? clusterIndex : -1;
+}
+
+int pointShadowFaceIndex(vec3 fromLight)
+{
+    vec3 a = abs(fromLight);
+    if (a.x >= a.y && a.x >= a.z)
+        return fromLight.x >= 0.0 ? 0 : 1;
+    if (a.y >= a.x && a.y >= a.z)
+        return fromLight.y >= 0.0 ? 2 : 3;
+    return fromLight.z >= 0.0 ? 4 : 5;
+}
+
+float localShadowFace(int faceIndex, vec3 shadowWorldPos)
+{
+    if (faceIndex < 0 || faceIndex >= uLocalShadowFaceCount)
+        return 1.0;
+
+    LocalShadowFaceData face = uLocalShadowFaces[faceIndex];
+    vec4 lightPos = face.shadowViewProjection * vec4(shadowWorldPos, 1.0);
+    vec3 pos = (lightPos.xyz / lightPos.w) * 0.5 + 0.5;
+
+    if (pos.x < 0.0 || pos.x > 1.0 || pos.y < 0.0 || pos.y > 1.0 || pos.z < 0.0 || pos.z > 1.0)
+        return 1.0;
+
+    vec4 atlas = face.atlasScaleBias;
+    vec2 atlasUv = pos.xy * atlas.xy + atlas.zw;
+    float texelUv = 1.0 / max(uLocalShadowAtlasTexSize, 1.0);
+
+    vec2 clampMin = atlas.zw + vec2(texelUv * 0.5);
+    vec2 clampMax = atlas.zw + atlas.xy - vec2(texelUv * 0.5);
+
+    float sum = 0.0;
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            vec2 offset = vec2(x, y) * texelUv;
+            vec2 sampleUv = clamp(atlasUv + offset, clampMin, clampMax);
+            sum += texture(uLocalShadowAtlasTex, vec3(sampleUv, pos.z));
+        }
+    }
+
+    return sum / 9.0;
+}
+
+float localLightShadow(LocalLightData light, vec3 lightPos, vec3 worldPos, vec3 N)
+{
+    float shadowBias = light.isSpotShadowInfo.y;
+    if (shadowBias < 0.0)
+        return 1.0; //  Not casting shadows
+
+    vec3 shadowWorldPos = worldPos + N * shadowBias;
+    int firstFace = int(light.isSpotShadowInfo.z + 0.5);
+    int faceCount = int(light.isSpotShadowInfo.w + 0.5);
+
+    if (firstFace < 0 || faceCount <= 0)
+        return 1.0;
+
+    int faceIndex = firstFace;
+    if (light.isSpotShadowInfo.x < 0.5 && faceCount >= 6)
+        faceIndex += pointShadowFaceIndex(worldPos - lightPos);
+
+    return localShadowFace(faceIndex, shadowWorldPos);
+}
+
 vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0)
 {
     vec3 Lo = vec3(0.0);
 
-    for (int i = 0; i < MAX_LOCAL_LIGHTS; i++)
-    {
-        if (i >= uLightCount) break;
+    if (!uClusteredLightingEnabled)
+        return Lo;
 
-        int index = i * 4;
-        vec3  lightPos   = uLightData[index].xyz;
-        float radius     = uLightData[index].w;
-        vec3  lightColor = uLightData[index + 1].rgb;
-        float intensity  = uLightData[index + 1].a;
-        vec3  lightDir   = uLightData[index + 2].xyz;
-        float outerCos   = uLightData[index + 2].w;
-        float innerCos   = uLightData[index + 3].x;
-        float isSpot     = uLightData[index + 3].y;
+    float viewDepth = -(uView * vec4(vWorldPos, 1.0)).z;
+    int clusterIndex = clusterIndexForFragment(viewDepth);
+    if (clusterIndex < 0)
+        return Lo;
+
+    uvec2 range = uClusterRanges[clusterIndex];
+
+    for (uint clusterLight = 0u; clusterLight < range.y; clusterLight++)
+    {
+        uint lightIndex = uClusterLightIndices[range.x + clusterLight];
+        if (lightIndex >= uint(uClusterLightCount))
+            continue;
+
+        LocalLightData light = uLocalLights[int(lightIndex)];
+        vec3  lightPos   = light.positionRadius.xyz;
+        float radius     = light.positionRadius.w;
+        vec3  lightColor = light.colorDirectionX.rgb;
+        vec3  lightDir   = vec3(light.colorDirectionX.w, light.directionYZOuterInnerCos.xy);
+        float outerCos   = light.directionYZOuterInnerCos.z;
+        float innerCos   = light.directionYZOuterInnerCos.w;
+        float isSpot     = light.isSpotShadowInfo.x;
 
         vec3 toL = lightPos - vWorldPos;
         float d2 = dot(toL, toL);
@@ -357,7 +484,8 @@ vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float me
             attenuation *= spotAtten * spotAtten; // Squared for smoother falloff
         }
 
-        vec3 radiance = lightColor * intensity * attenuation;
+        vec3 radiance = lightColor * attenuation;
+        float shadow = localLightShadow(light, lightPos, vWorldPos, N);
 
         // Cook-Torrance BRDF
         vec3 H  = normalize(V + L);
@@ -371,7 +499,7 @@ vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float me
         vec3 diffuse  = kD * baseColor / PI;
         vec3 specular = (NDF * G * F) / denom;
 
-        Lo += (diffuse + specular) * radiance * NdotL;
+        Lo += (diffuse + specular) * radiance * NdotL * shadow;
     }
 
     return Lo;

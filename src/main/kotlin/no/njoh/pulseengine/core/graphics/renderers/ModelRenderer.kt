@@ -218,10 +218,9 @@ class ModelRenderer(
         program.setUniform("uSunDirection", shadowMapRenderer?.getDirection() ?: Vector3f(0f, 1f, 0f))
         program.setUniform("uSunRadius", sunRadius)
 
-        // Local lights
+        // Clustered local lights
 
-        program.setUniform("uLightCount", readLightCount)
-        program.setUniformVec4Array("uLightData", readLightData)
+        view.clusteredLights.bind(program)
 
         // Ambient lighting
 

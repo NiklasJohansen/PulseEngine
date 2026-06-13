@@ -45,6 +45,11 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
         {
             views.forEach { it.clear() }
             localShadowAtlas.prepare(thisFrameScene, getPrimaryCameraPosition())
+            views.forEach()
+            {
+                if (it is WorldCameraRenderView)
+                    it.clusteredLights.clearAndSubmit()
+            }
             return
         }
 
@@ -76,6 +81,8 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
         {
             view.clear()
             view.update(thisFrameScene, commandBuilder)
+            if (view is WorldCameraRenderView)
+                view.clusteredLights.buildAndSubmit(view, thisFrameScene, localShadowAtlas)
         }
 
         commandBuilder.finishFramePreparation()
@@ -91,11 +98,22 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
             cullingBuffer.markSubmittedDataInUse()
             boneBuffer.markGpuDataInUse()
             commandBuilder.markSubmittedDataInUse()
+            views.forEach()
+            {
+                if (it is WorldCameraRenderView)
+                    it.clusteredLights.markSubmittedDataInUse()
+            }
         }
     }
 
     override fun destroy()
     {
+        views.forEach()
+        {
+            if (it is WorldCameraRenderView)
+                it.destroy()
+        }
+
         if (!initialized) return
 
         instanceBuffer.destroy()
