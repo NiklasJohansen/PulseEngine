@@ -174,7 +174,7 @@ class TextRenderer(
             else -> drawRotatedGlyphs(texHandle, x, y, xOffset, yOffset, angle)
         }
 
-        newLinePositions.clear()
+        newLinePositions.resetQuick()
     }
 
     private fun drawAxisAlignedGlyphs(texHandle: Float, x: Float, y: Float, xOffset: Float, yOffset: Float)

@@ -99,7 +99,7 @@ open class UiElementFactory(
      * Creates a movable and resizable window panel.
      */
     open fun createWindowUI(
-        title: String,
+        title: CharSequence,
         iconName: String = "",
         x: Float = 0f,
         y: Float = 20f,
@@ -172,7 +172,7 @@ open class UiElementFactory(
         windowPanel.resizable = true
         windowPanel.minHeight = ScaledValue.of(130f)
         windowPanel.minWidth = ScaledValue.of(150f)
-        windowPanel.id = title
+        windowPanel.id = title.toString()
         windowPanel.header.addChildren(headerPanel)
         windowPanel.cornerRadius = ScaledValue.of(3f)
         windowPanel.body.color = style.getColor("DARK_BG")

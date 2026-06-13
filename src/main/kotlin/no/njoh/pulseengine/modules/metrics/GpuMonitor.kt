@@ -13,6 +13,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.append
 import no.njoh.pulseengine.core.service.Service
+import no.njoh.pulseengine.core.shared.utils.TextBuilderContext
 import no.njoh.pulseengine.modules.ui.Position
 import no.njoh.pulseengine.modules.ui.ScaledValue
 import no.njoh.pulseengine.modules.ui.Size
@@ -39,6 +40,7 @@ class GpuMonitor : Service()
     private var timeRows = RowPanel()
     private var measurements = mutableListOf<Measurement>()
     private var uiFactory = UiElementFactory()
+    private var windowTitle = TextBuilderContext()
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -71,6 +73,10 @@ class GpuMonitor : Service()
             height = window.height.value
         )
 
+        // Update title with current FPS
+        val gpuName = (engine.gfx as? GraphicsInternal)?.gpuName ?: ""
+        windowTitle.build { "GPU Monitor - " plus gpuName plus " [" plus engine.data.currentFps plus " FPS]" }
+  
         // Foreground UI
         window.render(engine, fgSurface)
     }
@@ -103,7 +109,7 @@ class GpuMonitor : Service()
     }
 
     private fun createWindow(engine: PulseEngine) = uiFactory.createWindowUI(
-        title = "GPU Monitor - ${(engine.gfx as? GraphicsInternal)?.gpuName}",
+        title = windowTitle.content,
         iconName = "MONITOR",
         x = 20f,
         y = 20f,
