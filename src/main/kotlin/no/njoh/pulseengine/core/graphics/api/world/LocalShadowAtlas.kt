@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.graphics.api.world
 import gnu.trove.list.array.TIntArrayList
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.primitives.StaticList
 import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.joml.Vector3fc
@@ -16,20 +17,20 @@ class LocalShadowAtlas
 {
     var enabled = true
     var resolution = 4096
-    var tileResolution = 512
-    var maxFacesPerFrame = 3
+    var shadowFaceResolution = 512
+    var maxShadowFacesPerFrame = 3
 
-    private val faces = ArrayList<LocalShadowFace>(64)
-    private val shadowBlocks = ArrayList<ShadowBlock>(64)
-    private val reservedBlocks = ArrayList<ShadowBlock>(64)
-    private val activeLights = ArrayList<WorldRenderLight>(64)
+    private val shadowFaces = DynamicList<ShadowFace>(64)
+    private val activeShadowFaces = DynamicList<ShadowFace>(64)
+    private val shadowBlocks = DynamicList<ShadowBlock>(64)
+    private val reservedBlocks = DynamicList<ShadowBlock>(64)
+    private val activeLights = DynamicList<WorldRenderLight>(64)
     private var usedFaceSlots = BooleanArray(0)
-    private var faceLastUpdatedFrameIndex = IntArray(0)
     private val activeLightsFaceOffsets = TIntArrayList(64)
     private val activeLightsFaceCounts = TIntArrayList(64)
-    private val faceIndicesToUpdate = TIntArrayList(64)
-    private val candidatesFaceIndicesToUpdate = TIntArrayList(64)
-    private var activeFaceCount = 0
+    private val shadowFaceIndicesToRender = TIntArrayList(64)
+    private var shadowFaceLastUpdatedFrameIndex = IntArray(0)
+
     private var frameIndex = 0
     private var lastResolution = 0
     private var lastCellSize = 0
@@ -37,18 +38,18 @@ class LocalShadowAtlas
     private val tmpView = Matrix4f()
     private val tmpProjection = Matrix4f()
     private val tmpCenter = Vector3f()
+    private val tmpCandidatesToRender = TIntArrayList(64)
 
-    fun prepare(scene: WorldRenderScene, cameraPosition: Vector3fc? = null)
+    fun update(scene: WorldRenderScene, cameraPosition: Vector3fc? = null)
     {
-        val lights = scene.localLights
         activeLights.clear()
         reservedBlocks.clear()
+        activeShadowFaces.clear()
         activeLightsFaceOffsets.resetQuick()
         activeLightsFaceCounts.resetQuick()
-        faceIndicesToUpdate.resetQuick()
-        candidatesFaceIndicesToUpdate.resetQuick()
-        activeFaceCount = 0
+        shadowFaceIndicesToRender.resetQuick()
 
+        val lights = scene.localLights
         for (i in 0 until lights.size)
         {
             lights[i].shadowFaceOffset = -1
@@ -58,18 +59,17 @@ class LocalShadowAtlas
         if (!enabled || lights.isEmpty()) 
             return
 
+        val tileSize = shadowFaceResolution.coerceIn(64, max(64, resolution))
+        val facesPerSide = max(1, resolution / tileSize)
+        val maxFaceCount = facesPerSide * facesPerSide
 
-        val cellSize = tileResolution.coerceIn(64, max(64, resolution))
-        val tilesPerSide = max(1, resolution / cellSize)
-        val maxFaceCount = tilesPerSide * tilesPerSide
-
-        updateCollectionsIfLayoutChanged(cellSize, maxFaceCount)
+        updateCollectionsIfLayoutChanged(tileSize, maxFaceCount)
 
         reserveCurrentLightBlocks(lights, maxFaceCount)
 
-        configureShadowFaces(lights, maxFaceCount, cellSize, cameraPosition, tilesPerSide)
+        configureShadowFaces(lights, maxFaceCount, tileSize, cameraPosition, facesPerSide)
 
-        selectShadowFacesToUpdate()
+        selectShadowFacesToRender()
         
         updateLightShadowRanges()
     }
@@ -79,25 +79,23 @@ class LocalShadowAtlas
         if (lastResolution != resolution || lastCellSize != cellSize)
         {
             shadowBlocks.clear()
-            faceLastUpdatedFrameIndex = IntArray(maxFaceCount) { INITIAL_LAST_UPDATED_FRAME }
-
-            for (face in faces) face.invalidate()
-
+            shadowFaces.forEach { it.invalidate() }
+            shadowFaceLastUpdatedFrameIndex = IntArray(maxFaceCount) { INITIAL_LAST_UPDATED_FRAME }
             lastResolution = resolution
             lastCellSize = cellSize
         }
-        else if (faceLastUpdatedFrameIndex.size < maxFaceCount)
+        else if (shadowFaceLastUpdatedFrameIndex.size < maxFaceCount)
         {
-            val previous = faceLastUpdatedFrameIndex
-            faceLastUpdatedFrameIndex = IntArray(maxFaceCount) { INITIAL_LAST_UPDATED_FRAME }
-            for (i in 0 until previous.size)
-                faceLastUpdatedFrameIndex[i] = previous[i]
+            shadowFaceLastUpdatedFrameIndex = IntArray(maxFaceCount)
+            {
+                if (it < shadowFaceLastUpdatedFrameIndex.size) shadowFaceLastUpdatedFrameIndex[it] else INITIAL_LAST_UPDATED_FRAME 
+            }
         }
 
         if (usedFaceSlots.size < maxFaceCount)
             usedFaceSlots = BooleanArray(maxFaceCount)
         else
-            usedFaceSlots.fill(false, 0, maxFaceCount)
+            usedFaceSlots.fill(false)
     }
 
     private fun reserveCurrentLightBlocks(lights: DynamicList<WorldRenderLight>, maxFaceCount: Int)
@@ -108,7 +106,7 @@ class LocalShadowAtlas
             if (!light.shadowEnabled || light.shadowResolution <= 0)
                 continue
 
-            val faceCount = if (light.isSpotLight) 1 else POINT_FACE_COUNT
+            val faceCount = if (light.isSpotLight) 1 else POINT_LIGHT_SHADOW_FACE_COUNT
             val key = light.shadowBlockKey(i)
             val block = findExistingFreeBlock(key, faceCount, maxFaceCount) ?: continue
 
@@ -119,27 +117,20 @@ class LocalShadowAtlas
 
     private fun configureShadowFaces(lights: DynamicList<WorldRenderLight>, maxFaceCount: Int, cellSize: Int, cameraPosition: Vector3fc?, tilesPerSide: Int) 
     {
-        for (i in 0 until faces.size)
-            faces[i].active = false
-
         for (i in 0 until lights.size)
         {
             val light = lights[i]
             if (!light.shadowEnabled || light.shadowResolution <= 0)
                 continue
 
-            val faceCount = if (light.isSpotLight) 1 else POINT_FACE_COUNT
+            val faceCount = if (light.isSpotLight) 1 else POINT_LIGHT_SHADOW_FACE_COUNT
             val blockKey = light.shadowBlockKey(i)
-            val reservedBlock = findReservedBlock(blockKey, faceCount)
+            val reservedBlock = reservedBlocks.firstOrNull { it.key == blockKey && it.faceCount == faceCount }
             val block = reservedBlock ?: findOrAllocateBlock(blockKey, faceCount, maxFaceCount) ?: continue
-
-            if (reservedBlock == null)
-                markFaceSlotsUsed(block.faceOffset, block.faceCount)
 
             activeLights += light
             activeLightsFaceOffsets.add(block.faceOffset)
             activeLightsFaceCounts.add(block.faceCount)
-            activeFaceCount = max(activeFaceCount, block.faceOffset + block.faceCount)
 
             val faceSize = light.shadowResolution.coerceIn(64, cellSize)
             val updatePriority = lightUpdatePriority(light, cameraPosition)
@@ -152,7 +143,7 @@ class LocalShadowAtlas
             } 
             else
             {
-                for (faceIndex in 0 until POINT_FACE_COUNT)
+                for (faceIndex in 0 until POINT_LIGHT_SHADOW_FACE_COUNT)
                 {
                     val face = getOrCreateFace(block.faceOffset + faceIndex, faceSize, cellSize, tilesPerSide)
                     val viewProjection = light.getPointShadowViewProjection(faceIndex)
@@ -162,41 +153,70 @@ class LocalShadowAtlas
         }
     }
 
-    private fun selectShadowFacesToUpdate()
+    private fun selectShadowFacesToRender()
     {
-        for (i in 0 until activeFaceCount)
+        tmpCandidatesToRender.resetQuick()
+        activeShadowFaces.forEach { tmpCandidatesToRender.add(it.index) }
+
+        val numFacesToRender = min(maxShadowFacesPerFrame, tmpCandidatesToRender.size())
+        if (numFacesToRender <= 0) return
+
+        repeat(numFacesToRender) // Find the best candidate faces to render
         {
-            if (faces[i].active) candidatesFaceIndicesToUpdate.add(i)
-        }
+            var bestCandidatePos = -1
+            var bestFaceIndex    = -1
+            var bestScore        = Float.NEGATIVE_INFINITY
 
-        val numFacesToUpdate = min(maxFacesPerFrame, candidatesFaceIndicesToUpdate.size())
-        if (numFacesToUpdate <= 0) return
+            for (i in 0 until tmpCandidatesToRender.size())
+            {
+                val faceIndex = tmpCandidatesToRender[i]
+                if (faceIndex < 0) continue // Candidate has been removed
+                val score = faceRenderScore(faceIndex)
+                val scoreCompare = score.compareTo(bestScore)
 
-        sortCandidateFacesToUpdate(candidatesFaceIndicesToUpdate.size())
+                if (bestCandidatePos < 0 || scoreCompare > 0 || (scoreCompare == 0 && faceIndex < bestFaceIndex))
+                {
+                    bestCandidatePos = i
+                    bestFaceIndex = faceIndex
+                    bestScore = score
+                }
+            }
 
-        for (i in 0 until numFacesToUpdate)
-        {
-            val faceIndex = candidatesFaceIndicesToUpdate[i]
-            val face = faces[faceIndex]
+            if (bestCandidatePos < 0) return@repeat
+
+            val face = shadowFaces[bestFaceIndex]
             face.viewProjection.set(face.pendingViewProjection)
             face.valid = true
-            faceIndicesToUpdate.add(faceIndex)
-            faceLastUpdatedFrameIndex[faceIndex] = frameIndex
+            shadowFaceIndicesToRender.add(bestFaceIndex)
+            shadowFaceLastUpdatedFrameIndex[bestFaceIndex] = frameIndex
+            tmpCandidatesToRender[bestCandidatePos] = -1 // Mark candidate as removed
         }
 
         frameIndex++
     }
 
+    private fun faceRenderScore(faceIndex: Int): Float
+    {
+        // TODO: Consider distance to camera
+        val face = shadowFaces[faceIndex]
+        if (!face.valid)
+            return INVALID_FACE_UPDATE_SCORE + face.updatePriority * PRIORITY_WEIGHT
+
+        val framesSinceLastRender = frameIndex - shadowFaceLastUpdatedFrameIndex[faceIndex]
+        return face.updatePriority * PRIORITY_WEIGHT + framesSinceLastRender
+    }
+
     private fun updateLightShadowRanges()
     {
-        for (assignmentIndex in 0 until activeLights.size)
+        for (lightIndex in 0 until activeLights.size)
         {
-            val faceOffset = activeLightsFaceOffsets[assignmentIndex]
-            val faceCount = activeLightsFaceCounts[assignmentIndex]
+            val faceOffset = activeLightsFaceOffsets[lightIndex]
+            val faceCount = activeLightsFaceCounts[lightIndex]
+
             var allFacesValid = true
             for (i in 0 until faceCount)
             {
-                if (!faces[faceOffset + i].valid)
+                if (!shadowFaces[faceOffset + i].valid)
                 {
                     allFacesValid = false
                     break
@@ -205,54 +225,24 @@ class LocalShadowAtlas
 
             if (allFacesValid)
             {
-                val light = activeLights[assignmentIndex]
+                val light = activeLights[lightIndex]
                 light.shadowFaceOffset = faceOffset
                 light.shadowFaceCount = faceCount
             }
         }
     }
-    
-    private fun compareFaceUpdatePriority(a: Int, b: Int): Int
+
+    private fun getOrCreateFace(index: Int, faceSize: Int, cellSize: Int, tilesPerSide: Int): ShadowFace
     {
-        val result = faceUpdateScore(b).compareTo(faceUpdateScore(a))
-        return if (result != 0) result else a - b
-    }
+        while (shadowFaces.size <= index)
+            shadowFaces += ShadowFace()
 
-    private fun sortCandidateFacesToUpdate(count: Int)
-    {
-        for (i in 1 until count)
-        {
-            val value = candidatesFaceIndicesToUpdate[i]
-            var j = i - 1
-            while (j >= 0 && compareFaceUpdatePriority(candidatesFaceIndicesToUpdate[j], value) > 0)
-            {
-                candidatesFaceIndicesToUpdate[j + 1] = candidatesFaceIndicesToUpdate[j]
-                j--
-            }
-            candidatesFaceIndicesToUpdate[j + 1] = value
-        }
-    }
-
-    private fun faceUpdateScore(faceIndex: Int): Float
-    {
-        val face = faces[faceIndex]
-        if (!face.valid)
-            return INVALID_FACE_UPDATE_SCORE + face.updatePriority * PRIORITY_WEIGHT
-
-        val framesSinceUpdate = frameIndex - faceLastUpdatedFrameIndex[faceIndex]
-        return face.updatePriority * PRIORITY_WEIGHT + framesSinceUpdate
-    }
-
-    private fun getOrCreateFace(index: Int, faceSize: Int, cellSize: Int, tilesPerSide: Int): LocalShadowFace
-    {
-        while (faces.size <= index)
-            faces += LocalShadowFace()
-
-        val face = faces[index]
+        val face = shadowFaces[index]
         val oldSize = face.size
         val xTile = index % tilesPerSide
         val yTile = index / tilesPerSide
 
+        face.index = index
         face.x = xTile * cellSize
         face.y = yTile * cellSize
         face.size = faceSize
@@ -275,62 +265,32 @@ class LocalShadowAtlas
         if (existingBlock != null)
             return existingBlock
 
-        val offset = findFreeFaceRange(faceCount, maxFaceCount) ?: return null
-        removeShadowBlocks(key, offset, faceCount)
-
-        return ShadowBlock(key, offset, faceCount).also { shadowBlocks += it }
-    }
-
-    private fun findReservedBlock(key: Long, faceCount: Int): ShadowBlock?
-    {
-        for (i in 0 until reservedBlocks.size)
+        var freeOffset = 0
+        while (freeOffset + faceCount <= maxFaceCount)
         {
-            val block = reservedBlocks[i]
-            if (block.key == key && block.faceCount == faceCount)
-                return block
+            if (isFaceRangeFree(freeOffset, faceCount)) break
+            freeOffset++
         }
-        return null
+        if (freeOffset + faceCount > maxFaceCount) return null
+
+        val block = ShadowBlock(key, freeOffset, faceCount)
+        
+        markFaceSlotsUsed(block.faceOffset, block.faceCount)
+
+        shadowBlocks.removeIf { it.key == key || it.overlaps(freeOffset, faceCount) }
+        shadowBlocks += block
+        
+        return block
     }
 
-    private fun findExistingFreeBlock(key: Long, faceCount: Int, maxFaceCount: Int): ShadowBlock?
-    {
-        for (i in 0 until shadowBlocks.size)
+    private fun findExistingFreeBlock(key: Long, faceCount: Int, maxFaceCount: Int): ShadowBlock? = 
+        shadowBlocks.firstOrNull() 
         {
-            val block = shadowBlocks[i]
-            if (block.key == key &&
-                block.faceCount == faceCount &&
-                block.faceOffset + faceCount <= maxFaceCount &&
-                isFaceRangeFree(block.faceOffset, faceCount)
-            ) {
-                return block
-            }
+            it.key == key && 
+            it.faceCount == faceCount &&
+            it.faceOffset + faceCount <= maxFaceCount &&
+            isFaceRangeFree(it.faceOffset, faceCount)
         }
-        return null
-    }
-
-    private fun removeShadowBlocks(key: Long, offset: Int, faceCount: Int)
-    {
-        var index = 0
-        while (index < shadowBlocks.size)
-        {
-            val block = shadowBlocks[index]
-            if (block.key == key || block.overlaps(offset, faceCount))
-                shadowBlocks.removeAt(index)
-            else index++
-        }
-    }
-
-    private fun findFreeFaceRange(faceCount: Int, maxFaceCount: Int): Int?
-    {
-        var offset = 0
-        while (offset + faceCount <= maxFaceCount)
-        {
-            if (isFaceRangeFree(offset, faceCount))
-                return offset
-            offset++
-        }
-        return null
-    }
 
     private fun isFaceRangeFree(offset: Int, faceCount: Int): Boolean
     {
@@ -348,7 +308,7 @@ class LocalShadowAtlas
     private fun WorldRenderLight.shadowBlockKey(submissionIndex: Int): Long =
         if (shadowId > 0L) shadowId else -(submissionIndex + 1L)
 
-    private fun LocalShadowFace.configureFor(block: ShadowBlock, faceIndex: Int, faceSize: Int, updatePriority: Float, pendingViewProjection: Matrix4f)
+    private fun ShadowFace.configureFor(block: ShadowBlock, faceIndex: Int, faceSize: Int, updatePriority: Float, pendingViewProjection: Matrix4f)
     {
         val changedOwner = blockKey != block.key || faceInLight != faceIndex
         val changedType = faceCountInLight != block.faceCount
@@ -357,16 +317,17 @@ class LocalShadowAtlas
         if (changedOwner || changedType || changedSize)
         {
             invalidate()
-            if (block.faceOffset + faceIndex < faceLastUpdatedFrameIndex.size)
-                faceLastUpdatedFrameIndex[block.faceOffset + faceIndex] = INITIAL_LAST_UPDATED_FRAME
+            if (block.faceOffset + faceIndex < shadowFaceLastUpdatedFrameIndex.size)
+                shadowFaceLastUpdatedFrameIndex[block.faceOffset + faceIndex] = INITIAL_LAST_UPDATED_FRAME
         }
 
-        this.active = true
         this.blockKey = block.key
         this.faceInLight = faceIndex
         this.faceCountInLight = block.faceCount
         this.updatePriority = updatePriority
         this.pendingViewProjection.set(pendingViewProjection)
+
+        activeShadowFaces += this
     }
 
     private fun lightUpdatePriority(light: WorldRenderLight, cameraPosition: Vector3fc?): Float
@@ -409,24 +370,25 @@ class LocalShadowAtlas
         return tmpProjection.identity().perspective(90f.toRadians(), 1f, near, far).mul(tmpView)
     }
 
-    fun getFaceCount() = activeFaceCount
+    fun getShadowFace(index: Int) = shadowFaces[index]
 
-    fun getFace(index: Int) = faces[index]
+    fun getActiveShadowFaces(): StaticList<ShadowFace> = activeShadowFaces
 
-    fun getUpdateFaceCount() = faceIndicesToUpdate.size()
+    fun getNumberOfShadowFacesToRender() = shadowFaceIndicesToRender.size()
 
-    fun getUpdateFaceIndex(index: Int) = faceIndicesToUpdate[index]
-    
-    class LocalShadowFace
+    fun getShadowFaceIndexToRender(index: Int) = shadowFaceIndicesToRender[index]
+
+    class ShadowFace
     {
         val viewProjection = Matrix4f()
         val pendingViewProjection = Matrix4f()
         val atlasScaleBias = Vector4f()
+
+        var index = -1
         var x = 0
         var y = 0
         var size = 0
         var updatePriority = 0f
-        var active = false
         var valid = false
         var blockKey = 0L
         var faceInLight = 0
@@ -435,6 +397,7 @@ class LocalShadowAtlas
         fun invalidate()
         {
             valid = false
+            index = -1
             updatePriority = 0f
             viewProjection.identity()
             pendingViewProjection.identity()
@@ -446,13 +409,12 @@ class LocalShadowAtlas
         val faceOffset: Int,
         val faceCount: Int
     ) {
-        fun overlaps(offset: Int, count: Int) =
-            faceOffset < offset + count && offset < faceOffset + faceCount
+        fun overlaps(offset: Int, count: Int) = faceOffset < offset + count && offset < faceOffset + faceCount
     }
 
     companion object
     {
-        const val POINT_FACE_COUNT = 6
+        const val POINT_LIGHT_SHADOW_FACE_COUNT = 6
         private const val PRIORITY_WEIGHT = 1000f
         private const val INVALID_FACE_UPDATE_SCORE = 1_000_000_000f
         private const val INITIAL_LAST_UPDATED_FRAME = -1000000

@@ -12,7 +12,10 @@ import no.njoh.pulseengine.core.graphics.api.world.views.WorldShadowRenderView
 import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
-import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.GLOBAL_SHADOW_VIEW
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextInternal
+import no.njoh.pulseengine.core.graphics.api.world.views.RenderViewIds.GLOBAL_SHADOW
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderViewKey
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldViewDeclarer
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawWorldRenderBucket
@@ -31,8 +34,8 @@ class CascadedShadowMapRenderer(
     var splitLambda: Float    = 0.5f,
     var shadowDistance: Float = 0f,
     override val order: Int   = 0,
-    val viewId: Int           = GLOBAL_SHADOW_VIEW
-) : Renderer() {
+    val viewId: Int           = GLOBAL_SHADOW
+) : Renderer(), WorldViewDeclarer {
 
     private lateinit var staticProgram: ShaderProgram
     private lateinit var skinnedProgram: ShaderProgram
@@ -50,6 +53,8 @@ class CascadedShadowMapRenderer(
     private var writeCascadeSizeMeters = FloatArray(CASCADE_COUNT)
     private var readCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
     private var writeCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
+
+    private val viewKey = WorldRenderViewKey(viewId) { WorldShadowRenderView(viewId) }
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -72,9 +77,6 @@ class CascadedShadowMapRenderer(
         staticProgram.bind()
         VertexAttributeLayout().withAttribute("position", 2, GL_FLOAT).bind(staticProgram)
         vao.release()
-
-        if (engine.gfx.worldContext.getView<WorldShadowRenderView>(viewId) == null)
-            engine.gfx.worldContext.addView(WorldShadowRenderView(viewId))
     }
 
     override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
@@ -84,15 +86,18 @@ class CascadedShadowMapRenderer(
         readCascadeSizeMeters = writeCascadeSizeMeters.also { writeCascadeSizeMeters = readCascadeSizeMeters }
         readCascadeFrustumPlaneSets = writeCascadeFrustumPlaneSets.also { writeCascadeFrustumPlaneSets = readCascadeFrustumPlaneSets }
         increaseBatchSize() // Ensure that the batch size is at least 1
+    }
 
-        engine.gfx.worldContext
-            .getView<WorldShadowRenderView>(viewId)
-            ?.prepare(readCascadeFrustumPlaneSets)
+    override fun declareWorldViews(engine: PulseEngineInternal, surface: SurfaceInternal, context: WorldRenderContextInternal)
+    {
+        context.requestView(viewKey).setFrustumPlaneSets(readCascadeFrustumPlaneSets)
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         if (startIndex != 0) return
+
+        val view = engine.gfx.worldContext.getView(viewKey) ?: return
 
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LEQUAL)
@@ -105,7 +110,7 @@ class CascadedShadowMapRenderer(
         skinnedProgram.bind()
         skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
 
-        engine.gfx.worldContext.getView<WorldShadowRenderView>(viewId)?.let { view -> render(view) }
+        render(view)
 
         glViewport(0, 0, resolution, resolution)
         glDisable(GL_POLYGON_OFFSET_FILL)
@@ -139,14 +144,13 @@ class CascadedShadowMapRenderer(
         }
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         staticProgram.destroy()
         skinnedProgram.destroy()
         vbo.destroy()
         vao.destroy()
     }
-
 
     fun setFor(camera: Camera, direction: Float, height: Float)
     {

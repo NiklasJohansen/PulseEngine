@@ -158,7 +158,7 @@ class DirectLightRenderer(
         gpuRenderTimeMs = (System.nanoTime() - renderStartTime) / 1_000_000f
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         vertexBuffer.destroy()
         lightBuffer.destroy()

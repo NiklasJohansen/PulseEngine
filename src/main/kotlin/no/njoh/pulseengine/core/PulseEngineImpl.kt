@@ -345,7 +345,7 @@ class PulseEngineImpl(
         audio.destroy()
         asset.destroy()
         input.destroy()
-        gfx.destroy()
+        gfx.destroy(this)
         window.destroy()
     }
 

@@ -121,5 +121,5 @@ interface GraphicsInternal : Graphics
     fun initFrame(engine: PulseEngineInternal)
     fun drawFrame(engine: PulseEngineInternal)
     fun setGpuLogLevel(logLevel: LogLevel)
-    fun destroy()
+    fun destroy(engine: PulseEngineInternal)
 }

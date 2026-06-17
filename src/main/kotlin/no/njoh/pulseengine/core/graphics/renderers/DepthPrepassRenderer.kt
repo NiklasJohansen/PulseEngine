@@ -4,13 +4,17 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_TEXTURE
+import no.njoh.pulseengine.core.graphics.api.world.views.CameraRenderState
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldCameraRenderView
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawWorldRenderBucket
-import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.MAIN_CAMERA_VIEW
+import no.njoh.pulseengine.core.graphics.api.world.views.RenderViewIds.MAIN_CAMERA
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderViewKey
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldViewDeclarer
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
@@ -20,8 +24,8 @@ import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_ONE
 
 class DepthPrepassRenderer(
     override val order: Int = 20,
-    val viewId: Int = MAIN_CAMERA_VIEW
-) : Renderer() {
+    val cameraViewId: Int = MAIN_CAMERA
+) : Renderer(), WorldViewDeclarer {
 
     private lateinit var opaqueStaticProgram: ShaderProgram
     private lateinit var opaqueSkinnedProgram: ShaderProgram
@@ -29,6 +33,8 @@ class DepthPrepassRenderer(
     private lateinit var maskedSkinnedProgram: ShaderProgram
     private lateinit var opaquePrograms: ShaderProgramSet
     private lateinit var maskedPrograms: ShaderProgramSet
+
+    private val viewKey = WorldRenderViewKey(cameraViewId) { WorldCameraRenderView(cameraViewId) }
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -47,22 +53,20 @@ class DepthPrepassRenderer(
             opaquePrograms = ShaderProgramSet(opaqueStaticProgram, opaqueSkinnedProgram)
             maskedPrograms = ShaderProgramSet(maskedStaticProgram, maskedSkinnedProgram)
         }
-
-        if (engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId) == null)
-            engine.gfx.worldContext.addView(WorldCameraRenderView(viewId))
     }
 
-    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
+    override fun declareWorldViews(engine: PulseEngineInternal, surface: SurfaceInternal, context: WorldRenderContextInternal)
     {
         increaseBatchSize() // Ensure that the batch size is at least 1
-
-        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)
-            ?.setForCamera(surface.camera, surface.config.width, surface.config.height)
+        context.requestView(viewKey).addCameraStateFor(surface.camera, surface.config.width, surface.config.height)
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         if (startIndex != 0) return
+
+        val view = engine.gfx.worldContext.getView(viewKey) ?: return
+        val cameraState = view.getCameraState(surface.camera) ?: return
 
         surface.config.hasDepthPrepass = true
 
@@ -72,12 +76,11 @@ class DepthPrepassRenderer(
         glDepthFunc(GL_LESS)
         glViewport(0, 0, surface.config.width, surface.config.height)
 
-        configureOpaqueProgram(opaqueStaticProgram, surface)
-        configureOpaqueProgram(opaqueSkinnedProgram, surface)
-        configureMaskedProgram(maskedStaticProgram, engine, surface)
-        configureMaskedProgram(maskedSkinnedProgram, engine, surface)
-
-        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)?.let { view -> render(view) }
+        configureOpaqueProgram(opaqueStaticProgram, cameraState)
+        configureOpaqueProgram(opaqueSkinnedProgram, cameraState)
+        configureMaskedProgram(maskedStaticProgram, engine, cameraState)
+        configureMaskedProgram(maskedSkinnedProgram, engine, cameraState)
+        render(view)
 
         glColorMask(true, true, true, true)
         glDisable(GL_CULL_FACE)
@@ -87,16 +90,16 @@ class DepthPrepassRenderer(
         surface.renderTarget.begin()
     }
 
-    private fun configureOpaqueProgram(program: ShaderProgram, surface: SurfaceInternal)
+    private fun configureOpaqueProgram(program: ShaderProgram, cameraState: CameraRenderState)
     {
         program.bind()
-        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+        program.setUniform("viewProjection", cameraState.viewProjectionMatrix)
     }
 
-    private fun configureMaskedProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: SurfaceInternal)
+    private fun configureMaskedProgram(program: ShaderProgram, engine: PulseEngineInternal, cameraState: CameraRenderState)
     {
         program.bind()
-        program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
+        program.setUniform("viewProjection", cameraState.viewProjectionMatrix)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
     }
 
@@ -127,7 +130,7 @@ class DepthPrepassRenderer(
         }
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         opaqueStaticProgram.destroy()
         opaqueSkinnedProgram.destroy()

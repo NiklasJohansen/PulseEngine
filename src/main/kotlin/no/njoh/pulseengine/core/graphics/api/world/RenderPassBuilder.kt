@@ -31,7 +31,7 @@ class RenderPassBuilder(
         from: DynamicList<WorldRenderItem>,
         sortFunc: ((a: WorldRenderItem, b: WorldRenderItem) -> Int)? = ::compareForBatching,
         preserveDrawOrder: Boolean = false,
-        requiredView: Int = 0,
+        requiredVisibility: Int = 0
     ) {
         val bucket = this
         val useGpuCulling = (gpuCullItemIndices != null && gpuCullItemBatchIndices != null)
@@ -44,7 +44,7 @@ class RenderPassBuilder(
 
         from.forEach()
         {
-            if (requiredView != 0 && !it.isInView(requiredView))
+            if (requiredVisibility != 0 && !it.isVisible(requiredVisibility))
                 return@forEach
 
             val bounds = it.cullingBounds

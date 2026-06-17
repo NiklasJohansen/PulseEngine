@@ -6,7 +6,9 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
-import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldVisibility.CAMERA
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldVisibility.GLOBAL_SHADOW
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldVisibility.LOCAL_SHADOW
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.annotations.MaterialRef
@@ -40,10 +42,10 @@ class WorldModel : SceneEntity(), WorldRenderable, Named
             .rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
             .scale(xScale, yScale, zScale)
 
-        var views = ViewIds.MAIN_CAMERA_VIEW
-        if (castLocalShadows) views = views or ViewIds.LOCAL_SHADOW_VIEW
-        if (castSunShadows)   views = views or ViewIds.GLOBAL_SHADOW_VIEW
+        var mask = CAMERA
+        if (castLocalShadows) mask = mask or LOCAL_SHADOW
+        if (castSunShadows)   mask = mask or GLOBAL_SHADOW
 
-        context.submitModel(engine, model, transform, material, viewIds = views)
+        context.submitModel(engine, model, transform, material, visibilityMask = mask)
     }
 }

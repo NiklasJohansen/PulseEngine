@@ -28,6 +28,8 @@ open class StaticList<T>(
     //////////////////////////////////////////////////////////////////////// GET
 
     operator fun get(index: Int): T = data[index] as T
+    
+    fun getOrNull(index: Int): T? = if (index >= 0 && index < size) data[index] as T else null
 
     //////////////////////////////////////////////////////////////////////// CHECK
 

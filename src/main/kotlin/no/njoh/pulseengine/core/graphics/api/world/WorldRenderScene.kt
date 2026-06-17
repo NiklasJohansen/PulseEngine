@@ -17,7 +17,7 @@ class WorldRenderScene
     val blendedItems = DynamicList<WorldRenderItem>(256)
     val localLights  = DynamicList<WorldRenderLight>(64)
 
-    fun addMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, viewIds: Int)
+    fun addMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, visibilityMask: Int)
     {
         val poolItem = ITEM_POOL.removeLastOrNull()?.also()
         {
@@ -26,10 +26,10 @@ class WorldRenderScene
             it.transform = transform
             it.cullingBounds = cullingBounds
             it.boneMatrices = boneMatrices
-            it.viewIds = viewIds
+            it.visibilityMask = visibilityMask
         }
 
-        val item = poolItem ?: WorldRenderItem(mesh, material, transform, cullingBounds, boneMatrices, viewIds)
+        val item = poolItem ?: WorldRenderItem(mesh, material, transform, cullingBounds, boneMatrices, visibilityMask)
 
         when (item.material?.blendMode ?: OPAQUE)
         {

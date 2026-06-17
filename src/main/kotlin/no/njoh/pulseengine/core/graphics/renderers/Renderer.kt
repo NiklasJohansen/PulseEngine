@@ -116,7 +116,7 @@ abstract class Renderer
     /**
      * Called once when the [Surface] is destroyed.
      */
-    abstract fun destroy()
+    abstract fun destroy(engine: PulseEngineInternal)
 
     companion object
     {

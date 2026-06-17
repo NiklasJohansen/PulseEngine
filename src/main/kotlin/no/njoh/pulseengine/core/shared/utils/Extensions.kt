@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.shared.utils
 
+import gnu.trove.list.array.TIntArrayList
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
@@ -131,11 +132,21 @@ object Extensions
     }
 
     /**
-     * Fast iteration of constant lookup lists.
+     * Fast inline iteration of constant lookup lists without any allocations.
      */
     inline fun <T> List<T>.forEachFast(action: (T) -> Unit)
     {
         var i = 0
+        while (i < size) action(this[i++])
+    }
+
+    /**
+     * Fast inline iteration of TIntArrayList without any allocations.
+     */
+    inline fun TIntArrayList.forEachFast(action: (Int) -> Unit)
+    {
+        var i = 0
+        val size = size()
         while (i < size) action(this[i++])
     }
 

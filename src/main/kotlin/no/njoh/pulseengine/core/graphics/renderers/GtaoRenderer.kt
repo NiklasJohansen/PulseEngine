@@ -331,7 +331,7 @@ class GtaoRenderer(
         onNewFbo(FrameBufferObject.create(surface.config.width, surface.config.height, texDescriptors))
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         vbo.destroy()
         vao.destroy()

@@ -65,7 +65,7 @@ class LineRenderer(
         drawLineVertices(vao, startIndex * 2, drawCount * 2)
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         vbo.destroy()
         vao.destroy()

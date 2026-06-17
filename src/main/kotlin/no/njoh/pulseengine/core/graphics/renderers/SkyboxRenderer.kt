@@ -68,7 +68,7 @@ class SkyboxRenderer(
         drawTriangleVertices(vao, 0, 36) // 12 triangles * 3 verts
     }
 
-    override fun destroy() 
+    override fun destroy(engine: PulseEngineInternal)
     {
         vao.destroy()
         vbo.destroy()

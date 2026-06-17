@@ -79,7 +79,7 @@ class NormalMapRenderer(
         drawInstancedQuads(vao, instanceBuffer, instanceLayout, program, startIndex, drawCount)
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         vertexBuffer.destroy()
         instanceBuffer.destroy()

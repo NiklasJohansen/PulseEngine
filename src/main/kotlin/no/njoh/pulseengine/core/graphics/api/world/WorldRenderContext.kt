@@ -6,10 +6,13 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.AnimatedSkeletonPose
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
-import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.GLOBAL_SHADOW_VIEW
-import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.LOCAL_SHADOW_VIEW
-import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.MAIN_CAMERA_VIEW
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldVisibility.CAMERA
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldVisibility.GLOBAL_SHADOW
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldVisibility.LOCAL_SHADOW
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderView
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderViewKey
+import no.njoh.pulseengine.core.graphics.api.Camera
+import no.njoh.pulseengine.core.graphics.api.objects.LightBufferObject
 import no.njoh.pulseengine.core.shared.primitives.Color
 import org.joml.Matrix4f
 import org.joml.Vector3f
@@ -22,7 +25,7 @@ abstract class WorldRenderContext()
         transform: Matrix4f,
         material: Material? = null,
         animationPose: AnimatedSkeletonPose? = null,
-        viewIds: Int = MAIN_CAMERA_VIEW or GLOBAL_SHADOW_VIEW or LOCAL_SHADOW_VIEW
+        visibilityMask: Int = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW
     )
 
     abstract fun submitMesh(
@@ -31,7 +34,7 @@ abstract class WorldRenderContext()
         transform: Matrix4f,
         cullingBounds: Model.Aabb? = mesh.localBounds,
         boneMatrices: Array<Matrix4f>? = null,
-        viewIds: Int = MAIN_CAMERA_VIEW or GLOBAL_SHADOW_VIEW or LOCAL_SHADOW_VIEW
+        visibilityMask: Int = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW
     )
 
     abstract fun submitPointLight(
@@ -58,18 +61,27 @@ abstract class WorldRenderContext()
         shadowImportance: Float = 1f,
         shadowId: Long = 0L
     )
-
-    abstract fun getLocalShadowAtlas(): LocalShadowAtlas
 }
 
-abstract class WorldRenderContextInternal : WorldRenderContext() //, WorldRenderContextViewBuilder
+abstract class WorldRenderContextInternal : WorldRenderContext()
 {
     abstract fun initFrame()
     abstract fun buildFrame(engine: PulseEngineInternal)
     abstract fun endFrame()
     abstract fun destroy()
 
-    abstract fun addView(view: WorldRenderView)
-    abstract fun <T> getView(viewId: Int, type: Class<T>): T?
-    inline fun <reified T> getView(viewId: Int) = getView(viewId, T::class.java)
+    /**
+     * Declares that a view is needed for the current frame, creating it if necessary.
+     * Only requested views are prepared by [buildFrame].
+     */
+    abstract fun <T: WorldRenderView> requestView(key: WorldRenderViewKey<T>): T
+
+    /**
+     * Gets a view requested for the current frame after [buildFrame] has prepared it.
+     */
+    abstract fun <T: WorldRenderView> getView(key: WorldRenderViewKey<T>): T?
+
+    abstract fun getLightBuffer(): LightBufferObject
+    abstract fun getLocalShadowAtlas(): LocalShadowAtlas
+    abstract fun getClusteredLightGrid(camera: Camera): ClusteredLightGrid?
 }

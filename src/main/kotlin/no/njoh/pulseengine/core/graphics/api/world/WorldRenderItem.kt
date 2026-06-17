@@ -10,10 +10,10 @@ class WorldRenderItem(
     var transform: Matrix4f,
     var cullingBounds: Model.Aabb?,
     var boneMatrices: Array<Matrix4f>?,
-    var viewIds: Int
+    var visibilityMask: Int
 ) {
     var gpuInstanceIndex = -1
     var gpuCullItemIndex = -1
 
-    fun isInView(viewId: Int) = (viewIds and viewId) != 0
+    fun isVisible(requiredVisibility: Int) = (visibilityMask and requiredVisibility) != 0
 }

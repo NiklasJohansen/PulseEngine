@@ -6,10 +6,13 @@ import no.njoh.pulseengine.core.graphics.api.world.WorldRenderCommandBuilder
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItem
 import no.njoh.pulseengine.core.graphics.api.world.PreparedRenderPass
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderScene
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldVisibility.GLOBAL_SHADOW
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 
-class WorldShadowRenderView(override val viewId: Int) : WorldRenderView
-{
+class WorldShadowRenderView(
+    viewId: Int,
+) : WorldRenderView(viewId, visibilityMask = GLOBAL_SHADOW) {
+
     val bucket = WorldRenderBucket()
 
     var preparedPass: PreparedRenderPass = PreparedRenderPass.EMPTY
@@ -18,12 +21,13 @@ class WorldShadowRenderView(override val viewId: Int) : WorldRenderView
     private var cascadeFrustumPlaneSets = arrayOf<FrustumPlaneSet>()
     private val allItems = DynamicList<WorldRenderItem>(1024)
 
-    fun prepare(cascadeFrustumPlaneSets: Array<FrustumPlaneSet>)
+    override fun beginFrame()
     {
-        this.cascadeFrustumPlaneSets = cascadeFrustumPlaneSets
+        preparedPass = PreparedRenderPass.EMPTY
+        bucket.clear()
     }
 
-    override fun update(scene: WorldRenderScene, builder: WorldRenderCommandBuilder)
+    override fun prepare(scene: WorldRenderScene, builder: WorldRenderCommandBuilder)
     {
         allItems.clear()
         allItems += scene.opaqueItems
@@ -31,13 +35,12 @@ class WorldShadowRenderView(override val viewId: Int) : WorldRenderView
 
         preparedPass = builder.prepareCullPass(cascadeFrustumPlaneSets)
         {
-            bucket.fill(allItems, requiredView = viewId)
+            bucket.fill(allItems, requiredVisibility = visibilityMask)
         }
     }
 
-    override fun clear()
+    fun setFrustumPlaneSets(cascadeFrustumPlaneSets: Array<FrustumPlaneSet>)
     {
-        preparedPass = PreparedRenderPass.EMPTY
-        bucket.clear()
+        this.cascadeFrustumPlaneSets = cascadeFrustumPlaneSets
     }
 }

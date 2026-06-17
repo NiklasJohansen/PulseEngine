@@ -28,6 +28,15 @@ class DynamicList<T>(
 
     //////////////////////////////////////////////////////////////////////// ADD
 
+    inline fun getOrAdd(index: Int, newValue: () -> T): T
+    {
+        if (index >= 0 && index < size)
+            return data[index] as T
+        val value = newValue()
+        plusAssign(value)
+        return value
+    }
+
     operator fun plusAssign(element: T)
     {
         val s = size

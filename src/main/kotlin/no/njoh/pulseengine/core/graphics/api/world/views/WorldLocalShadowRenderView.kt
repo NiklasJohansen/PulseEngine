@@ -1,140 +1,118 @@
 package no.njoh.pulseengine.core.graphics.api.world.views
 
+import gnu.trove.list.array.TIntArrayList
 import no.njoh.pulseengine.core.graphics.api.Frustum
 import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.api.world.LocalShadowAtlas
+import no.njoh.pulseengine.core.graphics.api.world.LocalShadowAtlas.Companion.POINT_LIGHT_SHADOW_FACE_COUNT
 import no.njoh.pulseengine.core.graphics.api.world.PreparedRenderPass
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderBucket
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderCommandBuilder
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderItem
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderScene
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldVisibility.LOCAL_SHADOW
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 
 class WorldLocalShadowRenderView(
-    override val viewId: Int,
-    private val atlas: LocalShadowAtlas
-) : WorldRenderView {
+    viewId: Int,
+    private val atlas: LocalShadowAtlas,
+) : WorldRenderView(viewId, visibilityMask = LOCAL_SHADOW) {
 
-    private val facePasses   = DynamicList<FacePass>(16)
-    private val faceFrustums = DynamicList<Frustum>(16)
-    private val allItems     = DynamicList<WorldRenderItem>(1024)
-    private val faceItems    = DynamicList<WorldRenderItem>(1024)
+    private val shadowFacePasses   = DynamicList<ShadowFaceRenderPass>(16)
+    private val shadowFaceFrustums = DynamicList<Frustum>(16)
+    private val shadowFaceItems    = DynamicList<WorldRenderItem>(1024)
 
-    var facePassCount = 0
+    var shadowFacePassCount = 0
         private set
 
-    override fun update(scene: WorldRenderScene, builder: WorldRenderCommandBuilder)
+    override fun beginFrame()
     {
-        val faceCount = atlas.getFaceCount()
-        val updateFaceCount = atlas.getUpdateFaceCount()
-        if (faceCount == 0 || updateFaceCount == 0)
+        shadowFacePasses.forEach { it.clear() }
+        shadowFacePassCount = 0
+    }
+
+    override fun prepare(scene: WorldRenderScene, builder: WorldRenderCommandBuilder)
+    {
+        val shadowFaceCount = atlas.getActiveShadowFaces().size
+        val numShadowFacesToRender = atlas.getNumberOfShadowFacesToRender()
+        if (shadowFaceCount == 0 || numShadowFacesToRender == 0)
             return
 
-        allItems.clear()
-        allItems += scene.opaqueItems
-        allItems += scene.maskedItems
+        val shadowFacesPerPass = if (builder.gpuCullingSupported) POINT_LIGHT_SHADOW_FACE_COUNT else 1
 
-        while (faceFrustums.size < faceCount)
-            faceFrustums += Frustum()
-
-        val facesPerPass = if (builder.gpuCullingSupported) LocalShadowAtlas.POINT_FACE_COUNT else 1
-        var firstUpdateFace = 0
-
-        while (firstUpdateFace < updateFaceCount)
+        var i = 0
+        while (i < numShadowFacesToRender)
         {
-            while (facePasses.size <= facePassCount)
-                facePasses += FacePass()
+            val pass = shadowFacePasses.getOrAdd(shadowFacePassCount) { ShadowFaceRenderPass() }
 
-            val pass = facePasses[facePassCount]
-            pass.faceCount = 0
-
-            while (pass.faceCount < facesPerPass && firstUpdateFace < updateFaceCount)
+            while (pass.getNumShadowFacesToRender() < shadowFacesPerPass && i < numShadowFacesToRender)
             {
-                val faceIndex = atlas.getUpdateFaceIndex(firstUpdateFace++)
-                if (faceIndex !in 0 until faceCount)
-                    continue
-
-                pass.faceIndices[pass.faceCount++] = faceIndex
-                faceFrustums[faceIndex].setForViewProjection(atlas.getFace(faceIndex).viewProjection)
+                val faceIndex = atlas.getShadowFaceIndexToRender(i++)
+                val viewProjection = atlas.getShadowFace(faceIndex).viewProjection
+                val planeSet = shadowFaceFrustums.getOrAdd(faceIndex) { Frustum() }.setForViewProjection(viewProjection).planeSet
+                pass.addShadowFaceToRender(faceIndex, planeSet)
             }
 
-            if (pass.faceCount == 0)
-                continue
+            if (pass.getNumShadowFacesToRender() == 0) continue
 
-            for (i in 0 until pass.faceCount)
-                pass.frustumPlaneSets[i] = faceFrustums[pass.faceIndices[i]].planeSet
-
-            pass.preparedPass = builder.prepareCullPass(pass.frustumPlaneSets, pass.faceCount)
+            pass.preparedPass = builder.prepareCullPass(pass.frustumPlaneSets, pass.getNumShadowFacesToRender())
             {
-                faceItems.clear()
-                allItems.forEach { if (it.intersectsAnyFace(pass)) faceItems += it }
+                shadowFaceItems.clear()
+                scene.opaqueItems.forEach { if (it.intersectsAnyFace(pass)) shadowFaceItems += it }
+                scene.maskedItems.forEach { if (it.intersectsAnyFace(pass)) shadowFaceItems += it }
 
-                pass.bucket.fill(faceItems, requiredView = viewId)
+                pass.bucket.fill(shadowFaceItems, requiredVisibility = visibilityMask)
             }
 
-            facePassCount++
+            shadowFacePassCount++
         }
     }
 
-    override fun clear()
+    fun getShadowFaceRenderPass(faceIndex: Int): ShadowFaceRenderPass?
     {
-        facePassCount = 0
-        allItems.clear()
-        facePasses.forEach { it.clear() }
-    }
-
-    fun getFacePass(faceIndex: Int): FacePass?
-    {
-        for (i in 0 until facePassCount)
+        for (i in 0 until shadowFacePassCount)
         {
-            val pass = facePasses[i]
-            if (pass.containsFace(faceIndex)) return pass
+            val pass = shadowFacePasses[i]
+            if (pass.containsShadowFace(faceIndex)) return pass
         }
         return null
     }
 
-    class FacePass
+    private fun WorldRenderItem.intersectsAnyFace(pass: ShadowFaceRenderPass): Boolean
+    {
+        val bounds = cullingBounds ?: return true
+        for (i in 0 until pass.getNumShadowFacesToRender())
+        {
+            if (pass.frustumPlaneSets[i].intersectsAabb(bounds, transform)) return true
+        }
+        return false
+    }
+
+    class ShadowFaceRenderPass
     {
         val bucket = WorldRenderBucket()
-        val faceIndices = IntArray(LocalShadowAtlas.POINT_FACE_COUNT)
-        val frustumPlaneSets = Array(LocalShadowAtlas.POINT_FACE_COUNT) { FrustumPlaneSet.ofCapacity(0) }
+        val frustumPlaneSets = Array(POINT_LIGHT_SHADOW_FACE_COUNT) { FrustumPlaneSet.ofCapacity(0) }
         var preparedPass = PreparedRenderPass.EMPTY
-        var faceCount = 0
 
-        fun containsFace(faceIndex: Int): Boolean
-        {
-            for (i in 0 until faceCount)
-            {
-                if (faceIndices[i] == faceIndex) return true
-            }
-            return false
-        }
-
-        fun cullViewIndexOf(faceIndex: Int): Int
-        {
-            for (i in 0 until faceCount)
-            {
-                if (faceIndices[i] == faceIndex) return i
-            }
-            return 0
-        }
+        private val shadowFaceIndices = TIntArrayList(POINT_LIGHT_SHADOW_FACE_COUNT)
 
         fun clear()
         {
             bucket.clear()
             preparedPass = PreparedRenderPass.EMPTY
-            faceCount = 0
+            shadowFaceIndices.resetQuick()
         }
-    }
 
-    private fun WorldRenderItem.intersectsAnyFace(pass: FacePass): Boolean
-    {
-        val bounds = cullingBounds ?: return true
-        for (i in 0 until pass.faceCount)
+        fun addShadowFaceToRender(shadowFaceIndex: Int, frustumPlaneSet: FrustumPlaneSet)
         {
-            val faceIndex = pass.faceIndices[i]
-            if (faceFrustums[faceIndex].planeSet.intersectsAabb(bounds, transform)) return true
+            frustumPlaneSets[shadowFaceIndices.size()] = frustumPlaneSet
+            shadowFaceIndices.add(shadowFaceIndex)
         }
-        return false
+
+        fun getNumShadowFacesToRender(): Int = shadowFaceIndices.size()
+
+        fun containsShadowFace(shadowFaceIndex: Int): Boolean = shadowFaceIndices.contains(shadowFaceIndex)
+
+        fun cullViewIndexOf(shadowFaceIndex: Int): Int = shadowFaceIndices.indexOf(shadowFaceIndex)
     }
 }

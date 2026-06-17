@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.api.Attachment
 import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextInternal
 import no.njoh.pulseengine.core.graphics.renderers.CascadedShadowMapRenderer
 import no.njoh.pulseengine.core.graphics.renderers.LocalShadowAtlasRenderer
 import no.njoh.pulseengine.core.graphics.renderers.ModelRenderer
@@ -65,11 +66,12 @@ class WorldLightingSystem : SceneSystem()
             renderer?.iblIntensity                = envIntensity
         }
 
-        engine.gfx.worldContext.getLocalShadowAtlas().apply {
+        (engine.gfx.worldContext as WorldRenderContextInternal).getLocalShadowAtlas().apply() 
+        {
             enabled = localShadowsEnabled
             resolution = localShadowAtlasResolution
-            tileResolution = localShadowTileResolution
-            maxFacesPerFrame = localShadowMaxFacesPerFrame
+            shadowFaceResolution = localShadowTileResolution
+            maxShadowFacesPerFrame = localShadowMaxFacesPerFrame
         }
     }
 
@@ -117,9 +119,6 @@ class WorldLightingSystem : SceneSystem()
 
     private fun setUpLocalShadowAtlas(engine: PulseEngine)
     {
-        val atlas = engine.gfx.worldContext.getLocalShadowAtlas()
-        val resolution = atlas.resolution
-
         if (!localShadowsEnabled)
         {
             if (localShadowAtlasSurfaceName.isNotBlank())
@@ -130,24 +129,24 @@ class WorldLightingSystem : SceneSystem()
         }
 
         val atlasSurface = engine.gfx.getSurface(localShadowAtlasSurfaceName)
-        if (atlasSurface == null || resolution != lastLocalAtlasResolution)
+        if (atlasSurface == null || localShadowAtlasResolution != lastLocalAtlasResolution)
         {
             if (localShadowAtlasSurfaceName.isNotBlank())
                 engine.gfx.deleteSurface(localShadowAtlasSurfaceName)
 
             val index = 1 + (engine.gfx.getAllSurfaces().maxOfOrNull { it.config.name.substringAfterLast("_").toIntOrNull() ?: 0 } ?: 0)
             localShadowAtlasSurfaceName = "local_shadow_atlas_$index"
-            lastLocalAtlasResolution = resolution
+            lastLocalAtlasResolution = localShadowAtlasResolution
 
             engine.gfx.createSurface(
                 name = localShadowAtlasSurfaceName,
-                width = resolution,
-                height = resolution,
+                width = localShadowAtlasResolution,
+                height = localShadowAtlasResolution,
                 isVisible = false,
                 clearColor = null, // Dont clear surface each frame
                 zOrder = 49,
                 attachments = listOf(Attachment.DEPTH_TEXTURE),
-                textureSizeFunc = { _,_,_ -> PackedSize(resolution, resolution) }
+                textureSizeFunc = { _,_,_ -> PackedSize(localShadowAtlasResolution, localShadowAtlasResolution) }
             ).apply {
                 addRenderer(LocalShadowAtlasRenderer())
             }

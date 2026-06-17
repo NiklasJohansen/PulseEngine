@@ -114,7 +114,7 @@ class RenderTextureRenderer(
         readCount = 0
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         vbo.destroy()
         program.destroy()

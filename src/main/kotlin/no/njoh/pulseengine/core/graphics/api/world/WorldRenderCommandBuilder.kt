@@ -82,37 +82,25 @@ class WorldRenderCommandBuilder(
         cpuCommandsBufferSubmitted = false
         gpuBuffersSubmitted = false
 
-        if (this::cpuCommandBuffer.isInitialized)
-            cpuCommandBuffer.clear()
-
-        if (this::gpuCommandBuffer.isInitialized)
-            gpuCommandBuffer.clear()
-
-        if (this::cullItemIndexBuffer.isInitialized)
-            cullItemIndexBuffer.clear()
-
-        if (this::cullItemBatchIndexBuffer.isInitialized)
-            cullItemBatchIndexBuffer.clear()
-
-        if (this::frustumMetadataBuffer.isInitialized)
-            frustumMetadataBuffer.clear()
-
-        if (this::frustumPlaneBuffer.isInitialized)
-            frustumPlaneBuffer.clear()
+        if (this::cpuCommandBuffer.isInitialized) cpuCommandBuffer.clear()
+        if (this::gpuCommandBuffer.isInitialized) gpuCommandBuffer.clear()
+        if (this::cullItemIndexBuffer.isInitialized) cullItemIndexBuffer.clear()
+        if (this::cullItemBatchIndexBuffer.isInitialized) cullItemBatchIndexBuffer.clear()
+        if (this::frustumMetadataBuffer.isInitialized) frustumMetadataBuffer.clear()
+        if (this::frustumPlaneBuffer.isInitialized) frustumPlaneBuffer.clear()
     }
 
     inline fun prepareCullPass(
         frustumPlaneSets: Array<FrustumPlaneSet>,
         frustumPlaneSetCount: Int = frustumPlaneSets.size,
         build: RenderPassBuilder.() -> Unit
-    ): PreparedRenderPass
-    {
+    ): PreparedRenderPass {
         val builder = createRenderPassBuilder(frustumPlaneSets, frustumPlaneSetCount)
         builder.build()
         return submitRenderPassBuilder(builder)
     }
 
-    fun createRenderPassBuilder(frustumPlaneSets: Array<FrustumPlaneSet>, frustumPlaneSetCount: Int = frustumPlaneSets.size): RenderPassBuilder
+    fun createRenderPassBuilder(frustumPlaneSets: Array<FrustumPlaneSet>, frustumPlaneSetCount: Int): RenderPassBuilder
     {
         if (!gpuCullingSupported) 
             return RenderPassBuilder(frustumPlaneSets, null, 0, null, 0, frustumPlaneSetCount)

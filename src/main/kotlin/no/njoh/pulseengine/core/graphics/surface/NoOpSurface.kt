@@ -44,7 +44,7 @@ class NoOpSurface: SurfaceInternal()
     override fun deleteRenderer(renderer: Renderer) {}
     override fun applyRenderState(state: RenderState) {}
     override fun deletePostProcessingEffect(name: String) {}
-    override fun destroy() {}
+    override fun destroy(engine: PulseEngineInternal) {}
     override fun drawLine(x0: Float, y0: Float, x1: Float, y1: Float) {}
     override fun drawLineVertex(x: Float, y: Float) {}
     override fun drawQuad(x: Float, y: Float, width: Float, height: Float) {}
@@ -57,7 +57,7 @@ class NoOpSurface: SurfaceInternal()
     override fun <T : PostProcessingEffect> getPostProcessingEffect(type: Class<T>) = null
     override fun getPostProcessingEffect(name: String) = null
     override fun getPostProcessingEffects() = emptyList<PostProcessingEffect>()
-    override fun getRenderers() = emptyList<Renderer>()
+    override fun getAllRenderers() = emptyList<Renderer>()
     override fun getTexture(index: Int, final: Boolean) = RenderTexture.BLANK
     override fun getTextures() = emptyList<RenderTexture>()
     override fun hasContent() = false

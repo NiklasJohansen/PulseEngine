@@ -29,7 +29,7 @@ class Frustum(
      * Extracts frustum planes from a view-projection matrix.
      * Uses the Gribb/Hartmann method for plane extraction.
      */
-    fun setForViewProjection(vp: Matrix4f)
+    fun setForViewProjection(vp: Matrix4f): Frustum
     {
         // Left plane: row3 + row0
         left.a = vp.m03() + vp.m00()
@@ -72,60 +72,56 @@ class Frustum(
         far.c = vp.m23() - vp.m22()
         far.d = vp.m33() - vp.m32()
         far.normalize()
+        
+        return this
     }
 
     /**
-     * Sets the frustum planes for a stereo camera pair (e.g., VR left/right eyes).
-     * Combines the horizontal outer planes from both views and uses the left camera for
-     * the remaining planes, which are expected to match in symmetric stereo projections:
-     * - Left plane from the left camera (outer edge)
-     * - Right plane from the right camera (outer edge)
-     * - Top/bottom/near/far planes from the left camera (typically identical for symmetric stereo)
+     * Builds a single conservative frustum for two horizontally adjacent camera views.
+     * The left and right projections provide the two outer horizontal planes.
      */
-    fun setForStereoCamera(leftCam: Camera, rightCam: Camera)
+    fun setForSideBySideViewProjections(leftViewProjection: Matrix4f, rightViewProjection: Matrix4f): Frustum
     {
-        val vpl = leftCam.viewProjectionMatrix
-        val vpr = rightCam.viewProjectionMatrix
+        val leftView = leftViewProjection
+        val rightView = rightViewProjection
 
-        // Left plane from left camera (outer left edge of combined frustum)
-        left.a = vpl.m03() + vpl.m00()
-        left.b = vpl.m13() + vpl.m10()
-        left.c = vpl.m23() + vpl.m20()
-        left.d = vpl.m33() + vpl.m30()
+        left.a = leftView.m03() + leftView.m00()
+        left.b = leftView.m13() + leftView.m10()
+        left.c = leftView.m23() + leftView.m20()
+        left.d = leftView.m33() + leftView.m30()
         left.normalize()
 
-        // Right plane from right camera (outer right edge of combined frustum)
-        right.a = vpr.m03() - vpr.m00()
-        right.b = vpr.m13() - vpr.m10()
-        right.c = vpr.m23() - vpr.m20()
-        right.d = vpr.m33() - vpr.m30()
+        right.a = rightView.m03() - rightView.m00()
+        right.b = rightView.m13() - rightView.m10()
+        right.c = rightView.m23() - rightView.m20()
+        right.d = rightView.m33() - rightView.m30()
         right.normalize()
 
-        // For top/bottom/near/far, use the left camera planes directly.
-        // They are typically identical for symmetric stereo projections.
-        bottom.a = vpl.m03() + vpl.m01()
-        bottom.b = vpl.m13() + vpl.m11()
-        bottom.c = vpl.m23() + vpl.m21()
-        bottom.d = vpl.m33() + vpl.m31()
+        bottom.a = leftView.m03() + leftView.m01()
+        bottom.b = leftView.m13() + leftView.m11()
+        bottom.c = leftView.m23() + leftView.m21()
+        bottom.d = leftView.m33() + leftView.m31()
         bottom.normalize()
 
-        top.a = vpl.m03() - vpl.m01()
-        top.b = vpl.m13() - vpl.m11()
-        top.c = vpl.m23() - vpl.m21()
-        top.d = vpl.m33() - vpl.m31()
+        top.a = leftView.m03() - leftView.m01()
+        top.b = leftView.m13() - leftView.m11()
+        top.c = leftView.m23() - leftView.m21()
+        top.d = leftView.m33() - leftView.m31()
         top.normalize()
 
-        near.a = vpl.m03() + vpl.m02()
-        near.b = vpl.m13() + vpl.m12()
-        near.c = vpl.m23() + vpl.m22()
-        near.d = vpl.m33() + vpl.m32()
+        near.a = leftView.m03() + leftView.m02()
+        near.b = leftView.m13() + leftView.m12()
+        near.c = leftView.m23() + leftView.m22()
+        near.d = leftView.m33() + leftView.m32()
         near.normalize()
 
-        far.a = vpl.m03() - vpl.m02()
-        far.b = vpl.m13() - vpl.m12()
-        far.c = vpl.m23() - vpl.m22()
-        far.d = vpl.m33() - vpl.m32()
+        far.a = leftView.m03() - leftView.m02()
+        far.b = leftView.m13() - leftView.m12()
+        far.c = leftView.m23() - leftView.m22()
+        far.d = leftView.m33() - leftView.m32()
         far.normalize()
+        
+        return this
     }
 
     /**

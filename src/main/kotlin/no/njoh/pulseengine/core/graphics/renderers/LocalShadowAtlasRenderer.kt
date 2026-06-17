@@ -5,8 +5,11 @@ import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet
-import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.LOCAL_SHADOW_VIEW
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextInternal
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderViewKey
+import no.njoh.pulseengine.core.graphics.api.world.views.RenderViewIds.LOCAL_SHADOW
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldLocalShadowRenderView
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldViewDeclarer
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawWorldRenderBucket
@@ -16,12 +19,13 @@ import org.lwjgl.opengl.GL11.*
 
 class LocalShadowAtlasRenderer(
     override val order: Int = 0,
-    val viewId: Int = LOCAL_SHADOW_VIEW
-) : Renderer() {
+    val viewId: Int = LOCAL_SHADOW
+) : Renderer(), WorldViewDeclarer {
 
     private lateinit var staticProgram: ShaderProgram
     private lateinit var skinnedProgram: ShaderProgram
     private lateinit var programs: ShaderProgramSet
+    private lateinit var viewKey: WorldRenderViewKey<WorldLocalShadowRenderView>
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -38,13 +42,13 @@ class LocalShadowAtlasRenderer(
             programs = ShaderProgramSet(staticProgram, skinnedProgram)
         }
 
-        if (engine.gfx.worldContext.getView<WorldLocalShadowRenderView>(viewId) == null)
-            engine.gfx.worldContext.addView(WorldLocalShadowRenderView(viewId, engine.gfx.worldContext.getLocalShadowAtlas()))
+        viewKey = WorldRenderViewKey(viewId) { WorldLocalShadowRenderView(viewId, engine.gfx.worldContext.getLocalShadowAtlas()) }
     }
 
-    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
+    override fun declareWorldViews(engine: PulseEngineInternal, surface: SurfaceInternal, context: WorldRenderContextInternal)
     {
-        increaseBatchSize()
+        increaseBatchSize() // Make sure that the batch size is at least 1
+        context.requestView(viewKey) // Declares that the view is needed for this frame
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -52,11 +56,11 @@ class LocalShadowAtlasRenderer(
         if (startIndex != 0) return
 
         val atlas = engine.gfx.worldContext.getLocalShadowAtlas()
-        val updateFaceCount = atlas.getUpdateFaceCount()
-        if (updateFaceCount == 0)
+        val numFacesToRender = atlas.getNumberOfShadowFacesToRender()
+        if (numFacesToRender == 0)
             return
 
-        val view = engine.gfx.worldContext.getView<WorldLocalShadowRenderView>(viewId) ?: return
+        val view = engine.gfx.worldContext.getView(viewKey) ?: return
 
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LEQUAL)
@@ -69,26 +73,26 @@ class LocalShadowAtlasRenderer(
         skinnedProgram.bind()
         skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
         
-        for (i in 0 until updateFaceCount)
+        for (i in 0 until numFacesToRender)
         {
-            val faceIndex = atlas.getUpdateFaceIndex(i)
-            val face = atlas.getFace(faceIndex)
-            val facePass = view.getFacePass(faceIndex) ?: continue
+            val shadowFaceIndex = atlas.getShadowFaceIndexToRender(i)
+            val shadowFace = atlas.getShadowFace(shadowFaceIndex)
+            val pass = view.getShadowFaceRenderPass(shadowFaceIndex) ?: continue
 
-            measure({ "local shadow #" plus faceIndex plus " (" plus face.blockKey plus ")" })
+            measure({ "local shadow #" plus shadowFaceIndex plus " (" plus shadowFace.blockKey plus ")" })
             {
                 glEnable(GL_SCISSOR_TEST)
-                glScissor(face.x, face.y, face.size, face.size)
+                glScissor(shadowFace.x, shadowFace.y, shadowFace.size, shadowFace.size)
                 glClear(GL_DEPTH_BUFFER_BIT)
                 glDisable(GL_SCISSOR_TEST)
-                glViewport(face.x, face.y, face.size, face.size)
+                glViewport(shadowFace.x, shadowFace.y, shadowFace.size, shadowFace.size)
 
                 staticProgram.bind()
-                staticProgram.setUniform("viewProjection", face.viewProjection)
+                staticProgram.setUniform("viewProjection", shadowFace.viewProjection)
                 skinnedProgram.bind()
-                skinnedProgram.setUniform("viewProjection", face.viewProjection)
+                skinnedProgram.setUniform("viewProjection", shadowFace.viewProjection)
 
-                drawWorldRenderBucket(facePass.bucket, facePass.preparedPass, programs, facePass.cullViewIndexOf(faceIndex))
+                drawWorldRenderBucket(pass.bucket, pass.preparedPass, programs, pass.cullViewIndexOf(shadowFaceIndex))
             }
         }
 
@@ -97,7 +101,7 @@ class LocalShadowAtlasRenderer(
         glColorMask(true, true, true, true)
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         if (this::staticProgram.isInitialized) staticProgram.destroy()
         if (this::skinnedProgram.isInitialized) skinnedProgram.destroy()

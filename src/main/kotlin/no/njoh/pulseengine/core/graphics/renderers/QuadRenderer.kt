@@ -72,7 +72,7 @@ class QuadRenderer(
         drawTriangleIndices(vao, startIndex * 6, drawCount * 6) // 6 elements per quad
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         vao.destroy()
         vbo.destroy()

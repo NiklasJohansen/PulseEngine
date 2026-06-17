@@ -132,12 +132,13 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun drawFrame(engine: PulseEngineInternal)
     {
-        worldContext.buildFrame(engine)
-
         surfaces.forEachCamera { it.onFrameDraw(engine) }
+
+        worldContext.buildFrame(engine)
 
         materialBank.submitAndBind()
         modelBank.submitAndBind()
+
         renderSurfaceContentToOffscreenTarget(engine)
         renderPostProcessingEffectsToOffscreenTarget(engine)
         renderOffscreenTargetsToBackBuffer()
@@ -237,7 +238,7 @@ open class GraphicsImpl : GraphicsInternal
             {
                 Logger.warn { "Surface with name: $name already exists. Destroying and creating new..." }
                 surfaces.remove(it)
-                it.destroy()
+                it.destroy(this)
             }
             newSurface.init(this, surfaceWidth, surfaceHeight, true)
             surfaceMap[name] = newSurface
@@ -262,7 +263,7 @@ open class GraphicsImpl : GraphicsInternal
             {
                 surfaces.remove(it)
                 surfaceMap.remove(it.config.name)
-                it.destroy()
+                it.destroy(this)
             }
         }
     }
@@ -308,15 +309,15 @@ open class GraphicsImpl : GraphicsInternal
         textureBank.setTextureCapacity(maxCount, textureSize, format)
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         Logger.info { "Destroying graphics (${this::class.simpleName})" }
+        surfaces.forEachFast { it.destroy(engine) }
+        worldContext.destroy()
         textureBank.destroy()
         materialBank.destroy()
         modelBank.destroy()
         fullFrameRenderer.destroy()
-        worldContext.destroy()
-        surfaces.forEachFast { it.destroy() }
     }
 
     private inline fun List<SurfaceInternal>.forEachCamera(block: (CameraInternal) -> Unit)

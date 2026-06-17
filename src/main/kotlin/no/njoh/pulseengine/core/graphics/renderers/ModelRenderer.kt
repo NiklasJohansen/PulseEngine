@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
+import no.njoh.pulseengine.core.graphics.api.world.views.CameraRenderState
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldCameraRenderView
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
@@ -12,11 +13,14 @@ import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_BORDER
 import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.graphics.api.TransparencyMode.SORTED_BLEND
 import no.njoh.pulseengine.core.graphics.api.TransparencyMode.WEIGHTED_BLENDED_OIT
+import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.BrdfLutBuilder
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawWorldRenderBucket
-import no.njoh.pulseengine.core.graphics.api.world.views.ViewIds.MAIN_CAMERA_VIEW
+import no.njoh.pulseengine.core.graphics.api.world.views.RenderViewIds.MAIN_CAMERA
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderViewKey
+import no.njoh.pulseengine.core.graphics.api.world.views.WorldViewDeclarer
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -30,8 +34,8 @@ import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 
 class ModelRenderer(
     override val order: Int = 40,
-    val viewId: Int = MAIN_CAMERA_VIEW
-) : Renderer() {
+    val cameraViewId: Int = MAIN_CAMERA
+) : Renderer(), WorldViewDeclarer {
 
     var iblDiffuseTexture  = ""
     var iblSpecularTexture = ""
@@ -51,7 +55,7 @@ class ModelRenderer(
     private lateinit var programs: ShaderProgramSet
 
     private val weightedBlendedRenderer = WeightedBlendedOitRenderer()
-    private val camPos                  = Vector3f()
+    private val viewKey = WorldRenderViewKey(cameraViewId) { WorldCameraRenderView(cameraViewId) }
 
     override fun init(engine: PulseEngineInternal, surface: Surface)
     {
@@ -83,23 +87,23 @@ class ModelRenderer(
             engine.asset.loadNow(brdfLutTex)
             BrdfLutBuilder.generate(engine, brdfLutTex)
         }
-
-        if (engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId) == null)
-            engine.gfx.worldContext.addView(WorldCameraRenderView(viewId))
     }
 
-    override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
+    override fun declareWorldViews(engine: PulseEngineInternal, surface: SurfaceInternal, context: WorldRenderContextInternal)
     {
         increaseBatchSize() // Ensure that the batch size is at least 1
 
-        val view = engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)
-        view?.setForCamera(surface.camera, surface.config.width, surface.config.height)
-        view?.transparencyMode = transparencyMode
+        val view = context.requestView(viewKey)
+        view.addCameraStateFor(surface.camera, surface.config.width, surface.config.height)
+        view.transparencyMode = transparencyMode
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
     {
         if (startIndex != 0) return // Only once per frame
+
+        val view = engine.gfx.worldContext.getView(viewKey) ?: return
+        val cameraState = view.getCameraState(surface.camera) ?: return
 
         glEnable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
@@ -108,16 +112,14 @@ class ModelRenderer(
         glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
         glDepthMask(!hasDepthPrepass)
 
-        engine.gfx.worldContext.getView<WorldCameraRenderView>(viewId)?.let { view ->
-            configureProgram(staticProgram, engine, surface, view)
-            configureProgram(skinnedProgram, engine, surface, view)
-            render(engine, surface, view)
-        }
+        configureProgram(staticProgram, engine, surface, cameraState)
+        configureProgram(skinnedProgram, engine, surface, cameraState)
+        render(engine, surface, view, cameraState)
 
         glDepthMask(true)
     }
 
-    private fun render(engine: PulseEngineInternal, surface: SurfaceInternal, view: WorldCameraRenderView)
+    private fun render(engine: PulseEngineInternal, surface: SurfaceInternal, view: WorldCameraRenderView, cameraState: CameraRenderState)
     {
         measure({"opaque (" plus view.opaqueBucket.totalInstanceCount() plus "i, " plus view.opaqueBucket.size plus "b)"})
         {
@@ -168,14 +170,14 @@ class ModelRenderer(
                         surface = surface,
                         bucket = view.blendedBucket,
                         preparedPass = view.preparedPass,
-                        configureAccumProgram = { program, e, s -> configureProgram(program, e, s, view) }
+                        configureAccumProgram = { program, e, s -> configureProgram(program, e, s, cameraState) }
                     )
                 }
             }
         }
     }
 
-    private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface, view: WorldCameraRenderView)
+    private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface, cameraState: CameraRenderState)
     {
         // Textures
 
@@ -204,23 +206,32 @@ class ModelRenderer(
         program.setUniform("uShadowCascadeSplitDistances", splitDist[0], splitDist[1], splitDist[2], splitDist[3])
         program.setUniform("uShadowCascadeSizeMeters", cascadeSize[0], cascadeSize[1], cascadeSize[2], cascadeSize[3])
 
-        // Local shadow atlas
-
-        val localShadowAtlasSurface = engine.gfx.getSurface(localShadowAtlasSurfaceName)
-        val localShadowAtlasTex = localShadowAtlasSurface?.getTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
-        val localShadowAtlas = engine.gfx.worldContext.getLocalShadowAtlas()
-        program.setUniformSampler("uLocalShadowAtlasTex", localShadowAtlasTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
-        program.setUniform("uLocalShadowAtlasTexSize", localShadowAtlas.resolution.toFloat())
-
         // Sunlight
 
         program.setUniform("uSunColor", sunColor)
         program.setUniform("uSunDirection", shadowMapRenderer?.getDirection() ?: Vector3f(0f, 1f, 0f))
         program.setUniform("uSunRadius", sunRadius)
+        
+        // Local shadow atlas
 
-        // Clustered local lights
+        val lightBuffer = engine.gfx.worldContext.getLightBuffer().also { it.bind() }
+        val localShadowAtlasSurface = engine.gfx.getSurface(localShadowAtlasSurfaceName)
+        val localShadowAtlasTex = localShadowAtlasSurface?.getTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
+        val localShadowAtlas = engine.gfx.worldContext.getLocalShadowAtlas()
+        program.setUniformSampler("uLocalShadowAtlasTex", localShadowAtlasTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
+        program.setUniform("uLocalShadowAtlasTexSize", localShadowAtlas.resolution.toFloat())
+        program.setUniform("uLocalShadowFaceCount", lightBuffer.shadowFaceCount)
 
-        view.clusteredLights.bind(program)
+        // Local clustered lights
+
+        val grid = engine.gfx.worldContext.getClusteredLightGrid(cameraState.camera)?.also { it.bind() }
+        program.setUniform("uClusteredLightingEnabled", grid?.enabled ?: false)
+        program.setUniform("uClusterGridSize", grid?.gridWidth ?: 1, grid?.gridHeight ?: 1, grid?.gridDepth ?: 24)
+        program.setUniform("uClusterTileSize", grid?.xTileSize?.toFloat() ?: 64f, grid?.yTileSize?.toFloat() ?: 64f)
+        program.setUniform("uClusterNearPlane", grid?.nearPlane ?: 0.05f)
+        program.setUniform("uClusterDepthSliceScale", grid?.depthSliceScale ?: 1f)
+        program.setUniform("uClusterCount", grid?.clusterCount ?: 1)
+        program.setUniform("uClusterLightCount", lightBuffer.lightCount)
 
         // Ambient lighting
 
@@ -233,11 +244,10 @@ class ModelRenderer(
 
         // Camera
 
-        surface.camera.invViewMatrix.getTranslation(camPos)
-        program.setUniform("uScreenSize", surface.config.width.toFloat(), surface.config.height.toFloat())
-        program.setUniform("uViewProjection", surface.camera.viewProjectionMatrix)
-        program.setUniform("uView", surface.camera.viewMatrix)
-        program.setUniform("uCameraPos", camPos)
+        program.setUniform("uScreenSize", cameraState.screenWidth.toFloat(), cameraState.screenHeight.toFloat())
+        program.setUniform("uViewProjection", cameraState.viewProjectionMatrix)
+        program.setUniform("uView", cameraState.viewMatrix)
+        program.setUniform("uCameraPos", cameraState.cameraPosition)
     }
 
     private fun ShaderProgram.setTexture(name: String, tex: Texture?)
@@ -248,7 +258,7 @@ class ModelRenderer(
             setUniform(name, -1f, 0f, 0f, 0f)
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         staticProgram.destroy()
         skinnedProgram.destroy()

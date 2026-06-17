@@ -67,5 +67,5 @@ class NoOpGraphics() : GraphicsInternal
     override fun updateCameras() {}
     override fun setGpuLogLevel(logLevel: LogLevel) {}
     override fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat) {}
-    override fun destroy() {}
+    override fun destroy(engine: PulseEngineInternal) {}
 }

@@ -205,9 +205,9 @@ abstract class Surface
     abstract fun deleteRenderer(renderer: Renderer)
 
     /**
-     * Deletes a [Renderer] from the [Surface]. The renderer will be removed at the start of the next frame.
+     * Gets all registered [Renderer]s.
      */
-    abstract fun getRenderers(): List<Renderer>
+    abstract fun getAllRenderers(): List<Renderer>
 
     /**
      * Gets a [Renderer] by a class type reference.
@@ -234,9 +234,10 @@ abstract class SurfaceInternal : Surface()
 
     abstract fun init(engine: PulseEngineInternal, width: Int, height: Int, glContextRecreated: Boolean)
     abstract fun initFrame(engine: PulseEngineInternal)
+//    abstract fun declareWorldViews(engine: PulseEngineInternal)
     abstract fun renderToOffScreenTarget(engine: PulseEngineInternal)
     abstract fun runPostProcessingPipeline(engine: PulseEngineInternal)
-    abstract fun destroy()
+    abstract fun destroy(engine: PulseEngineInternal)
     abstract fun hasContent(): Boolean
     abstract fun hasPostProcessingEffects(): Boolean
 }

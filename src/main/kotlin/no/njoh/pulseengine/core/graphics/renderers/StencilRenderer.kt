@@ -47,7 +47,7 @@ class StencilRenderer : Renderer()
         drawTriangleStripVertices(vao, 0, 4)
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
         vao.destroy()
         vbo.destroy()

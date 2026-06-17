@@ -125,9 +125,9 @@ class SurfaceImpl(
         }
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
-        renderers.forEachFast { it.destroy() }
+        renderers.forEachFast { it.destroy(engine) }
         postEffects.forEachFast { it.destroy() }
         renderTarget.destroy()
         config.mipmapGenerators.forEach { it.value.destroy() }
@@ -205,7 +205,7 @@ class SurfaceImpl(
         return rendererMap[type] as T?
     }
 
-    override fun getRenderers(): List<Renderer>
+    override fun getAllRenderers(): List<Renderer>
     {
         return renderers
     }
@@ -386,7 +386,7 @@ class SurfaceImpl(
         {
             renderers.remove(renderer)
             rendererMap.remove(renderer.javaClass)
-            renderer.destroy()
+            renderer.destroy(it)
         }
     }
     
