@@ -19,6 +19,7 @@ import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextInternal
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import kotlin.math.max
@@ -122,4 +123,6 @@ interface GraphicsInternal : Graphics
     fun drawFrame(engine: PulseEngineInternal)
     fun setGpuLogLevel(logLevel: LogLevel)
     fun destroy(engine: PulseEngineInternal)
+
+    override fun getAllSurfaces(): List<SurfaceInternal>
 }

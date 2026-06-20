@@ -11,7 +11,6 @@ import no.njoh.pulseengine.core.graphics.api.world.views.WorldVisibility.GLOBAL_
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldVisibility.LOCAL_SHADOW
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderView
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderViewKey
-import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.objects.LightBufferObject
 import no.njoh.pulseengine.core.shared.primitives.Color
 import org.joml.Matrix4f
@@ -83,5 +82,6 @@ abstract class WorldRenderContextInternal : WorldRenderContext()
 
     abstract fun getLightBuffer(): LightBufferObject
     abstract fun getLocalShadowAtlas(): LocalShadowAtlas
-    abstract fun getClusteredLightGrid(camera: Camera): ClusteredLightGrid?
+    abstract fun requestClusteredLightGrid(state: CameraRenderState)
+    abstract fun getClusteredLightGrid(state: CameraRenderState): ClusteredLightGrid?
 }

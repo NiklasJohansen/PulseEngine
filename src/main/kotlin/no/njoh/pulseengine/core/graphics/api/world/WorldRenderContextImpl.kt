@@ -7,7 +7,6 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.*
-import no.njoh.pulseengine.core.graphics.api.Camera
 import no.njoh.pulseengine.core.graphics.api.objects.BoneBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.CullingBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
@@ -16,23 +15,22 @@ import no.njoh.pulseengine.core.graphics.api.world.views.CameraRenderStateProvid
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderView
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldViewDeclarer
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderViewKey
-import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachInstance
 import org.joml.Matrix4f
 import org.joml.Vector3f
-import org.joml.Vector3fc
 
 class WorldRenderContextImpl : WorldRenderContextInternal()
 {
     private var nextFrameScene = WorldRenderScene()
     private var thisFrameScene = WorldRenderScene()
 
-    private val views                  = DynamicList<WorldRenderView>()
-    private val lightGrids             = THashMap<Camera, ClusteredLightGrid>()
-    private val activeLightGridCameras = THashSet<Camera>()
+    private val views                       = DynamicList<WorldRenderView>()
+    private val clusteredLightGrids         = THashMap<CameraRenderState, ClusteredLightGrid>()
+    private val clusteredLightGridRequests  = THashSet<CameraRenderState>()
 
     private val instanceBuffer    = InstanceBufferObject()
     private val cullingBuffer     = CullingBufferObject()
@@ -43,36 +41,23 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
  
     private var initialized = false
     private var frameNumber = 0
+    private var lastFrameHadAnyItems = false
 
     override fun initFrame()
     {
         nextFrameScene = thisFrameScene.also { thisFrameScene = nextFrameScene }
         nextFrameScene.clear()
+        clusteredLightGridRequests.clear()
         frameNumber++
         views.forEach { it.beginFrame() }
     }
 
     override fun buildFrame(engine: PulseEngineInternal)
     {
-        // Declare world views
-        engine.gfx.getAllSurfaces().forEachFast { surface -> 
-            surface.getAllRenderers().forEachFast() 
-            { 
-                (it as? WorldViewDeclarer)?.declareWorldViews(engine, surface as SurfaceInternal, this) 
-            }
-        }
-
         views.removeIf { it.lastFrameRequested < frameNumber - 10 }
 
-        var camPos: Vector3fc? = null
-        views.forEach { if (it.wasRequestedThisFrame() && it is CameraRenderStateProvider) camPos = it.shadowReferencePosition }
-        localShadowAtlas.update(thisFrameScene, camPos)
-
-        if (!thisFrameScene.hasAnyItems())
-        {
-            buildLightGrids()
-            return
-        }
+        if (!thisFrameScene.hasAnyItems() && !lastFrameHadAnyItems)
+            return // This and last frame had no items, skip frame. If the last frame had items, do a pass to clear everything.
 
         if (!initialized)
         {
@@ -82,6 +67,14 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
             lightBuffer.init()
             commandBuilder.init(engine)
             initialized = true
+        }
+
+        // Declare world views
+        engine.gfx.getAllSurfaces().forEachFast { surface ->
+            surface.getAllRenderers().forEachInstance<WorldViewDeclarer>()
+            {
+                it.declareWorldViews(engine, surface, this)
+            }
         }
 
         instanceBuffer.clear()
@@ -95,20 +88,24 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
         thisFrameScene.blendedItems.addToBuffers()
 
         // Upload lights and shadow faces
-        thisFrameScene.localLights.forEach { lightBuffer.addLight(it) }
+        localShadowAtlas.update(thisFrameScene, getCameraPosition())
         localShadowAtlas.getActiveShadowFaces().forEach { face -> lightBuffer.addShadowFace(face) }
+        thisFrameScene.localLights.forEach { lightBuffer.addLight(it) }
 
+        // Submit buffers to GPU
         instanceBuffer.submit()
         cullingBuffer.submit()
         boneBuffer.submit()
         lightBuffer.submit()
 
+        // Prepare views for rendering
         commandBuilder.beginFrame()
-
         views.forEach { if (it.wasRequestedThisFrame()) it.prepare(thisFrameScene, commandBuilder) }
-
-        buildLightGrids()
         commandBuilder.finishFramePreparation()
+
+        prepareRequestedClusteredLightGrids()
+        
+        lastFrameHadAnyItems = thisFrameScene.hasAnyItems()
     }
 
     override fun endFrame()
@@ -122,7 +119,7 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
                 boneBuffer.markGpuDataInUse()
                 lightBuffer.markSubmittedDataInUse()
                 commandBuilder.markSubmittedDataInUse()
-                lightGrids.values.forEach { it.markSubmittedDataInUse() }
+                clusteredLightGrids.forEach { it.value.markSubmittedDataInUse() }
             }
         }
     }
@@ -130,8 +127,8 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
     override fun destroy()
     {
         views.clear()
-        lightGrids.values.forEach { it.destroy() }
-        lightGrids.clear()
+        clusteredLightGrids.forEach { it.value.destroy() }
+        clusteredLightGrids.clear()
 
         if (!initialized) return
 
@@ -210,29 +207,34 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
     override fun getLocalShadowAtlas() = localShadowAtlas
 
     override fun getLightBuffer() = lightBuffer
+
+    override fun getClusteredLightGrid(state: CameraRenderState) = clusteredLightGrids[state]
     
-    override fun getClusteredLightGrid(camera: Camera) = lightGrids[camera]
-
-    private fun buildLightGrids()
+    override fun requestClusteredLightGrid(state: CameraRenderState)
     {
-        activeLightGridCameras.clear()
+        clusteredLightGridRequests += state
+    }
 
-        views.forEach()
+    private fun prepareRequestedClusteredLightGrids()
+    {
+        if (!thisFrameScene.hasAnyItems())
         {
-            if (it.wasRequestedThisFrame() && it is CameraRenderStateProvider)
-            {
-                it.cameraStates.forEach { state ->
-                    activeLightGridCameras += state.camera
-                    lightGrids.getOrPut(state.camera) { ClusteredLightGrid() }.buildAndSubmit(state, thisFrameScene)
-                }
-            }
+            clusteredLightGrids.forEach { it.value.destroy() }
+            clusteredLightGrids.clear()
+            return
         }
 
-        val iterator = lightGrids.iterator()
+        for (state in clusteredLightGridRequests)
+        {
+            val grid = clusteredLightGrids.getOrPut(state) { ClusteredLightGrid() }
+            grid.buildAndSubmit(state, thisFrameScene)
+        }
+
+        val iterator = clusteredLightGrids.iterator()
         while (iterator.hasNext())
         {
             val entry = iterator.next()
-            if (entry.key !in activeLightGridCameras)
+            if (entry.key !in clusteredLightGridRequests)
             {
                 entry.value.destroy()
                 iterator.remove()
@@ -246,6 +248,12 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
             item.gpuInstanceIndex = instanceBuffer.addItem(item, boneOffset)
             cullingBuffer.addItem(item)
         }
+
+    private fun getCameraPosition(): Vector3f?
+    {
+        views.forEach { if (it.wasRequestedThisFrame() && it is CameraRenderStateProvider) return it.shadowReferencePosition }
+        return null
+    }
 
     private fun WorldRenderView.wasRequestedThisFrame() = (lastFrameRequested == frameNumber)
 }

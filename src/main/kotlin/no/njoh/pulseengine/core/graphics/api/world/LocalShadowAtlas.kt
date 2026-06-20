@@ -40,7 +40,7 @@ class LocalShadowAtlas
     private val tmpCenter = Vector3f()
     private val tmpCandidatesToRender = TIntArrayList(64)
 
-    fun update(scene: WorldRenderScene, cameraPosition: Vector3fc? = null)
+    fun update(scene: WorldRenderScene, cameraPosition: Vector3f? = null)
     {
         activeLights.clear()
         reservedBlocks.clear()

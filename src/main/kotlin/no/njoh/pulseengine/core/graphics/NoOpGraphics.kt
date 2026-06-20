@@ -20,6 +20,7 @@ import no.njoh.pulseengine.core.graphics.api.TextureFormat
 import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextImpl
 import no.njoh.pulseengine.core.graphics.surface.NoOpSurface
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.LogLevel
@@ -50,7 +51,7 @@ class NoOpGraphics() : GraphicsInternal
         attachments: List<Attachment>,
         clearColor: Color?
     ): Surface = mainSurface
-    override fun getAllSurfaces() = emptyList<Surface>()
+    override fun getAllSurfaces() = emptyList<SurfaceInternal>()
     override fun getSurface(name: String) = null
     override fun getSurfaceOrDefault(name: String) = mainSurface
     override fun compileShader(shader: Shader) {}

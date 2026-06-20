@@ -89,19 +89,6 @@ object Extensions
     operator fun Vector4f.component4() = w
 
     /**
-     * Fast iteration of a list without needing a new [Iterator] instance.
-     */
-    inline fun <T> List<T>.forEachFiltered(predicate: (T) -> Boolean, action: (T) -> Unit)
-    {
-        var i = 0
-        while (i < size)
-        {
-            val element = this[i++]
-            if (predicate(element)) action(element)
-        }
-    }
-
-    /**
      * Sums each value of a [List] if the value satisfies a certain [predicate].
      */
     inline fun <T> List<T>.sumIf(predicate: (T) -> Boolean, selector: (T) -> Float): Float
@@ -138,6 +125,32 @@ object Extensions
     {
         var i = 0
         while (i < size) action(this[i++])
+    }
+
+    /**
+     * Fast iteration of a list without needing a new [Iterator] instance.
+     */
+    inline fun <T> List<T>.forEachFiltered(predicate: (T) -> Boolean, action: (T) -> Unit)
+    {
+        var i = 0
+        while (i < size)
+        {
+            val element = this[i++]
+            if (predicate(element)) action(element)
+        }
+    }
+
+    /**
+     * Fast iteration of a list without needing a new [Iterator] instance.
+     */
+    inline fun <reified T> List<*>.forEachInstance(action: (T) -> Unit)
+    {
+        var i = 0
+        while (i < size)
+        {
+            val element = this[i++]
+            if (element is T) action(element)
+        }
     }
 
     /**

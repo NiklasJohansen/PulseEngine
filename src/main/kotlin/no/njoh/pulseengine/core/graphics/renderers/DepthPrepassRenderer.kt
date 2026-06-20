@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_TEXTURE
-import no.njoh.pulseengine.core.graphics.api.world.views.CameraRenderState
+import no.njoh.pulseengine.core.graphics.api.world.CameraRenderState
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldCameraRenderView
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
@@ -105,7 +105,7 @@ class DepthPrepassRenderer(
 
     private fun render(view: WorldCameraRenderView)
     {
-        val opaqueCount = view.opaqueBucket.totalInstanceCount()
+        val opaqueCount = view.opaqueBucket.instanceCount
         if (opaqueCount > 0)
         {
             measure({"opaque depth (" plus opaqueCount plus "i, " plus view.opaqueBucket.size plus "b)"})
@@ -114,7 +114,7 @@ class DepthPrepassRenderer(
             }
         }
 
-        val maskedCount = view.maskedBucket.totalInstanceCount()
+        val maskedCount = view.maskedBucket.instanceCount
         if (maskedCount > 0)
         {
             measure({"masked depth (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)"})

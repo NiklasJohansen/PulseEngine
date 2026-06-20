@@ -13,12 +13,16 @@ class WorldRenderBucket(initialCapacity: Int = 128)
     var size = 0
         private set
 
-    var commandStartIndex = 0
+    var instanceCount = 0
         private set
     
+    var commandStartIndex = 0
+        private set
+
     fun clear(commandStartIndex: Int = 0)
     {
         this.size = 0
+        this.instanceCount = 0
         this.commandStartIndex = commandStartIndex
     }
 
@@ -26,7 +30,8 @@ class WorldRenderBucket(initialCapacity: Int = 128)
     {
         val batch = if (size < batches.size) batches[size] else RenderItemBatch().also { batches += it }
         batch.set(mesh, shaderVariant, cullMode, instanceIndex, instanceCount)
-        size++
+        this.instanceCount += instanceCount
+        this.size++
         return batch
     }
 

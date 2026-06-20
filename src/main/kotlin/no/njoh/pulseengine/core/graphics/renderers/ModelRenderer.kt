@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.graphics.renderers
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
-import no.njoh.pulseengine.core.graphics.api.world.views.CameraRenderState
+import no.njoh.pulseengine.core.graphics.api.world.CameraRenderState
 import no.njoh.pulseengine.core.graphics.api.world.views.WorldCameraRenderView
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
@@ -94,7 +94,8 @@ class ModelRenderer(
         increaseBatchSize() // Ensure that the batch size is at least 1
 
         val view = context.requestView(viewKey)
-        view.addCameraStateFor(surface.camera, surface.config.width, surface.config.height)
+        val cameraState = view.addCameraStateFor(surface.camera, surface.config.width, surface.config.height)
+        context.requestClusteredLightGrid(cameraState)
         view.transparencyMode = transparencyMode
     }
 
@@ -121,7 +122,7 @@ class ModelRenderer(
 
     private fun render(engine: PulseEngineInternal, surface: SurfaceInternal, view: WorldCameraRenderView, cameraState: CameraRenderState)
     {
-        measure({"opaque (" plus view.opaqueBucket.totalInstanceCount() plus "i, " plus view.opaqueBucket.size plus "b)"})
+        measure({"opaque (" plus view.opaqueBucket.instanceCount plus "i, " plus view.opaqueBucket.size plus "b)"})
         {
             drawWorldRenderBucket(view.opaqueBucket, view.preparedPass, programs)
         }
@@ -131,7 +132,7 @@ class ModelRenderer(
         skinnedProgram.bind()
         skinnedProgram.setUniformSampler("uGtaoTex", engine.gfx.textureBank.getOrCreateFallbackTexture(WHITE))
 
-        val maskedCount = view.maskedBucket.totalInstanceCount()
+        val maskedCount = view.maskedBucket.instanceCount
         if (maskedCount > 0)
         {
             measure({"masked (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)"})
@@ -148,7 +149,7 @@ class ModelRenderer(
             }
         }
 
-        val blendedCount = view.blendedBucket.totalInstanceCount()
+        val blendedCount = view.blendedBucket.instanceCount
         if (blendedCount > 0)
         {
             when (transparencyMode)
@@ -170,7 +171,7 @@ class ModelRenderer(
                         surface = surface,
                         bucket = view.blendedBucket,
                         preparedPass = view.preparedPass,
-                        configureAccumProgram = { program, e, s -> configureProgram(program, e, s, cameraState) }
+                        configureAccumProgram = { program -> configureProgram(program, engine, surface, cameraState) }
                     )
                 }
             }
@@ -224,7 +225,8 @@ class ModelRenderer(
 
         // Local clustered lights
 
-        val grid = engine.gfx.worldContext.getClusteredLightGrid(cameraState.camera)?.also { it.bind() }
+        val grid = engine.gfx.worldContext.getClusteredLightGrid(cameraState)
+        if (grid?.enabled == true) grid.bind()
         program.setUniform("uClusteredLightingEnabled", grid?.enabled ?: false)
         program.setUniform("uClusterGridSize", grid?.gridWidth ?: 1, grid?.gridHeight ?: 1, grid?.gridDepth ?: 24)
         program.setUniform("uClusterTileSize", grid?.xTileSize?.toFloat() ?: 64f, grid?.yTileSize?.toFloat() ?: 64f)

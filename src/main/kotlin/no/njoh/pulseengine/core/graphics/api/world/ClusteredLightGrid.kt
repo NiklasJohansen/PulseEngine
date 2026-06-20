@@ -1,7 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api.world
 
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
-import no.njoh.pulseengine.core.graphics.api.world.views.CameraRenderState
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import org.joml.Vector4f
 import kotlin.math.abs
@@ -10,7 +9,7 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 
-class ClusteredLightGrid
+class ClusteredLightGrid()
 {
     var enabled         = false;              private set
     var gridWidth       = 1;                  private set
@@ -26,11 +25,10 @@ class ClusteredLightGrid
     private lateinit var clusterBuffer: StreamingIntBufferObject
     private lateinit var indexBuffer: StreamingIntBufferObject
 
-    private var clusterCounts     = IntArray(0)
-    private var clusterOffsets    = IntArray(0)
-    private var clusterCursors    = IntArray(0)
-    private var lightIndexScratch = IntArray(0)
-
+    private var clusterCounts    = IntArray(0)
+    private var clusterOffsets   = IntArray(0)
+    private var clusterCursors   = IntArray(0)
+    private var lightIndices     = IntArray(0)
     private val tmpViewPos       = Vector4f()
     private val tmpClipPos       = Vector4f()
     private var xNdcProjectedMin = 0f
@@ -62,7 +60,7 @@ class ClusteredLightGrid
 
         if (lights.isEmpty())
         {
-            clearAndSubmit()
+            disable()
             return
         }
 
@@ -90,15 +88,20 @@ class ClusteredLightGrid
             totalIndexCount += clusterCounts[cluster]
         }
 
-        val requiredCount = max(1, totalIndexCount)
-        if (lightIndexScratch.size < requiredCount)
-            lightIndexScratch = IntArray(requiredCount)
+        if (totalIndexCount == 0)
+        {
+            disable()
+            return
+        }
+
+        if (lightIndices.size < totalIndexCount)
+            lightIndices = IntArray(totalIndexCount)
 
         for (lightIndex in 0 until lights.size)
         {
             forEachTouchedCluster(state, lights[lightIndex])
             {
-                lightIndexScratch[clusterCursors[it]++] = lightIndex
+                lightIndices[clusterCursors[it]++] = lightIndex
             }
         }
 
@@ -133,17 +136,13 @@ class ClusteredLightGrid
         submitted = false
     }
 
-    private fun clearAndSubmit()
+    private fun disable()
     {
         gridWidth = 1
         gridHeight = 1
         gridDepth = DEFAULT_GRID_Z
         clusterCount = 1
         enabled = false
-
-        clusterBuffer.fill(CLUSTER_INTS) { put(0, 0) }
-        indexBuffer.fill(1) { put(0) }
-        submitBuffers()
     }
 
     private inline fun forEachTouchedCluster(state: CameraRenderState, light: WorldRenderLight, action: (cluster: Int) -> Unit)
@@ -249,13 +248,9 @@ class ClusteredLightGrid
                 put(clusterOffsets[cluster], clusterCounts[cluster])
         }
 
-        indexBuffer.fill(max(1, totalIndexCount))
+        indexBuffer.fill(totalIndexCount)
         {
-            if (totalIndexCount > 0)
-            {
-                for (i in 0 until totalIndexCount) put(lightIndexScratch[i])
-            }
-            else put(0)
+            for (i in 0 until totalIndexCount) put(lightIndices[i])
         }
     }
 

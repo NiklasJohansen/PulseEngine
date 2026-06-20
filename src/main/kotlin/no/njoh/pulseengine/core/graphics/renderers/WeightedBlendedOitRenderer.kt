@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.api.Attachment
+import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.api.RenderTexture
 import no.njoh.pulseengine.core.graphics.api.ShaderProgram
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet
@@ -88,14 +89,14 @@ class WeightedBlendedOitRenderer
         surface: SurfaceInternal,
         bucket: WorldRenderBucket,
         preparedPass: PreparedRenderPass,
-        configureAccumProgram: (ShaderProgram, PulseEngineInternal, Surface) -> Unit
+        configureAccumProgram: (ShaderProgram) -> Unit
     ) {
         if (bucket.size == 0) return
 
         updateFbo(surface)
         surface.renderTarget.resolveDepth(engine)
 
-        val opaqueDepthTex = surface.renderTarget.getTextures().firstOrNull { it.attachment == Attachment.DEPTH_TEXTURE }
+        val opaqueDepthTex = surface.renderTarget.getTextures().firstOrNull { it.attachment == DEPTH_TEXTURE }
 
         accumulate(engine, surface, bucket, preparedPass, opaqueDepthTex, configureAccumProgram)
         composite(surface)
@@ -107,11 +108,11 @@ class WeightedBlendedOitRenderer
         bucket: WorldRenderBucket,
         preparedPass: PreparedRenderPass,
         opaqueDepthTex: RenderTexture?,
-        configureAccumProgram: (ShaderProgram, PulseEngineInternal, Surface) -> Unit
-    ) = measure({ "wboit accumulate (" plus bucket.totalInstanceCount() plus "i, " plus bucket.size plus "b)" }) {
+        configureAccumProgram: (ShaderProgram) -> Unit
+    ) = measure({ "wboit accumulate (" plus bucket.instanceCount plus "i, " plus bucket.size plus "b)" }) {
 
-        configureAccumProgram(accumPrograms.staticProgram, engine, surface)
-        configureAccumProgram(accumPrograms.skinnedProgram, engine, surface)
+        configureAccumProgram(accumPrograms.staticProgram)
+        configureAccumProgram(accumPrograms.skinnedProgram)
         configureWboitProgram(accumPrograms.staticProgram, opaqueDepthTex, alphaCutoff)
         configureWboitProgram(accumPrograms.skinnedProgram, opaqueDepthTex, alphaCutoff)
         configureRevealageProgram(revealagePrograms.staticProgram, engine, surface, opaqueDepthTex, alphaCutoff)
