@@ -69,6 +69,8 @@ class LocalShadowAtlas
 
         configureShadowFaces(lights, maxFaceCount, tileSize, cameraPosition, facesPerSide)
 
+        updateShadowFaceBufferIndices()
+
         selectShadowFacesToRender()
         
         updateLightShadowRanges()
@@ -133,13 +135,13 @@ class LocalShadowAtlas
             activeLightsFaceCounts.add(block.faceCount)
 
             val faceSize = light.shadowResolution.coerceIn(64, cellSize)
-            val updatePriority = lightUpdatePriority(light, cameraPosition)
+            val updateImportance = lightShadowUpdateImportance(light, cameraPosition)
 
             if (light.isSpotLight)
             {
                 val face = getOrCreateFace(block.faceOffset, faceSize, cellSize, tilesPerSide)
                 val viewProjection = light.getSpotShadowViewProjection()
-                face.configureFor(block, faceIndex = 0, faceSize, updatePriority, viewProjection)
+                face.configureFor(block, faceIndex = 0, faceSize, updateImportance, viewProjection)
             } 
             else
             {
@@ -147,7 +149,7 @@ class LocalShadowAtlas
                 {
                     val face = getOrCreateFace(block.faceOffset + faceIndex, faceSize, cellSize, tilesPerSide)
                     val viewProjection = light.getPointShadowViewProjection(faceIndex)
-                    face.configureFor(block, faceIndex, faceSize, updatePriority, viewProjection)
+                    face.configureFor(block, faceIndex, faceSize, updateImportance, viewProjection)
                 }
             }
         }
@@ -161,49 +163,106 @@ class LocalShadowAtlas
         val numFacesToRender = min(maxShadowFacesPerFrame, tmpCandidatesToRender.size())
         if (numFacesToRender <= 0) return
 
-        repeat(numFacesToRender) // Find the best candidate faces to render
+        var selectedFaceCount = 0
+        while (selectedFaceCount < numFacesToRender)
         {
-            var bestCandidatePos = -1
-            var bestFaceIndex    = -1
-            var bestScore        = Float.NEGATIVE_INFINITY
+            val bestCandidatePos = findBestShadowFaceCandidate()
+            if (bestCandidatePos < 0) break
 
-            for (i in 0 until tmpCandidatesToRender.size())
-            {
-                val faceIndex = tmpCandidatesToRender[i]
-                if (faceIndex < 0) continue // Candidate has been removed
-                val score = faceRenderScore(faceIndex)
-                val scoreCompare = score.compareTo(bestScore)
+            val bestFaceIndex = tmpCandidatesToRender[bestCandidatePos]
+            stageShadowFaceRender(bestFaceIndex, bestCandidatePos)
+            selectedFaceCount++
 
-                if (bestCandidatePos < 0 || scoreCompare > 0 || (scoreCompare == 0 && faceIndex < bestFaceIndex))
-                {
-                    bestCandidatePos = i
-                    bestFaceIndex = faceIndex
-                    bestScore = score
-                }
-            }
-
-            if (bestCandidatePos < 0) return@repeat
-
-            val face = shadowFaces[bestFaceIndex]
-            face.viewProjection.set(face.pendingViewProjection)
-            face.valid = true
-            shadowFaceIndicesToRender.add(bestFaceIndex)
-            shadowFaceLastUpdatedFrameIndex[bestFaceIndex] = frameIndex
-            tmpCandidatesToRender[bestCandidatePos] = -1 // Mark candidate as removed
+            selectedFaceCount += selectSiblingShadowFacesToRender(
+                face = shadowFaces[bestFaceIndex],
+                maxCount = numFacesToRender - selectedFaceCount
+            )
         }
 
         frameIndex++
     }
 
+    private fun findBestShadowFaceCandidate(): Int
+    {
+        var bestCandidatePos = -1
+        var bestFaceIndex    = -1
+        var bestScore        = Float.NEGATIVE_INFINITY
+
+        for (i in 0 until tmpCandidatesToRender.size())
+        {
+            val faceIndex = tmpCandidatesToRender[i]
+            if (faceIndex < 0) continue // Candidate has been removed
+            val score = faceRenderScore(faceIndex)
+            val scoreCompare = score.compareTo(bestScore)
+
+            if (bestCandidatePos < 0 || scoreCompare > 0 || (scoreCompare == 0 && faceIndex < bestFaceIndex))
+            {
+                bestCandidatePos = i
+                bestFaceIndex = faceIndex
+                bestScore = score
+            }
+        }
+
+        return bestCandidatePos
+    }
+
+    private fun stageShadowFaceRender(faceIndex: Int, candidatePos: Int)
+    {
+        val face = shadowFaces[faceIndex]
+        face.viewProjection.set(face.pendingViewProjection)
+        face.valid = true
+        shadowFaceIndicesToRender.add(faceIndex)
+        shadowFaceLastUpdatedFrameIndex[faceIndex] = frameIndex
+        tmpCandidatesToRender[candidatePos] = -1 // Mark candidate as removed
+    }
+
+    private fun selectSiblingShadowFacesToRender(face: ShadowFace, maxCount: Int): Int
+    {
+        if (maxCount <= 0 || face.faceCountInLight <= 1)
+            return 0
+
+        var selectedCount = 0
+        val faceOffset = face.index - face.faceInLight
+        for (siblingIndex in faceOffset until faceOffset + face.faceCountInLight)
+        {
+            if (selectedCount >= maxCount || siblingIndex == face.index)
+                continue
+
+            val candidatePos = tmpCandidatesToRender.indexOf(siblingIndex)
+            if (candidatePos < 0)
+                continue
+
+            val sibling = shadowFaces[siblingIndex]
+            if (sibling.blockKey != face.blockKey || sibling.faceCountInLight != face.faceCountInLight)
+                continue
+
+            stageShadowFaceRender(siblingIndex, candidatePos)
+            selectedCount++
+        }
+
+        return selectedCount
+    }
+
     private fun faceRenderScore(faceIndex: Int): Float
     {
-        // TODO: Consider distance to camera
         val face = shadowFaces[faceIndex]
         if (!face.valid)
-            return INVALID_FACE_UPDATE_SCORE + face.updatePriority * PRIORITY_WEIGHT
+        {
+            return if (face.updateImportance >= USEFUL_SHADOW_IMPORTANCE)
+                INVALID_FACE_UPDATE_SCORE + face.updateImportance
+            else
+                BACKGROUND_INVALID_FACE_UPDATE_SCORE + face.updateImportance
+        }
 
         val framesSinceLastRender = frameIndex - shadowFaceLastUpdatedFrameIndex[faceIndex]
-        return face.updatePriority * PRIORITY_WEIGHT + framesSinceLastRender
+        val overdue = framesSinceLastRender.toFloat() / face.desiredUpdateInterval.toFloat()
+
+        return when
+        {
+            framesSinceLastRender >= MAX_SHADOW_UPDATE_INTERVAL -> STARVED_FACE_UPDATE_SCORE + face.updateImportance + overdue
+            overdue >= 1f -> OVERDUE_FACE_UPDATE_SCORE + face.updateImportance + overdue
+            else -> BACKGROUND_FACE_UPDATE_SCORE + face.updateImportance * BACKGROUND_IMPORTANCE_WEIGHT + overdue
+        }
     }
 
     private fun updateLightShadowRanges()
@@ -226,10 +285,16 @@ class LocalShadowAtlas
             if (allFacesValid)
             {
                 val light = activeLights[lightIndex]
-                light.shadowFaceOffset = faceOffset
+                light.shadowFaceOffset = shadowFaces[faceOffset].bufferIndex
                 light.shadowFaceCount = faceCount
             }
         }
+    }
+
+    private fun updateShadowFaceBufferIndices()
+    {
+        for (i in 0 until activeShadowFaces.size)
+            activeShadowFaces[i].bufferIndex = i
     }
 
     private fun getOrCreateFace(index: Int, faceSize: Int, cellSize: Int, tilesPerSide: Int): ShadowFace
@@ -308,7 +373,7 @@ class LocalShadowAtlas
     private fun WorldRenderLight.shadowBlockKey(submissionIndex: Int): Long =
         if (shadowId > 0L) shadowId else -(submissionIndex + 1L)
 
-    private fun ShadowFace.configureFor(block: ShadowBlock, faceIndex: Int, faceSize: Int, updatePriority: Float, pendingViewProjection: Matrix4f)
+    private fun ShadowFace.configureFor(block: ShadowBlock, faceIndex: Int, faceSize: Int, updateImportance: Float, pendingViewProjection: Matrix4f)
     {
         val changedOwner = blockKey != block.key || faceInLight != faceIndex
         val changedType = faceCountInLight != block.faceCount
@@ -324,24 +389,46 @@ class LocalShadowAtlas
         this.blockKey = block.key
         this.faceInLight = faceIndex
         this.faceCountInLight = block.faceCount
-        this.updatePriority = updatePriority
+        this.updateImportance = updateImportance
+        this.desiredUpdateInterval = shadowUpdateIntervalFor(updateImportance)
         this.pendingViewProjection.set(pendingViewProjection)
 
         activeShadowFaces += this
     }
 
-    private fun lightUpdatePriority(light: WorldRenderLight, cameraPosition: Vector3fc?): Float
+    private fun lightShadowUpdateImportance(light: WorldRenderLight, cameraPosition: Vector3fc?): Float
     {
-        val importance = max(0f, light.shadowImportance)
+        val manualImportance = max(0f, light.shadowImportance)
+        val brightness = max(light.color.red, max(light.color.green, light.color.blue))
+        val brightnessFactor = min(max(0.1f, brightness), 8f)
+        val radius = max(1f, light.radius)
+        val radiusFactor = min(max(0.5f, sqrt(radius) * 0.25f), 4f)
+        var importance = manualImportance * brightnessFactor * radiusFactor
+
         if (cameraPosition == null)
-            return importance
+            return max(MIN_SHADOW_UPDATE_IMPORTANCE, importance)
 
         val dx = light.position.x - cameraPosition.x()
         val dy = light.position.y - cameraPosition.y()
         val dz = light.position.z - cameraPosition.z()
         val distanceToLight = sqrt(dx * dx + dy * dy + dz * dz)
-        val distanceToInfluence = max(1f, distanceToLight - light.radius)
-        return importance / distanceToInfluence
+        val distanceToInfluence = max(1f, distanceToLight - radius)
+        val distanceFactor = min(max(radius / (radius + distanceToInfluence), 0.05f), 1f)
+        importance *= distanceFactor
+
+        return max(MIN_SHADOW_UPDATE_IMPORTANCE, importance)
+    }
+
+    private fun shadowUpdateIntervalFor(importance: Float): Int = when
+    {
+        importance >= 12f -> 1 // Every frame
+        importance >= 6f  -> 2 
+        importance >= 3f  -> 4
+        importance >= 1.5f -> 8
+        importance >= 0.75f -> 16
+        importance >= 0.35f -> 32
+        importance >= USEFUL_SHADOW_IMPORTANCE -> 60
+        else -> 120
     }
 
     private fun WorldRenderLight.getSpotShadowViewProjection(): Matrix4f
@@ -388,7 +475,9 @@ class LocalShadowAtlas
         var x = 0
         var y = 0
         var size = 0
-        var updatePriority = 0f
+        var bufferIndex = -1
+        var updateImportance = 0f
+        var desiredUpdateInterval = 120
         var valid = false
         var blockKey = 0L
         var faceInLight = 0
@@ -397,8 +486,9 @@ class LocalShadowAtlas
         fun invalidate()
         {
             valid = false
-            index = -1
-            updatePriority = 0f
+            bufferIndex = -1
+            updateImportance = 0f
+            desiredUpdateInterval = 120
             viewProjection.identity()
             pendingViewProjection.identity()
         }
@@ -415,8 +505,15 @@ class LocalShadowAtlas
     companion object
     {
         const val POINT_LIGHT_SHADOW_FACE_COUNT = 6
-        private const val PRIORITY_WEIGHT = 1000f
-        private const val INVALID_FACE_UPDATE_SCORE = 1_000_000_000f
+        private const val USEFUL_SHADOW_IMPORTANCE = 0.1f
+        private const val MIN_SHADOW_UPDATE_IMPORTANCE = 0.01f
+        private const val BACKGROUND_IMPORTANCE_WEIGHT = 0.1f
+        private const val MAX_SHADOW_UPDATE_INTERVAL = 240
+        private const val INVALID_FACE_UPDATE_SCORE = 30_000f
+        private const val STARVED_FACE_UPDATE_SCORE = 20_000f
+        private const val OVERDUE_FACE_UPDATE_SCORE = 10_000f
+        private const val BACKGROUND_INVALID_FACE_UPDATE_SCORE = 5_000f
+        private const val BACKGROUND_FACE_UPDATE_SCORE = 0f
         private const val INITIAL_LAST_UPDATED_FRAME = -1000000
 
         private val WORLD_UP = Vector3f(0f, 1f, 0f)
