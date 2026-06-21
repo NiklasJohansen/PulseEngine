@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.graphics.api.world
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
 import no.njoh.pulseengine.core.asset.types.Model.Aabb
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
+import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.graphics.api.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet.ShaderVariant
 import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet.ShaderVariant.SKINNED
@@ -10,7 +11,6 @@ import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet.ShaderVariant.STAT
 import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject.Companion.INVALID_INSTANCE_INDEX
 import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
-import org.joml.Matrix4f
 
 class RenderPassBuilder(
     val frustumPlaneSets: Array<FrustumPlaneSet>,
@@ -122,7 +122,7 @@ class RenderPassBuilder(
         return (a.material?.cullMode ?: CullMode.BACK).ordinal - (b.material?.cullMode ?: CullMode.BACK).ordinal
     }
 
-    private fun intersectsAnyFrustumPlaneSet(bounds: Aabb, transform: Matrix4f): Boolean
+    private fun intersectsAnyFrustumPlaneSet(bounds: Aabb, transform: Mat4f): Boolean
     {
         for (i in 0 until frustumPlaneSetCount)
         {

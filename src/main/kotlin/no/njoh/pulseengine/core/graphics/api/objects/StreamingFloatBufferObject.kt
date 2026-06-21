@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.api.objects
 
+import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import org.joml.Matrix4f
 import org.lwjgl.opengl.GL15.glBindBuffer
 import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BUFFER
@@ -51,6 +52,13 @@ class StreamingFloatBufferObject private constructor(
         data[i + 1] = v1
         data[i + 2] = v2
         data[i + 3] = v3
+    }
+
+    fun put(matrix: Mat4f)
+    {
+        val i = size
+        size += 16
+        System.arraycopy(matrix.data, matrix.offset, data, i, 16)
     }
 
     fun put(matrix: Matrix4f)

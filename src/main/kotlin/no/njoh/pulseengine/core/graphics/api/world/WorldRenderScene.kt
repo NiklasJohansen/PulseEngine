@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
+import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import org.joml.Matrix4f
@@ -17,7 +18,7 @@ class WorldRenderScene
     val blendedItems = DynamicList<WorldRenderItem>(256)
     val localLights  = DynamicList<WorldRenderLight>(64)
 
-    fun addMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, visibilityMask: Int)
+    fun addMesh(mesh: Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, visibilityMask: Int)
     {
         val poolItem = ITEM_POOL.removeLastOrNull()?.also()
         {

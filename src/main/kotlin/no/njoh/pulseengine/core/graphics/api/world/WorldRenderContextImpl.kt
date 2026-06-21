@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.*
+import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.graphics.api.objects.BoneBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.CullingBufferObject
 import no.njoh.pulseengine.core.graphics.api.objects.InstanceBufferObject
@@ -18,6 +19,7 @@ import no.njoh.pulseengine.core.graphics.api.world.views.WorldRenderViewKey
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.primitives.Mat4fArena
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachInstance
 import org.joml.Matrix4f
@@ -38,15 +40,22 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
     private val lightBuffer       = LightBufferObject()
     private val commandBuilder    = WorldRenderCommandBuilder(instanceBuffer, cullingBuffer)
     private val localShadowAtlas  = LocalShadowAtlas()
- 
+    
     private var initialized = false
     private var frameNumber = 0
     private var lastFrameHadAnyItems = false
+
+    private var mat4fArena     = Mat4fArena()
+    private var mat4fArenaNext = Mat4fArena()
 
     override fun initFrame()
     {
         nextFrameScene = thisFrameScene.also { thisFrameScene = nextFrameScene }
         nextFrameScene.clear()
+        
+        mat4fArena = mat4fArenaNext.also { mat4fArenaNext = mat4fArena }
+        mat4fArena.reset()
+
         clusteredLightGridRequests.clear()
         frameNumber++
         views.forEach { it.beginFrame() }
@@ -104,7 +113,7 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
         commandBuilder.finishFramePreparation()
 
         prepareRequestedClusteredLightGrids()
-        
+
         lastFrameHadAnyItems = thisFrameScene.hasAnyItems()
     }
 
@@ -172,7 +181,7 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
             val boneMatrices  = animatedPose?.boneMatrices ?: model.getBindPoseBoneMatrices(instance.nodeName)
             val cullingBounds = instance.mesh.animatedBounds?.takeIf { animatedPose != null } ?: instance.cullingBounds
 
-            val transform = Matrix4f(transform).mul(instance.transform)
+            val transform = Mat4f(mat4fArena).setMul(transform, instance.transform)
 
             nextFrameScene.addMesh(instance.mesh, material, transform, cullingBounds, boneMatrices, visibilityMask)
         }
@@ -180,7 +189,7 @@ class WorldRenderContextImpl : WorldRenderContextInternal()
 
     override fun submitMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, visibilityMask: Int)
     {
-        nextFrameScene.addMesh(mesh, material, transform, cullingBounds, boneMatrices, visibilityMask)
+        nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, visibilityMask)
     }
 
     override fun submitPointLight(position: Vector3f, radius: Float, color: Color, shadowEnabled: Boolean, shadowResolution: Int, shadowBias: Float, shadowImportance: Float, shadowId: Long)
