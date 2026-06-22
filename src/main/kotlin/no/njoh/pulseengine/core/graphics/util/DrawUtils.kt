@@ -1,29 +1,22 @@
 package no.njoh.pulseengine.core.graphics.util
 
-import no.njoh.pulseengine.core.graphics.api.world.RenderItemBatch
-import no.njoh.pulseengine.core.graphics.api.GlCapabilities
-import no.njoh.pulseengine.core.graphics.api.ShaderProgramSet
-import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.VertexAttributeLayout
-import no.njoh.pulseengine.core.graphics.api.objects.DoubleBufferedFloatObject
-import no.njoh.pulseengine.core.graphics.api.objects.StreamingIntBufferObject
-import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderBucket
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderCommandBuilder
-import no.njoh.pulseengine.core.graphics.api.world.DrawPayload.DirectDrawPayload
-import no.njoh.pulseengine.core.graphics.api.world.DrawPayload.EmptyDrawPayload
-import no.njoh.pulseengine.core.graphics.api.world.DrawPayload.IndirectDrawPayload
-import no.njoh.pulseengine.core.graphics.api.world.PreparedRenderPass
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
+import no.njoh.pulseengine.core.graphics.gpu.buffer.DoubleBufferedFloatObject
+import no.njoh.pulseengine.core.graphics.gpu.buffer.StreamingIntBufferObject
+import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
+import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
+import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
+import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload.*
+import no.njoh.pulseengine.core.graphics.scene3d.draw.RenderBucket
+import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
+import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawBatch
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.captureIndirectDrawStats
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementDrawStats
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementWorldInstances
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementScene3DInstances
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
-import org.lwjgl.opengl.GL11.GL_LINES
-import org.lwjgl.opengl.GL11.GL_TRIANGLES
-import org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP
-import org.lwjgl.opengl.GL11.GL_UNSIGNED_INT
-import org.lwjgl.opengl.GL11.glDrawArrays
-import org.lwjgl.opengl.GL11.glDrawElements
+import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL15.glBindBuffer
 import org.lwjgl.opengl.GL20.glEnableVertexAttribArray
 import org.lwjgl.opengl.GL30.glVertexAttribIPointer
@@ -31,10 +24,8 @@ import org.lwjgl.opengl.GL31.glDrawArraysInstanced
 import org.lwjgl.opengl.GL31.glDrawElementsInstanced
 import org.lwjgl.opengl.GL32.glDrawElementsInstancedBaseVertex
 import org.lwjgl.opengl.GL33.glVertexAttribDivisor
-import org.lwjgl.opengl.GL42.glDrawArraysInstancedBaseInstance
-import org.lwjgl.opengl.GL42.glDrawElementsInstancedBaseInstance
-import org.lwjgl.opengl.GL42.glDrawElementsInstancedBaseVertexBaseInstance
 import org.lwjgl.opengl.GL40.GL_DRAW_INDIRECT_BUFFER
+import org.lwjgl.opengl.GL42.*
 import org.lwjgl.opengl.GL43.glMultiDrawElementsIndirect
 import kotlin.math.max
 
@@ -107,26 +98,26 @@ object DrawUtils
         incrementDrawStats(drawCommands = 1L, triangles = instanceCount * 2L, instances = instanceCount.toLong())
     }
 
-    fun drawWorldRenderBucket(bucket: WorldRenderBucket, preparedPass: PreparedRenderPass, programs: ShaderProgramSet, cullViewIndex: Int = 0) 
+    fun drawRenderBucket(bucket: RenderBucket, drawPayload: DrawPayload, programs: ShaderProgramSet, cullViewIndex: Int = 0) 
     {
-        if (bucket.size == 0 || cullViewIndex >= preparedPass.cullViewCount) return
+        if (bucket.size == 0 || cullViewIndex >= drawPayload.cullViewCount) return
 
-        when (val payload = preparedPass.drawPayload)
+        when (drawPayload)
         {
             is EmptyDrawPayload    -> return
-            is DirectDrawPayload   -> drawDirectWorldRenderBucket(bucket, programs, payload)
-            is IndirectDrawPayload -> drawIndirectWorldRenderBucket(bucket, programs, payload, cullViewIndex)
+            is DirectDrawPayload   -> drawDirectRenderBucket(bucket, programs, drawPayload)
+            is IndirectDrawPayload -> drawIndirectRenderBucket(bucket, programs, drawPayload, cullViewIndex)
         }
     }
 
-    private fun drawIndirectWorldRenderBucket(bucket: WorldRenderBucket, programs: ShaderProgramSet, payload: IndirectDrawPayload, cullViewIndex: Int) 
+    private fun drawIndirectRenderBucket(bucket: RenderBucket, programs: ShaderProgramSet, payload: IndirectDrawPayload, cullViewIndex: Int) 
     {
-        RenderItemBatch.resetBoundProgramAndCullMode()
+        DrawBatch.resetBoundProgramAndCullMode()
 
         if (payload.useVisibleInstanceBuffer)
             payload.visibleInstanceBuffer?.bindSubmittedRange()
 
-        var groupStart = null as RenderItemBatch?
+        var groupStart = null as DrawBatch?
         var groupVao = null as VertexArrayObject?
         var groupCommandStart = bucket.commandStartIndex
         var commandIndex = bucket.commandStartIndex
@@ -164,7 +155,7 @@ object DrawUtils
             else
             {
                 incrementDrawStats(commandCount.toLong(), triangleCount, instanceCount)
-                incrementWorldInstances(instanceCount)
+                incrementScene3DInstances(instanceCount)
             }
 
             groupStart = null
@@ -211,9 +202,9 @@ object DrawUtils
         flushGroup()
     }
 
-    private fun drawDirectWorldRenderBucket(bucket: WorldRenderBucket, programs: ShaderProgramSet, payload: DirectDrawPayload)
+    private fun drawDirectRenderBucket(bucket: RenderBucket, programs: ShaderProgramSet, payload: DirectDrawPayload)
     {
-        RenderItemBatch.resetBoundProgramAndCullMode()
+        DrawBatch.resetBoundProgramAndCullMode()
         bucket.forEachBatch()
         {
             val vao = it.mesh.vao ?: return
@@ -231,7 +222,7 @@ object DrawUtils
                 instanceCount = it.instanceCount,
                 baseVertex = 0
             )
-            incrementWorldInstances(it.instanceCount.toLong())
+            incrementScene3DInstances(it.instanceCount.toLong())
         }
     }
 
@@ -377,7 +368,7 @@ fun transformModelVertexShader(source: String): String
     }
 
     val visibleInstanceHeader = """
-        layout(std430, binding = ${WorldRenderCommandBuilder.VISIBLE_INSTANCE_BUFFER_BINDING}) readonly buffer VisibleInstanceBuffer
+        layout(std430, binding = ${DrawCommandBuilder.VISIBLE_INSTANCE_BUFFER_BINDING}) readonly buffer VisibleInstanceBuffer
         {
             uint uVisibleInstanceIndices[];
         };

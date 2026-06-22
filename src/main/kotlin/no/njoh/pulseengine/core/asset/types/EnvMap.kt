@@ -1,13 +1,17 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.PulseEngineInternal
-import no.njoh.pulseengine.core.graphics.api.*
-import no.njoh.pulseengine.core.graphics.api.TextureAnisotropy.Companion.defaultFor
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR_MIPMAP
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA32F
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping.REPEAT
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAnisotropy.Companion.defaultFor
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR_MIPMAP
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA32F
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.REPEAT
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAnisotropy
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping
 import no.njoh.pulseengine.core.shared.annotations.Icon
-import no.njoh.pulseengine.core.graphics.util.IblBuilder
+import no.njoh.pulseengine.core.graphics.scene3d.lighting.EnvironmentMapBuilder.generateDiffuseIBL
+import no.njoh.pulseengine.core.graphics.scene3d.lighting.EnvironmentMapBuilder.generateSpecularIBL
 
 @Icon("IMAGE")
 class EnvMap(
@@ -74,8 +78,8 @@ class EnvMap(
         val srcEnvMap = engine.asset.getOrNull<EnvMap>(iblSourceName ?: return) ?: return
         when
         {
-            "_specular_ibl" in name -> IblBuilder.generateSpecularIBL(engine, srcEnvMap, dstEnv = this, maxMipLevels)
-            "_diffuse_ibl"  in name -> IblBuilder.generateDiffuseIBL(engine, srcEnvMap, dstEnv = this)
+            "_specular_ibl" in name -> generateSpecularIBL(engine, srcEnvMap, dstEnv = this, maxMipLevels)
+            "_diffuse_ibl"  in name -> generateDiffuseIBL(engine, srcEnvMap, dstEnv = this)
         }
     }
 }

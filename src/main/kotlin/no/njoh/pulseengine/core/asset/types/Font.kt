@@ -2,9 +2,9 @@ package no.njoh.pulseengine.core.asset.types
 
 import gnu.trove.map.hash.TFloatObjectHashMap
 import gnu.trove.map.hash.THashMap
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.SRGBA8
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.SRGBA8
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
 import no.njoh.pulseengine.core.shared.utils.Logger

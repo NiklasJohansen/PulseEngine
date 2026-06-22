@@ -9,10 +9,10 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
-import no.njoh.pulseengine.core.graphics.api.Camera
+import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.core.graphics.api.Multisampling.*
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.FrostedGlassEffect
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
+import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
 import no.njoh.pulseengine.modules.ui.UiUtils.findElement
 import no.njoh.pulseengine.modules.ui.elements.InputField
 import no.njoh.pulseengine.modules.ui.UiElement
@@ -393,8 +393,6 @@ class SceneEditor(
         val uiBaseBgSurface  = engine.gfx.getSurfaceOrDefault("scene_editor_ui_base_bg")
         val uiPopupBgSurface = engine.gfx.getSurfaceOrDefault("scene_editor_ui_popup_bg")
 
-        gridSurface.setBackgroundColor(0.001f, 0.001f, 0.001f, 1f)
-
         if (showGrid)
             renderGrid(gridSurface)
 
@@ -521,9 +519,6 @@ class SceneEditor(
     {
         stop() // Stop editor service
         storedCameraState.saveFrom(activeCamera)
-//        activeCamera.scale.set(1f)
-//        activeCamera.position.set(0f)
-//        activeCamera.rotation.set(0f)
         prevSelectedEntityId = entitySelection.firstOrNull()?.id
 
         resetUI()

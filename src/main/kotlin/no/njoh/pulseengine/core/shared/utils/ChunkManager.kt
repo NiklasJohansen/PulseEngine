@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.shared.utils
 
 import no.njoh.pulseengine.core.shared.primitives.Array2D
-import no.njoh.pulseengine.core.graphics.api.Camera
+import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.Graphics
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import org.joml.Vector2f

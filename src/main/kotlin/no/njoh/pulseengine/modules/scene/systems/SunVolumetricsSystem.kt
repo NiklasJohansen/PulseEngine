@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.VolumetricSunEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.VolumetricSunEffect
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
@@ -9,7 +9,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
 /**
  * Manages shadowed sun shafts as a post-processing effect on the configured render surfaces.
- * Sun direction, color, radius and cascaded shadow-map data are sourced from [WorldLightingSystem].
+ * Sun direction, color, radius and cascaded shadow-map data are sourced from [Scene3DLightingSystem].
  */
 @Name("Sun Volumetrics (3D)")
 class SunVolumetricsSystem : SceneSystem()
@@ -54,7 +54,7 @@ class SunVolumetricsSystem : SceneSystem()
     @Prop(i=13, min=0f) var heightFogFalloff = 0.03f
 
     /** Comma-separated list of surfaces that should receive the volumetric sun effect. */
-    @Prop(i=14) var targetSurfaces = "world"
+    @Prop(i=14) var targetSurfaces = "scene3d"
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()
@@ -68,7 +68,7 @@ class SunVolumetricsSystem : SceneSystem()
             targetSurfaceNames = targetSurfaces.split(",").map { it.trim() }
         }
 
-        val worldLighting = engine.scene.getSystemOfType<WorldLightingSystem>()
+        val worldLighting = engine.scene.getSystemOfType<Scene3DLightingSystem>()
         targetSurfaceNames.forEachFast { updateEffect(engine, worldLighting, it) }
     }
 
@@ -84,7 +84,7 @@ class SunVolumetricsSystem : SceneSystem()
         targetSurfaceNames = emptyList()
     }
 
-    private fun updateEffect(engine: PulseEngine, worldLighting: WorldLightingSystem?, surfaceName: String)
+    private fun updateEffect(engine: PulseEngine, worldLighting: Scene3DLightingSystem?, surfaceName: String)
     {
         val surface = engine.gfx.getSurface(surfaceName) ?: return
         if (worldLighting == null || !worldLighting.enabled)

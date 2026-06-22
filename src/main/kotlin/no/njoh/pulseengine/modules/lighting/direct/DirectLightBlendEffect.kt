@@ -2,13 +2,13 @@ package no.njoh.pulseengine.modules.lighting.direct
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
-import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.api.Camera
-import no.njoh.pulseengine.core.graphics.api.RenderTexture
-import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureHandle
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
+import no.njoh.pulseengine.core.graphics.camera.Camera
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
+import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
+import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
+import no.njoh.pulseengine.core.shared.primitives.Color
 import org.joml.Vector3f
 import org.joml.Vector4f
 import kotlin.math.max
@@ -72,7 +72,7 @@ class DirectLightBlendEffect(
         program.setUniform("time", 0.001f * fogTurbulence * time++)
         program.setUniformSampler("baseTex", albedoTexture.handle)
         program.setUniformSampler("lightTex", lightMapTextureHandle)
-        renderer.draw()
+        fullscreenPass.draw()
         fbo.release()
 
         return fbo.getTextures()

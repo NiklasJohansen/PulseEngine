@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.console.MessageType
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.FrostedGlassEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.MouseButton

@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.ui.elements
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.RenderTexture
+import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.ui.Position
 import no.njoh.pulseengine.modules.ui.Size

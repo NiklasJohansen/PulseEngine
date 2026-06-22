@@ -3,8 +3,8 @@ package no.njoh.pulseengine.core.shared.utils
 import gnu.trove.list.array.TIntArrayList
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.*
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.*
 import org.joml.Vector2f
 import org.joml.Vector2i
 import org.joml.Vector3f

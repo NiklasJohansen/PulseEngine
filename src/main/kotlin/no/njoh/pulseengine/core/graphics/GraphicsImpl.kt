@@ -4,16 +4,29 @@ import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.asset.types.Shader.Companion.INVALID_ID
-import no.njoh.pulseengine.core.graphics.api.*
-import no.njoh.pulseengine.core.graphics.api.Attachment.*
-import no.njoh.pulseengine.core.graphics.api.Multisampling.MSAA4
-import no.njoh.pulseengine.core.graphics.api.ShaderType.*
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
-import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextImpl
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextInternal
-import no.njoh.pulseengine.core.graphics.renderers.*
+import no.njoh.pulseengine.core.graphics.camera.Camera
+import no.njoh.pulseengine.core.graphics.camera.CameraInternal
+import no.njoh.pulseengine.core.graphics.camera.DefaultCamera
+import no.njoh.pulseengine.core.graphics.gpu.FullscreenPass
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
+import no.njoh.pulseengine.core.graphics.gpu.resource.MaterialBank
+import no.njoh.pulseengine.core.graphics.gpu.resource.ModelBank
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.MSAA4
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderType.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA16F
+import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
+import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextImpl
+import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderType
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
+import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
+import no.njoh.pulseengine.core.graphics.gpu.resource.TextureBank
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
@@ -33,9 +46,9 @@ open class GraphicsImpl : GraphicsInternal
     override lateinit var textureBank: TextureBank
     override lateinit var materialBank: MaterialBank
     override lateinit var modelBank: ModelBank
-    override lateinit var worldContext: WorldRenderContextInternal
+    override lateinit var sceneContext: SceneRenderContextInternal
     override lateinit var gpuName: String
-    private  lateinit var fullFrameRenderer: FullFrameRenderer
+    private  lateinit var fullscreenPass: FullscreenPass
 
     private val onInitFrame  = ArrayList<PulseEngineInternal.() -> Unit>()
     private val surfaceMap   = THashMap<String, SurfaceInternal>()
@@ -52,7 +65,7 @@ open class GraphicsImpl : GraphicsInternal
         textureBank = TextureBank()
         materialBank = MaterialBank()
         modelBank = ModelBank()
-        worldContext = WorldRenderContextImpl()
+        sceneContext = SceneRenderContextImpl()
         mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
         mainSurface = createSurface(
             name = "main",
@@ -72,7 +85,7 @@ open class GraphicsImpl : GraphicsInternal
 
         engine.data.addMetric("DRAW CALLS")             { sample(GpuProfiler.drawCalls.toFloat()) }
         engine.data.addMetric("DRAW INSTANCES")         { sample(GpuProfiler.instances.toFloat()) }
-        engine.data.addMetric("WORLD INSTANCES")        { sample(GpuProfiler.worldInstances.toFloat()) }
+        engine.data.addMetric("3D INSTANCES")           { sample(GpuProfiler.scene3DInstances.toFloat()) }
         engine.data.addMetric("TRIANGLES")              { sample(GpuProfiler.triangles.toFloat()) }
         engine.data.addMetric("GPU MEMORY UPLOAD (kB)") { sample(GpuProfiler.uploadedBytes.toFloat() / 1024f) }
     }
@@ -92,15 +105,15 @@ open class GraphicsImpl : GraphicsInternal
             errorShaders[FRAGMENT] = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/error/error.frag"))
 
             // Create and initialize full frame renderer
-            if (!this::fullFrameRenderer.isInitialized)
+            if (!this::fullscreenPass.isInitialized)
             {
                 val shaderProgram = ShaderProgram.create(
                     engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/surface.vert")),
                     engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/surface.frag"))
                 )
-                fullFrameRenderer = FullFrameRenderer(shaderProgram)
+                fullscreenPass = FullscreenPass(shaderProgram)
             }
-            fullFrameRenderer.init()
+            fullscreenPass.init()
         }
 
         // Initialize surfaces
@@ -120,7 +133,7 @@ open class GraphicsImpl : GraphicsInternal
         onInitFrame.forEachFast { it.invoke(engine) }
         onInitFrame.clear()
 
-        worldContext.initFrame()
+        sceneContext.initFrame()
 
         surfaces.forEachFast { it.initFrame(engine) }
         
@@ -134,7 +147,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         surfaces.forEachCamera { it.onFrameDraw(engine) }
 
-        worldContext.buildFrame(engine)
+        sceneContext.buildFrame(engine)
 
         materialBank.submitAndBind()
         modelBank.submitAndBind()
@@ -143,7 +156,7 @@ open class GraphicsImpl : GraphicsInternal
         renderPostProcessingEffectsToOffscreenTarget(engine)
         renderOffscreenTargetsToBackBuffer()
         
-        worldContext.endFrame()
+        sceneContext.endFrame()
 
         GpuProfiler.endFrame()
     }
@@ -185,7 +198,7 @@ open class GraphicsImpl : GraphicsInternal
         {
             GpuProfiler.measure(label = { "BACK_BUFFER_DRAW (" plus it.config.name plus ")" })
             {
-                fullFrameRenderer.drawTexture(it.getTexture())
+                fullscreenPass.drawTexture(it.getTexture())
             }
         }
     }
@@ -313,11 +326,11 @@ open class GraphicsImpl : GraphicsInternal
     {
         Logger.info { "Destroying graphics (${this::class.simpleName})" }
         surfaces.forEachFast { it.destroy(engine) }
-        worldContext.destroy()
+        sceneContext.destroy()
         textureBank.destroy()
         materialBank.destroy()
         modelBank.destroy()
-        fullFrameRenderer.destroy()
+        fullscreenPass.destroy()
     }
 
     private inline fun List<SurfaceInternal>.forEachCamera(block: (CameraInternal) -> Unit)

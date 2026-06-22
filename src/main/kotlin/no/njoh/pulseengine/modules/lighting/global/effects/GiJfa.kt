@@ -3,14 +3,14 @@ package no.njoh.pulseengine.modules.lighting.global.effects
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.api.RenderTexture
-import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping.CLAMP_TO_EDGE
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
+import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
+import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.modules.lighting.global.effects.GiJfa.*
 import kotlin.math.*
@@ -54,7 +54,7 @@ class GiJfa(
                 fbo.attachOutputTexture(outTextures[0])
                 program.setUniform("offset", offset)
                 program.setUniformSampler("seedTex", seedTex)
-                renderer.draw()
+                fullscreenPass.draw()
                 seedTex = outTextures[0]
             }
         }
@@ -93,7 +93,7 @@ class GiJfaSeed(
         fbo.clear()
         program.bind()
         program.setUniformSampler("sceneTex", sceneSurface.getTexture())
-        renderer.draw()
+        fullscreenPass.draw()
         fbo.release()
         return fbo.getTextures()
     }

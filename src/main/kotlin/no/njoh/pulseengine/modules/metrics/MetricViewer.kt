@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.data.Metric
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.FrostedGlassEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.utils.Extensions.append
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast

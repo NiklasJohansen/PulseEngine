@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.asset.types
 
-import no.njoh.pulseengine.core.graphics.api.ShaderType
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderType
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadTextFromDisk
 
 open class Shader(

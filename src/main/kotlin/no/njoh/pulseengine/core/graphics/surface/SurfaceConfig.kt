@@ -1,8 +1,12 @@
 package no.njoh.pulseengine.core.graphics.surface
 
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.graphics.api.*
-import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
+import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
+import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import java.lang.Float.intBitsToFloat

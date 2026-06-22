@@ -5,19 +5,19 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.Attachment
-import no.njoh.pulseengine.core.graphics.api.BlendFunction
-import no.njoh.pulseengine.core.graphics.api.Camera
-import no.njoh.pulseengine.core.graphics.api.DefaultCamera
-import no.njoh.pulseengine.core.graphics.api.CameraProjectionType.ORTHOGRAPHIC
-import no.njoh.pulseengine.core.graphics.api.MaterialBank
-import no.njoh.pulseengine.core.graphics.api.ModelBank
-import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
-import no.njoh.pulseengine.core.graphics.api.Multisampling
-import no.njoh.pulseengine.core.graphics.api.TextureBank
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextImpl
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
+import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
+import no.njoh.pulseengine.core.graphics.camera.Camera
+import no.njoh.pulseengine.core.graphics.camera.DefaultCamera
+import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC
+import no.njoh.pulseengine.core.graphics.gpu.resource.MaterialBank
+import no.njoh.pulseengine.core.graphics.gpu.resource.ModelBank
+import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
+import no.njoh.pulseengine.core.graphics.gpu.resource.TextureBank
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
+import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextImpl
 import no.njoh.pulseengine.core.graphics.surface.NoOpSurface
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
@@ -32,7 +32,7 @@ class NoOpGraphics() : GraphicsInternal
     override var textureBank = TextureBank()
     override var materialBank = MaterialBank()
     override var modelBank = ModelBank()
-    override val worldContext = WorldRenderContextImpl()
+    override val sceneContext = SceneRenderContextImpl()
     override val gpuName = "none"
     override fun createSurface(
         name: String,

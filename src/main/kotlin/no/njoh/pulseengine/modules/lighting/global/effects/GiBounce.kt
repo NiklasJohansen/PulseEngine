@@ -3,12 +3,14 @@ package no.njoh.pulseengine.modules.lighting.global.effects
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.api.*
-import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
-import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_1
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.COLOR_TEXTURE_0
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.COLOR_TEXTURE_1
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
+import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA16F
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
+import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
 import org.joml.Matrix4f
 
@@ -48,7 +50,7 @@ class GiBounce(
         program.setUniformSampler("sceneTex", inTextures[0])
         program.setUniformSampler("sceneMetaTex", inTextures[1])
         program.setUniformSampler("exteriorLightTex", exteriorLightTexture)
-        renderer.draw()
+        fullscreenPass.draw()
         fbo.release()
 
         lastViewProjectionMatrix.set(exteriorLightSurface.camera.viewProjectionMatrix)

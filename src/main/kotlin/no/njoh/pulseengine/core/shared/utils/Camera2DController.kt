@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.shared.utils
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.MouseButton
-import no.njoh.pulseengine.core.graphics.api.Camera
+import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.input.Key
 import kotlin.math.max
 import kotlin.math.min

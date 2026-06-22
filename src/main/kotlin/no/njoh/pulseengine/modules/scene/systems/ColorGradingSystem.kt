@@ -1,8 +1,8 @@
 package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.ColorGradingEffect
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.ColorGradingEffect.ToneMapper.ACES
+import no.njoh.pulseengine.core.graphics.postprocessing.ColorGradingEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.ColorGradingEffect.ToneMapper.ACES
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
@@ -19,7 +19,7 @@ class ColorGradingSystem : SceneSystem()
     @Prop(i=4)                 var contrast       = 1f
     @Prop(i=5, min=0f)         var saturation     = 1f
     @Prop(i=6, min=0f)         var vignette       = 0f
-    @Prop(i=7)                 var targetSurfaces = "main"
+    @Prop(i=7)                 var targetSurfaces = "scene3d"
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()

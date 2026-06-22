@@ -1,0 +1,208 @@
+package no.njoh.pulseengine.core.graphics.gpu.resource
+
+import gnu.trove.map.hash.THashMap
+import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAnisotropy.OFF
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureArray
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
+import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
+import no.njoh.pulseengine.core.shared.utils.Logger
+import org.lwjgl.BufferUtils
+import org.lwjgl.opengl.GL11.GL_RGBA
+import org.lwjgl.opengl.GL11.GL_RGBA8
+import org.lwjgl.opengl.GL11.GL_TEXTURE_2D
+import org.lwjgl.opengl.GL11.GL_UNPACK_ALIGNMENT
+import org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE
+import org.lwjgl.opengl.GL11.glBindTexture
+import org.lwjgl.opengl.GL11.glGenTextures
+import org.lwjgl.opengl.GL11.glPixelStorei
+import org.lwjgl.opengl.GL11.glTexImage2D
+import org.lwjgl.opengl.GL11.glTexParameteri
+import org.lwjgl.opengl.GL12.GL_TEXTURE_BASE_LEVEL
+import org.lwjgl.opengl.GL12.GL_TEXTURE_MAX_LEVEL
+import kotlin.math.max
+
+class TextureBank
+{
+    private val capacitySpecs = mutableListOf<TextureCapacitySpec>().apply { addAll(DEFAULT_CAPACITIES) }
+    private val textureArrays = mutableListOf<TextureArray>()
+    private val emptyTextureArray = TextureArray(0, 0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
+    private val fallbackTextures = THashMap<Color, RenderTexture>()
+
+    fun upload(texture: Texture)
+    {
+        val array = getOrCreateTextureArrayFor(texture)
+        if (array != null)
+        {
+            if (!array.isFull())
+            {
+                array.upload(texture)
+                return
+            }
+            else Logger.error()
+            {
+                "Failed to load texture: ${texture.filePath}. Texture array for " +
+                "textureSize=${array.textureSize}px and format=${array.format} is full " +
+                "(${array.size}/${array.maxCapacity}). Consider increasing its capacity."
+            }
+        }
+
+        // Fall back to no texture if the upload failed
+        texture.onUploaded(handle = TextureHandle.NONE)
+    }
+
+    fun delete(texture: Texture)
+    {
+        val samplerIndex = texture.handle.samplerIndex
+        textureArrays.find { it.samplerIndex == samplerIndex }?.delete(texture)
+    }
+
+    fun destroy()
+    {
+        textureArrays.forEachFast { it.destroy() }
+    }
+
+    fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat = RGBA8)
+    {
+        capacitySpecs.removeWhen { it.texSize == textureSize && it.format == format }
+        capacitySpecs.add(TextureCapacitySpec(textureSize, maxCount, format))
+        capacitySpecs.sortBy { it.texSize }
+    }
+
+    fun getTextureArray(texture: Texture?): TextureArray? =
+        textureArrays.firstOrNullFast { it.samplerIndex == texture?.handle?.samplerIndex }
+
+    fun getTextureArrayOrDefault(texture: Texture?): TextureArray =
+        getTextureArray(texture) ?: emptyTextureArray.also { if (it.id == -1) it.init() }
+
+    fun getAllTextureArrays(): List<TextureArray> = textureArrays
+
+    fun getOrCreateFallbackTexture(color: Color): RenderTexture =
+        fallbackTextures.getOrPut(color) { createFallbackTexture(color) }
+
+    private fun createFallbackTexture(color: Color): RenderTexture
+    {
+        val pixels = BufferUtils.createByteBuffer(4)
+        pixels.put((color.red * 255).toInt().coerceIn(0, 255).toByte())
+        pixels.put((color.green * 255).toInt().coerceIn(0, 255).toByte())
+        pixels.put((color.blue * 255).toInt().coerceIn(0, 255).toByte())
+        pixels.put((color.alpha * 255).toInt().coerceIn(0, 255).toByte())
+        pixels.flip()
+
+        val id = glGenTextures()
+        glBindTexture(GL_TEXTURE_2D, id)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
+        glBindTexture(GL_TEXTURE_2D, 0)
+
+        return RenderTexture(name = "fallback", handle = TextureHandle.create(0, id), width = 1, height = 1)
+    }
+
+    private fun getOrCreateTextureArrayFor(texture: Texture): TextureArray?
+    {
+        val textureSize = max(texture.width, texture.height)
+        val textureArray = textureArrays.find()
+        {
+            it.textureSize >= textureSize &&
+            it.format == texture.format &&
+            it.filter == texture.filter &&
+            it.anisotropy == texture.anisotropy &&
+            it.wrapping == texture.wrapping &&
+            it.maxMipLevels == texture.maxMipLevels
+        }
+
+        val isMoreTextureSlotsAvailable = textureArrays.size < MAX_TEXTURE_SLOTS
+        if (textureArray != null)
+        {
+            val foundArrayHasAppropriateSize = textureSize > textureArray.textureSize / 2
+            val isTextureSmallerThanSmallestSpec = textureSize < capacitySpecs.first().texSize
+            if (foundArrayHasAppropriateSize || isTextureSmallerThanSmallestSpec || !isMoreTextureSlotsAvailable)
+                return textureArray
+        }
+
+        if (!isMoreTextureSlotsAvailable)
+        {
+            Logger.error()
+            {
+                "Failed to load texture: name=${texture.name}, size=${textureSize}px, format=${texture.format}, " +
+                "filter=${texture.filter}, anisotropy=${texture.anisotropy}, wrapping=${texture.wrapping} and maxMipLevels=${texture.maxMipLevels}.\n" +
+                "All $MAX_TEXTURE_SLOTS texture array slots are in use:\n\n" +
+                textureArrays.joinToString("\n") { "  $it" } +
+                "\n\nConsider reducing the number of texture sampler permutations."
+            }
+            return null
+        }
+
+        val closestTextureSize = capacitySpecs.firstOrNull { it.texSize >= textureSize }?.texSize
+        val spec = capacitySpecs.find { it.texSize == closestTextureSize && it.format == texture.format }
+        if (spec == null)
+        {
+            Logger.error { "Failed to load texture: ${texture.filePath}. No texture capacity set for textures with size=${textureSize}px and format ${texture.format}." }
+            return null
+        }
+
+        val newArray = TextureArray(textureArrays.size, spec.texSize, spec.capacity, texture.format, texture.filter, texture.anisotropy, texture.wrapping, texture.maxMipLevels)
+        textureArrays.add(newArray)
+        textureArrays.sortBy { it.textureSize }
+        Logger.debug { "New texture array created: $newArray" }
+
+        return newArray
+    }
+
+    private data class TextureCapacitySpec(
+        val texSize: Int,
+        val capacity: Int,
+        val format: TextureFormat
+    )
+
+    companion object
+    {
+        private const val MAX_TEXTURE_SLOTS = 16
+        private val DEFAULT_CAPACITIES = listOf(
+            TextureCapacitySpec(texSize = 128,  capacity = 100, format = SRGBA8),
+            TextureCapacitySpec(texSize = 128,  capacity = 100, format = RGBA8),
+            TextureCapacitySpec(texSize = 128,  capacity = 70,  format = RGBA16F),
+            TextureCapacitySpec(texSize = 128,  capacity = 50,  format = RGBA32F),
+
+            TextureCapacitySpec(texSize = 256,  capacity = 100, format = SRGBA8),
+            TextureCapacitySpec(texSize = 256,  capacity = 100, format = RGBA8),
+            TextureCapacitySpec(texSize = 256,  capacity = 70,  format = RGBA16F),
+            TextureCapacitySpec(texSize = 256,  capacity = 50,  format = RGBA32F),
+
+            TextureCapacitySpec(texSize = 512,  capacity = 50,  format = SRGBA8),
+            TextureCapacitySpec(texSize = 512,  capacity = 50,  format = RGBA8),
+            TextureCapacitySpec(texSize = 512,  capacity = 30,  format = RGBA16F),
+            TextureCapacitySpec(texSize = 512,  capacity = 20,  format = RGBA32F),
+
+            TextureCapacitySpec(texSize = 1024, capacity = 50,  format = SRGBA8),
+            TextureCapacitySpec(texSize = 1024, capacity = 50,  format = RGBA8),
+            TextureCapacitySpec(texSize = 1024, capacity = 30,  format = RGBA16F),
+            TextureCapacitySpec(texSize = 1024, capacity = 20,  format = RGBA32F),
+
+            TextureCapacitySpec(texSize = 2048, capacity = 15,  format = SRGBA8),
+            TextureCapacitySpec(texSize = 2048, capacity = 15,  format = RGBA8),
+            TextureCapacitySpec(texSize = 2048, capacity = 10,  format = RGBA16F),
+            TextureCapacitySpec(texSize = 2048, capacity = 5,   format = RGBA32F),
+
+            TextureCapacitySpec(texSize = 4096, capacity = 10,  format = SRGBA8),
+            TextureCapacitySpec(texSize = 4096, capacity = 10,  format = RGBA8),
+            TextureCapacitySpec(texSize = 4096, capacity = 5,   format = RGBA16F),
+            TextureCapacitySpec(texSize = 4096, capacity = 5,   format = RGBA32F),
+
+            TextureCapacitySpec(texSize = 8192, capacity = 5,   format = SRGBA8),
+            TextureCapacitySpec(texSize = 8192, capacity = 5,   format = RGBA8),
+            TextureCapacitySpec(texSize = 8192, capacity = 3,   format = RGBA16F),
+            TextureCapacitySpec(texSize = 8192, capacity = 2,   format = RGBA32F)
+        )
+    }
+}

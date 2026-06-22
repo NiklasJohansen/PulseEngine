@@ -4,8 +4,8 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.graphics.GraphicsInternal
-import no.njoh.pulseengine.core.graphics.api.Multisampling.*
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.FrostedGlassEffect
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
+import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.primitives.Color

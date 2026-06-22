@@ -110,7 +110,7 @@ class GpuStatsReader(initialCommandCapacity: Int = 256)
             visibleTriangles += instanceCount * (indexCount / 3L)
         }
 
-        GpuProfiler.incrementWorldInstances(visibleInstances)
+        GpuProfiler.incrementScene3DInstances(visibleInstances)
         GpuProfiler.incrementDrawStats(
             drawCommands = visibleCommands,
             triangles = visibleTriangles,

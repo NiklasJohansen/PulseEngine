@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.renderers.SkyboxRenderer
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.SkyboxRenderer
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.EnvMapRef
 import no.njoh.pulseengine.core.shared.annotations.Name
@@ -13,7 +13,7 @@ class SkyboxSystem : SceneSystem()
 {
     @Prop(i=0, min=0f)    var brightness     = 1f
     @Prop(i=1) @EnvMapRef var texture        = ""
-    @Prop(i=4)            var targetSurfaces = "world"
+    @Prop(i=4)            var targetSurfaces = "scene3d"
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()

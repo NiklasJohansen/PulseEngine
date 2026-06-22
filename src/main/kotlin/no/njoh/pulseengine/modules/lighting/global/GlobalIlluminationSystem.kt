@@ -2,12 +2,12 @@ package no.njoh.pulseengine.modules.lighting.global
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.graphics.api.Attachment.*
-import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
-import no.njoh.pulseengine.core.graphics.api.BlendFunction.NONE
-import no.njoh.pulseengine.core.graphics.api.mipmap.CustomMipmapGenerator
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.*
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.MultiplyEffect
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.ADDITIVE
+import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.NONE
+import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.CustomMipmapGenerator
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
+import no.njoh.pulseengine.core.graphics.postprocessing.MultiplyEffect
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.scene.systems.EntityRenderer

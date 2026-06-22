@@ -3,15 +3,17 @@ package no.njoh.pulseengine.core.graphics.surface
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.StencilState.Action.CLEAR
-import no.njoh.pulseengine.core.graphics.api.StencilState.Action.SET
-import no.njoh.pulseengine.core.graphics.api.*
+import no.njoh.pulseengine.core.graphics.camera.Camera
+import no.njoh.pulseengine.core.graphics.camera.CameraInternal
+import no.njoh.pulseengine.core.graphics.gpu.texture.*
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
-import no.njoh.pulseengine.core.graphics.renderers.Renderer
+import no.njoh.pulseengine.core.graphics.surface.StencilState.Action.CLEAR
+import no.njoh.pulseengine.core.graphics.surface.StencilState.Action.SET
+import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
-import no.njoh.pulseengine.core.shared.utils.TextBuilderContext
 import no.njoh.pulseengine.core.shared.utils.TextBuilder
+import no.njoh.pulseengine.core.shared.utils.TextBuilderContext
 
 /**
  * A surface is a rendering target that can be used to draw lines, quads, textures and text.
@@ -219,9 +221,6 @@ abstract class Surface
      */
     inline fun <reified T: Renderer> getRenderer(): T? = getRenderer(T::class.java)
 
-    // Reusable StringBuilder for text drawing
-    @PublishedApi internal val sb = StringBuilder(1000)
-
     @PublishedApi internal val context = TextBuilderContext()
 }
 
@@ -234,7 +233,6 @@ abstract class SurfaceInternal : Surface()
 
     abstract fun init(engine: PulseEngineInternal, width: Int, height: Int, glContextRecreated: Boolean)
     abstract fun initFrame(engine: PulseEngineInternal)
-//    abstract fun declareWorldViews(engine: PulseEngineInternal)
     abstract fun renderToOffScreenTarget(engine: PulseEngineInternal)
     abstract fun runPostProcessingPipeline(engine: PulseEngineInternal)
     abstract fun destroy(engine: PulseEngineInternal)

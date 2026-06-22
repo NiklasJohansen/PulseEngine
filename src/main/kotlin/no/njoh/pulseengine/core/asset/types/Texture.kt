@@ -1,11 +1,15 @@
 package no.njoh.pulseengine.core.asset.types
 
-import no.njoh.pulseengine.core.graphics.api.*
-import no.njoh.pulseengine.core.graphics.api.TextureAnisotropy.Companion.defaultFor
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR_MIPMAP
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
-import no.njoh.pulseengine.core.graphics.api.TextureHandle.Companion.INVALID
-import no.njoh.pulseengine.core.graphics.api.TextureWrapping.REPEAT
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAnisotropy.Companion.defaultFor
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR_MIPMAP
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle.Companion.INVALID
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.REPEAT
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAnisotropy
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
 import no.njoh.pulseengine.core.shared.utils.Logger

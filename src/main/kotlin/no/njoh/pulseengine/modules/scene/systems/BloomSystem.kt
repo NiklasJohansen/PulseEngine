@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.BloomEffect
+import no.njoh.pulseengine.core.graphics.postprocessing.BloomEffect
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
@@ -17,7 +17,7 @@ class BloomSystem : SceneSystem()
     @Prop(i=3, min=0f, max=1f)  var radius             = 0.001f
     @Prop(i=4, min=0f)          var lensDirtIntensity  = 1f
     @Prop(i=5) @TexRef          var lensDirtTexture    = ""
-    @Prop(i=6)                  var targetSurfaces     = "main"
+    @Prop(i=6)                  var targetSurfaces     = "scene3d"
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()

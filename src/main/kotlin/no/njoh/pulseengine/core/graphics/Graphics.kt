@@ -6,18 +6,25 @@ import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.api.*
-import no.njoh.pulseengine.core.graphics.api.Multisampling.NONE
-import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
-import no.njoh.pulseengine.core.graphics.api.Attachment.DEPTH_STENCIL_BUFFER
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA8
-import no.njoh.pulseengine.core.graphics.api.Camera
-import no.njoh.pulseengine.core.graphics.api.CameraInternal
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.RGBA16F
-import no.njoh.pulseengine.core.graphics.api.mipmap.MipmapGenerator
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContext
-import no.njoh.pulseengine.core.graphics.api.world.WorldRenderContextInternal
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.NONE
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.COLOR_TEXTURE_0
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.DEPTH_STENCIL_BUFFER
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA8
+import no.njoh.pulseengine.core.graphics.camera.Camera
+import no.njoh.pulseengine.core.graphics.camera.CameraInternal
+import no.njoh.pulseengine.core.graphics.gpu.resource.MaterialBank
+import no.njoh.pulseengine.core.graphics.gpu.resource.ModelBank
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA16F
+import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
+import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
+import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
+import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
+import no.njoh.pulseengine.core.graphics.gpu.resource.TextureBank
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
@@ -37,9 +44,9 @@ interface Graphics
     val mainCamera: Camera
 
     /**
-     * The context holding all the world rendering state.
+     * The context holding all the 3D scene rendering state.
      */
-    val worldContext: WorldRenderContext
+    val sceneContext: SceneRenderContext
 
     /**
      * Returns the [Surface] with the given name or null if it does not exist.
@@ -103,7 +110,7 @@ interface Graphics
 interface GraphicsInternal : Graphics
 {
     override val mainCamera: CameraInternal
-    override val worldContext: WorldRenderContextInternal
+    override val sceneContext: SceneRenderContextInternal
 
     val textureBank: TextureBank
     val materialBank: MaterialBank

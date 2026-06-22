@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.graphics.postprocessing
 
 import no.njoh.pulseengine.core.PulseEngineInternal
-import no.njoh.pulseengine.core.graphics.api.RenderTexture
+import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 
 interface PostProcessingEffect
 {

@@ -3,13 +3,13 @@ package no.njoh.pulseengine.modules.lighting.global.effects
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.api.RenderTexture
-import no.njoh.pulseengine.core.graphics.api.ShaderProgram
-import no.njoh.pulseengine.core.graphics.api.TextureDescriptor
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.LINEAR
-import no.njoh.pulseengine.core.graphics.api.TextureFilter.NEAREST
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.R16F
-import no.njoh.pulseengine.core.graphics.postprocessing.effects.BaseEffect
+import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.R16F
+import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 import no.njoh.pulseengine.modules.lighting.global.GlobalIlluminationSystem
 import org.joml.Matrix4f
 
@@ -54,7 +54,7 @@ class GiAo(
         program.setUniformSampler("localSceneTex", localSceneSurface.getTexture(0, final = false), filter = LINEAR)
         program.setUniformSampler("localSceneMetadataTex", localSceneSurface.getTexture(1, final = false), filter = NEAREST)
         program.setUniformSampler("lastAoTex", fbo.getTexture(readTexIndex))
-        renderer.draw()
+        fullscreenPass.draw()
         fbo.release()
 
         writeTexIndex = readTexIndex.also { readTexIndex = writeTexIndex }

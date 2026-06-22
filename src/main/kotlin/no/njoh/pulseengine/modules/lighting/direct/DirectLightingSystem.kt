@@ -5,11 +5,11 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Shape
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.*
-import no.njoh.pulseengine.core.graphics.api.Attachment.COLOR_TEXTURE_0
-import no.njoh.pulseengine.core.graphics.api.Multisampling
-import no.njoh.pulseengine.core.graphics.api.BlendFunction.ADDITIVE
-import no.njoh.pulseengine.core.graphics.api.TextureFilter
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
+import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.COLOR_TEXTURE_0
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
+import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.ADDITIVE
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.scene.SceneEntity

@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.graphics.renderers.GtaoRenderer
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.GtaoRenderer
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
@@ -34,7 +34,7 @@ class AmbientOcclusionSystem : SceneSystem()
     @Prop(i=15, min=0f, max=1f) var temporalHistoryRejection = 0.5f
 
     // Target surfaces
-    @Prop(i=16) var targetSurfaces = "world"
+    @Prop(i=16) var targetSurfaces = "scene3d"
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()

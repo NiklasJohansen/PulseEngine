@@ -9,10 +9,10 @@ import no.njoh.pulseengine.core.asset.types.Material.*
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
 import no.njoh.pulseengine.core.asset.types.Material.CullMode.BACK
 import no.njoh.pulseengine.core.asset.types.Material.CullMode.NONE
-import no.njoh.pulseengine.core.graphics.api.TextureFormat
-import no.njoh.pulseengine.core.graphics.api.TextureFormat.*
-import no.njoh.pulseengine.core.graphics.api.objects.StaticBufferObject
-import no.njoh.pulseengine.core.graphics.api.objects.VertexArrayObject
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.*
+import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
+import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.buildSkinningBounds
