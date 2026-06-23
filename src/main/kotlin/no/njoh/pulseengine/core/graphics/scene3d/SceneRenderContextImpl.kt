@@ -24,6 +24,8 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.LodCameraState
+import no.njoh.pulseengine.core.graphics.util.LodUtils
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.primitives.Mat4fArena
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -33,37 +35,45 @@ import org.joml.Vector3f
 
 class SceneRenderContextImpl : SceneRenderContextInternal()
 {
-    private var nextFrameScene = RenderScene()
-    private var thisFrameScene = RenderScene()
-
     private val views                       = DynamicList<RenderView>()
     private val clusteredLightGrids         = THashMap<CameraRenderState, ClusteredLightGrid>()
     private val clusteredLightGridRequests  = THashSet<CameraRenderState>()
+    
+    private var nextFrameScene = RenderScene()
+    private var thisFrameScene = RenderScene()
 
+    private var nextLodCameraState = LodCameraState()
+    private var thisLodCameraState = LodCameraState()
+
+    private var mat4fArena     = Mat4fArena()
+    private var mat4fArenaNext = Mat4fArena()
+    
     private val instanceBuffer     = InstanceBufferObject()
     private val cullingBuffer      = CullingBufferObject()
     private val boneBuffer         = BoneBufferObject()
     private val lightBuffer        = LightBufferObject()
     private val drawCommandBuilder = DrawCommandBuilder(instanceBuffer, cullingBuffer)
     private val localShadowAtlas   = LocalShadowAtlas()
-    
-    private var initialized = false
-    private var frameNumber = 0
-    private var lastFrameHadAnyItems = false
 
-    private var mat4fArena     = Mat4fArena()
-    private var mat4fArenaNext = Mat4fArena()
+    private var frameNumber = 0
+    private var initialized = false
+    private var lastFrameHadAnyItems = false
 
     override fun initFrame()
     {
+        frameNumber++
+
         nextFrameScene = thisFrameScene.also { thisFrameScene = nextFrameScene }
         nextFrameScene.clear()
-        
+
+        nextLodCameraState = thisLodCameraState.also { thisLodCameraState = nextLodCameraState }
+        LodUtils.pruneStaleLodStates(frameNumber)
+
         mat4fArena = mat4fArenaNext.also { mat4fArenaNext = mat4fArena }
         mat4fArena.reset()
 
         clusteredLightGridRequests.clear()
-        frameNumber++
+
         views.forEach { it.beginFrame() }
     }
 
@@ -92,6 +102,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             }
         }
 
+        captureLodCameraState()
+
         instanceBuffer.clear()
         cullingBuffer.clear()
         boneBuffer.clear()
@@ -115,7 +127,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
         // Prepare views for rendering
         drawCommandBuilder.beginFrame()
-        views.forEach { if (it.wasRequestedThisFrame()) it.prepare(thisFrameScene, drawCommandBuilder) }
+        views.forEach { if (it.wasRequested()) it.prepare(thisFrameScene, drawCommandBuilder) }
         drawCommandBuilder.finishFramePreparation()
 
         prepareRequestedClusteredLightGrids()
@@ -176,20 +188,32 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     @Suppress("UNCHECKED_CAST")
     override fun <T: RenderView> getView(key: RenderViewKey<T>): T? = 
-        views.firstOrNull { it.viewId == key.viewId && key.type.isAssignableFrom(it.javaClass) && it.wasRequestedThisFrame() } as T?
+        views.firstOrNull { it.viewId == key.viewId && it.wasRequested() && key.type.isAssignableFrom(it.javaClass) } as T?
 
-    override fun submitModel(engine: PulseEngine, model: Model, transform: Matrix4f, material: Material?, animationPose: AnimatedSkeletonPose?, visibilityMask: Int)
-    {
-        for (instance in model.meshInstances)
+    override fun submitModel(
+        engine: PulseEngine,
+        model: Model,
+        transform: Matrix4f,
+        material: Material?,
+        animationPose: AnimatedSkeletonPose?,
+        visibilityMask: Int,
+        lodPixelHeightThresholds: IntArray?,
+        lodHysteresis: Float,
+        lodKey: Long
+    ) {
+        val lodLevel = LodUtils.getLodLevel(model, transform, lodPixelHeightThresholds, lodHysteresis, lodKey, thisLodCameraState)
+        val meshInstances = model.getMeshInstancesAtLevel(lodLevel)
+
+        for (instance in meshInstances)
         {
             val material      = material ?: model.materials.getOrNull(instance.mesh.materialIndex)?.let { engine.asset.getOrNull(it.name) }
             val animatedPose  = animationPose?.getAnimatedMeshPose(instance.nodeName)
             val boneMatrices  = animatedPose?.boneMatrices ?: model.getBindPoseBoneMatrices(instance.nodeName)
             val cullingBounds = instance.mesh.animatedBounds?.takeIf { animatedPose != null } ?: instance.cullingBounds
 
-            val transform = Mat4f(mat4fArena).setMul(transform, instance.transform)
+            val meshTransform = Mat4f(mat4fArena).setMul(transform, instance.transform)
 
-            nextFrameScene.addMesh(instance.mesh, material, transform, cullingBounds, boneMatrices, visibilityMask)
+            nextFrameScene.addMesh(instance.mesh, material, meshTransform, cullingBounds, boneMatrices, visibilityMask)
         }
     }
 
@@ -245,15 +269,10 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             grid.buildAndSubmit(state, thisFrameScene)
         }
 
-        val iterator = clusteredLightGrids.iterator()
-        while (iterator.hasNext())
-        {
-            val entry = iterator.next()
-            if (entry.key !in clusteredLightGridRequests)
-            {
-                entry.value.destroy()
-                iterator.remove()
-            }
+        clusteredLightGrids.retainEntries { state, grid -> 
+            val retain = state in clusteredLightGridRequests
+            if (!retain) grid.destroy()
+            retain
         }
     }
 
@@ -264,11 +283,15 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             cullingBuffer.addItem(item)
         }
 
-    private fun getCameraPosition(): Vector3f?
+    private fun getCameraPosition(): Vector3f? = 
+        views.firstNotNullOfOrNull { if (it.wasRequested() && it is CameraRenderStateProvider) it.shadowReferencePosition else null }
+
+    private fun captureLodCameraState()
     {
-        views.forEach { if (it.wasRequestedThisFrame() && it is CameraRenderStateProvider) return it.shadowReferencePosition }
-        return null
+        val view = views.firstOrNull { it.wasRequested() && it is CameraRenderStateProvider }
+        val cameraState = (view as CameraRenderStateProvider).cameraStates.firstOrNull() ?: return
+        nextLodCameraState.set(cameraState, frameNumber)
     }
 
-    private fun RenderView.wasRequestedThisFrame() = (lastFrameRequested == frameNumber)
+    private fun RenderView.wasRequested() = (lastFrameRequested == frameNumber)
 }

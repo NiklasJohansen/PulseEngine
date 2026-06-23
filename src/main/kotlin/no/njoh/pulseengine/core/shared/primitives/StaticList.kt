@@ -88,6 +88,19 @@ open class StaticList<T>(
         return null
     }
 
+    inline fun <V> firstNotNullOfOrNull(predicate: (T) -> V?): V?
+    {
+        val s = size
+        val data = data
+        for (i in 0 until s)
+        {
+            val element = data[i] as T
+            val value = predicate(element)
+            if (value != null) return value
+        }
+        return null
+    }
+
     inline fun lastOrNull(predicate: (T) -> Boolean): T?
     {
         var i = lastIndex

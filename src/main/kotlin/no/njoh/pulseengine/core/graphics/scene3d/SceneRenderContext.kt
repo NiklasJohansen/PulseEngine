@@ -27,7 +27,10 @@ abstract class SceneRenderContext()
         transform: Matrix4f,
         material: Material? = null,
         animationPose: AnimatedSkeletonPose? = null,
-        visibilityMask: Int = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW
+        visibilityMask: Int = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
+        lodPixelHeightThresholds: IntArray? = null,
+        lodHysteresis: Float = 0.15f,
+        lodKey: Long = 0L
     )
 
     abstract fun submitMesh(

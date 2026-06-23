@@ -20,17 +20,22 @@ class Model3D : SceneEntity(), Scene3DRenderable, Named
 {
     override var name = ""
 
-    @ModelRef var model = ""
+    @ModelRef    var model    = ""
     @MaterialRef var material = ""
 
     @Prop("Position [*P]", i=1) var xPos=0f;   var yPos=0f;   var zPos=0f
     @Prop("Rotation [*R]", i=2) var xRot=0f;   var yRot=0f;   var zRot=0f
     @Prop("Scale    [*S]", i=3) var xScale=1f; var yScale=1f; var zScale=1f
 
-    @Prop("Lighting", i=4) var castLocalShadows = true
-    @Prop("Lighting", i=5) var castSunShadows   = true
-    
+    @Prop("Shadows", i=4) var castLocalShadows = true
+    @Prop("Shadows", i=5) var castSunShadows   = true
+
+    @Prop("LOD", i=6)                   var lodPixelHeightThresholds = ""
+    @Prop("LOD", i=7, min=0f, max=0.9f) var lodHysteresis = 0.15f
+
     private val transform = Matrix4f()
+    private var lastLodPixelHeightThresholds = null as String?
+    private var parsedLodPixelHeightThresholds = null as IntArray?
 
     override fun onRender(engine: PulseEngine, context: SceneRenderContext)
     {
@@ -45,7 +50,22 @@ class Model3D : SceneEntity(), Scene3DRenderable, Named
         var mask = CAMERA
         if (castLocalShadows) mask = mask or LOCAL_SHADOW
         if (castSunShadows)   mask = mask or GLOBAL_SHADOW
+        
+        if (lodPixelHeightThresholds != lastLodPixelHeightThresholds)
+        {
+            parsedLodPixelHeightThresholds = lodPixelHeightThresholds.split(',').mapNotNull { it.trim().toIntOrNull()?.coerceAtLeast(0) }.takeIf { it.isNotEmpty() }?.toIntArray()
+            lastLodPixelHeightThresholds = lodPixelHeightThresholds
+        }
 
-        context.submitModel(engine, model, transform, material, visibilityMask = mask)
+        context.submitModel(
+            engine = engine,
+            model = model,
+            transform = transform,
+            material = material,
+            visibilityMask = mask,
+            lodPixelHeightThresholds = parsedLodPixelHeightThresholds,
+            lodHysteresis = lodHysteresis,
+            lodKey = id
+        )
     }
 }

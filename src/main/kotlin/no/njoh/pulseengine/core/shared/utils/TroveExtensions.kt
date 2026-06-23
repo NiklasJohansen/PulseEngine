@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.shared.utils
 
 import gnu.trove.map.hash.TIntObjectHashMap
+import gnu.trove.map.hash.TLongObjectHashMap
 import gnu.trove.map.hash.TObjectIntHashMap
 
 /** Default return value from Trove hash maps when no entry was found */
@@ -19,6 +20,19 @@ inline fun <K> TObjectIntHashMap<K>.getOrPut(key: K, noEntryValue: Int = TROVE_N
 {
     val value = get(key)
     if (value != noEntryValue)
+        return value
+    val answer = defaultValue(key)
+    put(key, answer)
+    return answer
+}
+
+/**
+ * Gets the element associated with the given key, or inserts and returns the result of the [defaultValue] function.
+ */
+inline fun <V> TLongObjectHashMap<V>.getOrPut(key: Long, defaultValue: (key: Long) -> V): V
+{
+    val value = get(key)
+    if (value != null)
         return value
     val answer = defaultValue(key)
     put(key, answer)

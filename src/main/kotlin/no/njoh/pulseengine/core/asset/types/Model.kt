@@ -61,8 +61,10 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
     var meshes        = emptyList<Mesh>();         private set
     var meshInstances = emptyList<MeshInstance>(); private set
+    var lodLevels     = emptyList<LodLevel>();     private set
     var materials     = emptyList<MeshMaterial>(); private set
     var bones         = emptyList<Bone>();         private set
+    var localBounds   = null as Aabb?;             private set
 
     var hasNormals   = false; private set
     var hasTangents  = false; private set
@@ -136,7 +138,10 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 nodesByName.clear()
                 collectGlobalNodeTransforms(nodeHierarchy!!, Matrix4f(), globalNodeTransforms)
                 bindPoseBoneMatricesByNodeName.clear()
-                buildSubMeshInstances(it, Matrix4f(), mutableListOf<MeshInstance>().also { meshInstances = it })
+                val instances = mutableListOf<MeshInstance>()
+                buildSubMeshInstances(it, Matrix4f(), instances)
+                meshInstances = instances
+                buildBoundsAndLodLevels()
                 buildConservativeAnimatedBounds()
             }
         }
@@ -740,12 +745,13 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     
     // Helpers ////////////////////////////////////////////////////////////////////////
 
-    private fun buildSubMeshInstances(node: AINode, parentWorld: Matrix4f, instances: MutableList<MeshInstance>)
+    private fun buildSubMeshInstances(node: AINode, parentWorld: Matrix4f, instances: MutableList<MeshInstance>, inheritedLodLevel: Int? = null)
     {
         val local = node.mTransformation().toMatrix4f()
         val world = Matrix4f(parentWorld).mul(local)
 
         val nodeName = node.mName().dataString()
+        val lodLevel = nodeName.extractLodLevel() ?: inheritedLodLevel
         val meshIndices = node.mMeshes()
 
         if (meshIndices != null)
@@ -762,14 +768,49 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                     transform = Matrix4f(world),
                     cullingBounds = localBounds,
                     worldBounds = worldBounds,
-                    nodeName = nodeName
+                    nodeName = nodeName,
+                    lodLevel = lodLevel
                 )
             }
         }
 
         val children = node.mChildren() ?: return
         for (i in 0 until node.mNumChildren())
-            buildSubMeshInstances(AINode.create(children[i]), world, instances)
+            buildSubMeshInstances(AINode.create(children[i]), world, instances, lodLevel)
+    }
+
+    private fun buildBoundsAndLodLevels()
+    {
+        localBounds = meshInstances.firstOrNull()?.worldBounds?.let { Aabb().set(it) }
+        for (i in 1 until meshInstances.size)
+            localBounds?.include(meshInstances[i].worldBounds)
+
+        val lodInstances = meshInstances.filter { it.lodLevel != null }
+
+        lodLevels = if (lodInstances.isNotEmpty())
+        {
+            val sharedInstances = meshInstances.filter { it.lodLevel == null }
+            lodInstances
+                .mapNotNull { it.lodLevel }
+                .distinct()
+                .sorted()
+                .map { level ->
+                    val instances = ArrayList<MeshInstance>(sharedInstances.size + lodInstances.size)
+                    instances += sharedInstances
+                    lodInstances.forEachFast { if (it.lodLevel == level) instances += it }
+                    LodLevel(level, instances)
+                }
+        }
+        else emptyList()
+    }
+
+    fun getMeshInstancesAtLevel(lodLevel: Int): List<MeshInstance> = 
+        lodLevels.firstOrNull { it.level == lodLevel }?.meshInstances ?: meshInstances
+
+    private fun String.extractLodLevel(): Int?
+    {
+        val match = LOD_NAME_REGEX.find(this) ?: return null
+        return match.groupValues[1].toIntOrNull()
     }
     
     private fun getBindPoseSubMeshBounds(mesh: Mesh, nodeName: String): Aabb
@@ -1153,7 +1194,13 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val transform: Matrix4f,
         val cullingBounds: Aabb,
         val worldBounds: Aabb,
-        val nodeName: String
+        val nodeName: String,
+        val lodLevel: Int? = null
+    )
+
+    data class LodLevel(
+        val level: Int,
+        val meshInstances: List<MeshInstance>
     )
     
     data class MeshMaterial(
@@ -1326,6 +1373,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     {
         const val MAX_BONE_INFLUENCES = 4
         private val IDENTITY_MATRIX = Matrix4f()
+        private val LOD_NAME_REGEX = Regex("""(?:^|_)LOD(\d+)$""", RegexOption.IGNORE_CASE)
         private const val POSE_CACHE_FRAME_SLOT_COUNT = 2
         private const val ANIMATION_BOUNDS_SAMPLE_RATE = 15.0
         private const val MAX_ANIMATION_BOUNDS_SAMPLES_PER_CLIP = 120
