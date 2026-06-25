@@ -47,6 +47,7 @@ import org.lwjgl.stb.STBImage.STBI_rgb_alpha
 import org.lwjgl.stb.STBImage.stbi_failure_reason
 import org.lwjgl.stb.STBImage.stbi_load_from_memory
 import java.nio.ByteBuffer
+import java.nio.file.Path
 import kotlin.math.ceil
 
 class Model(filePath: String, name: String) : Asset(filePath, name) 
@@ -73,6 +74,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
     private var animations                     = ArrayList<Animation>()
     private val embeddedTextures               = TIntObjectHashMap<EmbeddedTexture>()
+    private val embeddedTexturesByPath         = THashMap<String, EmbeddedTexture>()
     private val globalNodeTransforms           = THashMap<String, Matrix4f>()
     private val nodesByName                    = THashMap<String, ModelNode>()
     private var nodeHierarchy                  = null as ModelNode?
@@ -461,31 +463,32 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val numMaterials = scene.mNumMaterials()
         val materialPointers = scene.mMaterials() ?: return
         val materials = mutableListOf<MeshMaterial>()
+        val modelDirectory = Path.of(filePath).toAbsolutePath().normalize().parent  ?: Path.of(".").toAbsolutePath().normalize()
 
         for (i in 0 until numMaterials)
         {
             val material = AIMaterial.create(materialPointers[i])
             val materialName = material.getMaterialStringProp(AI_MATKEY_NAME) ?: "material_${materials.size}"
-            val basePath = this.filePath.substringBeforeLast("/") + "/"
 
             val baseColor = material.getMaterialColorProp(AI_MATKEY_BASE_COLOR)
                 ?: material.getMaterialColorProp(AI_MATKEY_COLOR_DIFFUSE)
                 ?: Color(1f, 1f, 1f, 1f)
 
-            val albedoPath = material.getTexturePath(aiTextureType_DIFFUSE, basePath)
-                ?: material.getTexturePath(aiTextureType_BASE_COLOR, basePath)
+            val albedoPath = material.getTexturePath(aiTextureType_DIFFUSE, modelDirectory)
+                ?: material.getTexturePath(aiTextureType_BASE_COLOR, modelDirectory)
 
-            val normalPath = material.getTexturePath(aiTextureType_NORMALS, basePath)
+            val normalPath = material.getTexturePath(aiTextureType_NORMALS, modelDirectory)
+                ?: material.getTexturePath(aiTextureType_HEIGHT, modelDirectory)
 
-            val aoPath = material.getTexturePath(aiTextureType_AMBIENT, basePath)
-                ?: material.getTexturePath(aiTextureType_AMBIENT_OCCLUSION, basePath)
-                ?: material.getTexturePath(aiTextureType_LIGHTMAP, basePath)
+            val aoPath = material.getTexturePath(aiTextureType_AMBIENT, modelDirectory)
+                ?: material.getTexturePath(aiTextureType_AMBIENT_OCCLUSION, modelDirectory)
+                ?: material.getTexturePath(aiTextureType_LIGHTMAP, modelDirectory)
 
-            val metalRoughPath = material.getTexturePath(aiTextureType_METALNESS, basePath)
-                ?: material.getTexturePath(aiTextureType_DIFFUSE_ROUGHNESS, basePath)
-                ?: material.getTexturePath(aiTextureType_UNKNOWN, basePath)
+            val metalRoughPath = material.getTexturePath(aiTextureType_METALNESS, modelDirectory)
+                ?: material.getTexturePath(aiTextureType_DIFFUSE_ROUGHNESS, modelDirectory)
+                ?: material.getTexturePath(aiTextureType_UNKNOWN, modelDirectory)
 
-            val emissivePath = material.getTexturePath(aiTextureType_EMISSIVE, basePath)
+            val emissivePath = material.getTexturePath(aiTextureType_EMISSIVE, modelDirectory)
 
             val cullMode = if (material.getMaterialIntProp(AI_MATKEY_TWOSIDED) == 1) "NONE" else "BACK"
 
@@ -528,6 +531,9 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
     private fun readEmbeddedTextures(scene: AIScene)
     {
+        embeddedTextures.clear()
+        embeddedTexturesByPath.clear()
+
         val numTex = scene.mNumTextures()
         if (numTex == 0) return
 
@@ -536,8 +542,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         for (i in 0 until numTex)
         {
             val tex = AITexture.create(texPtrs[i])
-
-            if (tex.mHeight() == 0)
+            val embeddedTexture = if (tex.mHeight() == 0)
             {
                 // Compressed bytes (PNG/JPG/etc). mWidth == byte length.
                 val encoded = tex.pcDataCompressed()
@@ -551,7 +556,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 val pixels = stbi_load_from_memory(encoded, w, h, comp, STBI_rgb_alpha)
                     ?: throw RuntimeException("stbi_load_from_memory failed for embedded *$i: ${stbi_failure_reason()}")
 
-                embeddedTextures[i] = EmbeddedTexture(w[0], h[0], pixels, freeWithStbi = true)
+                EmbeddedTexture(w[0], h[0], pixels, freeWithStbi = true)
             }
             else
             {
@@ -568,8 +573,14 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 }
                 rgba.flip()
 
-                embeddedTextures[i] = EmbeddedTexture(w, h, rgba, freeWithStbi = false)
+                EmbeddedTexture(w, h, rgba, freeWithStbi = false)
             }
+
+            embeddedTextures[i] = embeddedTexture
+
+            val texturePath = normalizeTextureReference(tex.mFilename().dataString())
+            if (texturePath.isNotBlank())
+                embeddedTexturesByPath[embeddedTexturePathKey(texturePath)] = embeddedTexture
         }
     }
 
@@ -1025,7 +1036,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         if (res == aiReturn_SUCCESS) Color(it.r(), it.g(), it.b(), it.a()) else null
     }
 
-    private fun AIMaterial.getTexturePath(type: Int, basePath: String): String? = AIString.calloc().use()
+    private fun AIMaterial.getTexturePath(type: Int, modelDirectory: Path): String? = AIString.calloc().use()
     {
         if (aiGetMaterialTextureCount(this, type) < 1)
             return null
@@ -1033,10 +1044,26 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         if (aiGetMaterialTexture(this, type, 0, it, null as IntArray?, null, null, null, null, null) != aiReturn_SUCCESS)
             return null
 
-        val path = it.dataString()
+        val path = normalizeTextureReference(it.dataString())
+        if (path.isBlank())
+            return null
 
-        return if (path.startsWith("*")) path else basePath + path.replace("%20", " ")
+        if (path.startsWith("*") || embeddedTexturesByPath.containsKey(embeddedTexturePathKey(path)))
+            return path
+
+        val texturePath = Path.of(path)
+        return (if (texturePath.isAbsolute) texturePath else modelDirectory.resolve(texturePath)).normalize().toString()
     }
+
+    private fun normalizeTextureReference(path: String): String
+    {
+        var normalized = path.replace('\\', '/').replace("%20", " ")
+        while (normalized.startsWith("./"))
+            normalized = normalized.substring(2)
+        return normalized
+    }
+
+    private fun embeddedTexturePathKey(path: String) = normalizeTextureReference(path).lowercase()
 
     // Sub assets ////////////////////////////////////////////////////////////////////////
     
@@ -1088,16 +1115,22 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     private fun createTexture(path: String?, assetName: String, format: TextureFormat, textureAssets: THashMap<TextureAssetKey, Texture>): Texture? 
     {
         if (path.isNullOrEmpty()) return null
-        val key = TextureAssetKey(path, format)
+        val normalizedPath = normalizeTextureReference(path)
+        val key = TextureAssetKey(normalizedPath, format)
         return textureAssets.getOrPut(key)
         {
-            val texture = Texture(path, assetName, format = format)
-            if (path.startsWith("*")) // Embedded texture
+            val texture = Texture(normalizedPath, assetName, format = format)
+            val embeddedTexture = if (normalizedPath.startsWith("*"))
             {
-                val idx = path.substring(1).toIntOrNull() ?: return null
-                val tex = embeddedTextures[idx] ?: return null
-                texture.loadFrom(tex.rgbaPixels.duplicate(), tex.width, tex.height, freeWithStbi = tex.freeWithStbi)
+                val idx = normalizedPath.substring(1).toIntOrNull() ?: return null
+                embeddedTextures[idx]
             }
+            else embeddedTexturesByPath[embeddedTexturePathKey(normalizedPath)]
+
+            if (normalizedPath.startsWith("*") && embeddedTexture == null)
+                return null
+
+            embeddedTexture?.let { texture.loadFrom(it.rgbaPixels.duplicate(), it.width, it.height, freeWithStbi = it.freeWithStbi) }
             texture
         }
     }
