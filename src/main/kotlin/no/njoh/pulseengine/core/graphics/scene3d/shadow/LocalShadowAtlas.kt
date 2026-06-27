@@ -15,7 +15,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
-class LocalShadowAtlas
+class LocalShadowAtlas  
 {
     var enabled = true
     var resolution = 4096
@@ -380,8 +380,9 @@ class LocalShadowAtlas
         val changedOwner = blockKey != block.key || faceInLight != faceIndex
         val changedType = faceCountInLight != block.faceCount
         val changedSize = size != 0 && size != faceSize
+        val changedViewProjection = valid && !this.pendingViewProjection.equals(pendingViewProjection, SHADOW_MATRIX_EPSILON)
 
-        if (changedOwner || changedType || changedSize)
+        if (changedOwner || changedType || changedSize || changedViewProjection)
         {
             invalidate()
             if (block.faceOffset + faceIndex < shadowFaceLastUpdatedFrameIndex.size)
@@ -517,10 +518,11 @@ class LocalShadowAtlas
         private const val BACKGROUND_INVALID_FACE_UPDATE_SCORE = 5_000f
         private const val BACKGROUND_FACE_UPDATE_SCORE = 0f
         private const val INITIAL_LAST_UPDATED_FRAME = -1000000
+        private const val SHADOW_MATRIX_EPSILON = 0.00001f
 
         private val WORLD_UP = Vector3f(0f, 1f, 0f)
         private val WORLD_FORWARD = Vector3f(0f, 0f, 1f)
-        private val WORLD_BACKWARD = Vector3f(0f, 0f, 1f)
+        private val WORLD_BACKWARD = Vector3f(0f, 0f, -1f)
         private val WORLD_DOWN = Vector3f(0f, -1f, 0f)
 
         private val POINT_DIRECTIONS = arrayOf(

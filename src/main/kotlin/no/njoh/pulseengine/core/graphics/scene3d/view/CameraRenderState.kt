@@ -21,7 +21,8 @@ class CameraRenderState(var camera: Camera)
     fun setForCamera(camera: Camera, screenWidth: Int, screenHeight: Int)
     {
         camera.invViewMatrix.getTranslation(cameraPosition)
- 
+
+        this.camera = camera
         this.cameraRight.set(camera.invViewMatrix.m00(), camera.invViewMatrix.m01(), camera.invViewMatrix.m02()).normalize()
         this.frustum.setForCamera(camera)
         this.viewMatrix.set(camera.viewMatrix)

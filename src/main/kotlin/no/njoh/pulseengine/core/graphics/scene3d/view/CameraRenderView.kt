@@ -30,10 +30,12 @@ class CameraRenderView(
     override val shadowReferencePosition = Vector3f()
 
     private val cullingFrustum = Frustum()
+    private val cullingFrustumPlaneSets = arrayOf(cullingFrustum.planeSet)
     private val cameraSeparation = Vector3f()
     private val tmpPos1 = Vector3f()
     private val tmpPos2 = Vector3f()
     private val freeStates = DynamicList<CameraRenderState>()
+    private val sortedBlendSort: (RenderItem, RenderItem) -> Int = ::sortedBlendComparator
 
     override fun beginFrame()
     {
@@ -49,7 +51,7 @@ class CameraRenderView(
     {
         if (cameraStates.isEmpty()) return
 
-        drawPayload = builder.prepareDrawPayload(arrayOf(cullingFrustum.planeSet))
+        drawPayload = builder.prepareDrawPayload(cullingFrustumPlaneSets)
         {
             opaqueBucket.fill(scene.opaqueItems, requiredVisibility = visibilityMask)
 
@@ -59,7 +61,7 @@ class CameraRenderView(
             {
                 SORTED_BLEND -> blendedBucket.fill(
                     from = scene.blendedItems,
-                    sortFunc = ::sortedBlendComparator,
+                    sortFunc = sortedBlendSort,
                     preserveDrawOrder = true,
                     requiredVisibility = visibilityMask
                 )
@@ -77,6 +79,8 @@ class CameraRenderView(
     {
         val state = cameraStates.firstOrNull { it.camera === camera } 
             ?: run { (freeStates.removeLastOrNull() ?: CameraRenderState(camera)).also { cameraStates += it } }
+
+        require(cameraStates.size <= MAX_CAMERA_STATES) { "Camera render view $viewId supports at most $MAX_CAMERA_STATES cameras (mono or stereo)" }
 
         state.setForCamera(camera, screenWidth, screenHeight)
         updateFamilyFrustumAndPosition()
@@ -115,5 +119,10 @@ class CameraRenderView(
         val aDist = shadowReferencePosition.distanceSquared(a.transform.getTranslation(tmpPos1))
         val bDist = shadowReferencePosition.distanceSquared(b.transform.getTranslation(tmpPos2))
         return bDist.compareTo(aDist)
+    }
+
+    companion object
+    {
+        private const val MAX_CAMERA_STATES = 2
     }
 }

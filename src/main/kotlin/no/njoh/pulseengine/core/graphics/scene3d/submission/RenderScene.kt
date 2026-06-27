@@ -55,21 +55,22 @@ class RenderScene
     ) {
         val light = LIGHT_POOL.removeLastOrNull() ?: RenderLight()
 
-        if (direction != null)
+        if (direction != null && direction.lengthSquared() > 0.000001f)
         {
             light.direction.set(direction)
-            if (direction.lengthSquared() > 0.000001f) direction.normalize() else direction.set(0f, -1f, 0f)
+            light.direction.normalize()
         }
+        else light.direction.set(0f, -1f, 0f)
 
         light.position.set(position)
-        light.radius = radius
+        light.radius = radius.coerceAtLeast(0f)
         light.color.setFrom(color)
-        light.outerConeAngle = min(outerConeAngle, 180f)
-        light.innerConeAngle = min(innerConeAngle, 180f)
+        light.outerConeAngle = outerConeAngle.sanitizeAngle()
+        light.innerConeAngle = min(innerConeAngle.sanitizeAngle(), light.outerConeAngle)
         light.shadowEnabled = shadowEnabled
-        light.shadowResolution = shadowResolution
-        light.shadowBias = shadowBias
-        light.shadowImportance = shadowImportance
+        light.shadowResolution = shadowResolution.coerceAtLeast(0)
+        light.shadowBias = shadowBias.sanitizeNonNegative()
+        light.shadowImportance = shadowImportance.sanitizeNonNegative()
         light.shadowId = shadowId
         light.shadowFaceOffset = -1
         light.shadowFaceCount = 0
@@ -90,6 +91,10 @@ class RenderScene
     }
  
     fun hasAnyItems() = opaqueItems.isNotEmpty() || maskedItems.isNotEmpty() || blendedItems.isNotEmpty()
+
+    private fun Float.sanitizeAngle() = if (isFinite()) coerceIn(0f, 180f) else 0f
+
+    private fun Float.sanitizeNonNegative() = if (isFinite()) coerceAtLeast(0f) else 0f
 
     companion object
     {

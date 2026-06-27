@@ -152,4 +152,9 @@ class LodCameraState()
         isPerspective = abs(state.projectionMatrix.m33()) < 0.0001f
         isValid = true
     }
+
+    fun invalidate()
+    {
+        isValid = false
+    }
 }

@@ -75,13 +75,14 @@ class WeightedBlendedOitRenderer
             val revealageStaticProgram = ShaderProgram.create(staticVertex, revealageFragment)
             val revealageSkinnedProgram = ShaderProgram.create(skinnedVertex, revealageFragment)
 
-            compositeProgram = ShaderProgram.create(compositeVertex, compositeFragment)
             accumPrograms = ShaderProgramSet(accumStaticProgram, accumSkinnedProgram)
             revealagePrograms = ShaderProgramSet(revealageStaticProgram, revealageSkinnedProgram)
-            fbo = FrameBufferObject.create(surface.config.width, surface.config.height, oitTextureDescriptors)
+            compositeProgram = ShaderProgram.create(compositeVertex, compositeFragment)
             compositePass = FullscreenPass(compositeProgram)
         }
+        else fbo.destroy()
 
+        fbo = FrameBufferObject.create(surface.config.width, surface.config.height, oitTextureDescriptors)
         compositePass.init()
     }
 

@@ -161,7 +161,7 @@ class CascadedShadowMapRenderer(
         lightDirection.set(x, y, z).negate().normalize()
 
         // Determine up direction
-        val up = if (abs(lightDirection.dot(WORLD_UP)) > 0.99f) Vector3f(0f, 0f, 1f) else WORLD_UP
+        val up = if (abs(lightDirection.dot(WORLD_UP)) > 0.99f) WORLD_FORWARD else WORLD_UP
 
         // Compute cascade split distances
         val camNear = camera.nearPlane
@@ -416,6 +416,7 @@ class CascadedShadowMapRenderer(
     companion object
     {
         private val WORLD_UP = Vector3f(0f, 1f, 0f)
+        private val WORLD_FORWARD = Vector3f(0f, 0f, 1f)
 
                 const val CASCADE_COUNT              = 4
         private const val MAX_FRUSTUM_PLANES         = 24

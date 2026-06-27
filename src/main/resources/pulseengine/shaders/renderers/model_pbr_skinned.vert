@@ -83,7 +83,7 @@ void main()
 
     mat4 model = instance.model;
     mat3 M = mat3(model);
-    vec3 N = normalize(M * skinnedNormal);
+    vec3 N = normalize(transpose(inverse(M)) * skinnedNormal);
     vec3 T = normalize(M * skinnedTangent);
 
     T = normalize(T - N * dot(T, N));

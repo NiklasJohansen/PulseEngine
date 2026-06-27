@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.gpu.buffer
 
 import gnu.trove.list.array.TLongArrayList
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.MSAA_MAX
 import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.NONE
@@ -34,6 +35,9 @@ open class FrameBufferObject(
     private val textureDescriptors: List<TextureDescriptor>,
     private val renderBufferIds: List<Int>
 ) {
+    private val contextGeneration = GlCapabilities.contextGeneration
+    private var destroyed = false
+
     private val textureBuffers = textures
         .map { it.attachment }
         .distinct()
@@ -54,9 +58,17 @@ open class FrameBufferObject(
 
     fun destroy()
     {
+        if (destroyed) return
+
+        destroyed = true
         textures.forEachFast { glDeleteTextures(it.handle.textureIndex) }
         renderBufferIds.forEachFast { glDeleteRenderbuffers(it) }
-        glDeleteFramebuffers(id)
+
+        // GLFW shares texture and renderbuffer objects with the replacement context, so these are
+        // always released above. Framebuffer IDs are context-local and die with their old context.
+        // Deleting a stale numeric ID here could delete an unrelated FBO in the new context.
+        if (contextGeneration == GlCapabilities.contextGeneration)
+            glDeleteFramebuffers(id)
     }
 
     fun getTextureOrNull(index: Int = 0) = textures.getOrNull(index)
@@ -148,6 +160,9 @@ open class FrameBufferObject(
 
     fun matches(width: Int, height: Int, descriptors: List<TextureDescriptor>): Boolean
     {
+        if (destroyed || contextGeneration != GlCapabilities.contextGeneration)
+            return false
+
         if (textureDescriptors.size != descriptors.size)
             return false
 

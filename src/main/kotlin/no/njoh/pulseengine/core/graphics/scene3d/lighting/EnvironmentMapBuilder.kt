@@ -14,87 +14,91 @@ import kotlin.math.max
 
 object EnvironmentMapBuilder
 {
-    private var specularProgram: ShaderProgram? = null
-    private var specularPass: FullscreenPass? = null
-    private var diffuseProgram: ShaderProgram? = null
-    private var diffusePass: FullscreenPass? = null
-    private var fbo: FrameBufferObject? = null // FBO that owns no textures
-
     fun generateSpecularIBL(engine: PulseEngineInternal, srcEnv: EnvMap, dstEnv: EnvMap, mipCount: Int)
     {
         Logger.info { "Generating specular IBL for ${srcEnv.name} -> ${dstEnv.name}" }
 
-        val program = specularProgram ?: ShaderProgram.create(
+        val dstTextureArray = engine.gfx.textureBank.getTextureArray(dstEnv) ?: error("No texture array found for dstEnv (${dstEnv.name})")
+        val srcTextureArray = engine.gfx.textureBank.getTextureArray(srcEnv) ?: error("No texture array found for srcEnv (${srcEnv.name})")
+        val program = ShaderProgram.create(
             engine.asset.loadNow(VertexShader("/pulseengine/shaders/utils/ibl.vert")),
             engine.asset.loadNow(FragmentShader("/pulseengine/shaders/utils/ibl_specular.frag"))
         )
-        val fullscreenPass = specularPass ?: FullscreenPass(program).also { it.init() }
-        val frameBufferObject = fbo ?: FrameBufferObject.create(1, 1, emptyList()).also { fbo = it }
-        val dstTextureArray = engine.gfx.textureBank.getTextureArray(dstEnv) ?: error("No texture array found for dstEnv (${dstEnv.name})")
-        val srcTextureArray = engine.gfx.textureBank.getTextureArray(srcEnv) ?: error("No texture array found for srcEnv (${srcEnv.name})")
+        val fullscreenPass = FullscreenPass(program).also { it.init() }
+        val frameBufferObject = FrameBufferObject.create(1, 1, emptyList())
 
-        program.bind()
-        program.setUniformSamplerArray("textureArray", srcTextureArray)
-        program.setUniform("srcEnv", srcEnv.handle.textureIndex.toFloat(), srcEnv.uMax, srcEnv.vMax)
-        program.setUniform("srcEnvSize", srcEnv.width.toFloat(), srcEnv.height.toFloat())
-
-        val err = glGetError()
-        require(err == GL_NO_ERROR) { "GL error after setting srcEnv: $err" }
-
-        frameBufferObject.bind()
-
-        for (mip in 0 until mipCount)
+        try
         {
-            val mipWidth = max(1, dstEnv.width shr mip)
-            val mipHeight = max(1, dstEnv.height shr mip)
-            val roughness = mip.toFloat() / (mipCount - 1).coerceAtLeast(1)
+            program.bind()
+            program.setUniformSamplerArray("textureArray", srcTextureArray)
+            program.setUniform("srcEnv", srcEnv.handle.textureIndex.toFloat(), srcEnv.uMax, srcEnv.vMax)
+            program.setUniform("srcEnvSize", srcEnv.width.toFloat(), srcEnv.height.toFloat())
 
-            program.setUniform("roughness", roughness)
+            val err = glGetError()
+            require(err == GL_NO_ERROR) { "GL error after setting srcEnv: $err" }
 
-            frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachment = Attachment.COLOR_TEXTURE_0, mip)
-            frameBufferObject.checkStatus()
+            frameBufferObject.bind()
 
-            glViewport(0, 0, mipWidth, mipHeight)
-            glClear(GL_COLOR_BUFFER_BIT)
+            for (mip in 0 until mipCount)
+            {
+                val mipWidth = max(1, dstEnv.width shr mip)
+                val mipHeight = max(1, dstEnv.height shr mip)
+                val roughness = mip.toFloat() / (mipCount - 1).coerceAtLeast(1)
 
-            fullscreenPass.draw()
+                program.setUniform("roughness", roughness)
+
+                frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachment = Attachment.COLOR_TEXTURE_0, mip)
+                frameBufferObject.checkStatus()
+
+                glViewport(0, 0, mipWidth, mipHeight)
+                glClear(GL_COLOR_BUFFER_BIT)
+
+                fullscreenPass.draw()
+            }
         }
-
-        frameBufferObject.release()
-        fbo = frameBufferObject
-        specularProgram = program
-        specularPass = fullscreenPass
+        finally
+        {
+            frameBufferObject.release()
+            frameBufferObject.destroy()
+            fullscreenPass.destroy()
+            program.destroy()
+        }
     }
 
     fun generateDiffuseIBL(engine: PulseEngineInternal, srcEnv: EnvMap, dstEnv: EnvMap)
     {
         Logger.info { "Generating diffuse IBL for ${srcEnv.name} -> ${dstEnv.name}" }
 
-        val program = diffuseProgram ?: ShaderProgram.create(
+        val dstTextureArray = engine.gfx.textureBank.getTextureArray(dstEnv) ?: error("No texture array found for dstEnv (${dstEnv.name})")
+        val srcTextureArray = engine.gfx.textureBank.getTextureArray(srcEnv) ?: error("No texture array found for srcEnv (${srcEnv.name})")
+        val program = ShaderProgram.create(
             engine.asset.loadNow(VertexShader("/pulseengine/shaders/utils/ibl.vert")),
             engine.asset.loadNow(FragmentShader("/pulseengine/shaders/utils/ibl_diffuse.frag"))
         )
-        val fullscreenPass = diffusePass ?: FullscreenPass(program).also { it.init() }
-        val frameBufferObject = fbo ?: FrameBufferObject.create(1, 1, emptyList()).also { fbo = it }
-        val dstTextureArray = engine.gfx.textureBank.getTextureArray(dstEnv) ?: error("No texture array found for dstEnv (${dstEnv.name})")
-        val srcTextureArray = engine.gfx.textureBank.getTextureArray(srcEnv) ?: error("No texture array found for srcEnv (${srcEnv.name})")
+        val fullscreenPass = FullscreenPass(program).also { it.init() }
+        val frameBufferObject = FrameBufferObject.create(1, 1, emptyList())
 
-        program.bind()
-        program.setUniformSamplerArray("textureArray", srcTextureArray)
-        program.setUniform("srcEnv", srcEnv.handle.textureIndex.toFloat(), srcEnv.uMax, srcEnv.vMax)
-        
-        frameBufferObject.bind()
-        frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachment = Attachment.COLOR_TEXTURE_0, mipLevel = 0)
-        FrameBufferObject.checkStatus()
+        try
+        {
+            program.bind()
+            program.setUniformSamplerArray("textureArray", srcTextureArray)
+            program.setUniform("srcEnv", srcEnv.handle.textureIndex.toFloat(), srcEnv.uMax, srcEnv.vMax)
 
-        glViewport(0, 0, dstEnv.width, dstEnv.height)
-        glClear(GL_COLOR_BUFFER_BIT)
+            frameBufferObject.bind()
+            frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachment = Attachment.COLOR_TEXTURE_0, mipLevel = 0)
+            FrameBufferObject.checkStatus()
 
-        fullscreenPass.draw()
+            glViewport(0, 0, dstEnv.width, dstEnv.height)
+            glClear(GL_COLOR_BUFFER_BIT)
 
-        frameBufferObject.release()
-        fbo = frameBufferObject
-        diffuseProgram = program
-        diffusePass = fullscreenPass
+            fullscreenPass.draw()
+        }
+        finally
+        {
+            frameBufferObject.release()
+            frameBufferObject.destroy()
+            fullscreenPass.destroy()
+            program.destroy()
+        }
     }
 }

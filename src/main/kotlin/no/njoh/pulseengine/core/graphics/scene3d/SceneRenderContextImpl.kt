@@ -288,8 +288,10 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     private fun captureLodCameraState()
     {
-        val view = views.firstOrNull { it.wasRequested() && it is CameraRenderStateProvider }
-        val cameraState = (view as CameraRenderStateProvider).cameraStates.firstOrNull() ?: return
+        nextLodCameraState.invalidate()
+        val cameraState = views
+            .firstNotNullOfOrNull { view -> (view as? CameraRenderStateProvider)?.cameraStates?.firstOrNull()?.takeIf { view.wasRequested() } } 
+            ?: return
         nextLodCameraState.set(cameraState, frameNumber)
     }
 

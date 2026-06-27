@@ -42,6 +42,7 @@ object BrdfLutBuilder
         fullscreenPass.draw()
 
         fbo.release()
+        fbo.destroy()
         program.destroy()
         fullscreenPass.destroy()
     }

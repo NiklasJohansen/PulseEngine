@@ -61,6 +61,7 @@ class GtaoRenderer(
     private var outputAoTex: RenderTexture? = null
     private var prevInvProjection = Matrix4f()
     private var prevViewProjection = Matrix4f()
+    private var historyValid = false
 
     private var aoTextureDescriptors = 
         listOf(TextureDescriptor(format = R16F, filter = NEAREST, multisampling = NONE, scale = 1f / downsampleFactor))
@@ -81,11 +82,6 @@ class GtaoRenderer(
     {
         if (!this::aoProgram.isInitialized)
         {
-            aoFbo = FrameBufferObject.create(surface.config.width, surface.config.height, aoTextureDescriptors)
-            denoiseFbo = FrameBufferObject.create(surface.config.width, surface.config.height, denoiseTextureDescriptors)
-            upsampleFbo = FrameBufferObject.create(surface.config.width, surface.config.height, upsampleTextureDescriptors)
-            temporalFbo = FrameBufferObject.create(surface.config.width, surface.config.height, temporalTextureDescriptors)
-            prevDepthFbo = FrameBufferObject.create(surface.config.width, surface.config.height, prevDepthTextureDescriptors)
             vbo = StaticBufferObject.createFullscreenUvTriangleArrayBuffer()
             aoProgram = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/gtao.vert")),
@@ -104,6 +100,25 @@ class GtaoRenderer(
                 engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/gtao_temporal.frag"))
             )
         }
+        else
+        {
+            vao.destroy()
+            aoFbo.destroy()
+            denoiseFbo.destroy()
+            upsampleFbo.destroy()
+            temporalFbo.destroy()
+            prevDepthFbo.destroy()
+        }
+
+        aoFbo = FrameBufferObject.create(surface.config.width, surface.config.height, aoTextureDescriptors)
+        denoiseFbo = FrameBufferObject.create(surface.config.width, surface.config.height, denoiseTextureDescriptors)
+        upsampleFbo = FrameBufferObject.create(surface.config.width, surface.config.height, upsampleTextureDescriptors)
+        temporalFbo = FrameBufferObject.create(surface.config.width, surface.config.height, temporalTextureDescriptors)
+        prevDepthFbo = FrameBufferObject.create(surface.config.width, surface.config.height, prevDepthTextureDescriptors)
+        outputAoTex = null
+        historyValid = false
+        prevInvProjection.identity()
+        prevViewProjection.identity()
 
         vao = VertexArrayObject.createAndBind()
         vbo.bind()
@@ -144,7 +159,9 @@ class GtaoRenderer(
         {
             aoTex = temporallyAccumulate(engine, surface, aoTex, depthTex)
             storeDepth(surface)
+            historyValid = true
         }
+        else historyValid = false
 
         outputAoTex = aoTex
         
@@ -156,7 +173,7 @@ class GtaoRenderer(
     private fun renderGtao(surface: SurfaceInternal, depthTex: RenderTexture): RenderTexture = measure("gtao")
     {
         aoTextureDescriptors[0].scale = 1f / downsampleFactor
-        updateFbo(aoFbo, aoTextureDescriptors, surface, onNewFbo = { aoFbo = it } )
+        updateFbo(aoFbo, aoTextureDescriptors, surface, onNewFbo = { aoFbo = it; historyValid = false })
 
         val aoTex = aoFbo.getTexture()
         val maxMipIndex = (depthTex.mipmapGenerator?.getLevelCount(depthTex.width, depthTex.height) ?: 1) - 1
@@ -198,7 +215,7 @@ class GtaoRenderer(
     ): RenderTexture = measure("gtao_denoise") {
 
         denoiseTextureDescriptors.forEachFast { it.scale = 1f / downsampleFactor }
-        updateFbo(denoiseFbo, denoiseTextureDescriptors, surface, onNewFbo = { denoiseFbo = it } )
+        updateFbo(denoiseFbo, denoiseTextureDescriptors, surface, onNewFbo = { denoiseFbo = it; historyValid = false })
 
         val i = engine.data.frameNumber.toInt() % 2
         val aoTexA = denoiseFbo.getTextureOrNull(i) ?: return aoTex
@@ -248,7 +265,7 @@ class GtaoRenderer(
         depthTex: RenderTexture
     ): RenderTexture = measure("gtao_upsample") {
 
-        updateFbo(upsampleFbo, upsampleTextureDescriptors, surface, onNewFbo = { upsampleFbo = it } )
+        updateFbo(upsampleFbo, upsampleTextureDescriptors, surface, onNewFbo = { upsampleFbo = it; historyValid = false })
 
         val upsampledAoTex = upsampleFbo.getTextureOrNull(0) ?: return aoTex
 
@@ -281,7 +298,7 @@ class GtaoRenderer(
         depthTex: RenderTexture
     ): RenderTexture = measure("gtao_temporal_acc") {
 
-        updateFbo(temporalFbo, temporalTextureDescriptors, surface, onNewFbo = { temporalFbo = it } )
+        updateFbo(temporalFbo, temporalTextureDescriptors, surface, onNewFbo = { temporalFbo = it; historyValid = false })
 
         val fn = engine.data.frameNumber.toInt()
         val historyAoTex = temporalFbo.getTexture(fn % 2)
@@ -304,7 +321,8 @@ class GtaoRenderer(
         temporalProgram.setUniform("uInvView", surface.camera.invViewMatrix)
         temporalProgram.setUniform("uPrevInvProj", prevInvProjection)
         temporalProgram.setUniform("uPrevViewProj", prevViewProjection)
-        temporalProgram.setUniform("uTemporalFeedback", temporalAccumulation)
+        temporalProgram.setUniform("uHistoryValid", historyValid)
+        temporalProgram.setUniform("uTemporalFeedback", if (historyValid) temporalAccumulation else 0f)
         temporalProgram.setUniform("uHistoryClampStrength", temporalHistoryRejection)
 
         drawTriangleVertices(vao, 0, 3)
@@ -319,7 +337,7 @@ class GtaoRenderer(
 
     private fun storeDepth(surface: SurfaceInternal) = measure("gtao_store_depth")
     {
-        updateFbo(prevDepthFbo, prevDepthTextureDescriptors, surface, onNewFbo = { prevDepthFbo = it } )
+        updateFbo(prevDepthFbo, prevDepthTextureDescriptors, surface, onNewFbo = { prevDepthFbo = it; historyValid = false })
 
         surface.renderTarget.getFbo().resolveDepthToFBO(prevDepthFbo)
     }
@@ -337,11 +355,16 @@ class GtaoRenderer(
         vbo.destroy()
         vao.destroy()
         aoProgram.destroy()
+        denoiseProgram.destroy()
         upsampleProgram.destroy()
+        temporalProgram.destroy()
         aoFbo.destroy()
+        denoiseFbo.destroy()
         upsampleFbo.destroy()
         temporalFbo.destroy()
         prevDepthFbo.destroy()
+        outputAoTex = null
+        historyValid = false
     }
 
     fun getAoRenderTexture() = outputAoTex

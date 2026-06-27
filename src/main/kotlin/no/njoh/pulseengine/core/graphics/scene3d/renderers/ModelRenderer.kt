@@ -129,11 +129,6 @@ class ModelRenderer(
             drawRenderBucket(view.opaqueBucket, view.drawPayload, programs)
         }
 
-        staticProgram.bind()
-        staticProgram.setUniformSampler("uGtaoTex", engine.gfx.textureBank.getOrCreateFallbackTexture(WHITE))
-        skinnedProgram.bind()
-        skinnedProgram.setUniformSampler("uGtaoTex", engine.gfx.textureBank.getOrCreateFallbackTexture(WHITE))
-
         val maskedCount = view.maskedBucket.instanceCount
         if (maskedCount > 0)
         {
@@ -212,7 +207,7 @@ class ModelRenderer(
         // Sunlight
 
         program.setUniform("uSunColor", sunColor)
-        program.setUniform("uSunDirection", shadowMapRenderer?.getDirection() ?: Vector3f(0f, 1f, 0f))
+        program.setUniform("uSunDirection", shadowMapRenderer?.getDirection() ?: fallbackSunDirection)
         program.setUniform("uSunRadius", sunRadius)
         
         // Local shadow atlas
@@ -271,8 +266,9 @@ class ModelRenderer(
 
     companion object
     {
-        val fallbackShadowVPs    = Array(CascadedShadowMapRenderer.CASCADE_COUNT) { Matrix4f() }
-        val fallbackSplitDists   = FloatArray(CascadedShadowMapRenderer.CASCADE_COUNT)
-        val fallbackCascadeSizes = FloatArray(CascadedShadowMapRenderer.CASCADE_COUNT) { 15f }
+        private val fallbackShadowVPs    = Array(CascadedShadowMapRenderer.CASCADE_COUNT) { Matrix4f() }
+        private val fallbackSplitDists   = FloatArray(CascadedShadowMapRenderer.CASCADE_COUNT)
+        private val fallbackCascadeSizes = FloatArray(CascadedShadowMapRenderer.CASCADE_COUNT) { 15f }
+        private val fallbackSunDirection = Vector3f(0f, 1f, 0f)
     }
 }

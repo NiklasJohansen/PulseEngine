@@ -54,7 +54,6 @@ import no.njoh.pulseengine.modules.editor.EditorUtil.getPropGroup
 import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
-import org.joml.Matrix4f
 import org.joml.Vector3f
 import kotlin.math.*
 import kotlin.reflect.KClass
@@ -345,17 +344,21 @@ class SceneEditor(
             lastSceneHashCode = engine.scene.activeScene.hashCode()
         }
 
-        if (enableViewportInteractions && engine.scene.state == SceneState.STOPPED)
+        if (engine.scene.state == SceneState.STOPPED)
         {
-            engine.input.setCursorType(ARROW)
-            cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(viewportArea))
+            if (enableViewportInteractions)
+            {
+                engine.input.setCursorType(ARROW)
+                cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(viewportArea))
 
-            if (entitySelection.size == 1)
-                entitySelection.first().handleEntityTransformation(engine)
+                if (entitySelection.size == 1)
+                    entitySelection.first().handleEntityTransformation(engine)
+
+                handleEntitySelection(engine)
+                handleEntityMoving(engine)
+            }
 
             handleEntityCopying(engine)
-            handleEntitySelection(engine)
-            handleEntityMoving(engine)
         }
 
         if (engine.input.wasClicked(F10))
@@ -371,7 +374,13 @@ class SceneEditor(
                 engine.scene.reload()
             }
         }
-
+        
+//        if (engine.input.isPressed(LEFT_CONTROL))
+//        {
+//            if (engine.input.wasClicked(Key.D))
+//                handleEntityCopying(engine)
+//        }
+        
         updateFooterCallback(
             engine.scene.getAllEntitiesByType().sumOf { it.size },
             entitySelection.size,
@@ -398,9 +407,11 @@ class SceneEditor(
 
         if (enableViewportInteractions)
         {
-            renderEntityIconAndGizmo(gizmoSurface, engine)
+            renderEntityGizmo(gizmoSurface)
             renderSelectionRectangle(gizmoSurface)
         }
+
+        renderEntityIcon(uiBaseSurface, engine)
 
         rootUI.render(engine, uiBaseSurface, renderPopup = false)
         rootUI.renderPopup(engine, uiPopupSurface)
@@ -429,15 +440,8 @@ class SceneEditor(
             renderFrostedGlass(engine, surface, node.popup!!, onlyPopups = true)
     }
 
-    private fun renderEntityIconAndGizmo(surface: Surface, engine: PulseEngine)
+    private fun renderEntityIcon(surface: Surface, engine: PulseEngine)
     {
-        val showResizeDots = (entitySelection.size == 1)
-        entitySelection.forEachFast()
-        {
-            if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
-                it.renderGizmo(surface, showResizeDots)
-        }
-        
         val screenWidth = engine.window.width
         val screenHeight = engine.window.height
 
@@ -470,6 +474,16 @@ class SceneEditor(
         }
     }
 
+    private fun renderEntityGizmo(surface: Surface)
+    {
+        val showResizeDots = (entitySelection.size == 1)
+        entitySelection.forEachFast()
+        {
+            if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
+                it.renderGizmo(surface, showResizeDots)
+        }
+    }
+    
     private fun onSaveAs(engine: PulseEngine)
     {
         if (engine.scene.state == SceneState.RUNNING)
@@ -559,7 +573,8 @@ class SceneEditor(
             return
         }
 
-        if (!isMoving || isCopying)
+//        if (!isMoving || isCopying)
+        if (isCopying)
             return
 
         val newEntities = duplicateAndInsertEntities(engine, entitySelection)

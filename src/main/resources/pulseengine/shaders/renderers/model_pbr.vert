@@ -38,7 +38,7 @@ void main()
 
     mat4 model = instance.model;
     mat3 M  = mat3(model);
-    vec3 N  = normalize(M * normal);
+    vec3 N  = normalize(transpose(inverse(M)) * normal);
     vec3 T  = normalize(M * tangent.xyz);
 
     T = normalize(T - N * dot(T, N));

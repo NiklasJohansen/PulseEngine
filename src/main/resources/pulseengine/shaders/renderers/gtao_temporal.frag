@@ -23,6 +23,7 @@ uniform mat4 uInvProj;
 uniform mat4 uInvView;
 uniform mat4 uPrevInvProj;
 uniform mat4 uPrevViewProj;
+uniform bool uHistoryValid;
 
 // Sizes
 uniform ivec2 uResolution;
@@ -142,7 +143,7 @@ void main()
     vec4 worldPos = uInvView * vec4(viewPosCurrent, 1.0);
     vec4 prevClip = uPrevViewProj * worldPos;
 
-    bool historyValid = true;
+    bool historyValid = uHistoryValid;
 
     // Behind camera / invalid projection
     if (prevClip.w <= 1e-6) historyValid = false;
@@ -153,6 +154,8 @@ void main()
 
     // No valid history if outside screen 
     if (any(lessThan(uvPrev, vec2(0.0))) || any(greaterThan(uvPrev, vec2(1.0))))
+        historyValid = false;
+    if (prevNdc.z < -1.0 || prevNdc.z > 1.0)
         historyValid = false;
 
     float aoHistory = 1.0;
@@ -169,13 +172,16 @@ void main()
         }
         else
         {
-            // Compare view-space distance (Z) between current and previous surface.
-            vec3 viewPosPrev = reconstructViewPosition(uPrevInvProj, pixelToUv(prevPixelPos), depthPrev);
-            float prevViewZ = max(abs(viewPosPrev.z), kEps);
-            float currentViewZ = max(abs(viewPosCurrent.z), kEps);
+            // Compare the sampled previous surface against the depth expected from reprojection.
+            // Both values are reconstructed in the previous camera's view space.
+            vec3 sampledPrevViewPos = reconstructViewPosition(uPrevInvProj, pixelToUv(prevPixelPos), depthPrev);
+            float expectedDepthPrev = prevNdc.z * 0.5 + 0.5;
+            vec3 expectedPrevViewPos = reconstructViewPosition(uPrevInvProj, uvPrev, expectedDepthPrev);
+            float sampledPrevViewZ = max(abs(sampledPrevViewPos.z), kEps);
+            float expectedPrevViewZ = max(abs(expectedPrevViewPos.z), kEps);
             
-            float zDelta = abs(prevViewZ - currentViewZ);
-            float zTolerance = depthTolerance(currentViewZ);
+            float zDelta = abs(sampledPrevViewZ - expectedPrevViewZ);
+            float zTolerance = depthTolerance(expectedPrevViewZ);
 
             if (zDelta > zTolerance) historyValid = false;
         }

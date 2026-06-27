@@ -10,6 +10,10 @@ import org.lwjgl.opengl.GL11.*
  */
 object GlCapabilities
 {
+    /** Monotonically increasing identity for the OpenGL context initialized by [create]. */
+    var contextGeneration = 0L
+        private set
+
     /**
      * True when `glDraw*BaseInstance` entry points are available.
      *
@@ -67,6 +71,7 @@ object GlCapabilities
     fun create()
     {
         val caps = GL.createCapabilities()
+        contextGeneration++
         baseInstance = caps.OpenGL42 || caps.GL_ARB_base_instance
         shaderDrawParametersCore = caps.OpenGL46
         shaderDrawParametersArb = caps.GL_ARB_shader_draw_parameters
