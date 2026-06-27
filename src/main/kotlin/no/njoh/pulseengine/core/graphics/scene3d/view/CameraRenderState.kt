@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.scene3d.view
 
 import no.njoh.pulseengine.core.graphics.camera.Camera
+import no.njoh.pulseengine.core.shared.primitives.StaticList
 import org.joml.Matrix4f
 import org.joml.Vector3f
 
@@ -33,4 +34,13 @@ class CameraRenderState(var camera: Camera)
         this.nearPlane = camera.nearPlane
         this.farPlane = camera.farPlane
     }
+}
+
+/**
+ * Interface for renderers that need to declare and use [CameraRenderState]s.
+ */
+interface CameraRenderStateProvider
+{
+    val cameraStates: StaticList<CameraRenderState>
+    val shadowReferencePosition: Vector3f?
 }

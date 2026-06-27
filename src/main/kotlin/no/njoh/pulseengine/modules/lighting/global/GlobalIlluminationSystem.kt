@@ -11,7 +11,7 @@ import no.njoh.pulseengine.core.graphics.postprocessing.MultiplyEffect
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.scene.systems.EntityRenderer
-import no.njoh.pulseengine.modules.scene.systems.EntityRenderer.RenderPass
+import no.njoh.pulseengine.modules.scene.systems.EntityRenderer.EntityRenderPass
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
@@ -65,11 +65,11 @@ open class GlobalIlluminationSystem : SceneSystem()
 
     private var lastTargetSurface = ""
 
-    private val normalMapRenderPass   = RenderPass<NormalMapped>(GI_NORMAL_MAP)    { e, surface -> onRenderNormalMap(e, surface)   }
-    private val localOccluderPass     = RenderPass<GiOccluder>(GI_LOCAL_SCENE)     { e, surface -> onRenderOccluder(e, surface)    }
-    private val localLightSourcePass  = RenderPass<GiLightSource>(GI_LOCAL_SCENE)  { e, surface -> onRenderLightSource(e, surface) }
-    private val globalOccluderPass    = RenderPass<GiOccluder>(GI_GLOBAL_SCENE)    { e, surface -> onRenderOccluder(e, surface)    }
-    private val globalLightSourcePass = RenderPass<GiLightSource>(GI_GLOBAL_SCENE) { e, surface -> onRenderLightSource(e, surface) }
+    private val normalMapRenderPass   = EntityRenderPass<NormalMapped>(GI_NORMAL_MAP)    { e, surface -> onRenderNormalMap(e, surface)   }
+    private val localOccluderPass     = EntityRenderPass<GiOccluder>(GI_LOCAL_SCENE)     { e, surface -> onRenderOccluder(e, surface)    }
+    private val localLightSourcePass  = EntityRenderPass<GiLightSource>(GI_LOCAL_SCENE)  { e, surface -> onRenderLightSource(e, surface) }
+    private val globalOccluderPass    = EntityRenderPass<GiOccluder>(GI_GLOBAL_SCENE)    { e, surface -> onRenderOccluder(e, surface)    }
+    private val globalLightSourcePass = EntityRenderPass<GiLightSource>(GI_GLOBAL_SCENE) { e, surface -> onRenderLightSource(e, surface) }
 
     override fun onCreate(engine: PulseEngine)
     {

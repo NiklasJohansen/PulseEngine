@@ -14,29 +14,29 @@ import java.util.*
 
 /**
  * Base class for all entity renderers.
- * Enables other systems to add render passes to be executed bye the renderer.
+ * Enables other systems to add render passes to be executed by the renderer.
  */
 abstract class EntityRenderer : SceneSystem()
 {
     @JsonIgnore
-    protected val renderPasses = mutableListOf<RenderPass>()
+    protected val entityRenderPasses = mutableListOf<EntityRenderPass>()
 
-    /** Adds a new [RenderPass] to the [EntityRenderer] */
+    /** Adds a new [EntityRenderPass] to the [EntityRenderer] */
     inline fun <reified T : Any> addRenderPass(
         surfaceName: String,
         noinline drawCondition: ((T) -> Boolean)? = null,
         noinline drawFunction: (T.(PulseEngine, Surface) -> Unit)? = null
     ) {
-        addRenderPass(RenderPass<T>(surfaceName, drawCondition, drawFunction))
+        addRenderPass(EntityRenderPass<T>(surfaceName, drawCondition, drawFunction))
     }
 
-    /** Adds the given [RenderPass] to the [EntityRenderer] */
-    fun addRenderPass(renderPass: RenderPass) =
-        renderPasses.add(renderPass)
+    /** Adds the given [EntityRenderPass] to the [EntityRenderer] */
+    fun addRenderPass(renderPass: EntityRenderPass) =
+        entityRenderPasses.add(renderPass)
 
-    /** Removes a [RenderPass] from the [EntityRenderer] */
-    fun removeRenderPass(renderPass: RenderPass) =
-        renderPasses.remove(renderPass)
+    /** Removes a [EntityRenderPass] from the [EntityRenderer] */
+    fun removeRenderPass(renderPass: EntityRenderPass) =
+        entityRenderPasses.remove(renderPass)
 
     /**
      * Represents a single render pass.
@@ -46,7 +46,7 @@ abstract class EntityRenderer : SceneSystem()
      * @param drawCondition A per-entity condition that determines if an entity will be rendered.
      * @param drawFunction A custom function to draw the entities, if null the default onRender will be used.
      */
-    data class RenderPass(
+    data class EntityRenderPass(
         val surfaceName: String,
         val targetType: Class<*>,
         val drawCondition: ((Any) -> Boolean)? = null,
@@ -59,7 +59,7 @@ abstract class EntityRenderer : SceneSystem()
                 surfaceName: String,
                 noinline drawCondition: ((T) -> Boolean)? = null,
                 noinline drawFunction: (T.(PulseEngine, Surface) -> Unit)? = null
-            ) = RenderPass(
+            ) = EntityRenderPass(
                 surfaceName = surfaceName,
                 targetType = T::class.java,
                 drawCondition = drawCondition as ((Any) -> Boolean)?,
@@ -78,7 +78,7 @@ open class EntityRendererImpl : EntityRenderer()
 
     override fun onCreate(engine: PulseEngine)
     {
-        addRenderPass(RenderPass(surfaceName = engine.gfx.mainSurface.config.name, targetType = Renderable::class.java))
+        addRenderPass(EntityRenderPass(surfaceName = engine.gfx.mainSurface.config.name, targetType = Renderable::class.java))
     }
 
     override fun onRender(engine: PulseEngine)
@@ -89,7 +89,7 @@ open class EntityRendererImpl : EntityRenderer()
 
     private fun buildRenderQueue(engine: PulseEngine)
     {
-        renderPasses.forEachFast { renderPass ->
+        entityRenderPasses.forEachFast { renderPass ->
             val task = createRenderTask(renderPass)
             val condition = renderPass.drawCondition
             engine.scene.forEachEntityTypeList { typeList ->
@@ -110,7 +110,7 @@ open class EntityRendererImpl : EntityRenderer()
         }
     }
 
-    private fun createRenderTask(renderPass: RenderPass): RenderTask
+    private fun createRenderTask(renderPass: EntityRenderPass): RenderTask
     {
         if (taskPool.isNotEmpty())
         {
