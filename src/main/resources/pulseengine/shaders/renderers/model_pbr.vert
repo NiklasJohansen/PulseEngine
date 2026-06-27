@@ -18,7 +18,8 @@ uniform int uInstanceOffset;
 struct InstanceData
 {
     mat4 model;
-    vec4 params; // x=materialId, y=boneOffset, z/w=reserved
+    mat3 normalMatrix;
+    vec4 params; // x=materialId, y=boneOffset, z=handedness, w=reserved
 };
 
 layout(std430, binding = 1) readonly buffer InstanceBuffer
@@ -38,12 +39,12 @@ void main()
 
     mat4 model = instance.model;
     mat3 M  = mat3(model);
-    vec3 N  = normalize(transpose(inverse(M)) * normal);
+    vec3 N  = normalize(instance.normalMatrix * normal);
     vec3 T  = normalize(M * tangent.xyz);
 
     T = normalize(T - N * dot(T, N));
 
-    float sign = tangent.w * ((determinant(M) < 0.0) ? -1.0 : 1.0);
+    float sign = tangent.w * instance.params.z;
     vec3 B = normalize(cross(N, T)) * sign;
 
     vec4 worldPos = model * vec4(position, 1.0);

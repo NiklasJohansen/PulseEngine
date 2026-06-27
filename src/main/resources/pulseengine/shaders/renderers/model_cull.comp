@@ -5,6 +5,7 @@ layout(local_size_x = 64) in;
 struct InstanceData
 {
     mat4 model;
+    mat3 normalMatrix;
     vec4 params;
 };
 

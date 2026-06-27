@@ -16,7 +16,8 @@ uniform int uInstanceOffset;
 struct InstanceData
 {
     mat4 model;
-    vec4 params; // x=materialId, y=boneOffset, z/w=reserved
+    mat3 normalMatrix;
+    vec4 params; // x=materialId, y=boneOffset, z=handedness, w=reserved
 };
 
 layout(std430, binding = 1) readonly buffer InstanceBuffer
