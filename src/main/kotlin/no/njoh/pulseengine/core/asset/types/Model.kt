@@ -1097,7 +1097,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
             materialAssets += Material(
                 name = mat.name,
-                baseColor = mat.baseColor,
+                baseColor = Color(mat.baseColor.asSrgb()),
                 albedo = albedo,
                 normal = normal,
                 aoMetalRough = aomr,
@@ -1108,7 +1108,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 alphaCutoff = mat.alphaCutoff,
                 metallicFactor = mat.metallicFactor,
                 roughnessFactor = mat.roughnessFactor,
-                emissiveFactor = mat.emissiveFactor,
+                emissiveFactor = Color(mat.emissiveFactor.asSrgb()),
                 occlusionStrength = mat.occlusionStrength,
                 normalScale = 1f
             )
@@ -1246,6 +1246,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val meshInstances: List<MeshInstance>
     )
     
+    /** Imported material metadata. RGB color factors are linear until public assets are created. */
     data class MeshMaterial(
         val name: String,
         val baseColor: Color,

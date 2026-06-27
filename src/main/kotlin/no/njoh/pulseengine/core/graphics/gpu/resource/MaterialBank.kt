@@ -115,8 +115,8 @@ class MaterialBank
 
         fill(MATERIAL_FLOATS)
         {
-            put(baseColor.red, baseColor.green, baseColor.blue, baseColor.alpha)
-            put(emissiveFactor.red, emissiveFactor.green, emissiveFactor.blue, emissiveFactor.alpha)
+            baseColor.asLinear().let { put(it.red, it.green, it.blue, baseColor.alpha) }
+            emissiveFactor.asLinear().let { put(it.red, it.green, it.blue, emissiveFactor.alpha) }
             putTexture(material?.albedo)
             putTexture(material?.normal)
             putTexture(material?.aoMetalRough)

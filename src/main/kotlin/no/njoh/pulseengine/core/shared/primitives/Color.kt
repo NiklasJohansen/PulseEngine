@@ -133,11 +133,35 @@ data class Color(
     fun asLinear(): Color
     {
         val instance = REUSABLE_INSTANCE.get()
-        instance.red   = if (red   <= 0.04045f) red   / 12.92f else ((red   + 0.055f) / 1.055f).pow(2.4f)
-        instance.green = if (green <= 0.04045f) green / 12.92f else ((green + 0.055f) / 1.055f).pow(2.4f)
-        instance.blue  = if (blue  <= 0.04045f) blue  / 12.92f else ((blue  + 0.055f) / 1.055f).pow(2.4f)
+        instance.red   = red.srgbToLinear()
+        instance.green = green.srgbToLinear()
+        instance.blue  = blue.srgbToLinear()
         instance.alpha = alpha
         return instance
+    }
+
+    fun asSrgb(): Color
+    {
+        val instance = REUSABLE_INSTANCE.get()
+        instance.red   = red.linearToSrgb()
+        instance.green = green.linearToSrgb()
+        instance.blue  = blue.linearToSrgb()
+        instance.alpha = alpha
+        return instance
+    }
+
+    private fun Float.srgbToLinear(): Float = when
+    {
+        !isFinite() -> 0f
+        this <= 0.04045f -> this / 12.92f
+        else -> ((this + 0.055f) / 1.055f).pow(2.4f)
+    }
+
+    private fun Float.linearToSrgb(): Float = when
+    {
+        !isFinite() -> 0f
+        this <= 0.0031308f -> this * 12.92f
+        else -> 1.055f * this.pow(1f / 2.4f) - 0.055f
     }
 
     companion object
