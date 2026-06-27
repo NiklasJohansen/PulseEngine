@@ -26,6 +26,7 @@ import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL30.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.GL32.GL_TEXTURE_2D_MULTISAMPLE
+import org.lwjgl.opengl.GL30.glUniform1ui
 import java.nio.FloatBuffer
 
 class ShaderProgram(
@@ -98,6 +99,9 @@ class ShaderProgram(
     fun setUniform(name: String, value: Int) =
         glUniform1i(uniformLocationOf(name), value)
 
+    fun setUniform(name: String, value: UInt) =
+        glUniform1ui(uniformLocationOf(name), value.toInt())
+
     fun setUniform(name: String, value1: Int, value2: Int) =
         glUniform2i(uniformLocationOf(name), value1, value2)
 
@@ -148,11 +152,10 @@ class ShaderProgram(
         borderColor: Color? = null,
         multisampling: Multisampling = Multisampling.NONE,
     ) {
-        val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
+        val unit = assignSamplerUnit(samplerName)
         val target = if (multisampling == Multisampling.NONE) GL_TEXTURE_2D else GL_TEXTURE_2D_MULTISAMPLE
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(target, textureHandle.textureIndex)
-        setUniform(samplerName, unit)
         TextureSampler.getFor(filter, anisotropy, wrapping, compare, borderColor).bind(unit)
     }
 
@@ -168,10 +171,9 @@ class ShaderProgram(
         borderColor: Color? = null,
     ) {
         val samplerName = textureArrayNames[textureArray.samplerIndex]
-        val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
+        val unit = assignSamplerUnit(samplerName)
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)
-        setUniform(samplerName, unit)
         TextureSampler.getFor(filter, anisotropy, wrapping, compare, borderColor).bind(unit)
     }
 
@@ -184,11 +186,17 @@ class ShaderProgram(
         compare: TextureCompare = TextureCompare.NONE,
         borderColor: Color? = null,
     ) {
-        val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
+        val unit = assignSamplerUnit(samplerName)
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)
-        setUniform(samplerName, unit)
         TextureSampler.getFor(filter, anisotropy, wrapping, compare, borderColor).bind(unit)
+    }
+
+    fun assignSamplerUnit(samplerName: String): Int
+    {
+        val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
+        setUniform(samplerName, unit)
+        return unit
     }
 
     fun assignUniformBlockBinding(blockName: String, blockBinding: Int): Int

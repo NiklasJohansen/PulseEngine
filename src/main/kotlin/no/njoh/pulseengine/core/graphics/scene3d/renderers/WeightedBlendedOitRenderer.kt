@@ -168,6 +168,8 @@ class WeightedBlendedOitRenderer
 
         if (opaqueDepthTex != null)
             program.setUniformSampler("uOpaqueDepthTex", opaqueDepthTex, filter = NEAREST)
+        else
+            program.assignSamplerUnit("uOpaqueDepthTex")
     }
 
     private fun configureRevealageProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface, opaqueDepthTex: RenderTexture?, alphaCutoff: Float)

@@ -5,6 +5,16 @@
 const float PI = 3.14159265359;
 const float TAU = 6.28318530718;
 
+const uint PBR_FEATURE_SUN_LIGHT     = 1u << 0;
+const uint PBR_FEATURE_SUN_SHADOWS   = 1u << 1;
+const uint PBR_FEATURE_LOCAL_LIGHTS  = 1u << 2;
+const uint PBR_FEATURE_LOCAL_SHADOWS = 1u << 3;
+const uint PBR_FEATURE_DIFFUSE_IBL   = 1u << 4;
+const uint PBR_FEATURE_SPECULAR_IBL  = 1u << 5;
+const uint PBR_FEATURE_GTAO          = 1u << 6;
+
+const vec2 CASCADE_OFFSETS[CASCADE_COUNT] = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0), vec2(0.0, 0.5), vec2(0.5, 0.5));
+
 in vec3 vWorldPos;
 in vec3 vWorldNormal;
 in mat3 vTBN;
@@ -18,14 +28,70 @@ layout(location = 0) out vec4 fragColor;
 #endif
 
 // Textures
+
 uniform sampler2DArray textureArrays[16]; // TODO: Prefix with u
 uniform sampler2D uGtaoTex;
 
 // Environment
+
 uniform vec4  uEnvDiffuseTex;
 uniform vec4  uEnvSpecularTex;
 uniform vec4  uEnvBrdfLutTex;
+uniform float uEnvIntensity;
+uniform float uEnvSpecularMipCount;
 uniform float uAoIntensity;
+
+// Lighting
+
+uniform vec4  uSunColor;
+uniform vec3  uSunDirection;
+uniform float uSunRadius;
+
+uniform ivec3 uClusterGridSize;
+uniform vec2  uClusterTileSize;
+uniform float uClusterNearPlane;
+uniform float uClusterDepthSliceScale;
+uniform int   uClusterCount;
+uniform int   uClusterLightCount;
+uniform int   uLocalShadowFaceCount;
+
+uniform vec3  uCameraPos;
+uniform vec2  uScreenSize;
+uniform mat4  uView;
+uniform uint  uPbrFeatures;
+
+// Cascaded shadow mapping
+uniform sampler2DShadow uShadowMapTex;
+uniform float           uShadowMapTexSize;
+uniform mat4            uShadowViewProjections[CASCADE_COUNT];
+uniform vec4            uShadowCascadeSplitDistances; // Far split distance for each cascade (view-space depth)
+uniform vec4            uShadowCascadeSizeMeters;     // World-space size of each cascade in meters
+
+// Local shadow atlas
+uniform sampler2DShadow uLocalShadowAtlasTex;
+uniform float           uLocalShadowAtlasTexSize;
+
+// Weighted Blended Order Indepenant Transparency
+#ifdef PBR_OUTPUT_WBOIT_ACCUM
+uniform sampler2D uOpaqueDepthTex;
+uniform bool      uUseOpaqueDepthTex;
+uniform vec2      uOpaqueDepthTexSize;
+uniform float     uWboitAlphaCutoff;
+#endif
+
+struct LocalLightData
+{
+    vec4 positionRadius;
+    vec4 colorDirectionX;
+    vec4 directionYZOuterInnerCos;
+    vec4 isSpotShadowInfo;  // x=isSpotLight, y=ShadowBias, z=firstFace, w=faceCount,
+};
+
+struct LocalShadowFaceData
+{
+    vec4 atlasScaleBias;        // xy=scale, zw=bias
+    mat4 shadowViewProjection;
+};
 
 struct MaterialData
 {
@@ -42,41 +108,6 @@ struct MaterialData
 layout(std430, binding = 2) readonly buffer MaterialBuffer
 {
     MaterialData uMaterials[];
-};
-
-const int MATERIAL_FLAG_FLIP_NORMALS = 1;
-
-// Lighting
-uniform float uEnvIntensity;
-uniform float uEnvSpecularMipCount;
-uniform vec3  uCameraPos;
-uniform vec2  uScreenSize;
-uniform mat4  uView;
-
-#ifdef PBR_OUTPUT_WBOIT_ACCUM
-uniform sampler2D uOpaqueDepthTex;
-uniform bool      uUseOpaqueDepthTex;
-uniform vec2      uOpaqueDepthTexSize;
-uniform float     uWboitAlphaCutoff;
-#endif
-
-uniform vec4  uSunColor;
-uniform vec3  uSunDirection;
-uniform float uSunRadius;
-
-// Clustered local lighting
-struct LocalLightData
-{
-    vec4 positionRadius;
-    vec4 colorDirectionX;
-    vec4 directionYZOuterInnerCos;
-    vec4 isSpotShadowInfo;  // x=isSpotLight, y=ShadowBias, z=firstFace, w=faceCount,
-};
-
-struct LocalShadowFaceData
-{
-    vec4 atlasScaleBias;        // xy=scale, zw=bias
-    mat4 shadowViewProjection;
 };
 
 layout(std430, binding = 13) readonly buffer LocalLightBuffer
@@ -99,28 +130,10 @@ layout(std430, binding = 16) readonly buffer LocalShadowFaceBuffer
     LocalShadowFaceData uLocalShadowFaces[];
 };
 
-uniform bool  uClusteredLightingEnabled;
-uniform ivec3 uClusterGridSize;
-uniform vec2  uClusterTileSize;
-uniform float uClusterNearPlane;
-uniform float uClusterDepthSliceScale;
-uniform int   uClusterCount;
-uniform int   uClusterLightCount;
-uniform int   uLocalShadowFaceCount;
-
-// Cascaded shadow mapping
-uniform sampler2DShadow uShadowMapTex;
-uniform float           uShadowMapTexSize;
-uniform mat4            uShadowViewProjections[CASCADE_COUNT];
-uniform vec4            uShadowCascadeSplitDistances; // Far split distance for each cascade (view-space depth)
-uniform vec4            uShadowCascadeSizeMeters;     // World-space size of each cascade in meters
-
-// Local shadow atlas
-uniform sampler2DShadow uLocalShadowAtlasTex;
-uniform float           uLocalShadowAtlasTexSize;
-
-// Atlas offsets for 2x2 layout: cascade 0=bottom-left, 1=bottom-right, 2=top-left, 3=top-right
-const vec2 CASCADE_OFFSETS[CASCADE_COUNT] = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0), vec2(0.0, 0.5), vec2(0.5, 0.5));
+bool hasPbrFeature(uint feature)
+{
+    return (uPbrFeatures & feature) != 0;
+}
 
 // ------------------------------------------------------------------
 // Texture sampling
@@ -144,9 +157,6 @@ vec3 sampleWorldSpaceNormal(MaterialData material, out float normalLenTS)
 
     // Tangent-space normal
     vec3 normalTs = sampleTexOrDefault(material.normalTex, vec3(0.5, 0.5, 1.0), tiling).rgb * 2.0 - 1.0;
-
-    if ((flags & MATERIAL_FLAG_FLIP_NORMALS) != 0)
-        normalTs.y *= -1;
 
     normalTs.xy *= material.aoMetalRoughNormalFactor.w; // Normal scale
 
@@ -412,6 +422,9 @@ float localShadowFace(int faceIndex, vec3 shadowWorldPos)
 
 float localLightShadow(LocalLightData light, vec3 lightPos, vec3 worldPos, vec3 N)
 {
+    if (!hasPbrFeature(PBR_FEATURE_LOCAL_SHADOWS))
+        return 1.0;
+
     float shadowBias = light.isSpotShadowInfo.y;
     if (shadowBias < 0.0)
         return 1.0; //  Not casting shadows
@@ -434,7 +447,7 @@ vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float me
 {
     vec3 Lo = vec3(0.0);
 
-    if (!uClusteredLightingEnabled)
+    if (!hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
         return Lo;
 
     float viewDepth = -(uView * vec4(vWorldPos, 1.0)).z;
@@ -577,17 +590,16 @@ void main()
     r2 = clamp(r2 + k * variance, 0.0, 1.0);
     roughness = sqrt(r2);
 
-    // Ambient occlusion
-    vec2 uvScreen = gl_FragCoord.xy / uScreenSize;
-    float gtao = texture(uGtaoTex, uvScreen).r;
-    gtao = clamp(exp(-uAoIntensity * (1.0 - gtao)), 0.0, 1.0);
+    // Ambient occlusion. GTAO only affects image-based ambient lighting.
+    float gtao = 1.0;
+    if (hasPbrFeature(PBR_FEATURE_GTAO))
+    {
+        vec2 uvScreen = gl_FragCoord.xy / uScreenSize;
+        gtao = texture(uGtaoTex, uvScreen).r;
+        gtao = clamp(exp(-uAoIntensity * (1.0 - gtao)), 0.0, 1.0);
+    }
     float aoCombined = gtao * ao;
 
-    // Single directional light
-    vec3 L = normalize(-uSunDirection);
-
-    vec3 H = normalize(V + L);
-    float NdotL = max(dot(N, L), 0.0);
     float NdotV = max(dot(N, V), 0.0001);
     vec3 F0 = mix(vec3(0.04), baseColor.rgb, metallic);
 
@@ -595,21 +607,31 @@ void main()
     // Direct lighting with Cook-Torrance BRDF
     //--------------------------------------------------
 
-    vec3 F_dir  = fresnelSchlick(max(dot(H, V), 0.0), F0);
-    vec3 kS_dir = F_dir;
-    vec3 kD_dir = (vec3(1.0) - kS_dir) * (1.0 - metallic);
+    vec3 LoSun = vec3(0.0);
+    if (hasPbrFeature(PBR_FEATURE_SUN_LIGHT))
+    {
+        vec3 L = normalize(-uSunDirection);
+        float NdotL = max(dot(N, L), 0.0);
+        if (NdotL > 0.0)
+        {
+            vec3 H = normalize(V + L);
+            vec3 F_dir = fresnelSchlick(max(dot(H, V), 0.0), F0);
+            vec3 kD_dir = (vec3(1.0) - F_dir) * (1.0 - metallic);
+            float G = geometrySmith(N, V, L, roughness);
+            float NDF = distributionGGX(N, H, roughness);
+            float denom = 4.0 * NdotV * NdotL + 0.000001;
+            vec3 diffuse = kD_dir * baseColor.rgb / PI;
+            vec3 specular = (NDF * G * F_dir) / denom;
+            float shadow = 1.0;
+            if (hasPbrFeature(PBR_FEATURE_SUN_SHADOWS))
+                shadow = cascadedShadow(vWorldPos, N, uSunRadius);
+            LoSun = (diffuse + specular) * uSunColor.rgb * NdotL * shadow;
+        }
+    }
 
-    float G     = geometrySmith(N, V, L, roughness);
-    float NDF   = distributionGGX(N, H, roughness);
-    float denom = 4.0 * NdotV * NdotL + 0.000001;
-
-    vec3 radiance = uSunColor.rgb;
-    vec3 diffuse  = kD_dir * baseColor.rgb / PI;
-    vec3 specular = (NDF * G * F_dir) / denom;
-    float shadow  = cascadedShadow(vWorldPos, N, uSunRadius);
-    vec3 LoSun    = (diffuse + specular) * radiance * NdotL * shadow;
-
-    vec3 LoLocalLights = accumulateLocalLights(N, V, NdotV, baseColor.rgb, metallic, roughness, F0);
+    vec3 LoLocalLights = vec3(0.0);
+    if (hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
+        LoLocalLights = accumulateLocalLights(N, V, NdotV, baseColor.rgb, metallic, roughness, F0);
 
     vec3 Lo = LoSun + LoLocalLights;
 
@@ -617,26 +639,35 @@ void main()
     // Image-based lighting (IBL)
     //--------------------------------------------------
 
-    // Specular
-    vec3 R = reflect(-V, N);
-    float maxMip = uEnvSpecularMipCount - 1.0;
-    float lod = roughness * maxMip;
-    vec3 prefilteredColor = sampleEnvMap(uEnvSpecularTex, R, lod);
-    float specOcc = specularOcclusion(NdotV, aoCombined, roughness);
-    vec3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
-    vec2 brdf = sampleBrdfLut(NdotV, roughness);
-    vec3 specularIBL = prefilteredColor * (F * brdf.x + brdf.y) * specOcc;
+    vec3 ambient = vec3(0.0);
+    bool diffuseIblEnabled = hasPbrFeature(PBR_FEATURE_DIFFUSE_IBL);
+    bool specularIblEnabled = hasPbrFeature(PBR_FEATURE_SPECULAR_IBL);
+    if (diffuseIblEnabled || specularIblEnabled)
+    {
+        vec3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
 
-    // Diffuse
-    vec3 kD_ibl = (vec3(1.0) - F) * (1.0 - metallic);
-    vec3 irradiance = sampleEnvMap(uEnvDiffuseTex, N, 0.0);
-    vec3 diffuseIBL = irradiance * baseColor.rgb * kD_ibl * aoCombined;
+        if (specularIblEnabled)
+        {
+            vec3 R = reflect(-V, N);
+            float lod = roughness * (uEnvSpecularMipCount - 1.0);
+            vec3 prefilteredColor = sampleEnvMap(uEnvSpecularTex, R, lod);
+            float specOcc = specularOcclusion(NdotV, aoCombined, roughness);
+            vec2 brdf = sampleBrdfLut(NdotV, roughness);
+            ambient += prefilteredColor * (F * brdf.x + brdf.y) * specOcc;
+        }
+
+        if (diffuseIblEnabled)
+        {
+            vec3 kD_ibl = (vec3(1.0) - F) * (1.0 - metallic);
+            vec3 irradiance = sampleEnvMap(uEnvDiffuseTex, N, 0.0);
+            ambient += irradiance * baseColor.rgb * kD_ibl * aoCombined;
+        }
+    }
 
     //--------------------------------------------------
     // Final color composition
     //--------------------------------------------------
 
-    vec3 ambient = diffuseIBL + specularIBL;
     vec3 color = ambient * uEnvIntensity + Lo + emissive;
 
     #ifdef PBR_OUTPUT_WBOIT_ACCUM

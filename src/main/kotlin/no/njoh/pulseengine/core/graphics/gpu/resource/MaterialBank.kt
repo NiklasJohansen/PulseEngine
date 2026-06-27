@@ -110,9 +110,6 @@ class MaterialBank
         val emissiveFactor = material?.emissiveFactor ?: Color.WHITE
         val alphaCutoff = if (material?.blendMode == MASK) material.alphaCutoff else 0f
 
-        // TODO: Temporary fix for sponza normals
-        val flags = if (material?.name?.contains("sponza") == true) MATERIAL_FLAG_FLIP_NORMALS else 0
-
         fill(MATERIAL_FLOATS)
         {
             baseColor.asLinear().let { put(it.red, it.green, it.blue, baseColor.alpha) }
@@ -127,7 +124,7 @@ class MaterialBank
                 material?.metallicFactor ?: 1f,
                 material?.normalScale ?: 1f
             )
-            put(material?.xTiling ?: 1f, material?.yTiling ?: 1f, alphaCutoff, flags.toFloat())
+            put(material?.xTiling ?: 1f, material?.yTiling ?: 1f, alphaCutoff, 0f)
         }
     }
 

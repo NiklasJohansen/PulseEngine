@@ -27,7 +27,6 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
-import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE
@@ -179,54 +178,73 @@ class ModelRenderer(
 
     private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface, cameraState: CameraRenderState)
     {
+        var pbrFeatures = 0u
+
         // Textures
 
         val texBank = engine.gfx.textureBank
         program.bind()
         program.setUniformSamplerArrays(texBank.getAllTextureArrays())
+        program.assignSamplerUnit("uGtaoTex")
+        program.assignSamplerUnit("uShadowMapTex")
+        program.assignSamplerUnit("uLocalShadowAtlasTex")
 
         // Ambient occlusion
 
         val aoRenderer = surface.getRenderer<GtaoRenderer>()
-        val aoTex = aoRenderer?.getAoRenderTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
-        program.setUniformSampler("uGtaoTex", aoTex)
-        program.setUniform("uAoIntensity", aoRenderer?.intensity ?: 0f)
+        val aoTex = aoRenderer?.getAoRenderTexture()
 
         // Cascaded shadow mapping
 
         val shadowMapSurface = engine.gfx.getSurface(sunShadowMapSurfaceName)
         val shadowMapRenderer = shadowMapSurface?.getRenderer<CascadedShadowMapRenderer>()
-        val shadowMapTex = shadowMapSurface?.getTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
-        val sunViewProjections = shadowMapRenderer?.getViewProjectionMatrices() ?: fallbackShadowVPs
-        val splitDist = shadowMapRenderer?.getCascadeSplitDistances() ?: fallbackSplitDists
-        val cascadeSize = shadowMapRenderer?.getCascadeSizeMeters() ?: fallbackCascadeSizes
-        program.setUniformSampler("uShadowMapTex", shadowMapTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
-        program.setUniform("uShadowMapTexSize", shadowMapRenderer?.resolution?.toFloat() ?: 1024f)
-        program.setUniform("uShadowViewProjections", sunViewProjections)
-        program.setUniform("uShadowCascadeSplitDistances", splitDist[0], splitDist[1], splitDist[2], splitDist[3])
-        program.setUniform("uShadowCascadeSizeMeters", cascadeSize[0], cascadeSize[1], cascadeSize[2], cascadeSize[3])
+        val shadowMapTex = shadowMapSurface?.getTexture()
 
         // Sunlight
 
+        val sunEnabled = sunColor.red > 0f || sunColor.green > 0f || sunColor.blue > 0f
+        if (sunEnabled) pbrFeatures = pbrFeatures or PBR_FEATURE_SUN_LIGHT
         program.setUniform("uSunColor", sunColor)
         program.setUniform("uSunDirection", shadowMapRenderer?.getDirection() ?: fallbackSunDirection)
         program.setUniform("uSunRadius", sunRadius)
-        
+
+        if (sunEnabled && shadowMapRenderer != null && shadowMapTex != null)
+        {
+            pbrFeatures = pbrFeatures or PBR_FEATURE_SUN_SHADOWS
+            val splitDist = shadowMapRenderer.getCascadeSplitDistances()
+            val cascadeSize = shadowMapRenderer.getCascadeSizeMeters()
+            program.setUniformSampler("uShadowMapTex", shadowMapTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
+            program.setUniform("uShadowMapTexSize", shadowMapRenderer.resolution.toFloat())
+            program.setUniform("uShadowViewProjections", shadowMapRenderer.getViewProjectionMatrices())
+            program.setUniform("uShadowCascadeSplitDistances", splitDist[0], splitDist[1], splitDist[2], splitDist[3])
+            program.setUniform("uShadowCascadeSizeMeters", cascadeSize[0], cascadeSize[1], cascadeSize[2], cascadeSize[3])
+        }
+
         // Local shadow atlas
 
         val lightBuffer = engine.gfx.sceneContext.getLightBuffer().also { it.bind() }
         val localShadowAtlasSurface = engine.gfx.getSurface(localShadowAtlasSurfaceName)
-        val localShadowAtlasTex = localShadowAtlasSurface?.getTexture() ?: texBank.getOrCreateFallbackTexture(WHITE)
+        val localShadowAtlasTex = localShadowAtlasSurface?.getTexture()
         val localShadowAtlas = engine.gfx.sceneContext.getLocalShadowAtlas()
-        program.setUniformSampler("uLocalShadowAtlasTex", localShadowAtlasTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
-        program.setUniform("uLocalShadowAtlasTexSize", localShadowAtlas.resolution.toFloat())
         program.setUniform("uLocalShadowFaceCount", lightBuffer.shadowFaceCount)
 
         // Local clustered lights
 
         val grid = engine.gfx.sceneContext.getClusteredLightGrid(cameraState)
-        if (grid?.enabled == true) grid.bind()
-        program.setUniform("uClusteredLightingEnabled", grid?.enabled ?: false)
+        val localLightsEnabled = grid?.enabled == true && lightBuffer.lightCount > 0
+        if (localLightsEnabled)
+        {
+            pbrFeatures = pbrFeatures or PBR_FEATURE_LOCAL_LIGHTS
+            grid.bind()
+        }
+
+        if (localLightsEnabled && localShadowAtlasTex != null && lightBuffer.shadowFaceCount > 0)
+        {
+            pbrFeatures = pbrFeatures or PBR_FEATURE_LOCAL_SHADOWS
+            program.setUniformSampler("uLocalShadowAtlasTex", localShadowAtlasTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
+            program.setUniform("uLocalShadowAtlasTexSize", localShadowAtlas.resolution.toFloat())
+        }
+
         program.setUniform("uClusterGridSize", grid?.gridWidth ?: 1, grid?.gridHeight ?: 1, grid?.gridDepth ?: 24)
         program.setUniform("uClusterTileSize", grid?.xTileSize?.toFloat() ?: 64f, grid?.yTileSize?.toFloat() ?: 64f)
         program.setUniform("uClusterNearPlane", grid?.nearPlane ?: 0.05f)
@@ -236,12 +254,38 @@ class ModelRenderer(
 
         // Ambient lighting
 
-        val envSpecularMipCount = engine.asset.getOrNull<Texture>(iblSpecularTexture)?.let { texBank.getTextureArray(it) }?.mipLevels?.toFloat() ?: 1f
-        program.setUniform("uEnvSpecularMipCount", envSpecularMipCount)
+        val envDiffuse = engine.asset.getOrNull<Texture>(iblDiffuseTexture)
+        val envSpecular = engine.asset.getOrNull<Texture>(iblSpecularTexture)
+        val brdfLut = engine.asset.getOrNull<Texture>(iblBrdfTexture)
+        val iblEnabled = iblIntensity > 0f
+
+        if (iblEnabled && envDiffuse != null)
+        {
+            pbrFeatures = pbrFeatures or PBR_FEATURE_DIFFUSE_IBL
+            program.setTexture("uEnvDiffuseTex", envDiffuse)
+        }
+
+        if (iblEnabled && envSpecular != null && brdfLut != null)
+        {
+            pbrFeatures = pbrFeatures or PBR_FEATURE_SPECULAR_IBL
+            program.setUniform("uEnvSpecularMipCount", texBank.getTextureArray(envSpecular)?.mipLevels?.toFloat() ?: 1f)
+            program.setTexture("uEnvSpecularTex", envSpecular)
+            program.setTexture("uEnvBrdfLutTex", brdfLut)
+        }
+
+        if (aoTex != null && aoRenderer.intensity > 0f && pbrFeatures and (PBR_FEATURE_DIFFUSE_IBL or PBR_FEATURE_SPECULAR_IBL) != 0u)
+        {
+            pbrFeatures = pbrFeatures or PBR_FEATURE_GTAO
+            program.setUniformSampler("uGtaoTex", aoTex)
+            program.setUniform("uAoIntensity", aoRenderer.intensity)
+        }
+        
+        if (pbrFeatures and PBR_FEATURE_SUN_LIGHT == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_SUN_SHADOWS.inv()
+        if (pbrFeatures and PBR_FEATURE_LOCAL_LIGHTS == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_LOCAL_SHADOWS.inv()
+        if (pbrFeatures and (PBR_FEATURE_DIFFUSE_IBL or PBR_FEATURE_SPECULAR_IBL) == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_GTAO.inv()
+
         program.setUniform("uEnvIntensity", iblIntensity)
-        program.setTexture("uEnvDiffuseTex", engine.asset.getOrNull(iblDiffuseTexture))
-        program.setTexture("uEnvSpecularTex", engine.asset.getOrNull(iblSpecularTexture))
-        program.setTexture("uEnvBrdfLutTex", engine.asset.getOrNull(iblBrdfTexture))
+        program.setUniform("uPbrFeatures", pbrFeatures)
 
         // Camera
 
@@ -268,9 +312,14 @@ class ModelRenderer(
 
     companion object
     {
-        private val fallbackShadowVPs    = Array(CascadedShadowMapRenderer.CASCADE_COUNT) { Matrix4f() }
-        private val fallbackSplitDists   = FloatArray(CascadedShadowMapRenderer.CASCADE_COUNT)
-        private val fallbackCascadeSizes = FloatArray(CascadedShadowMapRenderer.CASCADE_COUNT) { 15f }
+        private val PBR_FEATURE_SUN_LIGHT      = 1u shl 0
+        private val PBR_FEATURE_SUN_SHADOWS    = 1u shl 1
+        private val PBR_FEATURE_LOCAL_LIGHTS   = 1u shl 2
+        private val PBR_FEATURE_LOCAL_SHADOWS  = 1u shl 3
+        private val PBR_FEATURE_DIFFUSE_IBL    = 1u shl 4
+        private val PBR_FEATURE_SPECULAR_IBL   = 1u shl 5
+        private val PBR_FEATURE_GTAO           = 1u shl 6
+
         private val fallbackSunDirection = Vector3f(0f, 1f, 0f)
     }
 }
