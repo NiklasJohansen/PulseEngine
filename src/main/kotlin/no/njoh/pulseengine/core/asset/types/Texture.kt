@@ -11,7 +11,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping
 import no.njoh.pulseengine.core.shared.annotations.Icon
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromPath
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.stb.STBImage.*
@@ -51,7 +51,7 @@ open class Texture(
         if (filePath.isBlank() || pixelsLDR != null || pixelsHDR != null) return
 
         try {
-            val bytes = filePath.loadBytesFromDisk() ?: throw FileNotFoundException("File not found: $filePath")
+            val bytes = filePath.loadBytesFromPath() ?: throw FileNotFoundException("File not found: $filePath")
             val buffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer
             val width = IntArray(1)
             val height = IntArray(1)

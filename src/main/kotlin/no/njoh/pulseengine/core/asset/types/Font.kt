@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.SRGBA8
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.shared.annotations.Icon
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromPath
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.stb.*
@@ -38,7 +38,7 @@ class Font(
 
     override fun load()
     {
-        val fontData: ByteArray = filePath.loadBytesFromDisk() ?: run {
+        val fontData: ByteArray = filePath.loadBytesFromPath() ?: run {
             Logger.error { "Failed to find and load Font asset: $filePath" }
             return
         }

@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.config
 
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode
 import no.njoh.pulseengine.core.shared.primitives.GameLoopMode.*
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadTextFromDisk
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadTextFromPath
 import no.njoh.pulseengine.core.window.ScreenMode
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -59,7 +59,7 @@ open class ConfigurationImpl : ConfigurationInternal
     private fun loadConfigFile(filePath: String)
     {
         val startTime = System.nanoTime()
-        val content = filePath.loadTextFromDisk()?.replace("\\", "/") ?: throw FileNotFoundException("file not found")
+        val content = filePath.loadTextFromPath()?.replace("\\", "/") ?: throw FileNotFoundException("file not found")
         val newProps = Properties().also { it.load(StringReader(content)) }
         for ((key, value) in newProps)
         {

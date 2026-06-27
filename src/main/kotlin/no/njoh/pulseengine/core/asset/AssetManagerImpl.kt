@@ -7,10 +7,12 @@ import kotlinx.coroutines.runBlocking
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.core.shared.utils.ResourceResolver
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadFileNames
 import no.njoh.pulseengine.core.shared.utils.Extensions.pathToAsset
 import no.njoh.pulseengine.core.shared.utils.Extensions.toNowFormatted
+import no.njoh.pulseengine.core.shared.utils.ResourceResolver.matchesPath
 
 open class AssetManagerImpl : AssetManagerInternal()
 {
@@ -94,10 +96,11 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun reloadAssetFromPath(filePath: String)
     {
         var foundLoadedAsset = false
+        val resourcePath = ResourceResolver.toResourcePath(filePath)
         assets.forEach { (_, asset) ->
-            if (asset.filePath.isNotEmpty() && filePath.endsWith(asset.filePath))
+            if (asset.filePath.isNotEmpty() && matchesPath(asset.filePath, filePath))
             {
-                asset.filePath = filePath
+                asset.filePath = resourcePath
                 reload(asset)
                 foundLoadedAsset = true
             }
@@ -105,7 +108,7 @@ open class AssetManagerImpl : AssetManagerInternal()
 
         if (foundLoadedAsset) return
 
-        pathToAsset(filePath)?.let() // If the asset is new and not loaded, try to load it
+        pathToAsset(resourcePath)?.let() // If the asset is new and not loaded, try to load it
         {
             val toLoadCount = assetsToLoad.size
             load(it)

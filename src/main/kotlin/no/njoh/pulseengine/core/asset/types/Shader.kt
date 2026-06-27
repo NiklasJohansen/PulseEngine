@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderType
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadTextFromDisk
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadTextFromPath
 
 open class Shader(
     filePath: String,
@@ -23,7 +23,7 @@ open class Shader(
 
     override fun load()
     {
-        sourceCode = filePath.loadTextFromDisk() ?: throw Exception("Failed to load shader source code from file: $filePath")
+        sourceCode = filePath.loadTextFromPath() ?: throw Exception("Failed to load shader source code from file: $filePath")
     }
 
     override fun unload()

@@ -9,9 +9,7 @@ import org.joml.Vector2f
 import org.joml.Vector2i
 import org.joml.Vector3f
 import org.joml.Vector4f
-import java.io.*
-import java.nio.file.FileSystems
-import java.nio.file.Files
+import java.nio.charset.Charset
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -419,62 +417,29 @@ object Extensions
     }
 
     /**
-     * Class path resources (inside jar or at build dir) needs a leading forward slash
+     * Reads this text file from besides the JAR or from inside it.
+     * Example: "directory/file.txt".loadTextFromPath().
      */
-    fun String.toClassPath(): String = this.takeIf { it.startsWith("/") } ?: "/$this"
+    fun String.loadTextFromPath(charset: Charset = Charsets.UTF_8) = 
+        ResourceResolver.open(this)?.bufferedReader(charset)?.use { it.readText() }
 
     /**
-     * Loads the file as a [InputStream] from disk or from class path, if not found
+     * Reads this file as bytes from besides the JAR or from inside it.
+     * Example: "directory/file.ext".loadBytesFromPath().
      */
-    fun String.loadStreamFromDisk() = File(this).let()
-    {
-        if (it.isFile && it.isAbsolute) it.inputStream() else Extensions::class.java.getResourceAsStream(this.toClassPath())
-    }
+    fun String.loadBytesFromPath() = ResourceResolver.open(this)?.use { it.readBytes() }
 
     /**
-     * Loads the text content from the given file in disk or from class path, if not found
+     * Reads only a packaged resource, ignoring a matching file outside the JAR.
+     * Example: "defaults/file.ext".loadBytesFromClassPath().
      */
-    fun String.loadTextFromDisk() = File(this).let()
-    {
-        if (it.isFile && it.isAbsolute) it.readText() else Extensions::class.java.getResource(this.toClassPath())?.readText()
-    }
+    fun String.loadBytesFromClassPath() = ResourceResolver.openClasspath(this)?.use { it.readBytes() }
 
     /**
-     * Loads the bytes from the given file or from class path, if not found
+     * Lists files directly inside this directory and files outside the JAR.
+     * Example: "directory".loadFileNames() may return ["directory/file-a.ext", "directory/file-b.ext"].
      */
-    fun String.loadBytesFromDisk() = File(this).let()
-    {
-        if (it.isFile && it.isAbsolute) it.readBytes() else loadBytesFromClassPath()
-    }
-
-    /**
-     * Loads the bytes from class path
-     */
-    fun String.loadBytesFromClassPath() = Extensions::class.java.getResource(this.toClassPath())?.readBytes()
-
-    /**
-     * Loads all file names in the given directory
-     */
-    fun String.loadFileNames(): List<String>
-    {
-        val uri = Extensions::class.java.getResource(this.toClassPath())?.toURI()
-        return if (uri?.scheme == "jar")
-        {
-            val fileSystem =
-                try { FileSystems.getFileSystem(uri) }
-                catch (e: Exception) { FileSystems.newFileSystem(uri, emptyMap<String, Any>()) }
-            Files.walk(fileSystem.getPath(this.toClassPath()), 1).iterator()
-                .asSequence()
-                .map { it.toAbsolutePath().toString() }
-                .toList()
-        }
-        else
-        {
-            this.loadStreamFromDisk()
-                ?.let { stream -> BufferedReader(InputStreamReader(stream)).readLines().map { "$this/$it" } }
-                ?: emptyList()
-        }
-    }
+    fun String.loadFileNames(): List<String> = ResourceResolver.listFiles(this)
 
     private val spriteSheetRegex = "_([0-9]{1,3})x([0-9]{1,3})\\.".toRegex() // Matches _1x2.
 

@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.asset.types
 
 import no.njoh.pulseengine.core.shared.annotations.Icon
-import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromDisk
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromPath
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.stb.STBVorbis
@@ -38,7 +38,7 @@ class Sound(filePath: String, name: String) : Asset(filePath, name)
 
     private fun readVorbis(filePath: String, info: STBVorbisInfo): ShortBuffer
     {
-        val bytes = filePath.loadBytesFromDisk() ?: run {
+        val bytes = filePath.loadBytesFromPath() ?: run {
             Logger.error { "Failed to find and load Sound asset: $filePath" }
             return ShortBuffer.allocate(0)
         }
