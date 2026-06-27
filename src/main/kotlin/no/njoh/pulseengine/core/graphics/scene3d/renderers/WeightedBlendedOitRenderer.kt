@@ -55,7 +55,7 @@ class WeightedBlendedOitRenderer
         TextureDescriptor(format = R16F, filter = NEAREST, attachment = Attachment.COLOR_TEXTURE_1)
     )
 
-    fun init(engine: PulseEngineInternal, surface: Surface)
+    fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::compositeProgram.isInitialized)
         {

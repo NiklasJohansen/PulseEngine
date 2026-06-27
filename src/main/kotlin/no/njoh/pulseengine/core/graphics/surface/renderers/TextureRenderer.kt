@@ -9,7 +9,6 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.gpu.buffer.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
-import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
@@ -27,7 +26,7 @@ class TextureRenderer(
     private lateinit var instanceLayout: VertexAttributeLayout
     private lateinit var program: ShaderProgram
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::program.isInitialized)
         {

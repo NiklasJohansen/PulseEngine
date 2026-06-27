@@ -10,14 +10,11 @@ import no.njoh.pulseengine.core.graphics.scene3d.draw.RenderBucket
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderVisibility.LOCAL_SHADOW
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 
-class LocalShadowRenderView(
-    viewId: Int,
-    private val atlas: LocalShadowAtlas,
-) : RenderView(viewId, visibilityMask = LOCAL_SHADOW) {
-
+class LocalShadowRenderView(private val atlas: LocalShadowAtlas) : RenderView(LOCAL_SHADOW)
+{
     private val shadowFacePasses   = DynamicList<ShadowFaceRenderPass>(16)
     private val shadowFaceFrustums = DynamicList<Frustum>(16)
     private val shadowFaceItems    = DynamicList<RenderItem>(1024)
@@ -61,7 +58,7 @@ class LocalShadowRenderView(
                 scene.opaqueItems.forEach { if (it.intersectsAnyFace(pass)) shadowFaceItems += it }
                 scene.maskedItems.forEach { if (it.intersectsAnyFace(pass)) shadowFaceItems += it }
 
-                pass.bucket.fill(shadowFaceItems, requiredVisibility = visibilityMask)
+                pass.bucket.fill(shadowFaceItems, renderPassMask)
             }
 
             shadowFacePassCount++

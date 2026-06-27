@@ -6,9 +6,9 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderVisibility.CAMERA
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderVisibility.GLOBAL_SHADOW
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderVisibility.LOCAL_SHADOW
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.annotations.MaterialRef
@@ -34,7 +34,7 @@ class Model3D : SceneEntity(), Scene3DRenderable, Named
     @Prop("LOD", i=7, min=0f, max=0.9f) var lodHysteresis = 0.15f
 
     private val transform = Matrix4f()
-    private var lastLodPixelHeightThresholds = null as String?
+    private var lastLodPixelHeightThresholds   = null as String?
     private var parsedLodPixelHeightThresholds = null as IntArray?
 
     override fun onRender(engine: PulseEngine, context: SceneRenderContext)
@@ -47,10 +47,6 @@ class Model3D : SceneEntity(), Scene3DRenderable, Named
             .rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
             .scale(xScale, yScale, zScale)
 
-        var mask = CAMERA
-        if (castLocalShadows) mask = mask or LOCAL_SHADOW
-        if (castSunShadows)   mask = mask or GLOBAL_SHADOW
-        
         if (lodPixelHeightThresholds != lastLodPixelHeightThresholds)
         {
             parsedLodPixelHeightThresholds = lodPixelHeightThresholds.split(',').mapNotNull { it.trim().toIntOrNull()?.coerceAtLeast(0) }.takeIf { it.isNotEmpty() }?.toIntArray()
@@ -62,7 +58,7 @@ class Model3D : SceneEntity(), Scene3DRenderable, Named
             model = model,
             transform = transform,
             material = material,
-            visibilityMask = mask,
+            renderPassMask = CAMERA or LOCAL_SHADOW.takeIf(castLocalShadows) or GLOBAL_SHADOW.takeIf(castSunShadows),
             lodPixelHeightThresholds = parsedLodPixelHeightThresholds,
             lodHysteresis = lodHysteresis,
             lodKey = id

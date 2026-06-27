@@ -14,10 +14,9 @@ import no.njoh.pulseengine.core.graphics.scene3d.shadow.CascadedShadowMapRendere
 import no.njoh.pulseengine.core.graphics.scene3d.view.Frustum
 import no.njoh.pulseengine.core.graphics.scene3d.view.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.scene3d.view.GlobalShadowRenderView
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewIds.GLOBAL_SHADOW
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
-import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderBucket
@@ -36,7 +35,7 @@ class CascadedShadowMapRenderer(
     var splitLambda: Float    = 0.5f,
     var shadowDistance: Float = 0f,
     override val order: Int   = 0,
-    val viewId: Int           = GLOBAL_SHADOW
+    val renderViewGroup: RenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
 
     private lateinit var staticProgram: ShaderProgram
@@ -56,10 +55,12 @@ class CascadedShadowMapRenderer(
     private var readCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
     private var writeCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
 
-    private val viewKey = RenderViewKey(viewId) { GlobalShadowRenderView(viewId) }
+    private lateinit var viewKey: RenderViewKey<GlobalShadowRenderView>
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
+        viewKey = RenderViewKey(renderViewGroup ?: surface.viewGroup) { GlobalShadowRenderView() }
+
         if (!this::staticProgram.isInitialized)
         {
             staticProgram = ShaderProgram.create(

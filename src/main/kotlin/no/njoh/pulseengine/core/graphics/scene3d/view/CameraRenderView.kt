@@ -10,15 +10,12 @@ import no.njoh.pulseengine.core.graphics.scene3d.draw.RenderBucket
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderVisibility.CAMERA
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import org.joml.Vector3f
 
-class CameraRenderView(
-    viewId: Int,
-    var transparencyMode: TransparencyMode = SORTED_BLEND
-) : RenderView(viewId, visibilityMask = CAMERA), CameraRenderStateProvider {
-
+class CameraRenderView(var transparencyMode: TransparencyMode = SORTED_BLEND) : RenderView(CAMERA), CameraRenderStateProvider
+{
     val opaqueBucket  = RenderBucket()
     val maskedBucket  = RenderBucket()
     val blendedBucket = RenderBucket()
@@ -53,21 +50,21 @@ class CameraRenderView(
 
         drawPayload = builder.prepareDrawPayload(cullingFrustumPlaneSets)
         {
-            opaqueBucket.fill(scene.opaqueItems, requiredVisibility = visibilityMask)
+            opaqueBucket.fill(scene.opaqueItems, renderPassMask)
 
-            maskedBucket.fill(scene.maskedItems, requiredVisibility = visibilityMask)
+            maskedBucket.fill(scene.maskedItems, renderPassMask)
 
             when (transparencyMode)
             {
                 SORTED_BLEND -> blendedBucket.fill(
                     from = scene.blendedItems,
+                    renderPassMask = renderPassMask,
                     sortFunc = sortedBlendSort,
-                    preserveDrawOrder = true,
-                    requiredVisibility = visibilityMask
+                    preserveDrawOrder = true
                 )
                 WEIGHTED_BLENDED_OIT -> blendedBucket.fill(
                     from = scene.blendedItems,
-                    requiredVisibility = visibilityMask
+                    renderPassMask = renderPassMask
                 )
             }
         }
@@ -77,11 +74,10 @@ class CameraRenderView(
 
     fun addCameraStateFor(camera: Camera, screenWidth: Int = 1, screenHeight: Int = 1): CameraRenderState
     {
-        val state = cameraStates.firstOrNull { it.camera === camera } 
-            ?: run { (freeStates.removeLastOrNull() ?: CameraRenderState(camera)).also { cameraStates += it } }
+        val existingState = cameraStates.firstOrNull { it.camera === camera }
+        require(existingState != null || cameraStates.size < MAX_CAMERA_STATES) { "Camera render view supports at most $MAX_CAMERA_STATES cameras (mono or stereo)" }
 
-        require(cameraStates.size <= MAX_CAMERA_STATES) { "Camera render view $viewId supports at most $MAX_CAMERA_STATES cameras (mono or stereo)" }
-
+        val state = existingState ?: (freeStates.removeLastOrNull() ?: CameraRenderState(camera)).also { cameraStates += it }
         state.setForCamera(camera, screenWidth, screenHeight)
         updateFamilyFrustumAndPosition()
         return state

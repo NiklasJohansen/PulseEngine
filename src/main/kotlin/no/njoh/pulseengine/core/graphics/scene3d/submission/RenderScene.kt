@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
@@ -18,7 +19,7 @@ class RenderScene
     val blendedItems = DynamicList<RenderItem>(256)
     val localLights  = DynamicList<RenderLight>(64)
 
-    fun addMesh(mesh: Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, visibilityMask: Int)
+    fun addMesh(mesh: Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask)
     {
         val poolItem = ITEM_POOL.removeLastOrNull()?.also()
         {
@@ -27,10 +28,10 @@ class RenderScene
             it.transform = transform
             it.cullingBounds = cullingBounds
             it.boneMatrices = boneMatrices
-            it.visibilityMask = visibilityMask
+            it.renderPassMask = renderPassMask
         }
 
-        val item = poolItem ?: RenderItem(mesh, material, transform, cullingBounds, boneMatrices, visibilityMask)
+        val item = poolItem ?: RenderItem(mesh, material, transform, cullingBounds, boneMatrices, renderPassMask)
 
         when (item.material?.blendMode ?: OPAQUE)
         {

@@ -34,7 +34,7 @@ class GiSceneRenderer(
     var jitterFix = false
     var globalWorldScale = 1f
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::program.isInitialized)
         {

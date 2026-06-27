@@ -11,6 +11,8 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet.ShaderVaria
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject.Companion.INVALID_INSTANCE_INDEX
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.EMPTY
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 
 class DrawPayloadBuilder(
@@ -30,9 +32,9 @@ class DrawPayloadBuilder(
 
     fun RenderBucket.fill(
         from: DynamicList<RenderItem>,
+        renderPassMask: RenderPassMask = EMPTY,
         sortFunc: ((a: RenderItem, b: RenderItem) -> Int)? = ::compareForBatching,
         preserveDrawOrder: Boolean = false,
-        requiredVisibility: Int = 0
     ) {
         val bucket = this
         val useGpuCulling = (gpuCullItemIndices != null && gpuCullItemBatchIndices != null)
@@ -45,7 +47,7 @@ class DrawPayloadBuilder(
 
         from.forEach()
         {
-            if (requiredVisibility != 0 && !it.isVisible(requiredVisibility))
+            if (renderPassMask != EMPTY && !it.isVisible(renderPassMask))
                 return@forEach
 
             if (!useGpuCulling && it.cullingBounds != null)

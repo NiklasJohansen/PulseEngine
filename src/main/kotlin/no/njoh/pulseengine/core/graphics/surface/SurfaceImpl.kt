@@ -22,6 +22,7 @@ import no.njoh.pulseengine.core.graphics.surface.renderers.StencilRenderer
 import no.njoh.pulseengine.core.graphics.surface.renderers.TextRenderer
 import no.njoh.pulseengine.core.graphics.surface.renderers.TextureRenderer
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
@@ -36,6 +37,7 @@ class SurfaceImpl(
     override val config: SurfaceConfigInternal,
 ): SurfaceInternal() {
 
+    override val viewGroup            = RenderViewGroup.create()
     override var renderTarget         = createRenderTarget(config)
     private var initialized           = false
     private var shouldRerender        = false

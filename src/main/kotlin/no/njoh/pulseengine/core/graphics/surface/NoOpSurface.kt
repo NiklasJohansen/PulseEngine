@@ -15,9 +15,11 @@ import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 
 class NoOpSurface: SurfaceInternal()
 {
+    override val viewGroup = RenderViewGroup.create()
     override val camera = DefaultCamera(ORTHOGRAPHIC)
     override val config = SurfaceConfigInternal(
         name = "dummy",

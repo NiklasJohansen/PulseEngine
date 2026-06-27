@@ -10,11 +10,12 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.LightBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredLightGrid
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderView
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderVisibility.CAMERA
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderVisibility.GLOBAL_SHADOW
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderVisibility.LOCAL_SHADOW
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
 import no.njoh.pulseengine.core.shared.primitives.Color
 import org.joml.Matrix4f
 import org.joml.Vector3f
@@ -27,7 +28,7 @@ abstract class SceneRenderContext()
         transform: Matrix4f,
         material: Material? = null,
         animationPose: AnimatedSkeletonPose? = null,
-        visibilityMask: Int = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
+        renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
         lodPixelHeightThresholds: IntArray? = null,
         lodHysteresis: Float = 0.15f,
         lodKey: Long = 0L
@@ -39,7 +40,7 @@ abstract class SceneRenderContext()
         transform: Matrix4f,
         cullingBounds: Model.Aabb? = mesh.localBounds,
         boneMatrices: Array<Matrix4f>? = null,
-        visibilityMask: Int = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW
+        renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW
     )
 
     abstract fun submitPointLight(

@@ -7,10 +7,10 @@ import no.njoh.pulseengine.core.graphics.scene3d.draw.RenderBucket
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderVisibility.GLOBAL_SHADOW
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 
-class GlobalShadowRenderView(viewId: Int) : RenderView(viewId, visibilityMask = GLOBAL_SHADOW)
+class GlobalShadowRenderView : RenderView(GLOBAL_SHADOW)
 {
     val bucket = RenderBucket()
 
@@ -34,7 +34,7 @@ class GlobalShadowRenderView(viewId: Int) : RenderView(viewId, visibilityMask = 
 
         drawPayload = builder.prepareDrawPayload(cascadeFrustumPlaneSets)
         {
-            bucket.fill(allItems, requiredVisibility = visibilityMask)
+            bucket.fill(allItems, renderPassMask)
         }
     }
 

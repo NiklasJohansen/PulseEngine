@@ -27,7 +27,7 @@ class SkyboxRenderer(
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: StaticBufferObject
 
-    override fun init(engine: PulseEngineInternal, surface: Surface) 
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal) 
     {
         if (!this::program.isInitialized) 
         {

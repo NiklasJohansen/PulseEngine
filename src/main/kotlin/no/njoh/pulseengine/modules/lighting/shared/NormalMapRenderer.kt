@@ -11,7 +11,6 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
-import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
@@ -28,7 +27,7 @@ class NormalMapRenderer(
     private lateinit var instanceBuffer: DoubleBufferedFloatObject
     private lateinit var instanceLayout: VertexAttributeLayout
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::program.isInitialized)
         {

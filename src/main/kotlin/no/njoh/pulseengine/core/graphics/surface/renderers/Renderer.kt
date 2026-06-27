@@ -101,7 +101,7 @@ abstract class Renderer
     /**
      * Called once when the renderer is added to the [no.njoh.pulseengine.core.graphics.surface.Surface]
      */
-    abstract fun init(engine: PulseEngineInternal, surface: Surface)
+    abstract fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
 
     /**
      * Called once at the start of every frame.

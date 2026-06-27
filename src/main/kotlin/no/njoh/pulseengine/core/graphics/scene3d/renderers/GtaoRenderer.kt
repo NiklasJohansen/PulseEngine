@@ -78,7 +78,7 @@ class GtaoRenderer(
     private var prevDepthTextureDescriptors = 
         listOf(TextureDescriptor(filter = NEAREST, attachment = DEPTH_TEXTURE))
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::aoProgram.isInitialized)
         {

@@ -20,7 +20,7 @@ class StencilRenderer : Renderer()
     private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::program.isInitialized)
         {

@@ -26,7 +26,7 @@ class QuadRenderer(
     private var vertexCount = 0
     private var singleVertexCount = 0
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::program.isInitialized)
         {

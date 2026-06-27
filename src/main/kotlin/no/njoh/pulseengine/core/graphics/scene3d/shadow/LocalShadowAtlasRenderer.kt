@@ -7,11 +7,10 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewIds.LOCAL_SHADOW
 import no.njoh.pulseengine.core.graphics.scene3d.view.LocalShadowRenderView
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
-import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderBucket
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
@@ -20,7 +19,7 @@ import org.lwjgl.opengl.GL11.*
 
 class LocalShadowAtlasRenderer(
     override val order: Int = 0,
-    val viewId: Int = LOCAL_SHADOW
+    val renderViewGroup: RenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
 
     private lateinit var staticProgram: ShaderProgram
@@ -28,7 +27,7 @@ class LocalShadowAtlasRenderer(
     private lateinit var programs: ShaderProgramSet
     private lateinit var viewKey: RenderViewKey<LocalShadowRenderView>
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::staticProgram.isInitialized)
         {
@@ -43,7 +42,8 @@ class LocalShadowAtlasRenderer(
             programs = ShaderProgramSet(staticProgram, skinnedProgram)
         }
 
-        viewKey = RenderViewKey(viewId) { LocalShadowRenderView(viewId, engine.gfx.sceneContext.getLocalShadowAtlas()) }
+        val atlas = engine.gfx.sceneContext.getLocalShadowAtlas()
+        viewKey = RenderViewKey(renderViewGroup ?: surface.viewGroup) { LocalShadowRenderView(atlas) }
     }
 
     override fun declareRenderViews(engine: PulseEngineInternal, surface: SurfaceInternal, context: SceneRenderContextInternal)

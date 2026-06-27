@@ -20,7 +20,7 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.BrdfLutBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.CascadedShadowMapRenderer
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderBucket
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewIds.MAIN_CAMERA
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
@@ -36,7 +36,7 @@ import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 
 class ModelRenderer(
     override val order: Int = 40,
-    val cameraViewId: Int = MAIN_CAMERA
+    val viewGroup: RenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
 
     var iblDiffuseTexture  = ""
@@ -57,10 +57,12 @@ class ModelRenderer(
     private lateinit var programs: ShaderProgramSet
 
     private val weightedBlendedRenderer = WeightedBlendedOitRenderer()
-    private val viewKey = RenderViewKey(cameraViewId) { CameraRenderView(cameraViewId) }
+    private lateinit var viewKey: RenderViewKey<CameraRenderView>
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
+        viewKey = RenderViewKey(viewGroup ?: surface.viewGroup) { CameraRenderView() }
+
         if (!this::staticProgram.isInitialized)
         {
             val staticVertex = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr.vert", ::transformModelVertexShader))

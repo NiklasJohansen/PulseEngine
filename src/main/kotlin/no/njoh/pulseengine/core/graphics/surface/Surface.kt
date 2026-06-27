@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.surface.StencilState.Action.CLEAR
 import no.njoh.pulseengine.core.graphics.surface.StencilState.Action.SET
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.TextBuilder
@@ -229,6 +230,7 @@ abstract class SurfaceInternal : Surface()
     abstract override val camera: CameraInternal
     abstract override val config: SurfaceConfigInternal
 
+    abstract val viewGroup: RenderViewGroup
     abstract val renderTarget: RenderTarget
 
     abstract fun init(engine: PulseEngineInternal, width: Int, height: Int, glContextRecreated: Boolean)

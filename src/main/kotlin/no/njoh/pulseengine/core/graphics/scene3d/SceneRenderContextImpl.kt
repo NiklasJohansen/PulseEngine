@@ -19,6 +19,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderStateProvider
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderView
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
@@ -35,7 +36,7 @@ import org.joml.Vector3f
 
 class SceneRenderContextImpl : SceneRenderContextInternal()
 {
-    private val views                       = DynamicList<RenderView>()
+    private val views                       = LinkedHashMap<RenderViewKey<*>, RenderView>()
     private val clusteredLightGrids         = THashMap<CameraRenderState, ClusteredLightGrid>()
     private val clusteredLightGridRequests  = THashSet<CameraRenderState>()
     
@@ -74,12 +75,12 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
         clusteredLightGridRequests.clear()
 
-        views.forEach { it.beginFrame() }
+        views.forEach { it.value.beginFrame() }
     }
 
     override fun buildFrame(engine: PulseEngineInternal)
     {
-        views.removeIf { it.lastFrameRequested < frameNumber - 10 }
+        views.entries.removeIf { it.value.lastFrameRequested < frameNumber - 10 }
 
         if (!thisFrameScene.hasAnyItems() && !lastFrameHadAnyItems)
             return // This and last frame had no items, skip frame. If the last frame had items, do a pass to clear everything.
@@ -127,7 +128,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
         // Prepare views for rendering
         drawCommandBuilder.beginFrame()
-        views.forEach { if (it.wasRequested()) it.prepare(thisFrameScene, drawCommandBuilder) }
+        views.forEach { (_, view) -> if (view.wasRequested()) view.prepare(thisFrameScene, drawCommandBuilder) }
         drawCommandBuilder.finishFramePreparation()
 
         prepareRequestedClusteredLightGrids()
@@ -170,25 +171,24 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     @Suppress("UNCHECKED_CAST")
     override fun <T: RenderView> requestView(key: RenderViewKey<T>): T
     {
-        val existing = views.firstOrNull { it.viewId == key.viewId }
+        val existing = views[key]
         if (existing != null)
         {
-            require(key.type.isAssignableFrom(existing.javaClass)) { "View id ${key.viewId} is already used by ${existing.javaClass.simpleName}" }
+            require(key.type.isAssignableFrom(existing.javaClass)) { "View $key is already used by ${existing.javaClass.simpleName}" }
             existing.lastFrameRequested = frameNumber
             return existing as T
         }
 
         val view = key.create()
-        require(view.viewId == key.viewId) { "View key id ${key.viewId} created view with id ${view.viewId}" }
-        require(key.type.isAssignableFrom(view.javaClass)) { "View key id ${key.viewId} created ${view.javaClass.simpleName}, expected ${key.type.simpleName}" }
+        require(key.type.isAssignableFrom(view.javaClass)) { "View key $key created ${view.javaClass.simpleName}, expected ${key.type.simpleName}" }
         view.lastFrameRequested = frameNumber
-        views += view
+        views[key] = view
         return view
     }
 
     @Suppress("UNCHECKED_CAST")
     override fun <T: RenderView> getView(key: RenderViewKey<T>): T? = 
-        views.firstOrNull { it.viewId == key.viewId && it.wasRequested() && key.type.isAssignableFrom(it.javaClass) } as T?
+        views[key]?.takeIf { it.wasRequested() && key.type.isAssignableFrom(it.javaClass) } as T?
 
     override fun submitModel(
         engine: PulseEngine,
@@ -196,7 +196,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         transform: Matrix4f,
         material: Material?,
         animationPose: AnimatedSkeletonPose?,
-        visibilityMask: Int,
+        renderPassMask: RenderPassMask,
         lodPixelHeightThresholds: IntArray?,
         lodHysteresis: Float,
         lodKey: Long
@@ -213,13 +213,13 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
             val meshTransform = Mat4f(mat4fArena).setMul(transform, instance.transform)
 
-            nextFrameScene.addMesh(instance.mesh, material, meshTransform, cullingBounds, boneMatrices, visibilityMask)
+            nextFrameScene.addMesh(instance.mesh, material, meshTransform, cullingBounds, boneMatrices, renderPassMask)
         }
     }
 
-    override fun submitMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, visibilityMask: Int)
+    override fun submitMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask)
     {
-        nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, visibilityMask)
+        nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, renderPassMask)
     }
 
     override fun submitPointLight(position: Vector3f, radius: Float, color: Color, shadowEnabled: Boolean, shadowResolution: Int, shadowBias: Float, shadowImportance: Float, shadowId: Long)
@@ -284,13 +284,13 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         }
 
     private fun getCameraPosition(): Vector3f? = 
-        views.firstNotNullOfOrNull { if (it.wasRequested() && it is CameraRenderStateProvider) it.shadowReferencePosition else null }
+        views.firstNotNullOfOrNull { (_, view) -> if (view.wasRequested() && view is CameraRenderStateProvider) view.shadowReferencePosition else null }
 
     private fun captureLodCameraState()
     {
         nextLodCameraState.invalidate()
         val cameraState = views
-            .firstNotNullOfOrNull { view -> (view as? CameraRenderStateProvider)?.cameraStates?.firstOrNull()?.takeIf { view.wasRequested() } } 
+            .firstNotNullOfOrNull { (_, view) -> (view as? CameraRenderStateProvider)?.cameraStates?.firstOrNull()?.takeIf { view.wasRequested() } } 
             ?: return
         nextLodCameraState.set(cameraState, frameNumber)
     }

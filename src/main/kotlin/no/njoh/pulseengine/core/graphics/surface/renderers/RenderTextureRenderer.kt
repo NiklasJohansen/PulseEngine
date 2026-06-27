@@ -36,7 +36,7 @@ class RenderTextureRenderer(
     private val capacity    = 100
     private val stride      = 16
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::program.isInitialized)
         {

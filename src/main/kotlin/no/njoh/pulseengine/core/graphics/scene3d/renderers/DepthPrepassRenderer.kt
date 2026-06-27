@@ -10,9 +10,8 @@ import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderView
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewIds.MAIN_CAMERA
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
-import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderBucket
@@ -25,7 +24,7 @@ import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_ONE
 
 class DepthPrepassRenderer(
     override val order: Int = 20,
-    val cameraViewId: Int = MAIN_CAMERA
+    val viewGroup: RenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
 
     private lateinit var opaqueStaticProgram: ShaderProgram
@@ -35,10 +34,12 @@ class DepthPrepassRenderer(
     private lateinit var opaquePrograms: ShaderProgramSet
     private lateinit var maskedPrograms: ShaderProgramSet
 
-    private val viewKey = RenderViewKey(cameraViewId) { CameraRenderView(cameraViewId) }
+    private lateinit var viewKey: RenderViewKey<CameraRenderView>
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
+        viewKey = RenderViewKey(viewGroup ?: surface.viewGroup) { CameraRenderView() }
+
         if (!this::opaqueStaticProgram.isInitialized)
         {
             val staticVertex   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_depth.vert", ::transformModelVertexShader))

@@ -8,7 +8,6 @@ import no.njoh.pulseengine.core.asset.types.Font.Companion.MAX_CHAR_COUNT
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
-import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.gpu.buffer.DoubleBufferedFloatObject
@@ -40,7 +39,7 @@ class TextRenderer(
     private val glyphBuffer = GlyphBuffer()
     private val newLinePositions = TIntArrayList(100)
 
-    override fun init(engine: PulseEngineInternal, surface: Surface)
+    override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::program.isInitialized)
         {
