@@ -15,6 +15,8 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromPath
+import no.njoh.pulseengine.core.shared.utils.ResourceResolver
 import no.njoh.pulseengine.core.shared.utils.buildSkinningBounds
 import no.njoh.pulseengine.core.shared.utils.collectAnimatedGlobalTransforms
 import no.njoh.pulseengine.core.shared.utils.collectBlendedAnimatedGlobalTransforms
@@ -32,6 +34,15 @@ import org.lwjgl.BufferUtils
 import org.lwjgl.assimp.AIColor4D
 import org.lwjgl.assimp.AIAnimation
 import org.lwjgl.assimp.AIBone
+import org.lwjgl.assimp.AIFile
+import org.lwjgl.assimp.AIFileCloseProc
+import org.lwjgl.assimp.AIFileFlushProc
+import org.lwjgl.assimp.AIFileIO
+import org.lwjgl.assimp.AIFileOpenProc
+import org.lwjgl.assimp.AIFileReadProc
+import org.lwjgl.assimp.AIFileSeek
+import org.lwjgl.assimp.AIFileTellProc
+import org.lwjgl.assimp.AIFileWriteProc
 import org.lwjgl.assimp.AIMaterial
 import org.lwjgl.assimp.AIMatrix4x4
 import org.lwjgl.assimp.AIMesh
@@ -46,9 +57,11 @@ import org.lwjgl.assimp.Assimp.*
 import org.lwjgl.stb.STBImage.STBI_rgb_alpha
 import org.lwjgl.stb.STBImage.stbi_failure_reason
 import org.lwjgl.stb.STBImage.stbi_load_from_memory
+import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
-import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.math.ceil
+import kotlin.math.min
 
 class Model(filePath: String, name: String) : Asset(filePath, name) 
 {
@@ -85,7 +98,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
 
     override fun load()
     {
-        try { loadWithAssimp() }
+        try { AssimpAssetFileIO(filePath).use { loadWithAssimp(it) } }
         catch (e: Exception) { Logger.error { "Failed to load Mesh $filePath: ${e.message}" } }
     }
     
@@ -111,7 +124,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         this.meshes.forEachFast { it.vao = vao }
     }
 
-    private fun loadWithAssimp()
+    private fun loadWithAssimp(assetFileIO: AssimpAssetFileIO)
     {
         Logger.debug { "Loading model $name..." }
 
@@ -124,7 +137,8 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             aiProcess_OptimizeMeshes or
             aiProcess_SortByPType
 
-        val scene = aiImportFile(filePath, flags) ?: throw RuntimeException(aiGetErrorString())
+        val scene = aiImportFileEx(filePath, flags, assetFileIO.fileIO)
+            ?: throw RuntimeException(listOfNotNull(aiGetErrorString()?.takeIf { it.isNotBlank() }, assetFileIO.lastFailure).joinToString(". "))
 
         try
         {
@@ -147,7 +161,6 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 buildConservativeAnimatedBounds()
             }
         }
-        catch (e: Exception) { throw e }
         finally { aiReleaseImport(scene) }
     }
 
@@ -463,8 +476,6 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val numMaterials = scene.mNumMaterials()
         val materialPointers = scene.mMaterials() ?: return
         val materials = mutableListOf<MeshMaterial>()
-        val modelDirectory = Path.of(filePath).toAbsolutePath().normalize().parent  ?: Path.of(".").toAbsolutePath().normalize()
-
         for (i in 0 until numMaterials)
         {
             val material = AIMaterial.create(materialPointers[i])
@@ -474,21 +485,21 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 ?: material.getMaterialColorProp(AI_MATKEY_COLOR_DIFFUSE)
                 ?: Color(1f, 1f, 1f, 1f)
 
-            val albedoPath = material.getTexturePath(aiTextureType_DIFFUSE, modelDirectory)
-                ?: material.getTexturePath(aiTextureType_BASE_COLOR, modelDirectory)
+            val albedoPath = material.getTexturePath(aiTextureType_DIFFUSE)
+                ?: material.getTexturePath(aiTextureType_BASE_COLOR)
 
-            val normalPath = material.getTexturePath(aiTextureType_NORMALS, modelDirectory)
-                ?: material.getTexturePath(aiTextureType_HEIGHT, modelDirectory)
+            val normalPath = material.getTexturePath(aiTextureType_NORMALS)
+                ?: material.getTexturePath(aiTextureType_HEIGHT)
 
-            val aoPath = material.getTexturePath(aiTextureType_AMBIENT, modelDirectory)
-                ?: material.getTexturePath(aiTextureType_AMBIENT_OCCLUSION, modelDirectory)
-                ?: material.getTexturePath(aiTextureType_LIGHTMAP, modelDirectory)
+            val aoPath = material.getTexturePath(aiTextureType_AMBIENT)
+                ?: material.getTexturePath(aiTextureType_AMBIENT_OCCLUSION)
+                ?: material.getTexturePath(aiTextureType_LIGHTMAP)
 
-            val metalRoughPath = material.getTexturePath(aiTextureType_METALNESS, modelDirectory)
-                ?: material.getTexturePath(aiTextureType_DIFFUSE_ROUGHNESS, modelDirectory)
-                ?: material.getTexturePath(aiTextureType_UNKNOWN, modelDirectory)
+            val metalRoughPath = material.getTexturePath(aiTextureType_METALNESS)
+                ?: material.getTexturePath(aiTextureType_DIFFUSE_ROUGHNESS)
+                ?: material.getTexturePath(aiTextureType_UNKNOWN)
 
-            val emissivePath = material.getTexturePath(aiTextureType_EMISSIVE, modelDirectory)
+            val emissivePath = material.getTexturePath(aiTextureType_EMISSIVE)
 
             val cullMode = if (material.getMaterialIntProp(AI_MATKEY_TWOSIDED) == 1) "NONE" else "BACK"
 
@@ -1036,7 +1047,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         if (res == aiReturn_SUCCESS) Color(it.r(), it.g(), it.b(), it.a()) else null
     }
 
-    private fun AIMaterial.getTexturePath(type: Int, modelDirectory: Path): String? = AIString.calloc().use()
+    private fun AIMaterial.getTexturePath(type: Int): String? = AIString.calloc().use()
     {
         if (aiGetMaterialTextureCount(this, type) < 1)
             return null
@@ -1051,8 +1062,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         if (path.startsWith("*") || embeddedTexturesByPath.containsKey(embeddedTexturePathKey(path)))
             return path
 
-        val texturePath = Path.of(path)
-        return (if (texturePath.isAbsolute) texturePath else modelDirectory.resolve(texturePath)).normalize().toString()
+        return ResourceResolver.resolveRelativeReferencePath(filePath, path)
     }
 
     private fun normalizeTextureReference(path: String): String
@@ -1421,5 +1431,208 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             this[index] = Aabb().set(bounds)
         else
             currentBounds.include(bounds)
+    }
+}
+
+/**
+ * Lets Assimp read a model and its neighboring files through [ResourceResolver].
+ * For example, while importing "content/model.gltf", Assimp may request "model.bin". This adapter resolves 
+ * the request as "content/model.bin", then reads the file either besides the application JAR or from inside it.
+ * One adapter is created for each model import and owns all native callbacks and byte buffers until Assimp is 
+ * finished with the scene.
+ */
+internal class AssimpAssetFileIO(private val modelPath: String) : AutoCloseable 
+{
+    val fileIO: AIFileIO = AIFileIO.calloc()
+    var lastFailure: String? = null
+        private set
+
+    private val filesByAddress = HashMap<Long, OpenFile>()
+    private val allocatedFiles = ArrayList<OpenFile>()
+    private var closed = false
+
+    private val openProc = AIFileOpenProc.create { _, fileNameAddress, _ ->
+        callback("open", modelPath, MemoryUtil.NULL)
+        {
+            val requestedPath = MemoryUtil.memUTF8(fileNameAddress).replace("%20", " ")
+            open(requestedPath)
+        }
+    }
+
+    private val closeProc = AIFileCloseProc.create { _, fileAddress ->
+        callback("close", filesByAddress[fileAddress]?.path ?: modelPath, Unit)
+        {
+            filesByAddress.remove(fileAddress)
+            Unit
+        }
+    }
+
+    init
+    {
+        fileIO.OpenProc(openProc)
+        fileIO.CloseProc(closeProc)
+    }
+
+    /**
+     * Opens a filename requested by Assimp and returns an "aiFile" pointer.
+     * For example, "model.bin" resolves to "content/model.bin" when the main model is "content/model.gltf".
+     */
+    private fun open(requestedPath: String): Long
+    {
+        val candidatePaths = resolveCandidatePaths(requestedPath)
+        var resolvedPath: String? = null
+        var bytes: ByteArray? = null
+
+        for (candidatePath in candidatePaths)
+        {
+            val candidateBytes = candidatePath.loadBytesFromPath()
+            if (candidateBytes != null)
+            {
+                resolvedPath = candidatePath
+                bytes = candidateBytes
+                break
+            }
+        }
+
+        if (resolvedPath == null || bytes == null)
+        {
+            lastFailure = "Assimp could not resolve '$requestedPath' while importing '$modelPath'"
+            return MemoryUtil.NULL
+        }
+
+        val data = BufferUtils.createByteBuffer(bytes.size)
+        data.put(bytes).flip()
+
+        val file = OpenFile(resolvedPath, data)
+        filesByAddress[file.nativeFile.address()] = file
+        allocatedFiles += file
+        return file.nativeFile.address()
+    }
+
+    /**
+     * Produces the possible asset paths for an Assimp filename.
+     * Assimp may ask for either "model.bin" or the already expanded "content/model.bin". This method handles both 
+     * forms without adding the model directory twice.
+     */
+    private fun resolveCandidatePaths(requestedPath: String): List<String>
+    {
+        val requested = requestedPath.replace('\\', '/')
+        val requestedFile = runCatching { Paths.get(requestedPath) }.getOrNull()
+        if (requestedFile?.isAbsolute == true)
+            return listOf(requestedPath)
+
+        val normalizedModel = ResourceResolver.normalizeRelativePath(modelPath)
+        val normalizedRequested = ResourceResolver.normalizeRelativePath(requested)
+        if (normalizedRequested != null && normalizedRequested == normalizedModel)
+            return listOf(modelPath)
+
+        val relativeToModel = ResourceResolver.resolveRelativeReferencePath(modelPath, requested)
+        val modelDirectory = normalizedModel?.substringBeforeLast('/', "")
+        val requestedAlreadyRelativeToModel =
+            modelDirectory?.isNotEmpty() == true &&
+                normalizedRequested?.startsWith("$modelDirectory/") == true
+
+        return buildList()
+        {
+            if (requestedAlreadyRelativeToModel) add(requested)
+            relativeToModel?.let { add(it) }
+            add(requested)
+        }.distinct()
+    }
+
+    override fun close()
+    {
+        if (closed) return
+        closed = true
+
+        filesByAddress.clear()
+        allocatedFiles.forEach { it.close() }
+        allocatedFiles.clear()
+        fileIO.free()
+        openProc.close()
+        closeProc.close()
+    }
+
+    private inline fun <T> callback(operation: String, path: String, failureValue: T, block: () -> T): T =
+        try { block() }
+        catch (error: Throwable)
+        {
+            lastFailure = "Assimp asset $operation failed for '$path': ${error.message}"
+            Logger.error(error) { lastFailure!! }
+            failureValue
+        }
+
+    private inner class OpenFile(val path: String, val data: ByteBuffer) : AutoCloseable 
+    {
+        var position = 0L
+        val nativeFile: AIFile = AIFile.calloc()
+
+        private val readProc = AIFileReadProc.create { _, destination, elementSize, elementCount ->
+            callback("read", path, 0L) 
+            {
+                if (elementSize <= 0L || elementCount <= 0L)
+                    return@callback 0L
+
+                val remaining = data.limit().toLong() - position
+                val readableElements = min(elementCount, remaining / elementSize)
+                val bytesToRead = readableElements * elementSize
+                if (bytesToRead > 0L)
+                {
+                    MemoryUtil.memCopy(MemoryUtil.memAddress(data) + position, destination, bytesToRead)
+                    position += bytesToRead
+                }
+                readableElements
+            }
+        }
+
+        private val writeProc = AIFileWriteProc.create { _, _, _, _ -> 0L }
+
+        private val tellProc = AIFileTellProc.create { _ -> callback("tell", path, 0L) { position } }
+
+        private val sizeProc = AIFileTellProc.create { _ -> callback("size", path, 0L) { data.limit().toLong() } }
+
+        private val seekProc = AIFileSeek.create { _, offset, origin ->
+            callback("seek", path, aiReturn_FAILURE) 
+            {
+                val base = when (origin)
+                {
+                    aiOrigin_SET -> 0L
+                    aiOrigin_CUR -> position
+                    aiOrigin_END -> data.limit().toLong()
+                    else -> return@callback aiReturn_FAILURE
+                }
+                val target = base + offset
+                if (target < 0L || target > data.limit().toLong())
+                    aiReturn_FAILURE
+                else
+                {
+                    position = target
+                    aiReturn_SUCCESS
+                }
+            }
+        }
+
+        private val flushProc = AIFileFlushProc.create { }
+
+        init
+        {
+            nativeFile.ReadProc(readProc)
+            nativeFile.WriteProc(writeProc)
+            nativeFile.TellProc(tellProc)
+            nativeFile.FileSizeProc(sizeProc)
+            nativeFile.SeekProc(seekProc)
+            nativeFile.FlushProc(flushProc)
+        }
+
+        override fun close()
+        {
+            nativeFile.free()
+            readProc.close()
+            writeProc.close()
+            tellProc.close()
+            sizeProc.close()
+            seekProc.close()
+            flushProc.close()
+        }
     }
 }

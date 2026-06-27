@@ -63,7 +63,8 @@ internal object ResourceResolver
             return directPath.normalize().takeIf { Files.isRegularFile(it) }
 
         val relativePath = normalizeRelativePath(path) ?: return null
-        val externalPath = externalRoot.resolve(relativePath.toPlatformPath()).normalize()
+        val platformPath = relativePath.toPlatformPathOrNull() ?: return null
+        val externalPath = externalRoot.resolve(platformPath).normalize()
         return externalPath.takeIf { it.startsWith(externalRoot) && Files.isRegularFile(it) }
     }
 
@@ -107,7 +108,8 @@ internal object ResourceResolver
 
         listClasspathFiles(relativeDirectory).forEach { path -> filesByName[path.substringAfterLast('/')] = path }
 
-        val externalDirectory = externalRoot.resolve(relativeDirectory.toPlatformPath()).normalize()
+        val platformPath = relativeDirectory.toPlatformPathOrNull() ?: return filesByName.values.sorted()
+        val externalDirectory = externalRoot.resolve(platformPath).normalize()
         if (externalDirectory.startsWith(externalRoot) && Files.isDirectory(externalDirectory))
         {
             Files.list(externalDirectory).use { paths ->
@@ -151,11 +153,13 @@ internal object ResourceResolver
     fun matchesPath(resourcePath: String, changedFilePath: String): Boolean
     {
         val changedPath = changedFilePath.toPathOrNull()?.toAbsolutePath()?.normalize() ?: return false
-        val file = resolveDiskFile(resourcePath)
-        if (file != null)
-            return file.toAbsolutePath().normalize() == changedPath
+        if (resolveDiskFile(resourcePath)?.toAbsolutePath()?.normalize() == changedPath) 
+            return true
 
-        return toResourcePath(resourcePath) == toResourcePath(changedFilePath)
+        val resource = normalizeRelativePath(resourcePath) ?: return false
+        val changed = normalizeRelativePath(toResourcePath(changedFilePath)) ?: return false
+
+        return changed == resource || changed.endsWith("/$resource")
     }
 
     /**
@@ -260,10 +264,10 @@ internal object ResourceResolver
     /** 
      * Converts "directory/file.ext" to the separator style expected by the current operating system. 
      */
-    private fun String.toPlatformPath(): Path = Paths.get(replace('/', File.separatorChar))
+    private fun String.toPlatformPathOrNull(): Path? = runCatching { Paths.get(this.replace('/', File.separatorChar)) }.getOrNull()
 
     /** 
      * Converts a path such as "directory\file.ext" to "directory/file.ext". 
      */
-    private fun Path.toResourcePath(): String = joinToString("/") { it.toString() }
+    private fun Path.toResourcePath(): String = this.joinToString("/") { it.toString() }
 }
