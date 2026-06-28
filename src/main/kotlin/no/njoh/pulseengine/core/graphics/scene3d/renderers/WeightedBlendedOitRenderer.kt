@@ -111,7 +111,7 @@ class WeightedBlendedOitRenderer
         drawPayload: DrawPayload,
         opaqueDepthTex: RenderTexture?,
         configureAccumProgram: (ShaderProgram) -> Unit
-    ) = measure({ "wboit accumulate (" plus bucket.instanceCount plus "i, " plus bucket.size plus "b)" }) {
+    ) = measure("wboit_accumulate", label = { "Wboit accumulate (" plus bucket.instanceCount plus "i, " plus bucket.size plus "b)" }) {
 
         configureAccumProgram(accumPrograms.staticProgram)
         configureAccumProgram(accumPrograms.skinnedProgram)

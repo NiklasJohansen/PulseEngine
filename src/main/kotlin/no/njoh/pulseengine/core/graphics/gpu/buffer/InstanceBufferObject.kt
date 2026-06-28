@@ -62,13 +62,13 @@ class InstanceBufferObject
         return instanceIndex
     }
 
-    fun submit() = measure("submit instance buffers")
+    fun submit() = measure("Instance buffers")
     {
         instanceBuffer.submit()
         instanceIndexBuffer?.submit()
     }
 
-    fun markSubmittedDataInUse() = measure("fence instance buffers")
+    fun markSubmittedDataInUse() = measure("Instance buffers")
     {
         instanceBuffer.markSubmittedDataInUse()
         instanceIndexBuffer?.markSubmittedDataInUse()

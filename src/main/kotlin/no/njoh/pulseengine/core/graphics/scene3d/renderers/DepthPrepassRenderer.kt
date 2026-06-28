@@ -110,7 +110,7 @@ class DepthPrepassRenderer(
         val opaqueCount = view.opaqueBucket.instanceCount
         if (opaqueCount > 0)
         {
-            measure({"opaque depth (" plus opaqueCount plus "i, " plus view.opaqueBucket.size plus "b)"})
+            measure("opaque_depth", label = { "Draw opaque depth (" plus opaqueCount plus "i, " plus view.opaqueBucket.size plus "b)" })
             {
                 drawRenderBucket(view.opaqueBucket, view.drawPayload, opaquePrograms)
             }
@@ -119,7 +119,7 @@ class DepthPrepassRenderer(
         val maskedCount = view.maskedBucket.instanceCount
         if (maskedCount > 0)
         {
-            measure({"masked depth (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)"})
+            measure("masked_depth", label = { "Draw masked depth (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)" })
             {
                 glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
                 glEnable(GL_SAMPLE_ALPHA_TO_ONE)

@@ -9,17 +9,19 @@ import org.lwjgl.opengl.GL33.*
  */
 class GpuTimeQuery
 {
-    private var label = StringBuilder(100)
+    private var timerId = 0L
     private var startQueryId = -1
     private var endQueryId = -1
     private var depth = 0
+    private var label = StringBuilder(100)
     private var framesWithoutResult = 0
 
-    private fun start(label: CharSequence, depth: Int)
+    private fun start(timerId: Long, label: CharSequence, depth: Int)
     {
-        this.label.clear().append(label)
-        this.depth = depth
+        this.timerId = timerId
         this.startQueryId = getQueryId()
+        this.depth = depth
+        this.label.clear().append(label)
         glQueryCounter(startQueryId, GL_TIMESTAMP)
     }
 
@@ -47,6 +49,7 @@ class GpuTimeQuery
         result.label.clear().append(label)
         result.depth = depth
         result.timeNanoSec = endTime - startTime
+        result.timerId = timerId
         return result
     }
 
@@ -114,12 +117,12 @@ class GpuTimeQuery
         }
 
         /**
-         * Starts a new timer with the given [label].
+         * Starts a new timer with the given ID and label.
          */
-        fun start(label: CharSequence)
+        fun start(timerId: Long, label: CharSequence)
         {
             val timer = timerPool.removeLastOrNull() ?: GpuTimeQuery()
-            timer.start(label, depth = timerStack.size)
+            timer.start(timerId, label, depth = timerStack.size)
             timerStack += timer
             activeTimers += timer
         }
@@ -136,5 +139,6 @@ class GpuTimeQuery
 data class GpuTimeQueryResult(
     var label: StringBuilder = StringBuilder(50),
     var depth: Int = -1,
-    var timeNanoSec: Long = -1L
+    var timeNanoSec: Long = -1L,
+    var timerId: Long = 0L
 )

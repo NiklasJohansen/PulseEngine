@@ -26,27 +26,45 @@ object GpuProfiler
     var uploadedBytes  = 0L;   private set
 
     /**
-     * Measures the time it takes to execute the given [action].
-     * Only call this on the graphics thread.
+     * Measures an operation whose display [label] may change while [id] remains stable.
      */
-    inline fun <T> measure(label: TextBuilder, action: () -> T): T
+    inline fun <T> measure(id: CharSequence, label: TextBuilder, action: () -> T): T
     {
-        beginMeasure(label)
+        beginMeasure(id, label)
         return try { action() } finally { endMeasure() }
     }
 
-    inline fun <T> measure(label: String, action: () -> T) = measure({ label }, action)
+    /**
+     * Measures an operation using [id] as both its stable identity and display label.
+     */
+    inline fun <T> measure(id: CharSequence, action: () -> T): T
+    {
+        beginMeasure(id)
+        return try { action() } finally { endMeasure() }
+    }
 
     /**
-     * Begins a GPU time measure.
+     * Begins a GPU time measure using [id] as both its stable identity and display label.
      * Only call this on the graphics thread.
      */
-    inline fun beginMeasure(label: TextBuilder)
+    fun beginMeasure(id: CharSequence)
+    {
+        if (!enabled) return
+
+        GpuTimeQuery.start(hashTimerId(id), id)
+        GpuLogger.beginGroup(id)
+    }
+
+    /**
+     * Begins a GPU time measure whose display [label] may change while [id] remains stable.
+     * Only call this on the graphics thread.
+     */
+    inline fun beginMeasure(id: CharSequence, label: TextBuilder)
     {
         if (!enabled) return
 
         val labelText = context.build(label)
-        GpuTimeQuery.start(labelText)
+        GpuTimeQuery.start(hashTimerId(id), labelText)
         GpuLogger.beginGroup(labelText)
     }
 
@@ -99,7 +117,7 @@ object GpuProfiler
         if (!enabled) return
 
         GpuTimeQuery.pollResults()
-        GpuTimeQuery.start("FRAME")
+        GpuTimeQuery.start(hashTimerId("Frame"), "Frame")
     }
 
     /**
@@ -149,5 +167,17 @@ object GpuProfiler
         val reader = statsReader ?: GpuStatsReader().also { statsReader = it }
 
         reader.capture(commandBufferId, byteOffset, commandCount)
+    }
+
+    /**
+     * Generates a stable primitive ID.
+     */
+    @PublishedApi
+    internal fun hashTimerId(id: CharSequence): Long
+    {
+        var hash = -3750763034362895579L
+        for (i in 0 until id.length)
+            hash = (hash xor id[i].code.toLong()) * 1099511628211L
+        return hash
     }
 }

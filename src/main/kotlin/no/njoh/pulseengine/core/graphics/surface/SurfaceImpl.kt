@@ -23,6 +23,7 @@ import no.njoh.pulseengine.core.graphics.surface.renderers.TextRenderer
 import no.njoh.pulseengine.core.graphics.surface.renderers.TextureRenderer
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
@@ -110,7 +111,7 @@ class SurfaceImpl(
         while (batchNum < readRenderStates.size)
         {
             readRenderStates[batchNum].apply(this)
-            GpuProfiler.measure({ "RENDER_BATCH " plus " (#" plus batchNum plus ")" })
+            measure("render_batch", label = { "Render batch: #" plus batchNum })
             {
                 renderers.forEachFast { it.render(engine, this, batchNum) }
             }
@@ -133,7 +134,7 @@ class SurfaceImpl(
         var textures = renderTarget.getTextures()
         postEffects.forEachFast()
         {
-            GpuProfiler.measure(label = { "EFFECT (" plus it.name plus ")" })
+            measure(id = it.name, label = { "Effect: " plus it.name})
             {
                 textures = it.process(engine, textures)
             }

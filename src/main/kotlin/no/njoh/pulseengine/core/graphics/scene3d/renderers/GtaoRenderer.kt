@@ -170,7 +170,7 @@ class GtaoRenderer(
         glViewport(0, 0, surface.config.width, surface.config.height)
     }
 
-    private fun renderGtao(surface: SurfaceInternal, depthTex: RenderTexture): RenderTexture = measure("gtao")
+    private fun renderGtao(surface: SurfaceInternal, depthTex: RenderTexture): RenderTexture = measure("Gtao render")
     {
         aoTextureDescriptors[0].scale = 1f / downsampleFactor
         updateFbo(aoFbo, aoTextureDescriptors, surface, onNewFbo = { aoFbo = it; historyValid = false })
@@ -212,7 +212,7 @@ class GtaoRenderer(
         surface: SurfaceInternal, 
         aoTex: RenderTexture, 
         depthTex: RenderTexture
-    ): RenderTexture = measure("gtao_denoise") {
+    ): RenderTexture = measure("Gtao denoise") {
 
         denoiseTextureDescriptors.forEachFast { it.scale = 1f / downsampleFactor }
         updateFbo(denoiseFbo, denoiseTextureDescriptors, surface, onNewFbo = { denoiseFbo = it; historyValid = false })
@@ -263,7 +263,7 @@ class GtaoRenderer(
         surface: SurfaceInternal, 
         aoTex: RenderTexture, 
         depthTex: RenderTexture
-    ): RenderTexture = measure("gtao_upsample") {
+    ): RenderTexture = measure("Gtao upsample") {
 
         updateFbo(upsampleFbo, upsampleTextureDescriptors, surface, onNewFbo = { upsampleFbo = it; historyValid = false })
 
@@ -296,7 +296,7 @@ class GtaoRenderer(
         surface: SurfaceInternal, 
         aoTex: RenderTexture, 
         depthTex: RenderTexture
-    ): RenderTexture = measure("gtao_temporal_acc") {
+    ): RenderTexture = measure("Gtao temporal accumulate") {
 
         updateFbo(temporalFbo, temporalTextureDescriptors, surface, onNewFbo = { temporalFbo = it; historyValid = false })
 
@@ -335,7 +335,7 @@ class GtaoRenderer(
         return outputAoTex
     }
 
-    private fun storeDepth(surface: SurfaceInternal) = measure("gtao_store_depth")
+    private fun storeDepth(surface: SurfaceInternal) = measure("Gtao store depth")
     {
         updateFbo(prevDepthFbo, prevDepthTextureDescriptors, surface, onNewFbo = { prevDepthFbo = it; historyValid = false })
 

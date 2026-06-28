@@ -95,6 +95,7 @@ class DrawPayloadBuilder(
             if (canAppendToBatch)
             {
                 lastBatch.instanceCount++
+                bumpInstanceCount()
             }
             else
             {

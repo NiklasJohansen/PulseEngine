@@ -85,7 +85,7 @@ abstract class Renderer
         if (drawCount == 0)
             return // Skip empty batches
 
-        GpuProfiler.measure({ name plus " (" plus drawCount plus ")" })
+        GpuProfiler.measure(id = name, label = { name plus " (" plus drawCount plus ")" })
         {
             onRenderBatch(engine, surface, batchStart[i], drawCount)
         }

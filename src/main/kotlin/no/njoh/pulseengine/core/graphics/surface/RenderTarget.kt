@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.gpu.buffer.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import kotlin.collections.plusAssign
@@ -37,7 +37,8 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 
         if (hasMultisampling)
         {
-            GpuProfiler.measure({ "RESOLVE_FBO (" plus writeFbo.getTexture(0).multisampling plus ")" })
+            val writeTex = writeFbo.getTexture(0)
+            measure(id = "resolve_fbo", label = { "Resolve: " plus writeTex.name plus " (" plus writeTex.multisampling plus ")" })
             {
                 writeFbo.resolveToFBO(readFbo)
             }
@@ -48,7 +49,8 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
     {
         if (hasMultisampling)
         {
-            GpuProfiler.measure({ "RESOLVE_DEPTH_FBO (" plus writeFbo.getTexture(0).multisampling plus ")" })
+            val writeTex = writeFbo.getTexture(0)
+            measure(id = "resolve_depth_fbo", label = { "Resolve depth: " plus writeTex.name plus " (" plus writeTex.multisampling plus ")"  })
             {
                 writeFbo.resolveDepthToFBO(readFbo)
             }

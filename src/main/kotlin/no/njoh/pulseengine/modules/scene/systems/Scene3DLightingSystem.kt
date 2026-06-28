@@ -94,7 +94,7 @@ class Scene3DLightingSystem : SceneSystem()
         if (shadowMapSurface == null)
         {
             val index = 1 + (engine.gfx.getAllSurfaces().maxOfOrNull { it.config.name.substringAfterLast("_").toIntOrNull() ?: 0 } ?: 0)
-            shadowMapSurfaceName = "shadow_map_$index"
+            shadowMapSurfaceName = "global_shadow_map_$index"
 
             engine.gfx.createSurface(
                 name = shadowMapSurfaceName,

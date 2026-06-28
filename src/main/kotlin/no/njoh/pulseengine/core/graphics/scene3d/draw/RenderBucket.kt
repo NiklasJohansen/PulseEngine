@@ -25,9 +25,14 @@ class RenderBucket(initialCapacity: Int = 128)
     {
         val batch = if (size < batches.size) batches[size] else DrawBatch().also { batches += it }
         batch.set(mesh, shaderVariant, cullMode, instanceIndex, instanceCount)
-        this.instanceCount += instanceCount
+        bumpInstanceCount(instanceCount)
         this.size++
         return batch
+    }
+
+    fun bumpInstanceCount(amount: Int = 1)
+    {
+        instanceCount += amount
     }
 
     inline fun forEachBatch(action: (DrawBatch) -> Unit)

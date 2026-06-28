@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import kotlin.math.floor
 import kotlin.math.log2
 import kotlin.math.max
@@ -42,7 +42,7 @@ abstract class MipmapGenerator
             initialized = true
         }
 
-        GpuProfiler.measure({ "RENDER_MIP_CHAIN " plus '(' plus texture.name + ')' })
+        measure(id = texture.name, label = { "Render MIP-chain: " plus texture.name })
         {
             onGenerate(engine, texture)
         }

@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.graphics.gpu.buffer
 
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 
 class CullingBufferObject
 {
@@ -60,7 +60,7 @@ class CullingBufferObject
         size++
     }
 
-    fun submit() = GpuProfiler.measure("submit culling buffers")
+    fun submit() = measure("Culling buffers")
     {
         cullItemBuffer.submit()
         dynamicBoundsBuffer.submit()
@@ -72,7 +72,7 @@ class CullingBufferObject
         dynamicBoundsBuffer.bindSubmittedRange()
     }
 
-    fun markSubmittedDataInUse() = GpuProfiler.measure("fence culling buffers")
+    fun markSubmittedDataInUse() = measure("Culling buffers")
     {
         cullItemBuffer.markSubmittedDataInUse()
         dynamicBoundsBuffer.markSubmittedDataInUse()

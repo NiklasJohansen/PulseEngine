@@ -17,7 +17,7 @@ interface RenderState
     /** Called by the graphics pipeline before rendering the next batch. */
     fun apply(surface: SurfaceInternal)
     {
-        GpuProfiler.measure({ "SET_STATE (" plus getName() plus ")" })
+        GpuProfiler.measure("set_state", label = { "Set state: " plus getName()})
         {
             onApply(surface)
         }
@@ -222,7 +222,7 @@ open class StencilState(
     }
 
     override fun getName(): CharSequence =
-        name.clear().append(super.getName()).append(" - ").append(action.name)
+        name.clear().append(super.getName()).append(" (").append(action.name).append(")")
 
     companion object
     {

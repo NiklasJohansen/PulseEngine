@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
@@ -111,7 +112,7 @@ class GiRadianceCascades(
         var i = 0
         while (cascadeIndex >= lightSystem.drawCascade)
         {
-            GpuProfiler.measure({ "PASS #" plus i++ plus " (C" plus cascadeIndex plus ")" })
+            measure("radiance_pass", label = { "Pass #" plus i++ plus " (C" plus cascadeIndex plus ")" })
             {
                 val currentTex = fbo.getTexture(cascadeIndex % 2)
                 fbo.attachOutputTexture(currentTex)

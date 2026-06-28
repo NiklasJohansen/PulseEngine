@@ -127,7 +127,7 @@ class DrawCommandBuilder(
         if (pendingGpuCullDispatches.isEmpty())
             return
 
-        measure("command buffers submit")
+        measure("Submitting command buffers")
         {
             gpuCommandBuffer.submit()
             cullItemIndexBuffer.submit()
@@ -138,7 +138,7 @@ class DrawCommandBuilder(
             gpuBuffersSubmitted = true
         }
 
-        measure("frustum culling")
+        measure("Frustum culling")
         {
             pendingGpuCullDispatches.forEach { cull(it) }
         }
@@ -146,7 +146,7 @@ class DrawCommandBuilder(
 
     fun markSubmittedDataInUse()
     {
-        measure("fence draw buffers")
+        measure("command buffers")
         {
             if (cpuCommandsBufferSubmitted)
                 cpuCommandBuffer.markSubmittedDataInUse()
@@ -264,7 +264,7 @@ class DrawCommandBuilder(
         if (cullingBuffer.size == 0 || dispatch.cullInstanceCount == 0 || dispatch.commandCount == 0)
             return
 
-        measure({ "cull dispatch (" plus dispatch.cullInstanceCount plus "i, " plus dispatch.frustumCount plus "x" plus dispatch.commandCount plus "c)" })
+        measure("cull_dispatch", label = { "Cull dispatch (" plus dispatch.cullInstanceCount plus "i, " plus dispatch.frustumCount plus "x" plus dispatch.commandCount plus "c)" })
         {
             cullingBuffer.bindSubmittedRanges()
             visibleIndexBuffer.bindSubmittedRange()

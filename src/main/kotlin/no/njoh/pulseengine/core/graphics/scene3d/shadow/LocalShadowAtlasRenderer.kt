@@ -80,7 +80,7 @@ class LocalShadowAtlasRenderer(
             val shadowFace = atlas.getShadowFace(shadowFaceIndex)
             val pass = view.getShadowFaceRenderPass(shadowFaceIndex) ?: continue
 
-            measure({ "local shadow #" plus shadowFaceIndex plus " (" plus shadowFace.blockKey plus ")" })
+            measure("local_shadow", label = { "Local shadow #" plus shadowFaceIndex plus " (" plus shadowFace.blockKey plus ")" })
             {
                 glEnable(GL_SCISSOR_TEST)
                 glScissor(shadowFace.x, shadowFace.y, shadowFace.size, shadowFace.size)

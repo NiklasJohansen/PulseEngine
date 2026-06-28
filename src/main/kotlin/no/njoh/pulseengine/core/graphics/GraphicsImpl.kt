@@ -30,11 +30,12 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
-import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
+import no.njoh.pulseengine.core.shared.utils.Extensions.noneMatches
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL30.*
@@ -147,58 +148,77 @@ open class GraphicsImpl : GraphicsInternal
     {
         surfaces.forEachCamera { it.onFrameDraw(engine) }
 
-        sceneContext.buildFrame(engine)
-
-        materialBank.submitAndBind()
-        modelBank.submitAndBind()
+        measure("Prepare draw")
+        {
+            sceneContext.buildFrame(engine)
+            materialBank.submitAndBind()
+            modelBank.submitAndBind()
+        }
 
         renderSurfaceContentToOffscreenTarget(engine)
         renderPostProcessingEffectsToOffscreenTarget(engine)
         renderOffscreenTargetsToBackBuffer()
-        
-        sceneContext.endFrame()
+
+        measure("End draw")
+        {
+            sceneContext.endFrame()
+        }
 
         GpuProfiler.endFrame()
     }
 
     private fun renderSurfaceContentToOffscreenTarget(engine: PulseEngineInternal)
     {
-        surfaces.forEachFiltered({ it.hasContent() })
+        if (surfaces.noneMatches { it.hasContent() }) return
+
+        measure("Draw surfaces")
         {
-            GpuProfiler.measure(label = { "DRAW_SURFACE (" plus it.config.name plus ")" })
+            surfaces.forEachFiltered({ it.hasContent() })
             {
-                it.renderToOffScreenTarget(engine)
+                measure(id = it.config.name, label = { "Surface: " plus it.config.name })
+                {
+                    it.renderToOffScreenTarget(engine)
+                }
             }
         }
     }
 
     private fun renderPostProcessingEffectsToOffscreenTarget(engine: PulseEngineInternal)
     {
-        // Set OpenGL state for rendering post-processing effects
-        if (surfaces.anyMatches { it.hasPostProcessingEffects() })
+        if (surfaces.noneMatches { it.hasPostProcessingEffects() }) return
+
+        measure("Post-processing")
+        {
+            // Set OpenGL state for rendering post-processing effects
             PostProcessingBaseState.apply(mainSurface)
 
-        // Run surfaces through their post-processing pipelines
-        surfaces.forEachFiltered({ it.hasPostProcessingEffects() })
-        {
-            GpuProfiler.measure(label = { "POST_PROCESS (" plus it.config.name plus ")" })
+            // Run surfaces through their post-processing pipelines
+            surfaces.forEachFiltered({ it.hasPostProcessingEffects() })
             {
-                it.runPostProcessingPipeline(engine)
+                measure(id = it.config.name, label = { "Surface: " plus it.config.name })
+                {
+                    it.runPostProcessingPipeline(engine)
+                }
             }
         }
     }
 
     private fun renderOffscreenTargetsToBackBuffer()
     {
-        // Set OpenGL state for rendering offscreen target textures to back-buffer
-        BackBufferBaseState.apply(mainSurface)
+        if (surfaces.noneMatches { it.config.isVisible && (it.hasContent() || it.hasPostProcessingEffects()) }) return
 
-        // Draw visible surfaces with content to back-buffer
-        surfaces.forEachFiltered({ it.config.isVisible && (it.hasContent() || it.hasPostProcessingEffects()) })
+        measure("Draw back buffer")
         {
-            GpuProfiler.measure(label = { "BACK_BUFFER_DRAW (" plus it.config.name plus ")" })
+            // Set OpenGL state for rendering offscreen target textures to back-buffer
+            BackBufferBaseState.apply(mainSurface)
+
+            // Draw visible surfaces with content to back-buffer
+            surfaces.forEachFiltered({ it.config.isVisible && (it.hasContent() || it.hasPostProcessingEffects()) })
             {
-                fullscreenPass.drawTexture(it.getTexture())
+                measure(id = it.config.name, label = { "Surface: " plus it.config.name })
+                {
+                    fullscreenPass.drawTexture(it.getTexture())
+                }
             }
         }
     }

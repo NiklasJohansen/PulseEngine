@@ -126,7 +126,7 @@ class CascadedShadowMapRenderer(
 
         for (cascadeIdx in 0 until CASCADE_COUNT)
         {
-            measure({ "cascade #" plus cascadeIdx })
+            measure(id = "cascade", label = { "Cascade #" plus cascadeIdx })
             {
                 val col = cascadeIdx % 2
                 val row = cascadeIdx / 2

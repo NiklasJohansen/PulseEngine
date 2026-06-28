@@ -50,7 +50,7 @@ class ClusteredLightGrid()
         initialized = true
     }
     
-    fun buildAndSubmit(state: CameraRenderState, scene: RenderScene)
+    fun build(state: CameraRenderState, scene: RenderScene)
     {
         init()
         clusterBuffer.clear()
@@ -109,7 +109,6 @@ class ClusteredLightGrid()
         }
 
         uploadClusters(totalIndexCount)
-        submitBuffers()
         enabled = totalIndexCount > 0
     }
 
@@ -257,7 +256,7 @@ class ClusteredLightGrid()
         }
     }
 
-    private fun submitBuffers() = measure("submit clustered light buffers")
+    fun submit() = measure("Clustered light buffers")
     {
         clusterBuffer.submit()
         indexBuffer.submit()

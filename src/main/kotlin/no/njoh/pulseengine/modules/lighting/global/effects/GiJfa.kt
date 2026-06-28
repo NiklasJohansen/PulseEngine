@@ -12,6 +12,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.graphics.postprocessing.BaseEffect
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.modules.lighting.global.effects.GiJfa.*
 import kotlin.math.*
 
@@ -48,7 +49,7 @@ class GiJfa(
         for (i in 0 until numPasses)
         {
             val offset = 2f.pow(numPasses - i - 1).toInt()
-            GpuProfiler.measure({ "PASS #" plus i plus " (" plus offset plus "px)" })
+            measure("jfa_pass", label = { "Pass #" plus i plus " (" plus offset plus "px)" })
             {
                 outTextures[0] = fbo.getTexture(i % 2)
                 fbo.attachOutputTexture(outTextures[0])

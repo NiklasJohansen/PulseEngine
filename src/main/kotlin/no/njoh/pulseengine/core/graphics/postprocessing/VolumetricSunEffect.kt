@@ -114,7 +114,7 @@ class VolumetricSunEffect(
         return finalTextures.apply { clear(); add(outTex) }
     }
 
-    private fun renderScattering(depthTex: RenderTexture, shadowTex: RenderTexture, shadowMapRenderer: CascadedShadowMapRenderer): RenderTexture = measure("scattering") 
+    private fun renderScattering(depthTex: RenderTexture, shadowTex: RenderTexture, shadowMapRenderer: CascadedShadowMapRenderer): RenderTexture = measure("Scattering") 
     {
         val splitDist = shadowMapRenderer.getCascadeSplitDistances()
         val program = programs[0]
@@ -153,7 +153,7 @@ class VolumetricSunEffect(
         return volumeTex
     }
 
-    private fun blurScattering(depthTex: RenderTexture, scatterTex: RenderTexture): RenderTexture = measure("blur scattering")
+    private fun blurScattering(depthTex: RenderTexture, scatterTex: RenderTexture): RenderTexture = measure("Blur scattering")
     {
         val program = programs[1]
         val blurTex = fbo.getTexture(2)
@@ -189,7 +189,7 @@ class VolumetricSunEffect(
         return volumeTex
     }
 
-    private fun upsampleScattering(depthTex: RenderTexture, volumeTex: RenderTexture): RenderTexture = measure("upsample")
+    private fun upsampleScattering(depthTex: RenderTexture, volumeTex: RenderTexture): RenderTexture = measure("Upsample")
     {
         val program = programs[2]
         val upsampleTex = fbo.getTexture(3)
@@ -213,7 +213,7 @@ class VolumetricSunEffect(
         return upsampleTex
     }
 
-    private fun compose(sceneColorTex: RenderTexture, volumeTex: RenderTexture): RenderTexture = measure("compose")
+    private fun compose(sceneColorTex: RenderTexture, volumeTex: RenderTexture): RenderTexture = measure("Compose")
     {
         val program = programs[3]
         val outputTex = fbo.getTexture(0)

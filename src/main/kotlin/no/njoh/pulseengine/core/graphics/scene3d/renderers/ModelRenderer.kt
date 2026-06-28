@@ -125,7 +125,7 @@ class ModelRenderer(
 
     private fun render(engine: PulseEngineInternal, surface: SurfaceInternal, view: CameraRenderView, cameraState: CameraRenderState)
     {
-        measure({"opaque (" plus view.opaqueBucket.instanceCount plus "i, " plus view.opaqueBucket.size plus "b)"})
+        measure("opaque", label = { "Draw opaque (" plus view.opaqueBucket.instanceCount plus "i, " plus view.opaqueBucket.size plus "b)" })
         {
             drawRenderBucket(view.opaqueBucket, view.drawPayload, programs)
         }
@@ -133,7 +133,7 @@ class ModelRenderer(
         val maskedCount = view.maskedBucket.instanceCount
         if (maskedCount > 0)
         {
-            measure({"masked (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)"})
+            measure("masked", label = { "Draw masked (" plus maskedCount plus "i, " plus view.maskedBucket.size plus "b)" })
             {
                 glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
                 glEnable(GL_SAMPLE_ALPHA_TO_ONE)
@@ -152,7 +152,7 @@ class ModelRenderer(
         {
             when (transparencyMode)
             {
-                SORTED_BLEND -> measure({"blended (" plus blendedCount plus "i, " plus view.blendedBucket.size plus "b)"})
+                SORTED_BLEND -> measure("blended", label = { "Draw blended (" plus blendedCount plus "i, " plus view.blendedBucket.size plus "b)" })
                 {
                     glEnable(GL_BLEND)
                     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)

@@ -55,7 +55,7 @@ class BoneBufferObject
         return offset
     }
 
-    fun submit()
+    fun submit() = measure("Bone buffer")
     {
         val boneBuffer = boneBuffer ?: return
         if (boneMatrixCount == 0)
@@ -76,7 +76,7 @@ class BoneBufferObject
         else boneBuffer.bindSubmittedRange()
     }
 
-    fun markGpuDataInUse() = measure("fence bone buffer")
+    fun markGpuDataInUse() = measure("Bone buffer")
     {
         val boneBuffer = boneBuffer ?: return
         if (!dataSubmitted)

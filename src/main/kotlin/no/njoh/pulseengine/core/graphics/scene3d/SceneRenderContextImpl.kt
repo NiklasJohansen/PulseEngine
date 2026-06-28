@@ -24,7 +24,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.RenderView
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.LodCameraState
 import no.njoh.pulseengine.core.graphics.util.LodUtils
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
@@ -115,23 +115,26 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         thisFrameScene.maskedItems.addToBuffers()
         thisFrameScene.blendedItems.addToBuffers()
 
-        // Upload lights and shadow faces
+        // Prepare lighting
         localShadowAtlas.update(thisFrameScene, getCameraPosition())
         localShadowAtlas.getActiveShadowFaces().forEach { face -> lightBuffer.addShadowFace(face) }
         thisFrameScene.localLights.forEach { lightBuffer.addLight(it) }
+        buildRequestedClusteredLightGrids()
 
         // Submit buffers to GPU
-        instanceBuffer.submit()
-        cullingBuffer.submit()
-        boneBuffer.submit()
-        lightBuffer.submit()
+        measure("Submit context buffers")
+        {
+            instanceBuffer.submit()
+            cullingBuffer.submit()
+            boneBuffer.submit()
+            lightBuffer.submit()
+            clusteredLightGrids.forEach { it.value.submit() }
+        }
 
         // Prepare views for rendering
         drawCommandBuilder.beginFrame()
         views.forEach { (_, view) -> if (view.wasRequested()) view.prepare(thisFrameScene, drawCommandBuilder) }
         drawCommandBuilder.finishFramePreparation()
-
-        prepareRequestedClusteredLightGrids()
 
         lastFrameHadAnyItems = thisFrameScene.hasAnyItems()
     }
@@ -140,7 +143,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     {
         if (initialized && thisFrameScene.hasAnyItems())
         {
-            GpuProfiler.measure("fence context buffers")
+            measure("Fence context buffers")
             {
                 instanceBuffer.markSubmittedDataInUse()
                 cullingBuffer.markSubmittedDataInUse()
@@ -254,7 +257,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         clusteredLightGridRequests += state
     }
 
-    private fun prepareRequestedClusteredLightGrids()
+    private fun buildRequestedClusteredLightGrids()
     {
         if (!thisFrameScene.hasAnyItems())
         {
@@ -266,7 +269,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         for (state in clusteredLightGridRequests)
         {
             val grid = clusteredLightGrids.getOrPut(state) { ClusteredLightGrid() }
-            grid.buildAndSubmit(state, thisFrameScene)
+            grid.build(state, thisFrameScene)
         }
 
         clusteredLightGrids.retainEntries { state, grid -> 

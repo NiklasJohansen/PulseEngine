@@ -79,7 +79,7 @@ class LightBufferObject
     {
         if (lightCount == 0 && shadowFaceCount == 0) return
 
-        measure("submit light buffer")
+        measure("Local light buffers")
         {
             lightBuffer.submit()
             shadowFaceBuffer.submit()
@@ -91,9 +91,12 @@ class LightBufferObject
     {
         if (!submitted) return
 
-        lightBuffer.markSubmittedDataInUse()
-        shadowFaceBuffer.markSubmittedDataInUse()
-        submitted = false
+        measure("Local light buffers")
+        {
+            lightBuffer.markSubmittedDataInUse()
+            shadowFaceBuffer.markSubmittedDataInUse()
+            submitted = false
+        }
     }
 
     fun destroy()
