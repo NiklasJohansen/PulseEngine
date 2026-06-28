@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderView
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureCompare
+import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.NONE
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_BORDER
@@ -31,6 +32,8 @@ import org.joml.Vector3f
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE
 import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_ONE
+import org.lwjgl.opengl.GL14.GL_FUNC_ADD
+import org.lwjgl.opengl.GL14.glBlendEquation
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 
 class ModelRenderer(
@@ -106,6 +109,8 @@ class ModelRenderer(
     {
         if (startIndex != 0) return // Only once per frame
 
+        // Setup
+
         val view = engine.gfx.sceneContext.getView(viewKey) ?: return
         val cameraState = view.getCameraState(surface.camera) ?: return
 
@@ -118,9 +123,28 @@ class ModelRenderer(
 
         configureProgram(staticProgram, engine, surface, cameraState)
         configureProgram(skinnedProgram, engine, surface, cameraState)
+        
+        // Draw
+        
         render(engine, surface, view, cameraState)
 
+        // Restore
+
+        glEnable(GL_CULL_FACE)
+        glCullFace(GL_BACK)
         glDepthMask(true)
+        glDepthFunc(GL_LEQUAL)
+
+        if (surface.config.hasDepthAttachment) glEnable(GL_DEPTH_TEST) else glDisable(GL_DEPTH_TEST)
+
+        glBlendEquation(GL_FUNC_ADD)
+        val blendFunction = surface.config.blendFunction
+        if (blendFunction != NONE)
+        {
+            glEnable(GL_BLEND)
+            glBlendFunc(blendFunction.src, blendFunction.dest)
+        }
+        else glDisable(GL_BLEND)
     }
 
     private fun render(engine: PulseEngineInternal, surface: SurfaceInternal, view: CameraRenderView, cameraState: CameraRenderState)

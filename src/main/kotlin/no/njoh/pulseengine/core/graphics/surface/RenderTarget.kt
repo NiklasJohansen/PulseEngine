@@ -38,7 +38,7 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
         if (hasMultisampling)
         {
             val writeTex = writeFbo.getTexture(0)
-            measure(id = "resolve_fbo", label = { "Resolve: " plus writeTex.name plus " (" plus writeTex.multisampling plus ")" })
+            measure("resolve_fbo", label = { "Resolve: " plus writeTex.name plus " (" plus writeTex.multisampling plus ")" })
             {
                 writeFbo.resolveToFBO(readFbo)
             }
@@ -50,7 +50,7 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
         if (hasMultisampling)
         {
             val writeTex = writeFbo.getTexture(0)
-            measure(id = "resolve_depth_fbo", label = { "Resolve depth: " plus writeTex.name plus " (" plus writeTex.multisampling plus ")"  })
+            measure("resolve_depth_fbo", label = { "Resolve depth: " plus writeTex.name plus " (" plus writeTex.multisampling plus ")"  })
             {
                 writeFbo.resolveDepthToFBO(readFbo)
             }

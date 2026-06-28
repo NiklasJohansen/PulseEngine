@@ -35,7 +35,8 @@ void main()
 {
     MaterialData material = uMaterials[vMaterialId];
     float alphaCutoff = material.tilingAlphaFlags.z;
+    float alpha = material.baseColor.a * sampleTexOrDefault(material.albedoTex, material.tilingAlphaFlags.xy).a;
 
-    if (alphaCutoff > 0.0 && sampleTexOrDefault(material.albedoTex, material.tilingAlphaFlags.xy).a < alphaCutoff)
+    if (alphaCutoff > 0.0 && alpha < alphaCutoff)
         discard;
 }

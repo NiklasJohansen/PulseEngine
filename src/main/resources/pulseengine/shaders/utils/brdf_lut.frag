@@ -43,8 +43,7 @@ vec3 importanceSampleGGX(vec2 Xi, float roughness, vec3 N)
 
 float geometrySchlickGGX(float NdotV, float roughness)
 {
-    float r = roughness + 1.0;
-    float k = (r * r) / 8.0;
+    float k = (roughness * roughness) / 2.0;
     return NdotV / max(NdotV * (1.0 - k) + k, 1e-6);
 }
 
