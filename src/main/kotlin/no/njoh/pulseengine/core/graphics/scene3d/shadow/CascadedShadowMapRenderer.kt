@@ -31,6 +31,7 @@ import org.lwjgl.opengl.GL11.*
 import kotlin.math.*
 
 class CascadedShadowMapRenderer(
+    var enabled: Boolean      = true,
     var resolution: Int       = 4096,
     var splitLambda: Float    = 0.5f,
     var shadowDistance: Float = 0f,
@@ -88,12 +89,14 @@ class CascadedShadowMapRenderer(
         readCascadeSplits = writeCascadeSplits.also { writeCascadeSplits = readCascadeSplits }
         readCascadeSizeMeters = writeCascadeSizeMeters.also { writeCascadeSizeMeters = readCascadeSizeMeters }
         readCascadeFrustumPlaneSets = writeCascadeFrustumPlaneSets.also { writeCascadeFrustumPlaneSets = readCascadeFrustumPlaneSets }
-        increaseBatchSize() // Ensure that the batch size is at least 1
     }
 
     override fun declareRenderViews(engine: PulseEngineInternal, surface: SurfaceInternal, context: SceneRenderContextInternal)
     {
+        if (!enabled) return
+
         context.requestView(viewKey).setFrustumPlaneSets(readCascadeFrustumPlaneSets)
+        increaseBatchSize() // Ensure that the batch size is at least 1
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)

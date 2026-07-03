@@ -113,6 +113,7 @@ class Scene3DLightingSystem : SceneSystem()
 
         val shadowMapRenderer = shadowMapSurface.getRenderer<CascadedShadowMapRenderer>() ?: return
 
+        shadowMapRenderer.enabled          = sunIntensity > 0f
         shadowMapRenderer.resolution       = sunShadowMapResolution
         shadowMapRenderer.splitLambda      = sunShadowCascadeSplitLambda
         shadowMapRenderer.shadowDistance   = sunShadowDistance
