@@ -61,7 +61,7 @@ class Model3D : SceneEntity(), Scene3DRenderable, Named
             renderPassMask = CAMERA or LOCAL_SHADOW.takeIf(castLocalShadows) or GLOBAL_SHADOW.takeIf(castSunShadows),
             lodPixelHeightThresholds = parsedLodPixelHeightThresholds,
             lodHysteresis = lodHysteresis,
-            lodKey = id
+            objectId = id
         )
     }
 }

@@ -65,7 +65,7 @@ class AnimatedModel3D : SceneEntity(), Updatable, Scene3DRenderable, Named
             .rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
             .scale(xScale, yScale, zScale)
 
-        context.submitModel(engine, model, transform, null, animationPose)
+        context.submitModel(engine, model, transform, null, animationPose, objectId = id)
     }
 
     override fun onUpdate(engine: PulseEngine) {}

@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.AnimatedSkeletonPose
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
+import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.LightBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredLightGrid
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
@@ -31,7 +32,8 @@ abstract class SceneRenderContext()
         renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
         lodPixelHeightThresholds: IntArray? = null,
         lodHysteresis: Float = 0.15f,
-        lodKey: Long = 0L
+        lodKey: Long = 0L,
+        objectId: Long = -1
     )
 
     abstract fun submitMesh(
@@ -40,7 +42,8 @@ abstract class SceneRenderContext()
         transform: Matrix4f,
         cullingBounds: Model.Aabb? = mesh.localBounds,
         boneMatrices: Array<Matrix4f>? = null,
-        renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW
+        renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
+        objectId: Long = -1
     )
 
     abstract fun submitPointLight(
@@ -88,6 +91,7 @@ abstract class SceneRenderContextInternal : SceneRenderContext()
     abstract fun <T: RenderView> getView(key: RenderViewKey<T>): T?
 
     abstract fun getLightBuffer(): LightBufferObject
+    abstract fun getInstanceBuffer(): InstanceBufferObject
     abstract fun getLocalShadowAtlas(): LocalShadowAtlas
     abstract fun requestClusteredLightGrid(state: CameraRenderState)
     abstract fun getClusteredLightGrid(state: CameraRenderState): ClusteredLightGrid?

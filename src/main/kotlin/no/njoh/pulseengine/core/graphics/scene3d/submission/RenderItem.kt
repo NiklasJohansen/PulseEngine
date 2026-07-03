@@ -12,7 +12,8 @@ class RenderItem(
     var transform: Mat4f,
     var cullingBounds: Model.Aabb?,
     var boneMatrices: Array<Matrix4f>?,
-    var renderPassMask: RenderPassMask
+    var renderPassMask: RenderPassMask,
+    var objectId: Long = -1L
 ) {
     var gpuInstanceIndex = -1
     var gpuCullItemIndex = -1

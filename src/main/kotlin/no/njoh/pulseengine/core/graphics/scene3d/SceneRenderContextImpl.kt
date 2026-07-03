@@ -202,7 +202,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         renderPassMask: RenderPassMask,
         lodPixelHeightThresholds: IntArray?,
         lodHysteresis: Float,
-        lodKey: Long
+        lodKey: Long,
+        objectId: Long
     ) {
         val lodLevel = LodUtils.getLodLevel(model, transform, lodPixelHeightThresholds, lodHysteresis, lodKey, thisLodCameraState)
         val meshInstances = model.getMeshInstancesAtLevel(lodLevel)
@@ -216,13 +217,13 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
             val meshTransform = Mat4f(mat4fArena).setMul(transform, instance.transform)
 
-            nextFrameScene.addMesh(instance.mesh, material, meshTransform, cullingBounds, boneMatrices, renderPassMask)
+            nextFrameScene.addMesh(instance.mesh, material, meshTransform, cullingBounds, boneMatrices, renderPassMask, objectId)
         }
     }
 
-    override fun submitMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask)
+    override fun submitMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, objectId: Long)
     {
-        nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, renderPassMask)
+        nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, renderPassMask, objectId)
     }
 
     override fun submitPointLight(position: Vector3f, radius: Float, color: Color, shadowEnabled: Boolean, shadowResolution: Int, shadowBias: Float, shadowImportance: Float, shadowId: Long)
@@ -249,6 +250,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     override fun getLocalShadowAtlas() = localShadowAtlas
 
     override fun getLightBuffer() = lightBuffer
+
+    override fun getInstanceBuffer() = instanceBuffer
 
     override fun getClusteredLightGrid(state: CameraRenderState) = clusteredLightGrids[state]
     

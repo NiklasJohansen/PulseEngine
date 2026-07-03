@@ -287,7 +287,7 @@ open class FrameBufferObject(
                     val levels = mipmapGenerator.getLevelCount(width, height)
                     glTexStorage2D(target, levels, format.internalFormat, width, height)
                 }
-                else glTexImage2D(target, 0, format.internalFormat, width, height, 0, format.pixelFormat, GL_UNSIGNED_BYTE, null as FloatArray?)
+                else glTexImage2D(target, 0, format.internalFormat, width, height, 0, format.pixelFormat, format.type, 0L)
 
                 glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter.minValue)
                 glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter.magValue)

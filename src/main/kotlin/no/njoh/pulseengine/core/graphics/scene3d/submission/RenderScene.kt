@@ -19,7 +19,7 @@ class RenderScene
     val blendedItems = DynamicList<RenderItem>(256)
     val localLights  = DynamicList<RenderLight>(64)
 
-    fun addMesh(mesh: Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask)
+    fun addMesh(mesh: Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, objectId: Long = -1L)
     {
         val poolItem = ITEM_POOL.removeLastOrNull()?.also()
         {
@@ -29,9 +29,10 @@ class RenderScene
             it.cullingBounds = cullingBounds
             it.boneMatrices = boneMatrices
             it.renderPassMask = renderPassMask
+            it.objectId = objectId
         }
 
-        val item = poolItem ?: RenderItem(mesh, material, transform, cullingBounds, boneMatrices, renderPassMask)
+        val item = poolItem ?: RenderItem(mesh, material, transform, cullingBounds, boneMatrices, renderPassMask, objectId)
 
         when (item.material?.blendMode ?: OPAQUE)
         {

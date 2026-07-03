@@ -14,6 +14,7 @@ class InstanceBufferObject
     var instanceIndexMode = UNIFORM_OFFSET; private set
     var instanceIndexBuffer = null as StreamingIntBufferObject?; private set
 
+    private lateinit var objectIdBuffer: StreamingIntBufferObject
     private lateinit var instanceBuffer: StreamingFloatBufferObject
     private val tmpNormalMatrix = FloatArray(NORMAL_MATRIX_FLOATS)
 
@@ -21,7 +22,7 @@ class InstanceBufferObject
     {
         if (this::instanceBuffer.isInitialized)
             return
-
+        objectIdBuffer = StreamingIntBufferObject.createUnboundShaderStorageBuffer(initCapacity = 2 * 512)
         instanceBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(
             blockBinding = INSTANCE_BUFFER_BINDING,
             initCapacity = INSTANCE_FLOATS * 512
@@ -34,6 +35,7 @@ class InstanceBufferObject
 
     fun clear()
     {
+        objectIdBuffer.clear()
         instanceBuffer.clear()
         instanceIndexBuffer?.clear()
         instanceCount = 0
@@ -54,6 +56,11 @@ class InstanceBufferObject
             put(materialId.toFloat(), boneOffsetIndex.toFloat(), handedness, 0f)
         }
 
+        objectIdBuffer.fill(2)
+        {
+            put(encodeObjectIdLow(item.objectId), encodeObjectIdHigh(item.objectId))
+        }
+
         instanceIndexBuffer?.fill(1)
         {
             put(instanceIndex)
@@ -64,13 +71,17 @@ class InstanceBufferObject
 
     fun submit() = measure("Instance buffers")
     {
+        objectIdBuffer.submit()
         instanceBuffer.submit()
         instanceIndexBuffer?.submit()
     }
 
+    fun bindObjectIds() = objectIdBuffer.bindSubmittedRange(OBJECT_ID_BUFFER_BINDING)
+
     fun markSubmittedDataInUse() = measure("Instance buffers")
     {
         instanceBuffer.markSubmittedDataInUse()
+        objectIdBuffer.markSubmittedDataInUse()
         instanceIndexBuffer?.markSubmittedDataInUse()
     }
 
@@ -80,12 +91,14 @@ class InstanceBufferObject
             return
 
         instanceBuffer.destroy()
+        objectIdBuffer.destroy()
         instanceIndexBuffer?.destroy()
     }
 
     companion object
     {
         const val INSTANCE_BUFFER_BINDING = 1
+        const val OBJECT_ID_BUFFER_BINDING = 12
         const val INVALID_INSTANCE_INDEX = -1
         const val INSTANCE_FLOATS = 32
         const val INSTANCE_BYTES = INSTANCE_FLOATS * Float.SIZE_BYTES
@@ -94,6 +107,10 @@ class InstanceBufferObject
 
         private const val NORMAL_MATRIX_FLOATS = 12
         private const val MIN_NORMAL_DETERMINANT = 1e-8f
+
+        fun encodeObjectIdLow(id: Long) = id.toInt()
+        fun encodeObjectIdHigh(id: Long) = (id ushr 32).toInt()
+        fun decodeObjectId(low: Int, high: Int) = (low.toLong() and 0xffffffffL) or (high.toLong() shl 32)
 
         /**
          * Calculates the matrix used to transform surface normals from model space to world space.

@@ -29,6 +29,8 @@ class StreamingIntBufferObject private constructor(
 
     fun bindSubmittedRange() = buffer.bindSubmittedRange()
 
+    fun bindSubmittedRange(blockBinding: Int) = buffer.bindSubmittedRange(blockBinding)
+
     fun markSubmittedDataInUse() = buffer.markSubmittedSegmentInUse()
 
     fun getSubmittedDataByteOffset() = buffer.submittedDataByteOffset
@@ -97,6 +99,9 @@ class StreamingIntBufferObject private constructor(
 
         fun createShaderStorageBuffer(blockBinding: Int, initCapacity: Int = 0, segmentCount: Int = 3) =
             StreamingIntBufferObject(GL_SHADER_STORAGE_BUFFER, blockBinding, initCapacity, segmentCount)
+
+        fun createUnboundShaderStorageBuffer(initCapacity: Int = 0, segmentCount: Int = 3) =
+            StreamingIntBufferObject(GL_SHADER_STORAGE_BUFFER, null, initCapacity, segmentCount)
 
         fun createDrawIndirectBuffer(initCapacity: Int = 0, segmentCount: Int = 3) =
             StreamingIntBufferObject(GL_DRAW_INDIRECT_BUFFER, null, initCapacity, segmentCount)

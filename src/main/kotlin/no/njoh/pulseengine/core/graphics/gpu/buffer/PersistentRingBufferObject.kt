@@ -34,7 +34,7 @@ class PersistentRingBufferObject(
     private var mappedFloatBuffer: FloatBuffer
     private var mappedIntBuffer: IntBuffer
 
-    private val offsetAlignment       = getOffsetAlignment(target, blockBinding)
+    private val offsetAlignment       = getOffsetAlignment(target)
     private val segmentSyncObjects    = LongArray(segmentCount)
     private var segmentCapacity       = max(initCapacity, 16)
     private var segmentStrideBytes    = getSegmentStrideBytes(segmentCapacity)
@@ -92,11 +92,14 @@ class PersistentRingBufferObject(
 
     fun bindSubmittedRange()
     {
-        if (blockBinding == null)
-            return
+        val binding = blockBinding ?: return
+        bindSubmittedRange(binding)
+    }
 
+    fun bindSubmittedRange(binding: Int)
+    {
         val rangeSize = max(submittedElementCount * elementSizeBytes, elementSizeBytes).toLong()
-        glBindBufferRange(target, blockBinding, id, submittedDataByteOffset, rangeSize)
+        glBindBufferRange(target, binding, id, submittedDataByteOffset, rangeSize)
     }
 
     fun markSubmittedSegmentInUse()
@@ -189,12 +192,12 @@ class PersistentRingBufferObject(
         segmentSyncObjects[segmentIndex] = 0L
     }
 
-    private fun getOffsetAlignment(target: Int, blockBinding: Int?) =
-        if (target == GL_SHADER_STORAGE_BUFFER && blockBinding != null)
+    private fun getOffsetAlignment(target: Int) =
+        if (target == GL_SHADER_STORAGE_BUFFER)
             max(Int.SIZE_BYTES, glGetInteger(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT))
         else 
             Int.SIZE_BYTES
-    
+
     private fun getSegmentElementOffset(segment: Int) = (segment * segmentStrideBytes) / elementSizeBytes
     
     private fun getSegmentStrideBytes(capacity: Int) = alignUp(capacity * elementSizeBytes, offsetAlignment)
