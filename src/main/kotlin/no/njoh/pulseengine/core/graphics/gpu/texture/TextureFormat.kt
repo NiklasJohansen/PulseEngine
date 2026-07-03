@@ -33,5 +33,22 @@ enum class TextureFormat(val internalFormat: Int, val pixelFormat: Int, val type
     RGBA16F(GL_RGBA16F,     GL_RGBA,         GL_FLOAT),
     RGBA32F(GL_RGBA32F,     GL_RGBA,         GL_FLOAT),
     RGBA16I(GL_RGBA16I,     GL_RGBA_INTEGER, GL_SHORT),
-    RGBA32I(GL_RGBA32I,     GL_RGBA_INTEGER, GL_INT),
+    RGBA32I(GL_RGBA32I,     GL_RGBA_INTEGER, GL_INT);
+
+    val componentCount get() = when (pixelFormat)
+    {
+        GL_RED,  GL_RED_INTEGER  -> 1
+        GL_RG,   GL_RG_INTEGER   -> 2
+        GL_RGB,  GL_RGB_INTEGER  -> 3
+        GL_RGBA, GL_RGBA_INTEGER -> 4
+        else -> error("Unsupported texture pixel format: $pixelFormat")
+    }
+
+    val isIntegerFormat get() = when (pixelFormat)
+    {
+        GL_RED_INTEGER, GL_RG_INTEGER, GL_RGB_INTEGER, GL_RGBA_INTEGER -> true
+        else -> false
+    }
+
+    val readType get() = if (isIntegerFormat) GL_INT else GL_FLOAT
 }

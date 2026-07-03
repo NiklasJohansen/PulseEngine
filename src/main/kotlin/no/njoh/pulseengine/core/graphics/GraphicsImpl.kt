@@ -158,6 +158,7 @@ open class GraphicsImpl : GraphicsInternal
         renderSurfaceContentToOffscreenTarget(engine)
         renderPostProcessingEffectsToOffscreenTarget(engine)
         renderOffscreenTargetsToBackBuffer()
+        pollSurfacePixelReads()
 
         measure("End draw")
         {
@@ -187,7 +188,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         if (surfaces.noneMatches { it.hasPostProcessingEffects() }) return
 
-        measure("Post-processing")
+        measure("Surface post-processing")
         {
             // Set OpenGL state for rendering post-processing effects
             PostProcessingBaseState.apply(mainSurface)
@@ -207,7 +208,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         if (surfaces.noneMatches { it.config.isVisible && (it.hasContent() || it.hasPostProcessingEffects()) }) return
 
-        measure("Draw back buffer")
+        measure("Draw surfaces to back buffer")
         {
             // Set OpenGL state for rendering offscreen target textures to back-buffer
             BackBufferBaseState.apply(mainSurface)
@@ -218,6 +219,22 @@ open class GraphicsImpl : GraphicsInternal
                 measure(id = it.config.name, label = { "Surface: " plus it.config.name })
                 {
                     fullscreenPass.drawTexture(it.getTexture())
+                }
+            }
+        }
+    }
+
+    private fun pollSurfacePixelReads()
+    {
+        if (surfaces.noneMatches { it.hasPendingPixelReads() }) return
+
+        measure("Read surface pixels")
+        {
+            surfaces.forEachFiltered({ it.hasPendingPixelReads() }) 
+            {
+                measure(id = it.config.name, label = { "Surface: " plus it.config.name })
+                {
+                    it.pollPixelReads()
                 }
             }
         }

@@ -21,9 +21,10 @@ import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.surface.renderers.StencilRenderer
 import no.njoh.pulseengine.core.graphics.surface.renderers.TextRenderer
 import no.njoh.pulseengine.core.graphics.surface.renderers.TextureRenderer
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
+import no.njoh.pulseengine.core.graphics.util.PixelReadResult
+import no.njoh.pulseengine.core.graphics.util.AsyncPixelReader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
@@ -54,6 +55,9 @@ class SurfaceImpl(
     private var textureRenderer       = null as TextureRenderer?
     private var stencilRenderer       = null as StencilRenderer?
     private var renderTextureRenderer = null as RenderTextureRenderer?
+
+    @Volatile 
+    private var pixelReaders = emptyArray<AsyncPixelReader?>()
 
     // Internal functions
     //--------------------------------------------------------------------------------------------
@@ -141,15 +145,32 @@ class SurfaceImpl(
         }
     }
 
+    override fun pollPixelReads()
+    {
+        val readers = pixelReaders
+        for (slot in readers.indices)
+        {
+            val reader = readers[slot] ?: continue
+            if (!reader.hasPendingWork()) continue
+            val textureIndex = slot ushr 1
+            val final = (slot and 1) != 0
+            val texture = getTexture(textureIndex, final)
+            reader.update(texture)
+        }
+    }
+
     override fun destroy(engine: PulseEngineInternal)
     {
         renderers.forEachFast { it.destroy(engine) }
         postEffects.forEachFast { it.destroy() }
+        pixelReaders.forEachFast { it?.destroy() }
         renderTarget.destroy()
         config.mipmapGenerators.forEach { it.value.destroy() }
     }
 
     override fun hasContent() = shouldRerender || renderers.anyMatches { it.hasContentToRender() }
+
+    override fun hasPendingPixelReads() = pixelReaders.any { it?.hasPendingWork() == true }
 
     override fun hasPostProcessingEffects() = postEffects.isNotEmpty()
 
@@ -203,16 +224,44 @@ class SurfaceImpl(
     {
         if (final) postEffects.forEachReversed { effect -> effect.getTexture(index)?.let { return it } }
 
-        return renderTarget.getTexture(index)
-            ?: throw RuntimeException(
-                "Failed to get texture with index: $index from surface with name: ${config.name}. " +
-                    "Surface has the following output specification: ${config.attachments})"
-            )
+        return renderTarget.getTexture(index) ?: throw RuntimeException(
+            "Failed to get texture with index: $index from surface with name: ${config.name}. " +
+            "Surface has the following output specification: ${config.attachments})"
+        )
     }
 
     override fun getTextures(): List<RenderTexture>
     {
         return renderTarget.getTextures()
+    }
+
+    override fun readPixel(x: Int, y: Int, textureIndex: Int, final: Boolean, dstResult: PixelReadResult): PixelReadResult
+    {
+        require(textureIndex >= 0) { "Texture index must be non-negative" }
+        val slot = textureIndex * 2 + if (final) 1 else 0
+        var readers = pixelReaders
+        var reader = readers.getOrNull(slot)
+        if (reader == null)
+        {
+            synchronized(this)
+            {
+                readers = pixelReaders
+                reader = readers.getOrNull(slot)
+                if (reader == null)
+                {
+                    reader = AsyncPixelReader()
+                    if (slot >= readers.size)
+                    {
+                        val oldSize = readers.size
+                        val newSize = maxOf(4, slot + 1, oldSize * 2)
+                        readers = readers.copyOf(newSize)
+                    }
+                    readers[slot] = reader
+                    pixelReaders = readers
+                }
+            }
+        }
+        return reader!!.readPixel(x, y, dstResult)
     }
 
     @Suppress("UNCHECKED_CAST")

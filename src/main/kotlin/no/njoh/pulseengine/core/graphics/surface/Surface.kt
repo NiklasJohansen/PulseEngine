@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.graphics.surface.StencilState.Action.CLEAR
 import no.njoh.pulseengine.core.graphics.surface.StencilState.Action.SET
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
+import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.TextBuilder
@@ -155,6 +156,14 @@ abstract class Surface
      */
     abstract fun getTextures(): List<RenderTexture>
 
+    /**
+     * Starts an asynchronous read into [dstResult] and returns it. If [dstResult] already has a
+     * pending read, no additional request is queued.
+     * @param textureIndex Index of the texture to read.
+     * @param final If true, reads the final post-processed texture.
+     */
+    abstract fun readPixel(x: Int, y: Int, textureIndex: Int = 0, final: Boolean = true, dstResult: PixelReadResult = PixelReadResult()): PixelReadResult
+
     ///////////////////////////////////////// Post-Processing /////////////////////////////////////////
 
     /**
@@ -237,7 +246,9 @@ abstract class SurfaceInternal : Surface()
     abstract fun initFrame(engine: PulseEngineInternal)
     abstract fun renderToOffScreenTarget(engine: PulseEngineInternal)
     abstract fun runPostProcessingPipeline(engine: PulseEngineInternal)
+    abstract fun pollPixelReads()
     abstract fun destroy(engine: PulseEngineInternal)
     abstract fun hasContent(): Boolean
+    abstract fun hasPendingPixelReads(): Boolean
     abstract fun hasPostProcessingEffects(): Boolean
 }

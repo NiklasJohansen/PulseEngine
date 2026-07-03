@@ -16,6 +16,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
+import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 
 class NoOpSurface: SurfaceInternal()
 {
@@ -60,12 +61,15 @@ class NoOpSurface: SurfaceInternal()
     override fun getAllRenderers() = emptyList<Renderer>()
     override fun getTexture(index: Int, final: Boolean) = RenderTexture.BLANK
     override fun getTextures() = emptyList<RenderTexture>()
+    override fun readPixel(x: Int, y: Int, textureIndex: Int, final: Boolean, dstResult: PixelReadResult) = dstResult
     override fun hasContent() = false
+    override fun hasPendingPixelReads() = false
     override fun hasPostProcessingEffects() = false
     override fun init(engine: PulseEngineInternal, width: Int, height: Int, glContextRecreated: Boolean) {}
     override fun initFrame(engine: PulseEngineInternal) {}
     override fun renderToOffScreenTarget(engine: PulseEngineInternal) {}
     override fun runPostProcessingPipeline(engine: PulseEngineInternal) {}
+    override fun pollPixelReads() {}
     override fun setClearColor(color: Color?) = this
     override fun setBlendFunction(func: BlendFunction) = this
     override fun setDrawColor(red: Float, green: Float, blue: Float, alpha: Float) = this

@@ -12,6 +12,7 @@ import org.joml.Vector4f
 import java.nio.charset.Charset
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sin
 
 object Extensions
@@ -71,6 +72,26 @@ object Extensions
         val aRad = this.toRadians()
         val bRad = angle.toRadians()
         return MathUtil.atan2(sin(aRad - bRad), cos(aRad - bRad)).toDegrees()
+    }
+
+    /**
+     * Converts a color value from sRGB to linear space.
+     */
+    fun Float.srgbToLinear(): Float = when
+    {
+        !isFinite() -> 0f
+        this <= 0.04045f -> this / 12.92f
+        else -> ((this + 0.055f) / 1.055f).pow(2.4f)
+    }
+
+    /**
+     * Converts a color value from linear space to sRGB.
+     */
+    fun Float.linearToSrgb(): Float = when
+    {
+        !isFinite() -> 0f
+        this <= 0.0031308f -> this * 12.92f
+        else -> 1.055f * this.pow(1f / 2.4f) - 0.055f
     }
 
     // For destructuring vectors

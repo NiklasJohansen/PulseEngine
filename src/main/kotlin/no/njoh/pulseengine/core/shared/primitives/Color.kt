@@ -1,10 +1,11 @@
 package no.njoh.pulseengine.core.shared.primitives
 
+import no.njoh.pulseengine.core.shared.utils.Extensions.linearToSrgb
+import no.njoh.pulseengine.core.shared.utils.Extensions.srgbToLinear
 import no.njoh.pulseengine.core.shared.utils.Logger
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 
 data class Color(
     var red: Float = 1f,
@@ -148,20 +149,6 @@ data class Color(
         instance.blue  = blue.linearToSrgb()
         instance.alpha = alpha
         return instance
-    }
-
-    private fun Float.srgbToLinear(): Float = when
-    {
-        !isFinite() -> 0f
-        this <= 0.04045f -> this / 12.92f
-        else -> ((this + 0.055f) / 1.055f).pow(2.4f)
-    }
-
-    private fun Float.linearToSrgb(): Float = when
-    {
-        !isFinite() -> 0f
-        this <= 0.0031308f -> this * 12.92f
-        else -> 1.055f * this.pow(1f / 2.4f) - 0.055f
     }
 
     companion object
