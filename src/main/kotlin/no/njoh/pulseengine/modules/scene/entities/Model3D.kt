@@ -10,22 +10,23 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.C
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
 import no.njoh.pulseengine.core.scene.interfaces.Named
+import no.njoh.pulseengine.core.scene.interfaces.Spatial3D
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.annotations.MaterialRef
 import no.njoh.pulseengine.core.shared.annotations.ModelRef
 import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderable
 import org.joml.Matrix4f
 
-class Model3D : SceneEntity(), Scene3DRenderable, Named
+class Model3D : SceneEntity(), Scene3DRenderable, Named, Spatial3D
 {
     override var name = ""
 
     @ModelRef    var model    = ""
     @MaterialRef var material = ""
 
-    @Prop("Position [*P]", i=1) var xPos=0f;   var yPos=0f;   var zPos=0f
-    @Prop("Rotation [*R]", i=2) var xRot=0f;   var yRot=0f;   var zRot=0f
-    @Prop("Scale    [*S]", i=3) var xScale=1f; var yScale=1f; var zScale=1f
+    @Prop("Position [*P]", i=1) override var xPos=0f;   override var yPos=0f;   override var zPos=0f
+    @Prop("Rotation [*R]", i=2) override var xRot=0f;   override var yRot=0f;   override var zRot=0f
+    @Prop("Scale    [*S]", i=3) override var xScale=1f; override var yScale=1f; override var zScale=1f
 
     @Prop("Shadows", i=4) var castLocalShadows = true
     @Prop("Shadows", i=5) var castSunShadows   = true
