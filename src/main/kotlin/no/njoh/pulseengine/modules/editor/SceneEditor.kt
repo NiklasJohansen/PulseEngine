@@ -7,7 +7,6 @@ import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.input.CursorType.*
-import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.surface.Surface
@@ -22,23 +21,17 @@ import no.njoh.pulseengine.modules.ui.layout.docking.DockingPanel
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.Key.*
-import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
-import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
-import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
-import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
-import no.njoh.pulseengine.core.shared.annotations.Icon
-import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.physics.PhysicsEntity
 import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
-import no.njoh.pulseengine.core.shared.utils.*
+import no.njoh.pulseengine.core.shared.utils.FileChooser
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
 import no.njoh.pulseengine.core.service.Service
@@ -55,14 +48,13 @@ import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
 import org.joml.Vector3f
-import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.*
 
 class SceneEditor(
     val uiFactory: UiElementFactory = UiElementFactory(),
-    var enableViewportInteractions: Boolean = true
+    val viewportInteraction: ViewportInteraction? = ViewportInteraction2D()
 ): Service() {
 
     // UI
@@ -71,6 +63,7 @@ class SceneEditor(
     lateinit var inspectorUI: RowPanel
     lateinit var systemPropertiesUI: RowPanel
     lateinit var dockingUI: DockingPanel
+    lateinit var viewportContext: ViewportContext
 
     private var entityPropertyUiRows = THashMap<String, UiElement>()
     private var collapsedPropertyHeaders = mutableListOf<String>()
@@ -79,7 +72,6 @@ class SceneEditor(
     private var outliner: Outliner? = null
 
     // Camera
-    private val cameraController = Camera2DController(MouseButton.MIDDLE, smoothing = 0f)
     private lateinit var activeCamera: Camera
     private lateinit var storedCameraState: CameraState
 
@@ -91,32 +83,8 @@ class SceneEditor(
     private var sceneFileToSaveAs: String? = null
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    // Moving and copying
-    private var isMoving = false
+    // Copying
     private var isCopying = false
-
-    // Rotation
-    private var isRotating = false
-    private var mouseStartAngle = 0f
-    private var entityStartAngle = 0f
-    private var entityStartHeight = 0f
-    private var entityStartWidth = 0f
-
-    // Resizing
-    private var isResizingVertically = false
-    private var isResizingHorizontally = false
-    private var xResizeDirection = 0f
-    private var yResizeDirection = 0f
-    private var resizeIconAngle = 0f
-    private var xMouseStart = 0f
-    private var yMouseStart = 0f
-
-    // Selecting
-    private var isSelecting = false
-    private var xStartSelect = 0f
-    private var yStartSelect = 0f
-    private var xEndSelect = 0f
-    private var yEndSelect = 0f
     private var prevSelectedEntityId: Long? = null
 
     // Loading and saving
@@ -140,8 +108,6 @@ class SceneEditor(
         lastSaveLoadDirectory = engine.config.saveDirectory
 
         // Create surfaces
-        engine.gfx.createSurface("scene_editor_grid",        zOrder = 20, camera = activeCamera, clearColor = Color(0.001f, 0.001f, 0.001f, 1f))
-        engine.gfx.createSurface("scene_editor_gizmo",       zOrder = -50)
         engine.gfx.createSurface("scene_editor_ui_base_bg",  zOrder = -90)
         engine.gfx.createSurface("scene_editor_ui_base",     zOrder = -92, multisampling = MSAA16)
         engine.gfx.createSurface("scene_editor_ui_popup_bg", zOrder = -93)
@@ -174,14 +140,15 @@ class SceneEditor(
 
         // Create and populate editor with UI
         createSceneEditorUI(engine)
+
+        viewportContext = ViewportContext(this, activeCamera, viewportArea)
+        viewportInteraction?.onCreate(engine, viewportContext)
     }
 
     private fun createSceneEditorUI(engine: PulseEngine)
     {
         // Set UI scaling
         UI_SCALE = engine.window.contentScale
-        cameraController.scrollSpeed = 40f * UI_SCALE
-
         // Properties
         inspectorUI = RowPanel()
         systemPropertiesUI = RowPanel()
@@ -337,7 +304,7 @@ class SceneEditor(
 
         if (engine.scene.activeScene.hashCode() != lastSceneHashCode)
         {
-            resetUI()
+            resetUI(engine)
             updateSceneSystemProperties(engine)
             initializeEntities(engine)
             outliner?.reloadEntitiesFromActiveScene()
@@ -346,18 +313,7 @@ class SceneEditor(
 
         if (engine.scene.state == SceneState.STOPPED)
         {
-            if (enableViewportInteractions)
-            {
-                engine.input.setCursorType(ARROW)
-                cameraController.update(engine, activeCamera, enableScrolling = engine.input.hasHoverFocus(viewportArea))
-
-                if (entitySelection.size == 1)
-                    entitySelection.first().handleEntityTransformation(engine)
-
-                handleEntitySelection(engine)
-                handleEntityMoving(engine)
-            }
-
+            viewportInteraction?.onUpdate(engine, viewportContext)
             handleEntityCopying(engine)
         }
 
@@ -374,13 +330,7 @@ class SceneEditor(
                 engine.scene.reload()
             }
         }
-        
-//        if (engine.input.isPressed(LEFT_CONTROL))
-//        {
-//            if (engine.input.wasClicked(Key.D))
-//                handleEntityCopying(engine)
-//        }
-        
+
         updateFooterCallback(
             engine.scene.getAllEntitiesByType().sumOf { it.size },
             entitySelection.size,
@@ -395,23 +345,12 @@ class SceneEditor(
 
     override fun onRender(engine: PulseEngine)
     {
-        val gridSurface      = engine.gfx.getSurfaceOrDefault("scene_editor_grid")
-        val gizmoSurface     = engine.gfx.getSurfaceOrDefault("scene_editor_gizmo")
         val uiBaseSurface    = engine.gfx.getSurfaceOrDefault("scene_editor_ui_base")
         val uiPopupSurface   = engine.gfx.getSurfaceOrDefault("scene_editor_ui_popup")
         val uiBaseBgSurface  = engine.gfx.getSurfaceOrDefault("scene_editor_ui_base_bg")
         val uiPopupBgSurface = engine.gfx.getSurfaceOrDefault("scene_editor_ui_popup_bg")
 
-        if (showGrid)
-            renderGrid(gridSurface)
-
-        if (enableViewportInteractions)
-        {
-            renderEntityGizmo(gizmoSurface)
-            renderSelectionRectangle(gizmoSurface)
-        }
-
-        renderEntityIcon(uiBaseSurface, engine)
+        viewportInteraction?.onRender(engine, viewportContext)
 
         rootUI.render(engine, uiBaseSurface, renderPopup = false)
         rootUI.renderPopup(engine, uiPopupSurface)
@@ -440,50 +379,6 @@ class SceneEditor(
             renderFrostedGlass(engine, surface, node.popup!!, onlyPopups = true)
     }
 
-    private fun renderEntityIcon(surface: Surface, engine: PulseEngine)
-    {
-        val screenWidth = engine.window.width
-        val screenHeight = engine.window.height
-
-        engine.scene.forEachEntityTypeList { entities ->
-            val firstEntity = entities.firstOrNull()
-            val annotation = firstEntity?.let { it::class.findAnnotation<Icon>() }
-            if (annotation != null && annotation.showInViewport && firstEntity is Spatial)
-            {
-                val size = annotation.size
-                val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
-                val font = engine.asset.getOrNull<Font>(uiFactory.style.iconFontName)
-                val iconChar = uiFactory.style.icons[annotation.iconName]
-                if (texture != null || (font != null && iconChar != null))
-                {
-                    surface.setDrawColor(Color.WHITE)
-                    entities.forEachFast()
-                    {
-                        if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
-                        {
-                            it as Spatial
-                            val pos = engine.gfx.mainCamera.worldPosToScreenPos(it.x, it.y, 0f, screenWidth, screenHeight)
-                            if (texture != null)
-                                surface.drawTexture(texture, pos.x, pos.y, size, size, 0f, 0.5f, 0.5f)
-                            else if (iconChar != null)
-                                surface.drawText(iconChar, pos.x, pos.y, font, size, xOrigin = 0.5f, yOrigin = 0.5f)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun renderEntityGizmo(surface: Surface)
-    {
-        val showResizeDots = (entitySelection.size == 1)
-        entitySelection.forEachFast()
-        {
-            if (it.isNot(HIDDEN) && it.isSet(EDITABLE))
-                it.renderGizmo(surface, showResizeDots)
-        }
-    }
-    
     private fun onSaveAs(engine: PulseEngine)
     {
         if (engine.scene.state == SceneState.RUNNING)
@@ -535,7 +430,7 @@ class SceneEditor(
         storedCameraState.saveFrom(activeCamera)
         prevSelectedEntityId = entitySelection.firstOrNull()?.id
 
-        resetUI()
+        resetUI(engine)
         engine.input.setCursorType(ARROW)
 
         if (engine.scene.state == SceneState.STOPPED)
@@ -573,7 +468,6 @@ class SceneEditor(
             return
         }
 
-//        if (!isMoving || isCopying)
         if (isCopying)
             return
 
@@ -581,357 +475,6 @@ class SceneEditor(
         outliner?.addEntities(newEntities)
 
         isCopying = true
-    }
-
-    private fun handleEntitySelection(engine: PulseEngine)
-    {
-        // Select all with CTRL + A
-        if (engine.input.wasClicked(A) && engine.input.isPressed(LEFT_CONTROL))
-        {
-            clearEntitySelection()
-            engine.scene.forEachEntity()
-            {
-                it.set(SELECTED)
-                entitySelection.add(it)
-            }
-            outliner?.selectEntities(entitySelection)
-        }
-
-        val xMouse = engine.input.xWorldMouse
-        val yMouse = engine.input.yWorldMouse
-
-        // Select / deselect single entity
-        if (engine.input.wasClicked(MouseButton.LEFT))
-        {
-            // Select entity
-            if (!isMoving && !isSelecting && !isRotating && !isResizingVertically && !isResizingHorizontally)
-            {
-                var zMin = Float.MAX_VALUE
-                var closestEntity: SceneEntity? = null
-                engine.scene.forEachEntity()
-                {
-                    if (it is Spatial && it.z <= zMin && it.isInside(xMouse, yMouse) && it.isSet(EDITABLE) && it.isNot(HIDDEN))
-                    {
-                        zMin = it.z
-                        closestEntity = it
-                    }
-                }
-
-                closestEntity?.let()
-                {
-                    val isInSelection = (it in entitySelection)
-                    if (engine.input.isPressed(LEFT_CONTROL))
-                    {
-                        if (isInSelection) removeEntityFromSelection(it) else addEntityToSelection(it)
-
-                        if (entitySelection.size == 1)
-                        {
-                            selectSingleEntity(engine, entitySelection.first())
-                        }
-                        else
-                        {
-                            inspectorUI.clearChildren()
-                            entityPropertyUiRows.clear()
-                            outliner?.selectEntities(entitySelection)
-                        }
-                    }
-                    else if (!isInSelection)
-                    {
-                        selectSingleEntity(engine, it)
-                    }
-                    isMoving = true
-                }
-            }
-        }
-
-        // Start multi selection
-        if (engine.input.isPressed(MouseButton.LEFT))
-        {
-            if (!isMoving && !isRotating && !isResizingVertically && !isResizingHorizontally)
-            {
-                xEndSelect = xMouse
-                yEndSelect = yMouse
-
-                if (!isSelecting)
-                {
-                    xStartSelect = xEndSelect
-                    yStartSelect = yEndSelect
-                    isSelecting = true
-                }
-            }
-        }
-        else isSelecting = false
-
-        // Multi selection
-        if (isSelecting)
-        {
-            val xStart = min(xStartSelect, xEndSelect)
-            val yStart = min(yStartSelect, yEndSelect)
-            val width  = abs(xEndSelect - xStartSelect)
-            val height  = abs(yEndSelect - yStartSelect)
-            val selectedEntity = entitySelection.firstOrNull()
-            val prevEntityCount = entitySelection.size
-
-            if (!engine.input.isPressed(LEFT_CONTROL))
-            {
-                // Reset selection only if CTRL is not pressed
-                entitySelection.forEachFast { it.setNot(SELECTED) }
-                entitySelection.clear()
-            }
-
-            engine.scene.forEachEntity()
-            {
-                if (it.isSet(EDITABLE) &&
-                    it.isNot(HIDDEN) &&
-                    it.isNot(SELECTED) &&
-                    it is Spatial &&
-                    it.isOverlapping(xStart, yStart, width, height)
-                ) {
-                    addEntityToSelection(it)
-                }
-            }
-
-            if (entitySelection.size == 1)
-            {
-                if (entitySelection.first() !== selectedEntity)
-                    selectSingleEntity(engine, entitySelection.first())
-            }
-            else
-            {
-                inspectorUI.clearChildren()
-                if (entitySelection.size != prevEntityCount)
-                    outliner?.selectEntities(entitySelection)
-            }
-        }
-    }
-
-    private fun handleEntityMoving(engine: PulseEngine)
-    {
-        // Nudge with arrow keys
-        var xMove = 0f
-        var yMove = 0f
-        if (engine.input.wasClicked(UP)) yMove -= 1
-        if (engine.input.wasClicked(DOWN)) yMove += 1
-        if (engine.input.wasClicked(LEFT)) xMove -= 1
-        if (engine.input.wasClicked(RIGHT)) xMove += 1
-        if (xMove != 0f || yMove != 0f)
-        {
-            entitySelection.forEachFast()
-            {
-                if (it is Spatial)
-                {
-                    it.x += xMove
-                    it.y += yMove
-                    it.set(POSITION_UPDATED)
-                    it.onMovedScaledOrRotated(engine)
-                    updateEntityPropertiesPanel(it::x.name, it.x)
-                    updateEntityPropertiesPanel(it::y.name, it.y)
-                }
-            }
-        }
-
-        if (!isMoving) return
-
-        if (!engine.input.isPressed(MouseButton.LEFT))
-        {
-            engine.input.setCursorType(ARROW)
-            isMoving = false
-            return
-        }
-
-        for (entity in entitySelection)
-        {
-            if (entity !is Spatial) continue
-
-            val xDelta = engine.input.xdMouse / activeCamera.scale.x
-            val yDelta = engine.input.ydMouse / activeCamera.scale.y
-            if (xDelta != 0f || yDelta != 0f)
-            {
-                entity.x += xDelta
-                entity.y += yDelta
-                entity.set(POSITION_UPDATED)
-                entity.onMovedScaledOrRotated(engine)
-                updateEntityPropertiesPanel(entity::x.name, entity.x)
-                updateEntityPropertiesPanel(entity::y.name, entity.y)
-            }
-        }
-    }
-
-    private fun SceneEntity.handleEntityTransformation(engine: PulseEngine)
-    {
-        if (this !is Spatial) return
-
-        val border = min(abs(width), abs(height)) * 0.1f
-        val rotateArea = min(abs(width), abs(height)) * 0.2f
-
-        val xDiff = engine.input.xWorldMouse - x
-        val yDiff = engine.input.yWorldMouse - y
-        val mouseEntityAngle = -atan2(yDiff, xDiff)
-        val angle = mouseEntityAngle - (this.rotation / 180f * PI.toFloat())
-        val len = sqrt(xDiff * xDiff + yDiff * yDiff)
-        val xMouse = x + cos(angle) * len
-        val yMouse = y + sin(angle) * len
-        val padding = getGizmoPadding()
-        val w = (abs(width) + padding * 2) / 2
-        val h = (abs(height) + padding * 2) / 2
-
-        val resizeBottom = xMouse >= x - w - border && xMouse <= x + w + border && yMouse >= y + h - border && yMouse <= y + h + border
-        val resizeTop = xMouse >= x - w - border && xMouse <= x + w + border && yMouse >= y - h - border && yMouse <= y - h + border
-        val resizeLeft = xMouse >= x - w - border && xMouse <= x - w + border && yMouse >= y - h - border && yMouse <= y + h + border
-        val resizeRight = xMouse >= x + w - border && xMouse <= x + w + border && yMouse >= y - h - border && yMouse <= y + h + border
-
-        val rotateTopLeft = xMouse >= x - w - rotateArea && xMouse <= x - w && yMouse >= y - h - rotateArea && yMouse <= y - h
-        val rotateBottomLeft = xMouse >= x - w - rotateArea && xMouse <= x - w && yMouse >= y + h && yMouse <= y + h + rotateArea
-        val rotateTopRight = xMouse >= x + w && xMouse <= x + w + rotateArea && yMouse >= y - h - rotateArea && yMouse <= y - h
-        val rotateBottomRight = xMouse >= x + w && xMouse <= x + w + rotateArea && yMouse >= y + h && yMouse <= y + h + rotateArea
-
-        if (engine.input.isPressed(MouseButton.LEFT))
-        {
-            if (!isMoving && !isSelecting && !isRotating && !isResizingHorizontally && !isResizingVertically)
-            {
-                if (resizeBottom || resizeTop)
-                {
-                    isResizingVertically = true
-                    entityStartWidth = width
-                    entityStartHeight = height
-                    xMouseStart = xMouse
-                    yMouseStart = yMouse
-                    yResizeDirection = (if (yMouse > y) -1f else 1f) * (if (height < 0) -1f else 1f)  // Inverts scaling when mouse is on opposite side or height is inverted
-                    resizeIconAngle = getIconAngle(rotation, resizeLeft, resizeRight, resizeTop, resizeBottom)
-                }
-
-                if (resizeLeft || resizeRight)
-                {
-                    isResizingHorizontally = true
-                    entityStartWidth = width
-                    entityStartHeight = height
-                    xMouseStart = xMouse
-                    yMouseStart = yMouse
-                    xResizeDirection = (if (xMouse > x) -1f else 1f) * (if (width < 0) -1f else 1f)
-                    resizeIconAngle = getIconAngle(rotation, resizeLeft, resizeRight, resizeTop, resizeBottom)
-                }
-
-                if (!isResizingVertically && !isResizingHorizontally && (rotateTopLeft || rotateBottomLeft || rotateTopRight || rotateBottomRight))
-                {
-                    isRotating = true
-                    entityStartAngle = this.rotation
-                    mouseStartAngle = mouseEntityAngle
-                }
-            }
-        }
-        else
-        {
-            if (isResizingHorizontally || isResizingVertically || isRotating)
-                onMovedScaledOrRotated(engine)
-
-            isResizingVertically = false
-            isResizingHorizontally = false
-            isRotating = false
-        }
-
-        val ctrPressed = engine.input.isPressed(Key.LEFT_CONTROL)
-        val shiftPressed = engine.input.isPressed(Key.LEFT_SHIFT)
-
-        when
-        {
-            // Rotating
-            isRotating -> {
-                val diff = (mouseEntityAngle - mouseStartAngle) / PI.toFloat() * 180f
-                rotation = if (ctrPressed)
-                    ((entityStartAngle + diff).toInt() / 45 * 45).toFloat()
-                else
-                    entityStartAngle + diff
-            }
-
-            // Horizontal / corner resize, keep ratio
-            isResizingHorizontally && shiftPressed -> {
-                val xd = (xMouseStart - xMouse)
-                val ratio = entityStartHeight / if (entityStartWidth == 0f) entityStartHeight else entityStartWidth
-                width = entityStartWidth + xd * xResizeDirection
-                height = entityStartHeight + ratio * xd * xResizeDirection
-            }
-
-            // Vertical resize, keep ratio
-            isResizingVertically && shiftPressed -> {
-                val yd = (yMouseStart - yMouse)
-                val ratio = entityStartWidth / if (entityStartHeight == 0f) entityStartWidth else entityStartHeight
-                height = entityStartHeight + yd * yResizeDirection
-                width = entityStartWidth + ratio * yd * yResizeDirection
-            }
-
-            // Corner resize
-            isResizingHorizontally && isResizingVertically -> {
-                width = entityStartWidth + (xMouseStart - xMouse) * xResizeDirection
-                height = entityStartHeight + (yMouseStart - yMouse) * yResizeDirection
-            }
-
-            // Horizontal resize
-            isResizingHorizontally -> width = entityStartWidth + (xMouseStart - xMouse) * xResizeDirection
-
-            // Vertical resize
-            isResizingVertically -> height = entityStartHeight + (yMouseStart - yMouse) * yResizeDirection
-        }
-
-        // Update resize icon angle
-        if (!isResizingHorizontally && !isResizingVertically)
-            resizeIconAngle = getIconAngle(rotation, resizeLeft, resizeRight, resizeTop, resizeBottom)
-
-        // Determine icon type
-        val cursorType =
-            if (!isRotating && (isResizingHorizontally || isResizingVertically || resizeBottom || resizeTop || resizeLeft || resizeRight))
-                when (resizeIconAngle)
-                {
-                    in   0f ..  22f -> HORIZONTAL_RESIZE
-                    in  22f ..  68f -> TOP_LEFT_RESIZE
-                    in  68f .. 112f -> VERTICAL_RESIZE
-                    in 112f .. 158f -> TOP_RIGHT_RESIZE
-                    in 158f .. 202f -> HORIZONTAL_RESIZE
-                    in 202f .. 248f -> TOP_LEFT_RESIZE
-                    in 248f .. 292f -> VERTICAL_RESIZE
-                    in 292f .. 338f -> TOP_RIGHT_RESIZE
-                    in 338f .. 360f -> HORIZONTAL_RESIZE
-                    else            -> ARROW
-                }
-            else if (isRotating || rotateTopLeft || rotateBottomLeft || rotateTopRight || rotateBottomRight)
-                ROTATE
-            else if (xMouse > x - w  && xMouse < x + w && yMouse > y - h && yMouse < y + h)
-                MOVE
-            else null // ARROW
-
-        if (engine.input.hasHoverFocus(viewportArea))
-            cursorType?.let { engine.input.setCursorType(it) }
-
-        if (isRotating || isResizingHorizontally || isResizingVertically)
-        {
-            updateEntityPropertiesPanel(::rotation.name, rotation)
-            updateEntityPropertiesPanel(::width.name, width)
-            updateEntityPropertiesPanel(::height.name, height)
-            set(SIZE_UPDATED)
-            set(ROTATION_UPDATED)
-            this.onMovedScaledOrRotated(engine)
-        }
-    }
-
-    private fun getIconAngle(startAngle: Float, resizeLeft: Boolean, resizeRight: Boolean, resizeTop: Boolean, resizeBottom: Boolean): Float
-    {
-        var iconAngle = -startAngle - when
-        {
-            resizeTop && resizeRight -> 135
-            resizeRight && resizeBottom -> 225
-            resizeBottom && resizeLeft -> 315
-            resizeLeft && resizeTop -> 45
-            resizeRight -> 180
-            resizeLeft -> 0
-            resizeTop -> 90
-            resizeBottom -> 270
-            else -> 0
-        }
-
-        iconAngle %= 360
-        if (iconAngle < 0)
-            iconAngle += 360
-
-        return iconAngle
     }
 
     private fun createNewEntity(engine: PulseEngine, type: KClass<out SceneEntity>)
@@ -956,6 +499,7 @@ class SceneEditor(
         if (entities.isEmpty())
         {
             clearEntitySelection()
+            outliner?.selectEntities(emptyList())
         }
         else if (entities.size == 1)
         {
@@ -1041,7 +585,7 @@ class SceneEditor(
 
         entitySelection.forEachFast { it.setDead(engine) }
         outliner?.removeEntities(entitySelection)
-        isMoving = false
+        viewportInteraction?.reset(engine, viewportContext)
         clearEntitySelection()
     }
 
@@ -1070,133 +614,7 @@ class SceneEditor(
         }
     }
 
-    ////////////////////////////// RENDERING  //////////////////////////////
-
-    private fun renderSelectionRectangle(surface: Surface)
-    {
-        if (isSelecting)
-        {
-            val pos = activeCamera.worldPosToScreenPos(xStartSelect, yStartSelect, 0f, surface.config.width, surface.config.height)
-            val x = pos.x
-            val y = pos.y
-            val w = (xEndSelect - xStartSelect) * activeCamera.scale.x
-            val h = (yEndSelect - yStartSelect) * activeCamera.scale.y
-
-            surface.setDrawColor(1f, 1f, 1f, 0.8f)
-            surface.drawLine(x, y, x + w, y)
-            surface.drawLine(x, y + h, x + w, y + h)
-            surface.drawLine(x, y, x, y + h)
-            surface.drawLine(x + w, y, x + w, y + h)
-        }
-    }
-
-    private fun SceneEntity.renderGizmo(surface: Surface, showResizeDots: Boolean)
-    {
-        if (this !is Spatial) return
-
-        val pos = activeCamera.worldPosToScreenPos(x, y, 0f, surface.config.width, surface.config.height)
-        val padding = getGizmoPadding()
-        val w = (width + padding * 2) * activeCamera.scale.x / 2f
-        val h = (height + padding * 2) * activeCamera.scale.y / 2f
-        val size = 4f * UI_SCALE
-        val halfSize = size / 2f
-
-        if (rotation != 0f)
-        {
-            val r = -this.rotation / 180f * PI.toFloat()
-            val c = cos(r)
-            val s = sin(r)
-            val x0 = -w * c - h * s
-            val y0 = -w * s + h * c
-            val x1 =  w * c - h * s
-            val y1 =  w * s + h * c
-
-            surface.setDrawColor(1f, 1f, 1f, 0.8f)
-            surface.drawLine(pos.x + x0, pos.y + y0, pos.x + x1, pos.y + y1)
-            surface.drawLine(pos.x + x1, pos.y + y1, pos.x - x0, pos.y - y0)
-            surface.drawLine(pos.x - x0, pos.y - y0, pos.x - x1, pos.y - y1)
-            surface.drawLine(pos.x - x1, pos.y - y1, pos.x + x0, pos.y + y0)
-
-            if (showResizeDots)
-            {
-                surface.setDrawColor(1f, 1f, 1f, 1f)
-                surface.drawQuad(pos.x + x0 - halfSize, pos.y + y0 - halfSize, size, size)
-                surface.drawQuad(pos.x + x1 - halfSize, pos.y + y1 - halfSize, size, size)
-                surface.drawQuad(pos.x - x0 - halfSize, pos.y - y0 - halfSize, size, size)
-                surface.drawQuad(pos.x - x1 - halfSize, pos.y - y1 - halfSize, size, size)
-            }
-        }
-        else
-        {
-            surface.setDrawColor(1f, 1f, 1f, 0.8f)
-            surface.drawLine(pos.x - w, pos.y - h, pos.x + w, pos.y - h)
-            surface.drawLine(pos.x - w, pos.y + h, pos.x + w, pos.y + h)
-            surface.drawLine(pos.x - w, pos.y - h, pos.x - w, pos.y + h)
-            surface.drawLine(pos.x + w, pos.y - h, pos.x + w, pos.y + h)
-
-            if (showResizeDots)
-            {
-                surface.setDrawColor(1f, 1f, 1f, 1f)
-                surface.drawQuad(pos.x - w - halfSize, pos.y - h - halfSize, size, size)
-                surface.drawQuad(pos.x + w - halfSize, pos.y - h - halfSize, size, size)
-                surface.drawQuad(pos.x - w - halfSize, pos.y + h - halfSize, size, size)
-                surface.drawQuad(pos.x + w - halfSize, pos.y + h - halfSize, size, size)
-            }
-        }
-    }
-
-    private fun renderGrid(surface: Surface)
-    {
-        val cellSize = 200
-        val xStart = (activeCamera.topLeftWorldPosition.x.toInt() / cellSize - 2) * cellSize
-        val yStart = (activeCamera.topLeftWorldPosition.y.toInt() / cellSize - 2) * cellSize
-        val xEnd = (activeCamera.bottomRightWorldPosition.x.toInt() / cellSize + 1) * cellSize
-        val yEnd = (activeCamera.bottomRightWorldPosition.y.toInt() / cellSize + 1) * cellSize
-
-        val middleLineSize = 2f / activeCamera.scale.x
-        val alpha = (activeCamera.scale.x + 0.2f).coerceIn(0.1f, 0.4f)
-        val shade = 0.1f
-
-        surface.setDrawColor(shade, shade, shade, alpha + 0.1f)
-        for (x in xStart until xEnd step cellSize)
-            if (x != 0 && x % 3 == 0) surface.drawLine(x.toFloat(), yStart.toFloat(), x.toFloat(), yEnd.toFloat())
-
-        for (y in yStart until yEnd step cellSize)
-            if (y != 0 && y % 3 == 0) surface.drawLine(xStart.toFloat(), y.toFloat(), xEnd.toFloat(), y.toFloat())
-
-        surface.setDrawColor(shade, shade, shade, alpha)
-        for (x in xStart until xEnd step cellSize)
-            if (x != 0 && x % 3 != 0) surface.drawLine(x.toFloat(), yStart.toFloat(), x.toFloat(), yEnd.toFloat())
-
-        for (y in yStart until yEnd step cellSize)
-            if (y != 0 && y % 3 != 0) surface.drawLine(xStart.toFloat(), y.toFloat(), xEnd.toFloat(), y.toFloat())
-
-        surface.setDrawColor(shade, shade, shade, alpha + 0.2f)
-        surface.drawTexture(Texture.BLANK, -middleLineSize, yStart.toFloat(), middleLineSize, (yEnd - yStart).toFloat())
-        surface.drawTexture(Texture.BLANK, xStart.toFloat(), -middleLineSize, (xEnd - xStart).toFloat(), middleLineSize)
-    }
-
     ////////////////////////////// UTILS //////////////////////////////
-
-    private fun Spatial.isInside(xWorld: Float, yWorld: Float): Boolean
-    {
-        val padding = getGizmoPadding()
-        val w = abs(width) + padding * 2f
-        val h = abs(height) + padding * 2f
-        val xDiff = xWorld - x
-        val yDiff = yWorld - y
-        val angle = -MathUtil.atan2(yDiff, xDiff) - (this.rotation / 180f * PI.toFloat())
-        val len = sqrt(xDiff * xDiff + yDiff * yDiff)
-        val xWorldNew = x + cos(angle) * len
-        val yWorldNew = y + sin(angle) * len
-
-        return xWorldNew > x - w / 2f && xWorldNew < x + w / 2 && yWorldNew > y - h / 2f && yWorldNew < y + h / 2f
-    }
-
-    private fun Spatial.isOverlapping(xWorld: Float, yWorld: Float, width: Float, height: Float): Boolean
-    {
-        return this.x > xWorld && this.x < xWorld + width && this.y > yWorld && this.y < yWorld + height
-    }
 
     private fun clearEntitySelection()
     {
@@ -1210,12 +628,6 @@ class SceneEditor(
     {
         entitySelection.add(entity)
         entity.set(SELECTED)
-    }
-
-    private fun removeEntityFromSelection(entity: SceneEntity)
-    {
-        entitySelection.remove(entity)
-        entity.setNot(SELECTED)
     }
 
     private fun initializeEntities(engine: PulseEngine)
@@ -1235,28 +647,38 @@ class SceneEditor(
             this.init(engine)
     }
 
-    private fun resetUI()
+    private fun resetUI(engine: PulseEngine)
     {
-        isMoving = false
-        isSelecting = false
         isCopying = false
-        isRotating = false
-        isResizingVertically = false
-        isResizingHorizontally = false
+        viewportInteraction?.reset(engine, viewportContext)
         clearEntitySelection()
     }
 
     override fun onDestroy(engine: PulseEngine)
     {
+        viewportInteraction?.onDestroy(engine, viewportContext)
+
         if (shouldPersistEditorLayout)
             dockingUI.saveLayout(engine, "/editor_layout.cfg")
     }
 
-    private fun getGizmoPadding() = GIZMO_PADDING * UI_SCALE
+    internal fun selectedEntities() = entitySelection
 
-    companion object
+    internal fun isGridVisible() = showGrid
+
+    internal fun clearViewportSelection()
     {
-        const val GIZMO_PADDING = 3
+        clearEntitySelection()
+        outliner?.selectEntities(emptyList())
+    }
+
+    internal fun notifyTransformChanged(engine: PulseEngine, entity: SceneEntity, propertyNames: Array<out String>)
+    {
+        propertyNames.forEach { name ->
+            val property = entity::class.memberProperties.firstOrNull { it.name == name } ?: return@forEach
+            updateEntityPropertiesPanel(name, property.getter.call(entity) ?: return@forEach)
+        }
+        entity.onMovedScaledOrRotated(engine)
     }
 }
 
