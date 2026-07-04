@@ -269,6 +269,7 @@ open class InputImpl : InputInternal
         Cursor("", "vertical_resize_cursor", VERTICAL_RESIZE, 0, 0, 0x00036006),
         Cursor("/pulseengine/cursors/move.png", "move_cursor", MOVE, 8, 8),
         Cursor("/pulseengine/cursors/rotate.png", "rotate_cursor", ROTATE, 6, 6),
+        Cursor("/pulseengine/cursors/hand_grab.png", "hand_grab", HAND_GRAB, 8, 8),
         Cursor("/pulseengine/cursors/resize_top_left.png", "top_left_resize_cursor", TOP_LEFT_RESIZE, 8, 8),
         Cursor("/pulseengine/cursors/resize_top_right.png", "top_right_resize_tcursor", TOP_RIGHT_RESIZE, 8, 8)
     )

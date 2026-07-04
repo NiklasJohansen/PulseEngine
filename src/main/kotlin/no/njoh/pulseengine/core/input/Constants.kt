@@ -132,7 +132,7 @@ enum class Key(val code: Int)
 
     companion object
     {
-        val codes = TIntObjectHashMap<Key>().also { map -> values().forEachFast { map.put(it.code, it) } }
+        val codes = TIntObjectHashMap<Key>().also { map -> entries.forEachFast { map.put(it.code, it) } }
     }
 }
 
@@ -190,6 +190,7 @@ enum class CursorType
 {
     ARROW,
     HAND,
+    HAND_GRAB,
     IBEAM,
     CROSSHAIR,
     HORIZONTAL_RESIZE,
