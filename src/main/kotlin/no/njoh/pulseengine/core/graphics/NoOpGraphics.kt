@@ -9,7 +9,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.camera.DefaultCamera
-import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC
+import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC_2D
 import no.njoh.pulseengine.core.graphics.gpu.resource.MaterialBank
 import no.njoh.pulseengine.core.graphics.gpu.resource.ModelBank
 import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
@@ -27,7 +27,7 @@ import no.njoh.pulseengine.core.shared.utils.LogLevel
 
 class NoOpGraphics() : GraphicsInternal
 {
-    override var mainCamera = DefaultCamera(ORTHOGRAPHIC)
+    override var mainCamera = DefaultCamera(ORTHOGRAPHIC_2D)
     override var mainSurface = NoOpSurface()
     override var textureBank = TextureBank()
     override var materialBank = MaterialBank()

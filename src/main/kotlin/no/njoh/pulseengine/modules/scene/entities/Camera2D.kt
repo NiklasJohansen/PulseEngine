@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.modules.scene.entities
 
-import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC_2D
 import no.njoh.pulseengine.core.scene.interfaces.Spatial
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
@@ -11,26 +11,27 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import kotlin.math.*
 
 @Icon("CAMERA", size = 24f, showInViewport = true)
-open class Camera : CommonSceneEntity()
+open class Camera2D : CommonSceneEntity()
 {
-    var viewPortWidth = 1000f
+    var viewPortWidth  = 1000f
     var viewPortHeight = 800f
-    var xOrigin = 0.5f
-    var yOrigin = 0.5f
+    var xOrigin        = 0.5f
+    var yOrigin        = 0.5f
     var targetEntityId = INVALID_ID
-    var trackRotation = false
-    var smoothing = 0.1f
-    var targetZoom = 1f
+    var trackRotation  = false
+    var smoothing      = 0.1f
+    var targetZoom     = 1f
 
-    @JsonIgnore private var initalized = false
-    @JsonIgnore private var lastWidth = 0f
-    @JsonIgnore private var lastHeight = 0f
-    @JsonIgnore private var camSize = 100f
-    @JsonIgnore private var zoom = targetZoom
+    private var initialized = false
+    private var lastWidth   = 0f
+    private var lastHeight  = 0f
+    private var camSize     = 100f
+    private var zoom        = targetZoom
 
     override fun onStart(engine: PulseEngine)
     {
         zoom = targetZoom
+        updateCamera(engine)
     }
 
     override fun onRender(engine: PulseEngine, surface: Surface)
@@ -84,6 +85,11 @@ open class Camera : CommonSceneEntity()
 
     override fun onFixedUpdate(engine: PulseEngine)
     {
+        updateCamera(engine)
+    }
+
+    private fun updateCamera(engine: PulseEngine)
+    {
         engine.scene.getEntityOfType<Spatial>(targetEntityId)?.let { trackEntity(it) }
 
         zoom += (targetZoom - zoom) * smoothing
@@ -93,24 +99,34 @@ open class Camera : CommonSceneEntity()
         val newScale = min(surfaceWidth / viewPortWidth,  surfaceHeight / viewPortHeight) * zoom
         engine.gfx.mainCamera.apply()
         {
-            scale.set(newScale)
-            rotation.z = -super.rotation.toRadians()
-            origin.x = surfaceWidth * xOrigin
-            origin.y = surfaceHeight * (1f - yOrigin)
-            position.x = surfaceWidth * xOrigin - x
-            position.y = y - surfaceHeight * yOrigin
+            position.set(surfaceWidth * xOrigin - x, y - surfaceHeight * yOrigin, 0f)
+            rotation.set(0f, 0f, -super.rotation.toRadians())
+            origin.set(surfaceWidth * xOrigin, surfaceHeight * (1f - yOrigin), 0f)
+            scale.set(newScale, newScale, 1f)
         }
+        configureCameraMode(engine)
+    }
+
+    private fun configureCameraMode(engine: PulseEngine)
+    {
+        val camera = engine.gfx.mainCamera
+        if (camera.projectionType == ORTHOGRAPHIC_2D)
+            return
+
+        camera.nearPlane = -1f
+        camera.farPlane = 5f
+        camera.updateProjection(engine.window.width, engine.window.height, ORTHOGRAPHIC_2D)
     }
 
     private fun trackEntity(entity: Spatial)
     {
-        if (!initalized)
+        if (!initialized)
         {
             x = entity.x
             y = entity.y
             if (trackRotation)
                 rotation = entity.rotation
-            initalized = true
+            initialized = true
             return
         }
 

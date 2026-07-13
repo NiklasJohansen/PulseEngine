@@ -33,9 +33,13 @@ import kotlin.reflect.full.findAnnotation
 /** 
  * 2D selection, camera, transformation and rendering for the scene editor viewport. 
  */
-class ViewportInteraction2D : ViewportInteraction
-{
+class ViewportInteraction2D(
+    initialCameraState: CameraState = CameraState.orthographic2D()
+) : ViewportInteraction {
+
     private val cameraController = Camera2DController(MouseButton.MIDDLE, smoothing = 0f)
+    private val defaultCameraState = initialCameraState.duplicate()
+    private var cameraState = defaultCameraState.duplicate()
 
     // Movement
     private var isMoving = false
@@ -88,6 +92,25 @@ class ViewportInteraction2D : ViewportInteraction
 
         updateSelection(engine, context)
         updateEntityMovement(engine, context)
+    }
+
+    override fun onEditorActivated(engine: PulseEngine, context: ViewportContext)
+    {
+        cameraState.loadInto(context.camera, engine.window.width, engine.window.height)
+        reset(engine, context)
+    }
+
+    override fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext)
+    {
+        cameraState.saveFrom(context.camera)
+        reset(engine, context)
+    }
+
+    override fun resetCamera(engine: PulseEngine, context: ViewportContext)
+    {
+        cameraState = defaultCameraState.duplicate()
+        cameraState.loadInto(context.camera, engine.window.width, engine.window.height)
+        reset(engine, context)
     }
 
     override fun onRender(engine: PulseEngine, context: ViewportContext)

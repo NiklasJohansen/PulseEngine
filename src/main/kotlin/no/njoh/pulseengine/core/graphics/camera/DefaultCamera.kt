@@ -1,8 +1,9 @@
 package no.njoh.pulseengine.core.graphics.camera
 
 import no.njoh.pulseengine.core.PulseEngineInternal
-import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC
-import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.PERSPECTIVE
+import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC_2D
+import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC_3D
+import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.PERSPECTIVE_3D
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Matrix4f
@@ -10,8 +11,8 @@ import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
 
-class DefaultCamera(private var projectionType: CameraProjectionType) : CameraInternal() 
-{
+class DefaultCamera(override var projectionType: CameraProjectionType) : CameraInternal() {
+
     override var projectionMatrix = Matrix4f()
     override var viewProjectionMatrix = Matrix4f()
 
@@ -33,13 +34,13 @@ class DefaultCamera(private var projectionType: CameraProjectionType) : CameraIn
         val xUp = p.x * wInv
         val yUp = p.y * wInv
         val zUp = p.z * wInv
-        val yDown = screenHeight - yUp
-        return worldPositionVector.set(xUp, yDown, zUp)
+        val worldY = if (projectionType == ORTHOGRAPHIC_2D) screenHeight - yUp else yUp
+        return worldPositionVector.set(xUp, worldY, zUp)
     }
 
     override fun worldPosToScreenPos(x: Float, y: Float, z: Float, screenWidth: Int, screenHeight: Int): Vector2f
     {
-        val yUp = screenHeight - y
+        val yUp = if (projectionType == ORTHOGRAPHIC_2D) screenHeight - y else y
         val clip = returnVector.set(x, yUp, z, 1f).mul(viewProjectionMatrix)
         val wInv = 1f / clip.w
         val xNdc = clip.x * wInv
@@ -54,8 +55,16 @@ class DefaultCamera(private var projectionType: CameraProjectionType) : CameraIn
         projectionType = type ?: projectionType
         projectionMatrix = when (projectionType)
         {
-            ORTHOGRAPHIC -> Matrix4f().ortho(0f, width.toFloat(), 0f, height.toFloat(), nearPlane, farPlane) // Y-up
-            PERSPECTIVE -> Matrix4f().perspective(fov.toRadians(), width.toFloat() / height.toFloat(), nearPlane, farPlane)
+            ORTHOGRAPHIC_2D -> Matrix4f().ortho(0f, width.toFloat(), 0f, height.toFloat(), nearPlane, farPlane) // Y-up
+            ORTHOGRAPHIC_3D -> {
+                val halfHeight = orthographicHeight.coerceAtLeast(0.001f) * 0.5f
+                val halfWidth = halfHeight * width.toFloat() / height.coerceAtLeast(1).toFloat()
+                Matrix4f().ortho(-halfWidth, halfWidth, -halfHeight, halfHeight, nearPlane, farPlane)
+            }
+            PERSPECTIVE_3D ->
+            {
+                Matrix4f().perspective(fov.toRadians(), width.toFloat() / height.coerceAtLeast(1).toFloat(), nearPlane, farPlane)
+            }
         }
         invProjectionMatrix.set(projectionMatrix).invert()
     }
@@ -79,7 +88,7 @@ class DefaultCamera(private var projectionType: CameraProjectionType) : CameraIn
 
         when (projectionType)
         {
-            ORTHOGRAPHIC ->
+            ORTHOGRAPHIC_2D ->
             {
                 viewMatrix
                     .identity()
@@ -90,7 +99,7 @@ class DefaultCamera(private var projectionType: CameraProjectionType) : CameraIn
 
                 invViewMatrix.set(viewMatrix).invert()
             }
-            PERSPECTIVE ->
+            ORTHOGRAPHIC_3D, PERSPECTIVE_3D ->
             {
                 invViewMatrix
                     .identity()
@@ -127,7 +136,6 @@ class DefaultCamera(private var projectionType: CameraProjectionType) : CameraIn
 
     companion object
     {
-        fun createOrthographic(width: Int, height: Int) =
-            DefaultCamera(ORTHOGRAPHIC).also { it.updateProjection(width, height) }
+        fun createOrthographic(width: Int, height: Int) = DefaultCamera(ORTHOGRAPHIC_2D).also { it.updateProjection(width, height) }
     }
 }

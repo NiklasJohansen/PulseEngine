@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.camera.DefaultCamera
-import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC
+import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC_2D
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
@@ -21,7 +21,7 @@ import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 class NoOpSurface: SurfaceInternal()
 {
     override val viewGroup = RenderViewGroup.create()
-    override val camera = DefaultCamera(ORTHOGRAPHIC)
+    override val camera = DefaultCamera(ORTHOGRAPHIC_2D)
     override val config = SurfaceConfigInternal(
         name = "dummy",
         width = 0,

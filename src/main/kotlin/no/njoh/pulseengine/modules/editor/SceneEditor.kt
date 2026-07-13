@@ -47,7 +47,6 @@ import no.njoh.pulseengine.modules.editor.EditorUtil.getPropGroup
 import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
-import org.joml.Vector3f
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.*
@@ -73,7 +72,6 @@ class SceneEditor(
 
     // Camera
     private lateinit var activeCamera: Camera
-    private lateinit var storedCameraState: CameraState
 
     // Scene
     private var lastSceneHashCode = -1
@@ -103,7 +101,6 @@ class SceneEditor(
         // Set editor data
         viewportArea = FocusArea(0f, 0f, engine.window.width.toFloat(), engine.window.height.toFloat())
         activeCamera = engine.gfx.mainCamera
-        storedCameraState = CameraState.from(activeCamera)
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
         lastSaveLoadDirectory = engine.config.saveDirectory
 
@@ -143,6 +140,8 @@ class SceneEditor(
 
         viewportContext = ViewportContext(this, activeCamera, viewportArea)
         viewportInteraction?.onCreate(engine, viewportContext)
+        if (isRunning)
+            viewportInteraction?.onEditorActivated(engine, viewportContext)
     }
 
     private fun createSceneEditorUI(engine: PulseEngine)
@@ -172,7 +171,7 @@ class SceneEditor(
                 MenuBarItem("Reset") {
                     createSceneEditorUI(engine)
                     showGrid = true
-                    storedCameraState.apply { reset() }.loadInto(engine.gfx.mainCamera, engine.window.width, engine.window.height)
+                    viewportInteraction?.resetCamera(engine, viewportContext)
                 }
             )),
             MenuBarButton("Run", listOf(
@@ -426,8 +425,8 @@ class SceneEditor(
 
     private fun stopEditorAndStartGame(engine: PulseEngine)
     {
+        viewportInteraction?.onEditorDeactivated(engine, viewportContext)
         stop() // Stop editor service
-        storedCameraState.saveFrom(activeCamera)
         prevSelectedEntityId = entitySelection.firstOrNull()?.id
 
         resetUI(engine)
@@ -442,14 +441,14 @@ class SceneEditor(
 
     private fun stopGameAndStartEditor(engine: PulseEngine)
     {
-        start() // Start editor service
-        storedCameraState.loadInto(activeCamera, engine.window.width, engine.window.height)
-
         if (engine.scene.state != SceneState.STOPPED)
         {
             engine.scene.stop()
             engine.scene.reload()
         }
+
+        viewportInteraction?.onEditorActivated(engine, viewportContext)
+        start() // Start editor service
     }
 
     ////////////////////////////// EDIT TOOLS  //////////////////////////////
@@ -679,42 +678,5 @@ class SceneEditor(
             updateEntityPropertiesPanel(name, property.getter.call(entity) ?: return@forEach)
         }
         entity.onMovedScaledOrRotated(engine)
-    }
-}
-
-data class CameraState(
-    val pos: Vector3f,
-    val rot: Vector3f,
-    val scale: Vector3f,
-) {
-    fun saveFrom(camera: Camera)
-    {
-        pos.set(camera.position)
-        rot.set(camera.rotation)
-        scale.set(camera.scale)
-    }
-
-    fun loadInto(camera: Camera, width: Int, height: Int)
-    {
-        camera.position.set(pos)
-        camera.rotation.set(rot)
-        camera.scale.set(scale)
-        camera.updateProjection(width, height)
-    }
-
-    fun reset()
-    {
-        pos.set(0f)
-        rot.set(0f)
-        scale.set(1f)
-    }
-
-    companion object
-    {
-        fun from(camera: Camera) = CameraState(
-            pos = Vector3f(camera.position),
-            rot = Vector3f(camera.rotation),
-            scale = Vector3f(camera.scale)
-        )
     }
 }

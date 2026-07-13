@@ -5,6 +5,9 @@ import org.joml.*
 
 abstract class Camera
 {
+    /** The projection type currently used by this camera. */
+    abstract val projectionType: CameraProjectionType
+
     /** Camera matrices */
     open val viewMatrix = Matrix4f()
     open val projectionMatrix = Matrix4f()
@@ -31,7 +34,11 @@ abstract class Camera
     var farPlane = 5f
     var nearPlane = -1f
 
+    /** Vertical field of view in degrees */
     var fov = 90f
+
+    /** Vertical world-space height used by the orthographic 3D projection. */
+    var orthographicHeight = 10f
 
     /** Screen positions in world space */
     val topLeftWorldPosition = Vector2f()
