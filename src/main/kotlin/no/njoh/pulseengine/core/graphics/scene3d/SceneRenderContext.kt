@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.LightBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredLightGrid
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
+import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderView
@@ -23,6 +24,10 @@ import org.joml.Vector3f
 
 abstract class SceneRenderContext()
 {
+    /**
+     * Submits a [Model] to be rendered in the next frame.
+     * If no material is provided, the model's default material will be used.
+     */
     abstract fun submitModel(
         engine: PulseEngine,
         model: Model,
@@ -36,6 +41,9 @@ abstract class SceneRenderContext()
         objectId: Long = -1
     )
 
+    /**
+     * Submits a specific [Mesh] to be rendered in the next frame.
+     */
     abstract fun submitMesh(
         mesh: Mesh,
         material: Material?,
@@ -46,6 +54,9 @@ abstract class SceneRenderContext()
         objectId: Long = -1
     )
 
+    /**
+     * Submits a point light to be rendered in the next frame.
+     */
     abstract fun submitPointLight(
         position: Vector3f,
         radius: Float,
@@ -57,6 +68,9 @@ abstract class SceneRenderContext()
         shadowId: Long = 0L
     )
 
+    /**
+     * Submits a spotlight to be rendered in the next frame.
+     */
     abstract fun submitSpotLight(
         position: Vector3f,
         direction: Vector3f,
@@ -70,6 +84,11 @@ abstract class SceneRenderContext()
         shadowImportance: Float = 1f,
         shadowId: Long = 0L
     )
+
+    /**
+     * Returns the latest submitted [RenderScene].
+     */
+    abstract fun getSubmittedScene(): RenderScene
 }
 
 abstract class SceneRenderContextInternal : SceneRenderContext()

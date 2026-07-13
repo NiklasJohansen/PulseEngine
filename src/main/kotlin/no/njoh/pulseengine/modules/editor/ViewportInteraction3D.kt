@@ -12,6 +12,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RG32I
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ObjectIdRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ObjectOutlineRenderer
+import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.Key
@@ -26,10 +27,11 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.scene.interfaces.Rotatable3D
 import no.njoh.pulseengine.core.scene.interfaces.Spatial3D
 import no.njoh.pulseengine.core.scene.interfaces.Translatable3D
-import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
-import no.njoh.pulseengine.modules.scene.entities.AnimatedModel3D
+import no.njoh.pulseengine.core.scene.interfaces.ConicalLight3D
 import no.njoh.pulseengine.core.scene.interfaces.Light3D
+import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.cameraFacingAxisSigns
 import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.closestAxisParameter
@@ -41,9 +43,6 @@ import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.rotateAroundPivot
 import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.scaleAroundPivot
 import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.signedAngleDegrees
 import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.triangleWinding
-import no.njoh.pulseengine.modules.scene.entities.Model3D
-import no.njoh.pulseengine.modules.scene.entities.PointLight3D
-import no.njoh.pulseengine.modules.scene.entities.SpotLight3D
 import org.joml.Matrix4f
 import org.joml.Quaternionf
 import org.joml.Vector2f
@@ -52,11 +51,12 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.tan
 
-/** 
+/**
  * 3D selection, transformation, rotation, scaling, camera and rendering for the scene editor viewport.
  */
 class ViewportInteraction3D : ViewportInteraction
@@ -83,6 +83,7 @@ class ViewportInteraction3D : ViewportInteraction
     private val tmpP2 = Vector2f()
     private val tmpP3 = Vector2f()
     private val tmpMouse = Vector2f()
+    private val submittedBounds = Model.Aabb()
 
     override fun onCreate(engine: PulseEngine, context: ViewportContext)
     {
@@ -100,7 +101,7 @@ class ViewportInteraction3D : ViewportInteraction
         ).addRenderer(ObjectIdRenderer())
 
         engine.gfx.createSurface(
-            name = GIZMO_SURFACE, 
+            name = GIZMO_SURFACE,
             zOrder = -50
         ).addRenderer(ObjectOutlineRenderer(OBJECT_ID_SURFACE))
 
@@ -124,7 +125,7 @@ class ViewportInteraction3D : ViewportInteraction
             return
         }
 
-        val selected = selectedTransformables(context)
+        val selected = getSelectedTransformables(context)
         if (selected != null && !supportsMode(selected, gizmoMode))
             gizmoMode = GizmoMode.MOVE
 
@@ -196,7 +197,7 @@ class ViewportInteraction3D : ViewportInteraction
             return
         }
 
-        val selected = selectedTransformables(context)
+        val selected = getSelectedTransformables(context)
         selected?.targets?.forEachFast { outlineRenderer?.setSelected(it.entity.id) }
 
         val selectedIds = selected?.targets?.mapTo(HashSet()) { it.entity.id } ?: emptySet()
@@ -247,7 +248,7 @@ class ViewportInteraction3D : ViewportInteraction
         }
     }
 
-    private fun selectedTransformables(context: ViewportContext): TransformSelection?
+    private fun getSelectedTransformables(context: ViewportContext): TransformSelection?
     {
         if (context.selection.isEmpty()) return null
         val targets = ArrayList<SelectedTarget>(context.selection.size)
@@ -255,7 +256,7 @@ class ViewportInteraction3D : ViewportInteraction
         for (entity in context.selection)
         {
             val spatial = entity as? Translatable3D ?: return null
-            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN)) 
+            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
                 return null
             targets += SelectedTarget(entity, spatial)
             pivot.add(spatial.xPos, spatial.yPos, spatial.zPos)
@@ -281,10 +282,10 @@ class ViewportInteraction3D : ViewportInteraction
         }
         context.selectMultiple(engine, selection)
         observedSelectionId = Long.MIN_VALUE
-        selectedTransformables(context)?.let {
+        getSelectedTransformables(context)?.let {
             orbitPivot.set(it.pivot)
             orbitPivotValid = true
-            if (!supportsMode(it, gizmoMode)) 
+            if (!supportsMode(it, gizmoMode))
                 gizmoMode = GizmoMode.MOVE
         }
         if (selection.isEmpty()) orbitPivotValid = false
@@ -297,13 +298,13 @@ class ViewportInteraction3D : ViewportInteraction
         var closestDistance = LIGHT_MARKER_HIT_RADIUS
         engine.scene.forEachEntity { entity ->
             val light = entity as? Light3D ?: return@forEachEntity
-            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN)) 
+            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
                 return@forEachEntity
-            
+
             tmpV0.set(light.xPos, light.yPos, light.zPos)
-            if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, tmpP0)) 
+            if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, tmpP0))
                 return@forEachEntity
-            
+
             val distance = tmpMouse.distance(tmpP0)
             if (distance < closestDistance)
             {
@@ -316,11 +317,10 @@ class ViewportInteraction3D : ViewportInteraction
 
     private fun observeSelection(context: ViewportContext)
     {
-        val selected = selectedTransformables(context)
+        val selected = getSelectedTransformables(context)
         val id = context.selection.fold(1L) { signature, entity -> signature * 31L + entity.id }
         if (id == observedSelectionId) return
 
-        // An outliner or scene change supersedes any asynchronous click still in flight.
         observedSelectionId = id
         pickPending = false
         transformDrag = null
@@ -400,7 +400,7 @@ class ViewportInteraction3D : ViewportInteraction
 
         if (!hover) return false
 
-        if (input.wasClicked(Key.F) && selectedTransformables(context) != null)
+        if (input.wasClicked(Key.F) && getSelectedTransformables(context) != null)
             frameSelection(engine, context)
 
         if (input.yScroll != 0f)
@@ -417,7 +417,7 @@ class ViewportInteraction3D : ViewportInteraction
     private fun ensureOrbitPivot(context: ViewportContext, camera: Camera)
     {
         if (orbitPivotValid) return
-        val selected = selectedTransformables(context)
+        val selected = getSelectedTransformables(context)
         if (selected != null)
         {
             orbitPivot.set(selected.pivot)
@@ -432,14 +432,14 @@ class ViewportInteraction3D : ViewportInteraction
 
     private fun updateOrbitPivotFromSelection(context: ViewportContext)
     {
-        val selected = selectedTransformables(context) ?: return
+        val selected = getSelectedTransformables(context) ?: return
         orbitPivot.set(selected.pivot)
         orbitPivotValid = true
     }
 
     private fun frameSelection(engine: PulseEngine, context: ViewportContext)
     {
-        val selected = selectedTransformables(context) ?: return
+        val selected = getSelectedTransformables(context) ?: return
         val center = Vector3f(selected.pivot)
         var radius = 1f
         selected.targets.forEach { target ->
@@ -456,51 +456,85 @@ class ViewportInteraction3D : ViewportInteraction
 
     private fun getSelectionBounds(engine: PulseEngine, entity: SceneEntity, spatial: Translatable3D): Pair<Vector3f, Float>
     {
+        val scene = engine.gfx.sceneContext.getSubmittedScene()
+        var found = false
+        
+        found = found or includeObjectBounds(scene.opaqueItems,  entity.id, submittedBounds)
+        found = found or includeObjectBounds(scene.maskedItems,  entity.id, submittedBounds)
+        found = found or includeObjectBounds(scene.blendedItems, entity.id, submittedBounds)
+
+        if (found)
+        {
+            val center = Vector3f(
+                (submittedBounds.xMin + submittedBounds.xMax) * 0.5f,
+                (submittedBounds.yMin + submittedBounds.yMax) * 0.5f,
+                (submittedBounds.zMin + submittedBounds.zMax) * 0.5f
+            )
+            val halfWidth = (submittedBounds.xMax - submittedBounds.xMin) * 0.5f
+            val halfHeight = (submittedBounds.yMax - submittedBounds.yMin) * 0.5f
+            val halfDepth = (submittedBounds.zMax - submittedBounds.zMin) * 0.5f
+            return center to max(sqrt(halfWidth * halfWidth + halfHeight * halfHeight + halfDepth * halfDepth), 0.25f)
+        }
+
         if (entity is Light3D)
             return Vector3f(entity.xPos, entity.yPos, entity.zPos) to max(entity.radius, 1f)
 
-        val modelName = when (entity) // TODO: Remove usage of concrete entity type
-        {
-            is Model3D -> entity.model
-            is AnimatedModel3D -> entity.model
-            else -> ""
-        }
-
-        val bounds = engine.asset.getOrNull<Model>(modelName)?.localBounds
-        if (bounds == null)
-            return Vector3f(spatial.xPos, spatial.yPos, spatial.zPos) to 1f
-
-        val fullTransform = spatial as? Spatial3D
-            ?: return Vector3f(spatial.xPos, spatial.yPos, spatial.zPos) to 1f
-
-        val localCenter = Vector3f(
-            (bounds.xMin + bounds.xMax) * 0.5f,
-            (bounds.yMin + bounds.yMax) * 0.5f,
-            (bounds.zMin + bounds.zMax) * 0.5f
-        )
-        
-        val localHalf = Vector3f(
-            (bounds.xMax - bounds.xMin) * 0.5f,
-            (bounds.yMax - bounds.yMin) * 0.5f,
-            (bounds.zMax - bounds.zMin) * 0.5f
-        )
-        
-        val transform = Matrix4f().translation(fullTransform.xPos, fullTransform.yPos, fullTransform.zPos)
-            .rotateXYZ(fullTransform.xRot.toRadians(), fullTransform.yRot.toRadians(), fullTransform.zRot.toRadians())
-            .scale(fullTransform.xScale, fullTransform.yScale, fullTransform.zScale)
-        
-        transform.transformPosition(localCenter)
-        
-        val radius = sqrt(
-            localHalf.x * localHalf.x * fullTransform.xScale * fullTransform.xScale +
-            localHalf.y * localHalf.y * fullTransform.yScale * fullTransform.yScale +
-            localHalf.z * localHalf.z * fullTransform.zScale * fullTransform.zScale
-        )
-
-        return localCenter to max(radius, 0.25f)
+        return Vector3f(spatial.xPos, spatial.yPos, spatial.zPos) to 1f
     }
 
-    private fun beginTransformDrag(engine: PulseEngine, context: ViewportContext, selection: TransformSelection, handle: Handle): Boolean 
+    private fun includeObjectBounds(items: DynamicList<RenderItem>, objectId: Long, outBounds: Model.Aabb): Boolean
+    {
+        var found = false
+        items.forEach { item ->
+  
+            if (item.objectId != objectId) return@forEach
+
+            val bounds = item.cullingBounds ?: item.mesh.localBounds
+            val transform = item.transform
+
+            val xCenter = (bounds.xMin + bounds.xMax) * 0.5f
+            val yCenter = (bounds.yMin + bounds.yMax) * 0.5f
+            val zCenter = (bounds.zMin + bounds.zMax) * 0.5f
+            val xHalf   = (bounds.xMax - bounds.xMin) * 0.5f
+            val yHalf   = (bounds.yMax - bounds.yMin) * 0.5f
+            val zHalf   = (bounds.zMax - bounds.zMin) * 0.5f
+
+            val xWorldCenter = transform.m00 * xCenter + transform.m10 * yCenter + transform.m20 * zCenter + transform.m30
+            val yWorldCenter = transform.m01 * xCenter + transform.m11 * yCenter + transform.m21 * zCenter + transform.m31
+            val zWorldCenter = transform.m02 * xCenter + transform.m12 * yCenter + transform.m22 * zCenter + transform.m32
+            val xWorldHalf   = abs(transform.m00) * xHalf + abs(transform.m10) * yHalf + abs(transform.m20) * zHalf
+            val yWorldHalf   = abs(transform.m01) * xHalf + abs(transform.m11) * yHalf + abs(transform.m21) * zHalf
+            val zWorldHalf   = abs(transform.m02) * xHalf + abs(transform.m12) * yHalf + abs(transform.m22) * zHalf
+            
+            val xMin = xWorldCenter - xWorldHalf
+            val yMin = yWorldCenter - yWorldHalf
+            val zMin = zWorldCenter - zWorldHalf
+            val xMax = xWorldCenter + xWorldHalf
+            val yMax = yWorldCenter + yWorldHalf
+            val zMax = zWorldCenter + zWorldHalf
+
+            if (!found)
+            {
+                outBounds.set(xMin, yMin, zMin, xMax, yMax, zMax)
+                found = true
+            }
+            else
+            {
+                outBounds.set(
+                    min(outBounds.xMin, xMin),
+                    min(outBounds.yMin, yMin),
+                    min(outBounds.zMin, zMin),
+                    max(outBounds.xMax, xMax),
+                    max(outBounds.yMax, yMax),
+                    max(outBounds.zMax, zMax)
+                )
+            }
+        }
+
+        return found
+    }
+
+    private fun beginTransformDrag(engine: PulseEngine, context: ViewportContext, selection: TransformSelection, handle: Handle): Boolean
     {
         if (!supportsMode(selection, gizmoMode)) return false
         val pivot = Vector3f(selection.pivot)
@@ -578,16 +612,16 @@ class ViewportInteraction3D : ViewportInteraction
             GizmoMode.ROTATE ->
             {
                 val axis = axis(drag.handle, tmpV0)
-                if (!intersectPlane(ray, drag.pivot, axis, tmpV1)) 
+                if (!intersectPlane(ray, drag.pivot, axis, tmpV1))
                     return
                 tmpV1.sub(drag.pivot)
-                if (tmpV1.lengthSquared() < 1e-6f) 
+                if (tmpV1.lengthSquared() < 1e-6f)
                     return
                 tmpV1.normalize()
-                
+
                 val angle = signedAngleDegrees(drag.startVector, tmpV1, axis)
                 val deltaRotation = Quaternionf().fromAxisAngleRad(axis, angle.toRadians())
-                
+
                 drag.targets.forEach { target ->
                     val position = rotateAroundPivot(target.snapshot.position, drag.pivot, axis, angle, Vector3f())
                     target.spatial.xPos = position.x
@@ -649,7 +683,7 @@ class ViewportInteraction3D : ViewportInteraction
                 }
             }
         }
-    
+
         markTransformsChanged(engine, context, drag.targets, drag.mode)
     }
 
@@ -743,12 +777,12 @@ class ViewportInteraction3D : ViewportInteraction
 
     private fun axisDistance(camera: Camera, pivot: Vector3f, size: Float, handle: Handle, axisSigns: Vector3f, width: Int, height: Int, mouse: Vector2f): Float
     {
-        if (!project(camera, pivot, width, height, tmpP0)) 
+        if (!project(camera, pivot, width, height, tmpP0))
             return Float.MAX_VALUE
 
         tmpV1.set(facingAxis(handle, axisSigns, tmpV2)).mul(size).add(pivot)
-        
-        if (!project(camera, tmpV1, width, height, tmpP1)) 
+
+        if (!project(camera, tmpV1, width, height, tmpP1))
             return Float.MAX_VALUE
 
         return pointToSegmentDistance(mouse, tmpP0, tmpP1)
@@ -779,11 +813,11 @@ class ViewportInteraction3D : ViewportInteraction
         val height = surface.config.height
         engine.scene.forEachEntity { entity ->
             val light = entity as? Light3D ?: return@forEachEntity
-            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN)) 
+            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
                 return@forEachEntity
 
             tmpV0.set(light.xPos, light.yPos, light.zPos)
-            if (!project(context.camera, tmpV0, width, height, tmpP0)) 
+            if (!project(context.camera, tmpV0, width, height, tmpP0))
                 return@forEachEntity
 
             surface.setDrawColor(if (entity.id in selectedIds) ACTIVE_COLOR else LIGHT_MARKER_COLOR)
@@ -791,7 +825,7 @@ class ViewportInteraction3D : ViewportInteraction
             surface.drawLine(tmpP0.x - LIGHT_MARKER_CROSS_SIZE, tmpP0.y, tmpP0.x + LIGHT_MARKER_CROSS_SIZE, tmpP0.y)
             surface.drawLine(tmpP0.x, tmpP0.y - LIGHT_MARKER_CROSS_SIZE, tmpP0.x, tmpP0.y + LIGHT_MARKER_CROSS_SIZE)
 
-            if (light is SpotLight3D)
+            if (light is ConicalLight3D)
             {
                 val markerLength = gizmoWorldSize(context.camera, tmpV0, height) * 0.45f
                 light.getDirection(tmpV1).mul(markerLength).add(tmpV0)
@@ -813,7 +847,7 @@ class ViewportInteraction3D : ViewportInteraction
         val origin = Vector3f(light.xPos, light.yPos, light.zPos)
         surface.setDrawColor(LIGHT_VOLUME_COLOR)
 
-        if (light is PointLight3D) // TODO: Remove usage of concrete entity type
+        if (light !is ConicalLight3D)
         {
             drawProjectedCircle(surface, camera, origin, WORLD_X, WORLD_Y, radius, width, height)
             drawProjectedCircle(surface, camera, origin, WORLD_X, WORLD_Z, radius, width, height)
@@ -821,13 +855,12 @@ class ViewportInteraction3D : ViewportInteraction
             return
         }
 
-        val spotLight = light as? SpotLight3D ?: return // TODO: Remove usage of concrete entity type
-        val forward = spotLight.getDirection(Vector3f())
+        val forward = light.getDirection(Vector3f())
         val helper = if (abs(forward.y) < 0.99f) Vector3f(WORLD_Y) else Vector3f(WORLD_X)
         val right = forward.cross(helper, Vector3f()).normalize()
         val up = right.cross(forward, Vector3f()).normalize()
         val baseCenter = Vector3f(forward).mul(radius).add(origin)
-        val baseRadius = tan(spotLight.outerConeAngle.coerceIn(0f, SpotLight3D.MAX_CONE_ANGLE).toRadians()) * radius
+        val baseRadius = tan(light.outerConeAngle.coerceIn(0f, MAX_CONE_ANGLE).toRadians()) * radius
 
         drawProjectedCircle(surface, camera, baseCenter, right, up, baseRadius, width, height)
         drawProjectedLine(surface, camera, origin, baseCenter, width, height)
@@ -976,42 +1009,42 @@ class ViewportInteraction3D : ViewportInteraction
     ): Float {
         if (mode == GizmoMode.MOVE)
         {
-            if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MIN, PLANE_SQUARE_MIN, width, height, tmpP0)) 
+            if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MIN, PLANE_SQUARE_MIN, width, height, tmpP0))
                 return -1f
-            if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MAX, PLANE_SQUARE_MIN, width, height, tmpP1)) 
+            if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MAX, PLANE_SQUARE_MIN, width, height, tmpP1))
                 return -1f
-            if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MAX, PLANE_SQUARE_MAX, width, height, tmpP2)) 
+            if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MAX, PLANE_SQUARE_MAX, width, height, tmpP2))
                 return -1f
-            if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MIN, PLANE_SQUARE_MAX, width, height, tmpP3)) 
+            if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MIN, PLANE_SQUARE_MAX, width, height, tmpP3))
                 return -1f
             val isInside = SceneEditor3DMath.pointInQuad(mouse, tmpP0, tmpP1, tmpP2, tmpP3)
-            if (!isInside && SceneEditor3DMath.distanceToQuadEdges(mouse, tmpP0, tmpP1, tmpP2, tmpP3) > PLANE_HIT_PADDING) 
+            if (!isInside && SceneEditor3DMath.distanceToQuadEdges(mouse, tmpP0, tmpP1, tmpP2, tmpP3) > PLANE_HIT_PADDING)
                 return -1f
             val area = SceneEditor3DMath.triangleArea(tmpP0, tmpP1, tmpP2) + SceneEditor3DMath.triangleArea(tmpP0, tmpP2, tmpP3)
             return max(area, MIN_PLANE_HIT_SCORE)
         }
 
-        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_TRIANGLE_SIZE, PLANE_TRIANGLE_INNER, width, height, tmpP0)) 
+        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_TRIANGLE_SIZE, PLANE_TRIANGLE_INNER, width, height, tmpP0))
             return -1f
-        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_TRIANGLE_INNER, PLANE_TRIANGLE_SIZE, width, height, tmpP1)) 
+        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_TRIANGLE_INNER, PLANE_TRIANGLE_SIZE, width, height, tmpP1))
             return -1f
-        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_TRIANGLE_INNER, PLANE_TRIANGLE_INNER, width, height, tmpP2)) 
+        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_TRIANGLE_INNER, PLANE_TRIANGLE_INNER, width, height, tmpP2))
             return -1f
         val isInside = SceneEditor3DMath.pointInTriangle(mouse, tmpP0, tmpP1, tmpP2)
-        if (!isInside && SceneEditor3DMath.distanceToTriangleEdges(mouse, tmpP0, tmpP1, tmpP2) > PLANE_HIT_PADDING) 
+        if (!isInside && SceneEditor3DMath.distanceToTriangleEdges(mouse, tmpP0, tmpP1, tmpP2) > PLANE_HIT_PADDING)
             return -1f
         return max(SceneEditor3DMath.triangleArea(tmpP0, tmpP1, tmpP2), MIN_PLANE_HIT_SCORE)
     }
 
     private fun renderPlaneSquare(surface: no.njoh.pulseengine.core.graphics.surface.Surface, camera: Camera, pivot: Vector3f, size: Float, handle: Handle, axisSigns: Vector3f, width: Int, height: Int)
     {
-        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MIN, PLANE_SQUARE_MIN, width, height, tmpP0)) 
+        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MIN, PLANE_SQUARE_MIN, width, height, tmpP0))
             return
-        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MAX, PLANE_SQUARE_MIN, width, height, tmpP1)) 
+        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MAX, PLANE_SQUARE_MIN, width, height, tmpP1))
             return
-        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MAX, PLANE_SQUARE_MAX, width, height, tmpP2)) 
+        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MAX, PLANE_SQUARE_MAX, width, height, tmpP2))
             return
-        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MIN, PLANE_SQUARE_MAX, width, height, tmpP3)) 
+        if (!projectPlanePoint(camera, pivot, size, handle, axisSigns, PLANE_SQUARE_MIN, PLANE_SQUARE_MAX, width, height, tmpP3))
             return
         if (triangleWinding(tmpP0, tmpP1, tmpP2) >= 0f)
         {
@@ -1186,7 +1219,7 @@ class ViewportInteraction3D : ViewportInteraction
     enum class GizmoMode { MOVE, ROTATE, SCALE }
 
     private enum class Handle { NONE, X, Y, Z, XY, XZ, YZ, UNIFORM }
-    
+
     private enum class PickMode { REPLACE, ADD, TOGGLE }
 
     private data class TransformSnapshot(
@@ -1196,12 +1229,12 @@ class ViewportInteraction3D : ViewportInteraction
     )
 
     private data class SelectedTarget(
-        val entity: SceneEntity, 
+        val entity: SceneEntity,
         val spatial: Translatable3D
     )
 
     private data class TransformSelection(
-        val targets: List<SelectedTarget>, 
+        val targets: List<SelectedTarget>,
         val pivot: Vector3f
     )
 
@@ -1223,7 +1256,7 @@ class ViewportInteraction3D : ViewportInteraction
         val startPlanePoint: Vector3f = Vector3f(),
         val startMouse: Vector2f = Vector2f()
     )
-    
+
     companion object
     {
         private const val OBJECT_ID_SURFACE = "scene_editor_object_ids"
@@ -1250,6 +1283,7 @@ class ViewportInteraction3D : ViewportInteraction
         private const val LIGHT_MARKER_SEGMENTS = 16
         private const val LIGHT_VOLUME_SEGMENTS = 48
         private const val LIGHT_CONE_SIDE_COUNT = 8
+        private const val MAX_CONE_ANGLE = 89f
 
         private val AXIS_HANDLES = arrayOf(Handle.X, Handle.Y, Handle.Z)
         private val PLANE_HANDLES = arrayOf(Handle.XY, Handle.XZ, Handle.YZ)

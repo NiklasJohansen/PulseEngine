@@ -247,6 +247,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         nextFrameScene.addLight(position, direction, radius, color, innerConeAngle, outerConeAngle, shadowEnabled, shadowResolution, shadowBias, shadowImportance, shadowId)
     }
 
+    override fun getSubmittedScene() = thisFrameScene
+    
     override fun getLocalShadowAtlas() = localShadowAtlas
 
     override fun getLightBuffer() = lightBuffer
