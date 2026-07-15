@@ -14,6 +14,7 @@ import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
+import no.njoh.pulseengine.modules.scene.entities.Camera3D.RotationMode.*
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import kotlin.math.atan2
@@ -28,6 +29,7 @@ class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rot
 
     @Prop("Position [*P]", i=1) override var xPos = 0f; override var yPos = 1.5f; override var zPos = 5f
     @Prop("Rotation [*R]", i=2) override var xRot = 0f; override var yRot = 0f;   override var zRot = 0f
+    @Prop("Rotation",      i=3) var rotationMode = XYZ
 
     @Prop("Projection", i=1, min=1f, max = 179f) var fov       = 90f
     @Prop("Projection", i=2, min=0.001f)         var nearPlane = 0.01f
@@ -39,11 +41,17 @@ class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rot
     @Prop("Tracking", i=3, min=0f, max=1f) var smoothing     = 0.1f
 
     private var trackedEntityId = INVALID_ID
-    private val quaternionRot = Quaternionf()
-    private val eulerRot = Vector3f()
+    private val tmpQuaternionRot = Quaternionf()
+    private val tmpEulerRot = Vector3f()
+    private val delta = Vector3f()
 
     override fun onStart(engine: PulseEngine)
     {
+        engine.scene.getEntityOfType<Translatable3D>(targetEntityId)?.let()
+        {
+            delta.set(xPos - it.xPos, yPos - it.yPos, zPos - it.zPos)
+        }
+
         updateCamera(engine)
     }
 
@@ -56,7 +64,7 @@ class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rot
 
     private fun updateCamera(engine: PulseEngine)
     {
-        if (!active) return
+        if (!active || isSet(HIDDEN)) return
 
         engine.scene.getEntityOfType<Translatable3D>(targetEntityId)?.let() 
         {
@@ -69,11 +77,15 @@ class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rot
     internal fun applyTo(camera: Camera, width: Int, height: Int)
     {
         val near = nearPlane.coerceAtLeast(0.001f)
-        val cameraRotation = quaternionRot
-            .rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
-            .getEulerAnglesYXZ(eulerRot)
+        
+        val rotation = when (rotationMode)
+        {
+            XYZ -> tmpQuaternionRot.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians()).getEulerAnglesYXZ(tmpEulerRot)
+            YAW_PITCH -> tmpEulerRot.set(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        }
+
+        camera.rotation.set(rotation)
         camera.position.set(xPos, yPos, zPos)
-        camera.rotation.set(cameraRotation)
         camera.origin.zero()
         camera.scale.set(1f)
         camera.fov = fov.coerceIn(1f, 179f)
@@ -88,9 +100,9 @@ class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rot
         trackedEntityId = targetEntityId
         val factor = if (snapToTarget) 1f else smoothing.coerceIn(0f, 1f)
 
-        xPos += (target.xPos - xPos) * factor
-        yPos += (target.yPos - yPos) * factor
-        zPos += (target.zPos - zPos) * factor
+        xPos += (target.xPos + delta.x - xPos) * factor
+        yPos += (target.yPos + delta.y - yPos) * factor
+        zPos += (target.zPos + delta.z - zPos) * factor
 
         if (trackRotation && targetRotation != null)
         {
@@ -107,4 +119,10 @@ class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rot
     }
 
     private fun normalizeAngle(angle: Float) = ((angle + 180f) % 360f + 360f) % 360f - 180f
+
+    enum class RotationMode
+    {
+        XYZ,
+        YAW_PITCH
+    }
 }

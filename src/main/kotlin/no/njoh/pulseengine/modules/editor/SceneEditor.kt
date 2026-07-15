@@ -12,6 +12,7 @@ import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
 import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
+import no.njoh.pulseengine.core.input.CursorMode
 import no.njoh.pulseengine.modules.ui.UiUtils.findElement
 import no.njoh.pulseengine.modules.ui.elements.InputField
 import no.njoh.pulseengine.modules.ui.UiElement
@@ -448,6 +449,7 @@ class SceneEditor(
         }
 
         viewportInteraction?.onEditorActivated(engine, viewportContext)
+        engine.input.setCursorMode(CursorMode.NORMAL)
         start() // Start editor service
     }
 

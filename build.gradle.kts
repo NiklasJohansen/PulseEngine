@@ -19,6 +19,9 @@ val platforms = listOf(
 )
 
 repositories {
+    maven {
+        url = uri("https://repo.repsy.io/mvn/njoh/public")
+    }
     mavenCentral()
 }
 
