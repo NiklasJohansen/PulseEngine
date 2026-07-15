@@ -95,6 +95,8 @@ class SceneEditor(
 
     override fun onCreate(engine: PulseEngine)
     {
+        uiFactory.entityProvider = { engine.scene.getAllEntitiesByType().flatMap { it } }
+
         // Load editor config
         engine.config.load("/pulseengine/config/editor_default.cfg")
         if (engine.config.getBool("openEditorOnStart") == true)
@@ -537,7 +539,12 @@ class SceneEditor(
                 if (propName == SceneEntity::parentId.name)
                 {
                     val newParentId = entity.parentId
-                    val lastParentId = (lastValue as? String)?.toLongOrNull() ?: INVALID_ID
+                    val lastParentId = when (lastValue)
+                    {
+                        is Long -> lastValue
+                        is String -> lastValue.toLongOrNull() ?: INVALID_ID
+                        else -> INVALID_ID
+                    }
 
                     engine.scene.getEntity(lastParentId)?.removeChild(entity)
                     engine.scene.getEntity(newParentId)?.addChild(entity)

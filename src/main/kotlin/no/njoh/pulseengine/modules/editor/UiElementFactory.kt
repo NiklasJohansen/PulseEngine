@@ -4,7 +4,11 @@ import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.scene.SceneSystem
+import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
+import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.shared.annotations.AssetRef
+import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -17,6 +21,7 @@ import no.njoh.pulseengine.modules.ui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.modules.ui.elements.Label.TextSizeStrategy.UPDATE_WIDTH
 import no.njoh.pulseengine.modules.ui.layout.*
 import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
+import no.njoh.pulseengine.modules.editor.EditorUtil.getName
 import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.modules.editor.EditorUtil.setArrayProperty
 import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
@@ -35,6 +40,9 @@ import kotlin.reflect.jvm.javaField
 open class UiElementFactory(
     val style: EditorStyle = EditorStyle()
 ) {
+    /** Supplies entities to property editors that handle [EntityRef] values. */
+    var entityProvider: () -> List<SceneEntity> = { emptyList() }
+
     /** Property UI factory functions for specific class types. */
     val propertyUiFactories = THashMap(mapOf(
         String::class to ::createStringPropertyUi,
@@ -94,6 +102,40 @@ open class UiElementFactory(
             onChanged(prop.name, lastValue, newValue)
         }
     )
+
+    /** 
+     * Creates a typed entity dropdown for a [Long] property annotated with [EntityRef]. 
+     */
+    open fun createEntityReferenceUI(
+        reference: EntityRef,
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): UiElement {
+        val currentId = prop.getter.call(obj) as? Long ?: INVALID_ID
+        val entries = mutableListOf(EntityReferenceItem(INVALID_ID, "None"))
+        entityProvider()
+            .asSequence()
+            .filter { reference.type.java.isInstance(it) }
+            .sortedWith(compareBy({ (it as? Named)?.name ?: it::class.getName() }, { it.id }))
+            .mapTo(entries) { entity ->
+                val name = (entity as? Named)?.name?.takeIf { it.isNotBlank() } ?: entity::class.getName()
+                EntityReferenceItem(entity.id, "${entity.id} - $name")
+            }
+
+        val selected = entries.firstOrNull { it.id == currentId }
+            ?: EntityReferenceItem(currentId, "$currentId - Missing entity").also { entries.add(1, it) }
+
+        return createItemSelectionDropdownUI(
+            selectedItem = selected,
+            items = entries,
+            onItemToString = { it.label },
+            onItemChanged = { lastValue, newValue ->
+                prop.setter.call(obj, newValue.id)
+                onChanged(prop.name, lastValue?.id, newValue.id)
+            }
+        )
+    }
 
     /**
      * Creates a movable and resizable window panel.
@@ -702,10 +744,14 @@ open class UiElementFactory(
         prop: KMutableProperty<*>,
         onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
     ): Pair<HorizontalPanel, UiElement> {
+        val entityReference = obj::class.findPropertyAnnotation<EntityRef>(prop.name)
         val propUiKey = propertyUiFactories.keys.firstOrNull { prop.javaField?.type?.kotlin?.isSubclassOf(it) == true }
-        val propUi = propertyUiFactories[propUiKey]
-            ?.invoke(obj, prop, onChanged)
-            ?: createInputFieldUI(obj, prop, onChanged)
+        val propUi = if (entityReference != null && prop.returnType.classifier == Long::class)
+            createEntityReferenceUI(entityReference, obj, prop, onChanged)
+        else
+            propertyUiFactories[propUiKey]
+                ?.invoke(obj, prop, onChanged)
+                ?: createInputFieldUI(obj, prop, onChanged)
 
         val label = Label(text = prop.name.capitalize(), width = Size.relative(0.5f)).apply {
             padding.setAll(5f)
@@ -789,4 +835,6 @@ open class UiElementFactory(
         val width = 4 * padding + (items.maxOfOrNull { font.getWidth(it, fontSize) } ?: 100f) + scrollBarWidth
         return Pair(width, height)
     }
+
+    private data class EntityReferenceItem(val id: Long, val label: String)
 }
