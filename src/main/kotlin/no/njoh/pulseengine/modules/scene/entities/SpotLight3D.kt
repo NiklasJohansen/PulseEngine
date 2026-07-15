@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.scene.entities
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
 import no.njoh.pulseengine.core.scene.SceneEntity
-import no.njoh.pulseengine.core.scene.interfaces.ConicalLight3D
+import no.njoh.pulseengine.modules.scene.systems.ConicalLight3D
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.scene.interfaces.Rotatable3D
 import no.njoh.pulseengine.core.shared.annotations.Prop

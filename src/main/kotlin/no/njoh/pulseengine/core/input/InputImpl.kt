@@ -58,6 +58,7 @@ open class InputImpl : InputInternal
     override fun init(cursorPosScale: Float)
     {
         Logger.info { "Initializing input (InputImpl)" }
+        setCursorMode(NORMAL)
         this.cursorPosScale = cursorPosScale
     }
 

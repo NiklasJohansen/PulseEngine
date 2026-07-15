@@ -33,7 +33,7 @@ open class Scene(
     internal var fileFormat: FileFormat = JSON
 
     @JsonIgnore
-    val spatialGrid = SpatialGrid(entities)
+    val spatialGrid = SpatialGrid2D(entities)
 
     internal var nextId = 0L
 

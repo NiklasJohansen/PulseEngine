@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.shared.utils
 
-import no.njoh.pulseengine.core.shared.primitives.Shape
+import no.njoh.pulseengine.core.shared.primitives.Shape2D
 import no.njoh.pulseengine.core.shared.utils.Extensions.component1
 import no.njoh.pulseengine.core.shared.utils.Extensions.component2
 import org.joml.Vector2f
@@ -179,10 +179,10 @@ object MathUtil
     }
 
     /**
-     * Returns the first intersection point between the line and the [Shape], as well as the squared distance
+     * Returns the first intersection point between the line and the [Shape2D], as well as the squared distance
      * between the first line point and the intersection point. Returns null if noe intersection was found.
      */
-    fun getLineShapeIntersection(x0: Float, y0: Float, x1: Float, y1: Float, shape: Shape): Vector3f?
+    fun getLineShapeIntersection(x0: Float, y0: Float, x1: Float, y1: Float, shape: Shape2D): Vector3f?
     {
         val nPoints = shape.getPointCount()
         if (nPoints == 1) // Point/circle shape
@@ -233,9 +233,9 @@ object MathUtil
     }
 
     /**
-     * Returns true if the (x, y) point is inside the [Shape].
+     * Returns true if the (x, y) point is inside the [Shape2D].
      */
-    fun isPointInsideShape(x: Float, y: Float, shape: Shape): Boolean
+    fun isPointInsideShape(x: Float, y: Float, shape: Shape2D): Boolean
     {
         val nPoints = shape.getPointCount()
         if (nPoints == 1) // Point/circle shape

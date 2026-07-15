@@ -29,9 +29,9 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
-import no.njoh.pulseengine.core.scene.interfaces.Spatial
-import no.njoh.pulseengine.modules.physics.PhysicsEntity
-import no.njoh.pulseengine.modules.physics.bodies.PhysicsBody
+import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
+import no.njoh.pulseengine.modules.physics2d.PhysicsEntity2D
+import no.njoh.pulseengine.modules.physics2d.bodies.PhysicsBody2D
 import no.njoh.pulseengine.core.shared.utils.FileChooser
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
@@ -52,9 +52,12 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.*
 
+@Suppress("FunctionName") fun SceneEditor2D() = SceneEditor(ViewportInteraction2D())
+@Suppress("FunctionName") fun SceneEditor3D() = SceneEditor(ViewportInteraction3D())
+
 class SceneEditor(
+    val viewportInteraction: ViewportInteraction? = ViewportInteraction2D(),
     val uiFactory: UiElementFactory = UiElementFactory(),
-    val viewportInteraction: ViewportInteraction? = ViewportInteraction2D()
 ): Service() {
 
     // UI
@@ -481,7 +484,7 @@ class SceneEditor(
     private fun createNewEntity(engine: PulseEngine, type: KClass<out SceneEntity>)
     {
         val entity = type.createInstance()
-        if (entity is Spatial)
+        if (entity is Spatial2D)
         {
             val w = engine.window.width
             val h = engine.window.height
@@ -637,14 +640,14 @@ class SceneEditor(
         {
             if (prevSelectedEntityId != null && prevSelectedEntityId == it.id)
                 selectSingleEntity(engine, it)
-            if (it is PhysicsEntity)
+            if (it is PhysicsEntity2D)
                 it.init(engine)
         }
     }
 
     private fun SceneEntity.onMovedScaledOrRotated(engine: PulseEngine)
     {
-        if (this is PhysicsBody)
+        if (this is PhysicsBody2D)
             this.init(engine)
     }
 

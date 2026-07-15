@@ -140,7 +140,7 @@ class WeightedBlendedOitRenderer
         fbo.release()
     }
 
-    private fun composite(surface: SurfaceInternal) = measure("wboit composite")
+    private fun composite(surface: SurfaceInternal) = measure("Wboit composite")
     {
         val accumTex = fbo.getTexture(0)
         val revealageTex = fbo.getTexture(1)

@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.PulseEngineGame
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.cli.CommandLine
 import no.njoh.pulseengine.modules.metrics.MetricViewer
-import no.njoh.pulseengine.modules.editor.SceneEditor
+import no.njoh.pulseengine.modules.editor.SceneEditor2D
 import no.njoh.pulseengine.modules.metrics.GpuMonitor
 
 fun main() = PulseEngine.run<Testbed>()
@@ -15,9 +15,9 @@ class Testbed : PulseEngineGame()
 {
     override fun onCreate()
     {
-        engine.config.gameName = "Testbed 0.12.0-SNAPSHOT"
+        engine.config.gameName = "Testbed 0.14.0-SNAPSHOT"
         engine.config.targetFps = 100000
-        engine.service.add(SceneEditor(), CommandLine(), MetricViewer(), GpuMonitor())
+        engine.service.add(SceneEditor2D(), CommandLine(), MetricViewer(), GpuMonitor())
         engine.console.runScript("testbed/init-dev.pes")
         engine.asset.loadAll("testbed/images")
         engine.scene.reload() // Load default.scn from disk
@@ -30,7 +30,7 @@ class Testbed : PulseEngineGame()
     {
         engine.gfx.mainSurface.setDrawColor(Color.WHITE)
         engine.gfx.mainSurface.drawText(
-            text = "PulseEngine 0.12.0-SNAPSHOT - Testbed",
+            text = "PulseEngine 0.14.0-SNAPSHOT - Testbed",
             x = engine.window.width * 0.5f,
             y = engine.window.height * 0.5f,
             xOrigin = 0.5f,

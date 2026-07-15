@@ -4,14 +4,14 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC_2D
-import no.njoh.pulseengine.core.scene.interfaces.Spatial
+import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import kotlin.math.*
 
 @Icon("CAMERA", size = 24f, showInViewport = true)
-open class Camera2D : CommonSceneEntity()
+open class Camera2D : Common2DSceneEntity()
 {
     var viewPortWidth  = 1000f
     var viewPortHeight = 800f
@@ -90,7 +90,7 @@ open class Camera2D : CommonSceneEntity()
 
     private fun updateCamera(engine: PulseEngine)
     {
-        engine.scene.getEntityOfType<Spatial>(targetEntityId)?.let { trackEntity(it) }
+        engine.scene.getEntityOfType<Spatial2D>(targetEntityId)?.let { trackEntity(it) }
 
         zoom += (targetZoom - zoom) * smoothing
 
@@ -118,7 +118,7 @@ open class Camera2D : CommonSceneEntity()
         camera.updateProjection(engine.window.width, engine.window.height, ORTHOGRAPHIC_2D)
     }
 
-    private fun trackEntity(entity: Spatial)
+    private fun trackEntity(entity: Spatial2D)
     {
         if (!initialized)
         {

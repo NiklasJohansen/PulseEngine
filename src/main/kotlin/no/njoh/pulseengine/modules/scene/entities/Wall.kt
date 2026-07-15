@@ -5,15 +5,15 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.TexRef
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.modules.lighting.direct.DirectLightOccluder
-import no.njoh.pulseengine.modules.lighting.global.GiOccluder
-import no.njoh.pulseengine.modules.lighting.global.GiSceneRenderer
+import no.njoh.pulseengine.modules.lighting.direct2d.DirectLightOccluder
+import no.njoh.pulseengine.modules.lighting.global2d.GiOccluder2D
+import no.njoh.pulseengine.modules.lighting.global2d.GiSceneRenderer
 import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer
 import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer.Orientation
-import no.njoh.pulseengine.modules.lighting.shared.NormalMapped
-import no.njoh.pulseengine.modules.physics.entities.Box
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapped2D
+import no.njoh.pulseengine.modules.physics2d.entities.Box2D
 
-class Wall : Box(), DirectLightOccluder, GiOccluder, NormalMapped
+class Wall : Box2D(), DirectLightOccluder, GiOccluder2D, NormalMapped2D
 {
     @TexRef
     var baseTexture = ""

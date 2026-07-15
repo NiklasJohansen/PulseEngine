@@ -5,20 +5,20 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
-import no.njoh.pulseengine.core.scene.interfaces.Spatial
+import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.core.shared.annotations.Icon
-import no.njoh.pulseengine.modules.lighting.direct.DirectLightSource
-import no.njoh.pulseengine.modules.lighting.direct.DirectLightType
-import no.njoh.pulseengine.modules.lighting.direct.DirectShadowType
+import no.njoh.pulseengine.modules.lighting.direct2d.DirectLightSource
+import no.njoh.pulseengine.modules.lighting.direct2d.DirectLightType
+import no.njoh.pulseengine.modules.lighting.direct2d.DirectShadowType
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.MathUtil
-import no.njoh.pulseengine.modules.lighting.global.GiLightSource
+import no.njoh.pulseengine.modules.lighting.global2d.GiLightSource2D
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 @Icon("LIGHT_BULB", size = 24f, showInViewport = true)
-open class Lamp : CommonSceneEntity(), DirectLightSource, GiLightSource
+open class Lamp : Common2DSceneEntity(), DirectLightSource, GiLightSource2D
 {
     var trackParent = true
 
@@ -41,7 +41,7 @@ open class Lamp : CommonSceneEntity(), DirectLightSource, GiLightSource
     {
         if (trackParent)
         {
-            val target = engine.scene.getEntityOfType<Spatial>(parentId) ?: return
+            val target = engine.scene.getEntityOfType<Spatial2D>(parentId) ?: return
             val xDelta = x - target.x
             val yDelta = y - target.y
             initLength = sqrt(xDelta * xDelta + yDelta * yDelta)
@@ -57,7 +57,7 @@ open class Lamp : CommonSceneEntity(), DirectLightSource, GiLightSource
 
         if (trackParent)
         {
-            val target = engine.scene.getEntityOfType<Spatial>(parentId) ?: return
+            val target = engine.scene.getEntityOfType<Spatial2D>(parentId) ?: return
             val angle = initAngle - target.rotationInterpolated().toRadians()
             x = target.xInterpolated() + cos(angle) * initLength
             y = target.yInterpolated() + sin(angle) * initLength

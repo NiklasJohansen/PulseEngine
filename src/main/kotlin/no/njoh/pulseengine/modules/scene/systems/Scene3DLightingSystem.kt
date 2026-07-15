@@ -12,6 +12,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
+import no.njoh.pulseengine.core.scene.interfaces.Translatable3D
 import no.njoh.pulseengine.core.shared.annotations.EnvMapRef
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
@@ -19,6 +20,7 @@ import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import org.joml.Vector3f
 
 @Icon("LIGHT_BULB")
 @Name("Scene Lighting (3D)")
@@ -200,4 +202,22 @@ class Scene3DLightingSystem : SceneSystem()
 interface Scene3DLightSource
 {
     fun onRenderLight(engine: PulseEngine, context: SceneRenderContext)
+}
+
+/** 
+ * Finite-radius 3D light. 
+ */
+interface Light3D : Scene3DLightSource, Translatable3D
+{
+    var radius: Float
+}
+
+/** 
+ * A light whose influence is emitted through a cone. 
+ */
+interface ConicalLight3D : Light3D
+{
+    var outerConeAngle: Float
+
+    fun getDirection(out: Vector3f): Vector3f
 }

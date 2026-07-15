@@ -27,8 +27,8 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.scene.interfaces.Rotatable3D
 import no.njoh.pulseengine.core.scene.interfaces.Spatial3D
 import no.njoh.pulseengine.core.scene.interfaces.Translatable3D
-import no.njoh.pulseengine.core.scene.interfaces.ConicalLight3D
-import no.njoh.pulseengine.core.scene.interfaces.Light3D
+import no.njoh.pulseengine.modules.scene.systems.ConicalLight3D
+import no.njoh.pulseengine.modules.scene.systems.Light3D
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians

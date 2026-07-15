@@ -7,9 +7,9 @@ import no.njoh.pulseengine.core.shared.annotations.AssetRef
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer
 import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer.Orientation
-import no.njoh.pulseengine.modules.lighting.shared.NormalMapped
+import no.njoh.pulseengine.modules.lighting.shared.NormalMapped2D
 
-open class Backdrop : CommonSceneEntity(), NormalMapped
+open class Backdrop : Common2DSceneEntity(), NormalMapped2D
 {
     @AssetRef(Texture::class)
     var baseTexture: String = ""

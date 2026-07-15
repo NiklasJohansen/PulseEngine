@@ -4,7 +4,8 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.PulseEngineGame
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
-import no.njoh.pulseengine.core.scene.SpatialGrid.Companion.nextQueryId
+import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
+import no.njoh.pulseengine.core.scene.SpatialGrid2D.Companion.nextQueryId
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.primitives.HitResult
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
@@ -135,31 +136,13 @@ abstract class SceneManager
         activeScene.entityTypeMap[T::class.java]?.firstOrNull { predicate(it as T) } as T?
 
     /**
-     * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity].
-     */
-    fun getFirstEntityAlongRay(x: Float, y: Float, angle: Float, rayLength: Float) : HitResult<SceneEntity>? =
-        activeScene.spatialGrid.queryFirstAlongRay(x, y, angle, rayLength)
-
-    /**
-     * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity] matching the [predicate].
-     */
-    inline fun getFirstEntityAlongRay(x: Float, y: Float, angle: Float, rayLength: Float, predicate: (SceneEntity) -> Boolean) : HitResult<SceneEntity>? =
-        activeScene.spatialGrid.queryFirstAlongRay(x, y, angle, rayLength, predicate)
-
-    /**
-     * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity] of type [T].
-     */
-    inline fun <reified T> getFirstEntityAlongRayOfType(x: Float, y: Float, angle: Float, rayLength: Float) : HitResult<T>? =
-        activeScene.spatialGrid.queryFirstAlongRay(x, y, angle, rayLength)
-
-    /**
      * Returns a list of all [SceneEntity]s with type [T].
      */
     inline fun <reified T: SceneEntity> getAllEntitiesOfType(): SceneEntityList<T>? =
         (activeScene.entityTypeMap[T::class.java] as SceneEntityList<T>?)?.takeIf { it.isNotEmpty() }
 
     /**
-     * Returns all [SceneEntity]s in type separated lists.
+     * Returns all [SceneEntity]s in type-separated lists.
      */
     fun getAllEntitiesByType(): List<SceneEntityList<SceneEntity>> = activeScene.entities
 
@@ -180,67 +163,98 @@ abstract class SceneManager
      */
     inline fun forEachEntityTypeList(action: (SceneEntityList<SceneEntity>) -> Unit) =
         activeScene.entities.forEachFast { if (it.isNotEmpty()) action(it) }
+    
+    ///////////////////////////////////////// 2D Spatial Scene Entity Queries /////////////////////////////////////////
 
     /**
-     * Calls the [action] lambda for each [SceneEntity] nearby the given area.
+     * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity]
+     * implementing the [Spatial2D] interface.
+     */
+    fun getFirst2DEntityAlongRay(x: Float, y: Float, angle: Float, rayLength: Float) : HitResult<SceneEntity>? =
+        activeScene.spatialGrid.queryFirstAlongRay(x, y, angle, rayLength)
+
+    /**
+     * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity] 
+     * that matches the [predicate] and implements the [Spatial2D] interface.
+     */
+    inline fun getFirst2DEntityAlongRay(x: Float, y: Float, angle: Float, rayLength: Float, predicate: (SceneEntity) -> Boolean) : HitResult<SceneEntity>? =
+        activeScene.spatialGrid.queryFirstAlongRay(x, y, angle, rayLength, predicate)
+
+    /**
+     * Performs a ray-cast into the active [Scene] and returns a [HitResult] with the first hit [SceneEntity] 
+     * of type [T] that implements the [Spatial2D] interface.
+     */
+    inline fun <reified T> getFirst2DEntityAlongRayOfType(x: Float, y: Float, angle: Float, rayLength: Float) : HitResult<T>? =
+        activeScene.spatialGrid.queryFirstAlongRay(x, y, angle, rayLength)
+
+    /**
+     * Calls the [action] lambda for each [SceneEntity] that implements the [Spatial2D] interface and is 
+     * nearby the given area.
      * @param x The center x-coordinate of the area
      * @param y The center y-coordinate of the area
      */
-    inline fun forEachEntityNearby(x: Float, y: Float, width: Float, height: Float, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
+    inline fun forEach2DEntityNearby(x: Float, y: Float, width: Float, height: Float, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
         activeScene.spatialGrid.queryAxisAlignedArea(x, y, width, height, queryId, action)
 
     /**
-     * Calls the [action] lambda for each [SceneEntity] of type [T] nearby the given area.
+     * Calls the [action] lambda for each [SceneEntity] of type [T] that implements the [Spatial2D] interface 
+     * and is nearby the given area.
      * @param x The center x-coordinate of the area
      * @param y The center y-coordinate of the area
      */
-    inline fun <reified T> forEachEntityNearbyOfType(x: Float, y: Float, width: Float, height: Float, queryId: Int = nextQueryId(), action: (T) -> Unit) =
+    inline fun <reified T> forEach2DEntityNearbyOfType(x: Float, y: Float, width: Float, height: Float, queryId: Int = nextQueryId(), action: (T) -> Unit) =
         activeScene.spatialGrid.queryAxisAlignedArea(x, y, width, height, queryId, action)
 
     /**
-     * Calls the [action] lambda for each [SceneEntity] nearby the given rotated area.
+     * Calls the [action] lambda for each [SceneEntity] that implements the [Spatial2D] interface and is
+     * nearby the given rotated area.
      * @param x The center x-coordinate of the area
      * @param y The center y-coordinate of the area
      * @param angle Angle in degrees.
      */
-    inline fun forEachEntityNearby(x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
+    inline fun forEach2DEntityNearby(x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
         activeScene.spatialGrid.queryArea(x, y, width, height, angle, queryId, action)
 
     /**
-     * Calls the [action] lambda for each [SceneEntity] of type [T] nearby the given area.
+     * Calls the [action] lambda for each [SceneEntity] that implements the [Spatial2D] interface, is of type [T] 
+     * and is nearby the given area.
      * @param x The center x-coordinate of the area
      * @param y The center y-coordinate of the area
      * @param angle Angle in degrees.
      */
-    inline fun <reified T> forEachEntityNearbyOfType(x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, queryId: Int = nextQueryId(), action: (T) -> Unit) =
+    inline fun <reified T> forEach2DEntityNearbyOfType(x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, queryId: Int = nextQueryId(), action: (T) -> Unit) =
         activeScene.spatialGrid.queryArea(x, y, width, height, angle, queryId, action)
 
     /**
-     * Calls the [action] lambda for each [SceneEntity] overlapping the given point.
+     * Calls the [action] lambda for each [SceneEntity] that implements the [Spatial2D] interface and that 
+     * overlaps the given point.
      * @param x The x-coordinate of the point
      * @param y The y-coordinate of the point
      */
-    inline fun forEachEntityAtPoint(x: Float, y: Float, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
+    inline fun forEach2DEntityAtPoint(x: Float, y: Float, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
         activeScene.spatialGrid.queryPosition(x, y, queryId, action)
 
     /**
-     * Calls the [action] lambda for each [SceneEntity] of type [T] overlapping the given point.
+     * Calls the [action] lambda for each [SceneEntity] of type [T] that implements the [Spatial2D] interface 
+     * and is overlapping the given point.
      * @param x The x-coordinate of the point
      * @param y The y-coordinate of the point
      */
-    inline fun <reified T> forEachEntityAtPointOfType(x: Float, y: Float, queryId: Int = nextQueryId(), action: (T) -> Unit) =
+    inline fun <reified T> forEach2DEntityAtPointOfType(x: Float, y: Float, queryId: Int = nextQueryId(), action: (T) -> Unit) =
         activeScene.spatialGrid.queryPosition<T>(x, y, queryId, action)
 
     /**
-     * Calls the [action] lambda for each [SceneEntity] intersecting the given ray.
+     * Calls the [action] lambda for each [SceneEntity] that implements the [Spatial2D] interface and is 
+     * intersecting the given ray.
      */
-    inline fun forEachEntityAlongRay(x: Float, y: Float, angle: Float, rayLength: Float, rayWidth: Float, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
+    inline fun forEach2DEntityAlongRay(x: Float, y: Float, angle: Float, rayLength: Float, rayWidth: Float, queryId: Int = nextQueryId(), action: (SceneEntity) -> Unit) =
         activeScene.spatialGrid.queryRay(x, y, angle, rayLength, rayWidth, queryId, action)
 
     /**
-     * Calls the [action] lambda for each [SceneEntity] intersecting the given ray.
+     * Calls the [action] lambda for each [SceneEntity] that implements the [Spatial2D] interface and is 
+     * intersecting the given ray.
      */
-    inline fun <reified T> forEachEntityAlongRayOfType(x: Float, y: Float, angle: Float, rayLength: Float, rayWidth: Float, queryId: Int = nextQueryId(), action: (T) -> Unit) =
+    inline fun <reified T> forEach2DEntityAlongRayOfType(x: Float, y: Float, angle: Float, rayLength: Float, rayWidth: Float, queryId: Int = nextQueryId(), action: (T) -> Unit) =
         activeScene.spatialGrid.queryRay(x, y, angle, rayLength, rayWidth, queryId, action)
 
     ///////////////////////////////////////// Scene System Operations /////////////////////////////////////////

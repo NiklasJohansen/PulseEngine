@@ -14,7 +14,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
-import no.njoh.pulseengine.core.scene.interfaces.Spatial
+import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Camera2DController
@@ -161,7 +161,7 @@ class ViewportInteraction2D(
             var zMin = Float.MAX_VALUE
             var closestEntity: SceneEntity? = null
             engine.scene.forEachEntity { entity ->
-                if (entity is Spatial && entity.z <= zMin && entity.isInside(xMouse, yMouse) && entity.isSet(EDITABLE) && entity.isNot(HIDDEN))
+                if (entity is Spatial2D && entity.z <= zMin && entity.isInside(xMouse, yMouse) && entity.isSet(EDITABLE) && entity.isNot(HIDDEN))
                 {
                     zMin = entity.z
                     closestEntity = entity
@@ -211,7 +211,7 @@ class ViewportInteraction2D(
             val selection = if (engine.input.isPressed(LEFT_CONTROL)) context.selection.toMutableList() else mutableListOf()
 
             engine.scene.forEachEntity { entity ->
-                if (entity is Spatial && entity.isSet(EDITABLE) && entity.isNot(HIDDEN) &&
+                if (entity is Spatial2D && entity.isSet(EDITABLE) && entity.isNot(HIDDEN) &&
                     entity !in selection && entity.isOverlapping(xStart, yStart, width, height))
                 {
                     selection += entity
@@ -233,7 +233,7 @@ class ViewportInteraction2D(
         if (xMove != 0f || yMove != 0f)
         {
             context.selection.forEachFast { entity ->
-                if (entity is Spatial)
+                if (entity is Spatial2D)
                 {
                     entity.x += xMove
                     entity.y += yMove
@@ -257,7 +257,7 @@ class ViewportInteraction2D(
         if (xDelta == 0f && yDelta == 0f) return
 
         context.selection.forEachFast { entity ->
-            if (entity is Spatial)
+            if (entity is Spatial2D)
             {
                 entity.x += xDelta
                 entity.y += yDelta
@@ -269,7 +269,7 @@ class ViewportInteraction2D(
 
     private fun updateEntityTransformation(engine: PulseEngine, context: ViewportContext, entity: SceneEntity)
     {
-        if (entity !is Spatial) return
+        if (entity !is Spatial2D) return
 
         val border = min(abs(entity.width), abs(entity.height)) * 0.1f
         val rotateArea = min(abs(entity.width), abs(entity.height)) * 0.2f
@@ -421,7 +421,7 @@ class ViewportInteraction2D(
 
     private fun renderEntityGizmo(surface: Surface, context: ViewportContext, entity: SceneEntity, showResizeDots: Boolean)
     {
-        if (entity !is Spatial) return
+        if (entity !is Spatial2D) return
 
         val pos = context.camera.worldPosToScreenPos(entity.x, entity.y, 0f, surface.config.width, surface.config.height)
         val padding = gizmoPadding()
@@ -524,7 +524,7 @@ class ViewportInteraction2D(
         engine.scene.forEachEntityTypeList { entities ->
             val annotation = entities.firstOrNull()?.let { it::class.findAnnotation<Icon>() }
             val firstEntity = entities.firstOrNull()
-            if (annotation != null && annotation.showInViewport && firstEntity is Spatial)
+            if (annotation != null && annotation.showInViewport && firstEntity is Spatial2D)
             {
                 val texture = engine.asset.getOrNull<Texture>(annotation.textureAssetName)
                 val font = engine.asset.getOrNull<Font>(context.iconFontName)
@@ -533,7 +533,7 @@ class ViewportInteraction2D(
                 {
                     surface.setDrawColor(Color.WHITE)
                     entities.forEachFast { entity ->
-                        if (entity is Spatial && entity.isNot(HIDDEN) && entity.isSet(EDITABLE))
+                        if (entity is Spatial2D && entity.isNot(HIDDEN) && entity.isSet(EDITABLE))
                         {
                             val pos = context.camera.worldPosToScreenPos(entity.x, entity.y, 0f, engine.window.width, engine.window.height)
                             if (texture != null)
@@ -551,7 +551,7 @@ class ViewportInteraction2D(
         }
     }
 
-    private fun Spatial.isInside(xWorld: Float, yWorld: Float): Boolean
+    private fun Spatial2D.isInside(xWorld: Float, yWorld: Float): Boolean
     {
         val padding = gizmoPadding()
         val paddedWidth = abs(width) + padding * 2f
@@ -566,7 +566,7 @@ class ViewportInteraction2D(
             rotatedY > y - paddedHeight / 2f && rotatedY < y + paddedHeight / 2f
     }
 
-    private fun Spatial.isOverlapping(xWorld: Float, yWorld: Float, width: Float, height: Float) =
+    private fun Spatial2D.isOverlapping(xWorld: Float, yWorld: Float, width: Float, height: Float) =
         x > xWorld && x < xWorld + width && y > yWorld && y < yWorld + height
 
     private fun isTransforming() = isMoving || isSelecting || isRotating || isResizingVertically || isResizingHorizontally

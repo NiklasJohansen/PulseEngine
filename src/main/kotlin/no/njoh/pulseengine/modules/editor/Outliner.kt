@@ -9,7 +9,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
-import no.njoh.pulseengine.core.scene.interfaces.Spatial
+import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.mapToSet
@@ -226,7 +226,7 @@ data class Outliner(
                     {
                         // Select parent entity if all children is selected and parent is not Spatial
                         val parent = engine.scene.getEntity(it.parentId) ?: continue
-                        if (parent !is Spatial && parent.childIds?.all { it.toString() in selectedIds } == true)
+                        if (parent !is Spatial2D && parent.childIds?.all { it.toString() in selectedIds } == true)
                         {
                             parent.set(SELECTED)
                             selectedIds.add(parent.id.toString())

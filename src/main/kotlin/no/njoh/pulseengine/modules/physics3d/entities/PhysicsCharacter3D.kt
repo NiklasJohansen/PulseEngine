@@ -260,7 +260,6 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsEntity3D,
             previousPosition.lerp(currentPosition, i, tmpCameraPosition)
         }
         else tmpCameraPosition.set(xPos, yPos, zPos)
-        
 
         camera.xPos = tmpCameraPosition.x
         camera.yPos = tmpCameraPosition.y + eyeOffset * abs(yScale)
