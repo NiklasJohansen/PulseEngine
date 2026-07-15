@@ -50,6 +50,9 @@ dependencies {
     implementation("com.esotericsoftware:kryo:5.6.2")
     implementation("org.objenesis:objenesis:3.4")
 
+    implementation("no.njoh:box3d-java:0.1.1")
+    runtimeOnly("no.njoh:box3d-java-natives-windows:0.1.1")
+
     // Java Microbenchmark Harness
     jmh("org.openjdk.jmh:jmh-core:1.37")
     kaptJmh("org.openjdk.jmh:jmh-generator-annprocess:1.37")

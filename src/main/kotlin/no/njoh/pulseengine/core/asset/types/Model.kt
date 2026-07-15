@@ -28,6 +28,7 @@ import no.njoh.pulseengine.core.shared.utils.transformAabb
 import no.njoh.pulseengine.core.shared.utils.getOrPut
 import no.njoh.pulseengine.core.shared.utils.set
 import org.joml.Matrix4f
+import org.joml.Matrix4fc
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.lwjgl.BufferUtils
@@ -73,12 +74,13 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     var indices     = IntArray(0);   private set
     var vertexBytes = ByteArray(0);  private set
 
-    var meshes        = emptyList<Mesh>();         private set
-    var meshInstances = emptyList<MeshInstance>(); private set
-    var lodLevels     = emptyList<LodLevel>();     private set
-    var materials     = emptyList<MeshMaterial>(); private set
-    var bones         = emptyList<Bone>();         private set
-    var localBounds   = null as Aabb?;             private set
+    var meshes          = emptyList<Mesh>();          private set
+    var meshInstances   = emptyList<MeshInstance>();  private set
+    var collisionMeshes = emptyList<CollisionMesh>(); private set
+    var lodLevels       = emptyList<LodLevel>();      private set
+    var materials       = emptyList<MeshMaterial>();  private set
+    var bones           = emptyList<Bone>();          private set
+    var localBounds     = null as Aabb?;              private set
 
     var hasNormals   = false; private set
     var hasTangents  = false; private set
@@ -110,6 +112,7 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         this.vertices = FloatArray(0)
         this.vertexBytes = ByteArray(0)
         this.indices = IntArray(0)
+        this.collisionMeshes = emptyList()
         this.meshes.forEachFast { it.vao = null }
     }
 
@@ -155,8 +158,10 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 collectGlobalNodeTransforms(nodeHierarchy!!, Matrix4f(), globalNodeTransforms)
                 bindPoseBoneMatricesByNodeName.clear()
                 val instances = mutableListOf<MeshInstance>()
-                buildSubMeshInstances(it, Matrix4f(), instances)
+                val collisionMeshes = mutableListOf<CollisionMesh>()
+                buildSubMeshInstances(it, Matrix4f(), instances, collisionMeshes)
                 meshInstances = instances
+                this.collisionMeshes = collisionMeshes
                 buildBoundsAndLodLevels()
                 buildConservativeAnimatedBounds()
             }
@@ -767,38 +772,76 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     
     // Helpers ////////////////////////////////////////////////////////////////////////
 
-    private fun buildSubMeshInstances(node: AINode, parentWorld: Matrix4f, instances: MutableList<MeshInstance>, inheritedLodLevel: Int? = null)
-    {
+    private fun buildSubMeshInstances(
+        node: AINode,
+        parentWorld: Matrix4f,
+        instances: MutableList<MeshInstance>,
+        collisionMeshes: MutableList<CollisionMesh>,
+        inheritedLodLevel: Int? = null,
+        inheritedColliderName: String? = null
+    ) {
         val local = node.mTransformation().toMatrix4f()
         val world = Matrix4f(parentWorld).mul(local)
 
         val nodeName = node.mName().dataString()
         val lodLevel = nodeName.extractLodLevel() ?: inheritedLodLevel
+        val colliderName = nodeName.takeIf { it.isColliderNodeName() } ?: inheritedColliderName
         val meshIndices = node.mMeshes()
 
         if (meshIndices != null)
         {
             for (i in 0 until node.mNumMeshes())
             {
-                val meshIndex   = meshIndices[i] // aiMesh index
-                val mesh        = meshes[meshIndex]
-                val localBounds = if (hasBones) getBindPoseSubMeshBounds(mesh, nodeName) else mesh.localBounds
-                val worldBounds = transformAabb(localBounds, world)
+                val meshIndex = meshIndices[i] // aiMesh index
+                val mesh      = meshes[meshIndex]
 
-                instances += MeshInstance(
-                    mesh = mesh,
-                    transform = Matrix4f(world),
-                    cullingBounds = localBounds,
-                    worldBounds = worldBounds,
-                    nodeName = nodeName,
-                    lodLevel = lodLevel
-                )
+                if (colliderName != null)
+                {
+                    collisionMeshes += extractCollisionMesh(colliderName, mesh, world)
+                }
+                else
+                {
+                    val localBounds = if (hasBones) getBindPoseSubMeshBounds(mesh, nodeName) else mesh.localBounds
+                    val worldBounds = transformAabb(localBounds, world)
+
+                    instances += MeshInstance(
+                        mesh = mesh,
+                        transform = Matrix4f(world),
+                        cullingBounds = localBounds,
+                        worldBounds = worldBounds,
+                        nodeName = nodeName,
+                        lodLevel = lodLevel
+                    )
+                }
             }
         }
 
         val children = node.mChildren() ?: return
         for (i in 0 until node.mNumChildren())
-            buildSubMeshInstances(AINode.create(children[i]), world, instances, lodLevel)
+            buildSubMeshInstances(AINode.create(children[i]), world, instances, collisionMeshes, lodLevel, colliderName)
+    }
+
+    private fun extractCollisionMesh(name: String, mesh: Mesh, transform: Matrix4fc): CollisionMesh
+    {
+        val positions = FloatArray(mesh.vertexCount * 3)
+        var destination = 0
+        for (vertexIndex in mesh.vertexStart until mesh.vertexStart + mesh.vertexCount)
+        {
+            val source = vertexIndex * mesh.vertexStride
+            positions[destination++] = vertices[source]
+            positions[destination++] = vertices[source + 1]
+            positions[destination++] = vertices[source + 2]
+        }
+
+        val localIndices = IntArray(mesh.indexCount)
+        for (index in localIndices.indices)
+        {
+            val localIndex = indices[mesh.indexStart + index] - mesh.vertexStart
+            check(localIndex in 0 until mesh.vertexCount) { "Collision mesh '$name' contains an index outside its vertex range" }
+            localIndices[index] = localIndex
+        }
+
+        return CollisionMesh(name, positions, localIndices, Matrix4f(transform))
     }
 
     private fun buildBoundsAndLodLevels()
@@ -834,7 +877,12 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val match = LOD_NAME_REGEX.find(this) ?: return null
         return match.groupValues[1].toIntOrNull()
     }
-    
+
+    private fun String.isColliderNodeName(): Boolean =
+        startsWith("COL_", ignoreCase = true) || 
+        startsWith("COLLIDER_", ignoreCase = true) || 
+        startsWith("UCX_", ignoreCase = true)
+
     private fun getBindPoseSubMeshBounds(mesh: Mesh, nodeName: String): Aabb
     {
         val aabb = Aabb()
@@ -1239,6 +1287,13 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val worldBounds: Aabb,
         val nodeName: String,
         val lodLevel: Int? = null
+    )
+
+    data class CollisionMesh(
+        val name: String,
+        val vertices: FloatArray,
+        val indices: IntArray,
+        val transform: Matrix4fc
     )
 
     data class LodLevel(
