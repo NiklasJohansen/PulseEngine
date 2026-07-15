@@ -15,11 +15,15 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.modules.physics3d.BodyType3D.*
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DBody
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DEventSink
+import no.njoh.pulseengine.modules.physics3d.box3d.joints.Box3DJoint
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DShape
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DWorld
-import no.njoh.pulseengine.modules.physics3d.entities.PhysicsEntity3D
+import no.njoh.pulseengine.modules.physics3d.entities.bodies.PhysicsBodyEntity3D
+import no.njoh.pulseengine.modules.physics3d.entities.joints.PhysicsJointEntity3D
 import org.joml.Quaternionf
+import org.joml.Quaternionfc
 import org.joml.Vector3f
+import org.joml.Vector3fc
 
 /** 
  * Owns, advances, and synchronizes the Box3D world used by 3D physics entities. 
@@ -38,14 +42,28 @@ class PhysicsSystem3D : SceneSystem()
     private val bindingsByEntityId = TLongObjectHashMap<BodyBinding>()
     private val activeBindings     = ArrayList<BodyBinding>()
     private val liveEntityIds      = TLongHashSet()
+    private val jointBindingsByEntityId = TLongObjectHashMap<JointBinding>()
+    private val activeJointBindings     = ArrayList<JointBinding>()
+    private val liveJointEntityIds      = TLongHashSet()
     private val tmpPosition        = Vector3f()
     private val tmpRotation        = Quaternionf()
     private val gravity            = Vector3f()
+    private val jointPosition      = Vector3f()
+    private val jointRotation      = Quaternionf()
+    private val bodyAPosition      = Vector3f()
+    private val bodyARotation      = Quaternionf()
+    private val bodyBPosition      = Vector3f()
+    private val bodyBRotation      = Quaternionf()
+    private val localPositionA     = Vector3f()
+    private val localRotationA     = Quaternionf()
+    private val localPositionB     = Vector3f()
+    private val localRotationB     = Quaternionf()
 
     override fun onStart(engine: PulseEngine)
     {
         val world = getOrCreateWorld()
         updateSceneEntities(engine, world)
+        updateSceneJoints(engine, world)
     }
 
     override fun onFixedUpdate(engine: PulseEngine)
@@ -54,9 +72,9 @@ class PhysicsSystem3D : SceneSystem()
 
         val world = getOrCreateWorld()
         updateSceneEntities(engine, world)
+        updateSceneJoints(engine, world)
 
         activeBindings.forEachFast { getPhysicsEntity(engine, it.entityId)?.onPhysicsFixedUpdate(engine, it.body) }
-
         world.step(engine.data.fixedDeltaTime, subStepCount)
         world.dispatchEvents(engine, EventSink)
 
@@ -79,9 +97,16 @@ class PhysicsSystem3D : SceneSystem()
 
     override fun onDestroy(engine: PulseEngine)
     {
+        var jointIndex = activeJointBindings.lastIndex
+        while (jointIndex >= 0)
+            removeJointBinding(engine, activeJointBindings[jointIndex--])
+
         activeBindings.clear()
         bindingsByEntityId.clear()
         liveEntityIds.clear()
+        activeJointBindings.clear()
+        jointBindingsByEntityId.clear()
+        liveJointEntityIds.clear()
         world?.close()
         world = null
         gravity.set(0f)
@@ -103,7 +128,7 @@ class PhysicsSystem3D : SceneSystem()
     private fun updateSceneEntities(engine: PulseEngine, world: Box3DWorld)
     {
         liveEntityIds.clear()
-        engine.scene.forEachEntityOfType<PhysicsEntity3D> { entity ->
+        engine.scene.forEachEntityOfType<PhysicsBodyEntity3D> { entity ->
 
             val sceneEntity = entity as SceneEntity
             if (sceneEntity.isSet(DEAD))
@@ -115,7 +140,7 @@ class PhysicsSystem3D : SceneSystem()
             if (binding == null || binding.physicsPropertyHash != entity.getPhysicsPropertyHash(engine))
             {
                 if (binding != null)
-                    removeBinding(binding)
+                    removeBinding(engine, binding)
 
                 val shapeDefinitions = entity.getShapeDefinitions(engine)
                 if (shapeDefinitions.isEmpty())
@@ -156,24 +181,131 @@ class PhysicsSystem3D : SceneSystem()
         {
             val binding = activeBindings[index]
             if (binding.entityId !in liveEntityIds)
-                removeBinding(binding)
+                removeBinding(engine, binding)
             index--
         }
     }
 
-    private fun removeBinding(binding: BodyBinding)
+    private fun updateSceneJoints(engine: PulseEngine, world: Box3DWorld)
     {
+        liveJointEntityIds.clear()
+        engine.scene.forEachEntityOfType<PhysicsJointEntity3D> { entity ->
+            val sceneEntity = entity as SceneEntity
+            if (sceneEntity.isSet(DEAD))
+                return@forEachEntityOfType
+
+            liveJointEntityIds.add(sceneEntity.id)
+            val bodyABinding = bindingsByEntityId[entity.bodyAEntityId]
+            val bodyBBinding = bindingsByEntityId[entity.bodyBEntityId]
+            var binding = jointBindingsByEntityId[sceneEntity.id]
+
+            if (bodyABinding == null || bodyBBinding == null || bodyABinding === bodyBBinding)
+            {
+                if (binding != null)
+                    removeJointBinding(engine, binding)
+                return@forEachEntityOfType
+            }
+
+            val propertyHash = entity.physicsPropertyHash()
+            if (binding == null ||
+                binding.propertyHash != propertyHash ||
+                binding.bodyABinding !== bodyABinding ||
+                binding.bodyBBinding !== bodyBBinding ||
+                !binding.joint.isValid()
+            ) {
+                if (binding != null)
+                    removeJointBinding(engine, binding)
+
+                bodyABinding.body.getTransform(bodyAPosition, bodyARotation)
+                bodyBBinding.body.getTransform(bodyBPosition, bodyBRotation)
+                jointPosition.set(entity.xPos, entity.yPos, entity.zPos)
+                jointRotation.rotationXYZ(entity.xRot.toRadians(), entity.yRot.toRadians(), entity.zRot.toRadians())
+
+                worldToBodyFrame(bodyAPosition, bodyARotation, jointPosition, jointRotation, localPositionA, localRotationA)
+                worldToBodyFrame(bodyBPosition, bodyBRotation, jointPosition, jointRotation, localPositionB, localRotationB)
+
+                val joint = world.createJoint(
+                    bodyA = bodyABinding.body,
+                    bodyB = bodyBBinding.body,
+                    definition = entity.createPhysicsJointDefinition(localPositionA, localRotationA, localPositionB, localRotationB)
+                )
+                entity.bindPhysicsJoint(joint)
+
+                binding = JointBinding(sceneEntity.id, joint, propertyHash, bodyABinding, bodyBBinding)
+                jointBindingsByEntityId.put(sceneEntity.id, binding)
+                activeJointBindings += binding
+            }
+        }
+
+        var index = activeJointBindings.lastIndex
+        while (index >= 0)
+        {
+            val binding = activeJointBindings[index]
+            if (binding.entityId !in liveJointEntityIds)
+                removeJointBinding(engine, binding)
+            index--
+        }
+    }
+
+    private fun removeBinding(engine: PulseEngine, binding: BodyBinding)
+    {
+        removeJointBindingsForBody(engine, binding)
         world?.destroyBody(binding.body)
         bindingsByEntityId.remove(binding.entityId)
         activeBindings.remove(binding)
     }
 
-    private fun getPhysicsEntity(engine: PulseEngine, entityId: Long) = engine.scene.getEntityOfType<PhysicsEntity3D>(entityId)
+    private fun removeJointBindingsForBody(engine: PulseEngine, bodyBinding: BodyBinding)
+    {
+        var index = activeJointBindings.lastIndex
+        while (index >= 0)
+        {
+            val binding = activeJointBindings[index]
+            if (binding.bodyABinding === bodyBinding || binding.bodyBBinding === bodyBinding)
+                removeJointBinding(engine, binding)
+            index--
+        }
+    }
+
+    private fun removeJointBinding(engine: PulseEngine, binding: JointBinding)
+    {
+        getPhysicsJointEntity(engine, binding.entityId)?.unbindPhysicsJoint()
+        if (!binding.joint.isDestroyed)
+            world?.destroyJoint(binding.joint)
+        jointBindingsByEntityId.remove(binding.entityId)
+        activeJointBindings.remove(binding)
+    }
+
+    private fun worldToBodyFrame(
+        bodyPosition: Vector3fc,
+        bodyRotation: Quaternionfc,
+        jointPosition: Vector3fc,
+        jointRotation: Quaternionfc,
+        dstPosition: Vector3f,
+        dstRotation: Quaternionf
+    ) {
+        dstRotation.set(bodyRotation).conjugate().normalize()
+        dstPosition.set(jointPosition).sub(bodyPosition)
+        dstRotation.transform(dstPosition)
+        dstRotation.mul(jointRotation).normalize()
+    }
+
+    private fun getPhysicsEntity(engine: PulseEngine, entityId: Long) = engine.scene.getEntityOfType<PhysicsBodyEntity3D>(entityId)
+
+    private fun getPhysicsJointEntity(engine: PulseEngine, entityId: Long) = engine.scene.getEntityOfType<PhysicsJointEntity3D>(entityId)
 
     private class BodyBinding(
         val entityId: Long,
         val body: Box3DBody,
         val physicsPropertyHash: Int
+    )
+
+    private class JointBinding(
+        val entityId: Long,
+        val joint: Box3DJoint,
+        val propertyHash: Int,
+        val bodyABinding: BodyBinding,
+        val bodyBBinding: BodyBinding
     )
 
     private object EventSink : Box3DEventSink

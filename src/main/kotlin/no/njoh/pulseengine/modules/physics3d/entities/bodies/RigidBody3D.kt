@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.physics3d.entities
+package no.njoh.pulseengine.modules.physics3d.entities.bodies
 
 import kotlin.math.abs
 import kotlin.math.max
@@ -40,9 +40,9 @@ import org.joml.Vector3fc
 /**
  * A physically simulated and rendered 3D model.
  */
-@Name("Physics Model (3D)")
+@Name("Rigid body (3D)")
 @Icon("SHAPES")
-open class PhysicsModel3D : SceneEntity(), Initiable, PhysicsEntity3D, Scene3DRenderable, Named
+open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DRenderable, Named
 {
     override var name = "Physics Model"
 

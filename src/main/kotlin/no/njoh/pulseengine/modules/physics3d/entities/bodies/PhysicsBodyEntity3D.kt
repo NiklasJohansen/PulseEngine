@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.physics3d.entities
+package no.njoh.pulseengine.modules.physics3d.entities.bodies
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.interfaces.Spatial3D
@@ -13,7 +13,7 @@ import org.joml.Quaternionfc
 import org.joml.Vector3f
 import org.joml.Vector3fc
 
-interface PhysicsEntity3D : Spatial3D
+interface PhysicsBodyEntity3D : Spatial3D
 {
     @get:Prop("Physics",   i=0)                 var bodyType: BodyType3D
     @get:Prop("Physics",   i=1, min=0f)         var density: Float

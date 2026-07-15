@@ -4,7 +4,7 @@ import org.joml.Vector3f
 import org.joml.Vector3fc
 
 /**
- * Game-facing access to a simulated rigid body.
+ * Game-facing access to a 3D physics body.
  */
 interface PhysicsBody3D
 {

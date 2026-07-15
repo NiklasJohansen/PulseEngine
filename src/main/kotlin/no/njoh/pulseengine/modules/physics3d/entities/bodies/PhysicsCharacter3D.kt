@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.modules.physics3d.entities
+package no.njoh.pulseengine.modules.physics3d.entities.bodies
 
 import kotlin.math.abs
 import kotlin.math.cos
@@ -36,9 +36,10 @@ import org.joml.Vector3fc
  */
 @Name("Physics Character (3D)")
 @Icon("PERSON", size = 24f, showInViewport = true)
-class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsEntity3D, Named
+class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntity3D, Named
 {
     override var name = "Physics Character"
+    var enabled = true
 
     @Prop("Capsule", i=1, min=0.01f) var capsuleRadius = 0.4f
     @Prop("Capsule", i=2, min=0.02f) var capsuleHeight = 1.8f
@@ -106,6 +107,8 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsEntity3D,
 
     override fun onUpdate(engine: PulseEngine)
     {
+        if (!enabled) return
+
         jumpBufferRemaining = max(0f, jumpBufferRemaining - engine.data.deltaTime)
         coyoteRemaining = max(0f, coyoteRemaining - engine.data.deltaTime)
 
