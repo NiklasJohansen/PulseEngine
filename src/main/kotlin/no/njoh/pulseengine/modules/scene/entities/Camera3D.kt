@@ -17,12 +17,9 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.modules.scene.entities.Camera3D.RotationMode.*
 import org.joml.Quaternionf
 import org.joml.Vector3f
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 
 @Icon("CAMERA", size = 24f, showInViewport = true)
-class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rotatable3D
+open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rotatable3D
 {
     @Prop(i=0) override var name = "Camera"
     @Prop(i=1)          var active = true
@@ -43,14 +40,25 @@ class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rot
     private var trackedEntityId = INVALID_ID
     private val tmpQuaternionRot = Quaternionf()
     private val tmpEulerRot = Vector3f()
-    private val delta = Vector3f()
+    private val deltaPos = Vector3f()
+    private val rotatedDeltaPos = Vector3f()
+    private val rotationOffset = Quaternionf()
+    private val currentTrackingRotation = Quaternionf()
+    private val targetTrackingRotation = Quaternionf()
+    private var positionOffsetTargetId = INVALID_ID
+    private var rotationOffsetTargetId = INVALID_ID
 
     override fun onStart(engine: PulseEngine)
     {
-        engine.scene.getEntityOfType<Translatable3D>(targetEntityId)?.let()
-        {
-            delta.set(xPos - it.xPos, yPos - it.yPos, zPos - it.zPos)
-        }
+        val targetPosition = engine.scene.getEntityOfType<Translatable3D>(targetEntityId)
+        val targetRotation = engine.scene.getEntityOfType<Rotatable3D>(targetEntityId)
+
+        positionOffsetTargetId = INVALID_ID
+        targetPosition?.let { capturePositionOffset(it, targetRotation) }
+
+        rotationOffset.identity()
+        rotationOffsetTargetId = INVALID_ID
+        targetRotation?.let(::captureRotationOffset)
 
         updateCamera(engine)
     }
@@ -74,7 +82,7 @@ class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rot
         applyTo(engine.gfx.mainCamera, engine.window.width, engine.window.height)
     }
 
-    internal fun applyTo(camera: Camera, width: Int, height: Int)
+    fun applyTo(camera: Camera, width: Int, height: Int)
     {
         val near = nearPlane.coerceAtLeast(0.001f)
         
@@ -94,28 +102,73 @@ class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rot
         camera.updateProjection(width, height, PERSPECTIVE_3D)
     }
 
-    internal fun updateTracking(target: Translatable3D, targetRotation: Rotatable3D? = null)
+    open fun updateTracking(target: Translatable3D, targetRotation: Rotatable3D? = null)
     {
         val snapToTarget = trackedEntityId != targetEntityId
         trackedEntityId = targetEntityId
-        val factor = if (snapToTarget) 1f else smoothing.coerceIn(0f, 1f)
+        val factor = if (snapToTarget) 1f else 1f - smoothing.coerceIn(0f, 1f)
 
-        xPos += (target.xPos + delta.x - xPos) * factor
-        yPos += (target.yPos + delta.y - yPos) * factor
-        zPos += (target.zPos + delta.z - zPos) * factor
+        val positionOffset = if (positionOffsetTargetId == targetEntityId && targetRotation != null)
+        {
+            targetRotation.toQuaternion(targetTrackingRotation).transform(deltaPos, rotatedDeltaPos)
+        }
+        else deltaPos
+
+        xPos += (target.xPos + positionOffset.x - xPos) * factor
+        yPos += (target.yPos + positionOffset.y - yPos) * factor
+        zPos += (target.zPos + positionOffset.z - zPos) * factor
 
         if (trackRotation && targetRotation != null)
         {
-            xRot = interpolateAngle(xRot, targetRotation.xRot, factor)
-            yRot = interpolateAngle(yRot, targetRotation.yRot, factor)
-            zRot = interpolateAngle(zRot, targetRotation.zRot, factor)
+            targetRotation.toQuaternion(targetTrackingRotation)
+            if (rotationOffsetTargetId == targetEntityId)
+                targetTrackingRotation.mul(rotationOffset)
+
+            cameraRotationTo(currentTrackingRotation)
+            currentTrackingRotation.slerp(targetTrackingRotation, factor).normalize()
+            applyCameraRotation(currentTrackingRotation)
         }
     }
 
-    private fun interpolateAngle(current: Float, target: Float, factor: Float): Float
+    private fun capturePositionOffset(target: Translatable3D, targetRotation: Rotatable3D?)
     {
-        val difference = (target - current).toRadians()
-        return normalizeAngle(current + atan2(sin(difference), cos(difference)).toDegrees() * factor)
+        deltaPos.set(xPos - target.xPos, yPos - target.yPos, zPos - target.zPos)
+        positionOffsetTargetId = INVALID_ID
+        if (targetRotation != null)
+        {
+            targetRotation.toQuaternion(targetTrackingRotation).conjugate().transform(deltaPos)
+            positionOffsetTargetId = targetEntityId
+        }
+    }
+
+    private fun captureRotationOffset(targetRotation: Rotatable3D)
+    {
+        targetRotation.toQuaternion(targetTrackingRotation)
+        cameraRotationTo(currentTrackingRotation)
+        rotationOffset.set(targetTrackingRotation).conjugate().mul(currentTrackingRotation).normalize()
+        rotationOffsetTargetId = targetEntityId
+    }
+
+    private fun Rotatable3D.toQuaternion(dst: Quaternionf) = dst.rotationXYZ(
+        xRot.toRadians(), yRot.toRadians(), zRot.toRadians()
+    )
+
+    private fun cameraRotationTo(dst: Quaternionf) = when (rotationMode)
+    {
+        XYZ -> dst.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        YAW_PITCH -> dst.rotationYXZ(yRot.toRadians(), xRot.toRadians(), zRot.toRadians())
+    }
+
+    private fun applyCameraRotation(rotation: Quaternionf)
+    {
+        when (rotationMode)
+        {
+            XYZ -> rotation.getEulerAnglesXYZ(tmpEulerRot)
+            YAW_PITCH -> rotation.getEulerAnglesYXZ(tmpEulerRot)
+        }
+        xRot = normalizeAngle(tmpEulerRot.x.toDegrees())
+        yRot = normalizeAngle(tmpEulerRot.y.toDegrees())
+        zRot = normalizeAngle(tmpEulerRot.z.toDegrees())
     }
 
     private fun normalizeAngle(angle: Float) = ((angle + 180f) % 360f + 360f) % 360f - 180f

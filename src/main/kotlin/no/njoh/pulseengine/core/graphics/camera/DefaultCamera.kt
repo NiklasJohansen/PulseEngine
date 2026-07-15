@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.PERSPECTIVE
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Matrix4f
+import org.joml.Quaternionf
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
@@ -21,6 +22,9 @@ class DefaultCamera(override var projectionType: CameraProjectionType) : CameraI
     private val screenPositionVector = Vector2f()
     private val iPos = Vector3f()
     private val iRot = Vector3f()
+    private val lastRotQuaternion = Quaternionf()
+    private val currentRotQuaternion = Quaternionf()
+    private val iRotQuaternion = Quaternionf()
     private val iScale = Vector3f()
     private val iOrigin = Vector3f()
 
@@ -82,7 +86,6 @@ class DefaultCamera(override var projectionType: CameraProjectionType) : CameraI
         // from the previous frame. This is the default behavior as the renderers are double-buffered.
 
         position.interpolateFrom(positionLast, destination = iPos)
-        rotation.interpolateFrom(rotationLast, destination = iRot)
         origin.interpolateFrom(originLast, destination = iOrigin)
         scale.interpolateFrom(scaleLast, destination = iScale)
 
@@ -90,6 +93,7 @@ class DefaultCamera(override var projectionType: CameraProjectionType) : CameraI
         {
             ORTHOGRAPHIC_2D ->
             {
+                rotation.interpolateFrom(rotationLast, destination = iRot)
                 viewMatrix
                     .identity()
                     .translate(iOrigin)
@@ -101,12 +105,11 @@ class DefaultCamera(override var projectionType: CameraProjectionType) : CameraI
             }
             ORTHOGRAPHIC_3D, PERSPECTIVE_3D ->
             {
+                interpolate3DRotation(engine.data.interpolation)
                 invViewMatrix
                     .identity()
                     .translate(iPos)
-                    .rotateY(iRot.y)
-                    .rotateX(iRot.x)
-                    .rotateZ(iRot.z)
+                    .rotate(iRotQuaternion)
 
                 viewMatrix.set(invViewMatrix).invert()
             }
@@ -124,6 +127,15 @@ class DefaultCamera(override var projectionType: CameraProjectionType) : CameraI
 
         val bottomRight = screenPosToWorldPos(screenWidth.toFloat(), screenHeight.toFloat(), 0f, screenWidth, screenHeight)
         bottomRightWorldPosition.set(bottomRight.x, bottomRight.y)
+    }
+
+    private fun interpolate3DRotation(t: Float): Quaternionf
+    {
+        lastRotQuaternion.rotationYXZ(rotationLast.y, rotationLast.x, rotationLast.z)
+        currentRotQuaternion.rotationYXZ(rotation.y, rotation.x, rotation.z)
+        return iRotQuaternion.set(lastRotQuaternion)
+            .slerp(currentRotQuaternion, t.coerceIn(0f, 1f))
+            .normalize()
     }
 
     override fun updateLastState()
