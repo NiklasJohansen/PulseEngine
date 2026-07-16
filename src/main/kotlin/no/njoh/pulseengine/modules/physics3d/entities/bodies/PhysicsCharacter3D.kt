@@ -19,11 +19,12 @@ import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
-import no.njoh.pulseengine.modules.physics3d.BodyType3D
-import no.njoh.pulseengine.modules.physics3d.BodyType3D.DYNAMIC
+import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D
+import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D.DYNAMIC
 import no.njoh.pulseengine.modules.physics3d.CapsuleGeometry3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsBody3D
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DShapeDefinition
+import no.njoh.pulseengine.modules.physics3d.box3d.Box3DBodyDefinition
 import no.njoh.pulseengine.modules.scene.entities.Camera3D
 import no.njoh.pulseengine.modules.scene.entities.Camera3D.RotationMode.YAW_PITCH
 import org.joml.Quaternionf
@@ -34,7 +35,7 @@ import org.joml.Vector3fc
 /**
  * Dynamic capsule character with keyboard, mouse-look, sprinting, and grounded jumping.
  */
-@Name("Physics Character (3D)")
+@Name("3D Physics Character")
 @Icon("PERSON", size = 24f, showInViewport = true)
 class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntity3D, Named
 {
@@ -93,13 +94,17 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
     private var pitch               = 0f
     private var yaw                 = 0f
 
-    private val currentPosition      = Vector3f()
-    private val currentRotation      = Quaternionf()
-    private val previousPosition     = Vector3f()
-    private val previousRotation     = Quaternionf()
-    private val synchronizedPosition = Vector3f()
-    private val synchronizedRotation = Vector3f()
-    
+    private val currentPosition         = Vector3f()
+    private val currentRotation         = Quaternionf()
+    private val previousPosition        = Vector3f()
+    private val previousRotation        = Quaternionf()
+    private val synchronizedPosition    = Vector3f()
+    private val synchronizedRotation    = Vector3f()
+    private val physicsBodyDefinition   = Box3DBodyDefinition()
+    private val physicsCapsuleGeometry  = CapsuleGeometry3D(radius = capsuleRadius)
+    private val physicsShapeDefinition  = Box3DShapeDefinition(physicsCapsuleGeometry)
+    private val physicsShapeDefinitions = listOf(physicsShapeDefinition)
+
     override fun onStart(engine: PulseEngine)
     {
         updateCamera(engine)
@@ -217,35 +222,26 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
         xPos != synchronizedPosition.x || yPos != synchronizedPosition.y || zPos != synchronizedPosition.z ||
         xRot != synchronizedRotation.x || yRot != synchronizedRotation.y || zRot != synchronizedRotation.z
 
-    override fun getShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
+    override fun getPhysicsBodyDefinition() = physicsBodyDefinition.updateFrom(this)
+
+    override fun getPhysicsShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
     {
         val scaledRadius = capsuleRadius * max(abs(xScale), abs(zScale))
         val scaledHeight = max(capsuleHeight * abs(yScale), scaledRadius * 2f)
         val segmentHalfHeight = scaledHeight * 0.5f - scaledRadius
-        return listOf(
-            Box3DShapeDefinition(
-                geometry = CapsuleGeometry3D(
-                    point1 = Vector3f(0f, -segmentHalfHeight, 0f),
-                    point2 = Vector3f(0f,  segmentHalfHeight, 0f),
-                    radius = scaledRadius
-                ),
-                density = if (bodyType == BodyType3D.STATIC) 0f else density,
-                friction = friction,
-                restitution = restitution,
-                categoryBits = layerMask.toLong() and 0xffffffffL,
-                maskBits = collisionMask.toLong() and 0xffffffffL,
-                sensor = sensor
-            )
-        )
-    }
 
-    override fun getPhysicsPropertyHash(engine: PulseEngine): Int
-    {
-        var hash = super.getPhysicsPropertyHash(engine)
-        hash = 31 * hash + xScale.toBits()
-        hash = 31 * hash + yScale.toBits()
-        hash = 31 * hash + zScale.toBits()
-        return hash
+        physicsCapsuleGeometry.point1.set(0f, -segmentHalfHeight, 0f)
+        physicsCapsuleGeometry.point2.set(0f,  segmentHalfHeight, 0f)
+        physicsCapsuleGeometry.radius = scaledRadius
+
+        physicsShapeDefinition.density = if (bodyType == PhysicsBodyType3D.STATIC) 0f else density
+        physicsShapeDefinition.friction = friction
+        physicsShapeDefinition.restitution = restitution
+        physicsShapeDefinition.categoryBits = layerMask.toLong() and 0xffffffffL
+        physicsShapeDefinition.maskBits = collisionMask.toLong() and 0xffffffffL
+        physicsShapeDefinition.sensor = sensor
+
+        return physicsShapeDefinitions
     }
 
     private fun updateCamera(engine: PulseEngine)

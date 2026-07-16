@@ -9,21 +9,23 @@ import java.lang.foreign.MemorySegment
 data class Box3DShape(
     val nativeId: MemorySegment,
     val body: Box3DBody,
+    var geometryHash: Int,
+    var sensor: Boolean
 )
 
 /**
  * Material, filtering, and geometry for one shape attached to a rigid body.
  */
 data class Box3DShapeDefinition(
-    val geometry: ShapeGeometry3D,
-    val density: Float = 1f,
-    val friction: Float = 0.6f,
-    val restitution: Float = 0f,
-    val categoryBits: Long = 1L,
-    val maskBits: Long = -1L,
-    val groupIndex: Int = 0,
-    val sensor: Boolean = false,
-    val enableContactEvents: Boolean = false,
-    val enableSensorEvents: Boolean = false,
-    val enableHitEvents: Boolean = false
+    var geometry: ShapeGeometry3D,
+    var density: Float               = 1f,
+    var friction: Float              = 0.6f,
+    var restitution: Float           = 0f,
+    var categoryBits: Long           = 1L,
+    var maskBits: Long               = -1L,
+    var groupIndex: Int              = 0,
+    var sensor: Boolean              = false,
+    var enableContactEvents: Boolean = false,
+    var enableSensorEvents: Boolean  = false,
+    var enableHitEvents: Boolean     = false
 )

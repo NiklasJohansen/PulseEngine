@@ -17,7 +17,25 @@ import no.njoh.box3d.raw.Box3DRaw.b3CreateSphereShape
 import no.njoh.box3d.raw.Box3DRaw.b3CreateTransformedHullShape
 import no.njoh.box3d.raw.Box3DRaw.b3CreateWeldJoint
 import no.njoh.box3d.raw.Box3DRaw.b3CreateWheelJoint
+import no.njoh.box3d.raw.Box3DRaw.b3DestroyShape
 import no.njoh.box3d.raw.Box3DRaw.b3DestroyJoint
+import no.njoh.box3d.raw.Box3DRaw.b3Joint_SetCollideConnected
+import no.njoh.box3d.raw.Box3DRaw.b3Joint_SetLocalFrameA
+import no.njoh.box3d.raw.Box3DRaw.b3Joint_SetLocalFrameB
+import no.njoh.box3d.raw.Box3DRaw.b3Shape_EnableContactEvents
+import no.njoh.box3d.raw.Box3DRaw.b3Shape_EnableHitEvents
+import no.njoh.box3d.raw.Box3DRaw.b3Shape_EnableSensorEvents
+import no.njoh.box3d.raw.Box3DRaw.b3Shape_SetDensity
+import no.njoh.box3d.raw.Box3DRaw.b3Shape_SetFilter
+import no.njoh.box3d.raw.Box3DRaw.b3Shape_SetFriction
+import no.njoh.box3d.raw.Box3DRaw.b3Shape_SetRestitution
+import no.njoh.box3d.raw.Box3DRaw_1.b3Body_ApplyMassFromShapes
+import no.njoh.box3d.raw.Box3DRaw_1.b3Body_SetAngularDamping
+import no.njoh.box3d.raw.Box3DRaw_1.b3Body_SetBullet
+import no.njoh.box3d.raw.Box3DRaw_1.b3Body_SetGravityScale
+import no.njoh.box3d.raw.Box3DRaw_1.b3Body_SetLinearDamping
+import no.njoh.box3d.raw.Box3DRaw_1.b3Body_SetMotionLocks
+import no.njoh.box3d.raw.Box3DRaw_1.b3Body_SetType
 import no.njoh.box3d.raw.Box3DRaw_1.b3CreateBody
 import no.njoh.box3d.raw.Box3DRaw_1.b3CreateHull
 import no.njoh.box3d.raw.Box3DRaw_1.b3CreateMesh
@@ -70,11 +88,14 @@ import no.njoh.box3d.raw.b3WeldJointDef
 import no.njoh.box3d.raw.b3WheelJointDef
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Model
-import no.njoh.pulseengine.modules.physics3d.BodyType3D
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Logger
+import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D
 import no.njoh.pulseengine.modules.physics3d.BoxGeometry3D
 import no.njoh.pulseengine.modules.physics3d.CapsuleGeometry3D
 import no.njoh.pulseengine.modules.physics3d.ConvexHullGeometry3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsJointDefinition3D
+import no.njoh.pulseengine.modules.physics3d.ShapeGeometry3D
 import no.njoh.pulseengine.modules.physics3d.SphereGeometry3D
 import no.njoh.pulseengine.modules.physics3d.TriangleMeshGeometry3D
 import no.njoh.pulseengine.modules.physics3d.box3d.joints.Box3DDistanceJoint
@@ -113,6 +134,12 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
     private val tmpSensorEvents: MemorySegment
     private val tmpContactPoint = Vector3f()
     private val tmpContactNormal = Vector3f()
+    private val tmpJointBodyPosition = Vector3f()
+    private val tmpJointBodyRotation = Quaternionf()
+    private val tmpJointLocalPositionA = Vector3f()
+    private val tmpJointLocalRotationA = Quaternionf()
+    private val tmpJointLocalPositionB = Vector3f()
+    private val tmpJointLocalRotationB = Quaternionf()
 
     private var isClosed = false
     
@@ -175,10 +202,8 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
         enableContactEvents: Boolean = false,
         enableSensorEvents: Boolean = false
     ): Box3DBody {
-        
-        requireOpen()
-        validate(definition, shapesDefinitions)
 
+        requireOpen()
         Arena.ofConfined().use { tempArena ->
 
             val bodyDefinition = b3DefaultBodyDef(tempArena)
@@ -223,6 +248,30 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
         }
     }
 
+    fun synchronizeBody(
+        existingBody: Box3DBody?,
+        entityId: Long,
+        definition: Box3DBodyDefinition,
+        shapeDefinitions: List<Box3DShapeDefinition>,
+        enableContactEvents: Boolean = false,
+        enableSensorEvents: Boolean = false
+    ): Box3DBody {
+        requireOpen()
+
+        if (existingBody == null || existingBody.isDestroyed || existingBody !in bodies || existingBody.entityId != entityId)
+        {
+            if (existingBody != null && !existingBody.isDestroyed && existingBody in bodies)
+                destroyBody(existingBody)
+
+            return createBody(entityId, definition, shapeDefinitions, enableContactEvents, enableSensorEvents)
+        }
+
+        updateBody(existingBody, definition)
+        synchronizeShapes(existingBody, shapeDefinitions, enableContactEvents, enableSensorEvents)
+
+        return existingBody
+    }
+
     fun destroyBody(body: Box3DBody)
     {
         requireUsable(body)
@@ -245,20 +294,47 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             else -> error("Unsupported 3D joint definition: ${definition::class.qualifiedName}")
         }
 
+    fun synchronizeJoint(joint: Box3DJoint?, bodyA: Box3DBody, bodyB: Box3DBody, definition: PhysicsJointDefinition3D): Box3DJoint
+    {
+        requireJointBodies(bodyA, bodyB)
+
+        if (joint == null ||
+            !joint.isValid() ||
+            joint.bodyA !== bodyA ||
+            joint.bodyB !== bodyB ||
+            !supports(joint, definition)
+        ) {
+            if (joint != null && joint in joints)
+            {
+                if (joint.isValid())
+                {
+                    destroyJoint(joint)
+                }
+                else
+                {
+                    joint.markDestroyed()
+                    joints.remove(joint)
+                }
+            }
+            return createJoint(bodyA, bodyB, definition)
+        }
+
+        updateJointBase(joint, bodyA, bodyB, definition)
+        joint.applyDefinition(definition)
+        joint.wakeBodies()
+
+        return joint
+    }
+
     private fun createRevoluteJoint(bodyA: Box3DBody, bodyB: Box3DBody, definition: Box3DRevoluteJointDefinition): Box3DRevoluteJoint
     {
         requireJointBodies(bodyA, bodyB)
-        validate(definition)
+        definition.sanitize()
 
         Arena.ofConfined().use { tempArena ->
             val nativeDefinition = b3DefaultRevoluteJointDef(tempArena)
 
-            setJointBase(
-                b3RevoluteJointDef.base(nativeDefinition), bodyA, bodyB,
-                definition.localPositionA, definition.localRotationA,
-                definition.localPositionB, definition.localRotationB,
-                definition.collideConnected
-            )
+            setJointBase(b3RevoluteJointDef.base(nativeDefinition), bodyA, bodyB, definition)
 
             b3RevoluteJointDef.enableMotor(nativeDefinition, definition.enableMotor)
             b3RevoluteJointDef.motorSpeed(nativeDefinition, definition.motorSpeed)
@@ -272,24 +348,19 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             b3RevoluteJointDef.upperAngle(nativeDefinition, definition.upperAngle)
 
             val nativeJointId = b3CreateRevoluteJoint(arena, nativeWorldId, nativeDefinition)
-            return Box3DRevoluteJoint(bodyA, bodyB, nativeJointId).also { joints += it }
+            return registerJoint(Box3DRevoluteJoint(nativeJointId, bodyA, bodyB), definition)
         }
     }
 
     private fun createWeldJoint(bodyA: Box3DBody, bodyB: Box3DBody, definition: Box3DWeldJointDefinition): Box3DWeldJoint
     {
         requireJointBodies(bodyA, bodyB)
-        validate(definition)
+        definition.sanitize()
 
         Arena.ofConfined().use { tempArena ->
             val nativeDefinition = b3DefaultWeldJointDef(tempArena)
 
-            setJointBase(
-                b3WeldJointDef.base(nativeDefinition), bodyA, bodyB,
-                definition.localPositionA, definition.localRotationA,
-                definition.localPositionB, definition.localRotationB,
-                definition.collideConnected
-            )
+            setJointBase(b3WeldJointDef.base(nativeDefinition), bodyA, bodyB, definition)
 
             b3WeldJointDef.linearHertz(nativeDefinition, definition.linearHertz)
             b3WeldJointDef.linearDampingRatio(nativeDefinition, definition.linearDampingRatio)
@@ -297,24 +368,19 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             b3WeldJointDef.angularDampingRatio(nativeDefinition, definition.angularDampingRatio)
 
             val nativeJointId = b3CreateWeldJoint(arena, nativeWorldId, nativeDefinition)
-            return Box3DWeldJoint(bodyA, bodyB, nativeJointId).also { joints += it }
+            return registerJoint(Box3DWeldJoint(nativeJointId, bodyA, bodyB), definition)
         }
     }
 
     private fun createDistanceJoint(bodyA: Box3DBody, bodyB: Box3DBody, definition: Box3DDistanceJointDefinition): Box3DDistanceJoint
     {
         requireJointBodies(bodyA, bodyB)
-        validate(definition)
+        definition.sanitize()
 
         Arena.ofConfined().use { tempArena ->
             val nativeDefinition = b3DefaultDistanceJointDef(tempArena)
 
-            setJointBase(
-                b3DistanceJointDef.base(nativeDefinition), bodyA, bodyB,
-                definition.localPositionA, definition.localRotationA,
-                definition.localPositionB, definition.localRotationB,
-                definition.collideConnected
-            )
+            setJointBase(b3DistanceJointDef.base(nativeDefinition), bodyA, bodyB, definition)
 
             b3DistanceJointDef.length(nativeDefinition, definition.length)
             b3DistanceJointDef.enableSpring(nativeDefinition, definition.enableSpring)
@@ -325,30 +391,19 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             b3DistanceJointDef.maxLength(nativeDefinition, definition.maxLength)
 
             val nativeJointId = b3CreateDistanceJoint(arena, nativeWorldId, nativeDefinition)
-            return Box3DDistanceJoint(bodyA, bodyB, nativeJointId).also { joints += it }
+            return registerJoint(Box3DDistanceJoint(nativeJointId, bodyA, bodyB), definition)
         }
     }
 
     private fun createWheelJoint(bodyA: Box3DBody, bodyB: Box3DBody, definition: Box3DWheelJointDefinition): Box3DWheelJoint
     {
         requireJointBodies(bodyA, bodyB)
-        validate(definition)
+        definition.sanitize()
 
         Arena.ofConfined().use { tempArena ->
             val nativeDefinition = b3DefaultWheelJointDef(tempArena)
 
-            val baseDefinition = b3WheelJointDef.base(nativeDefinition)
-            b3JointDef.bodyIdA(baseDefinition, bodyA.nativeBodyId)
-            b3JointDef.bodyIdB(baseDefinition, bodyB.nativeBodyId)
-            b3JointDef.collideConnected(baseDefinition, definition.collideConnected)
-
-            val frameA = b3JointDef.localFrameA(baseDefinition)
-            b3Transform.p(frameA).setVec3(definition.localPositionA)
-            b3Transform.q(frameA).setQuaternion(definition.localRotationA)
-
-            val frameB = b3JointDef.localFrameB(baseDefinition)
-            b3Transform.p(frameB).setVec3(definition.localPositionB)
-            b3Transform.q(frameB).setQuaternion(definition.localRotationB)
+            setJointBase(b3WheelJointDef.base(nativeDefinition), bodyA, bodyB, definition)
 
             b3WheelJointDef.enableSuspensionSpring(nativeDefinition, definition.enableSuspension)
             b3WheelJointDef.suspensionHertz(nativeDefinition, definition.suspensionHertz)
@@ -369,7 +424,7 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             b3WheelJointDef.upperSteeringLimit(nativeDefinition, definition.upperSteeringLimit)
 
             val nativeJointId = b3CreateWheelJoint(arena, nativeWorldId, nativeDefinition)
-            return Box3DWheelJoint(bodyA, bodyB, nativeJointId).also { joints += it }
+            return registerJoint(Box3DWheelJoint(nativeJointId, bodyA, bodyB), definition)
         }
     }
 
@@ -418,27 +473,91 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
         require(bodyA !== bodyB) { "A joint must connect two different bodies" }
     }
 
+    private fun supports(joint: Box3DJoint, definition: PhysicsJointDefinition3D) = when (joint)
+    {
+        is Box3DWheelJoint    ->  definition is Box3DWheelJointDefinition
+        is Box3DRevoluteJoint ->  definition is Box3DRevoluteJointDefinition
+        is Box3DWeldJoint     ->  definition is Box3DWeldJointDefinition
+        is Box3DDistanceJoint ->  definition is Box3DDistanceJointDefinition
+        else -> false 
+    }
+
+    private fun updateJointBase(
+        joint: Box3DJoint,
+        bodyA: Box3DBody,
+        bodyB: Box3DBody,
+        definition: PhysicsJointDefinition3D
+    ) {
+        val frameHash = jointFrameHash(definition)
+        if (joint.appliedFrameHash != frameHash)
+        {
+            resolveJointFrames(bodyA, bodyB, definition)
+            Arena.ofConfined().use { tempArena ->
+                val frameA = b3Transform.allocate(tempArena)
+                b3Transform.p(frameA).setVec3(tmpJointLocalPositionA)
+                b3Transform.q(frameA).setQuaternion(tmpJointLocalRotationA)
+                b3Joint_SetLocalFrameA(joint.nativeJointId, frameA)
+
+                val frameB = b3Transform.allocate(tempArena)
+                b3Transform.p(frameB).setVec3(tmpJointLocalPositionB)
+                b3Transform.q(frameB).setQuaternion(tmpJointLocalRotationB)
+                b3Joint_SetLocalFrameB(joint.nativeJointId, frameB)
+            }
+            joint.appliedFrameHash = frameHash
+        }
+
+        b3Joint_SetCollideConnected(joint.nativeJointId, definition.collision)
+    }
+
+    private fun <T : Box3DJoint> registerJoint(joint: T, definition: PhysicsJointDefinition3D): T
+    {
+        joint.appliedFrameHash = jointFrameHash(definition)
+        joints += joint
+        return joint
+    }
+
+    private fun jointFrameHash(definition: PhysicsJointDefinition3D): Int
+    {
+        var hash = definition.worldPosA.hashCode()
+        hash = 31 * hash + definition.worldRotA.hashCode()
+        hash = 31 * hash + definition.worldPosB.hashCode()
+        hash = 31 * hash + definition.worldRotB.hashCode()
+        return hash
+    }
+
     private fun setJointBase(
         baseDefinition: MemorySegment,
         bodyA: Box3DBody,
         bodyB: Box3DBody,
-        localPositionA: Vector3fc,
-        localRotationA: Quaternionfc,
-        localPositionB: Vector3fc,
-        localRotationB: Quaternionfc,
-        collideConnected: Boolean
+        definition: PhysicsJointDefinition3D
     ) {
+        resolveJointFrames(bodyA, bodyB, definition)
         b3JointDef.bodyIdA(baseDefinition, bodyA.nativeBodyId)
         b3JointDef.bodyIdB(baseDefinition, bodyB.nativeBodyId)
-        b3JointDef.collideConnected(baseDefinition, collideConnected)
+        b3JointDef.collideConnected(baseDefinition, definition.collision)
 
         val frameA = b3JointDef.localFrameA(baseDefinition)
-        b3Transform.p(frameA).setVec3(localPositionA)
-        b3Transform.q(frameA).setQuaternion(localRotationA)
+        b3Transform.p(frameA).setVec3(tmpJointLocalPositionA)
+        b3Transform.q(frameA).setQuaternion(tmpJointLocalRotationA)
 
         val frameB = b3JointDef.localFrameB(baseDefinition)
-        b3Transform.p(frameB).setVec3(localPositionB)
-        b3Transform.q(frameB).setQuaternion(localRotationB)
+        b3Transform.p(frameB).setVec3(tmpJointLocalPositionB)
+        b3Transform.q(frameB).setQuaternion(tmpJointLocalRotationB)
+    }
+
+    private fun resolveJointFrames(bodyA: Box3DBody, bodyB: Box3DBody, definition: PhysicsJointDefinition3D) 
+    {
+        bodyA.getTransform(tmpJointBodyPosition, tmpJointBodyRotation)
+        tmpJointLocalRotationA.set(tmpJointBodyRotation).conjugate().normalize()
+        tmpJointLocalPositionA.set(definition.worldPosA).sub(tmpJointBodyPosition)
+        tmpJointLocalRotationA.transform(tmpJointLocalPositionA)
+        tmpJointLocalRotationA.mul(definition.worldRotA).normalize()
+
+        bodyB.getTransform(tmpJointBodyPosition, tmpJointBodyRotation)
+        tmpJointLocalRotationB.set(tmpJointBodyRotation).conjugate().normalize()
+        tmpJointLocalPositionB.set(definition.worldPosB).sub(tmpJointBodyPosition)
+        tmpJointLocalRotationB.transform(tmpJointLocalPositionB)
+        tmpJointLocalRotationB.mul(definition.worldRotB).normalize()
     }
 
     private fun createShape(
@@ -465,8 +584,14 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
         b3Filter.maskBits(filter, definition.maskBits)
         b3Filter.groupIndex(filter, definition.groupIndex)
 
-        val shapeId = when (val geometry = definition.geometry)
+        val geometry = definition.geometry
+        val shapeId = when (geometry)
         {
+            is TriangleMeshGeometry3D if body.type != PhysicsBodyType3D.STATIC ->
+            {
+                Logger.warn { "Triangle mesh collision '${geometry.mesh.name}' is only supported on static bodies, using its bounding box for ${body.type} body ${body.entityId}" }
+                createTriangleMeshFallbackBoxShape(body.nativeBodyId, shapeDefinition, geometry, tmpArena)
+            }
             is BoxGeometry3D -> createBoxShape(body.nativeBodyId, shapeDefinition, geometry, tmpArena)
             is SphereGeometry3D -> createSphereShape(body.nativeBodyId, shapeDefinition, geometry, tmpArena)
             is CapsuleGeometry3D -> createCapsuleShape(body.nativeBodyId, shapeDefinition, geometry, tmpArena)
@@ -474,9 +599,75 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             is TriangleMeshGeometry3D -> createTriangleMeshShape(body.nativeBodyId, shapeDefinition, geometry, tmpArena)
         }
 
-        val shape = Box3DShape(shapeId, body)
+        val shape = Box3DShape(shapeId, body, effectiveGeometryHash(body.type, geometry), definition.sensor)
         shapesByNativeId.put(shapeKey(shapeId), shape)
         return shape
+    }
+
+    private fun updateBody(body: Box3DBody, definition: Box3DBodyDefinition)
+    {
+        b3Body_SetType(body.nativeBodyId, definition.type.toNative())
+        b3Body_SetLinearDamping(body.nativeBodyId, definition.linearDamping)
+        b3Body_SetAngularDamping(body.nativeBodyId, definition.angularDamping)
+        b3Body_SetGravityScale(body.nativeBodyId, definition.gravityScale)
+        b3Body_SetBullet(body.nativeBodyId, definition.bullet)
+
+        Arena.ofConfined().use { tempArena ->
+            val motionLocks = b3MotionLocks.allocate(tempArena)
+            b3MotionLocks.angularX(motionLocks, definition.fixedRotation)
+            b3MotionLocks.angularY(motionLocks, definition.fixedRotation)
+            b3MotionLocks.angularZ(motionLocks, definition.fixedRotation)
+            b3Body_SetMotionLocks(body.nativeBodyId, motionLocks)
+        }
+
+        body.type = definition.type
+    }
+
+    private fun synchronizeShapes(
+        body: Box3DBody,
+        definitions: List<Box3DShapeDefinition>,
+        enableContactEvents: Boolean,
+        enableSensorEvents: Boolean
+    ) {
+        val replaceShapes = body.shapes.size != definitions.size || definitions.indices.any { index ->
+            val shape = body.shapes[index]
+            val definition = definitions[index]
+            shape.geometryHash != effectiveGeometryHash(body.type, definition.geometry) || shape.sensor != definition.sensor
+        }
+
+        if (replaceShapes)
+        {
+            retainDestroyedShapes(body)
+            body.shapes.forEachFast { b3DestroyShape(it.nativeId, false) }
+            body.shapes.clear()
+
+            Arena.ofConfined().use { tempArena ->
+                for (definition in definitions)
+                    body.shapes += createShape(body, definition, enableContactEvents, enableSensorEvents, tempArena)
+            }
+  
+            b3Body_ApplyMassFromShapes(body.nativeBodyId)
+            return
+        }
+
+        Arena.ofConfined().use { tempArena ->
+            val filter = b3Filter.allocate(tempArena)
+            definitions.forEachIndexed { index, definition ->
+                val shape = body.shapes[index]
+                b3Shape_SetDensity(shape.nativeId, definition.density, false)
+                b3Shape_SetFriction(shape.nativeId, definition.friction)
+                b3Shape_SetRestitution(shape.nativeId, definition.restitution)
+                b3Filter.categoryBits(filter, definition.categoryBits)
+                b3Filter.maskBits(filter, definition.maskBits)
+                b3Filter.groupIndex(filter, definition.groupIndex)
+                b3Shape_SetFilter(shape.nativeId, filter, true)
+                b3Shape_EnableContactEvents(shape.nativeId, definition.enableContactEvents || enableContactEvents)
+                b3Shape_EnableSensorEvents(shape.nativeId, definition.enableSensorEvents || enableSensorEvents)
+                b3Shape_EnableHitEvents(shape.nativeId, definition.enableHitEvents || enableContactEvents)
+            }
+        }
+
+        b3Body_ApplyMassFromShapes(body.nativeBodyId)
     }
 
     private fun createBoxShape(bodyId: MemorySegment, shapeDefinition: MemorySegment, geometry: BoxGeometry3D, tmpArena: Arena): MemorySegment
@@ -550,6 +741,73 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
         val cookedMesh = cookedMeshes[geometry.mesh] ?: cookMesh(geometry.mesh, tmpArena).also { cookedMeshes[geometry.mesh] = it }
         val scale = b3Vec3.allocate(tmpArena).setVec3(geometry.scale)
         return b3CreateMeshShape(arena, bodyId, shapeDefinition, cookedMesh, scale)
+    }
+
+    private fun createTriangleMeshFallbackBoxShape(
+        bodyId: MemorySegment,
+        shapeDefinition: MemorySegment,
+        geometry: TriangleMeshGeometry3D,
+        tmpArena: Arena
+    ): MemorySegment {
+        
+        val vertices = geometry.mesh.vertices
+        val transform = geometry.mesh.transform
+        val scale = geometry.scale
+        var xMin = Float.POSITIVE_INFINITY
+        var yMin = Float.POSITIVE_INFINITY
+        var zMin = Float.POSITIVE_INFINITY
+        var xMax = Float.NEGATIVE_INFINITY
+        var yMax = Float.NEGATIVE_INFINITY
+        var zMax = Float.NEGATIVE_INFINITY
+
+        var source = 0
+        while (source + 2 < vertices.size)
+        {
+            val x = vertices[source++]
+            val y = vertices[source++]
+            val z = vertices[source++]
+            val xTransformed = (transform.m00() * x + transform.m10() * y + transform.m20() * z + transform.m30()) * scale.x
+            val yTransformed = (transform.m01() * x + transform.m11() * y + transform.m21() * z + transform.m31()) * scale.y
+            val zTransformed = (transform.m02() * x + transform.m12() * y + transform.m22() * z + transform.m32()) * scale.z
+
+            if (xTransformed < xMin) xMin = xTransformed
+            if (yTransformed < yMin) yMin = yTransformed
+            if (zTransformed < zMin) zMin = zTransformed
+            if (xTransformed > xMax) xMax = xTransformed
+            if (yTransformed > yMax) yMax = yTransformed
+            if (zTransformed > zMax) zMax = zTransformed
+        }
+
+        if (!xMin.isFinite() || !yMin.isFinite() || !zMin.isFinite() || !xMax.isFinite() || !yMax.isFinite() || !zMax.isFinite())
+        {
+            xMin = -0.5f
+            yMin = -0.5f
+            zMin = -0.5f
+            xMax = 0.5f
+            yMax = 0.5f
+            zMax = 0.5f
+        }
+
+        val xCenter   =  (xMin + xMax) * 0.5f
+        val yCenter   =  (yMin + yMax) * 0.5f
+        val zCenter   =  (zMin + zMax) * 0.5f
+        val xHalfSize = ((xMax - xMin) * 0.5f).coerceAtLeast(MIN_FALLBACK_BOX_HALF_SIZE)
+        val yHalfSize = ((yMax - yMin) * 0.5f).coerceAtLeast(MIN_FALLBACK_BOX_HALF_SIZE)
+        val zHalfSize = ((zMax - zMin) * 0.5f).coerceAtLeast(MIN_FALLBACK_BOX_HALF_SIZE)
+        val hull = b3MakeBoxHull(tmpArena, xHalfSize, yHalfSize, zHalfSize)
+
+        if (xCenter == 0f && yCenter == 0f && zCenter == 0f)
+            return b3CreateHullShape(arena, bodyId, shapeDefinition, b3BoxHull.base(hull))
+
+        val boxTransform = b3Transform.allocate(tmpArena)
+        b3Vec3.x(b3Transform.p(boxTransform), xCenter)
+        b3Vec3.y(b3Transform.p(boxTransform), yCenter)
+        b3Vec3.z(b3Transform.p(boxTransform), zCenter)
+        b3Transform.q(boxTransform).setQuaternion(IDENTITY_ROTATION)
+ 
+        val unitScale = b3Vec3.allocate(tmpArena).setVec3(UNIT_SCALE)
+
+        return b3CreateTransformedHullShape(arena, bodyId, shapeDefinition, b3BoxHull.base(hull), boxTransform, unitScale)
     }
 
     private fun cookMesh(mesh: Model.CollisionMesh, tmpArena: Arena): MemorySegment
@@ -750,57 +1008,10 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
         return result
     }
 
-    private fun validate(body: Box3DBodyDefinition, shapes: List<Box3DShapeDefinition>)
+    private fun effectiveGeometryHash(bodyType: PhysicsBodyType3D, geometry: ShapeGeometry3D): Int
     {
-        for (shape in shapes)
-        {
-            require(body.type == BodyType3D.STATIC || shape.geometry !is TriangleMeshGeometry3D) 
-            {
-                "Triangle mesh collision is only supported on static bodies"
-            }
-        }
-    }
-
-    private fun validate(joint: Box3DWheelJointDefinition)
-    {
-        require(joint.suspensionHertz >= 0f) { "Suspension hertz must be non-negative" }
-        require(joint.suspensionDampingRatio >= 0f) { "Suspension damping ratio must be non-negative" }
-        require(joint.lowerSuspensionLimit <= joint.upperSuspensionLimit) { "Suspension limits are reversed" }
-        require(joint.maxSpinTorque >= 0f) { "Maximum spin torque must be non-negative" }
-        require(joint.steeringHertz >= 0f) { "Steering hertz must be non-negative" }
-        require(joint.steeringDampingRatio >= 0f) { "Steering damping ratio must be non-negative" }
-        require(joint.maxSteeringTorque >= 0f) { "Maximum steering torque must be non-negative" }
-        require(joint.lowerSteeringLimit <= joint.upperSteeringLimit) { "Steering limits are reversed" }
-    }
-
-    private fun validate(joint: Box3DRevoluteJointDefinition)
-    {
-        val maxAngle = 0.99f * Math.PI.toFloat()
-        require(joint.maxMotorTorque >= 0f) { "Maximum motor torque must be non-negative" }
-        require(joint.springHertz >= 0f) { "Spring hertz must be non-negative" }
-        require(joint.springDampingRatio >= 0f) { "Spring damping ratio must be non-negative" }
-        require(joint.lowerAngle <= joint.upperAngle) { "Rotation limits are reversed" }
-        require(joint.lowerAngle >= -maxAngle && joint.upperAngle <= maxAngle)
-        {
-            "Rotation limits must be within +/- 0.99 PI radians"
-        }
-    }
-
-    private fun validate(joint: Box3DWeldJointDefinition)
-    {
-        require(joint.linearHertz >= 0f) { "Linear hertz must be non-negative" }
-        require(joint.linearDampingRatio >= 0f) { "Linear damping ratio must be non-negative" }
-        require(joint.angularHertz >= 0f) { "Angular hertz must be non-negative" }
-        require(joint.angularDampingRatio >= 0f) { "Angular damping ratio must be non-negative" }
-    }
-
-    private fun validate(joint: Box3DDistanceJointDefinition)
-    {
-        require(joint.length > 0f) { "Distance must be positive" }
-        require(joint.springHertz >= 0f) { "Spring hertz must be non-negative" }
-        require(joint.springDampingRatio >= 0f) { "Spring damping ratio must be non-negative" }
-        require(joint.minLength >= 0f) { "Minimum distance must be non-negative" }
-        require(joint.minLength <= joint.maxLength) { "Distance limits are reversed" }
+        val triangleMeshFallback = geometry is TriangleMeshGeometry3D && bodyType != PhysicsBodyType3D.STATIC
+        return 31 * geometry.hashCode() + triangleMeshFallback.hashCode()
     }
 
     private fun requireOpen()
@@ -817,11 +1028,11 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
         }
     }
 
-    private fun BodyType3D.toNative() = when (this)
+    private fun PhysicsBodyType3D.toNative() = when (this)
     {
-        BodyType3D.STATIC    -> b3_staticBody()
-        BodyType3D.KINEMATIC -> b3_kinematicBody()
-        BodyType3D.DYNAMIC   -> b3_dynamicBody()
+        PhysicsBodyType3D.STATIC    -> b3_staticBody()
+        PhysicsBodyType3D.KINEMATIC -> b3_kinematicBody()
+        PhysicsBodyType3D.DYNAMIC   -> b3_dynamicBody()
     }
 
     companion object
@@ -829,6 +1040,7 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
         private val ZERO = Vector3f()
         private val UNIT_SCALE = Vector3f(1f)
         private val IDENTITY_ROTATION = Quaternionf()
+        private const val MIN_FALLBACK_BOX_HALF_SIZE = 0.005f
 
         fun MemorySegment.setVec3(value: Vector3fc): MemorySegment
         {
@@ -847,6 +1059,5 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             b3Quat.s(this,   value.w())
             return this
         }
-
     }
 }

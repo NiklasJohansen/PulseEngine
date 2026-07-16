@@ -24,7 +24,7 @@ import no.njoh.box3d.raw.b3Quat
 import no.njoh.box3d.raw.b3ShapeId
 import no.njoh.box3d.raw.b3Transform
 import no.njoh.box3d.raw.b3Vec3
-import no.njoh.pulseengine.modules.physics3d.BodyType3D
+import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsBody3D
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DWorld.Companion.setQuaternion
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DWorld.Companion.setVec3
@@ -37,7 +37,7 @@ import org.joml.Vector3fc
  * Handle to a rigid body owned by a [Box3DWorld]. 
  */
 class Box3DBody internal constructor(
-    override val type: BodyType3D,
+    override var type: PhysicsBodyType3D,
     val entityId: Long,
     val nativeBodyId: MemorySegment,
     private val tmpTransform: MemorySegment,
@@ -59,14 +59,8 @@ class Box3DBody internal constructor(
     {
         requireUsable()
         b3Body_GetTransform(transformAllocator, nativeBodyId)
-        if (dstPosition != null)
-        {
-            dstPosition.set(b3Vec3.x(tmpPosition), b3Vec3.y(tmpPosition), b3Vec3.z(tmpPosition))
-        }
-        if (dstRotation != null)
-        {
-            dstRotation.set(b3Vec3.x(tmpVector1), b3Vec3.y(tmpVector1), b3Vec3.z(tmpVector1), b3Quat.s(tmpRotation))
-        }
+        dstPosition?.set(b3Vec3.x(tmpPosition), b3Vec3.y(tmpPosition), b3Vec3.z(tmpPosition))
+        dstRotation?.set(b3Vec3.x(tmpVector1), b3Vec3.y(tmpVector1), b3Vec3.z(tmpVector1), b3Quat.s(tmpRotation))
     }
 
     fun setTransform(position: Vector3fc, rotation: Quaternionfc)
@@ -235,19 +229,29 @@ class Box3DBody internal constructor(
     }
 }
 
-/**
- * Initial rigid-body state.
- * Values use meters, kilograms, and seconds.
- */
 data class Box3DBodyDefinition(
-    val type: BodyType3D = BodyType3D.STATIC,
-    val position: Vector3fc = Vector3f(),
-    val rotation: Quaternionfc = Quaternionf(),
-    val linearVelocity: Vector3fc = Vector3f(),
-    val angularVelocity: Vector3fc = Vector3f(),
-    val linearDamping: Float = 0f,
-    val angularDamping: Float = 0f,
-    val gravityScale: Float = 1f,
-    val bullet: Boolean = false,
-    val fixedRotation: Boolean = false
-)
+    var type: PhysicsBodyType3D   = PhysicsBodyType3D.STATIC,
+    val position: Vector3f        = Vector3f(),
+    val rotation: Quaternionf     = Quaternionf(),
+    val linearVelocity: Vector3f  = Vector3f(),
+    val angularVelocity: Vector3f = Vector3f(),
+    var linearDamping: Float      = 0f,
+    var angularDamping: Float     = 0f,
+    var gravityScale: Float       = 1f,
+    var bullet: Boolean           = false,
+    var fixedRotation: Boolean    = false
+) {
+    /** 
+     * Hash of properties that can change after creation. Runtime pose and velocity are excluded. 
+     */
+    fun configurationHash(): Int
+    {
+        var hash = type.ordinal
+        hash = 31 * hash + linearDamping.toBits()
+        hash = 31 * hash + angularDamping.toBits()
+        hash = 31 * hash + gravityScale.toBits()
+        hash = 31 * hash + bullet.hashCode()
+        hash = 31 * hash + fixedRotation.hashCode()
+        return hash
+    }
+}

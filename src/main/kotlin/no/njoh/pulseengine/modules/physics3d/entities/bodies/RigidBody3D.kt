@@ -20,14 +20,15 @@ import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
-import no.njoh.pulseengine.modules.physics3d.BodyType3D
+import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D
 import no.njoh.pulseengine.modules.physics3d.BoxGeometry3D
 import no.njoh.pulseengine.modules.physics3d.CapsuleGeometry3D
-import no.njoh.pulseengine.modules.physics3d.ColliderType3D.*
+import no.njoh.pulseengine.modules.physics3d.PhysicsColliderType3D.*
 import no.njoh.pulseengine.modules.physics3d.ConvexHullGeometry3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsBody3D
 import no.njoh.pulseengine.modules.physics3d.ShapeGeometry3D
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DShapeDefinition
+import no.njoh.pulseengine.modules.physics3d.box3d.Box3DBodyDefinition
 import no.njoh.pulseengine.modules.physics3d.SphereGeometry3D
 import no.njoh.pulseengine.modules.physics3d.TriangleMeshGeometry3D
 import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderable
@@ -38,19 +39,19 @@ import org.joml.Vector3f
 import org.joml.Vector3fc
 
 /**
- * A physically simulated and rendered 3D model.
+ * A physically simulated and rendered 3D rigid body entity.
  */
-@Name("Rigid body (3D)")
+@Name("3D Physics Body")
 @Icon("SHAPES")
 open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DRenderable, Named
 {
-    override var name = "Physics Model"
+    override var name = "Physics body "
 
     @Prop("Position [*P]", i=1)             override var xPos   = 0f; override var yPos   = 0f; override var zPos   = 0f
     @Prop("Rotation [*R]", i=2)             override var xRot   = 0f; override var yRot   = 0f; override var zRot   = 0f
     @Prop("Scale    [*S]", i=3, min=0.001f) override var xScale = 1f; override var yScale = 1f; override var zScale = 1f
 
-    @Prop("Physics",   i=0)                 override var bodyType            = BodyType3D.DYNAMIC
+    @Prop("Physics",   i=0)                 override var bodyType            = PhysicsBodyType3D.DYNAMIC
     @Prop("Physics",   i=1, min=0f)         override var density             = 1f
     @Prop("Physics",   i=2, min=0f)         override var friction            = 0.6f
     @Prop("Physics",   i=3, min=0f, max=1f) override var restitution         = 0f
@@ -75,12 +76,15 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
     private val tmpRenderPosition = Vector3f()
     private val tmpRenderRotation = Quaternionf()
 
-    private val currentPosition  = Vector3f()
-    private val currentRotation  = Quaternionf()
-    private val previousPosition = Vector3f()
-    private val previousRotation = Quaternionf()
+    private val currentPosition      = Vector3f()
+    private val currentRotation      = Quaternionf()
+    private val previousPosition     = Vector3f()
+    private val previousRotation     = Quaternionf()
     private val synchronizedPosition = Vector3f()
     private val synchronizedRotation = Vector3f()
+
+    private val bodyDefinition   = Box3DBodyDefinition()
+    private val shapeDefinitions = ArrayList<Box3DShapeDefinition>()
 
     override fun onRender(engine: PulseEngine, context: SceneRenderContext)
     {
@@ -156,10 +160,13 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
         xPos != synchronizedPosition.x || yPos != synchronizedPosition.y || zPos != synchronizedPosition.z || 
         xRot != synchronizedRotation.x || yRot != synchronizedRotation.y || zRot != synchronizedRotation.z
 
-    override fun getShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
+    override fun getPhysicsBodyDefinition() = bodyDefinition.updateFrom(this)
+
+    override fun getPhysicsShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
     {
         val model = engine.asset.getOrNull<Model>(model)
         val bounds = model?.localBounds
+
         val xMin = bounds?.xMin ?: -0.5f
         val yMin = bounds?.yMin ?: -0.5f
         val zMin = bounds?.zMin ?: -0.5f
@@ -167,87 +174,92 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
         val yMax = bounds?.yMax ?: 0.5f
         val zMax = bounds?.zMax ?: 0.5f
 
-        val center = Vector3f(
-            (xMin + xMax) * 0.5f * xScale,
-            (yMin + yMax) * 0.5f * yScale,
-            (zMin + zMax) * 0.5f * zScale
-        )
+        val xCenter = (xMin + xMax) * 0.5f * xScale
+        val yCenter = (yMin + yMax) * 0.5f * yScale
+        val zCenter = (zMin + zMax) * 0.5f * zScale
+        val xSize   = (xMax - xMin) * abs(xScale)
+        val ySize   = (yMax - yMin) * abs(yScale)
+        val zSize   = (zMax - zMin) * abs(zScale)
 
-        val xSize = (xMax - xMin) * abs(xScale)
-        val ySize = (yMax - yMin) * abs(yScale)
-        val zSize = (zMax - zMin) * abs(zScale)
+        var shapeCount = 0
 
-        val shapeDefinitions = mutableListOf<Box3DShapeDefinition>()
-        
         when (colliderType)
         {
             BOX ->
             {
-                shapeDefinitions += createShapeDefinition(BoxGeometry3D(Vector3f(xSize, ySize, zSize), center))
+                updateShapeDefinition(shapeCount++, { BoxGeometry3D() })
+                {
+                    it.size.set(xSize, ySize, zSize)
+                    it.center.set(xCenter, yCenter, zCenter)
+                    it.rotation.identity()
+                }
             }
             SPHERE ->
             {
-                shapeDefinitions += createShapeDefinition(SphereGeometry3D(max(xSize, max(ySize, zSize)) * 0.5f, center))
+                updateShapeDefinition(shapeCount++, { SphereGeometry3D() })
+                {
+                    it.radius = max(xSize, max(ySize, zSize)) * 0.5f
+                    it.center.set(xCenter, yCenter, zCenter)
+                }
             }
             CAPSULE ->
             {
                 val radius = max(xSize, zSize) * 0.5f
                 val segmentHalfHeight = max(0f, ySize * 0.5f - radius)
-                shapeDefinitions += createShapeDefinition(
-                    geometry = CapsuleGeometry3D(
-                        point1 = Vector3f(center.x, center.y - segmentHalfHeight, center.z),
-                        point2 = Vector3f(center.x, center.y + segmentHalfHeight, center.z),
-                        radius = radius
-                    )
-                )
+                updateShapeDefinition(shapeCount++, { CapsuleGeometry3D() })
+                {
+                    it.point1.set(xCenter, yCenter - segmentHalfHeight, zCenter)
+                    it.point2.set(xCenter, yCenter + segmentHalfHeight, zCenter)
+                    it.radius = radius
+                }
             }
             CONVEX_HULL ->
             {
-                val scale = Vector3f(xScale, yScale, zScale)
                 for (mesh in model?.collisionMeshes ?: emptyList())
-                    shapeDefinitions += createShapeDefinition(ConvexHullGeometry3D(mesh, scale))
+                {
+                    updateShapeDefinition(shapeCount++, { ConvexHullGeometry3D(mesh) })
+                    {
+                        it.mesh = mesh
+                        it.scale.set(xScale, yScale, zScale)
+                    }
+                }
             }
             TRIANGLE_MESH ->
             {
-                val scale = Vector3f(xScale, yScale, zScale)
                 for (mesh in model?.collisionMeshes ?: emptyList())
-                    shapeDefinitions += createShapeDefinition(TriangleMeshGeometry3D(mesh, scale))
+                {
+                    updateShapeDefinition(shapeCount++, { TriangleMeshGeometry3D(mesh) })
+                    {
+                        it.mesh = mesh
+                        it.scale.set(xScale, yScale, zScale)
+                    }
+                }
             }
         }
-        
+
+        while (shapeDefinitions.size > shapeCount) 
+            shapeDefinitions.removeLast()
+
         return shapeDefinitions
     }
 
-    override fun getPhysicsPropertyHash(engine: PulseEngine): Int
-    {
-        val model = engine.asset.getOrNull<Model>(model)
-        val bounds = model?.localBounds
-        var hash = super.getPhysicsPropertyHash(engine)
+    private inline fun <reified T : ShapeGeometry3D> updateShapeDefinition(
+        index: Int,
+        createGeometry: () -> T,
+        updateGeometry: (T) -> Unit
+    ) {
+        val definition = shapeDefinitions.getOrNull(index) ?: Box3DShapeDefinition(createGeometry()).also { shapeDefinitions += it }
+        val geometry = (definition.geometry as? T) ?: createGeometry()
 
-        hash = 31 * hash + colliderType.ordinal
-        hash = 31 * hash + xScale.toBits()
-        hash = 31 * hash + yScale.toBits()
-        hash = 31 * hash + zScale.toBits()
-        hash = 31 * hash + (bounds?.xMin?.toBits() ?: 0)
-        hash = 31 * hash + (bounds?.yMin?.toBits() ?: 0)
-        hash = 31 * hash + (bounds?.zMin?.toBits() ?: 0)
-        hash = 31 * hash + (bounds?.xMax?.toBits() ?: 0)
-        hash = 31 * hash + (bounds?.yMax?.toBits() ?: 0)
-        hash = 31 * hash + (bounds?.zMax?.toBits() ?: 0)
-        hash = 31 * hash + System.identityHashCode(model?.collisionMeshes)
-
-        return hash
+        updateGeometry(geometry)
+        definition.geometry = geometry
+        definition.density = if (bodyType == PhysicsBodyType3D.STATIC) 0f else density
+        definition.friction = friction
+        definition.restitution = restitution
+        definition.categoryBits = layerMask.toLong() and 0xffffffffL
+        definition.maskBits = collisionMask.toLong() and 0xffffffffL
+        definition.sensor = sensor
     }
-
-    private fun createShapeDefinition(geometry: ShapeGeometry3D) = Box3DShapeDefinition(
-        geometry = geometry,
-        density = if (bodyType == BodyType3D.STATIC) 0f else density,
-        friction = friction,
-        restitution = restitution,
-        categoryBits = layerMask.toLong() and 0xffffffffL,
-        maskBits = collisionMask.toLong() and 0xffffffffL,
-        sensor = sensor
-    )
     
     private fun recordSynchronizedTransform()
     {

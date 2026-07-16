@@ -3,7 +3,7 @@ package no.njoh.pulseengine.modules.physics3d
 /** 
  * Collision representation used by a physics-backed model entity. 
  */
-enum class ColliderType3D
+enum class PhysicsColliderType3D
 {
     BOX,
     SPHERE,

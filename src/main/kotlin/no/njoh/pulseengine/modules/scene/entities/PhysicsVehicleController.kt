@@ -59,25 +59,25 @@ open class PhysicsVehicleController : SceneEntity(), Named, Updatable
 
         forEachWheelJoint(engine)
         {
-            it.setDriveEnabled(true)
-            it.setDriveTorque(targetTorque)
-            it.setDriveSpeed(targetSpeed)
+            it.motorEnabled = true
+            it.maxMotorTorque = targetTorque
+            it.motorSpeed = targetSpeed
         }
 
         getWheelJoint(engine, frontLeftWheelJointId)?.apply() 
         { 
-            setSteeringEnabled(true)
-            setSteeringAngle(steering * maxSteeringAngle)
+            steeringEnabled = true
+            targetSteeringAngle = steering * maxSteeringAngle
         }
 
         getWheelJoint(engine, frontRightWheelJointId)?.apply() 
         {
-            setSteeringEnabled(true)
-            setSteeringAngle(steering * maxSteeringAngle)
+            steeringEnabled = true
+            targetSteeringAngle = steering * maxSteeringAngle
         }
 
-        getWheelJoint(engine, rearLeftWheelJointId)?.setSteeringEnabled(false)
-        getWheelJoint(engine, rearRightWheelJointId)?.setSteeringEnabled(false)
+        getWheelJoint(engine, rearLeftWheelJointId)?.steeringEnabled = false
+        getWheelJoint(engine, rearRightWheelJointId)?.steeringEnabled = false
     }
 
     private inline fun forEachWheelJoint(engine: PulseEngine, action: (WheelJoint3D) -> Unit)

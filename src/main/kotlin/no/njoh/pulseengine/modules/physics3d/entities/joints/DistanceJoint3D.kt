@@ -7,17 +7,14 @@ import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
+import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.modules.physics3d.box3d.joints.Box3DDistanceJointDefinition
 import no.njoh.pulseengine.modules.physics3d.entities.bodies.PhysicsBodyEntity3D
-import no.njoh.pulseengine.modules.physics3d.entities.joints.PhysicsJointEntity3D
-import org.joml.Quaternionfc
-import org.joml.Vector3f
-import org.joml.Vector3fc
 
 /**
  * Connects anchor A at the entity origin to anchor B at an editable local offset.
  */
-@Name("Distance Joint (3D)")
+@Name("3D Physics Distance Joint")
 @Icon("SHAPES", size = 24f, showInViewport = true)
 open class DistanceJoint3D : SceneEntity(), Named, PhysicsJointEntity3D
 {
@@ -47,42 +44,24 @@ open class DistanceJoint3D : SceneEntity(), Named, PhysicsJointEntity3D
 
     @get:JsonIgnore override val bodyAEntityId get() = bodyAId
     @get:JsonIgnore override val bodyBEntityId get() = bodyBId
+    @JsonIgnore private val definition = Box3DDistanceJointDefinition()
 
-    override fun createPhysicsJointDefinition(
-        localPosA: Vector3fc,
-        localRotA: Quaternionfc,
-        localPosB: Vector3fc,
-        localRotB: Quaternionfc
-    ): Box3DDistanceJointDefinition {
-        val anchorBOffset = localRotB.transform(Vector3f(xAnchorB, yAnchorB, zAnchorB))
-        val anchorB = anchorBOffset.add(localPosB)
-        return Box3DDistanceJointDefinition(
-            localPositionA = localPosA,
-            localRotationA = localRotA,
-            localPositionB = anchorB,
-            localRotationB = localRotB,
-            collideConnected = collideConnected,
-            length = restLength,
-            enableSpring = springEnabled,
-            springHertz = springHertz,
-            springDampingRatio = springDampingRatio,
-            enableLimit = limitEnabled,
-            minLength = minLength,
-            maxLength = maxLength
-        )
-    }
-
-    override fun physicsPropertyHash(): Int
+    override fun getPhysicsJointDefinition(): Box3DDistanceJointDefinition
     {
-        var hash = bodyAId.hashCode()
-        hash = 31 * hash + bodyBId.hashCode(); hash = 31 * hash + collideConnected.hashCode()
-        hash = 31 * hash + xPos.toBits(); hash = 31 * hash + yPos.toBits(); hash = 31 * hash + zPos.toBits()
-        hash = 31 * hash + xRot.toBits(); hash = 31 * hash + yRot.toBits(); hash = 31 * hash + zRot.toBits()
-        hash = 31 * hash + xAnchorB.toBits(); hash = 31 * hash + yAnchorB.toBits(); hash = 31 * hash + zAnchorB.toBits()
-        hash = 31 * hash + restLength.toBits(); hash = 31 * hash + limitEnabled.hashCode()
-        hash = 31 * hash + minLength.toBits(); hash = 31 * hash + maxLength.toBits()
-        hash = 31 * hash + springEnabled.hashCode(); hash = 31 * hash + springHertz.toBits()
-        hash = 31 * hash + springDampingRatio.toBits()
-        return hash
+        definition.worldPosA.set(xPos, yPos, zPos)
+        definition.worldRotA.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        definition.worldPosB.set(xAnchorB, yAnchorB, zAnchorB)
+        definition.worldRotA.transform(definition.worldPosB)
+        definition.worldPosB.add(definition.worldPosA)
+        definition.worldRotB.set(definition.worldRotA)
+        definition.collision = collideConnected
+        definition.length = restLength
+        definition.enableSpring = springEnabled
+        definition.springHertz = springHertz
+        definition.springDampingRatio = springDampingRatio
+        definition.enableLimit = limitEnabled
+        definition.minLength = minLength
+        definition.maxLength = maxLength
+        return definition
     }
 }

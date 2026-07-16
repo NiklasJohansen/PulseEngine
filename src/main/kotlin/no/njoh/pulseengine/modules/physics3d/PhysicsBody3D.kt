@@ -8,7 +8,7 @@ import org.joml.Vector3fc
  */
 interface PhysicsBody3D
 {
-    val type: BodyType3D
+    val type: PhysicsBodyType3D
 
     fun getLinearVelocity(dstVelocity: Vector3f)
     

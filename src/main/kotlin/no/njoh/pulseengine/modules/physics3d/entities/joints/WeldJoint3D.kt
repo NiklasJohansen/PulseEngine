@@ -7,15 +7,14 @@ import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
+import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.modules.physics3d.box3d.joints.Box3DWeldJointDefinition
 import no.njoh.pulseengine.modules.physics3d.entities.bodies.PhysicsBodyEntity3D
-import org.joml.Quaternionfc
-import org.joml.Vector3fc
 
 /**
  * Locks two physics bodies together, with optional linear and angular softness.
  */
-@Name("Weld Joint (3D)")
+@Name("3D Physics Weld Joint")
 @Icon("SHAPES", size = 24f, showInViewport = true)
 open class WeldJoint3D : SceneEntity(), Named, PhysicsJointEntity3D
 {
@@ -38,29 +37,19 @@ open class WeldJoint3D : SceneEntity(), Named, PhysicsJointEntity3D
 
     @get:JsonIgnore override val bodyAEntityId get() = bodyAId
     @get:JsonIgnore override val bodyBEntityId get() = bodyBId
+    @JsonIgnore private val definition = Box3DWeldJointDefinition()
 
-    override fun createPhysicsJointDefinition(
-        localPosA: Vector3fc,
-        localRotA: Quaternionfc,
-        localPosB: Vector3fc,
-        localRotB: Quaternionfc
-    ) = Box3DWeldJointDefinition(
-        localPosA, localRotA, localPosB, localRotB, collideConnected,
-        linearHertz = if (softnessEnabled) linearHertz else 0f,
-        linearDampingRatio = linearDampingRatio,
-        angularHertz = if (softnessEnabled) angularHertz else 0f,
-        angularDampingRatio = angularDampingRatio
-    )
-
-    override fun physicsPropertyHash(): Int
+    override fun getPhysicsJointDefinition(): Box3DWeldJointDefinition
     {
-        var hash = bodyAId.hashCode()
-        hash = 31 * hash + bodyBId.hashCode(); hash = 31 * hash + collideConnected.hashCode()
-        hash = 31 * hash + xPos.toBits(); hash = 31 * hash + yPos.toBits(); hash = 31 * hash + zPos.toBits()
-        hash = 31 * hash + xRot.toBits(); hash = 31 * hash + yRot.toBits(); hash = 31 * hash + zRot.toBits()
-        hash = 31 * hash + softnessEnabled.hashCode(); hash = 31 * hash + linearHertz.toBits()
-        hash = 31 * hash + linearDampingRatio.toBits(); hash = 31 * hash + angularHertz.toBits()
-        hash = 31 * hash + angularDampingRatio.toBits()
-        return hash
+        definition.worldPosA.set(xPos, yPos, zPos)
+        definition.worldRotA.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        definition.worldPosB.set(definition.worldPosA)
+        definition.worldRotB.set(definition.worldRotA)
+        definition.collision = collideConnected
+        definition.linearHertz = if (softnessEnabled) linearHertz else 0f
+        definition.linearDampingRatio = linearDampingRatio
+        definition.angularHertz = if (softnessEnabled) angularHertz else 0f
+        definition.angularDampingRatio = angularDampingRatio
+        return definition
     }
 }

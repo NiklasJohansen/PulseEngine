@@ -1,21 +1,20 @@
 package no.njoh.pulseengine.modules.physics3d.entities.bodies
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.interfaces.Spatial3D
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DBodyDefinition
-import no.njoh.pulseengine.modules.physics3d.BodyType3D
+import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsBody3D
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DShapeDefinition
-import org.joml.Quaternionf
 import org.joml.Quaternionfc
-import org.joml.Vector3f
 import org.joml.Vector3fc
 
 interface PhysicsBodyEntity3D : Spatial3D
 {
-    @get:Prop("Physics",   i=0)                 var bodyType: BodyType3D
+    @get:Prop("Physics",   i=0)                 var bodyType: PhysicsBodyType3D
     @get:Prop("Physics",   i=1, min=0f)         var density: Float
     @get:Prop("Physics",   i=2, min=0f)         var friction: Float
     @get:Prop("Physics",   i=3, min=0f, max=1f) var restitution: Float
@@ -38,33 +37,22 @@ interface PhysicsBodyEntity3D : Spatial3D
 
     fun hasPendingTransformChange(): Boolean
 
-    fun getShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
+    @JsonIgnore
+    fun getPhysicsBodyDefinition(): Box3DBodyDefinition
 
-    fun getBodyDefinition() = Box3DBodyDefinition(
-        type = bodyType,
-        position = Vector3f(xPos, yPos, zPos),
-        rotation = Quaternionf().rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians()),
-        linearDamping = linearDamping,
-        angularDamping = angularDamping,
-        gravityScale = gravityScale,
-        bullet = bullet,
-        fixedRotation = fixedRotation
-    )
+    @JsonIgnore
+    fun getPhysicsShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
+}
 
-    fun getPhysicsPropertyHash(engine: PulseEngine): Int
-    {
-        var hash = bodyType.ordinal
-        hash = 31 * hash + density.toBits()
-        hash = 31 * hash + friction.toBits()
-        hash = 31 * hash + restitution.toBits()
-        hash = 31 * hash + linearDamping.toBits()
-        hash = 31 * hash + angularDamping.toBits()
-        hash = 31 * hash + gravityScale.toBits()
-        hash = 31 * hash + bullet.hashCode()
-        hash = 31 * hash + fixedRotation.hashCode()
-        hash = 31 * hash + layerMask
-        hash = 31 * hash + collisionMask
-        hash = 31 * hash + sensor.hashCode()
-        return hash
-    }
+fun Box3DBodyDefinition.updateFrom(entity: PhysicsBodyEntity3D): Box3DBodyDefinition
+{
+    type = entity.bodyType
+    position.set(entity.xPos, entity.yPos, entity.zPos)
+    rotation.rotationXYZ(entity.xRot.toRadians(), entity.yRot.toRadians(), entity.zRot.toRadians())
+    linearDamping = entity.linearDamping
+    angularDamping = entity.angularDamping
+    gravityScale = entity.gravityScale
+    bullet = entity.bullet
+    fixedRotation = entity.fixedRotation
+    return this
 }
