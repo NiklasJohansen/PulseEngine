@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
-import no.njoh.pulseengine.core.scene.interfaces.Renderable
+import no.njoh.pulseengine.core.scene.interfaces.Renderable2D
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.scene.interfaces.Updatable
@@ -13,7 +13,7 @@ import no.njoh.pulseengine.core.scene.interfaces.Updatable
 /**
  * An abstract base class for 2D scene entities with the most common functionality.
  */
-abstract class Common2DSceneEntity : SceneEntity(), Initiable, Updatable, Renderable, Spatial2D, Named
+abstract class Common2DSceneEntity : SceneEntity(), Initiable, Updatable, Renderable2D, Spatial2D, Named
 {
     @Prop(i = -1)         override var name = ""
     @Prop("Transform", 0) override var x = 0f

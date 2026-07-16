@@ -11,7 +11,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
  * Manages shadowed sun shafts as a post-processing effect on the configured render surfaces.
  * Sun direction, color, radius and cascaded shadow-map data are sourced from [Scene3DLightingSystem].
  */
-@Name("Sun Volumetrics (3D)")
+@Name("3D Sun Volumetrics")
 class SunVolumetricsSystem : SceneSystem()
 {
     /** Multiplies the brightness of the scattered sunlight contribution. */

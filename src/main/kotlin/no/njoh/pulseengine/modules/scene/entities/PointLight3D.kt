@@ -5,10 +5,12 @@ import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.Light3D
 import no.njoh.pulseengine.core.scene.interfaces.Named
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
 import org.joml.Vector3f
 
+@Name("3D Point Light")
 class PointLight3D : SceneEntity(), Light3D, Named
 {
     @Prop(i=0) override var name = "Point Light"

@@ -14,9 +14,11 @@ import no.njoh.pulseengine.core.scene.interfaces.Spatial3D
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.annotations.MaterialRef
 import no.njoh.pulseengine.core.shared.annotations.ModelRef
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderable
 import org.joml.Matrix4f
 
+@Name("3D Model")
 class Model3D : SceneEntity(), Scene3DRenderable, Named, Spatial3D
 {
     override var name = ""

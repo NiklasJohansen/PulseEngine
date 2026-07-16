@@ -14,7 +14,7 @@ import no.njoh.pulseengine.modules.physics3d.entities.joints.WheelJoint3D
 /**
  * Simple four-wheel-drive controller using W/S for throttle and A/D for front-wheel steering.
  */
-@Name("Physics Vehicle Controller (3D)")
+@Name("3D Physics Vehicle Controller")
 @Icon("GEARS")
 open class PhysicsVehicleController : SceneEntity(), Named, Updatable
 {

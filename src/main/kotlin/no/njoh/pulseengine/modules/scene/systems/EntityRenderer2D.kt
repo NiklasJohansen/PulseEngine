@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.core.scene.interfaces.Renderable
+import no.njoh.pulseengine.core.scene.interfaces.Renderable2D
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -16,12 +16,12 @@ import java.util.*
  * Base class for all entity renderers.
  * Enables other systems to add render passes to be executed by the renderer.
  */
-abstract class EntityRenderer : SceneSystem()
+abstract class EntityRenderer2D : SceneSystem()
 {
     @JsonIgnore
     protected val entityRenderPasses = mutableListOf<EntityRenderPass>()
 
-    /** Adds a new [EntityRenderPass] to the [EntityRenderer] */
+    /** Adds a new [EntityRenderPass] to the [EntityRenderer2D] */
     inline fun <reified T : Any> addRenderPass(
         surfaceName: String,
         noinline drawCondition: ((T) -> Boolean)? = null,
@@ -30,11 +30,11 @@ abstract class EntityRenderer : SceneSystem()
         addRenderPass(EntityRenderPass<T>(surfaceName, drawCondition, drawFunction))
     }
 
-    /** Adds the given [EntityRenderPass] to the [EntityRenderer] */
+    /** Adds the given [EntityRenderPass] to the [EntityRenderer2D] */
     fun addRenderPass(renderPass: EntityRenderPass) =
         entityRenderPasses.add(renderPass)
 
-    /** Removes a [EntityRenderPass] from the [EntityRenderer] */
+    /** Removes a [EntityRenderPass] from the [EntityRenderer2D] */
     fun removeRenderPass(renderPass: EntityRenderPass) =
         entityRenderPasses.remove(renderPass)
 
@@ -69,16 +69,16 @@ abstract class EntityRenderer : SceneSystem()
     }
 }
 
-@Name("Entity Renderer (2D)")
+@Name("2D Entity Renderer")
 @Icon("MONITOR")
-open class EntityRendererImpl : EntityRenderer()
+open class EntityRendererImpl : EntityRenderer2D()
 {
     private val renderQueue = mutableListOf<RenderTask>()
     private val taskPool = Stack<RenderTask>()
 
     override fun onCreate(engine: PulseEngine)
     {
-        addRenderPass(EntityRenderPass(surfaceName = engine.gfx.mainSurface.config.name, targetType = Renderable::class.java))
+        addRenderPass(EntityRenderPass(surfaceName = engine.gfx.mainSurface.config.name, targetType = Renderable2D::class.java))
     }
 
     override fun onRender(engine: PulseEngine)
@@ -94,13 +94,13 @@ open class EntityRendererImpl : EntityRenderer()
             val condition = renderPass.drawCondition
             engine.scene.forEachEntityTypeList { typeList ->
                 val first = typeList.firstOrNull()
-                if (first is Renderable && renderPass.targetType.isInstance(first))
+                if (first is Renderable2D && renderPass.targetType.isInstance(first))
                 {
                     typeList.forEachFast()
                     {
                         if (it.isNot(HIDDEN) && (condition == null || condition(it)))
                         {
-                            task.entities += it as Renderable
+                            task.entities += it as Renderable2D
                         }
                     }
                 }
@@ -150,11 +150,11 @@ open class EntityRendererImpl : EntityRenderer()
     private data class RenderTask(
         var surfaceName: String,
         var drawFunction: (Any.(PulseEngine, Surface) -> Unit)?,
-        val entities: ArrayList<Renderable> = ArrayList()
+        val entities: ArrayList<Renderable2D> = ArrayList()
     )
 
-    private object BackToFrontEntityComparator : Comparator<Renderable>
+    private object BackToFrontEntityComparator : Comparator<Renderable2D>
     {
-        override fun compare(a: Renderable, b: Renderable): Int = ((b.z - a.z) * 10_000f).toInt()
+        override fun compare(a: Renderable2D, b: Renderable2D): Int = ((b.z - a.z) * 10_000f).toInt()
     }
 }

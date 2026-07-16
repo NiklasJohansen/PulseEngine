@@ -26,7 +26,7 @@ import org.joml.Vector3f
 /** 
  * Owns, advances, and synchronizes the Box3D world used by 3D physics entities. 
  */
-@Name("Physics (3D)")
+@Name("3D Physics")
 @Icon("SHAPES")
 class PhysicsSystem3D : SceneSystem()
 {

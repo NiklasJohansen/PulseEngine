@@ -4,9 +4,9 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.surface.Surface
 
 /**
- * Gives the entity the ability to be rendered by the [EntityRenderer].
+ * Gives the entity the ability to be rendered.
  */
-interface Renderable
+interface Renderable2D
 {
     /**
      * The Z-coordinate in world space used for depth sorting.

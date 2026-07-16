@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
-@Name("Ambient Occlusion")
+@Name("3D Ambient Occlusion")
 class AmbientOcclusionSystem : SceneSystem()
 {
     // AO Settings

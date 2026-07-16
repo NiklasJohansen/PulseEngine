@@ -16,8 +16,8 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.lighting.direct2d.DirectShadowType.NONE
-import no.njoh.pulseengine.modules.scene.systems.EntityRenderer
-import no.njoh.pulseengine.modules.scene.systems.EntityRenderer.EntityRenderPass
+import no.njoh.pulseengine.modules.scene.systems.EntityRenderer2D
+import no.njoh.pulseengine.modules.scene.systems.EntityRenderer2D.EntityRenderPass
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.MathUtil
@@ -31,7 +31,7 @@ import no.njoh.pulseengine.modules.lighting.shared.NormalMapped2D
 import org.joml.Vector2f
 import kotlin.math.*
 
-@Name("Direct Lighting (2D)")
+@Name("2D Direct Lighting")
 @Icon("LIGHT_BULB")
 open class DirectLightingSystem2D : SceneSystem()
 {
@@ -146,7 +146,7 @@ open class DirectLightingSystem2D : SceneSystem()
     override fun onDestroy(engine: PulseEngine)
     {
         // Remove render passes
-        val renderer = engine.scene.getSystemOfType<EntityRenderer>()
+        val renderer = engine.scene.getSystemOfType<EntityRenderer2D>()
         renderer?.removeRenderPass(normalMapRenderPass)
         renderer?.removeRenderPass(occluderRenderPass)
 
@@ -171,7 +171,7 @@ open class DirectLightingSystem2D : SceneSystem()
         if (isEnabled && !isUsingNormalMap)
         {
             Logger.debug { "LightingSystem: enabling normal maps" }
-            engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(normalMapRenderPass)
+            engine.scene.getSystemOfType<EntityRenderer2D>()?.addRenderPass(normalMapRenderPass)
             val surface = engine.gfx.createSurface(
                 name = NORMAL_SURFACE_NAME,
                 camera = engine.gfx.mainCamera,
@@ -187,7 +187,7 @@ open class DirectLightingSystem2D : SceneSystem()
         else if (!isEnabled && isUsingNormalMap)
         {
             Logger.debug { "LightingSystem: disabling normal maps" }
-            engine.scene.getSystemOfType<EntityRenderer>()?.removeRenderPass(normalMapRenderPass)
+            engine.scene.getSystemOfType<EntityRenderer2D>()?.removeRenderPass(normalMapRenderPass)
             engine.gfx.deleteSurface(NORMAL_SURFACE_NAME)
             isUsingNormalMap = false
         }
@@ -198,7 +198,7 @@ open class DirectLightingSystem2D : SceneSystem()
         if (isEnabled && !isUsingOccluderMap)
         {
             Logger.debug { "LightingSystem: enabling occluder map" }
-            engine.scene.getSystemOfType<EntityRenderer>()?.addRenderPass(occluderRenderPass)
+            engine.scene.getSystemOfType<EntityRenderer2D>()?.addRenderPass(occluderRenderPass)
             engine.gfx.createSurface(
                 name = OCCLUDER_SURFACE_NAME,
                 camera = engine.gfx.mainCamera,
@@ -210,7 +210,7 @@ open class DirectLightingSystem2D : SceneSystem()
         else if (!isEnabled && isUsingOccluderMap)
         {
             Logger.debug { "LightingSystem: disabling occluder map" }
-            engine.scene.getSystemOfType<EntityRenderer>()?.removeRenderPass(occluderRenderPass)
+            engine.scene.getSystemOfType<EntityRenderer2D>()?.removeRenderPass(occluderRenderPass)
             engine.gfx.deleteSurface(OCCLUDER_SURFACE_NAME)
             isUsingOccluderMap = false
         }

@@ -19,7 +19,7 @@ import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
 
 @Icon("MONITOR")
-@Name("Scene Renderer (3D)")
+@Name("3D Scene Renderer")
 class Scene3DRenderSystem() : SceneSystem()
 {
     @Prop(i=0)                 var useDepthPrepass = true
@@ -32,6 +32,7 @@ class Scene3DRenderSystem() : SceneSystem()
             name = SCENE_3D_SURFACE,
             isVisible = true,
             camera = engine.gfx.mainCamera,
+            zOrder = -1,
             multisampling = Multisampling.MSAA4,
             clearColor = Color(143, 231, 255),
             attachments = listOf(COLOR_TEXTURE_0, DEPTH_TEXTURE),

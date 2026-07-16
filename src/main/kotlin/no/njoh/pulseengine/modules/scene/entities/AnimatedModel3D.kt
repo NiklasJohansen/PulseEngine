@@ -12,10 +12,12 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.scene.interfaces.Updatable
 import no.njoh.pulseengine.core.shared.annotations.AnimationRef
 import no.njoh.pulseengine.core.shared.annotations.ModelRef
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderable
 import org.joml.Matrix4f
 
+@Name("3D Animated Model")
 class AnimatedModel3D : SceneEntity(), Updatable, Scene3DRenderable, Named, Spatial3D
 {
     override var name = ""

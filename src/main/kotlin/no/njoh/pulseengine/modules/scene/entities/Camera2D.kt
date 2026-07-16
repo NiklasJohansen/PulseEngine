@@ -6,10 +6,12 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC_2D
 import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import kotlin.math.*
 
+@Name("2D Camera")
 @Icon("CAMERA", size = 24f, showInViewport = true)
 open class Camera2D : Common2DSceneEntity()
 {

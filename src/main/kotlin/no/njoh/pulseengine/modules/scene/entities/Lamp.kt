@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
 import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.modules.lighting.direct2d.DirectLightSource
 import no.njoh.pulseengine.modules.lighting.direct2d.DirectLightType
 import no.njoh.pulseengine.modules.lighting.direct2d.DirectShadowType
@@ -17,6 +18,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+@Name("2D Lamp")
 @Icon("LIGHT_BULB", size = 24f, showInViewport = true)
 open class Lamp : Common2DSceneEntity(), DirectLightSource, GiLightSource2D
 {

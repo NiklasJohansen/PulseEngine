@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.modules.scene.entities.Common2DSceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.annotations.TexRef
@@ -18,6 +19,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sign
 
+@Name("2D Physics Wheel")
 open class Wheel2D : Common2DSceneEntity(), CircleBody2D
 {
     @JsonIgnore

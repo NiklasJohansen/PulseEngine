@@ -4,11 +4,13 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.AssetRef
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer
 import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer.Orientation
 import no.njoh.pulseengine.modules.lighting.shared.NormalMapped2D
 
+@Name("2D Backdrop")
 open class Backdrop : Common2DSceneEntity(), NormalMapped2D
 {
     @AssetRef(Texture::class)

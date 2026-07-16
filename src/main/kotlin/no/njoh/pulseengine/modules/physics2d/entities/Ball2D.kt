@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.modules.scene.entities.Common2DSceneEntity
 import no.njoh.pulseengine.modules.physics2d.BodyType2D
 import no.njoh.pulseengine.modules.physics2d.shapes.CircleShape2D
@@ -13,6 +14,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateAngleFrom
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import kotlin.math.max
 
+@Name("2D Physics Ball")
 open class Ball2D : Common2DSceneEntity(), CircleBody2D
 {
     @JsonIgnore

@@ -6,12 +6,14 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.ConicalLight3D
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.scene.interfaces.Rotatable3D
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Matrix4f
 import org.joml.Vector3f
 
+@Name("3D Spot Light")
 class SpotLight3D : SceneEntity(), Named, ConicalLight3D, Rotatable3D
 {
     @Prop(i=0) override var name = "Spot Light"

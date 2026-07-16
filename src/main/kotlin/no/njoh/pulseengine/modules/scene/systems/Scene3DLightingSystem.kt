@@ -23,7 +23,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.joml.Vector3f
 
 @Icon("LIGHT_BULB")
-@Name("Scene Lighting (3D)")
+@Name("3D Scene Lighting")
 class Scene3DLightingSystem : SceneSystem()
 {
     @Prop(i=0, min=0f)           var sunIntensity                  = 1f

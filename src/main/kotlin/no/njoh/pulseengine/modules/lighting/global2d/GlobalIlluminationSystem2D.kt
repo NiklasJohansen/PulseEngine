@@ -10,8 +10,8 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.postprocessing.MultiplyEffect
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.modules.scene.systems.EntityRenderer
-import no.njoh.pulseengine.modules.scene.systems.EntityRenderer.EntityRenderPass
+import no.njoh.pulseengine.modules.scene.systems.EntityRenderer2D
+import no.njoh.pulseengine.modules.scene.systems.EntityRenderer2D.EntityRenderPass
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
@@ -25,7 +25,7 @@ import org.joml.Vector2f
 
 import kotlin.math.*
 
-@Name("Global Illumination (2D)")
+@Name("2D Global Illumination")
 @Icon("LIGHT_BULB")
 open class GlobalIlluminationSystem2D : SceneSystem()
 {
@@ -181,7 +181,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             addPostProcessingEffect(GiFinal(GI_LOCAL_SCENE, GI_LIGHT_EXTERIOR, GI_LIGHT_INTERIOR, GI_AO))
         }
 
-        val entityRenderer = engine.scene.getSystemOfType<EntityRenderer>() ?: return
+        val entityRenderer = engine.scene.getSystemOfType<EntityRenderer2D>() ?: return
         entityRenderer.addRenderPass(normalMapRenderPass)
         entityRenderer.addRenderPass(localOccluderPass)
         entityRenderer.addRenderPass(localLightSourcePass)
@@ -233,7 +233,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
 
     override fun onDestroy(engine: PulseEngine)
     {
-        val entityRenderer = engine.scene.getSystemOfType<EntityRenderer>()
+        val entityRenderer = engine.scene.getSystemOfType<EntityRenderer2D>()
         entityRenderer?.removeRenderPass(normalMapRenderPass)
         entityRenderer?.removeRenderPass(localOccluderPass)
         entityRenderer?.removeRenderPass(localLightSourcePass)

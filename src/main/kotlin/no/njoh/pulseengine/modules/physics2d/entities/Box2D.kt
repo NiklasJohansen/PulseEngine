@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.modules.scene.entities.Common2DSceneEntity
 import no.njoh.pulseengine.modules.physics2d.BodyType2D
 import no.njoh.pulseengine.modules.physics2d.bodies.PolygonBody2D
@@ -11,6 +12,7 @@ import no.njoh.pulseengine.modules.physics2d.shapes.RectangleShape2D
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateAngleFrom
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 
+@Name("2D Physics Box")
 open class Box2D : Common2DSceneEntity(), PolygonBody2D
 {
     @JsonIgnore

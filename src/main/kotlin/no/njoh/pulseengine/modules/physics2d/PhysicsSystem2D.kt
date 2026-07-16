@@ -10,7 +10,7 @@ import no.njoh.pulseengine.modules.physics2d.bodies.PhysicsBody2D
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 
-@Name("Physics (2D)")
+@Name("2D Physics")
 @Icon("SHAPES")
 class PhysicsSystem2D : SceneSystem()
 {

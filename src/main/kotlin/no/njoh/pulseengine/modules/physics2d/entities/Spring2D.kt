@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.EntityRef
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.modules.scene.entities.Common2DSceneEntity
 import no.njoh.pulseengine.modules.physics2d.BodyType2D
@@ -11,6 +12,7 @@ import no.njoh.pulseengine.modules.physics2d.PhysicsEntity2D
 import no.njoh.pulseengine.modules.physics2d.bodies.PhysicsBody2D
 import kotlin.math.sqrt
 
+@Name("2D Physics Spring")
 open class Spring2D : Common2DSceneEntity(), PhysicsEntity2D
 {
     @EntityRef

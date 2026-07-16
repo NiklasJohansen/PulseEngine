@@ -8,7 +8,7 @@ import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
-@Name("Skybox")
+@Name("3D Skybox")
 class SkyboxSystem : SceneSystem()
 {
     @Prop(i=0, min=0f)    var brightness     = 1f

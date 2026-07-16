@@ -420,21 +420,22 @@ open class UiElementFactory(
      */
     open fun createSystemPropertiesPanelUI(engine: PulseEngine, propertiesRowPanel: RowPanel): HorizontalPanel
     {
-        val menuItems = SceneSystem.REGISTERED_TYPES.map()
-        {
-            val systemName = it.findAnnotation<Name>()?.name ?: it.simpleName!!.split("(?=[A-Z])".toRegex()).joinToString(" ").trim()
-            MenuBarItem(systemName)
-            {
-                val newSystem = it.createInstance()
-                newSystem.init(engine)
-                engine.scene.addSystem(newSystem)
-                val props = createSystemProperties(newSystem, isHidden = false, onClose = { props ->
-                    newSystem.onDestroy(engine)
-                    engine.scene.removeSystem(newSystem)
-                    propertiesRowPanel.removeChildren(*props.toTypedArray())
-                })
-                propertiesRowPanel.addChildren(*props.toTypedArray())
-            }
+        val menuItems = SceneSystem.REGISTERED_TYPES
+            .map { it to (it.findAnnotation<Name>()?.name ?: it.simpleName!!) }
+            .sortedBy { it.second }
+            .map { (systemType, systemName) ->
+                MenuBarItem(systemName)
+                {
+                    val newSystem = systemType.createInstance()
+                    newSystem.init(engine)
+                    engine.scene.addSystem(newSystem)
+                    val props = createSystemProperties(newSystem, isHidden = false, onClose = { props ->
+                        newSystem.onDestroy(engine)
+                        engine.scene.removeSystem(newSystem)
+                        propertiesRowPanel.removeChildren(*props.toTypedArray())
+                    })
+                    propertiesRowPanel.addChildren(*props.toTypedArray())
+                }
         }
 
         val button = MenuBarButton(labelText = "+", items = menuItems)
