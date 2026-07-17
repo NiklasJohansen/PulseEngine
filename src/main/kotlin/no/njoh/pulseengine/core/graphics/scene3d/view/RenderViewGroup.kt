@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.scene3d.view
 
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -14,4 +15,15 @@ value class RenderViewGroup private constructor(private val id: Long)
         private val nextId = AtomicLong()
         fun create() = RenderViewGroup(nextId.incrementAndGet())
     }
+}
+
+/**
+ * A view group for cameras with an optional render pass mask.
+ */
+class CameraRenderViewGroup(
+    val renderPassMask: RenderPassMask = CAMERA
+) {
+    private val group = RenderViewGroup.create()
+
+    fun createViewKey() = RenderViewKey(group) { CameraRenderView(renderPassMask = renderPassMask) }
 }

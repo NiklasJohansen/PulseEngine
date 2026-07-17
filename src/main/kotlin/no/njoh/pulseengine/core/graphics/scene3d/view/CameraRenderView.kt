@@ -14,8 +14,11 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.C
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import org.joml.Vector3f
 
-class CameraRenderView(var transparencyMode: TransparencyMode = SORTED_BLEND) : RenderView(CAMERA), CameraRenderStateProvider
-{
+class CameraRenderView(
+    renderPassMask: RenderPassMask = CAMERA,
+    var transparencyMode: TransparencyMode = SORTED_BLEND
+) : RenderView(renderPassMask), CameraRenderStateProvider {
+
     val opaqueBucket  = RenderBucket()
     val maskedBucket  = RenderBucket()
     val blendedBucket = RenderBucket()

@@ -8,6 +8,7 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderView
+import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderViewGroup
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
@@ -21,6 +22,7 @@ import org.lwjgl.opengl.GL30.*
 class ObjectIdRenderer(
     override val order: Int = 10,
     var enabled: Boolean = true,
+    val viewGroup: CameraRenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
 
     private lateinit var opaqueStaticProgram: ShaderProgram
@@ -45,7 +47,7 @@ class ObjectIdRenderer(
         opaquePrograms       = ShaderProgramSet(opaqueStaticProgram, opaqueSkinnedProgram)
         alphaPrograms        = ShaderProgramSet(alphaStaticProgram, alphaSkinnedProgram)
 
-        viewKey = RenderViewKey(surface.viewGroup) { CameraRenderView() }
+        viewKey = viewGroup?.createViewKey() ?: RenderViewKey(surface.viewGroup) { CameraRenderView() }
     }
 
     override fun declareRenderViews(engine: PulseEngineInternal, surface: SurfaceInternal, context: SceneRenderContextInternal)

@@ -9,8 +9,8 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderView
+import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderViewGroup
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
@@ -24,7 +24,7 @@ import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_ONE
 
 class DepthPrepassRenderer(
     override val order: Int = 20,
-    val viewGroup: RenderViewGroup? = null
+    val viewGroup: CameraRenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
 
     private lateinit var opaqueStaticProgram: ShaderProgram
@@ -38,7 +38,7 @@ class DepthPrepassRenderer(
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
-        viewKey = RenderViewKey(viewGroup ?: surface.viewGroup) { CameraRenderView() }
+        viewKey = viewGroup?.createViewKey() ?: RenderViewKey(surface.viewGroup) { CameraRenderView() }
 
         if (!this::opaqueStaticProgram.isInitialized)
         {

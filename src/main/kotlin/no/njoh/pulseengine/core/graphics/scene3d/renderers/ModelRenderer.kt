@@ -20,8 +20,8 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.BrdfLutBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.CascadedShadowMapRenderer
+import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderViewGroup
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderBucket
-import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
@@ -38,7 +38,7 @@ import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 
 class ModelRenderer(
     override val order: Int = 40,
-    val viewGroup: RenderViewGroup? = null
+    val viewGroup: CameraRenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
 
     var iblDiffuseTexture  = ""
@@ -63,7 +63,7 @@ class ModelRenderer(
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
-        viewKey = RenderViewKey(viewGroup ?: surface.viewGroup) { CameraRenderView() }
+        viewKey = viewGroup?.createViewKey() ?: RenderViewKey(surface.viewGroup) { CameraRenderView() }
 
         if (!this::staticProgram.isInitialized)
         {
