@@ -155,17 +155,7 @@ class CascadedShadowMapRenderer(
 
     fun setFor(camera: Camera, direction: Float, height: Float)
     {
-        // Compute light direction
-        val yaw = direction.toRadians()
-        val pitch = height.toRadians()
-        val cp = cos(pitch)
-        val x = sin(yaw) * cp
-        val y = sin(pitch)
-        val z = -cos(yaw) * cp
-        lightDirection.set(x, y, z).negate().normalize()
-
-        // Determine up direction
-        val up = if (abs(lightDirection.dot(WORLD_UP)) > 0.99f) WORLD_FORWARD else WORLD_UP
+        updateLightView(direction, height)
 
         // Compute cascade split distances
         val camNear = camera.nearPlane
@@ -175,14 +165,6 @@ class CascadedShadowMapRenderer(
         // Derive aspect ratio from the camera's projection matrix
         val aspectRatio = camera.projectionMatrix.m11() / camera.projectionMatrix.m00()
         
-        // Build a stable light-view orientation from the light direction. The lookAt
-        // translation is arbitrary here, each cascade is centered explicitly below.
-        lightViewMatrix.identity().lookAt(
-            -lightDirection.x, -lightDirection.y, -lightDirection.z, // Eye
-            0f, 0f, 0f,                                              // Center = origin
-            up.x, up.y, up.z                                         // Up direction
-        )
-
         for (cascadeIdx in 0 until CASCADE_COUNT)
         {
             val splitFar = cascadeSplitDistances[cascadeIdx]
@@ -254,6 +236,107 @@ class CascadedShadowMapRenderer(
             )
         }
     }
+
+    fun setFor(cameras: List<Camera>, direction: Float, height: Float)
+    {
+        if (cameras.isEmpty()) return
+        if (cameras.size == 1)
+        {
+            setFor(cameras[0], direction, height)
+            return
+        }
+
+        updateLightView(direction, height)
+
+        var sharedNear = Float.MAX_VALUE
+        var sharedFar = 0f
+        cameras.forEachFast()
+        {
+            sharedNear = min(sharedNear, it.nearPlane)
+            sharedFar  = max(sharedFar, getShadowFar(it))
+        }
+
+        if (sharedFar <= sharedNear) return
+
+        val cascadeSplitDistances = getCascadeSplitDistances(sharedNear, sharedFar, splitLambda, writeCascadeSplits)
+        val halfRes = resolution * 0.5f
+
+        for (cascadeIdx in 0 until CASCADE_COUNT)
+        {
+            val splitFar = cascadeSplitDistances[cascadeIdx]
+            val splitNear = getOverlappedCascadeSplitNear(cascadeIdx, sharedNear, cascadeSplitDistances)
+            var xMin =  Float.MAX_VALUE
+            var xMax = -Float.MAX_VALUE
+            var yMin =  Float.MAX_VALUE
+            var yMax = -Float.MAX_VALUE
+            var zMin =  Float.MAX_VALUE
+            var zMax = -Float.MAX_VALUE
+
+            cameras.forEachFast()
+            {
+                val aspectRatio = it.projectionMatrix.m11() / it.projectionMatrix.m00()
+                frustumSliceViewProjection
+                    .identity()
+                    .perspective(it.fov.toRadians(), aspectRatio, splitNear, splitFar)
+                    .mul(it.viewMatrix)
+
+                for (corner in getFrustumSliceCorners(frustumSliceViewProjection))
+                {
+                    val lightSpaceCorner = tmpVec4.set(corner.x, corner.y, corner.z, 1f).mul(lightViewMatrix)
+                    xMin = min(xMin, lightSpaceCorner.x)
+                    xMax = max(xMax, lightSpaceCorner.x)
+                    yMin = min(yMin, lightSpaceCorner.y)
+                    yMax = max(yMax, lightSpaceCorner.y)
+                    zMin = min(zMin, lightSpaceCorner.z)
+                    zMax = max(zMax, lightSpaceCorner.z)
+                }
+            }
+
+            val baseCascadeSize = max(xMax - xMin, yMax - yMin)
+            val texelSize = baseCascadeSize / halfRes
+            val xCenter = floor((xMin + xMax) * 0.5f / texelSize) * texelSize
+            val yCenter = floor((yMin + yMax) * 0.5f / texelSize) * texelSize
+            val halfCascadeSize = baseCascadeSize * 0.5f + texelSize
+            val cascadeWorldSize = halfCascadeSize * 2f
+            writeCascadeSizeMeters[cascadeIdx] = cascadeWorldSize
+
+            zMax += SHADOW_BACKOFF_METERS
+            zMin -= SHADOW_BACKOFF_METERS
+
+            writeViewProjectionMatrices[cascadeIdx]
+                .identity()
+                .ortho(xCenter - halfCascadeSize, xCenter + halfCascadeSize, yCenter - halfCascadeSize, yCenter + halfCascadeSize, -zMax, -zMin)
+                .mul(lightViewMatrix)
+
+            cascadeFrustums[cascadeIdx].setForViewProjection(writeViewProjectionMatrices[cascadeIdx])
+
+            // Multiple receiver frustums form a union, which cannot be represented by one convex
+            // plane set. Keep conservative per-cascade shadow-box culling in multi-camera mode.
+            writeCascadeFrustumPlaneSets[cascadeIdx].clear()
+            cascadeFrustums[cascadeIdx].planeSet.forEach { writeCascadeFrustumPlaneSets[cascadeIdx].add(it) }
+        }
+    }
+
+    private fun updateLightView(direction: Float, height: Float)
+    {
+        val yaw = direction.toRadians()
+        val pitch = height.toRadians()
+        val cp = cos(pitch)
+        lightDirection
+            .set(sin(yaw) * cp, sin(pitch), -cos(yaw) * cp)
+            .negate()
+            .normalize()
+
+        val up = if (abs(lightDirection.dot(WORLD_UP)) > 0.99f) WORLD_FORWARD else WORLD_UP
+        lightViewMatrix.identity().lookAt(
+            -lightDirection.x, -lightDirection.y, -lightDirection.z,
+            0f, 0f, 0f,
+            up.x, up.y, up.z
+        )
+    }
+
+    private fun getShadowFar(camera: Camera) =
+        if (shadowDistance > 0f) min(shadowDistance, camera.farPlane) else camera.farPlane
 
     /**
      * Computes cascade split distances using a split scheme that blends between logarithmic and uniform splits.

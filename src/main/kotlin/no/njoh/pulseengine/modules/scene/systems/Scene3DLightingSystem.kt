@@ -47,6 +47,7 @@ class Scene3DLightingSystem : SceneSystem()
     private var localShadowAtlasSurfaceName = ""
     private var lastTargetSurfaces          = ""
     private var targetSurfaceNames          = emptyList<String>()
+    private val shadowCameras               = mutableListOf<Camera>()
     private var lastLocalAtlasResolution    = 0
 
     override fun onUpdate(engine: PulseEngine)
@@ -81,16 +82,20 @@ class Scene3DLightingSystem : SceneSystem()
 
     override fun onRender(engine: PulseEngine)
     {
-        val targetSurface = targetSurfaceNames.firstOrNull()?.let { engine.gfx.getSurface(it) } ?: return
-        targetSurface.getRenderer<ModelRenderer>() ?: return
-        val camera = targetSurface.camera
+        shadowCameras.clear()
+        targetSurfaceNames.forEachFast()
+        {
+            val surface = engine.gfx.getSurface(it)
+            if (surface?.getRenderer<ModelRenderer>() != null && shadowCameras.none { it === surface.camera })
+                shadowCameras.add(surface.camera)
+        }
 
-        setUpSunShadowMap(engine, camera)
+        setUpSunShadowMap(engine, shadowCameras)
         setUpLocalShadowAtlas(engine)
         collectLightSources(engine)
     }
 
-    private fun setUpSunShadowMap(engine: PulseEngine, camera: Camera)
+    private fun setUpSunShadowMap(engine: PulseEngine, cameras: List<Camera>)
     {
         val shadowMapSurface = engine.gfx.getSurface(shadowMapSurfaceName)
         if (shadowMapSurface == null)
@@ -119,7 +124,7 @@ class Scene3DLightingSystem : SceneSystem()
         shadowMapRenderer.resolution       = sunShadowMapResolution
         shadowMapRenderer.splitLambda      = sunShadowCascadeSplitLambda
         shadowMapRenderer.shadowDistance   = sunShadowDistance
-        shadowMapRenderer.setFor(camera, sunDirection, sunHeight)
+        shadowMapRenderer.setFor(cameras, sunDirection, sunHeight)
     }
 
     private fun setUpLocalShadowAtlas(engine: PulseEngine)
