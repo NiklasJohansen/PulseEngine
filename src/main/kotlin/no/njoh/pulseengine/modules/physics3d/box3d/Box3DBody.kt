@@ -26,6 +26,7 @@ import no.njoh.box3d.raw.b3Transform
 import no.njoh.box3d.raw.b3Vec3
 import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsBody3D
+import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D.STATIC
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DWorld.Companion.setQuaternion
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DWorld.Companion.setVec3
 import org.joml.Quaternionf
@@ -60,7 +61,7 @@ class Box3DBody internal constructor(
         requireUsable()
         b3Body_GetTransform(transformAllocator, nativeBodyId)
         dstPosition?.set(b3Vec3.x(tmpPosition), b3Vec3.y(tmpPosition), b3Vec3.z(tmpPosition))
-        dstRotation?.set(b3Vec3.x(tmpVector1), b3Vec3.y(tmpVector1), b3Vec3.z(tmpVector1), b3Quat.s(tmpRotation))
+        dstRotation?.set(b3Vec3.x(tmpVector1),  b3Vec3.y(tmpVector1),  b3Vec3.z(tmpVector1), b3Quat.s(tmpRotation))
     }
 
     fun setTransform(position: Vector3fc, rotation: Quaternionfc)
@@ -230,16 +231,18 @@ class Box3DBody internal constructor(
 }
 
 data class Box3DBodyDefinition(
-    var type: PhysicsBodyType3D   = PhysicsBodyType3D.STATIC,
-    val position: Vector3f        = Vector3f(),
-    val rotation: Quaternionf     = Quaternionf(),
-    val linearVelocity: Vector3f  = Vector3f(),
-    val angularVelocity: Vector3f = Vector3f(),
-    var linearDamping: Float      = 0f,
-    var angularDamping: Float     = 0f,
-    var gravityScale: Float       = 1f,
-    var bullet: Boolean           = false,
-    var fixedRotation: Boolean    = false
+    var type: PhysicsBodyType3D     = STATIC,
+    val position: Vector3f          = Vector3f(),
+    val rotation: Quaternionf       = Quaternionf(),
+    val linearVelocity: Vector3f    = Vector3f(),
+    val angularVelocity: Vector3f   = Vector3f(),
+    var linearDamping: Float        = 0f,
+    var angularDamping: Float       = 0f,
+    var gravityScale: Float         = 1f,
+    var continuesCollision: Boolean = false,
+    var lockXRotation: Boolean      = false,
+    var lockYRotation: Boolean      = false,
+    var lockZRotation: Boolean      = false
 ) {
     /** 
      * Hash of properties that can change after creation. Runtime pose and velocity are excluded. 
@@ -250,8 +253,10 @@ data class Box3DBodyDefinition(
         hash = 31 * hash + linearDamping.toBits()
         hash = 31 * hash + angularDamping.toBits()
         hash = 31 * hash + gravityScale.toBits()
-        hash = 31 * hash + bullet.hashCode()
-        hash = 31 * hash + fixedRotation.hashCode()
+        hash = 31 * hash + continuesCollision.hashCode()
+        hash = 31 * hash + lockXRotation.hashCode()
+        hash = 31 * hash + lockYRotation.hashCode()
+        hash = 31 * hash + lockZRotation.hashCode()
         return hash
     }
 }

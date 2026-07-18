@@ -26,6 +26,7 @@ import no.njoh.pulseengine.modules.physics3d.CapsuleGeometry3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsColliderType3D.*
 import no.njoh.pulseengine.modules.physics3d.ConvexHullGeometry3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsBody3D
+import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D.DYNAMIC
 import no.njoh.pulseengine.modules.physics3d.ShapeGeometry3D
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DShapeDefinition
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DBodyDefinition
@@ -51,19 +52,19 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
     @Prop("Rotation [*R]", i=2)             override var xRot   = 0f; override var yRot   = 0f; override var zRot   = 0f
     @Prop("Scale    [*S]", i=3, min=0.001f) override var xScale = 1f; override var yScale = 1f; override var zScale = 1f
 
-    @Prop("Physics",   i=0)                 override var bodyType            = PhysicsBodyType3D.DYNAMIC
-    @Prop("Physics",   i=1, min=0f)         override var density             = 1f
-    @Prop("Physics",   i=2, min=0f)         override var friction            = 0.6f
-    @Prop("Physics",   i=3, min=0f, max=1f) override var restitution         = 0f
-    @Prop("Physics",   i=4, min=0f)         override var linearDamping       = 0f
-    @Prop("Physics",   i=5, min=0f)         override var angularDamping      = 0f
-    @Prop("Physics",   i=6)                 override var gravityScale        = 1f
-    @Prop("Physics",   i=7)                 override var bullet              = false
-    @Prop("Physics",   i=8)                 override var fixedRotation       = false
-    @Prop("Collision", i=1)                 override var layerMask           =  1
-    @Prop("Collision", i=2)                 override var collisionMask       = -1
-    @Prop("Collision", i=3)                 override var sensor              = false
-    @Prop("Collision", i=4)                          var colliderType = BOX
+    @Prop("Physics",   i=0)                 var bodyType       = DYNAMIC
+    @Prop("Physics",   i=1, min=0f)         var density        = 1f
+    @Prop("Physics",   i=2, min=0f)         var friction       = 0.6f
+    @Prop("Physics",   i=3, min=0f, max=1f) var restitution    = 0f
+    @Prop("Physics",   i=4, min=0f)         var linearDamping  = 0f
+    @Prop("Physics",   i=5, min=0f)         var angularDamping = 0f
+    @Prop("Physics",   i=6)                 var gravityScale   = 1f
+
+    @Prop("Collision", i=1) var colliderType  = BOX
+    @Prop("Collision", i=2) var layerMask      = 1
+    @Prop("Collision", i=3) var collisionMask  = -1
+    @Prop("Collision", i=4) var continues      = false
+    @Prop("Collision", i=5) var sensor         = false
 
     @Prop("Rendering", i=1) @ModelRef    var model = "cube"
     @Prop("Rendering", i=2) @MaterialRef var material = ""
@@ -160,7 +161,16 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
         xPos != synchronizedPosition.x || yPos != synchronizedPosition.y || zPos != synchronizedPosition.z || 
         xRot != synchronizedRotation.x || yRot != synchronizedRotation.y || zRot != synchronizedRotation.z
 
-    override fun getPhysicsBodyDefinition() = bodyDefinition.updateFrom(this)
+    override fun getPhysicsBodyDefinition() = bodyDefinition.also()
+    {
+        it.position.set(xPos, yPos, zPos)
+        it.rotation.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        it.type               = bodyType
+        it.linearDamping      = linearDamping
+        it.angularDamping     = angularDamping
+        it.gravityScale       = gravityScale
+        it.continuesCollision = continues
+    }
 
     override fun getPhysicsShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
     {

@@ -42,30 +42,29 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
     override var name = "Physics Character"
     var enabled = true
 
-    @Prop("Capsule", i=1, min=0.01f) var capsuleRadius = 0.4f
-    @Prop("Capsule", i=2, min=0.02f) var capsuleHeight = 1.8f
+    @Prop("Capsule", i=1, min=.01f) var capsuleRadius = 0.4f
+    @Prop("Capsule", i=2, min=.02f) var capsuleHeight = 1.8f
 
-    @Prop("Position [*P]", i=1)          override var xPos   = 0f; override var yPos   = 1f; override var zPos   = 0f
-    @Prop("Rotation [*R]", i=2)          override var xRot   = 0f; override var yRot   = 0f; override var zRot   = 0f
-    @Prop("Scale [*S]", i=3, min=0.001f) override var xScale = 1f; override var yScale = 1f; override var zScale = 1f
+    @Prop("Position [*P]", i=1)         override var xPos   = 0f; override var yPos   = 1f; override var zPos   = 0f
+    @Prop("Rotation [*R]", i=2)         override var xRot   = 0f; override var yRot   = 0f; override var zRot   = 0f
+    @Prop("Scale [*S]", i=3, min=.001f) override var xScale = 1f; override var yScale = 1f; override var zScale = 1f
 
-    @Prop("Physics",   i=0)                 override var bodyType            = DYNAMIC
-    @Prop("Physics",   i=1, min=0f)         override var density             = 1f
-    @Prop("Physics",   i=2, min=0f)         override var friction            = 0.1f
-    @Prop("Physics",   i=3, min=0f, max=1f) override var restitution         = 0f
-    @Prop("Physics",   i=4, min=0f)         override var linearDamping       = 0f
-    @Prop("Physics",   i=5, min=0f)         override var angularDamping      = 0f
-    @Prop("Physics",   i=6)                 override var gravityScale        = 1f
-    @Prop("Physics",   i=7)                 override var bullet              = false
-    @Prop("Physics",   i=8)                 override var fixedRotation       = true
-    @Prop("Collision", i=1)                 override var layerMask           =  1
-    @Prop("Collision", i=2)                 override var collisionMask       = -1
-    @Prop("Collision", i=3)                 override var sensor              = false
+    @Prop("Physics",   i=0)                 var bodyType       = DYNAMIC
+    @Prop("Physics",   i=1, min=0f)         var density        = 1f
+    @Prop("Physics",   i=2, min=0f)         var friction       = 0.6f
+    @Prop("Physics",   i=3, min=0f, max=1f) var restitution    = 0f
+    @Prop("Physics",   i=4, min=0f)         var linearDamping  = 0f
+    @Prop("Physics",   i=5, min=0f)         var angularDamping = 0f
+    @Prop("Physics",   i=6)                 var gravityScale   = 1f
 
-    @EntityRef
-    @Prop("Camera", i=1)                    var cameraId         = INVALID_ID
-    @Prop("Camera", i=2)                    var eyeOffset        = 0.7f
-    @Prop("Camera", i=3, min=0f)            var mouseSensitivity = 0.1f
+    @Prop("Collision", i=0) var collisionMask = -1
+    @Prop("Collision", i=1) var layerMask     = 1
+    @Prop("Collision", i=2) var sensor        = false
+
+    @EntityRef(Camera3D::class)
+    @Prop("Camera", i=1)         var cameraId         = INVALID_ID
+    @Prop("Camera", i=2)         var eyeOffset        = 0.7f
+    @Prop("Camera", i=3, min=0f) var mouseSensitivity = 0.1f
 
     @Prop("Movement", i=1, min=0f)          var walkSpeed          = 5f
     @Prop("Movement", i=2, min=0f)          var sprintSpeed        = 8f
@@ -222,7 +221,16 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
         xPos != synchronizedPosition.x || yPos != synchronizedPosition.y || zPos != synchronizedPosition.z ||
         xRot != synchronizedRotation.x || yRot != synchronizedRotation.y || zRot != synchronizedRotation.z
 
-    override fun getPhysicsBodyDefinition() = physicsBodyDefinition.updateFrom(this)
+    override fun getPhysicsBodyDefinition() = physicsBodyDefinition.also()
+    {
+        it.position.set(xPos, yPos, zPos)
+        it.rotation.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        it.type               = bodyType
+        it.linearDamping      = linearDamping
+        it.angularDamping     = angularDamping
+        it.gravityScale       = gravityScale
+        it.lockYRotation      = true
+    }
 
     override fun getPhysicsShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
     {

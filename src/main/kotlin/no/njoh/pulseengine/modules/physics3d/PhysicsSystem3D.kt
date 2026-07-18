@@ -62,13 +62,17 @@ class PhysicsSystem3D : SceneSystem()
         updateSceneEntities(engine, world)
         updateSceneJoints(engine, world)
 
-        activeBindings.forEachFast { getPhysicsEntity(engine, it.entityId)?.onPhysicsFixedUpdate(engine, it.body) }
+        activeBindings.forEachFast()
+        {
+            getPhysicsEntity(engine, it.entityId)?.onPhysicsFixedUpdate(engine, it.body)
+        }
+
         world.step(engine.data.fixedDeltaTime, subStepCount)
         world.dispatchEvents(engine, EventSink)
 
         activeBindings.forEachFast { binding ->
             val entity = getPhysicsEntity(engine, binding.entityId)
-            if (entity != null && entity.bodyType != STATIC)
+            if (entity != null && binding.body.type != STATIC)
             {
                 binding.body.getTransform(tmpPosition, tmpRotation)
                 entity.onPhysicsTransformUpdated(tmpPosition, tmpRotation)
@@ -135,7 +139,7 @@ class PhysicsSystem3D : SceneSystem()
             }
 
             val enableContactEvents = entity is PhysicsContactListener3D
-            val enableSensorEvents = entity is PhysicsSensorListener3D
+            val enableSensorEvents  = entity is PhysicsSensorListener3D
  
             var hash = bodyDefinition.configurationHash()
             hash = 31 * hash + shapeDefinitions.hashCode()
@@ -175,7 +179,7 @@ class PhysicsSystem3D : SceneSystem()
                 tmpPosition.set(entity.xPos, entity.yPos, entity.zPos)
                 tmpRotation.rotationXYZ(entity.xRot.toRadians(), entity.yRot.toRadians(), entity.zRot.toRadians())
 
-                when (entity.bodyType)
+                when (bodyDefinition.type)
                 {
                     KINEMATIC -> binding.body.setTargetTransform(tmpPosition, tmpRotation, engine.data.fixedDeltaTime)
                     STATIC, DYNAMIC -> binding.body.setTransform(tmpPosition, tmpRotation)

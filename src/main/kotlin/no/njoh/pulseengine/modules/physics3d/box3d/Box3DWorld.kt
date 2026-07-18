@@ -215,12 +215,12 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             b3BodyDef.linearDamping(bodyDefinition, definition.linearDamping)
             b3BodyDef.angularDamping(bodyDefinition, definition.angularDamping)
             b3BodyDef.gravityScale(bodyDefinition, definition.gravityScale)
-            b3BodyDef.isBullet(bodyDefinition, definition.bullet)
+            b3BodyDef.isBullet(bodyDefinition, definition.continuesCollision)
             
             val motionLocks = b3BodyDef.motionLocks(bodyDefinition)
-            b3MotionLocks.angularX(motionLocks, definition.fixedRotation)
-            b3MotionLocks.angularY(motionLocks, definition.fixedRotation)
-            b3MotionLocks.angularZ(motionLocks, definition.fixedRotation)
+            b3MotionLocks.angularX(motionLocks, definition.lockXRotation)
+            b3MotionLocks.angularY(motionLocks, definition.lockYRotation)
+            b3MotionLocks.angularZ(motionLocks, definition.lockZRotation)
 
             val bodyId = b3CreateBody(arena, nativeWorldId, bodyDefinition)
             val body = Box3DBody(
@@ -610,13 +610,13 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
         b3Body_SetLinearDamping(body.nativeBodyId, definition.linearDamping)
         b3Body_SetAngularDamping(body.nativeBodyId, definition.angularDamping)
         b3Body_SetGravityScale(body.nativeBodyId, definition.gravityScale)
-        b3Body_SetBullet(body.nativeBodyId, definition.bullet)
+        b3Body_SetBullet(body.nativeBodyId, definition.continuesCollision)
 
         Arena.ofConfined().use { tempArena ->
             val motionLocks = b3MotionLocks.allocate(tempArena)
-            b3MotionLocks.angularX(motionLocks, definition.fixedRotation)
-            b3MotionLocks.angularY(motionLocks, definition.fixedRotation)
-            b3MotionLocks.angularZ(motionLocks, definition.fixedRotation)
+            b3MotionLocks.angularX(motionLocks, definition.lockXRotation)
+            b3MotionLocks.angularY(motionLocks, definition.lockYRotation)
+            b3MotionLocks.angularZ(motionLocks, definition.lockZRotation)
             b3Body_SetMotionLocks(body.nativeBodyId, motionLocks)
         }
 
