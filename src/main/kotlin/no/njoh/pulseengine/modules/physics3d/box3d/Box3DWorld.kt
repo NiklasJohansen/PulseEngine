@@ -42,6 +42,7 @@ import no.njoh.box3d.raw.Box3DRaw_1.b3CreateMesh
 import no.njoh.box3d.raw.Box3DRaw_1.b3CreateWorld
 import no.njoh.box3d.raw.Box3DRaw_1.b3DefaultBodyDef
 import no.njoh.box3d.raw.Box3DRaw_1.b3DefaultDistanceJointDef
+import no.njoh.box3d.raw.Box3DRaw_1.b3DefaultQueryFilter
 import no.njoh.box3d.raw.Box3DRaw_1.b3DefaultRevoluteJointDef
 import no.njoh.box3d.raw.Box3DRaw_1.b3DefaultShapeDef
 import no.njoh.box3d.raw.Box3DRaw_1.b3DefaultWeldJointDef
@@ -56,6 +57,7 @@ import no.njoh.box3d.raw.Box3DRaw_1.b3World_SetGravity
 import no.njoh.box3d.raw.Box3DRaw_1.b3World_Step
 import no.njoh.box3d.raw.Box3DRaw_1.b3World_GetContactEvents
 import no.njoh.box3d.raw.Box3DRaw_1.b3World_GetSensorEvents
+import no.njoh.box3d.raw.Box3DRaw_1.b3World_CastRayClosest
 import no.njoh.box3d.raw.Box3DRaw_1.b3_dynamicBody
 import no.njoh.box3d.raw.Box3DRaw_1.b3_kinematicBody
 import no.njoh.box3d.raw.Box3DRaw_1.b3_staticBody
@@ -73,6 +75,8 @@ import no.njoh.box3d.raw.b3MeshDef
 import no.njoh.box3d.raw.b3MotionLocks
 import no.njoh.box3d.raw.b3JointDef
 import no.njoh.box3d.raw.b3Quat
+import no.njoh.box3d.raw.b3QueryFilter
+import no.njoh.box3d.raw.b3RayResult
 import no.njoh.box3d.raw.b3RevoluteJointDef
 import no.njoh.box3d.raw.b3SensorBeginTouchEvent
 import no.njoh.box3d.raw.b3SensorEndTouchEvent
@@ -193,6 +197,38 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
         requireOpen()
         tmpGravity.setVec3(gravity)
         b3World_SetGravity(nativeWorldId, tmpGravity)
+    }
+
+    fun rayCast(
+        origin: Vector3fc,
+        translation: Vector3fc,
+        categoryBits: Long = 1L,
+        maskBits: Long = -1L
+    ): Box3DRayCastHit? {
+
+        requireOpen()
+        Arena.ofConfined().use { tempArena ->
+            val nativeOrigin = b3Vec3.allocate(tempArena).setVec3(origin)
+            val nativeTranslation = b3Vec3.allocate(tempArena).setVec3(translation)
+            val queryFilter = b3DefaultQueryFilter(tempArena)
+            b3QueryFilter.categoryBits(queryFilter, categoryBits)
+            b3QueryFilter.maskBits(queryFilter, maskBits)
+
+            val result = b3World_CastRayClosest(tempArena, nativeWorldId, nativeOrigin, nativeTranslation, queryFilter)
+            if (!b3RayResult.hit(result))
+                return null
+
+            val shape = findShape(b3RayResult.shapeId(result)) ?: return null
+            val point = b3RayResult.point(result)
+            val normal = b3RayResult.normal(result)
+
+            return Box3DRayCastHit(
+                shape = shape,
+                point = Vector3f(b3Vec3.x(point), b3Vec3.y(point), b3Vec3.z(point)),
+                normal = Vector3f(b3Vec3.x(normal), b3Vec3.y(normal), b3Vec3.z(normal)),
+                fraction = b3RayResult.fraction(result)
+            )
+        }
     }
     
     fun createBody(

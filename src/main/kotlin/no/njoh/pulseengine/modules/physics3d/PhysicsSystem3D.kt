@@ -22,6 +22,8 @@ import no.njoh.pulseengine.modules.physics3d.entities.bodies.PhysicsBodyEntity3D
 import no.njoh.pulseengine.modules.physics3d.entities.joints.PhysicsJointEntity3D
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import org.joml.Vector3fc
+import kotlin.math.sqrt
 
 /** 
  * Owns, advances, and synchronizes the Box3D world used by 3D physics entities. 
@@ -45,6 +47,7 @@ class PhysicsSystem3D : SceneSystem()
     private val liveJointEntityIds      = TLongHashSet()
     private val tmpPosition             = Vector3f()
     private val tmpRotation             = Quaternionf()
+    private val tmpRayTranslation       = Vector3f()
     private val gravity                 = Vector3f()
 
     override fun onStart(engine: PulseEngine)
@@ -102,6 +105,33 @@ class PhysicsSystem3D : SceneSystem()
         world?.close()
         world = null
         gravity.set(0f)
+    }
+
+    /**
+     * Casts a ray from [origin] in [direction] and returns the closest physics entity hit.
+     * [categoryBits] and [maskBits] use the same collision filtering rules as Box3D shapes.
+     * @returns null when the physics world is unavailable or the ray hits nothing.
+     */
+    fun rayCast(
+        engine: PulseEngine,
+        origin: Vector3fc,
+        direction: Vector3fc,
+        maxDistance: Float,
+        categoryBits: Long = 1L,
+        maskBits: Long = -1L
+    ): RayCastHit3D? {
+        if (maxDistance == 0f) return null
+
+        val rayTranslation = tmpRayTranslation.set(direction).mul(maxDistance / sqrt(direction.lengthSquared()))
+        val hit = world?.rayCast(origin, rayTranslation, categoryBits, maskBits) ?: return null
+
+        return RAY_CAST_HIT.get().also()
+        {
+            it.entity = engine.scene.getEntity(hit.shape.body.entityId) ?: return null
+            it.point.set(hit.point)
+            it.normal.set(hit.normal)
+            it.distance = hit.fraction * maxDistance
+        }
     }
 
     private fun getOrCreateWorld(): Box3DWorld
@@ -365,5 +395,10 @@ class PhysicsSystem3D : SceneSystem()
         {
             engine.scene.getEntityOfType<PhysicsSensorListener3D>(sensorShape.body.entityId)?.onSensorExited(engine, visitorShape.body.entityId)
         }
+    }
+
+    companion object
+    {
+        private val RAY_CAST_HIT = ThreadLocal.withInitial { RayCastHit3D(object : SceneEntity() {}, Vector3f(), Vector3f(), 1f) }
     }
 }
