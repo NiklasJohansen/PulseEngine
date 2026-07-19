@@ -169,7 +169,11 @@ class PhysicsSystem3D : SceneSystem()
             }
 
             val enableContactEvents = entity is PhysicsContactListener3D
-            val enableSensorEvents  = entity is PhysicsSensorListener3D
+
+            // Box3D requires sensor events to be enabled on both the sensor and visitor shape.
+            // Enable them for every scene-managed shape so listener-owned sensors can observe
+            // ordinary physics entities that do not implement PhysicsSensorListener3D.
+            val enableSensorEvents = true
  
             var hash = bodyDefinition.configurationHash()
             hash = 31 * hash + shapeDefinitions.hashCode()
@@ -336,9 +340,6 @@ class PhysicsSystem3D : SceneSystem()
 
     private object EventSink : Box3DEventSink
     {
-        private val tmpContactPoint  = Vector3f()
-        private val tmpContactNormal = Vector3f()
-
         override fun onContactStarted(engine: PulseEngine, shapeA: Box3DShape, shapeB: Box3DShape)
         {
             val entityIdA = shapeA.body.entityId
@@ -369,9 +370,7 @@ class PhysicsSystem3D : SceneSystem()
 
             if (listenerA != null)
             {
-                tmpContactPoint.set(point)
-                tmpContactNormal.set(normal).negate()
-                listenerA.onContactHit(engine, entityIdB, tmpContactPoint, tmpContactNormal, approachSpeed)
+                listenerA.onContactHit(engine, entityIdB, Vector3f(point), Vector3f(normal).negate(), approachSpeed)
             }
 
             if (entityIdA != entityIdB)
@@ -379,9 +378,7 @@ class PhysicsSystem3D : SceneSystem()
                 val listenerB = engine.scene.getEntityOfType<PhysicsContactListener3D>(entityIdB)
                 if (listenerB != null)
                 {
-                    tmpContactPoint.set(point)
-                    tmpContactNormal.set(normal)
-                    listenerB.onContactHit(engine, entityIdA, tmpContactPoint, tmpContactNormal, approachSpeed)
+                    listenerB.onContactHit(engine, entityIdA, Vector3f(point), Vector3f(normal), approachSpeed)
                 }
             }
         }
