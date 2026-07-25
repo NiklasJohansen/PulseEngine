@@ -31,6 +31,7 @@ import no.njoh.pulseengine.modules.scene.systems.ConicalLight3D
 import no.njoh.pulseengine.modules.scene.systems.Light3D
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.scene.entities.Camera3D
@@ -77,6 +78,7 @@ class ViewportInteraction3D(
     private var pendingPickMode = PickMode.REPLACE
     private var observedSelectionId = Long.MIN_VALUE
     private var cameraDragging = false
+    private var selectionDrag: SelectionDrag? = null
     private val orbitPivot = Vector3f()
     private var orbitPivotValid = false
 
@@ -90,7 +92,14 @@ class ViewportInteraction3D(
     private val tmpP2 = Vector2f()
     private val tmpP3 = Vector2f()
     private val tmpMouse = Vector2f()
+    private val projectedBoundsMin = Vector2f()
+    private val projectedBoundsMax = Vector2f()
+    private val boundsCorners = Array(8) { Vector3f() }
+    private val projectedEdgePoints = Array(24) { Vector2f() }
+    private val projectedHullPoints = Array(24) { Vector2f() }
     private val submittedBounds = Model.Aabb()
+    private val boundedMarqueeObjectIds = HashSet<Long>()
+    private val matchedMarqueeObjectIds = HashSet<Long>()
 
     override fun onCreate(engine: PulseEngine, context: ViewportContext)
     {
@@ -109,6 +118,7 @@ class ViewportInteraction3D(
 
         engine.gfx.createSurface(
             name = GIZMO_SURFACE,
+            multisampling = Multisampling.MSAA8,
             zOrder = -50
         ).addRenderer(ObjectOutlineRenderer(OBJECT_ID_SURFACE))
 
@@ -128,6 +138,7 @@ class ViewportInteraction3D(
         val cameraConsumed = updateCamera(engine, context, hover)
         if (cameraConsumed)
         {
+            cancelSelectionDrag(engine, context)
             hoveredHandle = Handle.NONE
             return
         }
@@ -164,6 +175,12 @@ class ViewportInteraction3D(
             return
         }
 
+        selectionDrag?.let() 
+        {
+            updateSelectionDrag(engine, context, it)
+            return
+        }
+
         if (!hover || !engine.input.wasClicked(MouseButton.LEFT))
             return
 
@@ -183,14 +200,12 @@ class ViewportInteraction3D(
             return
         }
 
-        if (pickResult.isPending) return
-        pendingPickMode = pickMode
-        val objectIdSurface = engine.gfx.getSurface(OBJECT_ID_SURFACE)
-        if (objectIdSurface != null)
-        {
-            objectIdSurface.readPixel(engine.input.xMouse.toInt(), engine.input.yMouse.toInt(), dstResult = pickResult)
-            pickPending = true
-        }
+        selectionDrag = SelectionDrag(
+            start = Vector2f(engine.input.xMouse, engine.input.yMouse),
+            current = Vector2f(engine.input.xMouse, engine.input.yMouse),
+            mode = pickMode,
+            initialSelection = context.selection.toList()
+        )
     }
 
     override fun onRender(engine: PulseEngine, context: ViewportContext)
@@ -202,6 +217,7 @@ class ViewportInteraction3D(
         {
             objectIdRenderer?.enabled = false
             transformDrag = null
+            selectionDrag = null
             if (cameraDragging)
             {
                 cameraDragging = false
@@ -220,11 +236,14 @@ class ViewportInteraction3D(
 
         if (selected != null)
             renderGizmo(engine, context, selected.pivot)
+
+        renderSelectionRectangle(engine)
     }
 
     override fun reset(engine: PulseEngine, context: ViewportContext)
     {
         transformDrag = null
+        selectionDrag = null
         hoveredHandle = Handle.NONE
         pickPending = false
         pendingPickMode = PickMode.REPLACE
@@ -269,12 +288,15 @@ class ViewportInteraction3D(
         val pivot = Vector3f()
         for (entity in context.selection)
         {
-            val spatial = entity as? Translatable3D ?: return null
+            val spatial = entity as? Translatable3D ?: continue
             if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
-                return null
+                continue
+
             targets += SelectedTarget(entity, spatial)
             pivot.add(spatial.xPos, spatial.yPos, spatial.zPos)
         }
+
+        if (targets.isEmpty()) return null
         pivot.div(targets.size.toFloat())
         return TransformSelection(targets, pivot)
     }
@@ -303,6 +325,113 @@ class ViewportInteraction3D(
                 gizmoMode = GizmoMode.MOVE
         }
         if (selection.isEmpty()) orbitPivotValid = false
+    }
+
+    private fun updateSelectionDrag(engine: PulseEngine, context: ViewportContext, drag: SelectionDrag)
+    {
+        drag.current.set(engine.input.xMouse, engine.input.yMouse)
+
+        if (engine.input.wasClicked(Key.ESCAPE))
+        {
+            cancelSelectionDrag(engine, context)
+            return
+        }
+
+        if (!drag.active && drag.start.distanceSquared(drag.current) >= SELECTION_DRAG_THRESHOLD_SQUARED)
+        {
+            drag.active = true
+            pickPending = false
+        }
+
+        if (drag.active)
+            applyRectangleSelection(engine, context, drag)
+
+        if (!engine.input.isPressed(MouseButton.LEFT))
+        {
+            if (!drag.active)
+                requestObjectPick(engine, drag.start, drag.mode)
+            selectionDrag = null
+        }
+    }
+
+    private fun cancelSelectionDrag(engine: PulseEngine, context: ViewportContext)
+    {
+        val drag = selectionDrag ?: return
+        if (drag.active && context.selection != drag.initialSelection)
+            context.selectMultiple(engine, drag.initialSelection)
+        selectionDrag = null
+    }
+
+    private fun requestObjectPick(engine: PulseEngine, position: Vector2f, mode: PickMode)
+    {
+        if (pickResult.isPending) return
+
+        val objectIdSurface = engine.gfx.getSurface(OBJECT_ID_SURFACE) ?: return
+        pendingPickMode = mode
+        objectIdSurface.readPixel(position.x.toInt(), position.y.toInt(), dstResult = pickResult)
+        pickPending = true
+    }
+
+    private fun applyRectangleSelection(engine: PulseEngine, context: ViewportContext, drag: SelectionDrag)
+    {
+        val xMin = min(drag.start.x, drag.current.x)
+        val yMin = min(drag.start.y, drag.current.y)
+        val xMax = max(drag.start.x, drag.current.x)
+        val yMax = max(drag.start.y, drag.current.y)
+        val matches = ArrayList<SceneEntity>()
+        collectMarqueeMatches(engine, context.camera, xMin, yMin, xMax, yMax)
+
+        engine.scene.forEachEntity { entity ->
+            val spatial = entity as? Translatable3D ?: return@forEachEntity
+            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
+                return@forEachEntity
+
+            if (projectedBoundsOverlap(engine, context, entity, spatial, xMin, yMin, xMax, yMax))
+                matches.add(entity)
+        }
+
+        val initialIds = drag.initialSelection.mapTo(HashSet()) { it.id }
+        val matchIds = matches.mapTo(HashSet()) { it.id }
+        val selection = when (drag.mode)
+        {
+            PickMode.REPLACE ->
+            {
+                matches
+            }
+            PickMode.ADD ->
+            {
+                ArrayList<SceneEntity>(drag.initialSelection.size + matches.size).apply()
+                {
+                    addAll(drag.initialSelection)
+                    matches.filterTo(this) { it.id !in initialIds }
+                }
+            }
+            PickMode.TOGGLE ->
+            {
+                ArrayList<SceneEntity>(drag.initialSelection.size + matches.size).apply()
+                {
+                    drag.initialSelection.filterTo(this) { it.id !in matchIds }
+                    matches.filterTo(this) { it.id !in initialIds }
+                }
+            }
+        }
+
+        if (selection == context.selection)
+            return
+
+        context.selectMultiple(engine, selection)
+        observedSelectionId = Long.MIN_VALUE
+
+        getSelectedTransformables(context)?.let()
+        {
+            orbitPivot.set(it.pivot)
+            orbitPivotValid = true
+            if (!supportsMode(it, gizmoMode))
+                gizmoMode = GizmoMode.MOVE
+        }
+
+        if (selection.isEmpty())
+            orbitPivotValid = false
     }
 
     private fun findLightMarkerAtMouse(engine: PulseEngine, context: ViewportContext): SceneEntity?
@@ -517,14 +646,7 @@ class ViewportInteraction3D(
 
     private fun getSelectionBounds(engine: PulseEngine, entity: SceneEntity, spatial: Translatable3D): Pair<Vector3f, Float>
     {
-        val scene = engine.gfx.sceneContext.getSubmittedScene()
-        var found = false
-        
-        found = found or includeObjectBounds(scene.opaqueItems,  entity.id, submittedBounds)
-        found = found or includeObjectBounds(scene.maskedItems,  entity.id, submittedBounds)
-        found = found or includeObjectBounds(scene.blendedItems, entity.id, submittedBounds)
-
-        if (found)
+        if (getSubmittedObjectBounds(engine, entity.id, submittedBounds))
         {
             val center = Vector3f(
                 (submittedBounds.xMin + submittedBounds.xMax) * 0.5f,
@@ -543,56 +665,361 @@ class ViewportInteraction3D(
         return Vector3f(spatial.xPos, spatial.yPos, spatial.zPos) to 1f
     }
 
-    private fun includeObjectBounds(items: DynamicList<RenderItem>, objectId: Long, outBounds: Model.Aabb): Boolean
+    private fun projectedBoundsOverlap(
+        engine: PulseEngine,
+        context: ViewportContext,
+        entity: SceneEntity,
+        spatial: Translatable3D,
+        selectionXMin: Float,
+        selectionYMin: Float,
+        selectionXMax: Float,
+        selectionYMax: Float
+    ): Boolean {
+        if (entity.id in boundedMarqueeObjectIds)
+            return entity.id in matchedMarqueeObjectIds
+
+        tmpV0.set(spatial.xPos, spatial.yPos, spatial.zPos)
+        if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, projectedBoundsMin))
+            return false
+
+        val radius = when (entity)
+        {
+            is Light3D -> LIGHT_MARKER_HIT_RADIUS
+            is Camera3D -> CAMERA_MARKER_HIT_RADIUS
+            else -> POINT_SELECTION_RADIUS
+        }
+        projectedBoundsMax.set(projectedBoundsMin).add(radius, radius)
+        projectedBoundsMin.sub(radius, radius)
+
+        return projectedBoundsMax.x >= selectionXMin && projectedBoundsMin.x <= selectionXMax &&
+            projectedBoundsMax.y >= selectionYMin && projectedBoundsMin.y <= selectionYMax
+    }
+
+    private fun projectRenderItemOverlaps(
+        camera: Camera,
+        item: RenderItem,
+        width: Int,
+        height: Int,
+        selectionXMin: Float,
+        selectionYMin: Float,
+        selectionXMax: Float,
+        selectionYMax: Float
+    ): Boolean {
+        val bounds = item.cullingBounds ?: item.mesh.localBounds
+        setTransformedPoint(boundsCorners[0], bounds.xMin, bounds.yMin, bounds.zMin, item.transform)
+        setTransformedPoint(boundsCorners[1], bounds.xMax, bounds.yMin, bounds.zMin, item.transform)
+        setTransformedPoint(boundsCorners[2], bounds.xMin, bounds.yMax, bounds.zMin, item.transform)
+        setTransformedPoint(boundsCorners[3], bounds.xMax, bounds.yMax, bounds.zMin, item.transform)
+        setTransformedPoint(boundsCorners[4], bounds.xMin, bounds.yMin, bounds.zMax, item.transform)
+        setTransformedPoint(boundsCorners[5], bounds.xMax, bounds.yMin, bounds.zMax, item.transform)
+        setTransformedPoint(boundsCorners[6], bounds.xMin, bounds.yMax, bounds.zMax, item.transform)
+        setTransformedPoint(boundsCorners[7], bounds.xMax, bounds.yMax, bounds.zMax, item.transform)
+
+        projectedBoundsMin.set(Float.MAX_VALUE, Float.MAX_VALUE)
+        projectedBoundsMax.set(-Float.MAX_VALUE, -Float.MAX_VALUE)
+        var pointCount = 0
+        for (i in AABB_EDGES.indices step 2)
+        {
+            val start = boundsCorners[AABB_EDGES[i]]
+            val end = boundsCorners[AABB_EDGES[i + 1]]
+            if (!projectLine(camera, start, end, width, height, tmpP0, tmpP1))
+                continue
+
+            pointCount = addProjectedPoint(tmpP0, pointCount)
+            pointCount = addProjectedPoint(tmpP1, pointCount)
+        }
+
+        if (pointCount == 0 ||
+            projectedBoundsMax.x < selectionXMin || projectedBoundsMin.x > selectionXMax ||
+            projectedBoundsMax.y < selectionYMin || projectedBoundsMin.y > selectionYMax)
+            return false
+
+        val hullCount = buildProjectedHull(pointCount)
+        return projectedHullOverlapsRectangle(hullCount, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
+    }
+
+    private fun addProjectedPoint(point: Vector2f, count: Int): Int
     {
-        var found = false
+        for (i in 0 until count)
+        {
+            if (projectedEdgePoints[i].distanceSquared(point) <= PROJECTED_POINT_EPSILON_SQUARED)
+                return count
+        }
+
+        projectedEdgePoints[count].set(point)
+        projectedBoundsMin.x = min(projectedBoundsMin.x, point.x)
+        projectedBoundsMin.y = min(projectedBoundsMin.y, point.y)
+        projectedBoundsMax.x = max(projectedBoundsMax.x, point.x)
+        projectedBoundsMax.y = max(projectedBoundsMax.y, point.y)
+        return count + 1
+    }
+
+    private fun buildProjectedHull(pointCount: Int): Int
+    {
+        for (i in 1 until pointCount)
+        {
+            val point = projectedEdgePoints[i]
+            var j = i - 1
+            while (j >= 0 && compareProjectedPoints(projectedEdgePoints[j], point) > 0)
+            {
+                projectedEdgePoints[j + 1] = projectedEdgePoints[j]
+                j--
+            }
+            projectedEdgePoints[j + 1] = point
+        }
+
+        if (pointCount == 1)
+        {
+            projectedHullPoints[0].set(projectedEdgePoints[0])
+            return 1
+        }
+
+        var hullCount = 0
+        for (i in 0 until pointCount)
+        {
+            while (hullCount >= 2 && cross(
+                    projectedHullPoints[hullCount - 2],
+                    projectedHullPoints[hullCount - 1],
+                    projectedEdgePoints[i]
+                ) <= 0f)
+                hullCount--
+            projectedHullPoints[hullCount++].set(projectedEdgePoints[i])
+        }
+
+        val upperStart = hullCount + 1
+        for (i in pointCount - 2 downTo 0)
+        {
+            while (hullCount >= upperStart && cross(
+                    projectedHullPoints[hullCount - 2],
+                    projectedHullPoints[hullCount - 1],
+                    projectedEdgePoints[i]
+                ) <= 0f)
+                hullCount--
+            projectedHullPoints[hullCount++].set(projectedEdgePoints[i])
+        }
+
+        return hullCount - 1
+    }
+
+    private fun compareProjectedPoints(a: Vector2f, b: Vector2f): Int
+    {
+        val xComparison = a.x.compareTo(b.x)
+        return if (xComparison != 0) xComparison else a.y.compareTo(b.y)
+    }
+
+    private fun cross(a: Vector2f, b: Vector2f, c: Vector2f) =
+        (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+
+    private fun projectedHullOverlapsRectangle(
+        hullCount: Int,
+        xMin: Float,
+        yMin: Float,
+        xMax: Float,
+        yMax: Float
+    ): Boolean {
+        if (hullCount == 1)
+            return pointInsideRectangle(projectedHullPoints[0], xMin, yMin, xMax, yMax)
+        if (hullCount == 2)
+            return segmentIntersectsRectangle(projectedHullPoints[0], projectedHullPoints[1], xMin, yMin, xMax, yMax)
+
+        for (i in 0 until hullCount)
+        {
+            if (pointInsideRectangle(projectedHullPoints[i], xMin, yMin, xMax, yMax))
+                return true
+        }
+
+        if (pointInsideProjectedHull(xMin, yMin, hullCount) ||
+            pointInsideProjectedHull(xMax, yMin, hullCount) ||
+            pointInsideProjectedHull(xMin, yMax, hullCount) ||
+            pointInsideProjectedHull(xMax, yMax, hullCount))
+            return true
+
+        for (i in 0 until hullCount)
+        {
+            val next = (i + 1) % hullCount
+            if (segmentIntersectsRectangle(projectedHullPoints[i], projectedHullPoints[next], xMin, yMin, xMax, yMax))
+                return true
+        }
+        return false
+    }
+
+    private fun pointInsideRectangle(point: Vector2f, xMin: Float, yMin: Float, xMax: Float, yMax: Float) =
+        point.x in xMin..xMax && point.y in yMin..yMax
+
+    private fun pointInsideProjectedHull(x: Float, y: Float, hullCount: Int): Boolean
+    {
+        var sign = 0
+        for (i in 0 until hullCount)
+        {
+            val a = projectedHullPoints[i]
+            val b = projectedHullPoints[(i + 1) % hullCount]
+            val value = (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x)
+            if (abs(value) <= PROJECTED_POINT_EPSILON)
+                continue
+
+            val currentSign = if (value > 0f) 1 else -1
+            if (sign != 0 && sign != currentSign)
+                return false
+            sign = currentSign
+        }
+        return true
+    }
+
+    private fun segmentIntersectsRectangle(
+        a: Vector2f,
+        b: Vector2f,
+        xMin: Float,
+        yMin: Float,
+        xMax: Float,
+        yMax: Float
+    ): Boolean {
+        if (pointInsideRectangle(a, xMin, yMin, xMax, yMax) ||
+            pointInsideRectangle(b, xMin, yMin, xMax, yMax))
+            return true
+        if (max(a.x, b.x) < xMin || min(a.x, b.x) > xMax ||
+            max(a.y, b.y) < yMin || min(a.y, b.y) > yMax)
+            return false
+
+        val dx = b.x - a.x
+        val dy = b.y - a.y
+        val segmentXMin = min(a.x, b.x)
+        val segmentXMax = max(a.x, b.x)
+        val segmentYMin = min(a.y, b.y)
+        val segmentYMax = max(a.y, b.y)
+        if (abs(dx) > PROJECTED_POINT_EPSILON)
+        {
+            val crossesLeft = xMin in segmentXMin..segmentXMax &&
+                a.y + (xMin - a.x) / dx * dy in yMin..yMax
+            val crossesRight = xMax in segmentXMin..segmentXMax &&
+                a.y + (xMax - a.x) / dx * dy in yMin..yMax
+            if (crossesLeft || crossesRight)
+                return true
+        }
+        if (abs(dy) > PROJECTED_POINT_EPSILON)
+        {
+            val crossesTop = yMin in segmentYMin..segmentYMax &&
+                a.x + (yMin - a.y) / dy * dx in xMin..xMax
+            val crossesBottom = yMax in segmentYMin..segmentYMax &&
+                a.x + (yMax - a.y) / dy * dx in xMin..xMax
+            if (crossesTop || crossesBottom)
+                return true
+        }
+        return false
+    }
+
+    private fun setTransformedPoint(out: Vector3f, x: Float, y: Float, z: Float, transform: Mat4f)
+    {
+        out.set(
+            transform.m00 * x + transform.m10 * y + transform.m20 * z + transform.m30,
+            transform.m01 * x + transform.m11 * y + transform.m21 * z + transform.m31,
+            transform.m02 * x + transform.m12 * y + transform.m22 * z + transform.m32
+        )
+    }
+
+    private fun collectMarqueeMatches(
+        engine: PulseEngine,
+        camera: Camera,
+        selectionXMin: Float,
+        selectionYMin: Float,
+        selectionXMax: Float,
+        selectionYMax: Float
+    )
+    {
+        boundedMarqueeObjectIds.clear()
+        matchedMarqueeObjectIds.clear()
+        val scene = engine.gfx.sceneContext.getSubmittedScene()
+        collectMarqueeMatches(scene.opaqueItems, camera, engine.window.width, engine.window.height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
+        collectMarqueeMatches(scene.maskedItems, camera, engine.window.width, engine.window.height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
+        collectMarqueeMatches(scene.blendedItems, camera, engine.window.width, engine.window.height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
+    }
+
+    private fun collectMarqueeMatches(
+        items: DynamicList<RenderItem>,
+        camera: Camera,
+        width: Int,
+        height: Int,
+        selectionXMin: Float,
+        selectionYMin: Float,
+        selectionXMax: Float,
+        selectionYMax: Float
+    )
+    {
         items.forEach { item ->
-  
+            if (item.objectId < 0L)
+                return@forEach
+
+            boundedMarqueeObjectIds.add(item.objectId)
+            if (item.objectId !in matchedMarqueeObjectIds &&
+                projectRenderItemOverlaps(camera, item, width, height, selectionXMin, selectionYMin, selectionXMax, selectionYMax))
+                matchedMarqueeObjectIds.add(item.objectId)
+        }
+    }
+
+    private fun getSubmittedObjectBounds(engine: PulseEngine, objectId: Long, outBounds: Model.Aabb): Boolean
+    {
+        val scene = engine.gfx.sceneContext.getSubmittedScene()
+        var found = false
+        found = includeObjectBounds(scene.opaqueItems, objectId, outBounds, found)
+        found = includeObjectBounds(scene.maskedItems, objectId, outBounds, found)
+        found = includeObjectBounds(scene.blendedItems, objectId, outBounds, found)
+        return found
+    }
+
+    private fun includeObjectBounds(
+        items: DynamicList<RenderItem>,
+        objectId: Long,
+        outBounds: Model.Aabb,
+        hasExistingBounds: Boolean
+    ): Boolean {
+        var found = hasExistingBounds
+        items.forEach { item ->
             if (item.objectId != objectId) return@forEach
-
-            val bounds = item.cullingBounds ?: item.mesh.localBounds
-            val transform = item.transform
-
-            val xCenter = (bounds.xMin + bounds.xMax) * 0.5f
-            val yCenter = (bounds.yMin + bounds.yMax) * 0.5f
-            val zCenter = (bounds.zMin + bounds.zMax) * 0.5f
-            val xHalf   = (bounds.xMax - bounds.xMin) * 0.5f
-            val yHalf   = (bounds.yMax - bounds.yMin) * 0.5f
-            val zHalf   = (bounds.zMax - bounds.zMin) * 0.5f
-
-            val xWorldCenter = transform.m00 * xCenter + transform.m10 * yCenter + transform.m20 * zCenter + transform.m30
-            val yWorldCenter = transform.m01 * xCenter + transform.m11 * yCenter + transform.m21 * zCenter + transform.m31
-            val zWorldCenter = transform.m02 * xCenter + transform.m12 * yCenter + transform.m22 * zCenter + transform.m32
-            val xWorldHalf   = abs(transform.m00) * xHalf + abs(transform.m10) * yHalf + abs(transform.m20) * zHalf
-            val yWorldHalf   = abs(transform.m01) * xHalf + abs(transform.m11) * yHalf + abs(transform.m21) * zHalf
-            val zWorldHalf   = abs(transform.m02) * xHalf + abs(transform.m12) * yHalf + abs(transform.m22) * zHalf
-            
-            val xMin = xWorldCenter - xWorldHalf
-            val yMin = yWorldCenter - yWorldHalf
-            val zMin = zWorldCenter - zWorldHalf
-            val xMax = xWorldCenter + xWorldHalf
-            val yMax = yWorldCenter + yWorldHalf
-            val zMax = zWorldCenter + zWorldHalf
-
-            if (!found)
-            {
-                outBounds.set(xMin, yMin, zMin, xMax, yMax, zMax)
-                found = true
-            }
-            else
-            {
-                outBounds.set(
-                    min(outBounds.xMin, xMin),
-                    min(outBounds.yMin, yMin),
-                    min(outBounds.zMin, zMin),
-                    max(outBounds.xMax, xMax),
-                    max(outBounds.yMax, yMax),
-                    max(outBounds.zMax, zMax)
-                )
-            }
+            includeRenderItemBounds(item, outBounds, found)
+            found = true
         }
 
         return found
+    }
+
+    private fun includeRenderItemBounds(item: RenderItem, outBounds: Model.Aabb, hasExistingBounds: Boolean)
+    {
+        val bounds = item.cullingBounds ?: item.mesh.localBounds
+        val transform = item.transform
+
+        val xCenter = (bounds.xMin + bounds.xMax) * 0.5f
+        val yCenter = (bounds.yMin + bounds.yMax) * 0.5f
+        val zCenter = (bounds.zMin + bounds.zMax) * 0.5f
+        val xHalf   = (bounds.xMax - bounds.xMin) * 0.5f
+        val yHalf   = (bounds.yMax - bounds.yMin) * 0.5f
+        val zHalf   = (bounds.zMax - bounds.zMin) * 0.5f
+
+        val xWorldCenter = transform.m00 * xCenter + transform.m10 * yCenter + transform.m20 * zCenter + transform.m30
+        val yWorldCenter = transform.m01 * xCenter + transform.m11 * yCenter + transform.m21 * zCenter + transform.m31
+        val zWorldCenter = transform.m02 * xCenter + transform.m12 * yCenter + transform.m22 * zCenter + transform.m32
+        val xWorldHalf   = abs(transform.m00) * xHalf + abs(transform.m10) * yHalf + abs(transform.m20) * zHalf
+        val yWorldHalf   = abs(transform.m01) * xHalf + abs(transform.m11) * yHalf + abs(transform.m21) * zHalf
+        val zWorldHalf   = abs(transform.m02) * xHalf + abs(transform.m12) * yHalf + abs(transform.m22) * zHalf
+
+        val xMin = xWorldCenter - xWorldHalf
+        val yMin = yWorldCenter - yWorldHalf
+        val zMin = zWorldCenter - zWorldHalf
+        val xMax = xWorldCenter + xWorldHalf
+        val yMax = yWorldCenter + yWorldHalf
+        val zMax = zWorldCenter + zWorldHalf
+
+        if (!hasExistingBounds)
+            outBounds.set(xMin, yMin, zMin, xMax, yMax, zMax)
+        else
+        {
+            outBounds.set(
+                min(outBounds.xMin, xMin),
+                min(outBounds.yMin, yMin),
+                min(outBounds.zMin, zMin),
+                max(outBounds.xMax, xMax),
+                max(outBounds.yMax, yMax),
+                max(outBounds.zMax, zMax)
+            )
+        }
     }
 
     private fun beginTransformDrag(engine: PulseEngine, context: ViewportContext, selection: TransformSelection, handle: Handle): Boolean
@@ -865,6 +1292,22 @@ class ViewportInteraction3D(
             previousValid = valid
         }
         return minimum
+    }
+
+    private fun renderSelectionRectangle(engine: PulseEngine)
+    {
+        val drag = selectionDrag?.takeIf { it.active } ?: return
+        val surface = engine.gfx.getSurface(GIZMO_SURFACE) ?: return
+        val xMin = min(drag.start.x, drag.current.x)
+        val yMin = min(drag.start.y, drag.current.y)
+        val xMax = max(drag.start.x, drag.current.x)
+        val yMax = max(drag.start.y, drag.current.y)
+
+        surface.setDrawColor(SELECTION_RECT_BORDER_COLOR)
+        surface.drawLine(xMin, yMin, xMax, yMin)
+        surface.drawLine(xMin, yMax, xMax, yMax)
+        surface.drawLine(xMin, yMin, xMin, yMax)
+        surface.drawLine(xMax, yMin, xMax, yMax)
     }
 
     private fun renderLightMarkers(engine: PulseEngine, context: ViewportContext, selectedIds: Set<Long>)
@@ -1426,6 +1869,14 @@ class ViewportInteraction3D(
         val startMouse: Vector2f = Vector2f()
     )
 
+    private data class SelectionDrag(
+        val start: Vector2f,
+        val current: Vector2f,
+        val mode: PickMode,
+        val initialSelection: List<SceneEntity>,
+        var active: Boolean = false
+    )
+
     companion object
     {
         private const val OBJECT_ID_SURFACE = "scene_editor_object_ids"
@@ -1437,6 +1888,10 @@ class ViewportInteraction3D(
         private const val DEFAULT_ORBIT_DISTANCE = 5f
         private const val MIN_ORBIT_DISTANCE = 0.1f
         private const val MAX_PITCH = 1.55334f
+        private const val SELECTION_DRAG_THRESHOLD_SQUARED = 25f
+        private const val POINT_SELECTION_RADIUS = 6f
+        private const val PROJECTED_POINT_EPSILON = 0.001f
+        private const val PROJECTED_POINT_EPSILON_SQUARED = 0.000001f
         private const val HIT_TOLERANCE = 10f
         private const val CENTER_HANDLE_RADIUS = 12f
         private const val RING_SEGMENTS = 64
@@ -1459,6 +1914,11 @@ class ViewportInteraction3D(
 
         private val AXIS_HANDLES = arrayOf(Handle.X, Handle.Y, Handle.Z)
         private val PLANE_HANDLES = arrayOf(Handle.XY, Handle.XZ, Handle.YZ)
+        private val AABB_EDGES = intArrayOf(
+            0, 1, 0, 2, 1, 3, 2, 3,
+            4, 5, 4, 6, 5, 7, 6, 7,
+            0, 4, 1, 5, 2, 6, 3, 7
+        )
         private val WORLD_X = Vector3f(1f, 0f, 0f)
         private val WORLD_Y = Vector3f(0f, 1f, 0f)
         private val WORLD_Z = Vector3f(0f, 0f, 1f)
@@ -1471,5 +1931,6 @@ class ViewportInteraction3D(
         private val LIGHT_MARKER_COLOR = Color(1f, 0.72f, 0.16f, 1f)
         private val LIGHT_VOLUME_COLOR = Color(1f, 0.72f, 0.16f, 0.8f)
         private val CAMERA_MARKER_COLOR = Color(0.25f, 0.82f, 1f, 1f)
+        private val SELECTION_RECT_BORDER_COLOR = Color(1f, 1f, 1f, 1f)
     }
 }

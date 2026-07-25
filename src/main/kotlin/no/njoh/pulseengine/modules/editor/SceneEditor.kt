@@ -93,7 +93,7 @@ class SceneEditor(
 
     // Copying
     private var isCopying = false
-    private var prevSelectedEntityId: Long? = null
+    private var selectedEntityIdsBeforePlay = emptyList<Long>()
 
     // Loading and saving
     private var shouldPersistEditorLayout = false
@@ -357,6 +357,7 @@ class SceneEditor(
         {
             if (engine.scene.state == SceneState.STOPPED)
             {
+                rememberEntitySelection()
                 engine.scene.save()
                 engine.scene.start()
             }
@@ -465,7 +466,7 @@ class SceneEditor(
     {
         viewportInteraction?.onEditorDeactivated(engine, viewportContext)
         stop() // Stop editor service
-        prevSelectedEntityId = entitySelection.firstOrNull()?.id
+        rememberEntitySelection()
 
         resetUI(engine)
         engine.input.setCursorType(ARROW)
@@ -716,13 +717,24 @@ class SceneEditor(
 
     private fun initializeEntities(engine: PulseEngine)
     {
+        val selectedIds = selectedEntityIdsBeforePlay.toHashSet()
+        val restoredSelection = ArrayList<SceneEntity>(selectedIds.size)
         engine.scene.forEachEntity()
         {
-            if (prevSelectedEntityId != null && prevSelectedEntityId == it.id)
-                selectSingleEntity(engine, it)
+            if (it.id in selectedIds)
+                restoredSelection.add(it)
             if (it is PhysicsEntity2D)
                 it.init(engine)
         }
+
+        selectedEntityIdsBeforePlay = emptyList()
+        if (restoredSelection.isNotEmpty())
+            selectEntities(engine, restoredSelection)
+    }
+
+    private fun rememberEntitySelection()
+    {
+        selectedEntityIdsBeforePlay = entitySelection.map { it.id }
     }
 
     private fun SceneEntity.onMovedScaledOrRotated(engine: PulseEngine)
