@@ -114,6 +114,21 @@ open class DataImpl : DataInternal()
         }
     }
 
+    override fun <T : Any> copyObject(data: T): T? =
+        runCatching { jsonMapper.convertValue(data, data.javaClass) }
+            .onFailure { Logger.error(it) { "Failed to copy object of type: ${data::class.simpleName}" } }
+            .getOrNull()
+
+    override fun serializeToJson(data: Any): String? =
+        runCatching { jsonMapper.writeValueAsString(data) }
+            .onFailure { Logger.error(it) { "Failed to serialize ${data::class.simpleName} to JSON" } }
+            .getOrNull()
+
+    override fun <T> deserializeFromJson(json: String, type: Class<T>): T? =
+        runCatching { jsonMapper.readValue(json, type) }
+            .onFailure { Logger.error(it) { "Failed to deserialize JSON as ${type.simpleName}" } }
+            .getOrNull()
+
     override fun setOnGetSaveDirectory(callback: () -> String) { getSaveDir = callback }
 
     override fun update()

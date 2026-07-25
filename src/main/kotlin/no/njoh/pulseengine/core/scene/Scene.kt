@@ -5,11 +5,14 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY
 import com.fasterxml.jackson.annotation.JsonIgnore
 import gnu.trove.map.hash.THashMap
 import gnu.trove.map.hash.TLongObjectHashMap
+import gnu.trove.set.hash.TLongHashSet
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.data.FileFormat
 import no.njoh.pulseengine.core.data.FileFormat.*
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
+import no.njoh.pulseengine.core.scene.SceneEntityFilter.*
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
+import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
@@ -35,15 +38,16 @@ open class Scene(
     @JsonIgnore
     val spatialGrid = SpatialGrid2D(entities)
 
-    internal var nextId = 0L
+    @JsonIgnore
+    internal var nextId = findNextId()
 
     /** Call onCreate function on all [Initiable] entities when scene is created */
     init { entities.onCreate() }
 
     fun insertEntity(entity: SceneEntity): Long
     {
-        entity.id = nextId
-        entityIdMap.put(nextId, entity)
+        entity.id = nextId++
+        entityIdMap.put(entity.id, entity)
         val type = entity::class.java
         entityTypeMap[type]
             ?.add(entity)
@@ -52,17 +56,54 @@ open class Scene(
                 entityTypeMap[type] = list
                 entities.add(list)
             }
+
         spatialGrid.insert(entity)
+
         if (entity.parentId != INVALID_ID)
             entityIdMap[entity.parentId]?.addChild(entity)
+        
         if (entity is Initiable)
             entity.onCreate()
-        nextId++
-        return entity.id
+
+        return entity.id 
     }
 
+    /**
+     * Gets all entities matching the [filter].
+     * When [includeChildren] is true, all children of matching entities are included.
+     */
+    fun getEntities(filter: SceneEntityFilter = All, includeChildren: Boolean = false): List<SceneEntity>
+    {
+        if (filter is All)
+            return buildList { entities.forEachFast { typeList -> typeList.forEachFast { add(it) } } }
+        
+        val selectedEntities = ArrayList<SceneEntity>()
+        val selectedIds = if (includeChildren) TLongHashSet() else null
+        fun collect(entity: SceneEntity)
+        {
+            if (selectedIds != null && !selectedIds.add(entity.id)) return
+            selectedEntities.add(entity)
+            if (includeChildren) entity.childIds?.forEachFast { childId -> entityIdMap[childId]?.let(::collect) }
+        }
+
+        when (filter)
+        {
+            is Id       -> entityIdMap[filter.id]?.let(::collect)
+            is Name     -> entities.forEachFast { typeList -> typeList.forEachFast { if (it is Named && it.name == filter.name) collect(it) } }
+            is Entities -> filter.entities.forEachFast { if (entityIdMap[it.id] === it) collect(it) }
+            is All      -> Unit
+        }
+
+        return selectedEntities
+    }
+    
     internal fun start(engine: PulseEngine)
     {
+        entities.forEachFiltered({ it.firstOrNull() is Initiable })
+        {
+            it.forEachFast { entity -> (entity as Initiable).onStart(engine) }
+        }
+
         systems.forEachFiltered({ it.enabled })
         {
             if (!it.initialized)
@@ -70,6 +111,7 @@ open class Scene(
 
             it.onStart(engine)
         }
+
         spatialGrid.recalculate()
     }
 
@@ -119,7 +161,11 @@ open class Scene(
 
     internal fun destroy(engine: PulseEngine)
     {
-        systems.forEachFiltered({ it.initialized }) { it.onDestroy(engine) }
+        systems.forEachFiltered({ it.initialized }) 
+        {
+            it.onDestroy(engine)
+            it.initialized = false
+        }
     }
 
     internal fun optimizeCollections()
@@ -155,5 +201,12 @@ open class Scene(
         {
             if (it.firstOrNull() is Initiable) it.forEachFast { entity -> (entity as Initiable).onCreate() }
         }
+    }
+
+    private fun findNextId(): Long
+    {
+        var highestId = INVALID_ID
+        entities.forEachFast { typeList -> typeList.forEachFast { if (it.id > highestId) highestId = it.id } }
+        return highestId + 1L
     }
 }

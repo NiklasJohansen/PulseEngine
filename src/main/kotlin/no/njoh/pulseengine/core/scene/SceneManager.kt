@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.core.scene.SpatialGrid2D.Companion.nextQueryId
+import no.njoh.pulseengine.core.scene.SceneEntityFilter.All
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.primitives.HitResult
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
@@ -52,7 +53,7 @@ abstract class SceneManager
 
     /**
      * Saves the active [Scene] to disk with the given [fileName].
-     * @param fileName Name of file. If it is not an absolute path, the configured Data.saveDirectory will be used.
+     * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
      * @param async When true - returns immediately and handles the save operation in a separate thread.
      * @param updateActiveScene Updates the active [Scene] with the new [fileName] if set true.
      */
@@ -65,22 +66,39 @@ abstract class SceneManager
     abstract fun reload(fromClassPath: Boolean = false)
 
     /**
-     * Loads the scene with the given [fileName] from disk and makes it the new active [Scene].
-     * @param fileName Name of file. If it is not an absolute path, the configured Data.saveDirectory will be used.
+     * Loads a [Scene] without changing [activeScene].
+     * The returned scene can be retained and used as the source of repeated [copyEntitiesFrom] operations.
+     * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
+     * @param fromClassPath True if the file should be loaded from classpath.
+     */
+    abstract fun load(fileName: String, fromClassPath: Boolean = false): Scene?
+
+    /**
+     * Loads a [Scene] on an IO thread without changing [activeScene].
+     * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
+     * @param fromClassPath True if the file should be loaded from classpath.
+     * @param onFail Called when the scene could not be loaded.
+     * @param onComplete Called when the scene has been loaded.
+     */
+    abstract fun loadAsync(fileName: String, fromClassPath: Boolean = false, onFail: () -> Unit = {}, onComplete: (Scene) -> Unit)
+
+    /**
+     * Loads the scene with the given [fileName] and makes it the new [activeScene].
+     * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
      */
     abstract fun loadAndSetActive(fileName: String, fromClassPath: Boolean = false)
 
     /**
      * Creates a new empty [Scene] with the given [fileName] and makes it the active [Scene].
      * This will stop and destroy the previous active scene.
-     * @param fileName Name of file. Can be an absolute or relative path.
+     * @param fileName Name of the file. Can be an absolute or relative path.
      */
     abstract fun createEmptyAndSetActive(fileName: String)
 
     /**
      * Loads the scene with the given [fileName] from disk and makes it the new active [Scene].
      * Fades the screen to black while loading, and then back into the new [Scene] when ready.
-     * @param fileName Name of file. If it is not an absolute path, the configured Data.saveDirectory will be used.
+     * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
      * @param fromClassPath True if the file should be loaded from classpath.
      * @param transitionTimeMs The number of milliseconds to use when fading to and from black screen.
      * @param onSceneLoaded called when the scene is loaded and ready.
@@ -99,8 +117,9 @@ abstract class SceneManager
     /**
      * Sets the given [scene] to be the new active [Scene].
      * Will stop and destroy the previous scene.
+     * @param disposePrevious When true - the content of the previous scene will be disposed to free up memory.
      */
-    abstract fun setActive(scene: Scene)
+    abstract fun setActive(scene: Scene, disposePrevious: Boolean = true)
 
     ///////////////////////////////////////// Scene Entity Operations /////////////////////////////////////////
 
@@ -108,8 +127,33 @@ abstract class SceneManager
      * Adds the [SceneEntity] to the active [Scene].
      * @return the newly assigned ID of the given entity.
      */
-    fun addEntity(entity: SceneEntity) =
-        activeScene.insertEntity(entity)
+    abstract fun addEntity(entity: SceneEntity): Long
+
+    /**
+     * Copies entities matching [filter] and their descendants from [sourceScene] into [activeScene].
+     * References within the selection are remapped. References outside it are preserved when
+     * copying from [activeScene], and cleared when copying from another scene.
+     * If [targetParentId] does not exist, the copied root entities are left without a parent.
+     * @param configure Called with all detached entity copies before they receive new IDs, are
+     * inserted into [activeScene], and receive lifecycle callbacks. Use it to customize their properties.
+     */
+    abstract fun copyEntitiesFrom(
+        sourceScene: Scene,
+        filter: SceneEntityFilter = All,
+        targetParentId: Long = INVALID_ID,
+        configure: (List<SceneEntity>) -> Unit = {}
+    ): List<SceneEntity>?
+
+    /**
+     * Copies entities from their JSON representation into [activeScene].
+     * @param configure Called with all deserialized entities before they receive new IDs, are
+     * inserted into the [activeScene], and receive lifecycle callbacks. Use it to customize their properties.
+     */
+    abstract fun copyEntitiesFrom(
+        sourceJson: String,
+        targetParentId: Long = INVALID_ID,
+        configure: (List<SceneEntity>) -> Unit = {}
+    ): List<SceneEntity>?
 
     /**
      * Returns the [SceneEntity] with the given [id].

@@ -65,6 +65,11 @@ abstract class SceneSystem
      */
     open fun onStateChanged(engine: PulseEngine) {  }
 
+    /**
+     * Called after a batch of entities has been inserted into a running scene.
+     */
+    open fun onEntitiesAdded(engine: PulseEngine, entities: List<SceneEntity>) { }
+
     companion object
     {
         val REGISTERED_TYPES = mutableSetOf<KClass<out SceneSystem>>()

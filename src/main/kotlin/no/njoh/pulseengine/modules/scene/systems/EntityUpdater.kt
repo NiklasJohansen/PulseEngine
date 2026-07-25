@@ -5,7 +5,6 @@ import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.scene.interfaces.Updatable
 
 @Name("Entity Updater")
@@ -24,8 +23,6 @@ open class EntityUpdater : SceneSystem()
     {
         if (tickRate != engine.config.fixedTickRate)
             engine.config.fixedTickRate = tickRate
-
-        engine.scene.forEachEntityOfType<Initiable> { it.onStart(engine) }
     }
 
     override fun onFixedUpdate(engine: PulseEngine)

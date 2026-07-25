@@ -91,6 +91,27 @@ abstract class Data
      * [filePath], or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
      */
     abstract fun <T> loadObjectAsync(filePath: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
+
+    /**
+     * Creates a deep copy of [data].
+     */
+    abstract fun <T : Any> copyObject(data: T): T?
+
+    /**
+     * Serializes [data] to a JSON String.
+     */
+    abstract fun serializeToJson(data: Any): String?
+
+    /**
+     * Deserializes the [json] String to an object of type [T].
+     */
+    inline fun <reified T> deserializeFromJson(json: String): T? =
+        deserializeFromJson(json, T::class.java)
+
+    /**
+     * Deserializes the [json] String to an object of type [T].
+     */
+    abstract fun <T> deserializeFromJson(json: String, type: Class<T>): T?
 }
 
 abstract class DataInternal : Data()

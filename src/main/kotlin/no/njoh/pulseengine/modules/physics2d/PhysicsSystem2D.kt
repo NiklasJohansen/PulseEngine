@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
+import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.modules.physics2d.bodies.PhysicsBody2D
@@ -41,6 +42,11 @@ class PhysicsSystem2D : SceneSystem()
     override fun onStart(engine: PulseEngine)
     {
         engine.scene.forEachEntityOfType<PhysicsEntity2D> { it.init(engine) }
+    }
+
+    override fun onEntitiesAdded(engine: PulseEngine, entities: List<SceneEntity>)
+    {
+        entities.forEach { (it as? PhysicsEntity2D)?.init(engine) }
     }
 
     override fun onFixedUpdate(engine: PulseEngine)

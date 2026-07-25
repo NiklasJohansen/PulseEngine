@@ -1,13 +1,29 @@
 package no.njoh.pulseengine.core.scene
 
+import gnu.trove.set.hash.TLongHashSet
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.PulseEngineGame
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.scene.SceneState.*
+import no.njoh.pulseengine.core.scene.interfaces.Initiable
+import no.njoh.pulseengine.core.shared.annotations.EntityRef
+import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.forEachClassWithSupertype
+import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.reflect.KMutableProperty1
+import kotlin.reflect.full.memberProperties
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
@@ -80,14 +96,36 @@ open class SceneManagerImpl : SceneManagerInternal()
 
     override fun loadAndSetActive(fileName: String, fromClassPath: Boolean)
     {
+        load(fileName, fromClassPath)?.let { setActive(it) }
+    }
+
+    override fun load(fileName: String, fromClassPath: Boolean): Scene?
+    {
         if (fileName.isNotBlank())
         {
-            engine.data.loadObject<Scene>(fileName, fromClassPath)?.let {
+            val scene = engine.data.loadObject<Scene>(fileName, fromClassPath) ?: return null
+            scene.fileName = fileName
+            return scene
+        }
+        Logger.error { "Cannot load scene: fileName is not set!" }
+        return null
+    }
+
+    override fun loadAsync(fileName: String, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (Scene) -> Unit) 
+    {
+        if (fileName.isNotBlank())
+        {
+            engine.data.loadObjectAsync<Scene>(fileName, fromClassPath, onFail)
+            {
                 it.fileName = fileName
-                setActive(it)
+                onComplete(it)
             }
         }
-        else Logger.error { "Cannot load scene: ${activeScene.name} - fileName is not set!" }
+        else
+        {
+            Logger.error { "Cannot load scene: fileName is not set!" }
+            onFail()
+        }
     }
 
     override fun transitionInto(
@@ -110,7 +148,7 @@ open class SceneManagerImpl : SceneManagerInternal()
         }
     }
 
-    override fun setActive(scene: Scene)
+    override fun setActive(scene: Scene, disposePrevious: Boolean)
     {
         if (scene !== activeScene)
         {
@@ -119,11 +157,11 @@ open class SceneManagerImpl : SceneManagerInternal()
 
             activeScene.destroy(engine)
 
-            if (scene.entities !== activeScene.entities)
+            if (disposePrevious && scene.entities !== activeScene.entities)
                 activeScene.clearAll()
 
-            // Trigger garbage collection to remove unused resources
-            System.gc()
+            if (disposePrevious)
+                System.gc()
 
             // Missing system implementations gets deserialized to null and should be removed
             scene.systems.removeWhen { it == null }
@@ -175,6 +213,39 @@ open class SceneManagerImpl : SceneManagerInternal()
     override fun reload(fromClassPath: Boolean)
     {
         loadAndSetActive(activeScene.fileName, fromClassPath)
+    }
+
+    override fun addEntity(entity: SceneEntity): Long
+    {
+        val id = activeScene.insertEntity(entity)
+        if (engine.scene.state == RUNNING)
+        {
+            if (entity is Initiable)
+                entity.onStart(engine)
+            notifyEntitiesAdded(listOf(entity))
+        }
+        return id
+    }
+
+    override fun copyEntitiesFrom(sourceScene: Scene, filter: SceneEntityFilter, targetParentId: Long, configure: (List<SceneEntity>) -> Unit): List<SceneEntity>? =
+        copyEntitiesFrom(
+            sourceName = sourceScene.name,
+            sourceEntities = sourceScene.getEntities(filter, includeChildren = true),
+            preserveExternalReferences = sourceScene === activeScene,
+            targetParentId = targetParentId,
+            configure = configure
+        )
+
+    @Suppress("UNCHECKED_CAST")
+    override fun copyEntitiesFrom(sourceJson: String, targetParentId: Long, configure: (List<SceneEntity>) -> Unit): List<SceneEntity>?
+    {
+        val deserialized = engine.data.deserializeFromJson(sourceJson, ArrayList::class.java) ?: return null
+        if (deserialized.anyMatches { it !is SceneEntity })
+        {
+            Logger.error { "Cannot copy entities: clipboard JSON does not contain scene entities" }
+            return null
+        }
+        return copyEntitiesFrom("JSON scene", deserialized as List<SceneEntity>, preserveExternalReferences = false, targetParentId, configure)
     }
 
     override fun update()
@@ -270,5 +341,133 @@ open class SceneManagerImpl : SceneManagerInternal()
     {
         Logger.info { "Destroying scene (${this::class.simpleName})" }
         activeScene.stop(engine)
+    }
+
+    private fun notifyEntitiesAdded(entities: List<SceneEntity>)
+    {
+        activeScene.systems.forEachFiltered({ it.enabled && it.initialized }) { it.onEntitiesAdded(engine, entities) }
+    }
+    
+    private fun copyEntitiesFrom(
+        sourceName: String,
+        sourceEntities: List<SceneEntity>,
+        preserveExternalReferences: Boolean,
+        targetParentId: Long,
+        configure: (List<SceneEntity>) -> Unit
+    ): List<SceneEntity>? {
+
+        if (sourceEntities.isEmpty())
+            return emptyList()
+
+        val selectedIds = TLongHashSet(sourceEntities.size)
+        sourceEntities.forEachFast()
+        {
+            if (it.id == INVALID_ID)
+            {
+                Logger.warn { "Copying entity with an invalid source ID from '$sourceName'" }
+            }
+            else if (!selectedIds.add(it.id))
+            {
+                Logger.warn { "Copying entities with duplicate source ID ${it.id} from '$sourceName'" }
+            }
+        }
+
+        val validTargetParentId = if (targetParentId != INVALID_ID && activeScene.entityIdMap[targetParentId] == null)
+        {
+            Logger.warn { "Target parent $targetParentId was not found in scene '${activeScene.name}', creating without a parent" }
+            INVALID_ID
+        }
+        else targetParentId
+
+        val clones = ArrayList<SceneEntity>(sourceEntities.size)
+        for (entity in sourceEntities)
+        {
+            val clone = engine.data.copyObject(entity)
+                ?: return null.also { Logger.error { "Cannot create entity ${entity.id} from '$sourceName': cloning failed" } }
+            clones.add(clone)
+        }
+
+        val rootSourceIds = TLongHashSet()
+        sourceEntities.forEachFast { if (it.parentId !in selectedIds) rootSourceIds.add(it.id) }
+
+        try { configure(clones) } catch (e: Exception)
+        {
+            Logger.error(e) { "Cannot create entity from '$sourceName': configuration failed" }
+            return null
+        }
+
+        try
+        {
+            val idMapping = LinkedHashMap<Long, Long>(clones.size)
+
+            clones.forEachIndexed { index, clone ->
+                val sourceEntity = sourceEntities[index]
+                clone.id = INVALID_ID
+                clone.parentId = INVALID_ID
+                clone.childIds = null
+                clone.setNot(DEAD or SELECTED or POSITION_UPDATED or ROTATION_UPDATED or SIZE_UPDATED)
+                val newId = activeScene.insertEntity(clone)
+                if (sourceEntity.id != INVALID_ID)
+                    idMapping.putIfAbsent(sourceEntity.id, newId)
+            }
+
+            clones.forEachIndexed { index, clone ->
+                val sourceEntity = sourceEntities[index]
+                val parentId = when
+                {
+                    sourceEntity.id in rootSourceIds -> validTargetParentId
+                    sourceEntity.parentId in idMapping -> idMapping.getValue(sourceEntity.parentId)
+                    else -> INVALID_ID
+                }
+                if (parentId != INVALID_ID) activeScene.entityIdMap[parentId]?.addChild(clone)
+                remapEntityReferences(clone, idMapping, preserveExternalReferences)
+            }
+
+            if (engine.scene.state == RUNNING)
+            {
+                clones.forEachFast { if (it is Initiable) it.onStart(engine) }
+                notifyEntitiesAdded(clones)
+            }
+
+            return clones
+        } 
+        catch (e: Exception) 
+        { 
+            Logger.error(e) { "Failed to insert entities from '$sourceName'" } 
+            return null
+        }
+    }
+
+    private fun remapEntityReferences(entity: SceneEntity, idMapping: Map<Long, Long>, preserveExternalReferences: Boolean)
+    {
+        val properties = entityReferenceProperties.getOrPut(entity.javaClass)
+        {
+            entity::class.memberProperties
+                .filterIsInstance<KMutableProperty1<Any, Any?>>()
+                .filter { it.name != SceneEntity::parentId.name }
+                .filter { entity::class.findPropertyAnnotation<EntityRef>(it.name) != null }
+        }
+
+        for (property in properties)
+        {
+            when (val value = property.get(entity))
+            {
+                is Long      -> property.set(entity, remapReference(value, idMapping, preserveExternalReferences))
+                is LongArray -> property.set(entity, LongArray(value.size) { remapReference(value[it], idMapping, preserveExternalReferences) })
+                null         -> Unit
+                else         -> Logger.error { "@EntityRef property ${entity::class.simpleName}.${property.name} must be Long or LongArray" }
+            }
+        }
+    }
+
+    private fun remapReference(sourceId: Long, idMapping: Map<Long, Long>, preserveExternalReferences: Boolean): Long
+    {
+        if (sourceId == INVALID_ID) return INVALID_ID
+        return idMapping[sourceId] ?: if (preserveExternalReferences) sourceId else INVALID_ID
+    }
+
+    companion object
+    {
+        private val entityReferenceProperties = ConcurrentHashMap<Class<out SceneEntity>, List<KMutableProperty1<Any, Any?>>>()
     }
 }
