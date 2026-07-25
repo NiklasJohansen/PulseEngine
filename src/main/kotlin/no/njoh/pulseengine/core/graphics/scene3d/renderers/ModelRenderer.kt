@@ -45,7 +45,10 @@ class ModelRenderer(
     var iblSpecularTexture = ""
     var iblIntensity       = 1f
     var iblBrdfTexture     = "ibl_brdf_lut"
+    var envColor           = Color(0f, 0f, 0f)
 
+    /** Use viewport-style studio lighting until a scene lighting system configures this renderer. */
+    var useDefaultLighting          = true
     var sunColor                    = Color(1f, 1f, 1f)
     var sunRadius                   = 1f
     var sunShadowMapSurfaceName     = ""
@@ -309,7 +312,9 @@ class ModelRenderer(
         if (pbrFeatures and (PBR_FEATURE_DIFFUSE_IBL or PBR_FEATURE_SPECULAR_IBL) == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_GTAO.inv()
 
         program.setUniform("uEnvIntensity", iblIntensity)
+        program.setUniform("uEnvColor", envColor)
         program.setUniform("uPbrFeatures", pbrFeatures)
+        program.setUniform("uUseDefaultLighting", useDefaultLighting)
 
         // Camera
 

@@ -37,6 +37,7 @@ uniform sampler2D uGtaoTex;
 uniform vec4  uEnvDiffuseTex;
 uniform vec4  uEnvSpecularTex;
 uniform vec4  uEnvBrdfLutTex;
+uniform vec4  uEnvColor;
 uniform float uEnvIntensity;
 uniform float uEnvSpecularMipCount;
 uniform float uAoIntensity;
@@ -59,6 +60,7 @@ uniform vec3  uCameraPos;
 uniform vec2  uScreenSize;
 uniform mat4  uView;
 uniform uint  uPbrFeatures;
+uniform bool  uUseDefaultLighting;
 
 // Cascaded shadow mapping
 uniform sampler2DShadow uShadowMapTex;
@@ -133,6 +135,19 @@ layout(std430, binding = 16) readonly buffer LocalShadowFaceBuffer
 bool hasPbrFeature(uint feature)
 {
     return (uPbrFeatures & feature) != 0;
+}
+
+float defaultStudioLighting(vec3 worldNormal)
+{
+    // Camera-relative studio lights keep geometry readable without requiring scene lights.
+    vec3 viewNormal = normalize(mat3(uView) * worldNormal);
+    vec3 keyDirection = normalize(vec3(-0.45, 0.65, 0.75));
+    vec3 fillDirection = normalize(vec3(0.60, 0.10, 0.80));
+
+    float hemisphere = worldNormal.y * 0.5 + 0.5;
+    float key = max(dot(viewNormal, keyDirection), 0.0);
+    float fill = max(dot(viewNormal, fillDirection), 0.0);
+    return clamp(0.30 + hemisphere * 0.10 + key * 0.50 + fill * 0.18, 0.0, 1.0);
 }
 
 // ------------------------------------------------------------------
@@ -569,14 +584,27 @@ void main()
 
     // PBR material properties
     vec3 emissive   = sampleTexOrDefault(material.emissiveTex, vec3(1.0), tiling).rgb * material.emissiveFactor.rgb;
+    float normalLength;
+    vec3 N = sampleWorldSpaceNormal(material, normalLength);
+
+    if (uUseDefaultLighting)
+    {
+        vec3 color = baseColor.rgb * defaultStudioLighting(N) + emissive;
+        #ifdef PBR_OUTPUT_WBOIT_ACCUM
+        float weight = computeWboitWeight(alpha);
+        outAccum = vec4(color * alpha * weight, alpha * weight);
+        #else
+        fragColor = vec4(color, alpha);
+        #endif
+        return;
+    }
+
     vec3 aomr       = sampleTexOrDefault(material.aoMetalRoughTex, vec3(1.0, 1.0, 0.0), tiling).rgb; // Default AO=1, rough=1, metal=0
     float ao        = clamp(mix(1.0, aomr.r, material.aoMetalRoughNormalFactor.x), 0.0,  1.0);
     float roughness = clamp(aomr.g * material.aoMetalRoughNormalFactor.y, 0.04, 1.0);
     float metallic  = clamp(aomr.b * material.aoMetalRoughNormalFactor.z, 0.0,  1.0);
 
     // Normal + View
-    float normalLength;
-    vec3 N = sampleWorldSpaceNormal(material, normalLength);
     vec3 V = normalize(uCameraPos - vWorldPos);
 
     // Roughness adjustment (Toksvig + screen-space normal variation) 
@@ -642,27 +670,21 @@ void main()
     vec3 ambient = vec3(0.0);
     bool diffuseIblEnabled = hasPbrFeature(PBR_FEATURE_DIFFUSE_IBL);
     bool specularIblEnabled = hasPbrFeature(PBR_FEATURE_SPECULAR_IBL);
-    if (diffuseIblEnabled || specularIblEnabled)
+    vec3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
+
+    if (specularIblEnabled)
     {
-        vec3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
-
-        if (specularIblEnabled)
-        {
-            vec3 R = reflect(-V, N);
-            float lod = roughness * (uEnvSpecularMipCount - 1.0);
-            vec3 prefilteredColor = sampleEnvMap(uEnvSpecularTex, R, lod);
-            float specOcc = specularOcclusion(NdotV, aoCombined, roughness);
-            vec2 brdf = sampleBrdfLut(NdotV, roughness);
-            ambient += prefilteredColor * (F * brdf.x + brdf.y) * specOcc;
-        }
-
-        if (diffuseIblEnabled)
-        {
-            vec3 kD_ibl = (vec3(1.0) - F) * (1.0 - metallic);
-            vec3 irradiance = sampleEnvMap(uEnvDiffuseTex, N, 0.0);
-            ambient += irradiance * baseColor.rgb * kD_ibl * aoCombined;
-        }
+        vec3 R = reflect(-V, N);
+        float lod = roughness * (uEnvSpecularMipCount - 1.0);
+        vec3 prefilteredColor = sampleEnvMap(uEnvSpecularTex, R, lod);
+        float specOcc = specularOcclusion(NdotV, aoCombined, roughness);
+        vec2 brdf = sampleBrdfLut(NdotV, roughness);
+        ambient += prefilteredColor * (F * brdf.x + brdf.y) * specOcc;
     }
+
+    vec3 kD_ibl = (vec3(1.0) - F) * (1.0 - metallic);
+    vec3 irradiance = diffuseIblEnabled ? sampleEnvMap(uEnvDiffuseTex, N, 0.0) : uEnvColor.rgb;
+    ambient += irradiance * baseColor.rgb * kD_ibl * aoCombined;
 
     //--------------------------------------------------
     // Final color composition

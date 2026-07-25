@@ -11,7 +11,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 @Name("3D Skybox")
 class SkyboxSystem : SceneSystem()
 {
-    @Prop(i=0, min=0f)    var brightness     = 1f
+    @Prop(i=0, min=0f)    var brightness     = 0.5f
     @Prop(i=1) @EnvMapRef var texture        = ""
     @Prop(i=4)            var targetSurfaces = "scene3d"
 

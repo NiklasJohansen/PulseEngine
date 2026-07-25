@@ -34,5 +34,5 @@ void main()
     }
     
     bool edge = (centerSelected && neighborDifferent) || (!centerSelected && neighborSelected);
-    fragColor = edge ? vec4(1.0, 1.0, 1.0, 0.8) : (centerSelected ? vec4(1.0, 1.0, 1.0, 0.01) : vec4(0.0));
+    fragColor = edge ? vec4(0.8, 0.55, 0.08, 1.0) : (centerSelected ? vec4(1.0, 1.0, 1.0, 0.01) : vec4(0.0));
 }

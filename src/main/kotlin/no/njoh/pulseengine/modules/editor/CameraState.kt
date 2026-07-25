@@ -96,9 +96,10 @@ data class CameraState(
             projectionType = ORTHOGRAPHIC_2D
         )
 
+        // Three-quarter view looking from (5, 5, 5) directly at the origin.
         fun perspective3D() = CameraState(
-            pos = Vector3f(0f, 1.5f, 0f),
-            rot = Vector3f(),
+            pos = Vector3f(5f, 5f, 5f),
+            rot = Vector3f(-0.6154797f, 0.7853982f, 0f),
             origin = Vector3f(),
             scale = Vector3f(1f),
             fov = 90f,

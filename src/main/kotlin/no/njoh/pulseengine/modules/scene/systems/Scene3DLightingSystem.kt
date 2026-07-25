@@ -29,19 +29,20 @@ class Scene3DLightingSystem : SceneSystem()
     @Prop(i=0, min=0f)           var sunIntensity                  = 1f
     @Prop(i=1)                   var sunColor                      = Color(1f, 1f, 1f)
     @Prop(i=2, min=0f, max=360f) var sunDirection                  = 0f
-    @Prop(i=3, min=0f, max=90f)  var sunHeight                     = 70f
+    @Prop(i=3, min=0f, max=90f)  var sunHeight                     = 60f
     @Prop(i=4, min=0f)           var sunRadius                     = 1.5f
     @Prop(i=5, min=1f)           var sunShadowMapResolution        = 4096
     @Prop(i=6, min=0f, max=1f)   var sunShadowCascadeSplitLambda   = 0.5f
     @Prop(i=7, min=0f)           var sunShadowDistance             = 50f
-    @Prop(i=8, min=0f)           var envIntensity                  = 1f
-    @Prop(i=9)  @EnvMapRef       var envDiffuseTexture             = ""
-    @Prop(i=10) @EnvMapRef       var envSpecularTexture            = ""
-    @Prop(i=11)                  var targetSurfaces                = "scene3d"
-    @Prop(i=12)                  var localShadowsEnabled           = true
-    @Prop(i=13, min=256f)        var localShadowAtlasResolution    = 4096
-    @Prop(i=14, min=64f)         var localShadowTileResolution     = 512
-    @Prop(i=15, min=0f)          var localShadowMaxUpdatesPerFrame = 3
+    @Prop(i=8, min=0f)           var envIntensity                  = 0.5f
+    @Prop(i=9)                   var envColor                      = Color(1f, 1f, 1f)
+    @Prop(i=10) @EnvMapRef       var envDiffuseTexture             = ""
+    @Prop(i=11) @EnvMapRef       var envSpecularTexture            = ""
+    @Prop(i=12)                  var targetSurfaces                = "scene3d"
+    @Prop(i=13)                  var localShadowsEnabled           = true
+    @Prop(i=14, min=256f)        var localShadowAtlasResolution    = 4096
+    @Prop(i=15, min=64f)         var localShadowTileResolution     = 512
+    @Prop(i=16, min=0f)          var localShadowMaxUpdatesPerFrame = 3
 
     private var shadowMapSurfaceName        = ""
     private var localShadowAtlasSurfaceName = ""
@@ -62,7 +63,9 @@ class Scene3DLightingSystem : SceneSystem()
         targetSurfaceNames.forEachFast()
         {
             val renderer = engine.gfx.getSurface(it)?.getRenderer<ModelRenderer>()
+            renderer?.envColor?.setFrom(envColor)
             renderer?.sunColor?.setFrom(sunColor)?.multiplyRgb(sunIntensity)
+            renderer?.useDefaultLighting          = false
             renderer?.sunRadius                   = sunRadius
             renderer?.sunShadowMapSurfaceName     = shadowMapSurfaceName
             renderer?.localShadowAtlasSurfaceName = localShadowAtlasSurfaceName
@@ -177,11 +180,13 @@ class Scene3DLightingSystem : SceneSystem()
         for (surface in targetSurfaceNames)
         {
             val renderer = engine.gfx.getSurface(surface)?.getRenderer<ModelRenderer>()
-            renderer?.sunShadowMapSurfaceName = ""
+            renderer?.useDefaultLighting          = true
+            renderer?.sunShadowMapSurfaceName     = ""
             renderer?.localShadowAtlasSurfaceName = ""
-            renderer?.iblDiffuseTexture       = ""
-            renderer?.iblSpecularTexture      = ""
-            renderer?.iblIntensity            = 0f
+            renderer?.iblDiffuseTexture           = ""
+            renderer?.iblSpecularTexture          = ""
+            renderer?.iblIntensity                = 0f
+            renderer?.envColor?.setFrom(Color.BLACK)
         }
         lastTargetSurfaces = ""
         targetSurfaceNames = emptyList()

@@ -34,7 +34,7 @@ class Scene3DRenderSystem() : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = -1,
             multisampling = Multisampling.MSAA4,
-            clearColor = Color(143, 231, 255),
+            clearColor = Color(63, 63, 63),
             attachments = listOf(COLOR_TEXTURE_0, DEPTH_TEXTURE),
             mipmapGenerators = mapOf(DEPTH_TEXTURE to DepthPyramidGenerator()),
         ).apply {
@@ -88,7 +88,7 @@ class Scene3DRenderSystem() : SceneSystem()
 
     companion object
     {
-        private const val SCENE_3D_SURFACE = "scene3d"
+        const val SCENE_3D_SURFACE = "scene3d"
     }
 }
 
