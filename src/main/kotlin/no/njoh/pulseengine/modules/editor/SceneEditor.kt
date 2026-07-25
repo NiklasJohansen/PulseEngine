@@ -14,21 +14,25 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
 import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
 import no.njoh.pulseengine.core.input.CursorMode
 import no.njoh.pulseengine.modules.ui.UiUtils.findElement
+import no.njoh.pulseengine.modules.ui.UiUtils.firstElementOrNull
 import no.njoh.pulseengine.modules.ui.elements.InputField
 import no.njoh.pulseengine.modules.ui.UiElement
 import no.njoh.pulseengine.modules.ui.layout.RowPanel
+import no.njoh.pulseengine.modules.ui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.ui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.ui.layout.docking.DockingPanel
 import no.njoh.pulseengine.core.input.FocusArea
-import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.Key.*
 import no.njoh.pulseengine.core.scene.SceneState
+import no.njoh.pulseengine.core.scene.Scene
 import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.SceneEntityFilter
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
+import no.njoh.pulseengine.core.scene.SceneEntityFilter.Entities
 import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.modules.physics2d.PhysicsEntity2D
 import no.njoh.pulseengine.modules.physics2d.bodies.PhysicsBody2D
@@ -42,12 +46,12 @@ import no.njoh.pulseengine.modules.ui.layout.Panel
 import no.njoh.pulseengine.modules.ui.layout.WindowPanel
 import no.njoh.pulseengine.modules.scene.systems.EntityRendererImpl
 import no.njoh.pulseengine.modules.scene.systems.EntityUpdater
-import no.njoh.pulseengine.modules.editor.EditorUtil.duplicateAndInsertEntities
 import no.njoh.pulseengine.modules.editor.EditorUtil.getName
 import no.njoh.pulseengine.modules.editor.EditorUtil.getPropGroup
 import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.*
@@ -67,6 +71,7 @@ class SceneEditor(
     lateinit var systemPropertiesUI: RowPanel
     lateinit var dockingUI: DockingPanel
     lateinit var viewportContext: ViewportContext
+    lateinit var sceneTabsUI: HorizontalPanel
 
     private var entityPropertyUiRows = THashMap<String, UiElement>()
     private var collapsedPropertyHeaders = mutableListOf<String>()
@@ -80,10 +85,11 @@ class SceneEditor(
     // Scene
     private var lastSceneHashCode = -1
     private val entitySelection = mutableListOf<SceneEntity>()
-    private var sceneFileToLoad: String? = null
+    private val sceneFilesToLoad = ConcurrentLinkedQueue<String>()
     private var sceneFileToCreate: String? = null
     private var sceneFileToSaveAs: String? = null
     private val scope = CoroutineScope(Dispatchers.IO)
+    private val editorScenes = mutableListOf<EditorScene>()
 
     // Copying
     private var isCopying = false
@@ -109,6 +115,7 @@ class SceneEditor(
         activeCamera = engine.gfx.mainCamera
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
         lastSaveLoadDirectory = engine.config.saveDirectory
+        ensureActiveEditorScene(engine)
 
         // Create surfaces
         engine.gfx.createSurface("scene_editor_ui_base_bg",  zOrder = -90)
@@ -126,13 +133,24 @@ class SceneEditor(
             CommandResult("", showCommand = false)
         }
 
-        // Delete selected entities on key press and save scene on CTRL + S
+        // Editor keyboard shortcuts
         engine.input.setOnKeyPressed()
         {
             if (isRunning && it == DELETE && engine.input.hasFocus(viewportArea))
                 deleteSelectedEntities(engine)
-            if (isRunning && it == Key.S && engine.input.isPressed(LEFT_CONTROL))
-                engine.scene.save()
+            
+            if (isRunning && it == S && engine.input.isPressed(LEFT_CONTROL))
+                saveActiveEditorScene(engine)
+            
+            if (isRunning && isControlPressed(engine) && !hasFocusedInputField(engine))
+            {
+                when (it)
+                {
+                    C -> copySelectedEntitiesToClipboard(engine)
+                    V -> pasteEntitiesFromClipboard(engine)
+                    else -> {}
+                }
+            }
         }
 
         // React on scale changes
@@ -163,8 +181,9 @@ class SceneEditor(
             MenuBarButton("File", listOf(
                 MenuBarItem("New...") { onNewScene(engine) },
                 MenuBarItem("Open...") { onLoad(engine) },
-                MenuBarItem("Save") { engine.scene.save() },
-                MenuBarItem("Save as...") { onSaveAs(engine) }
+                MenuBarItem("Save") { saveActiveEditorScene(engine) },
+                MenuBarItem("Save as...") { onSaveAs(engine) },
+                MenuBarItem("Close") { closeActiveEditorScene(engine) }
             )),
             MenuBarButton("View", listOf(
                 MenuBarItem("Inspector") { createInspectorWindow() },
@@ -198,7 +217,8 @@ class SceneEditor(
         // Create root UI and perform initial update
         rootUI = VerticalPanel()
         rootUI.focusable = false
-        rootUI.addChildren(menuBar, dockingUI, footer)
+        sceneTabsUI = uiFactory.createSceneTabsUI(engine, createSceneTabModels(engine))
+        rootUI.addChildren(menuBar, sceneTabsUI, dockingUI, footer)
         rootUI.updateLayout()
         rootUI.setLayoutClean()
 
@@ -218,7 +238,11 @@ class SceneEditor(
             return // Already exists
 
         updateSceneSystemProperties(engine)
-        val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(engine, systemPropertiesUI)
+        val sceneSystemPropertiesUi = uiFactory.createSystemPropertiesPanelUI(
+            engine = engine,
+            propertiesRowPanel = systemPropertiesUI,
+            onChanged = { markActiveEditorSceneDirty(engine) }
+        )
         val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems", "GEARS")
         sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
         dockingUI.insertRight(sceneSystemWindow)
@@ -280,26 +304,33 @@ class SceneEditor(
 
     override fun onUpdate(engine: PulseEngine)
     {
-        sceneFileToLoad?.let()
+        while (true)
         {
-            engine.scene.loadAndSetActive(it)
-            sceneFileToLoad = null
+            val sceneFile = sceneFilesToLoad.poll() ?: break
+            openEditorScene(engine, sceneFile)
         }
 
         sceneFileToCreate?.let()
         {
-            engine.scene.createEmptyAndSetActive(it)
+            val sceneName = it.substringAfterLast("/").substringAfterLast("\\").substringBefore(".")
+            val editorScene = EditorScene(Scene(sceneName).also { scene -> scene.fileName = it })
+            editorScenes.add(editorScene)
+            switchToEditorScene(engine, editorScene)
             engine.scene.addSystem(EntityUpdater().also { it.init(engine) })
             engine.scene.addSystem(EntityRendererImpl().also { it.init(engine) })
-            engine.scene.save()
+            saveActiveEditorScene(engine)
             sceneFileToCreate = null
         }
 
         sceneFileToSaveAs?.let()
         {
             engine.scene.saveAs(fileName = it, updateActiveScene = true)
+            activeEditorScene(engine)?.dirty = false
+            rebuildSceneTabs(engine)
             sceneFileToSaveAs = null
         }
+
+        ensureActiveEditorScene(engine)
 
         if (engine.scene.state == SceneState.STOPPED)
         {
@@ -333,6 +364,7 @@ class SceneEditor(
             {
                 engine.scene.stop()
                 engine.scene.reload()
+                ensureActiveEditorScene(engine, replaceSceneWithSameFile = true)
             }
         }
 
@@ -401,13 +433,13 @@ class SceneEditor(
     private fun onLoad(engine: PulseEngine)
     {
         if (engine.scene.state != SceneState.RUNNING)
-            engine.scene.save()
+            saveActiveEditorScene(engine)
 
         scope.launch(context = Dispatchers.IO)
         {
-            FileChooser.showFileSelectionDialog(engine.config.saveDirectory)
+            FileChooser.showMultipleFileSelectionDialog(engine.config.saveDirectory)
             {
-                sceneFileToLoad = it
+                sceneFilesToLoad.addAll(it)
             }
         }
     }
@@ -417,7 +449,7 @@ class SceneEditor(
         if (engine.scene.state == SceneState.RUNNING)
         {
             engine.scene.stop()
-            engine.scene.save()
+            saveActiveEditorScene(engine)
         }
 
         scope.launch(context = Dispatchers.IO)
@@ -440,7 +472,7 @@ class SceneEditor(
 
         if (engine.scene.state == SceneState.STOPPED)
         {
-            engine.scene.save()
+            saveActiveEditorScene(engine)
             engine.scene.start()
         }
     }
@@ -451,6 +483,7 @@ class SceneEditor(
         {
             engine.scene.stop()
             engine.scene.reload()
+            ensureActiveEditorScene(engine, replaceSceneWithSameFile = true)
         }
 
         viewportInteraction?.onEditorActivated(engine, viewportContext)
@@ -477,11 +510,47 @@ class SceneEditor(
         if (isCopying)
             return
 
-        val newEntities = duplicateAndInsertEntities(engine, entitySelection)
+        val newEntities = engine.scene.copyEntitiesFrom(engine.scene.activeScene, filter = Entities(entitySelection)) ?: emptyList()
+        
         outliner?.addEntities(newEntities)
+
+        if (newEntities.isNotEmpty())
+            markActiveEditorSceneDirty(engine)
 
         isCopying = true
     }
+
+    private fun copySelectedEntitiesToClipboard(engine: PulseEngine)
+    {
+        engine.scene.activeScene
+            .getEntities(Entities(entitySelection), includeChildren = true)
+            .let(engine.data::serializeToJson)
+            ?.let(engine.input::setClipboard)
+    }
+
+    private fun pasteEntitiesFromClipboard(engine: PulseEngine)
+    {
+        val targetScene = engine.scene.activeScene
+        engine.input.getClipboard { json ->
+
+            if (!isRunning || engine.scene.activeScene !== targetScene)
+                return@getClipboard
+
+            engine.scene.copyEntitiesFrom(json)?.let { entities ->
+                outliner?.addEntities(entities)
+                selectEntities(engine, entities)
+                if (entities.isNotEmpty())
+                    markActiveEditorSceneDirty(engine)
+            }
+        }
+    }
+
+    private fun isControlPressed(engine: PulseEngine) =
+        engine.input.isPressed(LEFT_CONTROL) || engine.input.isPressed(RIGHT_CONTROL)
+
+    private fun hasFocusedInputField(engine: PulseEngine) =
+        ::rootUI.isInitialized &&
+        rootUI.firstElementOrNull { it is InputField && engine.input.hasFocus(it.area) } != null
 
     private fun createNewEntity(engine: PulseEngine, type: KClass<out SceneEntity>)
     {
@@ -498,6 +567,7 @@ class SceneEditor(
         engine.scene.addEntity(entity)
         outliner?.addEntities(listOf(entity))
         selectSingleEntity(engine, entity)
+        markActiveEditorSceneDirty(engine)
     }
 
     fun selectEntities(engine: PulseEngine, entities: List<SceneEntity>)
@@ -552,6 +622,7 @@ class SceneEditor(
                     outliner?.addEntities(listOf(entity))
                 }
                 outliner?.updateEntityProperty(entity, propName)
+                markActiveEditorSceneDirty(engine)
                 Unit
             }
 
@@ -598,6 +669,7 @@ class SceneEditor(
         outliner?.removeEntities(entitySelection)
         viewportInteraction?.reset(engine, viewportContext)
         clearEntitySelection()
+        markActiveEditorSceneDirty(engine)
     }
 
     private fun updateEntityPropertiesPanel(propName: String, value: Any)
@@ -620,7 +692,8 @@ class SceneEditor(
                 system.onDestroy(engine)
                 engine.scene.removeSystem(system)
                 systemPropertiesUI.removeChildren(*props.toTypedArray())
-            })
+                markActiveEditorSceneDirty(engine)
+            }, onChanged = { markActiveEditorSceneDirty(engine) })
             systemPropertiesUI.addChildren(*props.toTypedArray())
         }
     }
@@ -690,5 +763,146 @@ class SceneEditor(
             updateEntityPropertiesPanel(name, property.getter.call(entity) ?: return@forEach)
         }
         entity.onMovedScaledOrRotated(engine)
+        markActiveEditorSceneDirty(engine)
     }
+
+    private fun createSceneTabModels(engine: PulseEngine): List<EditorSceneTab>
+    {
+        val activeScene = engine.scene.activeScene
+        val showCloseButtons = editorScenes.size > 1
+        return editorScenes.map { editorScene ->
+            val labelText = editorScene.scene.fileName
+                .substringAfterLast("/")
+                .substringAfterLast("\\") + if (editorScene.dirty) " *" else ""
+            val onClosed: (() -> Unit)? =
+                if (showCloseButtons) ({ closeEditorScene(engine, editorScene) })
+                else null
+
+            EditorSceneTab(
+                label = labelText,
+                selected = editorScene.scene === activeScene,
+                onSelected = { switchToEditorScene(engine, editorScene) },
+                onClosed = onClosed
+            )
+        }
+    }
+
+    private fun rebuildSceneTabs(engine: PulseEngine)
+    {
+        if (::sceneTabsUI.isInitialized)
+            uiFactory.populateSceneTabsUI(engine, sceneTabsUI, createSceneTabModels(engine))
+    }
+
+    private fun openEditorScene(engine: PulseEngine, fileName: String)
+    {
+        editorScenes.firstOrNull { it.scene.fileName == fileName }?.let() 
+        {
+            switchToEditorScene(engine, it)
+            return
+        }
+
+        val scene = engine.scene.load(fileName) ?: return
+        val editorScene = EditorScene(scene)
+        editorScenes.add(editorScene)
+        switchToEditorScene(engine, editorScene)
+    }
+
+    private fun switchToEditorScene(engine: PulseEngine, editorScene: EditorScene)
+    {
+        if (engine.scene.state != SceneState.STOPPED || editorScene.scene === engine.scene.activeScene)
+            return
+
+        clearEntitySelection()
+        engine.scene.setActive(editorScene.scene, disposePrevious = false)
+        outliner?.activeSceneChanged()
+        lastSceneHashCode = -1
+        rebuildSceneTabs(engine)
+    }
+
+    private fun closeActiveEditorScene(engine: PulseEngine)
+    {
+        activeEditorScene(engine)?.let { closeEditorScene(engine, it) }
+    }
+
+    private fun closeEditorScene(engine: PulseEngine, editorScene: EditorScene)
+    {
+        if (engine.scene.state != SceneState.STOPPED || editorScenes.size <= 1)
+            return
+
+        val index = editorScenes.indexOf(editorScene)
+        if (index < 0) 
+            return
+
+        val wasActive = editorScene.scene === engine.scene.activeScene
+        if (editorScene.dirty)
+        {
+            if (wasActive)
+            {
+                saveActiveEditorScene(engine)
+            }
+            else
+            {
+                editorScene.scene.optimizeCollections()
+                engine.data.saveObject(editorScene.scene, editorScene.scene.fileName, editorScene.scene.fileFormat)
+                editorScene.dirty = false
+            }
+        }
+
+        editorScenes.removeAt(index)
+        if (wasActive)
+        {
+            val next = editorScenes[index.coerceAtMost(editorScenes.lastIndex)]
+            engine.scene.setActive(next.scene, disposePrevious = true)
+            outliner?.activeSceneChanged()
+            lastSceneHashCode = -1
+        }
+        else editorScene.scene.clearAll()
+
+        rebuildSceneTabs(engine)
+    }
+
+    private fun saveActiveEditorScene(engine: PulseEngine)
+    {
+        engine.scene.save()
+        activeEditorScene(engine)?.dirty = false
+        rebuildSceneTabs(engine)
+    }
+
+    private fun markActiveEditorSceneDirty(engine: PulseEngine)
+    {
+        activeEditorScene(engine)?.let()
+        {
+            if (!it.dirty) 
+                rebuildSceneTabs(engine)
+            it.dirty = true
+        }
+    }
+
+    private fun activeEditorScene(engine: PulseEngine) =
+        editorScenes.firstOrNull { it.scene === engine.scene.activeScene }
+
+    private fun ensureActiveEditorScene(engine: PulseEngine, replaceSceneWithSameFile: Boolean = false)
+    {
+        val activeScene = engine.scene.activeScene
+        if (editorScenes.any { it.scene === activeScene })
+            return
+
+        if (replaceSceneWithSameFile)
+        {
+            editorScenes.firstOrNull { it.scene.fileName == activeScene.fileName }?.let {
+                it.scene = activeScene
+                it.dirty = false
+                rebuildSceneTabs(engine)
+                return
+            }
+        }
+
+        editorScenes.add(EditorScene(activeScene))
+        rebuildSceneTabs(engine)
+    }
+
+    private data class EditorScene(
+        var scene: Scene,
+        var dirty: Boolean = false
+    )
 }

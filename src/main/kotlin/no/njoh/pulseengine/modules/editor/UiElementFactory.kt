@@ -15,6 +15,11 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
 import no.njoh.pulseengine.modules.ui.*
+import no.njoh.pulseengine.modules.ui.UiDsl.button
+import no.njoh.pulseengine.modules.ui.UiDsl.horizontalPanel
+import no.njoh.pulseengine.modules.ui.UiDsl.icon
+import no.njoh.pulseengine.modules.ui.UiDsl.label
+import no.njoh.pulseengine.modules.ui.UiDsl.panel
 import no.njoh.pulseengine.modules.ui.ScrollDirection.*
 import no.njoh.pulseengine.modules.ui.elements.*
 import no.njoh.pulseengine.modules.ui.elements.InputField.ContentType.*
@@ -224,6 +229,78 @@ open class UiElementFactory(
         return windowPanel
     }
 
+    open fun createSceneTabsUI(engine: PulseEngine, tabs: List<EditorSceneTab>) =
+        horizontalPanel(height = Size.absolute(30f)) {
+            color = style.getColor("HEADER_FOOTER")
+            strokeColor = style.getColor("STROKE")
+            focusable = false
+            populateSceneTabsUI(engine, this, tabs)
+        }
+
+    open fun populateSceneTabsUI(engine: PulseEngine, sceneTabsUI: HorizontalPanel, tabs: List<EditorSceneTab>)
+    {
+        sceneTabsUI.clearChildren()
+        for (tabData in tabs)
+        {
+            var exitButton: Button? = null
+
+            sceneTabsUI.button(
+                width = Size.absolute((tabData.label.length * 8f + if (tabData.onClosed != null) 44f else 25f).coerceIn(70f, 300f)),
+                height = Size.relative(1f)
+            ) {
+                bgColor = if (tabData.selected) style.getColor("BUTTON_HOVER") else Color.BLANK
+                bgHoverColor = style.getColor("BUTTON_HOVER")
+                cornerRadius = ScaledValue.of(4f)
+                padding.right = ScaledValue.of(2f)
+
+                horizontalPanel {
+                    icon(width = Size.absolute(15f)) {
+                        iconFontName = style.iconFontName
+                        iconCharacter = style.getIcon("TEXT")
+                        color = style.getColor("LABEL")
+                        padding.top = ScaledValue.of(2f)
+                        padding.left = ScaledValue.of(5f)
+                    }
+
+                    label(width = Size.relative(1f), height = Size.relative(1f)) {
+                        text = tabData.label
+                        verticalAlignment = 0.5f
+                        color = style.getColor("LABEL")
+                        fontSize = ScaledValue.of(18f)
+                        padding.left = ScaledValue.of(5f)
+                        focusable = false
+                    }
+
+                    if (tabData.onClosed != null)
+                    {
+                        exitButton = button(width = Size.absolute(20f), height = Size.absolute(20f)) {
+                            padding.top = ScaledValue.of(5f)
+                            padding.right = ScaledValue.of(5f)
+                            cornerRadius = ScaledValue.of(4f)
+                            color = Color.BLANK
+                            hoverColor = style.getColor("BUTTON_EXIT")
+                            setOnClicked { tabData.onClosed.invoke() }
+
+                            icon(width = Size.absolute(15f)) {
+                                iconFontName = style.iconFontName
+                                iconCharacter = style.getIcon("CROSS")
+                                color = style.getColor("LABEL")
+                                padding.top = ScaledValue.of(2f)
+                            }
+                        }
+                    }
+                }
+
+                setOnClicked {
+                    val closeButtonClicked = exitButton?.area?.isInside(engine.input.xMouse, engine.input.yMouse) == true
+                    if (!closeButtonClicked)
+                        tabData.onSelected()
+                }
+            }
+        }
+        sceneTabsUI.panel {}
+    }
+
     /**
      * Creates a menu bar containing buttons with dropdown menus.
      */
@@ -418,7 +495,7 @@ open class UiElementFactory(
     /**
      * Creates the properties panel for [SceneSystem]s
      */
-    open fun createSystemPropertiesPanelUI(engine: PulseEngine, propertiesRowPanel: RowPanel): HorizontalPanel
+    open fun createSystemPropertiesPanelUI(engine: PulseEngine, propertiesRowPanel: RowPanel, onChanged: () -> Unit = {}): HorizontalPanel 
     {
         val menuItems = SceneSystem.REGISTERED_TYPES
             .map { it to (it.findAnnotation<Name>()?.name ?: it.simpleName!!) }
@@ -429,11 +506,18 @@ open class UiElementFactory(
                     val newSystem = systemType.createInstance()
                     newSystem.init(engine)
                     engine.scene.addSystem(newSystem)
-                    val props = createSystemProperties(newSystem, isHidden = false, onClose = { props ->
-                        newSystem.onDestroy(engine)
-                        engine.scene.removeSystem(newSystem)
-                        propertiesRowPanel.removeChildren(*props.toTypedArray())
-                    })
+                    onChanged()
+                    val props = createSystemProperties(
+                        system = newSystem,
+                        isHidden = false,
+                        onClose = { props ->
+                            newSystem.onDestroy(engine)
+                            engine.scene.removeSystem(newSystem)
+                            propertiesRowPanel.removeChildren(*props.toTypedArray())
+                            onChanged()
+                        },
+                        onChanged = onChanged
+                    )
                     propertiesRowPanel.addChildren(*props.toTypedArray())
                 }
         }
@@ -471,7 +555,7 @@ open class UiElementFactory(
     /**
      * Creates a list of property [UiElement]s for the given [SceneSystem].
      */
-    open fun createSystemProperties(system: SceneSystem, isHidden: Boolean, onClose: (props: List<UiElement>) -> Unit): List<UiElement>
+    open fun createSystemProperties(system: SceneSystem, isHidden: Boolean, onClose: (props: List<UiElement>) -> Unit, onChanged: () -> Unit = {}): List<UiElement> 
     {
         val icon = system::class.findAnnotation<Icon>()
         val headerIcon = Icon(width = Size.absolute(30f))
@@ -531,12 +615,12 @@ open class UiElementFactory(
             addChildren(headerPanel)
         }
 
-        val nopCallback = { _: String, _: Any?, _: Any? -> }
+        val propertyChangedCallback = { _: String, _: Any?, _: Any? -> onChanged() }
         val props = system::class.memberProperties
             .filter { it is KMutableProperty<*> && it.isEditable() && system.getPropInfo(it)?.hidden != true }
             .sortedBy { system.getPropInfo(it)?.i ?: 1000 }
             .map { prop ->
-                val (panel, _) = createPropertyUI(system, prop as KMutableProperty<*>, nopCallback)
+                val (panel, _) = createPropertyUI(system, prop as KMutableProperty<*>, propertyChangedCallback)
                 panel.apply()
                 {
                     padding.left = ScaledValue.of(10f)
@@ -668,7 +752,10 @@ open class UiElementFactory(
             searchInput.bgColorHover = style.getColor("BUTTON_HOVER")
             searchInput.strokeColor = Color.BLANK
 
-            PulseEngine.INSTANCE.asset.getAllOfType(annotation.type.java).forEachFast { addAssetRow(it, style) }
+            PulseEngine.INSTANCE.asset
+                .getAllOfType(annotation.type.java)
+                .sortedBy { it.name }
+                .forEachFast { addAssetRow(it, style) }
 
             setOnValueChanged()
             {
@@ -839,3 +926,10 @@ open class UiElementFactory(
 
     private data class EntityReferenceItem(val id: Long, val label: String)
 }
+
+data class EditorSceneTab(
+    val label: String,
+    val selected: Boolean,
+    val onSelected: () -> Unit,
+    val onClosed: (() -> Unit)? = null
+)

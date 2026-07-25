@@ -41,6 +41,13 @@ data class Outliner(
     fun addEntities(entities: List<SceneEntity>) = onEntitiesAdded(entities)
     fun updateEntityProperty(entity: SceneEntity, propName: String) = onEntityPropertyChanged(entity, propName)
     fun reloadEntitiesFromActiveScene() = onReload()
+    fun activeSceneChanged()
+    {
+        lastSelectedId = ""
+        lastLoadedSceneFileName = ""
+        collapsedRows.clear()
+        onReload()
+    }
 
     companion object
     {
