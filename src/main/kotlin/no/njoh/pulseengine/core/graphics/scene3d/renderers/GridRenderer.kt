@@ -45,7 +45,7 @@ class GridRenderer(override val order: Int = 50) : Renderer()
         glDepthMask(false)
         glEnable(GL_BLEND)
         glBlendEquation(GL_FUNC_ADD)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
         glDisable(GL_CULL_FACE)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
@@ -64,11 +64,11 @@ class GridRenderer(override val order: Int = 50) : Renderer()
 
         if (surface.config.hasDepthAttachment) glEnable(GL_DEPTH_TEST) else glDisable(GL_DEPTH_TEST)
 
-        val blendFunction = surface.config.blendFunction
-        if (blendFunction != BlendFunction.NONE)
+        val blendFunc = surface.config.blendFunction
+        if (blendFunc != BlendFunction.NONE)
         {
             glEnable(GL_BLEND)
-            glBlendFunc(blendFunction.src, blendFunction.dest)
+            glBlendFuncSeparate(blendFunc.srcRgb, blendFunc.destRgb, blendFunc.srcAlpha, blendFunc.destAlpha)
         }
         else glDisable(GL_BLEND)
     }

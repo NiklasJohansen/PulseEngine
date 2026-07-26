@@ -47,7 +47,7 @@ vec4 unpackAndConvert(uint rgba)
     vec4 sRgba = vec4((rgba >> 24u) & 255u, (rgba >> 16u) & 255u, (rgba >> 8u) & 255u, rgba & 255u) / 255.0;
     vec3 lowRange = sRgba.rgb / 12.92;
     vec3 highRange = pow((sRgba.rgb + 0.055) / 1.055, vec3(2.4));
-    vec3 linearRgb = mix(highRange, lowRange, lessThanEqual(sRgba.rgb, vec3(0.0031308)));
+    vec3 linearRgb = mix(highRange, lowRange, lessThanEqual(sRgba.rgb, vec3(0.04045)));
     return vec4(linearRgb, sRgba.a);
 }
 

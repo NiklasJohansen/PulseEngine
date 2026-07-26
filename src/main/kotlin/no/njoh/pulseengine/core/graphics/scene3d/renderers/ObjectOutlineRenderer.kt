@@ -8,10 +8,12 @@ import no.njoh.pulseengine.core.graphics.gpu.FullscreenPass
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject.Companion.encodeObjectIdHigh
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject.Companion.encodeObjectIdLow
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
+import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import org.lwjgl.opengl.GL11.*
+import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 
 class ObjectOutlineRenderer(
     val objectIdSurfaceName: String,
@@ -51,7 +53,7 @@ class ObjectOutlineRenderer(
 
         glDisable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
         glDisable(GL_CULL_FACE)
 
         program.bind()
@@ -65,8 +67,13 @@ class ObjectOutlineRenderer(
             pass.draw()
         }
 
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        val blendFunc = surface.config.blendFunction
+        if (blendFunc != BlendFunction.NONE)
+        {
+            glEnable(GL_BLEND)
+            glBlendFuncSeparate(blendFunc.srcRgb, blendFunc.destRgb, blendFunc.srcAlpha, blendFunc.destAlpha)
+        }
+        else glDisable(GL_BLEND)
     }
 
     override fun destroy(engine: PulseEngineInternal)

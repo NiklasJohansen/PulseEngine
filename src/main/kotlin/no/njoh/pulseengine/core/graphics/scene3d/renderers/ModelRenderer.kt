@@ -141,11 +141,11 @@ class ModelRenderer(
         if (surface.config.hasDepthAttachment) glEnable(GL_DEPTH_TEST) else glDisable(GL_DEPTH_TEST)
 
         glBlendEquation(GL_FUNC_ADD)
-        val blendFunction = surface.config.blendFunction
-        if (blendFunction != NONE)
+        val blendFunc = surface.config.blendFunction
+        if (blendFunc != NONE)
         {
             glEnable(GL_BLEND)
-            glBlendFunc(blendFunction.src, blendFunction.dest)
+            glBlendFuncSeparate(blendFunc.srcRgb, blendFunc.destRgb, blendFunc.srcAlpha, blendFunc.destAlpha)
         }
         else glDisable(GL_BLEND)
     }

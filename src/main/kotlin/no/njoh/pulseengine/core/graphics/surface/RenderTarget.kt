@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.surface
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.gpu.buffer.FrameBufferObject
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
@@ -62,6 +63,14 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
     fun getTexture(index: Int) = readFbo.getTextureOrNull(index)
 
     fun getTextures() = readFbo.getTextures()
+
+    fun setColorAlphaMode(alphaMode: TextureAlphaMode)
+    {
+        readFbo.getTextures().forEachFast() 
+        {
+            if (it.attachment.hasColor) it.alphaMode = alphaMode
+        }
+    }
 
     fun getFbo() = readFbo
 

@@ -15,7 +15,8 @@ class RenderTexture(
     val format: TextureFormat = TextureFormat.RGBA8,
     val attachment: Attachment = Attachment.COLOR_TEXTURE_0,
     val multisampling: Multisampling = Multisampling.NONE,
-    val mipmapGenerator: MipmapGenerator? = null
+    val mipmapGenerator: MipmapGenerator? = null,
+    var alphaMode: TextureAlphaMode = TextureAlphaMode.STRAIGHT
 ) {
     fun generateMips(engine: PulseEngineInternal) = mipmapGenerator?.generateMipmaps(engine, this)
 

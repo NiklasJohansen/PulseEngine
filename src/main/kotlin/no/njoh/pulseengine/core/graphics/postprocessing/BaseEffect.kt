@@ -50,7 +50,11 @@ abstract class BaseEffect(
         val outTextures = applyEffect(engine, inTextures)
 
         if (outTextures !== inTextures)
+        {
+            val inputAlphaMode = inTextures.first().alphaMode
+            outTextures.forEachFast { it.alphaMode = inputAlphaMode }
             outTextures.forEachFast { it.generateMips(engine) }
+        }
 
         return outTextures
     }

@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.NativeMipmapGenerator
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode.PREMULTIPLIED
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
@@ -14,10 +15,10 @@ import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import org.lwjgl.opengl.GL11.GL_BLEND
 import org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA
-import org.lwjgl.opengl.GL11.GL_SRC_ALPHA
-import org.lwjgl.opengl.GL11.glBlendFunc
+import org.lwjgl.opengl.GL11.GL_ONE
 import org.lwjgl.opengl.GL11.glDisable
 import org.lwjgl.opengl.GL11.glEnable
+import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import kotlin.math.floor
 import kotlin.math.log2
 import kotlin.math.max
@@ -66,10 +67,12 @@ class FrostedGlassEffect(
         sceneProgram.bind()
         sceneProgram.setUniform("isDepthTexture", false)
         glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
         engine.gfx.getAllSurfaces().forEachFiltered({ it.config.isVisible && it.config.zOrder > zThreshold })
         {
-            sceneProgram.setUniformSampler("tex", it.getTexture())
+            val texture = it.getTexture()
+            sceneProgram.setUniformSampler("tex", texture)
+            sceneProgram.setUniform("isPremultipliedAlpha", texture.alphaMode == PREMULTIPLIED)
             scenePass.draw()
         }
         fbo.release()

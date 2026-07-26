@@ -3,8 +3,10 @@ package no.njoh.pulseengine.core.graphics.surface
 import no.njoh.pulseengine.core.graphics.surface.StencilState.Action.CLEAR
 import no.njoh.pulseengine.core.graphics.surface.StencilState.Action.SET
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode.*
 import no.njoh.pulseengine.core.graphics.surface.renderers.StencilRenderer
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
+import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_SRGB
 
@@ -55,7 +57,7 @@ object BackBufferBaseState : RenderState
 
         // Enable blending
         glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
 
         // Enable sRGB color space
         glEnable(GL_FRAMEBUFFER_SRGB)
@@ -120,10 +122,11 @@ object BatchRenderBaseState : RenderState
         else glDisable(GL_DEPTH_TEST)
 
         // Set blending options
-        if (config.blendFunction != BlendFunction.NONE)
+        val blendFunc = config.blendFunction
+        if (blendFunc != BlendFunction.NONE)
         {
             glEnable(GL_BLEND)
-            glBlendFunc(config.blendFunction.src, config.blendFunction.dest)
+            glBlendFuncSeparate(blendFunc.srcRgb, blendFunc.destRgb, blendFunc.srcAlpha, blendFunc.destAlpha)
         }
         else glDisable(GL_BLEND)
 
@@ -135,7 +138,8 @@ object BatchRenderBaseState : RenderState
         val c = config.clearColor?.asLinear()
         if (c != null)
         {
-            glClearColor(c.red, c.green, c.blue, c.alpha)
+            val alphaMultiplier = if (blendFunc.outputAlphaMode == PREMULTIPLIED) c.alpha else 1f
+            glClearColor(c.red * alphaMultiplier, c.green * alphaMultiplier, c.blue * alphaMultiplier, c.alpha)
             glColorMask(true, true, true, true)
             glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         }

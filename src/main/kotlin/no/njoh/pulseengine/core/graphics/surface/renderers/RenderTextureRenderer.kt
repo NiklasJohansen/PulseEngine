@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
@@ -92,6 +93,7 @@ class RenderTextureRenderer(
             val rgba         = data[base + 13]
             val textureId    = data[base + 14].toInt()
             val isDepth      = data[base + 15]
+            val alphaMode     = data[base + 19]
 
             // Bind texture
             if (textureId != TextureHandle.NONE.textureIndex)
@@ -107,6 +109,7 @@ class RenderTextureRenderer(
             program.setUniform("uvMinMax", uMin, vMin, uMax, vMax)
             program.setUniform("sampleTexture", textureId != TextureHandle.NONE.textureIndex)
             program.setUniform("isDepthTexture", isDepth > 0)
+            program.setUniform("isPremultipliedAlpha", alphaMode > 0)
 
             // Draw quad
             drawTriangleStripVertices(vao, 0, 4)
@@ -148,6 +151,7 @@ class RenderTextureRenderer(
         data[base + 13] = config.currentDrawColor
         data[base + 14] = texture.handle.textureIndex.toFloat()
         data[base + 15] = if (texture.attachment == Attachment.DEPTH_TEXTURE) 1f else 0f
+        data[base + 19] = if (texture.alphaMode == TextureAlphaMode.PREMULTIPLIED) 1f else 0f
         writeCount++
         config.increaseDepth()
         increaseBatchSize()
