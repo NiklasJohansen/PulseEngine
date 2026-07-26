@@ -134,6 +134,7 @@ open class UiElementFactory(
         return createItemSelectionDropdownUI(
             selectedItem = selected,
             items = entries,
+            searchable = true,
             onItemToString = { it.label },
             onItemChanged = { lastValue, newValue ->
                 prop.setter.call(obj, newValue.id)
@@ -370,7 +371,8 @@ open class UiElementFactory(
     open fun createMenuBarButtonUI(
         menuBarButton: MenuBarButton,
         fontSize: Float,
-        showScrollbar: Boolean = true
+        showScrollbar: Boolean = true,
+        searchable: Boolean = false
     ): DropdownMenu<MenuBarItem> {
         val font = style.getFont()
         val scrollBarWidth = if (showScrollbar) 25f else 0f
@@ -382,7 +384,7 @@ open class UiElementFactory(
         return DropdownMenu<MenuBarItem>(
             width = Size.absolute(55f),
             dropDownWidth = Size.absolute(width),
-            dropDownHeight = Size.absolute(height)
+            dropDownHeight = Size.absolute(height + if (searchable) DROPDOWN_SEARCH_HEIGHT else 0f)
         ).apply {
             showArrow = false
             useSelectedItemAsMenuLabel = false
@@ -408,6 +410,7 @@ open class UiElementFactory(
             scrollbar.sliderColorHover = style.getColor("SCROLLBAR_HOVER")
             scrollbar.hidden = !showScrollbar
             scrollbar.cornerRadius = ScaledValue.of(2f)
+            configureDropdownSearch(this, searchable)
             setOnItemToString { it.labelText }
             menuBarButton.items.forEachFast { addItem(it) }
             setOnItemChanged { _, item -> item.onClick() }
@@ -421,7 +424,8 @@ open class UiElementFactory(
         selectedItem: T,
         items: List<T>,
         onItemToString: (T) -> String,
-        onItemChanged: (lastValue: T?, newValue: T) -> Unit
+        onItemChanged: (lastValue: T?, newValue: T) -> Unit,
+        searchable: Boolean = false
     ): DropdownMenu<T> {
         val fontSize = 18f
         val font = style.getFont()
@@ -432,7 +436,7 @@ open class UiElementFactory(
         return DropdownMenu<T>(
             width = Size.relative(0.5f),
             dropDownWidth = Size.absolute(width),
-            dropDownHeight = Size.absolute(height)
+            dropDownHeight = Size.absolute(height + if (searchable) DROPDOWN_SEARCH_HEIGHT else 0f)
         ).apply {
             rowHeight = ScaledValue.of(style.getSize("DROPDOWN_ROW_HEIGHT"))
             menuLabel.font = font
@@ -452,6 +456,7 @@ open class UiElementFactory(
             scrollbar.sliderColorHover = style.getColor("SCROLLBAR_HOVER")
             scrollbar.hidden = !showScrollbar
             scrollbar.cornerRadius = ScaledValue.of(2f)
+            configureDropdownSearch(this, searchable)
             setOnItemToString(onItemToString)
             setOnItemChanged(onItemChanged)
             this.selectedItem = selectedItem
@@ -530,7 +535,7 @@ open class UiElementFactory(
 
         val button = MenuBarButton(labelText = "+", items = menuItems)
         val showScrollBar = menuItems.size > 8
-        val buttonUI = createMenuBarButtonUI(button, 18f, showScrollBar).apply()
+        val buttonUI = createMenuBarButtonUI(button, 18f, showScrollBar, searchable = true).apply()
         {
             width.setQuiet(Size.absolute(30f))
             height.setQuiet(Size.absolute(30f))
@@ -770,6 +775,18 @@ open class UiElementFactory(
             }
         }
 
+    private fun configureDropdownSearch(dropdown: DropdownMenu<*>, searchable: Boolean)
+    {
+        dropdown.searchable = searchable
+        dropdown.searchHeader.color = style.getColor("HEADER")
+        dropdown.searchHeader.strokeColor = style.getColor("STROKE")
+        dropdown.searchInput.font = style.getFont()
+        dropdown.searchInput.textColor = style.getColor("LABEL")
+        dropdown.searchInput.bgColor = style.getColor("BUTTON")
+        dropdown.searchInput.bgColorHover = style.getColor("BUTTON_HOVER")
+        dropdown.searchInput.strokeColor = Color.BLANK
+    }
+
     open fun createInputFieldUI(
         obj: Any,
         prop: KMutableProperty<*>,
@@ -931,6 +948,11 @@ open class UiElementFactory(
     }
 
     private data class EntityReferenceItem(val id: Long, val label: String)
+
+    companion object
+    {
+        private const val DROPDOWN_SEARCH_HEIGHT = 30f
+    }
 }
 
 data class EditorSceneTab(

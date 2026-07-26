@@ -123,7 +123,7 @@ class AssetPicker(
         searchInput.setOnTextChanged()
         {
             for ((value, row) in rowValues)
-                row.hidden = it.text.isNotBlank() && !value.contains(it.text, ignoreCase = false)
+                row.hidden = it.text.isNotBlank() && !value.contains(it.text, ignoreCase = true)
         }
 
         nameInput.setOnTextChanged()
@@ -135,7 +135,10 @@ class AssetPicker(
 
         previewButton.setOnClicked()
         {
+            val isOpening = pickerWindow.hidden
             pickerWindow.hidden = !pickerWindow.hidden
+            if (isOpening)
+                PulseEngine.INSTANCE.input.acquireFocus(searchInput.area)
         }
     }
 
@@ -227,10 +230,12 @@ class AssetPicker(
         addRow(row, asset.name)
     }
 
-    fun addRow(row: Button, value: String) {
+    fun addRow(row: Button, value: String) 
+    {
         row.setOnClicked { btn ->
             setPreviewButtonImage(btn.firstElementOrNull { it is Image })
             nameInput.text = value
+            clearSearch()
             onChanged(value)
         }
         rows.addChildren(row)
@@ -240,6 +245,12 @@ class AssetPicker(
     fun setOnValueChanged(onChanged: (String) -> Unit)
     {
         this.onChanged = onChanged
+    }
+
+    private fun clearSearch()
+    {
+        searchInput.setTextQuiet("")
+        rowValues.values.forEach { it.hidden = false }
     }
 
     private fun setPreviewButtonImage(previewElement: UiElement?)

@@ -11,7 +11,9 @@ import no.njoh.pulseengine.modules.ui.ScrollDirection.VERTICAL
 import no.njoh.pulseengine.modules.ui.Size
 import no.njoh.pulseengine.modules.ui.UiElement
 import no.njoh.pulseengine.modules.ui.layout.HorizontalPanel
+import no.njoh.pulseengine.modules.ui.layout.Panel
 import no.njoh.pulseengine.modules.ui.layout.RowPanel
+import no.njoh.pulseengine.modules.ui.layout.VerticalPanel
 import no.njoh.pulseengine.modules.ui.layout.WindowPanel
 
 class DropdownMenu <T> (
@@ -27,6 +29,8 @@ class DropdownMenu <T> (
     var rowPanel: RowPanel
     var menuLabel: Label
     var scrollbar: Scrollbar
+    var searchInput: InputField
+    var searchHeader: Panel
     var selectedItem: T? = null
         set (value)
         {
@@ -44,10 +48,17 @@ class DropdownMenu <T> (
     var useSelectedItemAsMenuLabel = true
     var rowHeight = ScaledValue.of(30f)
     var rowPadding = ScaledValue.of(5f)
+    var searchable = false
+        set(value)
+        {
+            searchHeader.hidden = !value
+            field = value
+        }
 
     private var onItemToString: (T) -> String = { it.toString() }
     private var onItemChanged: (lastItem: T?, newItem: T) -> Unit = { _, _ -> }
     private var isMouseOver = false
+    private val itemRows = mutableListOf<Pair<T, Button>>()
 
     init
     {
@@ -65,15 +76,37 @@ class DropdownMenu <T> (
         scrollbar.sliderPadding = ScaledValue.of(1.5f)
         scrollbar.bind(rowPanel, direction = VERTICAL)
 
-        val hPanel = HorizontalPanel()
-        hPanel.addChildren(rowPanel, scrollbar)
+        searchInput = InputField("").apply()
+        {
+            placeHolderText = "Search ..."
+            cornerRadius = ScaledValue.of(4f)
+            fontSize = ScaledValue.of(17f)
+            padding.setAll(5f)
+            setOnTextChanged { input ->
+                for ((item, row) in itemRows)
+                    row.hidden = input.text.isNotBlank() && !onItemToString(item).contains(input.text, ignoreCase = true)
+            }
+        }
+
+        searchHeader = Panel(height = Size.absolute(30f)).apply()
+        {
+            hidden = true
+            strokeBottom = true
+            strokeTop = false
+            strokeLeft = false
+            strokeRight = false
+            addChildren(searchInput)
+        }
+
+        val itemPanel = HorizontalPanel().apply { addChildren(rowPanel, scrollbar) }
+        val contentPanel = VerticalPanel().apply { addChildren(searchHeader, itemPanel) }
 
         dropdown.color = color
         dropdown.hidden = true
         dropdown.resizable = true
         dropdown.minWidth = ScaledValue.of(10f)
         dropdown.minHeight = ScaledValue.of(10f)
-        dropdown.addChildren(hPanel)
+        dropdown.addChildren(contentPanel)
 
         addPopup(dropdown)
         addChildren(menuLabel)
@@ -105,7 +138,10 @@ class DropdownMenu <T> (
         button.color = itemBgColor
         button.hoverColor = itemBgHoverColor
         button.addChildren(label)
-        button.setOnClicked {
+        button.setOnClicked() 
+        {
+            if (searchable)
+                clearSearch()
             selectedItem = item
             if (closeOnItemSelect)
                 dropdown.hidden = true
@@ -113,6 +149,7 @@ class DropdownMenu <T> (
 
         rowPanel.children.lastOrNull()?.padding?.bottom = rowPadding
         rowPanel.addChildren(button)
+        itemRows.add(item to button)
 
         if (selectedItem == null)
             selectedItem = item
@@ -121,13 +158,17 @@ class DropdownMenu <T> (
     fun clearItems()
     {
         rowPanel.clearChildren()
+        itemRows.clear()
         selectedItem = null
     }
 
     override fun onMouseClicked(engine: PulseEngine)
     {
         super.onMouseClicked(engine)
+        val isOpening = dropdown.hidden
         dropdown.hidden = !dropdown.hidden
+        if (isOpening && searchable)
+            engine.input.acquireFocus(searchInput.area)
     }
 
     override fun updatePopupLayout()
@@ -157,6 +198,12 @@ class DropdownMenu <T> (
     fun setOnItemChanged(callback: (lastValue: T?, newValue: T) -> Unit)
     {
         this.onItemChanged = callback
+    }
+
+    private fun clearSearch()
+    {
+        searchInput.setTextQuiet("")
+        itemRows.forEach { (_, row) -> row.hidden = false }
     }
 
     override fun onRender(engine: PulseEngine, surface: Surface)

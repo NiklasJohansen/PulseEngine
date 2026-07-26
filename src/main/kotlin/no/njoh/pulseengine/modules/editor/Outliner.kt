@@ -175,7 +175,7 @@ data class Outliner(
 
             val button = MenuBarButton(labelText = "+", items = menuItems)
             val showScrollBar = menuItems.size > 8
-            val buttonUI = uiElementFactory.createMenuBarButtonUI(button, 18f, showScrollBar).apply()
+            val buttonUI = uiElementFactory.createMenuBarButtonUI(button, 18f, showScrollBar, searchable = true).apply()
             {
                 width.setQuiet(Size.absolute(20f))
                 dropdown.height.setQuiet(Size.absolute(400f))

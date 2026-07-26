@@ -507,20 +507,28 @@ class InputField (
         }
 
         // Draw selection rectangle
-        val selectionDistance = selectCursor - inputCursor
         val inBoxCursor = inputCursor - inputTextOffset
         val cursorStart = getTextWidth(text.substring(0, inBoxCursor))
-        if (selectionDistance != 0)
+        val selectionStart = min(inputCursor, selectCursor)
+        val selectionEnd = max(inputCursor, selectCursor)
+        val visibleSelectionStart = max(selectionStart, inputTextOffset)
+        val visibleSelectionEnd = min(selectionEnd, inputTextOffset + text.length)
+        if (visibleSelectionStart < visibleSelectionEnd)
         {
-            val length = selectionDistance.coerceIn(-inBoxCursor, charsPerLine - inBoxCursor - 1)
-            val selectedOnScreenText = if (length >= 0)
-                text.substring(inBoxCursor, inBoxCursor + length)
-            else
-                text.substring(inBoxCursor + length, inBoxCursor)
-            val selectionWidth = getTextWidth(selectedOnScreenText) * sign(length.toFloat())
+            val startInBox = visibleSelectionStart - inputTextOffset
+            val endInBox = visibleSelectionEnd - inputTextOffset
+            val selectionStartX = getTextWidth(text.substring(0, startInBox))
+            val selectionWidth = getTextWidth(text.substring(startInBox, endInBox))
 
             surface.setDrawColor(selectionColor)
-            surface.drawTexture(Texture.BLANK,x.value + leftTextPadding.value + cursorStart, y.value + height.value / 2, selectionWidth, fontSize.value, yOrigin = 0.5f)
+            surface.drawTexture(
+                Texture.BLANK,
+                x.value + leftTextPadding.value + selectionStartX,
+                y.value + height.value / 2,
+                selectionWidth,
+                fontSize.value,
+                yOrigin = 0.5f
+            )
         }
 
         // Draw cursor
