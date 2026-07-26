@@ -245,7 +245,7 @@ open class UiElementFactory(
             var exitButton: Button? = null
 
             sceneTabsUI.button(
-                width = Size.absolute((tabData.label.length * 8f + if (tabData.onClosed != null) 44f else 25f).coerceIn(70f, 300f)),
+                width = Size.absolute((tabData.label.length * 8f + if (tabData.onClosed != null) 54f else 35f).coerceIn(70f, 300f)),
                 height = Size.relative(1f)
             ) {
                 bgColor = if (tabData.selected) style.getColor("BUTTON_HOVER") else Color.BLANK
@@ -253,27 +253,31 @@ open class UiElementFactory(
                 cornerRadius = ScaledValue.of(4f)
                 padding.right = ScaledValue.of(2f)
 
-                horizontalPanel {
-                    icon(width = Size.absolute(15f)) {
+                horizontalPanel()
+                {
+                    icon(width = Size.absolute(15f))
+                    {
                         iconFontName = style.iconFontName
                         iconCharacter = style.getIcon("TEXT")
                         color = style.getColor("LABEL")
                         padding.top = ScaledValue.of(2f)
-                        padding.left = ScaledValue.of(5f)
+                        padding.left = ScaledValue.of(10f)
                     }
 
-                    label(width = Size.relative(1f), height = Size.relative(1f)) {
+                    label(width = Size.relative(1f), height = Size.relative(1f))
+                    {
                         text = tabData.label
                         verticalAlignment = 0.5f
                         color = style.getColor("LABEL")
                         fontSize = ScaledValue.of(18f)
-                        padding.left = ScaledValue.of(5f)
+                        padding.left = ScaledValue.of(10f)
                         focusable = false
                     }
 
                     if (tabData.onClosed != null)
                     {
-                        exitButton = button(width = Size.absolute(20f), height = Size.absolute(20f)) {
+                        exitButton = button(width = Size.absolute(20f), height = Size.absolute(20f))
+                        {
                             padding.top = ScaledValue.of(5f)
                             padding.right = ScaledValue.of(5f)
                             cornerRadius = ScaledValue.of(4f)
@@ -281,7 +285,8 @@ open class UiElementFactory(
                             hoverColor = style.getColor("BUTTON_EXIT")
                             setOnClicked { tabData.onClosed.invoke() }
 
-                            icon(width = Size.absolute(15f)) {
+                            icon(width = Size.absolute(15f))
+                            {
                                 iconFontName = style.iconFontName
                                 iconCharacter = style.getIcon("CROSS")
                                 color = style.getColor("LABEL")
@@ -291,7 +296,8 @@ open class UiElementFactory(
                     }
                 }
 
-                setOnClicked {
+                setOnClicked() 
+                {
                     val closeButtonClicked = exitButton?.area?.isInside(engine.input.xMouse, engine.input.yMouse) == true
                     if (!closeButtonClicked)
                         tabData.onSelected()

@@ -67,7 +67,7 @@ abstract class SceneManager
 
     /**
      * Loads a [Scene] without changing [activeScene].
-     * The returned scene can be retained and used as the source of repeated [copyEntitiesFrom] operations.
+     * The returned scene can be retained and used as the source of repeated [addEntitiesFrom] operations.
      * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
      * @param fromClassPath True if the file should be loaded from classpath.
      */
@@ -130,14 +130,14 @@ abstract class SceneManager
     abstract fun addEntity(entity: SceneEntity): Long
 
     /**
-     * Copies entities matching [filter] and their descendants from [sourceScene] into [activeScene].
+     * Adds copies of entities and their children matching the [filter] from [sourceScene] to [activeScene].
      * References within the selection are remapped. References outside it are preserved when
-     * copying from [activeScene], and cleared when copying from another scene.
-     * If [targetParentId] does not exist, the copied root entities are left without a parent.
+     * copying from [activeScene], and cleared when copying from an external scene.
+     * If [targetParentId] does not exist, the added root entities are left without a parent.
      * @param configure Called with all detached entity copies before they receive new IDs, are
      * inserted into [activeScene], and receive lifecycle callbacks. Use it to customize their properties.
      */
-    abstract fun copyEntitiesFrom(
+    abstract fun addEntitiesFrom(
         sourceScene: Scene,
         filter: SceneEntityFilter = All,
         targetParentId: Long = INVALID_ID,
@@ -145,11 +145,11 @@ abstract class SceneManager
     ): List<SceneEntity>?
 
     /**
-     * Copies entities from their JSON representation into [activeScene].
+     * Adds entities from their JSON representation to the [activeScene].
      * @param configure Called with all deserialized entities before they receive new IDs, are
      * inserted into the [activeScene], and receive lifecycle callbacks. Use it to customize their properties.
      */
-    abstract fun copyEntitiesFrom(
+    abstract fun addEntitiesFrom(
         sourceJson: String,
         targetParentId: Long = INVALID_ID,
         configure: (List<SceneEntity>) -> Unit = {}

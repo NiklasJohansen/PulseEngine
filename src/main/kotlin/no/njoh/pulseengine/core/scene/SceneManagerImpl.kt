@@ -227,8 +227,8 @@ open class SceneManagerImpl : SceneManagerInternal()
         return id
     }
 
-    override fun copyEntitiesFrom(sourceScene: Scene, filter: SceneEntityFilter, targetParentId: Long, configure: (List<SceneEntity>) -> Unit): List<SceneEntity>? =
-        copyEntitiesFrom(
+    override fun addEntitiesFrom(sourceScene: Scene, filter: SceneEntityFilter, targetParentId: Long, configure: (List<SceneEntity>) -> Unit): List<SceneEntity>? =
+        addEntitiesFrom(
             sourceName = sourceScene.name,
             sourceEntities = sourceScene.getEntities(filter, includeChildren = true),
             preserveExternalReferences = sourceScene === activeScene,
@@ -237,7 +237,7 @@ open class SceneManagerImpl : SceneManagerInternal()
         )
 
     @Suppress("UNCHECKED_CAST")
-    override fun copyEntitiesFrom(sourceJson: String, targetParentId: Long, configure: (List<SceneEntity>) -> Unit): List<SceneEntity>?
+    override fun addEntitiesFrom(sourceJson: String, targetParentId: Long, configure: (List<SceneEntity>) -> Unit): List<SceneEntity>?
     {
         val deserialized = engine.data.deserializeFromJson(sourceJson, ArrayList::class.java) ?: return null
         if (deserialized.anyMatches { it !is SceneEntity })
@@ -245,7 +245,7 @@ open class SceneManagerImpl : SceneManagerInternal()
             Logger.error { "Cannot copy entities: clipboard JSON does not contain scene entities" }
             return null
         }
-        return copyEntitiesFrom("JSON scene", deserialized as List<SceneEntity>, preserveExternalReferences = false, targetParentId, configure)
+        return addEntitiesFrom("JSON scene", deserialized as List<SceneEntity>, preserveExternalReferences = false, targetParentId, configure)
     }
 
     override fun update()
@@ -348,7 +348,7 @@ open class SceneManagerImpl : SceneManagerInternal()
         activeScene.systems.forEachFiltered({ it.enabled && it.initialized }) { it.onEntitiesAdded(engine, entities) }
     }
     
-    private fun copyEntitiesFrom(
+    private fun addEntitiesFrom(
         sourceName: String,
         sourceEntities: List<SceneEntity>,
         preserveExternalReferences: Boolean,

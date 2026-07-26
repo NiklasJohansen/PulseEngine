@@ -26,7 +26,6 @@ import no.njoh.pulseengine.core.input.Key.*
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.Scene
 import no.njoh.pulseengine.core.scene.SceneEntity
-import no.njoh.pulseengine.core.scene.SceneEntityFilter
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
@@ -56,12 +55,16 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.*
 
-@Suppress("FunctionName") fun SceneEditor2D() = SceneEditor(ViewportInteraction2D())
-@Suppress("FunctionName") fun SceneEditor3D() = SceneEditor(ViewportInteraction3D())
+@Suppress("FunctionName")
+fun SceneEditor2D(vararg initialScenes: String) = SceneEditor(ViewportInteraction2D(), initialScenes = initialScenes.toList())
+
+@Suppress("FunctionName")
+fun SceneEditor3D(vararg initialScenes: String) = SceneEditor(ViewportInteraction3D(), initialScenes = initialScenes.toList())
 
 class SceneEditor(
     val viewportInteraction: ViewportInteraction? = ViewportInteraction2D(),
     val uiFactory: UiElementFactory = UiElementFactory(),
+    initialScenes: List<String> = emptyList()
 ): Service() {
 
     // UI
@@ -90,6 +93,7 @@ class SceneEditor(
     private var sceneFileToSaveAs: String? = null
     private val scope = CoroutineScope(Dispatchers.IO)
     private val editorScenes = mutableListOf<EditorScene>()
+    private val initialSceneFiles = initialScenes.toList()
 
     // Copying
     private var isCopying = false
@@ -115,7 +119,7 @@ class SceneEditor(
         activeCamera = engine.gfx.mainCamera
         shouldPersistEditorLayout = engine.config.getBool("persistEditorLayout") ?: false
         lastSaveLoadDirectory = engine.config.saveDirectory
-        ensureActiveEditorScene(engine)
+        loadInitialEditorScenes(engine)
 
         // Create surfaces
         engine.gfx.createSurface("scene_editor_ui_base_bg",  zOrder = -90)
@@ -172,6 +176,7 @@ class SceneEditor(
     {
         // Set UI scaling
         UI_SCALE = engine.window.contentScale
+
         // Properties
         inspectorUI = RowPanel()
         systemPropertiesUI = RowPanel()
@@ -179,21 +184,20 @@ class SceneEditor(
         // Create content
         val menuBar = uiFactory.createMenuBarUI(
             MenuBarButton("File", listOf(
-                MenuBarItem("New...") { onNewScene(engine) },
-                MenuBarItem("Open...") { onLoad(engine) },
-                MenuBarItem("Save") { saveActiveEditorScene(engine) },
+                MenuBarItem("New...")     { onNewScene(engine) },
+                MenuBarItem("Open...")    { onLoad(engine) },
+                MenuBarItem("Save")       { saveActiveEditorScene(engine) },
                 MenuBarItem("Save as...") { onSaveAs(engine) },
-                MenuBarItem("Close") { closeActiveEditorScene(engine) }
+                MenuBarItem("Close")      { closeActiveEditorScene(engine) }
             )),
             MenuBarButton("View", listOf(
-                MenuBarItem("Inspector") { createInspectorWindow() },
-                MenuBarItem("Outliner") { createOutlinerWindow(engine) },
+                MenuBarItem("Entity Inspector") { createInspectorWindow() },
+                MenuBarItem("Scene Hierarchy")  { createOutlinerWindow(engine) },
                 MenuBarItem("Scene systems") { createSceneSystemsPropertyWindow(engine) },
-                MenuBarItem("Viewport") { createViewportWindow(engine) },
-                MenuBarItem("Grid") {
-                    showGrid = !showGrid
-                },
-                MenuBarItem("Reset") {
+                MenuBarItem("Viewport")      { createViewportWindow(engine) },
+                MenuBarItem("Grid")          { showGrid = !showGrid },
+                MenuBarItem("Reset")
+                {
                     createSceneEditorUI(engine)
                     showGrid = true
                     viewportInteraction?.resetCamera(engine, viewportContext)
@@ -201,8 +205,7 @@ class SceneEditor(
             )),
             MenuBarButton("Run", listOf(
                 MenuBarItem("Start") { stopEditorAndStartGame(engine) },
-                MenuBarItem("Stop") { stopGameAndStartEditor(engine) },
-                MenuBarItem("Pause") { engine.scene.pause() }
+                MenuBarItem("Stop")  { stopGameAndStartEditor(engine) },
             ))
         )
 
@@ -273,7 +276,8 @@ class SceneEditor(
         )
         outliner!!.reloadEntitiesFromActiveScene()
 
-        val window = uiFactory.createWindowUI(title = "Outliner", iconName = "LIST", onClosed = { outliner = null })
+        val window = uiFactory.createWindowUI(title = "Scene Hierarchy", iconName = "LIST", onClosed = { outliner = null })
+        window.id = "Outliner" // Keep the stable ID used by saved editor layouts
         window.body.addChildren(outliner!!.ui)
         dockingUI.insertLeft(window)
     }
@@ -283,7 +287,8 @@ class SceneEditor(
         if (dockingUI.findElement("Inspector") != null)
             return // Already exists
 
-        val inspectorWindow = uiFactory.createWindowUI("Inspector", "CUBE")
+        val inspectorWindow = uiFactory.createWindowUI("Entity Inspector", "CUBE")
+        inspectorWindow.id = "Inspector" // Keep the stable ID used by saved editor layouts
         val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
         inspectorWindow.body.addChildren(propertyPanel)
 
@@ -511,7 +516,7 @@ class SceneEditor(
         if (isCopying)
             return
 
-        val newEntities = engine.scene.copyEntitiesFrom(engine.scene.activeScene, filter = Entities(entitySelection)) ?: emptyList()
+        val newEntities = engine.scene.addEntitiesFrom(engine.scene.activeScene, filter = Entities(entitySelection)) ?: emptyList()
         
         outliner?.addEntities(newEntities)
 
@@ -537,7 +542,7 @@ class SceneEditor(
             if (!isRunning || engine.scene.activeScene !== targetScene)
                 return@getClipboard
 
-            engine.scene.copyEntitiesFrom(json)?.let { entities ->
+            engine.scene.addEntitiesFrom(json)?.let { entities ->
                 outliner?.addEntities(entities)
                 selectEntities(engine, entities)
                 if (entities.isNotEmpty())
@@ -892,6 +897,18 @@ class SceneEditor(
 
     private fun activeEditorScene(engine: PulseEngine) =
         editorScenes.firstOrNull { it.scene === engine.scene.activeScene }
+
+    private fun loadInitialEditorScenes(engine: PulseEngine)
+    {
+        ensureActiveEditorScene(engine)
+        initialSceneFiles
+            .asSequence()
+            .filter { it.isNotBlank() }
+            .distinct()
+            .filterNot { fileName -> editorScenes.any { it.scene.fileName == fileName } }
+            .mapNotNull { engine.scene.load(it) }
+            .forEach { editorScenes.add(EditorScene(it)) }
+    }
 
     private fun ensureActiveEditorScene(engine: PulseEngine, replaceSceneWithSameFile: Boolean = false)
     {
