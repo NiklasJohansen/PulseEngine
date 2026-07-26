@@ -18,6 +18,7 @@ import kotlin.reflect.full.findAnnotation
 
 class AssetPicker(
     private val initialAssetName: String,
+    private val fontSize: ScaledValue,
     x: Position = Position.auto(),
     y: Position = Position.auto(),
     width: Size = Size.auto(),
@@ -70,6 +71,8 @@ class AssetPicker(
             strokeTop = false
             strokeLeft = false
             strokeRight = false
+            cornerRadiusTopLeft = ScaledValue.of(4f)
+            cornerRadiusTopRight = ScaledValue.of(4f)
             addChildren(searchInput)
         }
 
@@ -108,7 +111,8 @@ class AssetPicker(
             width = Size.absolute(10f),
             height = Size.absolute(10f)
         ).apply {
-            cornerRadius = ScaledValue.of(2f)
+            cornerRadiusTopRight = ScaledValue.of(2f)
+            cornerRadiusBottomRight = ScaledValue.of(2f)
         }
 
         val hPanelButton = HorizontalPanel().apply { addChildren(nameInput, previewButton) }

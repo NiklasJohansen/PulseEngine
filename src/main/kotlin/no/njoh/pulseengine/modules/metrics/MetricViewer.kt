@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.data.Metric
 import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.shared.utils.Extensions.append
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
@@ -116,7 +117,7 @@ class MetricViewer : Service()
         graphs.forEachFast()
         {
             // Draw background
-            FrostedGlassEffect.drawToTargetSurface(engine, bgSurface, x, y, w, h, cornerRadius = 4f)
+            FrostedGlassEffect.drawToTargetSurface(engine, bgSurface, x, y, w, h, cornerRadius = CornerRadius(4f))
 
             // Draw foreground
             it.render(fgSurface, font, x, y, w, h)
@@ -174,7 +175,7 @@ class MetricViewer : Service()
         {
             val headerText = newText(metric.name)
             surface.setDrawColor(0.01f, 0.01f, 0.02f, 0.75f)
-            surface.drawTexture(Texture.BLANK, xPos, yPos, width, height, cornerRadius = 4f)
+            surface.drawTexture(Texture.BLANK, xPos, yPos, width, height, cornerRadius = CornerRadius(4f))
             surface.setDrawColor(1f, 1f, 1f, 0.8f)
             surface.drawText(headerText, xPos + PADDING, yPos + 22f, font = font, fontSize = HEADER_FONT_SIZE, yOrigin = 0.5f)
 

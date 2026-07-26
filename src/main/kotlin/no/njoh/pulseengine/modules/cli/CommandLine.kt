@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.service.Service
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import kotlin.math.max
 import kotlin.math.min
 
@@ -335,16 +336,16 @@ class CommandLine : Service()
 
         // Render frosted glass background
         val bgSurface = engine.gfx.getSurfaceOrDefault("cli_bg")
-        FrostedGlassEffect.drawToTargetSurface(engine, bgSurface, -5f, -5f, width + 5, height + 5, cornerRadius = 10f)
+        FrostedGlassEffect.drawToTargetSurface(engine, bgSurface, -5f, -5f, width + 5, height + 5, cornerRadius = CornerRadius(10f))
 
         // Draw console rectangle
         val fgSurface = engine.gfx.getSurfaceOrDefault("cli_fg")
         fgSurface.setDrawColor(0.0f, 0.0f, 0.0f, 0.9f)
-        fgSurface.drawTexture(Texture.BLANK, -5f, -5f, width + 5, height + 5, cornerRadius = 10f)
+        fgSurface.drawTexture(Texture.BLANK, -5f, -5f, width + 5, height + 5, cornerRadius = CornerRadius(10f))
 
         // Draw input box rectangle
         fgSurface.setDrawColor(0.01f, 0.01f, 0.01f, 0.5f)
-        fgSurface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width - INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING, cornerRadius = 5f)
+        fgSurface.drawTexture(Texture.BLANK, INPUT_BOX_PADDING, height - INPUT_BOX_HEIGHT, width - INPUT_BOX_PADDING * 2, INPUT_BOX_HEIGHT - INPUT_BOX_PADDING, cornerRadius = CornerRadius(5f))
 
         // Draw selection rectangle
         val selectionDistance = selectCursor - inputCursor

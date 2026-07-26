@@ -412,7 +412,7 @@ class SceneEditor(
 
         if (!isTransparent && node is Panel && (!onlyPopups || isNodePopup))
         {
-            FrostedGlassEffect.drawToTargetSurface(engine, surface, node.x.value, node.y.value, node.width.value, node.height.value, node.cornerRadius.value)
+            FrostedGlassEffect.drawToTargetSurface(engine, surface, node.x.value, node.y.value, node.width.value, node.height.value, node.getCornerRadius())
             onlyPopups = true // Only draw popups after first panel
         }
 

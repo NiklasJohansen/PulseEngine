@@ -8,6 +8,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.shared.utils.MathUtil.atan2
 import no.njoh.pulseengine.modules.physics2d.*
 import no.njoh.pulseengine.modules.physics2d.BodyType2D.STATIC
@@ -110,8 +111,8 @@ interface LineBody2D : PhysicsBody2D
     {
         surface.setDrawColor(Color.WHITE)
         surface.drawLine(shape.x0, shape.y0, shape.x1, shape.y1)
-        surface.drawTexture(Texture.BLANK, shape.x0 - 5f, shape.y0 - 5f, 10f, 10f, cornerRadius = 5f)
-        surface.drawTexture(Texture.BLANK, shape.x1 - 5f, shape.y1 - 5f, 10f, 10f, cornerRadius = 5f)
+        surface.drawTexture(Texture.BLANK, shape.x0 - 5f, shape.y0 - 5f, 10f, 10f, cornerRadius = CornerRadius(5f))
+        surface.drawTexture(Texture.BLANK, shape.x1 - 5f, shape.y1 - 5f, 10f, 10f, cornerRadius = CornerRadius(5f))
     }
 
     fun onBodyUpdated()

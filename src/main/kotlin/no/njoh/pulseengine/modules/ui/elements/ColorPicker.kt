@@ -2,11 +2,14 @@ package no.njoh.pulseengine.modules.ui.elements
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.ui.*
+import no.njoh.pulseengine.modules.ui.UiUtils.findElement
+import no.njoh.pulseengine.modules.ui.UiUtils.forEachElementOfType
 import no.njoh.pulseengine.modules.ui.UiUtils.hasFocus
 import no.njoh.pulseengine.modules.ui.layout.HorizontalPanel
 import no.njoh.pulseengine.modules.ui.layout.Panel
@@ -109,21 +112,22 @@ class ColorPicker(
 
         /////////////////////////////////////////// Button
 
-        hexInput = InputField(outputColor.toHex()).apply {
+        hexInput = InputField(outputColor.toHex()).apply() 
+        {
             contentType = InputField.ContentType.HEX_COLOR
             bgColor = Color.BLANK
-            cornerRadius = ScaledValue.of(2f)
+            setCornerRadius(ScaledValue.of(2f))
         }
 
         colorPreviewButton = Button(
             width = Size.absolute(10f),
             height = Size.absolute(10f)
         ).apply {
-            cornerRadius = ScaledValue.of(2f)
+            setCornerRadius(ScaledValue.of(2f))
             addChildren(
                 Panel().apply {
                     focusable = false
-                    cornerRadius = ScaledValue.of(2f)
+                    setCornerRadius(ScaledValue.of(2f))
                     color = outputColor
                     padding.setAll(5f)
                 }
@@ -132,7 +136,7 @@ class ColorPicker(
 
         val hPanelButton = HorizontalPanel().apply()
         {
-            cornerRadius = ScaledValue.of(2f)
+            setCornerRadius(ScaledValue.of(2f))
             color = bgColor
             addChildren(hexInput, colorPreviewButton)
         }
@@ -152,11 +156,12 @@ class ColorPicker(
                     fontSize = ScaledValue.of(20f)
                     padding.left = ScaledValue.of(5f)
                 },
-                inputField.apply {
+                inputField.apply() 
+                {
                     contentType = InputField.ContentType.INTEGER
                     numberMinVal = 0f
                     numberMaxVal = 255f
-                    cornerRadius = ScaledValue.of(2f)
+                    setCornerRadius(ScaledValue.of(2f))
                 }
             )
         }
@@ -264,7 +269,7 @@ class ColorPicker(
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
         surface.setDrawColor(bgColor)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = getCornerRadius())
     }
 
     private fun String.toColor() = Color().setFromHex(this)

@@ -13,6 +13,7 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.graphics.util.GpuTimeQueryResult
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.primitives.StaticList
 import no.njoh.pulseengine.core.shared.utils.Extensions.append
@@ -263,7 +264,7 @@ class GpuMonitor : Service()
                     y = y.value + (measurement.depth - 1) * rowStride,
                     width = max(1f, measurement.fractionBarWidth - FRACTION_BAR_SEGMENT_GAP),
                     height = rowHeight,
-                    cornerRadius = 1f
+                    cornerRadius = CornerRadius(1f)
                 )
             }
         }

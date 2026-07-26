@@ -8,7 +8,8 @@ in vec2 texSize;
 in vec2 texCoord;
 in vec2 texTiling;
 in vec2 quadSize;
-in float quadCornerRadius;
+flat in uvec2 quadCornerRadiusPacked;
+flat in uvec2 quadBorderPacked;
 flat in uint texIndex;
 flat in uint samplerIndex;
 
@@ -16,6 +17,26 @@ out vec4 fragColor;
 
 uniform sampler2DArray textureArrays[16];
 uniform float alphaDiscardThreshold;
+
+vec4 unpackAndConvert(uint rgba)
+{
+    vec4 sRgba = vec4((rgba >> 24u) & 255u, (rgba >> 16u) & 255u, (rgba >> 8u) & 255u, rgba & 255u) / 255.0;
+    vec3 lowRange = sRgba.rgb / 12.92;
+    vec3 highRange = pow((sRgba.rgb + 0.055) / 1.055, vec3(2.4));
+    vec3 linearRgb = mix(highRange, lowRange, lessThanEqual(sRgba.rgb, vec3(0.04045)));
+    return vec4(linearRgb, sRgba.a);
+}
+
+float roundedRectDistance(vec2 pos, vec2 size, vec4 radii)
+{
+    bool isLeft = pos.x < size.x * 0.5;
+    bool isTop = pos.y < size.y * 0.5;
+    float radius = isTop ? (isLeft ? radii.x : radii.y) : (isLeft ? radii.w : radii.z);
+    radius = clamp(radius, 0.0, 0.5 * min(size.x, size.y));
+    vec2 halfSize = size * 0.5;
+    vec2 q = abs(pos - halfSize) - (halfSize - vec2(radius));
+    return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - radius;
+}
 
 // Dynamic indexing of sampler arrays are not supported in GLSL bellow version 4.0, thus this atrocity
 vec4 sampleTextureArrayGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
@@ -58,17 +79,47 @@ void main()
         textureColor = sampleTextureArrayGrad(int(samplerIndex), vec3(uv, float(texIndex)), ddx, ddy);
     }
 
-    if (quadCornerRadius > 0.0)
+    vec4 fillColor = vertexColor * textureColor;
+    float borderWidth = float(quadBorderPacked.y & 0xFFFFu) / 16.0;
+    bool hasRoundedCorners = any(notEqual(quadCornerRadiusPacked, uvec2(0u)));
+
+    if (hasRoundedCorners || borderWidth > 0.0)
     {
         vec2 pos = texCoord * quadSize;
-        float border = clamp(quadCornerRadius, 0.0, 0.5 * min(quadSize.x, quadSize.y));
-        vec2 corner = clamp(pos, vec2(border), quadSize - border);
-        float distFromCorner = length(pos - corner) - border;
-        textureColor.a *= 1.0f - smoothstep(0.0, EDGE_SOFTNESS, distFromCorner);
+        vec4 cornerRadii = vec4(
+            float(quadCornerRadiusPacked.x & 0xFFFFu),
+            float(quadCornerRadiusPacked.x >> 16u),
+            float(quadCornerRadiusPacked.y & 0xFFFFu),
+            float(quadCornerRadiusPacked.y >> 16u)
+        ) / 16.0;
+
+        float distance = roundedRectDistance(pos, quadSize, cornerRadii);
+        float antialiasWidth = max(fwidth(distance) * 0.5, EDGE_SOFTNESS);
+        float outerCoverage = 1.0 - smoothstep(-antialiasWidth, antialiasWidth, distance);
+
+        if (borderWidth > 0.0)
+        {
+            vec4 borderColor = unpackAndConvert(quadBorderPacked.x);
+            float innerCoverage = 1.0 - smoothstep(-antialiasWidth, antialiasWidth, distance + borderWidth);
+            float borderCoverage = max(outerCoverage - innerCoverage, 0.0);
+            float fillAlpha = fillColor.a * innerCoverage;
+            float borderAlpha = borderColor.a * borderCoverage;
+            float combinedAlpha = fillAlpha + borderAlpha;
+            vec3 combinedPremultiplied = fillColor.rgb * fillAlpha + borderColor.rgb * borderAlpha;
+
+            fillColor.rgb = combinedAlpha > 0.000001
+                ? combinedPremultiplied / combinedAlpha
+                : vec3(0.0);
+            fillColor.a = combinedAlpha;
+        }
+        else
+        {
+            fillColor.a *= outerCoverage;
+        }
     }
 
-    if (textureColor.a < alphaDiscardThreshold)
+    if (fillColor.a < alphaDiscardThreshold)
         discard;
 
-    fragColor = vertexColor * textureColor;
+    fragColor = fillColor;
 }

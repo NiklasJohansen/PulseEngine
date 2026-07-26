@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.Name
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.modules.scene.entities.Common2DSceneEntity
 import no.njoh.pulseengine.modules.physics2d.BodyType2D
 import no.njoh.pulseengine.modules.physics2d.shapes.CircleShape2D
@@ -43,7 +44,7 @@ open class Ball2D : Common2DSceneEntity(), CircleBody2D
             height = size,
             angle = rotationInterpolated(),
             xOrigin = 0.5f,
-            yOrigin = 0.5f, cornerRadius = size * 0.5f)
+            yOrigin = 0.5f, cornerRadius = CornerRadius(size * 0.5f))
     }
 
     override fun xInterpolated() = x.interpolateFrom(shape.xLast)

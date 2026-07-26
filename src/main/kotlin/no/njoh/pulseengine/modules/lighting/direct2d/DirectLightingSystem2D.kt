@@ -2,6 +2,7 @@ package no.njoh.pulseengine.modules.lighting.direct2d
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.shared.primitives.Shape2D
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.*
@@ -451,7 +452,7 @@ open class DirectLightingSystem2D : SceneSystem()
         val height = light.radius * 2
         val cornerRadius = min(width, height)
         lightSurface.setDrawColor(light.lightColor.red, light.lightColor.green, light.lightColor.blue, 0.02f)
-        lightSurface.drawTexture(Texture.BLANK, light.x, light.y, width, height, light.rotation, 0.5f, 0.5f, cornerRadius = cornerRadius)
+        lightSurface.drawTexture(Texture.BLANK, light.x, light.y, width, height, light.rotation, 0.5f, 0.5f, cornerRadius = CornerRadius(cornerRadius))
     }
 
     private fun Graphics.getSurfaces(surfaceNames: String) =

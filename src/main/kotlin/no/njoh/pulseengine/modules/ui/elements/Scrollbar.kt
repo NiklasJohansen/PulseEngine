@@ -2,6 +2,7 @@ package no.njoh.pulseengine.modules.ui.elements
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.asset.types.Texture
@@ -137,11 +138,11 @@ class Scrollbar(
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
         surface.setDrawColor(bgColor.red, bgColor.green, bgColor.blue, bgColor.alpha)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = CornerRadius(cornerRadius.value))
 
         val sliderColor = if (isMouseOverSlider || sliderGrabbed) sliderColorHover else sliderColor
         surface.setDrawColor(sliderColor.red, sliderColor.green, sliderColor.blue, sliderColor.alpha)
-        surface.drawTexture(Texture.BLANK, xSlider, ySlider, sliderWidth, sliderHeight, cornerRadius = cornerRadius.value)
+        surface.drawTexture(Texture.BLANK, xSlider, ySlider, sliderWidth, sliderHeight, cornerRadius = CornerRadius(cornerRadius.value))
     }
 
     override fun updateChildLayout()

@@ -13,6 +13,8 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.Border
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
@@ -50,9 +52,9 @@ class NoOpSurface: SurfaceInternal()
     override fun drawLineVertex(x: Float, y: Float) {}
     override fun drawQuad(x: Float, y: Float, width: Float, height: Float) {}
     override fun drawQuadVertex(x: Float, y: Float) {}
-    override fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float) {}
-    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float) {}
-    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, xTiling: Float, yTiling: Float) {}
+    override fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees, xOrigin: Float, yOrigin: Float, cornerRadius: CornerRadius, border: Border, uMin: Float, vMin: Float, uMax: Float, vMax: Float) {}
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: CornerRadius, border: Border) {}
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: CornerRadius, border: Border, uMin: Float, vMin: Float, uMax: Float, vMax: Float, xTiling: Float, yTiling: Float) {}
     override fun drawText(text: CharSequence, x: Float, y: Float, font: Font?, fontSize: Float, angle: Degrees, xOrigin: Float, yOrigin: Float, wrapNewLines: Boolean, newLineSpacing: Float) {}
     override fun <T : Renderer> getRenderer(type: Class<T>) = null
     override fun <T : PostProcessingEffect> getPostProcessingEffect(type: Class<T>) = null

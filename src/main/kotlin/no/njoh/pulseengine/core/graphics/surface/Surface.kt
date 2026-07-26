@@ -13,6 +13,9 @@ import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.Border
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius.Companion.ZERO
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.TextBuilder
 import no.njoh.pulseengine.core.shared.utils.TextBuilderContext
@@ -53,18 +56,18 @@ abstract class Surface
     /**
      * Draws a textured quad at a given position with a given size, angle, origin, corner radius and texture coordinates.
      */
-    abstract fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
+    abstract fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: CornerRadius = ZERO,  border: Border = Border.ZERO, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
 
     /**
      * Draws a textured quad at a given position with a given size, angle, origin and corner radius.
      */
-    abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f)
+    abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: CornerRadius = ZERO, border: Border = Border.ZERO)
 
     /**
      * Draws a textured quad at a given position with a given size, angle, origin, corner radius and
      * texture coordinates. The texture will be tiled according to the given tiling values.
      */
-    abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: Float = 0f, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, xTiling: Float = 1f, yTiling: Float = 1f)
+    abstract fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Degrees = 0f, xOrigin: Float = 0f, yOrigin: Float = 0f, cornerRadius: CornerRadius = ZERO, border: Border = Border.ZERO, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f, xTiling: Float = 1f, yTiling: Float = 1f)
 
     /**
      * Draws text at a given position with a given font, size, angle and origin.

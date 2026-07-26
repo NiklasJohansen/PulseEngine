@@ -10,6 +10,7 @@ import no.njoh.pulseengine.modules.ui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.modules.ui.*
 import no.njoh.pulseengine.modules.ui.UiParams.UI_SCALE
 import java.util.*
@@ -42,7 +43,12 @@ class InputField (
     var numberMaxVal = Float.POSITIVE_INFINITY
     var contentType = TEXT
     var leftTextPadding = ScaledValue.of(10f)
-    var cornerRadius = ScaledValue.of(0f)
+
+    var cornerRadiusTopLeft     = ScaledValue.of(0f)
+    var cornerRadiusTopRight    = ScaledValue.of(0f)
+    var cornerRadiusBottomRight = ScaledValue.of(0f)
+    var cornerRadiusBottomLeft  = ScaledValue.of(0f)
+
     var numberStepperWidth = ScaledValue.of(30f)
 
     var placeHolderText = ""
@@ -488,8 +494,9 @@ class InputField (
         text = text.substring(max(inputTextOffset, 0), min(inputTextOffset + charsPerLine, text.length))
 
         // Draw input box rectangle
+        val cornerRadius = CornerRadius(cornerRadiusTopLeft.value, cornerRadiusTopRight.value, cornerRadiusBottomRight.value, cornerRadiusBottomLeft.value)
         surface.setDrawColor(if (isMouseOver && !hasFocus) bgColorHover else bgColor)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
 
         if (hasFocus && strokeColor.alpha > 0f)
         {
@@ -503,7 +510,7 @@ class InputField (
         if (!isValid)
         {
             surface.setDrawColor(invalidTextColor)
-            surface.drawTexture(Texture.BLANK, x.value + cornerRadius.value, y.value + height.value - 2, width.value - cornerRadius.value * 2, 2f)
+            surface.drawTexture(Texture.BLANK, x.value + cornerRadius.bottomLeft, y.value + height.value - 2, width.value - cornerRadius.bottomRight * 2, 2f)
         }
 
         // Draw selection rectangle
@@ -633,6 +640,14 @@ class InputField (
     fun setGetSuggestion(callback: (String) -> List<String>)
     {
         onGetSuggestion = callback
+    }
+
+    fun setCornerRadius(v: ScaledValue)
+    {
+        cornerRadiusTopLeft = v
+        cornerRadiusTopRight = v
+        cornerRadiusBottomRight = v
+        cornerRadiusBottomLeft = v
     }
 
     private fun getTextWidth(text: String): Float

@@ -2,6 +2,7 @@ package no.njoh.pulseengine.modules.ui.elements
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
@@ -79,9 +80,9 @@ class DropdownMenu <T> (
         searchInput = InputField("").apply()
         {
             placeHolderText = "Search ..."
-            cornerRadius = ScaledValue.of(4f)
             fontSize = ScaledValue.of(17f)
             padding.setAll(5f)
+            setCornerRadius(ScaledValue.of(4f))
             setOnTextChanged { input ->
                 for ((item, row) in itemRows)
                     row.hidden = input.text.isNotBlank() && !onItemToString(item).contains(input.text, ignoreCase = true)
@@ -95,6 +96,8 @@ class DropdownMenu <T> (
             strokeTop = false
             strokeLeft = false
             strokeRight = false
+            cornerRadiusTopRight = ScaledValue.of(4f)
+            cornerRadiusTopLeft = ScaledValue.of(4f)
             addChildren(searchInput)
         }
 
@@ -209,8 +212,9 @@ class DropdownMenu <T> (
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
         val bgColor = if (isMouseOver) bgHoverColor else bgColor
+        val cornerRadius = CornerRadius(cornerRadiusTopLeft.value, cornerRadiusTopRight.value, cornerRadiusBottomRight.value, cornerRadiusBottomLeft.value)
         surface.setDrawColor(bgColor)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
 
         if (showArrow && width.value - menuLabel.textWidth > 35f)
         {

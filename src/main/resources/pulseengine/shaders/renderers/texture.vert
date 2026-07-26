@@ -8,7 +8,8 @@ in vec3 worldPos;
 in vec2 size;
 in vec2 origin;
 in float angle;
-in float cornerRadius;
+in vec2 cornerRadiusPacked;
+in vec2 borderPacked;
 in vec2 uvMin;
 in vec2 uvMax;
 in vec2 tiling;
@@ -21,7 +22,8 @@ out vec2 texSize;
 out vec2 texCoord;
 out vec2 texTiling;
 out vec2 quadSize;
-out float quadCornerRadius;
+flat out uvec2 quadCornerRadiusPacked;
+flat out uvec2 quadBorderPacked;
 flat out uint samplerIndex;
 flat out uint texIndex;
 
@@ -33,7 +35,7 @@ vec4 unpackAndConvert(uint rgba)
     vec4 sRgba = vec4((rgba >> 24u) & 255u, (rgba >> 16u) & 255u, (rgba >> 8u) & 255u, rgba & 255u) / 255.0;
     vec3 lowRange = sRgba.rgb / 12.92;
     vec3 highRange = pow((sRgba.rgb + 0.055) / 1.055, vec3(2.4));
-    vec3 linearRgb = mix(highRange, lowRange, lessThanEqual(sRgba.rgb, vec3(0.0031308)));
+    vec3 linearRgb = mix(highRange, lowRange, lessThanEqual(sRgba.rgb, vec3(0.04045)));
     return vec4(linearRgb, sRgba.a);
 }
 
@@ -62,7 +64,8 @@ void main()
     texCoord = vec2(vertexPos.x, 1.0 - vertexPos.y); 
     texTiling = tiling;
     quadSize = size;
-    quadCornerRadius = cornerRadius;
+    quadCornerRadiusPacked = floatBitsToUint(cornerRadiusPacked);
+    quadBorderPacked = floatBitsToUint(borderPacked);
 
     samplerIndex = getSamplerIndex(texHandle);
     texIndex = getTexIndex(texHandle);

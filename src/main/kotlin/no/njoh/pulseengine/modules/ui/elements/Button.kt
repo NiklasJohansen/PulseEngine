@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.ui.elements
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
@@ -29,7 +30,12 @@ open class Button(
 
     var textureAssetName: String? = null
     var textureScale = 1f
-    var cornerRadius = ScaledValue.of(0f)
+
+    var cornerRadiusTopLeft     = ScaledValue.of(0f)
+    var cornerRadiusTopRight    = ScaledValue.of(0f)
+    var cornerRadiusBottomRight = ScaledValue.of(0f)
+    var cornerRadiusBottomLeft  = ScaledValue.of(0f)
+
     var xOrigin = 0.5f
     var yOrigin = 0.5f
 
@@ -43,6 +49,14 @@ open class Button(
     private var onMouseLeaveCallback: (Button) -> Unit = { }
     private var isMouseOver = false
 
+    fun setCornerRadius(v: ScaledValue) 
+    { 
+        cornerRadiusTopLeft = v
+        cornerRadiusTopRight = v
+        cornerRadiusBottomRight = v
+        cornerRadiusBottomLeft = v 
+    }
+    
     override fun onMouseEnter(engine: PulseEngine)
     {
         onMouseEnterCallback(this)
@@ -80,6 +94,7 @@ open class Button(
 
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
+        val cornerRadius = CornerRadius(cornerRadiusTopLeft.value, cornerRadiusTopRight.value, cornerRadiusBottomRight.value, cornerRadiusBottomLeft.value)
         val bgColor = if (!disabled && isMouseOver) bgHoverColor else bgColor
         val color = when {
             disabled -> disabledColor
@@ -91,8 +106,9 @@ open class Button(
 
         if (bgColor.alpha != 0f)
         {
+
             surface.setDrawColor(bgColor)
-            surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
+            surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
         }
 
         val character = if (isPressed) pressedIconCharacter ?: iconCharacter else iconCharacter
@@ -129,12 +145,12 @@ open class Button(
             texHeight *= textureScale
 
             surface.setDrawColor(color)
-            surface.drawTexture(texture, xCenter, yCenter, texWidth, texHeight, 0f, 0.5f, 0.5f, cornerRadius.value)
+            surface.drawTexture(texture, xCenter, yCenter, texWidth, texHeight, 0f, 0.5f, 0.5f, cornerRadius)
             return
         }
 
         // Draw filled shape as fallback
         surface.setDrawColor(color)
-        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius.value)
+        surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = cornerRadius)
     }
 }

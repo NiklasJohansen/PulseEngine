@@ -12,6 +12,8 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
+import no.njoh.pulseengine.core.shared.primitives.Border
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import org.lwjgl.opengl.GL20.*
 
 class TextureRenderer(
@@ -33,16 +35,17 @@ class TextureRenderer(
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             instanceBuffer = DoubleBufferedFloatObject.createArrayBuffer()
             instanceLayout = VertexAttributeLayout()
-                .withAttribute("worldPos",     3, GL_FLOAT, 1)
-                .withAttribute("size",         2, GL_FLOAT, 1)
-                .withAttribute("origin",       2, GL_FLOAT, 1)
-                .withAttribute("angle",        1, GL_FLOAT, 1)
-                .withAttribute("cornerRadius", 1, GL_FLOAT, 1)
-                .withAttribute("uvMin",        2, GL_FLOAT, 1)
-                .withAttribute("uvMax",        2, GL_FLOAT, 1)
-                .withAttribute("tiling",       2, GL_FLOAT, 1)
-                .withAttribute("color",        1, GL_UNSIGNED_INT, 1)
-                .withAttribute("texHandle",    1, GL_UNSIGNED_INT, 1)
+                .withAttribute("worldPos",           3, GL_FLOAT, 1)
+                .withAttribute("size",               2, GL_FLOAT, 1)
+                .withAttribute("origin",             2, GL_FLOAT, 1)
+                .withAttribute("angle",              1, GL_FLOAT, 1)
+                .withAttribute("cornerRadiusPacked", 2, GL_FLOAT, 1)
+                .withAttribute("borderPacked",       2, GL_FLOAT, 1)
+                .withAttribute("uvMin",              2, GL_FLOAT, 1)
+                .withAttribute("uvMax",              2, GL_FLOAT, 1)
+                .withAttribute("tiling",             2, GL_FLOAT, 1)
+                .withAttribute("color",              1, GL_UNSIGNED_INT, 1)
+                .withAttribute("texHandle",          1, GL_UNSIGNED_INT, 1)
 
             program = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/texture.vert")),
@@ -88,15 +91,16 @@ class TextureRenderer(
         vao.destroy()
     }
 
-    fun draw(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
+    fun draw(texture: Texture, x: Float, y: Float, w: Float, h: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: CornerRadius, border: Border)
     {
-        instanceBuffer.fill(17)
+        instanceBuffer.fill(20)
         {
             put(x, config.height - y, config.currentDepth)
             put(w, h)
             put(xOrigin, 1f - yOrigin)
             put(-angle)
-            put(cornerRadius)
+            put(cornerRadius.packedFloat0, cornerRadius.packedFloat1)
+            put(border.packedFloat0, border.packedFloat1)
             put(texture.uMin, texture.vMin)
             put(texture.uMax, texture.vMax)
             put(1f, 1f) // U/V Tiling
@@ -116,21 +120,23 @@ class TextureRenderer(
         angle: Float,
         xOrigin: Float,
         yOrigin: Float,
-        cornerRadius: Float,
+        cornerRadius: CornerRadius,
         uMin: Float,
         vMin: Float,
         uMax: Float,
         vMax: Float,
         xTiling: Float,
-        yTiling: Float
+        yTiling: Float,
+        border: Border
     ) {
-        instanceBuffer.fill(17)
+        instanceBuffer.fill(20)
         {
             put(x, config.height - y, config.currentDepth)
             put(w, h)
             put(xOrigin, 1f - yOrigin)
             put(-angle)
-            put(cornerRadius)
+            put(cornerRadius.packedFloat0, cornerRadius.packedFloat1)
+            put(border.packedFloat0, border.packedFloat1)
             put(texture.uMax * uMin, texture.vMax * vMin)
             put(texture.uMax * uMax, texture.vMax * vMax)
             put(xTiling, yTiling)

@@ -26,6 +26,8 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 import no.njoh.pulseengine.core.graphics.util.AsyncPixelReader
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.Border
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
@@ -123,6 +125,7 @@ class SurfaceImpl(
         }
 
         renderTarget.end()
+        renderTarget.setColorAlphaMode(config.blendFunction.outputAlphaMode)
         renderTarget.generateMips(engine)
 
         if (batchNum > 0) shouldRerender = false // Something was rendered, clear flag
@@ -197,19 +200,19 @@ class SurfaceImpl(
         quadRenderer?.vertex(x, y)
     }
 
-    override fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
+    override fun drawTexture(texture: RenderTexture, x: Float, y: Float, width: Float, height: Float, angle: Degrees, xOrigin: Float, yOrigin: Float, cornerRadius: CornerRadius, border: Border, uMin: Float, vMin: Float, uMax: Float, vMax: Float)
     {
-        renderTextureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax)
+        renderTextureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, border)
     }
 
-    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: CornerRadius, border: Border)
     {
-        textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius)
+        textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, border)
     }
 
-    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: Float, uMin: Float, vMin: Float, uMax: Float, vMax: Float, xTiling: Float, yTiling: Float)
+    override fun drawTexture(texture: Texture, x: Float, y: Float, width: Float, height: Float, angle: Float, xOrigin: Float, yOrigin: Float, cornerRadius: CornerRadius, border: Border, uMin: Float, vMin: Float, uMax: Float, vMax: Float, xTiling: Float, yTiling: Float)
     {
-        textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, xTiling, yTiling)
+        textureRenderer?.draw(texture, x, y, width, height, angle, xOrigin, yOrigin, cornerRadius, uMin, vMin, uMax, vMax, xTiling, yTiling, border)
     }
 
     override fun drawText(text: CharSequence, x: Float, y: Float, font: Font?, fontSize: Float, angle: Float, xOrigin: Float, yOrigin: Float, wrapNewLines: Boolean, newLineSpacing: Float)

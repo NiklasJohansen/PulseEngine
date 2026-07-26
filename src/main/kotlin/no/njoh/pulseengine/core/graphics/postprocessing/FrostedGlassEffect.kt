@@ -11,7 +11,10 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode.PREMULTIPL
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.shared.primitives.Border
 import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius.Companion.ZERO
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import org.lwjgl.opengl.GL11.GL_BLEND
 import org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA
@@ -26,8 +29,8 @@ import kotlin.math.max
 class FrostedGlassEffect(
     override val name: String = "frosted_glass",
     override val order: Int = 0,
-    var intensity: Float = 0.6f,
-    var brightness: Float = 0.5f,
+    var intensity: Float = 0.5f,
+    var brightness: Float = 0.6f,
     var radius: Float = 2f,
     var zThreshold: Int = -50,
     var disableAfterNumInactiveFrames: Int = 10
@@ -96,7 +99,7 @@ class FrostedGlassEffect(
 
     companion object
     {
-        fun drawToTargetSurface(engine: PulseEngine, target: Surface, x: Float, y: Float, width: Float, height: Float, cornerRadius: Float = 0f)
+        fun drawToTargetSurface(engine: PulseEngine, target: Surface, x: Float, y: Float, width: Float, height: Float, cornerRadius: CornerRadius = ZERO)
         {
             val effectSurface = engine.gfx.getSurface("frosted_glass")
             if (effectSurface == null)
@@ -112,7 +115,7 @@ class FrostedGlassEffect(
             val vMax = (y + height) / effectSurface.config.height
             val tex = effectSurface.getTexture()
             target.setDrawColor(WHITE)
-            target.drawTexture(tex, x, y, width, height, angle = 0f, xOrigin = 0f, yOrigin = 0f, cornerRadius, uMin, vMin, uMax, vMax)
+            target.drawTexture(tex, x, y, width, height, angle = 0f, xOrigin = 0f, yOrigin = 0f, cornerRadius = cornerRadius, border = Border.ZERO, uMin, vMin, uMax, vMax)
 
             effectSurface.getPostProcessingEffect<FrostedGlassEffect>()?.inactiveFrames = 0
         }
