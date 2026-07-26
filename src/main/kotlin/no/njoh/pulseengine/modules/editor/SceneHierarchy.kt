@@ -28,7 +28,7 @@ import no.njoh.pulseengine.modules.ui.ScrollbarVisibility.ALWAYS_VISIBLE
 import no.njoh.pulseengine.modules.editor.EditorUtil.getName
 import kotlin.reflect.KClass
 
-data class Outliner(
+data class SceneHierarchy(
     val ui: Panel,
     private val onEntitiesSelected: (entities: List<SceneEntity>) -> Unit,
     private val onEntitiesRemoved: (entities: List<SceneEntity>) -> Unit,
@@ -57,7 +57,7 @@ data class Outliner(
             onEntitiesSelected: () -> Unit,
             onEntityCreated: (KClass<out SceneEntity>) -> Unit,
             onEntityDeleted: () -> Unit
-        ): Outliner {
+        ): SceneHierarchy {
 
             // ---------------------------------- Entity rows ----------------------------------
 
@@ -125,7 +125,7 @@ data class Outliner(
                     Label(text = "Entity").apply()
                     {
                         padding.left = ScaledValue.of(10f)
-                        fontSize = ScaledValue.of(18f)
+                        fontSize = ScaledValue.of(style.getSize("HEADER_FONT_SIZE"))
                         color = style.getColor("LABEL")
                     },
                     Panel(width = Size.absolute(120f + 14f)).apply()
@@ -137,7 +137,7 @@ data class Outliner(
                         addChildren(Label(text = "Type").apply()
                         {
                             padding.left = ScaledValue.of(10f)
-                            fontSize = ScaledValue.of(18f)
+                            fontSize = ScaledValue.of(style.getSize("HEADER_FONT_SIZE"))
                             color = style.getColor("LABEL")
                         })
                     }
@@ -149,14 +149,14 @@ data class Outliner(
             val searchInputField = InputField(defaultText = "").apply()
             {
                 placeHolderText = "Search ..."
-                cornerRadius = ScaledValue.of(4f)
                 font = style.getFont()
-                fontSize = ScaledValue.of(17f)
+                fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
                 textColor = style.getColor("LABEL")
                 bgColor = style.getColor("BUTTON")
                 bgColorHover = style.getColor("BUTTON_HOVER")
                 strokeColor = Color.BLANK
                 padding.setAll(5f)
+                setCornerRadius(ScaledValue.of(4f))
                 setOnTextChanged { inputField ->
                     val text = inputField.text
                     if (text.isNotBlank())
@@ -175,20 +175,20 @@ data class Outliner(
 
             val button = MenuBarButton(labelText = "+", items = menuItems)
             val showScrollBar = menuItems.size > 8
-            val buttonUI = uiElementFactory.createMenuBarButtonUI(button, 18f, showScrollBar, searchable = true).apply()
+            val buttonUI = uiElementFactory.createMenuBarButtonUI(button, showScrollbar = showScrollBar, searchable = true).apply()
             {
                 width.setQuiet(Size.absolute(20f))
                 dropdown.height.setQuiet(Size.absolute(400f))
                 dropdown.resizable = true
-                dropdown.color = style.getColor("BUTTON")
-                menuLabel.fontSize = ScaledValue.of(32f)
+                dropdown.color = style.getColor("DROPDOWN_BG")
+                menuLabel.fontSize = ScaledValue.of(style.getSize("BUTTON_FONT_SIZE"))
                 menuLabel.padding.top = ScaledValue.of(4f)
                 padding.top = ScaledValue.of(5f)
                 padding.bottom = ScaledValue.of(5f)
                 padding.right = ScaledValue.of(5f)
                 bgColor = style.getColor("HEADER")
                 hoverColor = style.getColor("BUTTON_HOVER")
-                cornerRadius = ScaledValue.of(4f)
+                setCornerRadius(ScaledValue.of(4f))
             }
 
             val searchPanel = HorizontalPanel(height = Size.absolute(30f)).apply()
@@ -202,9 +202,9 @@ data class Outliner(
                 addChildren(searchInputField, buttonUI)
             }
 
-            // ---------------------------------- Outliner with event handlers ----------------------------------
+            // ---------------------------------- Scene hierarchy with event handlers ----------------------------------
 
-            return Outliner(
+            return SceneHierarchy(
                 ui = VerticalPanel().apply()
                 {
                     addChildren(searchPanel, headerPanel, uiElementFactory.createScrollableSectionUI(rowPanel))
@@ -346,7 +346,7 @@ data class Outliner(
             indent: Float,
             addedIds: MutableSet<Long>,
             searchText: String,
-            onEntitiesSelected: () -> Unit, // Called when entities are selected in the outliner
+            onEntitiesSelected: () -> Unit, // Called when entities are selected in the scene hierarchy
             index: Int
         ): Int {
             if (entity.isSet(DEAD) || addedIds.contains(entity.id))
@@ -374,7 +374,7 @@ data class Outliner(
             style: EditorStyle,
             indent: Float,
             rows: List<UiElement>,
-            onEntitiesSelected: () -> Unit // Called when entities are selected in the outliner
+            onEntitiesSelected: () -> Unit // Called when entities are selected in the scene hierarchy
         ): UiElement {
             val entityId = entity.id
             val editDisabledButton = Button(width = Size.absolute(25f)).apply()
@@ -421,7 +421,8 @@ data class Outliner(
                     iconFontName = style.iconFontName
                     iconSize = ScaledValue.of(15f)
                     iconCharacter = style.getIcon("ARROW_DOWN")
-                    xOrigin = 0.25f
+                    xOrigin = 0.6f
+                    yOrigin = 0.55f
                     pressedIconCharacter = style.getIcon("ARROW_RIGHT")
                     color = style.getColor("LABEL")
                     activeColor = style.getColor("LABEL")
@@ -474,14 +475,14 @@ data class Outliner(
             val nameLabel = Label(entity.createLabelText()).apply()
             {
                 padding.left = ScaledValue.of(4f)
-                fontSize = ScaledValue.of(18f)
+                fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
                 color = style.getColor("LABEL")
             }
 
             val typeLabel = Label("  " + entity::class.java.simpleName, width = Size.absolute(120f)).apply()
             {
                 padding.left = ScaledValue.of(0f)
-                fontSize = ScaledValue.of(18f)
+                fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
                 color = style.getColor("LABEL")
             }
 

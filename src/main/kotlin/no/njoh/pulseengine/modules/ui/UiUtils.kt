@@ -74,6 +74,23 @@ object UiUtils
     }
 
     /**
+     * Executes the given [action] on each [UiElement] of type [T] among its children or itself.
+     */
+    inline fun <reified T> UiElement.forEachElementOfType(noinline action: (T) -> Unit) =
+        forEachElementOfType(T::class.java, action)
+
+    /**
+     * Executes the given [action] on each [UiElement] of type [T] among its children or itself.
+     */
+    fun <T> UiElement.forEachElementOfType(type: Class<T>, action: (T) -> Unit)
+    {
+        if (type.isAssignableFrom(this::class.java)) action(this as T)
+
+        popup?.forEachElementOfType(type, action)
+        children.forEachFast { child -> child.forEachElementOfType(type, action) }
+    }
+
+    /**
      * Calculates the required vertical space of it children or it self.
      */
     fun UiElement.getRequiredVerticalSpace(): Float = when(this)

@@ -7,7 +7,6 @@ import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.modules.ui.*
-import testbed.rc.Tex
 
 open class Panel(
     x: Position = Position.auto(),

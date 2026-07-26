@@ -39,6 +39,14 @@ class ColorPicker(
     val hsbSection: HorizontalPanel
     val rgbaSection: VerticalPanel
 
+    var fontSize = ScaledValue.of(20f)
+        set(value)
+        {
+            field = value
+            this.forEachElementOfType<Label> { it.fontSize = value }
+            this.forEachElementOfType<InputField> { it.fontSize = value }
+        }
+
     init
     {
         val hueValue = outputColor.toHsb().hue
@@ -152,8 +160,9 @@ class ColorPicker(
             padding.left = ScaledValue.of(5f)
             padding.right = ScaledValue.of(5f)
             addChildren(
-                Label(labelText).apply {
-                    fontSize = ScaledValue.of(20f)
+                Label(labelText).apply()
+                {
+                    fontSize = this@ColorPicker.fontSize
                     padding.left = ScaledValue.of(5f)
                 },
                 inputField.apply() 

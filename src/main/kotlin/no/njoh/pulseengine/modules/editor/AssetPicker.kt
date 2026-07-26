@@ -60,8 +60,8 @@ class AssetPicker(
         searchInput = InputField("").apply()
         {
             placeHolderText = "Search ..."
-            cornerRadius = ScaledValue.of(4f)
-            fontSize = ScaledValue.of(17f)
+            fontSize = this@AssetPicker.fontSize
+            setCornerRadius(ScaledValue.of(4f))
             padding.setAll(5f)
         }
 
@@ -104,6 +104,7 @@ class AssetPicker(
         nameInput = InputField(initialAssetName).apply()
         {
             contentType = TEXT
+            fontSize = this@AssetPicker.fontSize
             bgColor = Color.BLANK
         }
 
@@ -195,7 +196,7 @@ class AssetPicker(
         val label = Label(asset.name).apply()
         {
             color = style.getColor("LABEL")
-            fontSize = ScaledValue.of(18f)
+            fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
             padding.left = ScaledValue.of(0f)
         }
 
@@ -228,7 +229,7 @@ class AssetPicker(
         {
             bgColor = if (rows.children.size % 2 == 0) style.getColor("ROW") else Color.BLANK
             hoverColor = style.getColor( "BUTTON_HOVER")
-            addChildren(HorizontalPanel().apply() { addChildren(icon, label, image) })
+            addChildren(HorizontalPanel().apply { addChildren(icon, label, image) })
         }
 
         addRow(row, asset.name)

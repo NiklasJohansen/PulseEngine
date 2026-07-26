@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.graphics.camera.Camera
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
 import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
@@ -80,7 +81,7 @@ class SceneEditor(
     private var collapsedPropertyHeaders = mutableListOf<String>()
     private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
     private var showGrid = true
-    private var outliner: Outliner? = null
+    private var sceneHierarchy: SceneHierarchy? = null
 
     // Camera
     private lateinit var activeCamera: Camera
@@ -123,9 +124,9 @@ class SceneEditor(
 
         // Create surfaces
         engine.gfx.createSurface("scene_editor_ui_base_bg",  zOrder = -90)
-        engine.gfx.createSurface("scene_editor_ui_base",     zOrder = -92, multisampling = MSAA16)
+        engine.gfx.createSurface("scene_editor_ui_base",     zOrder = -92, multisampling = MSAA4)
         engine.gfx.createSurface("scene_editor_ui_popup_bg", zOrder = -93)
-        engine.gfx.createSurface("scene_editor_ui_popup",    zOrder = -94, multisampling = MSAA16)
+        engine.gfx.createSurface("scene_editor_ui_popup",    zOrder = -94, multisampling = MSAA4)
 
         // Load editor icon font
         engine.asset.load(Font("/pulseengine/assets/editor_icons.ttf", uiFactory.style.iconFontName))
@@ -192,10 +193,10 @@ class SceneEditor(
             )),
             MenuBarButton("View", listOf(
                 MenuBarItem("Entity Inspector") { createInspectorWindow() },
-                MenuBarItem("Scene Hierarchy")  { createOutlinerWindow(engine) },
-                MenuBarItem("Scene systems") { createSceneSystemsPropertyWindow(engine) },
-                MenuBarItem("Viewport")      { createViewportWindow(engine) },
-                MenuBarItem("Grid")          { showGrid = !showGrid },
+                MenuBarItem("Scene Hierarchy")  { createSceneHierarchyWindow(engine) },
+                MenuBarItem("Scene systems")    { createSceneSystemsPropertyWindow(engine) },
+                MenuBarItem("Viewport")         { createViewportWindow(engine) },
+                MenuBarItem("Grid")             { showGrid = !showGrid },
                 MenuBarItem("Reset")
                 {
                     createSceneEditorUI(engine)
@@ -227,7 +228,7 @@ class SceneEditor(
 
         // Create default windows and insert into docking
         createSceneSystemsPropertyWindow(engine)
-        createOutlinerWindow(engine)
+        createSceneHierarchyWindow(engine)
         createInspectorWindow()
 
         // Load previous layout from file
@@ -251,12 +252,12 @@ class SceneEditor(
         dockingUI.insertRight(sceneSystemWindow)
     }
 
-    private fun createOutlinerWindow(engine: PulseEngine)
+    private fun createSceneHierarchyWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElement("Outliner") != null)
+        if (dockingUI.findElement("Scene Hierarchy") != null)
             return // Already exists
 
-        outliner = Outliner.build(
+        sceneHierarchy = SceneHierarchy.build(
             engine = engine,
             uiElementFactory = uiFactory,
             onEntitiesSelected = {
@@ -274,11 +275,11 @@ class SceneEditor(
             onEntityCreated = { type -> createNewEntity(engine, type) },
             onEntityDeleted = { deleteSelectedEntities(engine) }
         )
-        outliner!!.reloadEntitiesFromActiveScene()
+        sceneHierarchy!!.reloadEntitiesFromActiveScene()
 
-        val window = uiFactory.createWindowUI(title = "Scene Hierarchy", iconName = "LIST", onClosed = { outliner = null })
-        window.id = "Outliner" // Keep the stable ID used by saved editor layouts
-        window.body.addChildren(outliner!!.ui)
+        val window = uiFactory.createWindowUI(title = "Scene Hierarchy", iconName = "LIST", onClosed = { sceneHierarchy = null })
+        window.id = "Scene Hierarchy" // Keep the stable ID used by saved editor layouts
+        window.body.addChildren(sceneHierarchy!!.ui)
         dockingUI.insertLeft(window)
     }
 
@@ -292,7 +293,7 @@ class SceneEditor(
         val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
         inspectorWindow.body.addChildren(propertyPanel)
 
-        val propWindow = dockingUI.findElement("Outliner")
+        val propWindow = dockingUI.findElement("Scene Hierarchy")
         if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
             dockingUI.insertInsideBottom(target = propWindow as WindowPanel, inspectorWindow)
         else
@@ -348,7 +349,7 @@ class SceneEditor(
             resetUI(engine)
             updateSceneSystemProperties(engine)
             initializeEntities(engine)
-            outliner?.reloadEntitiesFromActiveScene()
+            sceneHierarchy?.reloadEntitiesFromActiveScene()
             lastSceneHashCode = engine.scene.activeScene.hashCode()
         }
 
@@ -518,7 +519,7 @@ class SceneEditor(
 
         val newEntities = engine.scene.addEntitiesFrom(engine.scene.activeScene, filter = Entities(entitySelection)) ?: emptyList()
         
-        outliner?.addEntities(newEntities)
+        sceneHierarchy?.addEntities(newEntities)
 
         if (newEntities.isNotEmpty())
             markActiveEditorSceneDirty(engine)
@@ -543,7 +544,7 @@ class SceneEditor(
                 return@getClipboard
 
             engine.scene.addEntitiesFrom(json)?.let { entities ->
-                outliner?.addEntities(entities)
+                sceneHierarchy?.addEntities(entities)
                 selectEntities(engine, entities)
                 if (entities.isNotEmpty())
                     markActiveEditorSceneDirty(engine)
@@ -571,7 +572,7 @@ class SceneEditor(
         }
         entity.setPrimitiveProperty("textureName", "crate")
         engine.scene.addEntity(entity)
-        outliner?.addEntities(listOf(entity))
+        sceneHierarchy?.addEntities(listOf(entity))
         selectSingleEntity(engine, entity)
         markActiveEditorSceneDirty(engine)
     }
@@ -581,7 +582,7 @@ class SceneEditor(
         if (entities.isEmpty())
         {
             clearEntitySelection()
-            outliner?.selectEntities(emptyList())
+            sceneHierarchy?.selectEntities(emptyList())
         }
         else if (entities.size == 1)
         {
@@ -591,7 +592,7 @@ class SceneEditor(
         {
             clearEntitySelection()
             entities.forEachFast { addEntityToSelection(it) }
-            outliner?.selectEntities(entities)
+            sceneHierarchy?.selectEntities(entities)
         }
     }
 
@@ -599,7 +600,7 @@ class SceneEditor(
     {
         clearEntitySelection()
         addEntityToSelection(entity)
-        outliner?.selectEntities(entitySelection)
+        sceneHierarchy?.selectEntities(entitySelection)
 
         val entityName = entity::class.getName()
         val propertyGroups = entity::class.memberProperties
@@ -624,10 +625,10 @@ class SceneEditor(
 
                     engine.scene.getEntity(lastParentId)?.removeChild(entity)
                     engine.scene.getEntity(newParentId)?.addChild(entity)
-                    outliner?.removeEntities(listOf(entity))
-                    outliner?.addEntities(listOf(entity))
+                    sceneHierarchy?.removeEntities(listOf(entity))
+                    sceneHierarchy?.addEntities(listOf(entity))
                 }
-                outliner?.updateEntityProperty(entity, propName)
+                sceneHierarchy?.updateEntityProperty(entity, propName)
                 markActiveEditorSceneDirty(engine)
                 Unit
             }
@@ -672,7 +673,7 @@ class SceneEditor(
             return
 
         entitySelection.forEachFast { it.setDead(engine) }
-        outliner?.removeEntities(entitySelection)
+        sceneHierarchy?.removeEntities(entitySelection)
         viewportInteraction?.reset(engine, viewportContext)
         clearEntitySelection()
         markActiveEditorSceneDirty(engine)
@@ -770,7 +771,7 @@ class SceneEditor(
     internal fun clearViewportSelection()
     {
         clearEntitySelection()
-        outliner?.selectEntities(emptyList())
+        sceneHierarchy?.selectEntities(emptyList())
     }
 
     internal fun notifyTransformChanged(engine: PulseEngine, entity: SceneEntity, propertyNames: Array<out String>)
@@ -831,7 +832,7 @@ class SceneEditor(
 
         clearEntitySelection()
         engine.scene.setActive(editorScene.scene, disposePrevious = false)
-        outliner?.activeSceneChanged()
+        sceneHierarchy?.activeSceneChanged()
         lastSceneHashCode = -1
         rebuildSceneTabs(engine)
     }
@@ -870,7 +871,7 @@ class SceneEditor(
         {
             val next = editorScenes[index.coerceAtMost(editorScenes.lastIndex)]
             engine.scene.setActive(next.scene, disposePrevious = true)
-            outliner?.activeSceneChanged()
+            sceneHierarchy?.activeSceneChanged()
             lastSceneHashCode = -1
         }
         else editorScene.scene.clearAll()
