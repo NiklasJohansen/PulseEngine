@@ -9,6 +9,9 @@ out vec4 fragColor;
 
 uniform sampler2DArray textureArrays[16];
 
+const float SDF_EDGE_VALUE = 128.0 / 255.0;
+const float SDF_SMOOTHING = 0.85;
+
 // Dynamic indexing of sampler arrays are not supported in GLSL bellow version 4.0, thus this atrocity
 vec4 sampleTextureArray(int index, vec3 texCoords)
 {
@@ -36,11 +39,14 @@ vec4 sampleTextureArray(int index, vec3 texCoords)
 
 void main()
 {
-    vec4 textureColor = sampleTextureArray(int(samplerIndex), vec3(texCoord, floor(texIndex)));
-    float d = textureColor.a - 0.4;
-    float w = clamp(d / fwidth(d) + 0.7, 0.0, 1.0);
+    float signedDistance = sampleTextureArray(int(samplerIndex), vec3(texCoord, floor(texIndex))).a;
+    vec2 distanceGradient = vec2(dFdx(signedDistance), dFdy(signedDistance));
+    float screenSpaceWidth = max(length(distanceGradient) * SDF_SMOOTHING, 0.0001);
+    float coverage = clamp((signedDistance - SDF_EDGE_VALUE) / screenSpaceWidth + 0.5, 0.0, 1.0);
 
-    if (w < 0.5) discard;
+    // Avoid writing depth for the transparent SDF padding while preserving the antialiased edge.
+    if (coverage <= 0.0) discard;
 
-    fragColor = mix(vec4(0.0), vertexColor, w);
+    // Surface rendering uses straight-alpha blending.
+    fragColor = vec4(vertexColor.rgb, vertexColor.a * coverage);
 }

@@ -24,6 +24,7 @@ import org.lwjgl.opengl.GL20.GL_FLOAT
 import org.lwjgl.stb.STBTruetype.*
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.round
 import kotlin.math.sin
 
 class TextRenderer(
@@ -102,6 +103,8 @@ class TextRenderer(
         if (text.isEmpty()) return
 
         val scale = fontSize / font.fontSize
+        val atlasUScale = font.charTexture.uMax
+        val atlasVScale = font.charTexture.vMax
         var xAdvance = -getLeftSideBearing(text[0], font, fontSize)
         val glyphs = glyphBuffer.clear()
         var charIndex = 0
@@ -127,14 +130,18 @@ class TextRenderer(
                 }
 
                 val quad = font.getQuad(charCode)
-                glyphs.x    = quad.x * scale + xAdvance
-                glyphs.y    = quad.y * scale
-                glyphs.w    = quad.w * scale
-                glyphs.h    = quad.h * scale
-                glyphs.uMin = quad.u0
-                glyphs.vMin = quad.v0
-                glyphs.uMax = quad.u1
-                glyphs.vMax = quad.v1
+                glyphs.x        = quad.x * scale + xAdvance
+                glyphs.y        = quad.y * scale
+                glyphs.w        = quad.w * scale
+                glyphs.h        = quad.h * scale
+                glyphs.uMin     = quad.u0 * atlasUScale
+                glyphs.vMin     = quad.v0 * atlasVScale
+                glyphs.uMax     = quad.u1 * atlasUScale
+                glyphs.vMax     = quad.v1 * atlasVScale
+                glyphs.xContent = quad.xContent * scale + xAdvance
+                glyphs.yContent = quad.yContent * scale
+                glyphs.wContent = quad.wContent * scale
+                glyphs.hContent = quad.hContent * scale
                 glyphs.next()
                 glyphCount++
                 xAdvance += quad.advance * scale
@@ -157,9 +164,9 @@ class TextRenderer(
                 newLineOffset += textHeight * (1f + newLineSpacing)
                 newLineIndex++
             }
-            textHeight = max(textHeight, -glyph.y)
-            textMinWidth = min(textMinWidth, glyph.x)
-            textMaxWidth = max(textMaxWidth, glyph.x + glyph.w)
+            textHeight = max(textHeight, -glyph.yContent)
+            textMinWidth = min(textMinWidth, glyph.xContent)
+            textMaxWidth = max(textMaxWidth, glyph.xContent + glyph.wContent)
             glyph.y += newLineOffset
         }
 
@@ -183,8 +190,8 @@ class TextRenderer(
         val color = config.currentDrawColor
         val depth = config.currentDepth
         val height = config.height
-        val xPos = x - xOffset
-        val yPos = y + yOffset
+        val xPos = snapToPixelGrid(x - xOffset)
+        val yPos = snapToPixelGrid(y + yOffset)
         val count = glyphBuffer.size()
 
         instanceBuffer.fill(count * 12)
@@ -204,6 +211,12 @@ class TextRenderer(
         }
         increaseBatchSize(count)
         config.increaseDepth()
+    }
+
+    private fun snapToPixelGrid(value: Float): Float
+    {
+        val scale = config.textureScale
+        return if (scale > 0f) round(value * scale) / scale else value
     }
 
     private fun drawRotatedGlyphs(texHandle: Float, x: Float, y: Float, xOffset: Float, yOffset: Float, angle: Float)
@@ -244,21 +257,24 @@ class TextRenderer(
 
     private fun getLeftSideBearing(char: Char, font: Font, fontSize: Float): Float
     {
-        val scale = fontSize / font.fontSize
-        return font.getLeftSideBearing(char) * stbtt_ScaleForPixelHeight(font.info, fontSize) * scale
+        return font.getLeftSideBearing(char) * stbtt_ScaleForPixelHeight(font.info, fontSize)
     }
 
-    private class GlyphBuffer(capacity: Int = 1024) : FlatObjectBuffer<GlyphBuffer>(stride = 8)
+    private class GlyphBuffer(capacity: Int = 1024) : FlatObjectBuffer<GlyphBuffer>(stride = 12)
     {
         @JvmField val data = FloatArray(capacity * stride)
 
-        var x    by FloatRef(data, 0)
-        var y    by FloatRef(data, 1)
-        var w    by FloatRef(data, 2)
-        var h    by FloatRef(data, 3)
-        var uMin by FloatRef(data, 4)
-        var vMin by FloatRef(data, 5)
-        var uMax by FloatRef(data, 6)
-        var vMax by FloatRef(data, 7)
+        var x        by FloatRef(data, 0)
+        var y        by FloatRef(data, 1)
+        var w        by FloatRef(data, 2)
+        var h        by FloatRef(data, 3)
+        var uMin     by FloatRef(data, 4)
+        var vMin     by FloatRef(data, 5)
+        var uMax     by FloatRef(data, 6)
+        var vMax     by FloatRef(data, 7)
+        var xContent by FloatRef(data, 8)
+        var yContent by FloatRef(data, 9)
+        var wContent by FloatRef(data, 10)
+        var hContent by FloatRef(data, 11)
     }
 }
