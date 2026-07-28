@@ -9,7 +9,6 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.graphics.camera.Camera
-import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
 import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
@@ -170,7 +169,10 @@ class SceneEditor(
         viewportContext = ViewportContext(this, activeCamera, viewportArea)
         viewportInteraction?.onCreate(engine, viewportContext)
         if (isRunning)
+        {
             viewportInteraction?.onEditorActivated(engine, viewportContext)
+            restoreActiveEditorCamera(engine)
+        }
     }
 
     private fun createSceneEditorUI(engine: PulseEngine)
@@ -202,6 +204,7 @@ class SceneEditor(
                     createSceneEditorUI(engine)
                     showGrid = true
                     viewportInteraction?.resetCamera(engine, viewportContext)
+                    captureActiveEditorCamera(engine)
                 }
             )),
             MenuBarButton("Run", listOf(
@@ -363,6 +366,7 @@ class SceneEditor(
         {
             if (engine.scene.state == SceneState.STOPPED)
             {
+                captureActiveEditorCamera(engine)
                 rememberEntitySelection()
                 engine.scene.save()
                 engine.scene.start()
@@ -372,6 +376,7 @@ class SceneEditor(
                 engine.scene.stop()
                 engine.scene.reload()
                 ensureActiveEditorScene(engine, replaceSceneWithSameFile = true)
+                restoreActiveEditorCamera(engine)
             }
         }
 
@@ -456,6 +461,7 @@ class SceneEditor(
         if (engine.scene.state == SceneState.RUNNING)
         {
             engine.scene.stop()
+            restoreActiveEditorCamera(engine)
             saveActiveEditorScene(engine)
         }
 
@@ -470,6 +476,7 @@ class SceneEditor(
 
     private fun stopEditorAndStartGame(engine: PulseEngine)
     {
+        captureActiveEditorCamera(engine)
         viewportInteraction?.onEditorDeactivated(engine, viewportContext)
         stop() // Stop editor service
         rememberEntitySelection()
@@ -494,6 +501,7 @@ class SceneEditor(
         }
 
         viewportInteraction?.onEditorActivated(engine, viewportContext)
+        restoreActiveEditorCamera(engine)
         engine.input.setCursorMode(CursorMode.NORMAL)
         start() // Start editor service
     }
@@ -830,8 +838,10 @@ class SceneEditor(
         if (engine.scene.state != SceneState.STOPPED || editorScene.scene === engine.scene.activeScene)
             return
 
+        captureActiveEditorCamera(engine)
         clearEntitySelection()
         engine.scene.setActive(editorScene.scene, disposePrevious = false)
+        restoreEditorCamera(engine, editorScene)
         sceneHierarchy?.activeSceneChanged()
         lastSceneHashCode = -1
         rebuildSceneTabs(engine)
@@ -870,7 +880,9 @@ class SceneEditor(
         if (wasActive)
         {
             val next = editorScenes[index.coerceAtMost(editorScenes.lastIndex)]
+            clearEntitySelection()
             engine.scene.setActive(next.scene, disposePrevious = true)
+            restoreEditorCamera(engine, next)
             sceneHierarchy?.activeSceneChanged()
             lastSceneHashCode = -1
         }
@@ -898,6 +910,24 @@ class SceneEditor(
 
     private fun activeEditorScene(engine: PulseEngine) =
         editorScenes.firstOrNull { it.scene === engine.scene.activeScene }
+
+    private fun captureActiveEditorCamera(engine: PulseEngine)
+    {
+        val activeScene = activeEditorScene(engine) ?: return
+        activeScene.cameraState = viewportInteraction?.captureCameraState(viewportContext)?.duplicate()
+    }
+
+    private fun restoreActiveEditorCamera(engine: PulseEngine)
+    {
+        val activeScene = activeEditorScene(engine) ?: return
+        restoreEditorCamera(engine, activeScene)
+    }
+
+    private fun restoreEditorCamera(engine: PulseEngine, editorScene: EditorScene)
+    {
+        val cameraState = editorScene.cameraState?.duplicate()
+        viewportInteraction?.restoreCameraState(engine, viewportContext, cameraState)
+    }
 
     private fun loadInitialEditorScenes(engine: PulseEngine)
     {
@@ -933,6 +963,7 @@ class SceneEditor(
 
     private data class EditorScene(
         var scene: Scene,
-        var dirty: Boolean = false
+        var dirty: Boolean = false,
+        var cameraState: CameraState? = null
     )
 }

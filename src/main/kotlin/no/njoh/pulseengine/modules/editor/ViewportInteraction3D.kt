@@ -72,7 +72,6 @@ class ViewportInteraction3D(
     var gizmoMode = GizmoMode.MOVE
 
     private val defaultCameraState = initialCameraState.duplicate().also { it.sanitizePerspective3D() }
-    private var cameraState = defaultCameraState.duplicate()
 
     private var hoveredHandle = Handle.NONE
     private var transformDrag: TransformDrag? = null
@@ -498,25 +497,31 @@ class ViewportInteraction3D(
 
     override fun onEditorActivated(engine: PulseEngine, context: ViewportContext)
     {
-        cameraState.sanitizePerspective3D()
-        cameraState.loadInto(context.camera, engine.window.width, engine.window.height)
         reset(engine, context)
         updateOrbitPivotFromSelection(context)
     }
 
     override fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext)
     {
-        cameraState.saveFrom(context.camera)
-        cameraState.sanitizePerspective3D()
         reset(engine, context)
+    }
+
+    override fun captureCameraState(context: ViewportContext) =
+        CameraState.from(context.camera).also { it.sanitizePerspective3D() }
+
+    override fun restoreCameraState(engine: PulseEngine, context: ViewportContext, state: CameraState?)
+    {
+        (state ?: defaultCameraState)
+            .duplicate()
+            .also { it.sanitizePerspective3D() }
+            .loadInto(context.camera, engine.window.width, engine.window.height)
+        reset(engine, context)
+        updateOrbitPivotFromSelection(context)
     }
 
     override fun resetCamera(engine: PulseEngine, context: ViewportContext)
     {
-        cameraState = defaultCameraState.duplicate()
-        cameraState.loadInto(context.camera, engine.window.width, engine.window.height)
-        reset(engine, context)
-        updateOrbitPivotFromSelection(context)
+        restoreCameraState(engine, context, defaultCameraState)
     }
 
     private fun findCameraMarkerAtMouse(engine: PulseEngine, context: ViewportContext): Camera3D?

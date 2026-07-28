@@ -9,7 +9,10 @@ interface ViewportInteraction
     fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext) {}
     fun onUpdate(engine: PulseEngine, context: ViewportContext)
     fun onRender(engine: PulseEngine, context: ViewportContext)
+    fun onDestroy(engine: PulseEngine, context: ViewportContext) {}
+
+    fun captureCameraState(context: ViewportContext): CameraState? = null
+    fun restoreCameraState(engine: PulseEngine, context: ViewportContext, state: CameraState?) {}
     fun resetCamera(engine: PulseEngine, context: ViewportContext) {}
     fun reset(engine: PulseEngine, context: ViewportContext) {}
-    fun onDestroy(engine: PulseEngine, context: ViewportContext) {}
 }

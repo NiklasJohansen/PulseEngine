@@ -39,7 +39,6 @@ class ViewportInteraction2D(
 
     private val cameraController = Camera2DController(MouseButton.MIDDLE, smoothing = 0f)
     private val defaultCameraState = initialCameraState.duplicate()
-    private var cameraState = defaultCameraState.duplicate()
 
     // Movement
     private var isMoving = false
@@ -96,21 +95,25 @@ class ViewportInteraction2D(
 
     override fun onEditorActivated(engine: PulseEngine, context: ViewportContext)
     {
-        cameraState.loadInto(context.camera, engine.window.width, engine.window.height)
         reset(engine, context)
     }
 
     override fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext)
     {
-        cameraState.saveFrom(context.camera)
+        reset(engine, context)
+    }
+
+    override fun captureCameraState(context: ViewportContext) = CameraState.from(context.camera)
+
+    override fun restoreCameraState(engine: PulseEngine, context: ViewportContext, state: CameraState?)
+    {
+        (state ?: defaultCameraState).duplicate().loadInto(context.camera, engine.window.width, engine.window.height)
         reset(engine, context)
     }
 
     override fun resetCamera(engine: PulseEngine, context: ViewportContext)
     {
-        cameraState = defaultCameraState.duplicate()
-        cameraState.loadInto(context.camera, engine.window.width, engine.window.height)
-        reset(engine, context)
+        restoreCameraState(engine, context, defaultCameraState)
     }
 
     override fun onRender(engine: PulseEngine, context: ViewportContext)

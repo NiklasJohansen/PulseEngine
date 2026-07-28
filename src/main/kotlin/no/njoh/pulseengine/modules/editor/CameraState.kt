@@ -11,8 +11,8 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** 
- * Complete mutable camera state owned by one editor viewport interaction. 
+/**
+ * Complete mutable camera state captured for one editor scene tab.
  */
 data class CameraState(
     val pos: Vector3f,
@@ -36,19 +36,6 @@ data class CameraState(
         farPlane = farPlane,
         projectionType = projectionType
     )
-
-    fun saveFrom(camera: Camera)
-    {
-        pos.set(camera.position)
-        rot.set(camera.rotation)
-        origin.set(camera.origin)
-        scale.set(camera.scale)
-        fov = camera.fov
-        orthographicHeight = camera.orthographicHeight
-        nearPlane = camera.nearPlane
-        farPlane = camera.farPlane
-        projectionType = camera.projectionType
-    }
 
     fun loadInto(camera: Camera, width: Int, height: Int)
     {
