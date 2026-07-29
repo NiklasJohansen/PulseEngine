@@ -14,7 +14,6 @@ import no.njoh.pulseengine.core.graphics.scene3d.renderers.GridRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ObjectIdRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ObjectOutlineRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
-import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.Key
@@ -37,6 +36,7 @@ import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.modules.editor.EditorMode.*
 import no.njoh.pulseengine.modules.scene.entities.Camera3D
 import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.cameraFacingAxisSigns
 import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.closestAxisParameter
@@ -67,7 +67,7 @@ import kotlin.math.tan
  */
 class ViewportInteraction3D(
     initialCameraState: CameraState = CameraState.perspective3D()
-) : ViewportInteraction {
+) : ViewportInteraction(MODE_3D) {
 
     var gizmoMode = GizmoMode.MOVE
 
@@ -83,8 +83,6 @@ class ViewportInteraction3D(
     private var selectionDrag: SelectionDrag? = null
     private val orbitPivot = Vector3f()
     private var orbitPivotValid = false
-    private var gridSurface: Surface? = null
-    private var gridRenderer: GridRenderer? = null
 
     private val ray = SceneEditor3DMath.Ray()
     private val tmpV0 = Vector3f()
@@ -264,10 +262,9 @@ class ViewportInteraction3D(
     {
         engine.input.setCursorType(CursorType.ARROW)
         val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
-        if (surface != null && surface === gridSurface)
-            gridRenderer?.let { surface.deleteRenderer(it) }
-        gridSurface = null
-        gridRenderer = null
+        val renderer = surface?.getRenderer<GridRenderer>()
+        if (renderer != null)
+            surface.deleteRenderer(renderer)
         engine.gfx.deleteSurface(OBJECT_ID_SURFACE)
         engine.gfx.deleteSurface(GIZMO_SURFACE)
     }
@@ -275,26 +272,16 @@ class ViewportInteraction3D(
     private fun updateGrid(engine: PulseEngine, context: ViewportContext)
     {
         val visible = engine.scene.state == SceneState.STOPPED && context.isGridVisible
-        val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
+        val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE) ?: return
+        val renderer = surface.getRenderer<GridRenderer>()
 
-        if (surface == null)
+        if (visible)
         {
-            gridRenderer?.enabled = false
-            gridSurface = null
-            gridRenderer = null
-            return
+            if (renderer == null) surface.addRenderer(GridRenderer())
         }
-
-        if (surface !== gridSurface)
+        else if (renderer != null)
         {
-            gridSurface = surface
-            gridRenderer = surface.getRenderer<GridRenderer>() ?: GridRenderer().also(surface::addRenderer)
-        }
-
-        gridRenderer?.let()
-        {
-            it.enabled = visible
-            if (visible) it.submit()
+            surface.deleteRenderer(renderer)
         }
     }
 
@@ -503,6 +490,10 @@ class ViewportInteraction3D(
 
     override fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext)
     {
+        val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
+        val renderer = surface?.getRenderer<GridRenderer>()
+        if (renderer != null)
+            surface.deleteRenderer(renderer)
         reset(engine, context)
     }
 

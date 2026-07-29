@@ -2,17 +2,23 @@ package no.njoh.pulseengine.modules.editor
 
 import no.njoh.pulseengine.core.PulseEngine
 
-interface ViewportInteraction
+abstract class ViewportInteraction(val mode: EditorMode)
 {
-    fun onCreate(engine: PulseEngine, context: ViewportContext) {}
-    fun onEditorActivated(engine: PulseEngine, context: ViewportContext) {}
-    fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext) {}
-    fun onUpdate(engine: PulseEngine, context: ViewportContext)
-    fun onRender(engine: PulseEngine, context: ViewportContext)
-    fun onDestroy(engine: PulseEngine, context: ViewportContext) {}
+    open fun onCreate(engine: PulseEngine, context: ViewportContext) {}
+    open fun onEditorActivated(engine: PulseEngine, context: ViewportContext) {}
+    open fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext) {}
+    open fun onUpdate(engine: PulseEngine, context: ViewportContext) {}
+    open fun onRender(engine: PulseEngine, context: ViewportContext) {}
+    open fun onDestroy(engine: PulseEngine, context: ViewportContext) {}
 
-    fun captureCameraState(context: ViewportContext): CameraState? = null
-    fun restoreCameraState(engine: PulseEngine, context: ViewportContext, state: CameraState?) {}
-    fun resetCamera(engine: PulseEngine, context: ViewportContext) {}
-    fun reset(engine: PulseEngine, context: ViewportContext) {}
+    abstract fun captureCameraState(context: ViewportContext): CameraState?
+    abstract fun restoreCameraState(engine: PulseEngine, context: ViewportContext, state: CameraState?)
+    abstract fun resetCamera(engine: PulseEngine, context: ViewportContext)
+    abstract fun reset(engine: PulseEngine, context: ViewportContext)
+}
+
+enum class EditorMode
+{
+    MODE_2D,
+    MODE_3D
 }

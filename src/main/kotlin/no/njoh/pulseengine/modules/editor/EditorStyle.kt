@@ -28,7 +28,7 @@ class EditorStyle
         colors["HEADER"]          = Color(37,  37,  40,  220)
         colors["HEADER_HOVER"]    = Color(32,  42,  59,  220)
         colors["BUTTON"]          = Color(26,  26,  28,  220)
-        colors["BUTTON_HOVER"]    = Color(21,  21,  23,  200)
+        colors["BUTTON_HOVER"]    = Color(8,    9,   9,  200)
         colors["BUTTON_EXIT"]     = Color(194, 91,  91,  220)
         colors["DROPDOWN_BG"]     = Color(26,  26,  28,  220)
         colors["DROPDOWN_HEADER"] = Color(37,  37,  40,  255)
@@ -38,7 +38,7 @@ class EditorStyle
         colors["INPUT_BG"]        = Color(10, 10,   10,  220)
         colors["HEADER_FOOTER"]   = Color(22,  22,  23,  220)
         colors["WINDOW_HEADER"]   = Color(32,  42,  59,  230)
-        colors["ROW"]             = Color(41,  41,  43,  150)
+        colors["ROW"]             = Color(15,  15,  15,  105)
 
         // Set default sizes
         sizes["PROP_ROW_HEIGHT"]        = 25f

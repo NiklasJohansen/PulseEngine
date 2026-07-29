@@ -3,12 +3,14 @@ package no.njoh.pulseengine.modules.editor
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.GridRenderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.Key.*
 import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.scene.SceneEntity
+import no.njoh.pulseengine.core.scene.SceneState.STOPPED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
@@ -20,6 +22,7 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Camera2DController
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.MathUtil
+import no.njoh.pulseengine.modules.editor.EditorMode.MODE_2D
 import no.njoh.pulseengine.modules.ui.UiParams.UI_SCALE
 import kotlin.math.PI
 import kotlin.math.abs
@@ -35,7 +38,7 @@ import kotlin.reflect.full.findAnnotation
  */
 class ViewportInteraction2D(
     initialCameraState: CameraState = CameraState.orthographic2D()
-) : ViewportInteraction {
+) : ViewportInteraction(MODE_2D) {
 
     private val cameraController = Camera2DController(MouseButton.MIDDLE, smoothing = 0f)
     private val defaultCameraState = initialCameraState.duplicate()
@@ -69,12 +72,6 @@ class ViewportInteraction2D(
     override fun onCreate(engine: PulseEngine, context: ViewportContext)
     {
         engine.gfx.createSurface(
-            name = GRID_SURFACE,
-            zOrder = 20,
-            camera = context.camera,
-            clearColor = Color(0.001f, 0.001f, 0.001f, 1f)
-        )
-        engine.gfx.createSurface(
             name = GIZMO_SURFACE, 
             zOrder = -50
         )
@@ -100,6 +97,7 @@ class ViewportInteraction2D(
 
     override fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext)
     {
+        removeGrid(engine)
         reset(engine, context)
     }
 
@@ -118,8 +116,7 @@ class ViewportInteraction2D(
 
     override fun onRender(engine: PulseEngine, context: ViewportContext)
     {
-        if (context.isGridVisible)
-            engine.gfx.getSurface(GRID_SURFACE)?.let { renderGrid(it, context) }
+        updateGrid(engine, context)
 
         engine.gfx.getSurface(GIZMO_SURFACE)?.let() 
         {
@@ -143,8 +140,30 @@ class ViewportInteraction2D(
     override fun onDestroy(engine: PulseEngine, context: ViewportContext)
     {
         engine.input.setCursorType(ARROW)
-        engine.gfx.deleteSurface(GRID_SURFACE)
+        removeGrid(engine)
         engine.gfx.deleteSurface(GIZMO_SURFACE)
+    }
+
+    private fun removeGrid(engine: PulseEngine)
+    {
+        val surface = engine.gfx.mainSurface
+        surface.getRenderer<GridRenderer>()?.let { surface.deleteRenderer(it) }
+    }
+
+    private fun updateGrid(engine: PulseEngine, context: ViewportContext)
+    {
+        val surface = engine.gfx.mainSurface
+        val renderer = surface.getRenderer<GridRenderer>()
+        val visible = engine.scene.state == STOPPED && context.isGridVisible
+
+        if (visible)
+        {
+            if (renderer == null) surface.addRenderer(GridRenderer(order = 40))
+        }
+        else if (renderer != null)
+        {
+            surface.deleteRenderer(renderer)
+        }
     }
 
     private fun updateSelection(engine: PulseEngine, context: ViewportContext)
@@ -491,37 +510,6 @@ class ViewportInteraction2D(
         surface.drawLine(pos.x + width, pos.y, pos.x + width, pos.y + height)
     }
 
-    private fun renderGrid(surface: Surface, context: ViewportContext)
-    {
-        val camera = context.camera
-        val cellSize = 200
-        val xStart = (camera.topLeftWorldPosition.x.toInt() / cellSize - 2) * cellSize
-        val yStart = (camera.topLeftWorldPosition.y.toInt() / cellSize - 2) * cellSize
-        val xEnd = (camera.bottomRightWorldPosition.x.toInt() / cellSize + 1) * cellSize
-        val yEnd = (camera.bottomRightWorldPosition.y.toInt() / cellSize + 1) * cellSize
-        val middleLineSize = 2f / camera.scale.x
-        val alpha = (camera.scale.x + 0.2f).coerceIn(0.1f, 0.4f)
-        val shade = 0.1f
-
-        surface.setDrawColor(shade, shade, shade, alpha + 0.1f)
-        for (x in xStart until xEnd step cellSize)
-            if (x != 0 && x % 3 == 0) surface.drawLine(x.toFloat(), yStart.toFloat(), x.toFloat(), yEnd.toFloat())
-        
-        for (y in yStart until yEnd step cellSize)
-            if (y != 0 && y % 3 == 0) surface.drawLine(xStart.toFloat(), y.toFloat(), xEnd.toFloat(), y.toFloat())
-
-        surface.setDrawColor(shade, shade, shade, alpha)
-        for (x in xStart until xEnd step cellSize)
-            if (x != 0 && x % 3 != 0) surface.drawLine(x.toFloat(), yStart.toFloat(), x.toFloat(), yEnd.toFloat())
-        
-        for (y in yStart until yEnd step cellSize)
-            if (y != 0 && y % 3 != 0) surface.drawLine(xStart.toFloat(), y.toFloat(), xEnd.toFloat(), y.toFloat())
-
-        surface.setDrawColor(shade, shade, shade, alpha + 0.2f)
-        surface.drawTexture(Texture.BLANK, -middleLineSize, yStart.toFloat(), middleLineSize, (yEnd - yStart).toFloat())
-        surface.drawTexture(Texture.BLANK, xStart.toFloat(), -middleLineSize, (xEnd - xStart).toFloat(), middleLineSize)
-    }
-
     private fun renderEntityIcons(surface: Surface, engine: PulseEngine, context: ViewportContext)
     {
         engine.scene.forEachEntityTypeList { entities ->
@@ -598,7 +586,6 @@ class ViewportInteraction2D(
     companion object
     {
         private const val GIZMO_PADDING = 3f
-        private const val GRID_SURFACE    = "scene_editor_grid"
         private const val GIZMO_SURFACE   = "scene_editor_gizmo"
         private const val UI_BASE_SURFACE = "scene_editor_ui_base"
     }

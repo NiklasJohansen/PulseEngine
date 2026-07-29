@@ -23,7 +23,7 @@ class Model3D : SceneEntity(), Scene3DRenderable, Named, Spatial3D
 {
     override var name = ""
 
-    @ModelRef    var model    = ""
+    @ModelRef    var model    = "cube"
     @MaterialRef var material = ""
 
     @Prop("Position [*P]", i=1) override var xPos=0f;   override var yPos=0f;   override var zPos=0f

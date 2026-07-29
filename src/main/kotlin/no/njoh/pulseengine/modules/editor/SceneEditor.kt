@@ -39,17 +39,20 @@ import no.njoh.pulseengine.core.shared.utils.FileChooser
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
 import no.njoh.pulseengine.core.service.Service
+import no.njoh.pulseengine.modules.editor.EditorMode.*
 import no.njoh.pulseengine.modules.ui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.ui.elements.Button
 import no.njoh.pulseengine.modules.ui.layout.Panel
 import no.njoh.pulseengine.modules.ui.layout.WindowPanel
-import no.njoh.pulseengine.modules.scene.systems.EntityRendererImpl
 import no.njoh.pulseengine.modules.scene.systems.EntityUpdater
 import no.njoh.pulseengine.modules.editor.EditorUtil.getName
 import no.njoh.pulseengine.modules.editor.EditorUtil.getPropGroup
 import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
+import no.njoh.pulseengine.modules.scene.entities.Model3D
+import no.njoh.pulseengine.modules.scene.systems.EntityRendererImpl
+import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderSystem
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
@@ -62,7 +65,7 @@ fun SceneEditor2D(vararg initialScenes: String) = SceneEditor(ViewportInteractio
 fun SceneEditor3D(vararg initialScenes: String) = SceneEditor(ViewportInteraction3D(), initialScenes = initialScenes.toList())
 
 class SceneEditor(
-    val viewportInteraction: ViewportInteraction? = ViewportInteraction2D(),
+    val viewportInteraction: ViewportInteraction = ViewportInteraction2D(),
     val uiFactory: UiElementFactory = UiElementFactory(),
     initialScenes: List<String> = emptyList()
 ): Service() {
@@ -123,9 +126,9 @@ class SceneEditor(
 
         // Create surfaces
         engine.gfx.createSurface("scene_editor_ui_base_bg",  zOrder = -90)
-        engine.gfx.createSurface("scene_editor_ui_base",     zOrder = -92, multisampling = MSAA4)
+        engine.gfx.createSurface("scene_editor_ui_base",     zOrder = -92, multisampling = MSAA8)
         engine.gfx.createSurface("scene_editor_ui_popup_bg", zOrder = -93)
-        engine.gfx.createSurface("scene_editor_ui_popup",    zOrder = -94, multisampling = MSAA4)
+        engine.gfx.createSurface("scene_editor_ui_popup",    zOrder = -94, multisampling = MSAA8)
 
         // Load editor icon font
         engine.asset.load(Font("/pulseengine/assets/editor_icons.ttf", uiFactory.style.iconFontName))
@@ -325,8 +328,17 @@ class SceneEditor(
             val editorScene = EditorScene(Scene(sceneName).also { scene -> scene.fileName = it })
             editorScenes.add(editorScene)
             switchToEditorScene(engine, editorScene)
-            engine.scene.addSystem(EntityUpdater().also { it.init(engine) })
-            engine.scene.addSystem(EntityRendererImpl().also { it.init(engine) })
+            engine.scene.addSystem(EntityUpdater().apply { init(engine) })
+            when (viewportInteraction.mode)
+            {
+                MODE_2D -> engine.scene.addSystem(EntityRendererImpl().apply { init(engine) })
+                MODE_3D ->
+                {
+                    engine.scene.addSystem(Scene3DRenderSystem().apply { init(engine) })
+                    engine.scene.addEntity(Model3D().apply { yPos = 0.5f; model = "cube" })
+                }
+            }
+
             saveActiveEditorScene(engine)
             sceneFileToCreate = null
         }
@@ -369,6 +381,7 @@ class SceneEditor(
                 captureActiveEditorCamera(engine)
                 rememberEntitySelection()
                 engine.scene.save()
+                viewportInteraction.onEditorDeactivated(engine, viewportContext)
                 engine.scene.start()
             }
             else
@@ -376,6 +389,7 @@ class SceneEditor(
                 engine.scene.stop()
                 engine.scene.reload()
                 ensureActiveEditorScene(engine, replaceSceneWithSameFile = true)
+                viewportInteraction.onEditorActivated(engine, viewportContext)
                 restoreActiveEditorCamera(engine)
             }
         }
@@ -431,7 +445,11 @@ class SceneEditor(
     private fun onSaveAs(engine: PulseEngine)
     {
         if (engine.scene.state == SceneState.RUNNING)
+        {
             engine.scene.stop()
+            viewportInteraction.onEditorActivated(engine, viewportContext)
+            restoreActiveEditorCamera(engine)
+        }
 
         scope.launch(context = Dispatchers.IO)
         {
@@ -461,6 +479,7 @@ class SceneEditor(
         if (engine.scene.state == SceneState.RUNNING)
         {
             engine.scene.stop()
+            viewportInteraction.onEditorActivated(engine, viewportContext)
             restoreActiveEditorCamera(engine)
             saveActiveEditorScene(engine)
         }

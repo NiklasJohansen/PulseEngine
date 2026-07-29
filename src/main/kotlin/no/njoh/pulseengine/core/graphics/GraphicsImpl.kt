@@ -384,7 +384,7 @@ open class GraphicsImpl : GraphicsInternal
     companion object
     {
         private var updateNumber = 0
-        private var defaultClearColor = Color(0.043f, 0.047f, 0.054f, 0f)
+        private var defaultClearColor = Color(63, 63, 63, 255)
     }
 
     private fun runOnInitFrame(command: PulseEngineInternal.() -> Unit) { onInitFrame.add(command) }
