@@ -66,9 +66,9 @@ abstract class SceneSystem
     open fun onStateChanged(engine: PulseEngine) {  }
 
     /**
-     * Called after a batch of entities has been inserted into a running scene.
+     * Called after an entity has been inserted and started in a running scene.
      */
-    open fun onEntitiesAdded(engine: PulseEngine, entities: List<SceneEntity>) { }
+    open fun onEntityAdded(engine: PulseEngine, entity: SceneEntity) { }
 
     companion object
     {

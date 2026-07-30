@@ -67,30 +67,33 @@ abstract class Data
     abstract fun <T> saveObjectAsync(data: T, filePath: String, format: FileFormat = JSON, onComplete: (T) -> Unit = {})
 
     /**
-     * Loads an object with the given [filePath] either from an absolute path, if included in the [filePath],
-     * or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
+     * Loads an object with the given [filePath].
+     * Absolute paths are loaded directly from disk. Relative paths are first resolved from the
+     * configured save directory, then from packaged resources when no external file exists.
      */
-    inline fun <reified T> loadObject(filePath: String, fromClassPath: Boolean = false): T? =
-        loadObject(filePath, T::class.java, fromClassPath)
+    inline fun <reified T> loadObject(filePath: String): T? = loadObject(filePath, T::class.java)
 
     /**
-     * Loads an object with the given [filePath] either from an absolute path, if included in the [filePath],
-     * or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
+     * Loads an object with the given [filePath].
+     * Absolute paths are loaded directly from disk. Relative paths are first resolved from the
+     * configured save directory, then from packaged resources when no external file exists.
      */
-    abstract fun <T> loadObject(filePath: String, type: Class<T>, fromClassPath: Boolean): T?
+    abstract fun <T> loadObject(filePath: String, type: Class<T>): T?
 
     /**
-     * Asynchronously loads an object with the given [filePath] either from an absolute path, if included in the
-     * [filePath], or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
+     * Asynchronously loads an object with the given [filePath].
+     * Absolute paths are loaded directly from disk. Relative paths are first resolved from the
+     * configured save directory, then from packaged resources when no external file exists.
      */
-    inline fun <reified T> loadObjectAsync(filePath: String, fromClassPath: Boolean = false, noinline onFail: () -> Unit = {}, noinline onComplete: (T) -> Unit) =
-        loadObjectAsync(filePath, T::class.java, fromClassPath, onFail, onComplete)
+    inline fun <reified T> loadObjectAsync(filePath: String, noinline onFail: () -> Unit = {}, noinline onComplete: (T) -> Unit) =
+        loadObjectAsync(filePath, T::class.java, onFail, onComplete)
 
     /**
-     * Asynchronously loads an object with the given [filePath] either from an absolute path, if included in the
-     * [filePath], or from the [saveDirectory]. Will load the object from classpath if [fromClassPath] is true.
+     * Asynchronously loads an object with the given [filePath].
+     * Absolute paths are loaded directly from disk. Relative paths are first resolved from the
+     * configured save directory, then from packaged resources when no external file exists.
      */
-    abstract fun <T> loadObjectAsync(filePath: String, type: Class<T>, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (T) -> Unit)
+    abstract fun <T> loadObjectAsync(filePath: String, type: Class<T>, onFail: () -> Unit, onComplete: (T) -> Unit)
 
     /**
      * Creates a deep copy of [data].

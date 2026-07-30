@@ -74,23 +74,25 @@ open class DataImpl : DataInternal()
         .onFailure { Logger.error { "Failed to save file: $filePath - reason: ${it.message}" } }
         .getOrDefault(false)
 
-    override fun <T> loadObject(filePath: String, type: Class<T>, fromClassPath: Boolean): T? =
+    override fun <T> loadObject(filePath: String, type: Class<T>): T? =
         runCatching {
             var state: T? = null
             val nanoTime = measureNanoTime {
-                state = if (fromClassPath)
-                    filePath.loadBytesFromClassPath()
-                        ?.let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
+                val requestedFile = File(filePath)
+                val externalFile = getFile(filePath)
+                val byteArray = when
+                {
+                    externalFile.isFile -> externalFile.readBytes()
+                    requestedFile.isAbsolute -> throw FileNotFoundException("File not found: $filePath")
+                    else -> filePath.loadBytesFromClassPath()
                         ?: throw FileNotFoundException("File not found: $filePath")
-                else
-                    getFile(filePath)
-                        .readBytes()
-                        .let { byteArray -> getMapper(getFormat(byteArray)).readValue(byteArray, type) }
+                }
+                state = getMapper(getFormat(byteArray)).readValue(byteArray, type)
             }
             Logger.debug { "Loaded state from $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms" }
             state
         }
-        .onFailure { Logger.error { "Failed to load state (fromClassPath=$fromClassPath): $filePath - reason: ${it.message}" } }
+        .onFailure { Logger.error { "Failed to load state: $filePath - reason: ${it.message}" } }
         .getOrNull()
 
     override fun <T> saveObjectAsync(data: T, filePath: String, format: FileFormat, onComplete: (T) -> Unit)
@@ -104,13 +106,12 @@ open class DataImpl : DataInternal()
     override fun <T> loadObjectAsync(
         filePath: String,
         type: Class<T>,
-        fromClassPath: Boolean,
         onFail: () -> Unit,
         onComplete: (T) -> Unit
     ) {
         GlobalScope.launch(Dispatchers.IO)
         {
-            loadObject(filePath, type, fromClassPath)?.let(onComplete) ?: onFail()
+            loadObject(filePath, type)?.let(onComplete) ?: onFail()
         }
     }
 

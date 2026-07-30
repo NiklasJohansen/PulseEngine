@@ -44,9 +44,9 @@ class PhysicsSystem2D : SceneSystem()
         engine.scene.forEachEntityOfType<PhysicsEntity2D> { it.init(engine) }
     }
 
-    override fun onEntitiesAdded(engine: PulseEngine, entities: List<SceneEntity>)
+    override fun onEntityAdded(engine: PulseEngine, entity: SceneEntity)
     {
-        entities.forEach { (it as? PhysicsEntity2D)?.init(engine) }
+        (entity as? PhysicsEntity2D)?.init(engine)
     }
 
     override fun onFixedUpdate(engine: PulseEngine)

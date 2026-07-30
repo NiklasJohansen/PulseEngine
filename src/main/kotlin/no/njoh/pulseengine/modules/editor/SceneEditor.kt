@@ -345,7 +345,7 @@ class SceneEditor(
 
         sceneFileToSaveAs?.let()
         {
-            engine.scene.saveAs(fileName = it, updateActiveScene = true)
+            engine.scene.saveAs(it)
             activeEditorScene(engine)?.dirty = false
             rebuildSceneTabs(engine)
             sceneFileToSaveAs = null
@@ -890,7 +890,12 @@ class SceneEditor(
             else
             {
                 editorScene.scene.optimizeCollections()
-                engine.data.saveObject(editorScene.scene, editorScene.scene.fileName, editorScene.scene.fileFormat)
+                if (engine.data.saveObject(editorScene.scene, editorScene.scene.fileName, editorScene.scene.fileFormat))
+                {
+                    val loadedScene = engine.scene.get(editorScene.scene.fileName)
+                    if (editorScene.scene !== loadedScene)
+                        engine.scene.unload(editorScene.scene.fileName)
+                }
                 editorScene.dirty = false
             }
         }
@@ -905,7 +910,13 @@ class SceneEditor(
             sceneHierarchy?.activeSceneChanged()
             lastSceneHashCode = -1
         }
-        else editorScene.scene.clearAll()
+        else
+        {
+            val loadedScene = engine.scene.get(editorScene.scene.fileName)
+            if (editorScene.scene === loadedScene)
+                engine.scene.unload(editorScene.scene.fileName)
+            editorScene.scene.clearAll()
+        }
 
         rebuildSceneTabs(engine)
     }

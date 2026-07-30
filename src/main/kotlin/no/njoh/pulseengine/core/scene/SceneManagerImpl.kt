@@ -11,16 +11,16 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.scene.SceneState.*
-import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.forEachClassWithSupertype
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
+import no.njoh.pulseengine.core.shared.utils.ResourceResolver
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.full.memberProperties
@@ -36,9 +36,10 @@ open class SceneManagerImpl : SceneManagerInternal()
 
     private lateinit var engine: PulseEngine
 
+    private val loadedScenes = ConcurrentHashMap<String, Scene>()
+
     private var nextStagedScene: Scene? = null
     private var nextSceneFileName: String? = null
-    private var nextSceneFromClassPath = false
 
     private var loadingScene = false
     private var transitionFade = 0f
@@ -94,43 +95,65 @@ open class SceneManagerImpl : SceneManagerInternal()
         state = RUNNING
     }
 
-    override fun loadAndSetActive(fileName: String, fromClassPath: Boolean)
+    override fun loadAndSetActive(fileName: String)
     {
-        load(fileName, fromClassPath)?.let { setActive(it) }
+        load(fileName)?.let { setActive(it) }
     }
 
-    override fun load(fileName: String, fromClassPath: Boolean): Scene?
+    override fun load(fileName: String): Scene?
     {
-        if (fileName.isNotBlank())
+        if (fileName.isBlank())
         {
-            val scene = engine.data.loadObject<Scene>(fileName, fromClassPath) ?: return null
-            scene.fileName = fileName
-            return scene
+            Logger.error { "Cannot load scene: fileName is not set!" }
+            return null
         }
-        Logger.error { "Cannot load scene: fileName is not set!" }
-        return null
+
+        val key = sceneKey(fileName)
+        loadedScenes[key]?.let { return it }
+
+        val scene = engine.data.loadObject<Scene>(fileName) ?: return null
+        scene.fileName = fileName
+
+        // Return the scene that was already loaded if another thread loaded it in the meantime
+        return loadedScenes.putIfAbsent(key, scene) ?: scene
     }
 
-    override fun loadAsync(fileName: String, fromClassPath: Boolean, onFail: () -> Unit, onComplete: (Scene) -> Unit) 
+    override fun loadAsync(fileName: String, onFail: () -> Unit, onComplete: (Scene) -> Unit)
     {
-        if (fileName.isNotBlank())
-        {
-            engine.data.loadObjectAsync<Scene>(fileName, fromClassPath, onFail)
-            {
-                it.fileName = fileName
-                onComplete(it)
-            }
-        }
-        else
+        if (fileName.isBlank())
         {
             Logger.error { "Cannot load scene: fileName is not set!" }
             onFail()
+            return
         }
+
+        val key = sceneKey(fileName)
+        loadedScenes[key]?.let() 
+        {
+            onComplete(it)
+            return
+        }
+
+        engine.data.loadObjectAsync<Scene>(fileName, onFail)
+        {
+            it.fileName = fileName
+            // Return the scene that was already loaded if another thread loaded it in the meantime
+            onComplete(loadedScenes.putIfAbsent(key, it) ?: it)
+        }
+    }
+
+    override fun get(fileName: String): Scene?
+    {
+        return if (fileName.isBlank()) null else loadedScenes[sceneKey(fileName)]
+    }
+
+    override fun unload(fileName: String)
+    {
+        if (fileName.isNotBlank()) loadedScenes.remove(sceneKey(fileName))
     }
 
     override fun transitionInto(
         fileName: String,
-        fromClassPath: Boolean,
         transitionTimeMs: Long,
         onSceneLoaded: ((PulseEngine) -> Unit)?,
         onTransitionFinished: ((PulseEngine) -> Unit)?,
@@ -139,7 +162,6 @@ open class SceneManagerImpl : SceneManagerInternal()
         if (fileName != nextSceneFileName)
         {
             this.nextSceneFileName = fileName
-            this.nextSceneFromClassPath = fromClassPath
             this.transitionTimeMs = transitionTimeMs
             this.transitionFade = 1f
             this.onSceneLoaded = onSceneLoaded
@@ -152,13 +174,18 @@ open class SceneManagerImpl : SceneManagerInternal()
     {
         if (scene !== activeScene)
         {
+            val previousScene = activeScene
             if (state != STOPPED)
-                activeScene.stop(engine)
+                previousScene.stop(engine)
 
-            activeScene.destroy(engine)
+            previousScene.destroy(engine)
 
-            if (disposePrevious && scene.entities !== activeScene.entities)
-                activeScene.clearAll()
+            if (disposePrevious)
+            {
+                loadedScenes.entries.removeIf { it.value === previousScene }
+                if (scene.entities !== previousScene.entities)
+                    previousScene.clearAll()
+            }
 
             if (disposePrevious)
                 System.gc()
@@ -187,43 +214,45 @@ open class SceneManagerImpl : SceneManagerInternal()
     {
         if (activeScene.fileName.isNotBlank())
         {
-            activeScene.optimizeCollections()
+            val scene = activeScene
+            scene.optimizeCollections()
 
             if (async)
-                engine.data.saveObjectAsync(activeScene, activeScene.fileName, activeScene.fileFormat)
+                engine.data.saveObjectAsync(scene, scene.fileName, scene.fileFormat)
             else
-                engine.data.saveObject(activeScene, activeScene.fileName, activeScene.fileFormat)
+                engine.data.saveObject(scene, scene.fileName, scene.fileFormat)
         }
         else Logger.error { "Cannot save scene: ${activeScene.name} - fileName is not set!" }
     }
 
-    override fun saveAs(fileName: String, async: Boolean, updateActiveScene: Boolean)
+    override fun saveAs(fileName: String, async: Boolean)
     {
-        activeScene.optimizeCollections()
+        val scene = activeScene
+        scene.fileName = fileName
+        scene.optimizeCollections()
 
-        if (updateActiveScene)
-            activeScene.fileName = fileName
+        loadedScenes.entries.removeIf { it.value === scene }
+        loadedScenes[sceneKey(fileName)] = scene
 
         if (async)
-            engine.data.saveObjectAsync(activeScene, fileName, activeScene.fileFormat)
+            engine.data.saveObjectAsync(scene, fileName, scene.fileFormat)
         else
-            engine.data.saveObject(activeScene, fileName, activeScene.fileFormat)
+            engine.data.saveObject(scene, fileName, scene.fileFormat)
     }
 
-    override fun reload(fromClassPath: Boolean)
+    override fun reload()
     {
-        loadAndSetActive(activeScene.fileName, fromClassPath)
+        val fileName = activeScene.fileName
+        unload(fileName)
+        loadAndSetActive(fileName)
     }
 
     override fun addEntity(entity: SceneEntity): Long
     {
-        val id = activeScene.insertEntity(entity)
-        if (engine.scene.state == RUNNING)
-        {
-            if (entity is Initiable)
-                entity.onStart(engine)
-            notifyEntitiesAdded(listOf(entity))
-        }
+        val scene = activeScene
+        val id = scene.insertEntity(entity)
+        if (state == RUNNING)
+            scene.startEntity(engine, entity)
         return id
     }
 
@@ -253,16 +282,21 @@ open class SceneManagerImpl : SceneManagerInternal()
         if (nextSceneFileName != null && nextStagedScene == null && !loadingScene)
         {
             loadingScene = true
-            engine.data.loadObjectAsync<Scene>(nextSceneFileName!!, nextSceneFromClassPath, {
-                loadingScene = false
-                nextSceneFileName = null
-                Logger.error { "Failed to load scene from file: $nextSceneFileName" }
-            }) { scene ->
-                loadingScene = false
-                nextStagedScene = scene
-                scene.fileName = nextSceneFileName!!
-                Logger.debug { "Transitioning into scene: $nextSceneFileName" }
-            }
+            val fileName = nextSceneFileName!!
+            loadAsync(
+                fileName = fileName,
+                onComplete = { scene ->
+                    loadingScene = false
+                    nextStagedScene = scene
+                    scene.fileName = fileName
+                    Logger.debug { "Transitioning into scene: $fileName" }
+                },
+                onFail = {
+                    loadingScene = false
+                    nextSceneFileName = null
+                    Logger.error { "Failed to load scene from file: $fileName" }
+                }
+            )
         }
 
         if (nextStagedScene != null && !loadingScene && transitionFade <= 0.5)
@@ -341,13 +375,18 @@ open class SceneManagerImpl : SceneManagerInternal()
     {
         Logger.info { "Destroying scene (${this::class.simpleName})" }
         activeScene.stop(engine)
+        loadedScenes.clear()
     }
 
-    private fun notifyEntitiesAdded(entities: List<SceneEntity>)
+    private fun sceneKey(fileName: String): String
     {
-        activeScene.systems.forEachFiltered({ it.enabled && it.initialized }) { it.onEntitiesAdded(engine, entities) }
+        val file = File(fileName)
+        if (file.isAbsolute)
+            return runCatching { file.canonicalPath }.getOrElse { file.absolutePath }
+
+        return ResourceResolver.normalizeRelativePath(fileName) ?: fileName.trim().replace('\\', '/')
     }
-    
+
     private fun addEntitiesFrom(
         sourceName: String,
         sourceEntities: List<SceneEntity>,
@@ -424,16 +463,13 @@ open class SceneManagerImpl : SceneManagerInternal()
             }
 
             if (engine.scene.state == RUNNING)
-            {
-                clones.forEachFast { if (it is Initiable) it.onStart(engine) }
-                notifyEntitiesAdded(clones)
-            }
+                clones.forEachFast { activeScene.startEntity(engine, it) }
 
             return clones
-        } 
-        catch (e: Exception) 
-        { 
-            Logger.error(e) { "Failed to insert entities from '$sourceName'" } 
+        }
+        catch (e: Exception)
+        {
+            Logger.error(e) { "Failed to insert entities from '$sourceName'" }
             return null
         }
     }

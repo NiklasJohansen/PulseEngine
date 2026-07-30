@@ -46,47 +46,58 @@ abstract class SceneManager
     abstract fun continueScene()
 
     /**
+     * Returns a loaded [Scene] by its [fileName], or null if it has not been loaded.
+     */
+    abstract fun get(fileName: String): Scene?
+
+    /**
      * Saves the active [Scene] to disk. Uses the [Scene.fileName] and the configured Data.saveDirectory.
      * @param async When true - returns immediately and handles the save operation in a separate thread.
      */
     abstract fun save(async: Boolean = false)
 
     /**
-     * Saves the active [Scene] to disk with the given [fileName].
+     * Saves the active [Scene] to disk with the given [fileName] and retains it under the new path.
      * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
      * @param async When true - returns immediately and handles the save operation in a separate thread.
-     * @param updateActiveScene Updates the active [Scene] with the new [fileName] if set true.
      */
-    abstract fun saveAs(fileName: String, async: Boolean = false, updateActiveScene: Boolean = false)
+    abstract fun saveAs(fileName: String, async: Boolean = false)
 
     /**
-     * Reloads the active [Scene] from disk.
-     * @param fromClassPath True if the file should be loaded from classpath.
+     * Loads and retains a [Scene] without changing [activeScene]. Repeated requests for the same
+     * logical path return the same retained scene instance.
+     * @param fileName Absolute file path or logical resource path. Logical paths resolve from the configured
+     * Data.saveDirectory first, then from packaged resources.
      */
-    abstract fun reload(fromClassPath: Boolean = false)
+    abstract fun load(fileName: String): Scene?
 
     /**
-     * Loads a [Scene] without changing [activeScene].
-     * The returned scene can be retained and used as the source of repeated [addEntitiesFrom] operations.
-     * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
-     * @param fromClassPath True if the file should be loaded from classpath.
-     */
-    abstract fun load(fileName: String, fromClassPath: Boolean = false): Scene?
-
-    /**
-     * Loads a [Scene] on an IO thread without changing [activeScene].
-     * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
-     * @param fromClassPath True if the file should be loaded from classpath.
+     * Loads and retains a [Scene] on an IO thread without changing [activeScene]. Repeated requests
+     * for the same logical path return the same retained scene instance.
+     * @param fileName Absolute file path or logical resource path. Logical paths resolve from the configured
+     * Data.saveDirectory first, then from packaged resources.
      * @param onFail Called when the scene could not be loaded.
      * @param onComplete Called when the scene has been loaded.
      */
-    abstract fun loadAsync(fileName: String, fromClassPath: Boolean = false, onFail: () -> Unit = {}, onComplete: (Scene) -> Unit)
+    abstract fun loadAsync(fileName: String, onFail: () -> Unit = {}, onComplete: (Scene) -> Unit)
+
+    /**
+     * Reloads the active [Scene]. Relative paths resolve from the configured save directory first,
+     * then from packaged resources.
+     */
+    abstract fun reload()
+    
+    /**
+     * Removes the retained reference to a scene. The scene is loaded again on the next [load] request.
+     */
+    abstract fun unload(fileName: String)
 
     /**
      * Loads the scene with the given [fileName] and makes it the new [activeScene].
-     * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
+     * @param fileName Absolute file path or logical resource path. Logical paths resolve from the configured
+     * Data.saveDirectory first, then from packaged resources.
      */
-    abstract fun loadAndSetActive(fileName: String, fromClassPath: Boolean = false)
+    abstract fun loadAndSetActive(fileName: String)
 
     /**
      * Creates a new empty [Scene] with the given [fileName] and makes it the active [Scene].
@@ -96,10 +107,10 @@ abstract class SceneManager
     abstract fun createEmptyAndSetActive(fileName: String)
 
     /**
-     * Loads the scene with the given [fileName] from disk and makes it the new active [Scene].
+     * Loads the scene with the given [fileName] and makes it the new active [Scene].
      * Fades the screen to black while loading, and then back into the new [Scene] when ready.
-     * @param fileName Name of the file. If it is not an absolute path, the configured Data.saveDirectory will be used.
-     * @param fromClassPath True if the file should be loaded from classpath.
+     * @param fileName Absolute file path or logical resource path. Logical paths resolve from the configured
+     * Data.saveDirectory first, then from packaged resources.
      * @param transitionTimeMs The number of milliseconds to use when fading to and from black screen.
      * @param onSceneLoaded called when the scene is loaded and ready.
      * @param onTransitionFinished called when the transition is finished.
@@ -107,7 +118,6 @@ abstract class SceneManager
      */
     abstract fun transitionInto(
         fileName: String,
-        fromClassPath: Boolean = false,
         transitionTimeMs: Long = 1000L,
         onSceneLoaded: ((PulseEngine) -> Unit)? = null,
         onTransitionFinished: ((PulseEngine) -> Unit)? = null,

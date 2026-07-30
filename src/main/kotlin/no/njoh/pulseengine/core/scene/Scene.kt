@@ -99,9 +99,19 @@ open class Scene(
     
     internal fun start(engine: PulseEngine)
     {
-        entities.forEachFiltered({ it.firstOrNull() is Initiable })
+        val firstNewEntityId = nextId
+        val initialTypeCount = entities.size
+
+        // Only start the initial scene entities.
+        // New entities added while starting the initial entities will be started once the startEntity function.
+        for (i in 0 until initialTypeCount)
         {
-            it.forEachFast { entity -> (entity as Initiable).onStart(engine) }
+            val entityList = entities[i]
+            if (entityList.firstOrNull() !is Initiable) continue
+            entityList.forEachFast()
+            {
+                if (it.id < firstNewEntityId) (it as Initiable).onStart(engine)
+            }
         }
 
         systems.forEachFiltered({ it.enabled })
@@ -113,6 +123,16 @@ open class Scene(
         }
 
         spatialGrid.recalculate()
+    }
+
+    internal fun startEntity(engine: PulseEngine, entity: SceneEntity)
+    {
+        if (entity is Initiable) entity.onStart(engine)
+
+        systems.forEachFiltered({ it.enabled && it.initialized })
+        {
+            it.onEntityAdded(engine, entity)
+        }
     }
 
     internal fun stop(engine: PulseEngine)
