@@ -24,6 +24,7 @@ import no.njoh.pulseengine.core.shared.utils.Camera2DController
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.MathUtil
 import no.njoh.pulseengine.modules.editor.EditorMode.MODE_2D
+import no.njoh.pulseengine.modules.editor.ViewportInteraction2D.SelectionMode.*
 import no.njoh.pulseengine.modules.ui.UiParams.UI_SCALE
 import kotlin.math.PI
 import kotlin.math.abs
@@ -70,6 +71,8 @@ class ViewportInteraction2D(
     private var yStartSelect = 0f
     private var xEndSelect = 0f
     private var yEndSelect = 0f
+    private var selectionMode = REPLACE
+    private var selectionAtDragStart = emptyList<SceneEntity>()
 
     override fun onCreate(engine: PulseEngine, context: ViewportContext)
     {
@@ -136,6 +139,7 @@ class ViewportInteraction2D(
         isMoving = false
         isSpacePanning = false
         isSelecting = false
+        selectionAtDragStart = emptyList()
         isRotating = false
         isResizingVertically = false
         isResizingHorizontally = false
@@ -256,6 +260,13 @@ class ViewportInteraction2D(
                 {
                     xStartSelect = xEndSelect
                     yStartSelect = yEndSelect
+                    selectionAtDragStart = context.selection.toList()
+                    selectionMode = when
+                    {
+                        engine.input.isPressed(LEFT_CONTROL) -> REMOVE
+                        engine.input.isPressed(LEFT_SHIFT)   -> ADD
+                        else -> REPLACE
+                    }
                     isSelecting = true
                 }
             }
@@ -271,15 +282,23 @@ class ViewportInteraction2D(
             val yStart = min(yStartSelect, yEndSelect)
             val width = abs(xEndSelect - xStartSelect)
             val height = abs(yEndSelect - yStartSelect)
-            val selection = if (engine.input.isPressed(LEFT_CONTROL)) context.selection.toMutableList() else mutableListOf()
+            val matches = mutableListOf<SceneEntity>()
 
-            engine.scene.forEachEntity { entity ->
-                if (entity is Spatial2D && entity.isSet(EDITABLE) && entity.isNot(HIDDEN) &&
-                    entity !in selection && entity.isOverlapping(xStart, yStart, width, height))
+            engine.scene.forEachEntity() 
+            {
+                if (it is Spatial2D && it.isSet(EDITABLE) && it.isNot(HIDDEN) && it.isOverlapping(xStart, yStart, width, height))
                 {
-                    selection += entity
+                    matches += it
                 }
             }
+
+            val selection = when (selectionMode)
+            {
+                REPLACE -> matches
+                ADD     -> (selectionAtDragStart + matches).distinctBy { it.id }
+                REMOVE  -> selectionAtDragStart.filter { it !in matches }
+            }
+
             if (selection != context.selection)
                 context.selectMultiple(engine, selection)
         }
@@ -623,6 +642,8 @@ class ViewportInteraction2D(
         if (angle < 0f) angle += 360f
         return angle
     }
+
+    private enum class SelectionMode { REPLACE, ADD, REMOVE }
 
     companion object
     {
