@@ -12,6 +12,7 @@ import kotlin.reflect.KProperty
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.*
 import kotlin.reflect.jvm.javaField
+import org.joml.Vector3f
 
 /**
  * Contains utility functions used by the [SceneEditor].
@@ -150,16 +151,17 @@ object EditorUtil
      */
     fun Any?.createDeepCopy(): Any? = when (this)
     {
-        is LongArray -> copyOf()
-        is IntArray -> copyOf()
-        is ShortArray -> copyOf()
-        is ByteArray -> copyOf()
-        is FloatArray -> copyOf()
-        is DoubleArray -> copyOf()
-        is CharArray -> copyOf()
+        is LongArray    -> copyOf()
+        is IntArray     -> copyOf()
+        is ShortArray   -> copyOf()
+        is ByteArray    -> copyOf()
+        is FloatArray   -> copyOf()
+        is DoubleArray  -> copyOf()
+        is CharArray    -> copyOf()
         is BooleanArray -> copyOf()
-        is Color -> Color(this)
-        else -> this
+        is Color        -> Color(this)
+        is Vector3f     -> Vector3f(this)
+        else            -> this
     }
 
     /**

@@ -14,6 +14,8 @@ uniform vec3 uPlaneU;
 uniform vec3 uPlaneV;
 uniform float uMinorSpacing;
 uniform float uMajorSpacing;
+uniform vec3 uFirstAxisColor;
+uniform vec3 uSecondAxisColor;
 
 float gridLine(vec2 position, float spacing)
 {
@@ -61,11 +63,11 @@ void main()
     float lineAlpha = max(minor * 0.20, major * 0.34);
     vec3 color = vec3(0.18);
 
-    float xAxis = axisLine(gridPosition.y);
-    float zAxis = axisLine(gridPosition.x);
-    color = mix(color, vec3(0.65, 0.12, 0.10), xAxis);
-    color = mix(color, vec3(0.10, 0.28, 0.70), zAxis);
-    lineAlpha = max(lineAlpha, max(xAxis, zAxis) * 0.72);
+    float firstAxis = axisLine(gridPosition.y);
+    float secondAxis = axisLine(gridPosition.x);
+    color = mix(color, uFirstAxisColor, firstAxis);
+    color = mix(color, uSecondAxisColor, secondAxis);
+    lineAlpha = max(lineAlpha, max(firstAxis, secondAxis));
 
     vec3 cameraOffset = uCameraPosition - uPlaneOrigin;
     vec2 cameraGridPosition = vec2(dot(cameraOffset, uPlaneU), dot(cameraOffset, uPlaneV));

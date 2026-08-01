@@ -42,6 +42,7 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
+import org.joml.Vector3f
 
 /**
  * Factory for building [UiElement]s used in the [SceneEditor].
@@ -58,6 +59,7 @@ open class UiElementFactory(
         Boolean::class     to ::createBooleanPropertyUi,
         Enum::class        to ::createEnumPropertyUi,
         Color::class       to ::createColorPickerUI,
+        Vector3f::class    to ::createVector3PropertyUi,
         LongArray::class   to ::createInputFieldUI,
         IntArray::class    to ::createInputFieldUI,
         ShortArray::class  to ::createInputFieldUI,
@@ -470,7 +472,6 @@ open class UiElementFactory(
         val stringItems = items.map { onItemToString(it) }
         val (width, height) = getDropDownDimensions(font, fontSize, scrollBarWidth, 35f, 8, stringItems)
         return DropdownMenu<T>(
-            width = Size.relative(0.5f),
             dropDownWidth = Size.absolute(width),
             dropDownHeight = Size.absolute(height + if (searchable) DROPDOWN_SEARCH_HEIGHT else 0f)
         ).apply {
@@ -725,6 +726,7 @@ open class UiElementFactory(
             cornerRadius = ScaledValue.of(0f)
             padding.top = ScaledValue.of(0f)
             sliderPadding = ScaledValue.of(1.5f)
+            cornerRadius = ScaledValue.of(4f)
             bind(scrollBinding, direction)
         }
     }
@@ -740,14 +742,14 @@ open class UiElementFactory(
         ColorPicker(outputColor = prop.getter.call(obj) as Color).apply()
         {
             fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
-            setCornerRadius(ScaledValue.of(2f))
+            setCornerRadius(ScaledValue.of(4f))
             color = style.getColor("INPUT_BG")
             bgColor = style.getColor("BUTTON")
             hexInput.textColor = style.getColor("LABEL")
             hexInput.bgColorHover = style.getColor("BUTTON_HOVER")
             hexInput.bgColor = style.getColor("INPUT_BG")
             hexInput.strokeColor = Color.BLANK
-            hexInput.setCornerRadius(ScaledValue.of(2f))
+            hexInput.setCornerRadius(ScaledValue.of(4f))
             colorPreviewButton.bgColor = style.getColor("INPUT_BG")
             colorPreviewButton.bgHoverColor = style.getColor("BUTTON_HOVER")
             colorEditor.color = style.getColor("LIGHT_BG")
@@ -763,6 +765,28 @@ open class UiElementFactory(
                 it.bgColorHover = style.getColor("BUTTON_HOVER")
             }
             setOnChanged { color -> onChanged(prop.name, null, color) }
+        }
+
+    open fun createVector3PropertyUi(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): UiElement =
+        Vector3Input(vector = prop.getter.call(obj) as Vector3f).apply() 
+        {
+            val propInfo = obj.getPropInfo(prop)
+            editable = propInfo?.editable ?: true
+            numberMinVal = propInfo?.min ?: Float.NEGATIVE_INFINITY
+            numberMaxVal = propInfo?.max ?: Float.POSITIVE_INFINITY
+            font = style.getFont()
+            fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
+            textColor = style.getColor("LABEL")
+            inputBgColor = style.getColor("INPUT_BG")
+            inputBgColorHover = style.getColor("BUTTON_HOVER")
+            inputStrokeColor = Color.BLANK
+            setOnValueChanged { lastValue, newValue ->
+                onChanged(prop.name, lastValue, newValue)
+            }
         }
 
     open fun createAssetPickerUI(
@@ -781,8 +805,8 @@ open class UiElementFactory(
             nameInput.bgColorHover = style.getColor("BUTTON_HOVER")
             nameInput.bgColor = style.getColor("INPUT_BG")
             nameInput.strokeColor = Color.BLANK
-            nameInput.cornerRadiusTopLeft    = ScaledValue.of(0f)
-            nameInput.cornerRadiusBottomLeft = ScaledValue.of(0f)
+            nameInput.cornerRadiusTopLeft    = ScaledValue.of(4f)
+            nameInput.cornerRadiusBottomLeft = ScaledValue.of(4f)
             previewButton.bgColor = style.getColor("INPUT_BG")
             previewButton.bgHoverColor = style.getColor("BUTTON_HOVER")
             previewButton.color = Color.WHITE
@@ -798,7 +822,6 @@ open class UiElementFactory(
             scrollbar.bgColor = style.getColor("SCROLLBAR_BG")
             scrollbar.sliderColor = style.getColor("SCROLLBAR")
             scrollbar.sliderColorHover = style.getColor("SCROLLBAR_HOVER")
-            headerPanel.color = style.getColor("DROPDOWN_HEADER")
             headerPanel.strokeColor = style.getColor("STROKE")
             headerPanel.cornerRadiusTopLeft = ScaledValue.of(4f)
             headerPanel.cornerRadiusTopRight = ScaledValue.of(4f)
@@ -927,11 +950,9 @@ open class UiElementFactory(
             else                    -> TEXT to value?.toString()
         }
 
-        return InputField(
-            defaultText = defaultText ?: "",
-            width = Size.relative(0.5f)
-        ).apply {
-            setCornerRadius(ScaledValue.of(2f))
+        return InputField(defaultText = defaultText ?: "").apply() 
+        {
+            setCornerRadius(ScaledValue.of(4f))
             font = style.getFont()
             fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
             textColor = style.getColor("LABEL")
@@ -980,7 +1001,7 @@ open class UiElementFactory(
                 ?.invoke(obj, prop, onChanged)
                 ?: createInputFieldUI(obj, prop, onChanged)
 
-        val label = Label(text = prop.name.capitalize(), width = Size.relative(0.5f)).apply {
+        val label = Label(text = prop.name.capitalize(), width = Size.relative(0.45f)).apply {
             padding.setAll(5f)
             padding.left = ScaledValue.of(10f)
             fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))

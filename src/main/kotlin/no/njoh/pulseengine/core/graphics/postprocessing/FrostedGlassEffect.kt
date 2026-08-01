@@ -29,8 +29,8 @@ import kotlin.math.max
 class FrostedGlassEffect(
     override val name: String = "frosted_glass",
     override val order: Int = 0,
-    var intensity: Float = 0.5f,
-    var brightness: Float = 0.6f,
+    var intensity: Float = 0.3f,
+    var brightness: Float = 0.55f,
     var radius: Float = 2f,
     var zThreshold: Int = -50,
     var disableAfterNumInactiveFrames: Int = 10

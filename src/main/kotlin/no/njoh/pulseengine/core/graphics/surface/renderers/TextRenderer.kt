@@ -29,7 +29,7 @@ import kotlin.math.sin
 
 class TextRenderer(
     private val config: SurfaceConfigInternal,
-    override val order: Int = 55
+    override val order: Int = 75
 ) : Renderer() {
 
     private lateinit var vao: VertexArrayObject

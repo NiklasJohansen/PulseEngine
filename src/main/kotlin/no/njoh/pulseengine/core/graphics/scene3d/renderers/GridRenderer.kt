@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
+import no.njoh.pulseengine.core.shared.primitives.AxisColors
 import org.joml.Vector3f
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL14.*
@@ -77,6 +78,12 @@ class GridRenderer(override val order: Int = 50) : Renderer()
             program.setUniform("uMinorSpacing", 1f)
             program.setUniform("uMajorSpacing", 10f)
         }
+
+        val firstAxisColor = AxisColors.X.asLinear()
+        program.setUniform("uFirstAxisColor", firstAxisColor.red, firstAxisColor.green, firstAxisColor.blue)
+
+        val secondAxisColor = (if (is2D) AxisColors.Y else AxisColors.Z).asLinear()
+        program.setUniform("uSecondAxisColor", secondAxisColor.red, secondAxisColor.green, secondAxisColor.blue)
 
         pass.draw()
 

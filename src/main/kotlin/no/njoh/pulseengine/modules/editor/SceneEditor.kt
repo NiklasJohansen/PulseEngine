@@ -17,6 +17,7 @@ import no.njoh.pulseengine.modules.ui.UiUtils.findElement
 import no.njoh.pulseengine.modules.ui.UiUtils.firstElementOrNull
 import no.njoh.pulseengine.modules.ui.elements.InputField
 import no.njoh.pulseengine.modules.ui.elements.Label
+import no.njoh.pulseengine.modules.ui.elements.Vector3Input
 import no.njoh.pulseengine.modules.ui.UiElement
 import no.njoh.pulseengine.modules.ui.layout.RowPanel
 import no.njoh.pulseengine.modules.ui.layout.HorizontalPanel
@@ -61,6 +62,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KType
 import kotlin.reflect.full.*
+import org.joml.Vector3f
 
 @Suppress("FunctionName")
 fun SceneEditor2D(vararg initialScenes: String) = SceneEditor(ViewportInteraction2D(), initialScenes = initialScenes.toList())
@@ -655,8 +657,16 @@ class SceneEditor(
         val propertyGroups = properties
             .groupBy { property -> property.representative.entity.getPropGroup(property.representative.property)?.takeIf { it.isNotEmpty() } ?: defaultGroup }
             .toList()
-            .sortedBy { it.first }
-            .sortedBy { it.first != defaultGroup }
+            .sortedWith(
+                compareBy<Pair<String, List<SelectedEntityProperty>>> {
+                    when (it.first)
+                    {
+                        defaultGroup -> 0
+                        "Transform"  -> 1
+                        else         -> 2
+                    }
+                }.thenBy { it.first }
+            )
 
         for ((group, properties) in propertyGroups)
         {
@@ -674,7 +684,6 @@ class SceneEditor(
 
                     (propertyUi.first.children.firstOrNull() as? Label)?.let { label ->
                         if (property.key.name in propertyNamesWithMultipleTypes)
-                            
                             label.text = "${label.text} (${property.key.type.toInspectorName()})"
                         if (property.isShared)
                             label.color = uiFactory.style.getColor("LABEL_GROUP")
@@ -785,7 +794,13 @@ class SceneEditor(
 
     private fun updateEntityPropertiesPanel(entity: SceneEntity, propName: String, value: Any)
     {
-        (entityPropertyUiRowsByEntity[EntityPropertyUiKey(entity.id, propName)] as? InputField)?.setTextQuiet(value.toString())
+        when (val input = entityPropertyUiRowsByEntity[EntityPropertyUiKey(entity.id, propName)])
+        {
+            is InputField -> input.setTextQuiet(value.toString())
+            is Vector3Input -> (value as? Vector3f)
+                ?.takeIf { it === input.vector }
+                ?.let { input.setVectorQuiet(it.x, it.y, it.z) }
+        }
     }
 
     private fun updateSceneSystemProperties(engine: PulseEngine)

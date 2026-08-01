@@ -127,18 +127,18 @@ class ColorPicker(
         {
             contentType = InputField.ContentType.HEX_COLOR
             bgColor = Color.BLANK
-            setCornerRadius(ScaledValue.of(2f))
+            setCornerRadius(ScaledValue.of(4f))
         }
 
         colorPreviewButton = Button(
             width = Size.absolute(10f),
             height = Size.absolute(10f)
         ).apply {
-            setCornerRadius(ScaledValue.of(2f))
+            setCornerRadius(ScaledValue.of(4f))
             addChildren(
                 Panel().apply {
                     focusable = false
-                    setCornerRadius(ScaledValue.of(2f))
+                    setCornerRadius(ScaledValue.of(4f))
                     color = outputColor
                     padding.setAll(5f)
                 }
@@ -147,7 +147,7 @@ class ColorPicker(
 
         val hPanelButton = HorizontalPanel().apply()
         {
-            setCornerRadius(ScaledValue.of(2f))
+            setCornerRadius(ScaledValue.of(4f))
             color = bgColor
             addChildren(hexInput, colorPreviewButton)
         }
@@ -173,7 +173,7 @@ class ColorPicker(
                     contentType = InputField.ContentType.INTEGER
                     numberMinVal = 0f
                     numberMaxVal = 255f
-                    setCornerRadius(ScaledValue.of(2f))
+                    setCornerRadius(ScaledValue.of(4f))
                 }
             )
         }
