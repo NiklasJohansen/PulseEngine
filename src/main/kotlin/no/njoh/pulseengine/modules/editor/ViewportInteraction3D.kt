@@ -362,7 +362,7 @@ class ViewportInteraction3D(
             PickMode.ADD -> if (entity in context.selection) context.selection.toList() else context.selection + entity
             PickMode.TOGGLE -> if (entity in context.selection) context.selection - entity else context.selection + entity
         }
-        context.selectMultiple(engine, selection)
+        context.selectEntities(engine, selection)
         observedSelectionId = Long.MIN_VALUE
         getSelectedTransformables(context)?.let {
             orbitPivot.set(it.pivot)
@@ -404,7 +404,7 @@ class ViewportInteraction3D(
     {
         val drag = selectionDrag ?: return
         if (drag.active && context.selection != drag.initialSelection)
-            context.selectMultiple(engine, drag.initialSelection)
+            context.selectEntities(engine, drag.initialSelection)
         selectionDrag = null
     }
 
@@ -465,7 +465,7 @@ class ViewportInteraction3D(
         if (selection == context.selection)
             return
 
-        context.selectMultiple(engine, selection)
+        context.selectEntities(engine, selection)
         observedSelectionId = Long.MIN_VALUE
 
         getSelectedTransformables(context)?.let()
@@ -703,15 +703,19 @@ class ViewportInteraction3D(
         val selected = getSelectedTransformables(context) ?: return
         val center = Vector3f(selected.pivot)
         var radius = 1f
+
         selected.targets.forEach { target ->
             val (targetCenter, targetRadius) = getSelectionBounds(engine, target.entity, target.spatial)
             radius = max(radius, center.distance(targetCenter) + targetRadius)
         }
+
         orbitPivot.set(center)
         orbitPivotValid = true
+
         cameraDirections(context.camera, tmpV0, tmpV1, tmpV2)
         val halfFov = max(context.camera.fov.toRadians() * 0.5f, 0.01f)
         val distance = max(radius * 1.35f / tan(halfFov), MIN_ORBIT_DISTANCE)
+
         context.camera.position.set(tmpV2).mul(-distance).add(center)
     }
 
@@ -759,6 +763,7 @@ class ViewportInteraction3D(
             is Camera3D -> CAMERA_MARKER_HIT_RADIUS
             else -> POINT_SELECTION_RADIUS
         }
+
         projectedBoundsMax.set(projectedBoundsMin).add(radius, radius)
         projectedBoundsMin.sub(radius, radius)
 
@@ -788,6 +793,7 @@ class ViewportInteraction3D(
 
         projectedBoundsMin.set(Float.MAX_VALUE, Float.MAX_VALUE)
         projectedBoundsMax.set(-Float.MAX_VALUE, -Float.MAX_VALUE)
+        
         var pointCount = 0
         for (i in AABB_EDGES.indices step 2)
         {
@@ -848,12 +854,10 @@ class ViewportInteraction3D(
         var hullCount = 0
         for (i in 0 until pointCount)
         {
-            while (hullCount >= 2 && cross(
-                    projectedHullPoints[hullCount - 2],
-                    projectedHullPoints[hullCount - 1],
-                    projectedEdgePoints[i]
-                ) <= 0f)
-                hullCount--
+            while (hullCount >= 2 && cross(projectedHullPoints[hullCount - 2], projectedHullPoints[hullCount - 1], projectedEdgePoints[i]) <= 0f) 
+            {
+                hullCount-- 
+            }
             projectedHullPoints[hullCount++].set(projectedEdgePoints[i])
         }
 
@@ -881,29 +885,26 @@ class ViewportInteraction3D(
     private fun cross(a: Vector2f, b: Vector2f, c: Vector2f) =
         (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
 
-    private fun projectedHullOverlapsRectangle(
-        hullCount: Int,
-        xMin: Float,
-        yMin: Float,
-        xMax: Float,
-        yMax: Float
-    ): Boolean {
+    private fun projectedHullOverlapsRectangle(hullCount: Int, xMin: Float, yMin: Float, xMax: Float, yMax: Float): Boolean 
+    {
         if (hullCount == 1)
             return pointInsideRectangle(projectedHullPoints[0], xMin, yMin, xMax, yMax)
+        
         if (hullCount == 2)
             return segmentIntersectsRectangle(projectedHullPoints[0], projectedHullPoints[1], xMin, yMin, xMax, yMax)
 
         for (i in 0 until hullCount)
         {
-            if (pointInsideRectangle(projectedHullPoints[i], xMin, yMin, xMax, yMax))
-                return true
+            if (pointInsideRectangle(projectedHullPoints[i], xMin, yMin, xMax, yMax)) return true
         }
 
         if (pointInsideProjectedHull(xMin, yMin, hullCount) ||
             pointInsideProjectedHull(xMax, yMin, hullCount) ||
             pointInsideProjectedHull(xMin, yMax, hullCount) ||
-            pointInsideProjectedHull(xMax, yMax, hullCount))
+            pointInsideProjectedHull(xMax, yMax, hullCount)
+        ) {
             return true
+        }
 
         for (i in 0 until hullCount)
         {
@@ -911,6 +912,7 @@ class ViewportInteraction3D(
             if (segmentIntersectsRectangle(projectedHullPoints[i], projectedHullPoints[next], xMin, yMin, xMax, yMax))
                 return true
         }
+
         return false
     }
 
@@ -931,24 +933,18 @@ class ViewportInteraction3D(
             val currentSign = if (value > 0f) 1 else -1
             if (sign != 0 && sign != currentSign)
                 return false
+
             sign = currentSign
         }
         return true
     }
 
-    private fun segmentIntersectsRectangle(
-        a: Vector2f,
-        b: Vector2f,
-        xMin: Float,
-        yMin: Float,
-        xMax: Float,
-        yMax: Float
-    ): Boolean {
-        if (pointInsideRectangle(a, xMin, yMin, xMax, yMax) ||
-            pointInsideRectangle(b, xMin, yMin, xMax, yMax))
+    private fun segmentIntersectsRectangle(a: Vector2f, b: Vector2f, xMin: Float, yMin: Float, xMax: Float, yMax: Float): Boolean 
+    {
+        if (pointInsideRectangle(a, xMin, yMin, xMax, yMax) || pointInsideRectangle(b, xMin, yMin, xMax, yMax))
             return true
-        if (max(a.x, b.x) < xMin || min(a.x, b.x) > xMax ||
-            max(a.y, b.y) < yMin || min(a.y, b.y) > yMax)
+        
+        if (max(a.x, b.x) < xMin || min(a.x, b.x) > xMax || max(a.y, b.y) < yMin || min(a.y, b.y) > yMax)
             return false
 
         val dx = b.x - a.x
@@ -957,21 +953,19 @@ class ViewportInteraction3D(
         val segmentXMax = max(a.x, b.x)
         val segmentYMin = min(a.y, b.y)
         val segmentYMax = max(a.y, b.y)
+
         if (abs(dx) > PROJECTED_POINT_EPSILON)
         {
-            val crossesLeft = xMin in segmentXMin..segmentXMax &&
-                a.y + (xMin - a.x) / dx * dy in yMin..yMax
-            val crossesRight = xMax in segmentXMin..segmentXMax &&
-                a.y + (xMax - a.x) / dx * dy in yMin..yMax
+            val crossesLeft  = xMin in segmentXMin..segmentXMax && a.y + (xMin - a.x) / dx * dy in yMin..yMax
+            val crossesRight = xMax in segmentXMin..segmentXMax && a.y + (xMax - a.x) / dx * dy in yMin..yMax
             if (crossesLeft || crossesRight)
                 return true
         }
+
         if (abs(dy) > PROJECTED_POINT_EPSILON)
         {
-            val crossesTop = yMin in segmentYMin..segmentYMax &&
-                a.x + (yMin - a.y) / dy * dx in xMin..xMax
-            val crossesBottom = yMax in segmentYMin..segmentYMax &&
-                a.x + (yMax - a.y) / dy * dx in xMin..xMax
+            val crossesTop    = yMin in segmentYMin..segmentYMax && a.x + (yMin - a.y) / dy * dx in xMin..xMax
+            val crossesBottom = yMax in segmentYMin..segmentYMax && a.x + (yMax - a.y) / dy * dx in xMin..xMax
             if (crossesTop || crossesBottom)
                 return true
         }
@@ -994,8 +988,7 @@ class ViewportInteraction3D(
         selectionYMin: Float,
         selectionXMax: Float,
         selectionYMax: Float
-    )
-    {
+    ) {
         boundedMarqueeObjectIds.clear()
         matchedMarqueeObjectIds.clear()
         val scene = engine.gfx.sceneContext.getSubmittedScene()
@@ -1013,16 +1006,14 @@ class ViewportInteraction3D(
         selectionYMin: Float,
         selectionXMax: Float,
         selectionYMax: Float
-    )
-    {
+    ) {
         items.forEach { item ->
             if (item.objectId < 0L)
                 return@forEach
 
-            boundedMarqueeObjectIds.add(item.objectId)
-            if (item.objectId !in matchedMarqueeObjectIds &&
-                projectRenderItemOverlaps(camera, item, width, height, selectionXMin, selectionYMin, selectionXMax, selectionYMax))
-                matchedMarqueeObjectIds.add(item.objectId)
+            boundedMarqueeObjectIds += item.objectId
+            if (item.objectId !in matchedMarqueeObjectIds && projectRenderItemOverlaps(camera, item, width, height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)) 
+                matchedMarqueeObjectIds += item.objectId
         }
     }
 
@@ -1036,19 +1027,14 @@ class ViewportInteraction3D(
         return found
     }
 
-    private fun includeObjectBounds(
-        items: DynamicList<RenderItem>,
-        objectId: Long,
-        outBounds: Model.Aabb,
-        hasExistingBounds: Boolean
-    ): Boolean {
+    private fun includeObjectBounds(items: DynamicList<RenderItem>, objectId: Long, outBounds: Model.Aabb, hasExistingBounds: Boolean): Boolean 
+    {
         var found = hasExistingBounds
         items.forEach { item ->
             if (item.objectId != objectId) return@forEach
             includeRenderItemBounds(item, outBounds, found)
             found = true
         }
-
         return found
     }
 
@@ -1079,7 +1065,9 @@ class ViewportInteraction3D(
         val zMax = zWorldCenter + zWorldHalf
 
         if (!hasExistingBounds)
+        {
             outBounds.set(xMin, yMin, zMin, xMax, yMax, zMax)
+        }
         else
         {
             outBounds.set(
@@ -1173,9 +1161,11 @@ class ViewportInteraction3D(
                 val axis = axis(drag.handle, tmpV0)
                 if (!intersectPlane(ray, drag.pivot, axis, tmpV1))
                     return
+
                 tmpV1.sub(drag.pivot)
                 if (tmpV1.lengthSquared() < 1e-6f)
                     return
+
                 tmpV1.normalize()
 
                 val angle = signedAngleDegrees(drag.startVector, tmpV1, axis)
@@ -1422,7 +1412,7 @@ class ViewportInteraction3D(
 
             tmpV0.set(camera.xPos, camera.yPos, camera.zPos)
             val isSelected = camera.id in selectedIds
-            surface.setDrawColor(if (isSelected) ACTIVE_COLOR else CAMERA_MARKER_COLOR)
+            surface.setDrawColor(ACTIVE_COLOR)
             cameraDirections(camera, tmpV1, tmpV2, tmpV3)
             renderCameraFrustum(surface, context.camera, camera, tmpV0, tmpV1, tmpV2, tmpV3, width, height, isSelected)
 
@@ -2001,7 +1991,6 @@ class ViewportInteraction3D(
         private val ACTIVE_PLANE_COLOR = Color(1f, 0.75f, 0.08f, 0.9f)
         private val LIGHT_MARKER_COLOR = Color(1f, 0.72f, 0.16f, 1f)
         private val LIGHT_VOLUME_COLOR = Color(1f, 0.72f, 0.16f, 0.8f)
-        private val CAMERA_MARKER_COLOR = Color(0.25f, 0.82f, 1f, 1f)
         private val SELECTION_RECT_BORDER_COLOR = Color(1f, 1f, 1f, 1f)
     }
 }

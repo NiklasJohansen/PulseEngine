@@ -16,6 +16,7 @@ import no.njoh.pulseengine.core.input.CursorMode
 import no.njoh.pulseengine.modules.ui.UiUtils.findElement
 import no.njoh.pulseengine.modules.ui.UiUtils.firstElementOrNull
 import no.njoh.pulseengine.modules.ui.elements.InputField
+import no.njoh.pulseengine.modules.ui.elements.Label
 import no.njoh.pulseengine.modules.ui.UiElement
 import no.njoh.pulseengine.modules.ui.layout.RowPanel
 import no.njoh.pulseengine.modules.ui.layout.HorizontalPanel
@@ -38,8 +39,10 @@ import no.njoh.pulseengine.modules.physics2d.bodies.PhysicsBody2D
 import no.njoh.pulseengine.core.shared.utils.FileChooser
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
+import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.service.Service
 import no.njoh.pulseengine.modules.editor.EditorMode.*
+import no.njoh.pulseengine.modules.editor.EditorUtil.createDeepCopy
 import no.njoh.pulseengine.modules.ui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.ui.elements.Button
 import no.njoh.pulseengine.modules.ui.layout.Panel
@@ -56,6 +59,7 @@ import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderSystem
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
+import kotlin.reflect.KType
 import kotlin.reflect.full.*
 
 @Suppress("FunctionName")
@@ -80,6 +84,7 @@ class SceneEditor(
     lateinit var sceneTabsUI: HorizontalPanel
 
     private var entityPropertyUiRows = THashMap<String, UiElement>()
+    private var entityPropertyUiRowsByEntity = THashMap<EntityPropertyUiKey, UiElement>()
     private var collapsedPropertyHeaders = mutableListOf<String>()
     private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
     private var showGrid = true
@@ -149,7 +154,7 @@ class SceneEditor(
             if (isRunning && it == S && engine.input.isPressed(LEFT_CONTROL))
                 saveActiveEditorScene(engine)
             
-            if (isRunning && isControlPressed(engine) && !hasFocusedInputField(engine))
+            if (isRunning && (engine.input.isPressed(LEFT_CONTROL) || engine.input.isPressed(RIGHT_CONTROL)) && !hasFocusedInputField(engine))
             {
                 when (it)
                 {
@@ -270,13 +275,13 @@ class SceneEditor(
                 entitySelection.clear()
                 inspectorUI.clearChildren()
                 entityPropertyUiRows.clear()
+                entityPropertyUiRowsByEntity.clear()
                 engine.scene.forEachEntity()
                 {
                     if (it.isSet(SELECTED or EDITABLE) && it.isNot(HIDDEN))
                         addEntityToSelection(it)
                 }
-                if (entitySelection.size == 1)
-                    selectSingleEntity(engine, entitySelection.first())
+                populateEntityInspector(engine, entitySelection)
             },
             onEntityCreated = { type -> createNewEntity(engine, type) },
             onEntityDeleted = { deleteSelectedEntities(engine) }
@@ -314,6 +319,8 @@ class SceneEditor(
         dockingUI.addChildren(viewportWindow)
     }
 
+    
+    
     override fun onUpdate(engine: PulseEngine)
     {
         while (true)
@@ -496,7 +503,7 @@ class SceneEditor(
     private fun stopEditorAndStartGame(engine: PulseEngine)
     {
         captureActiveEditorCamera(engine)
-        viewportInteraction?.onEditorDeactivated(engine, viewportContext)
+        viewportInteraction.onEditorDeactivated(engine, viewportContext)
         stop() // Stop editor service
         rememberEntitySelection()
 
@@ -519,7 +526,7 @@ class SceneEditor(
             ensureActiveEditorScene(engine, replaceSceneWithSameFile = true)
         }
 
-        viewportInteraction?.onEditorActivated(engine, viewportContext)
+        viewportInteraction.onEditorActivated(engine, viewportContext)
         restoreActiveEditorCamera(engine)
         engine.input.setCursorMode(CursorMode.NORMAL)
         start() // Start editor service
@@ -589,9 +596,6 @@ class SceneEditor(
         }
     }
 
-    private fun isControlPressed(engine: PulseEngine) =
-        engine.input.isPressed(LEFT_CONTROL) || engine.input.isPressed(RIGHT_CONTROL)
-
     private fun hasFocusedInputField(engine: PulseEngine) =
         ::rootUI.isInitialized &&
         rootUI.firstElementOrNull { it is InputField && engine.input.hasFocus(it.area) } != null
@@ -610,98 +614,161 @@ class SceneEditor(
         entity.setPrimitiveProperty("textureName", "crate")
         engine.scene.addEntity(entity)
         sceneHierarchy?.addEntities(listOf(entity))
-        selectSingleEntity(engine, entity)
+        selectEntities(engine, listOf(entity))
         markActiveEditorSceneDirty(engine)
     }
 
     fun selectEntities(engine: PulseEngine, entities: List<SceneEntity>)
     {
-        if (entities.isEmpty())
-        {
-            clearEntitySelection()
-            sceneHierarchy?.selectEntities(emptyList())
-        }
-        else if (entities.size == 1)
-        {
-            selectSingleEntity(engine, entities[0])
-        }
-        else
-        {
-            clearEntitySelection()
-            entities.forEachFast { addEntityToSelection(it) }
-            sceneHierarchy?.selectEntities(entities)
-        }
+        val selection = entities.toList()
+        clearEntitySelection()
+        selection.forEachFast { addEntityToSelection(it) }
+        sceneHierarchy?.selectEntities(entitySelection)
+        populateEntityInspector(engine, entitySelection)
     }
 
-    fun selectSingleEntity(engine: PulseEngine, entity: SceneEntity)
+    private fun populateEntityInspector(engine: PulseEngine, entities: List<SceneEntity>)
     {
-        clearEntitySelection()
-        addEntityToSelection(entity)
-        sceneHierarchy?.selectEntities(entitySelection)
+        if (entities.isEmpty()) return
 
-        val entityName = entity::class.getName()
-        val propertyGroups = entity::class.memberProperties
-            .filter { entity.getPropInfo(it)?.hidden != true }
-            .groupBy { entity.getPropGroup(it)?.takeIf { it.isNotEmpty() } ?: entityName }
+        val selectedProperties = linkedMapOf<CommonPropertyKey, MutableList<EntityPropertyBinding>>()
+        entities.forEach { entity ->
+            entity::class.memberProperties
+                .filterIsInstance<KMutableProperty<*>>()
+                .filter { it.isEditable() && entity.getPropInfo(it)?.hidden != true }
+                .forEach { property ->
+                    val key = CommonPropertyKey(property.name, property.returnType)
+                    selectedProperties.getOrPut(key) { mutableListOf() }.add(EntityPropertyBinding(entity, property))
+                }
+        }
+
+        val properties = selectedProperties.map { (key, bindings) -> SelectedEntityProperty(key, bindings) }
+        val propertyNamesWithMultipleTypes = properties
+            .groupingBy { it.key.name }
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
+
+        val representativeEntity = entities.first()
+        val isMultiSelection = entities.size > 1
+        val defaultGroup = if (isMultiSelection) "Entity Group (${entities.size})" else representativeEntity::class.getName()
+        val propertyGroups = properties
+            .groupBy { property -> property.representative.entity.getPropGroup(property.representative.property)?.takeIf { it.isNotEmpty() } ?: defaultGroup }
             .toList()
-            .sortedBy { it.first } // Alphabetic order
-            .sortedBy { it.first != entityName } // Entity type first
+            .sortedBy { it.first }
+            .sortedBy { it.first != defaultGroup }
 
-        for ((group, props) in propertyGroups)
+        for ((group, properties) in propertyGroups)
         {
-            val onChanged = { propName: String, lastValue: Any?, _: Any? ->
-                if (propName == SceneEntity::parentId.name)
-                {
-                    val newParentId = entity.parentId
-                    val lastParentId = when (lastValue)
-                    {
-                        is Long -> lastValue
-                        is String -> lastValue.toLongOrNull() ?: INVALID_ID
-                        else -> INVALID_ID
+            val propertyRows = properties
+                .sortedBy { it.representative.entity.getPropInfo(it.representative.property)?.i ?: 0 }
+                .map { property ->
+                    val representative = property.representative
+                    val propertyUi = uiFactory.createPropertyUI(
+                        obj = representative.entity,
+                        prop = representative.property,
+                        onChanged = { propName: String, lastValue: Any?, _: Any? ->
+                            applyPropertyChange(engine, property, propName, lastValue)
+                        }
+                    )
+
+                    (propertyUi.first.children.firstOrNull() as? Label)?.let { label ->
+                        if (property.key.name in propertyNamesWithMultipleTypes)
+                            
+                            label.text = "${label.text} (${property.key.type.toInspectorName()})"
+                        if (property.isShared)
+                            label.color = uiFactory.style.getColor("LABEL_GROUP")
                     }
 
-                    engine.scene.getEntity(lastParentId)?.removeChild(entity)
-                    engine.scene.getEntity(newParentId)?.addChild(entity)
-                    sceneHierarchy?.removeEntities(listOf(entity))
-                    sceneHierarchy?.addEntities(listOf(entity))
+                    property to propertyUi
                 }
-                sceneHierarchy?.updateEntityProperty(entity, propName)
-                markActiveEditorSceneDirty(engine)
-                Unit
-            }
+
+            if (propertyRows.isEmpty())
+                continue
 
             val headerId = "header_$group"
             val isCollapsed = headerId in collapsedPropertyHeaders
-            val propertyRows = props
-                .sortedBy { entity.getPropInfo(it)?.i ?: 0 }
-                .filterIsInstance<KMutableProperty<*>>()
-                .filter { it.isEditable() }
-                .map { prop -> prop to uiFactory.createPropertyUI(entity, prop, onChanged) }
+            val headerButton = uiFactory.createCategoryHeader(
+                label = group,
+                isCollapsed = isCollapsed,
+                onClicked = {
+                    propertyRows.forEachFast { (_, ui) -> ui.first.hidden = !ui.first.hidden }
+                    if (it.isPressed) collapsedPropertyHeaders.add(headerId) else collapsedPropertyHeaders.remove(headerId)
+                }
+            )
 
-            if (propertyRows.isNotEmpty())
-            {
-                val headerButton = uiFactory.createCategoryHeader(
-                    label = group,
-                    isCollapsed = isCollapsed,
-                    onClicked = {
-                        propertyRows.forEachFast { (_, ui) -> ui.first.hidden = !ui.first.hidden }
-                        if (it.isPressed) collapsedPropertyHeaders.add(headerId) else collapsedPropertyHeaders.remove(headerId)
-                    }
-                )
-                inspectorUI.addChildren(headerButton)
-            }
+            inspectorUI.addChildren(headerButton)
 
-            for ((prop, ui) in propertyRows)
+            for ((property, ui) in propertyRows)
             {
                 val (propertyPanel, inputElement) = ui
                 propertyPanel.hidden = isCollapsed
                 inspectorUI.addChildren(propertyPanel)
-                entityPropertyUiRows[prop.name] = inputElement
+                property.bindings.forEach { binding ->
+                    entityPropertyUiRowsByEntity[EntityPropertyUiKey(binding.entity.id, property.key.name)] = inputElement
+                }
+
+                if (entityPropertyUiRows[property.key.name] == null || property.isSharedByAll(entities.size))
+                    entityPropertyUiRows[property.key.name] = inputElement
+
+                if (isMultiSelection &&
+                    property.isSharedByAll(entities.size) &&
+                    property.key.name == SceneEntity::id.name &&
+                    inputElement is InputField
+                ) {
+                    inputElement.contentType = InputField.ContentType.TEXT
+                    inputElement.setTextQuiet(entities.joinToString(", ") { it.id.toString() })
+                }
             }
         }
 
-        // Add bottom padding to the last property row
         inspectorUI.children.lastOrNull()?.let { it.padding.bottom = it.padding.top }
+    }
+
+    private fun applyPropertyChange(
+        engine: PulseEngine,
+        selectedProperty: SelectedEntityProperty,
+        propName: String,
+        representativeLastValue: Any?
+    ) {
+        val representative = selectedProperty.representative
+        val value = representative.property.getter.call(representative.entity)
+
+        selectedProperty.bindings.forEachIndexed { index, binding ->
+            val (entity, property) = binding
+            val lastValue = if (index == 0) representativeLastValue else property.getter.call(entity)
+            if (index != 0)
+            {
+                try { property.setter.call(entity, value.createDeepCopy()) }
+                catch (e: Exception)
+                {
+                    Logger.error(e) { "Failed to set common property ${entity::class.simpleName}.$propName" }
+                    return@forEachIndexed
+                }
+            }
+            onEntityPropertyChanged(engine, entity, propName, lastValue)
+        }
+        markActiveEditorSceneDirty(engine)
+    }
+
+    private fun onEntityPropertyChanged(engine: PulseEngine, entity: SceneEntity, propName: String, lastValue: Any?)
+    {
+        if (propName == SceneEntity::parentId.name)
+        {
+            val newParentId = entity.parentId
+            val lastParentId = when (lastValue)
+            {
+                is Long -> lastValue
+                is String -> lastValue.toLongOrNull() ?: INVALID_ID
+                else -> INVALID_ID
+            }
+
+            engine.scene.getEntity(lastParentId)?.removeChild(entity)
+            engine.scene.getEntity(newParentId)?.addChild(entity)
+            sceneHierarchy?.removeEntities(listOf(entity))
+            sceneHierarchy?.addEntities(listOf(entity))
+        }
+        sceneHierarchy?.updateEntityProperty(entity, propName)
     }
 
     fun deleteSelectedEntities(engine: PulseEngine)
@@ -711,14 +778,14 @@ class SceneEditor(
 
         entitySelection.forEachFast { it.setDead(engine) }
         sceneHierarchy?.removeEntities(entitySelection)
-        viewportInteraction?.reset(engine, viewportContext)
+        viewportInteraction.reset(engine, viewportContext)
         clearEntitySelection()
         markActiveEditorSceneDirty(engine)
     }
 
-    private fun updateEntityPropertiesPanel(propName: String, value: Any)
+    private fun updateEntityPropertiesPanel(entity: SceneEntity, propName: String, value: Any)
     {
-        (entityPropertyUiRows[propName] as? InputField)?.text = value.toString()
+        (entityPropertyUiRowsByEntity[EntityPropertyUiKey(entity.id, propName)] as? InputField)?.setTextQuiet(value.toString())
     }
 
     private fun updateSceneSystemProperties(engine: PulseEngine)
@@ -750,6 +817,7 @@ class SceneEditor(
         entitySelection.clear()
         inspectorUI.clearChildren()
         entityPropertyUiRows.clear()
+        entityPropertyUiRowsByEntity.clear()
     }
 
     private fun addEntityToSelection(entity: SceneEntity)
@@ -815,7 +883,7 @@ class SceneEditor(
     {
         propertyNames.forEach { name ->
             val property = entity::class.memberProperties.firstOrNull { it.name == name } ?: return@forEach
-            updateEntityPropertiesPanel(name, property.getter.call(entity) ?: return@forEach)
+            updateEntityPropertiesPanel(entity, name, property.getter.call(entity) ?: return@forEach)
         }
         entity.onMovedScaledOrRotated(engine)
         markActiveEditorSceneDirty(engine)
@@ -1012,4 +1080,31 @@ class SceneEditor(
         var dirty: Boolean = false,
         var cameraState: CameraState? = null
     )
+
+    private data class CommonPropertyKey(
+        val name: String,
+        val type: KType
+    )
+
+    private data class EntityPropertyBinding(
+        val entity: SceneEntity,
+        val property: KMutableProperty<*>
+    )
+
+    private data class SelectedEntityProperty(
+        val key: CommonPropertyKey,
+        val bindings: List<EntityPropertyBinding>
+    ) {
+        val representative get() = bindings.first()
+        val isShared get() = bindings.size > 1
+
+        fun isSharedByAll(entityCount: Int) = bindings.size == entityCount
+    }
+
+    private data class EntityPropertyUiKey(
+        val entityId: Long,
+        val propertyName: String
+    )
+
+    private fun KType.toInspectorName() = toString().replace("kotlin.", "")
 }

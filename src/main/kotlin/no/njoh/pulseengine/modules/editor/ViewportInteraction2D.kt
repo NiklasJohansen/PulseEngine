@@ -5,7 +5,6 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.GridRenderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.Key.*
@@ -217,7 +216,7 @@ class ViewportInteraction2D(
         {
             val entities = mutableListOf<SceneEntity>()
             engine.scene.forEachEntity { entities += it }
-            context.selectMultiple(engine, entities)
+            context.selectEntities(engine, entities)
         }
 
         val xMouse = engine.input.xWorldMouse
@@ -240,11 +239,11 @@ class ViewportInteraction2D(
                 if (engine.input.isPressed(LEFT_CONTROL))
                 {
                     val updatedSelection = if (entity in selected) selected - entity else selected + entity
-                    context.selectMultiple(engine, updatedSelection)
+                    context.selectEntities(engine, updatedSelection)
                 }
                 else if (entity !in selected)
                 {
-                    context.selectSingle(engine, entity)
+                    context.selectEntities(engine, listOf(entity))
                 }
                 isMoving = true
             }
@@ -300,7 +299,7 @@ class ViewportInteraction2D(
             }
 
             if (selection != context.selection)
-                context.selectMultiple(engine, selection)
+                context.selectEntities(engine, selection)
         }
     }
 

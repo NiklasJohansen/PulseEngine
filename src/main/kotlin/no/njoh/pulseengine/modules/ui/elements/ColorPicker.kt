@@ -23,6 +23,7 @@ class ColorPicker(
     width: Size = Size.auto(),
     height: Size = Size.auto()
 ) : Panel(x, y, width, height) {
+
     var bgColor = Color.BLANK
 
     val colorEditor: WindowPanel
@@ -46,6 +47,8 @@ class ColorPicker(
             this.forEachElementOfType<Label> { it.fontSize = value }
             this.forEachElementOfType<InputField> { it.fontSize = value }
         }
+
+    private var onChanged: (Color) -> Unit = {}
 
     init
     {
@@ -192,6 +195,7 @@ class ColorPicker(
             outputColor.red = color.red
             outputColor.green = color.green
             outputColor.blue = color.blue
+            onChanged(outputColor)
         }
 
         saturationBrightnessPicker.setOnChanged {
@@ -199,6 +203,7 @@ class ColorPicker(
             greenInput.setTextQuiet((outputColor.green * 255f).toInt().toString())
             blueInput.setTextQuiet((outputColor.blue * 255f).toInt().toString())
             hexInput.setTextQuiet(it.toHex())
+            onChanged(outputColor)
         }
 
         huePicker.setOnHueChanged {
@@ -207,6 +212,7 @@ class ColorPicker(
             greenInput.setTextQuiet((outputColor.green * 255f).toInt().toString())
             blueInput.setTextQuiet((outputColor.blue * 255f).toInt().toString())
             hexInput.setTextQuiet(outputColor.toHex())
+            onChanged(outputColor)
         }
 
         redInput.setOnValidTextChanged {
@@ -215,6 +221,7 @@ class ColorPicker(
             saturationBrightnessPicker.updateFrom(outputColor)
             huePicker.updateFromColor(outputColor)
             hexInput.setTextQuiet(outputColor.toHex())
+            onChanged(outputColor)
         }
 
         greenInput.setOnValidTextChanged {
@@ -223,6 +230,7 @@ class ColorPicker(
             saturationBrightnessPicker.updateFrom(outputColor)
             huePicker.updateFromColor(outputColor)
             hexInput.setTextQuiet(outputColor.toHex())
+            onChanged(outputColor)
         }
 
         blueInput.setOnValidTextChanged {
@@ -231,6 +239,7 @@ class ColorPicker(
             saturationBrightnessPicker.updateFrom(outputColor)
             huePicker.updateFromColor(outputColor)
             hexInput.setTextQuiet(outputColor.toHex())
+            onChanged(outputColor)
         }
 
         alphaInput.setOnValidTextChanged {
@@ -239,6 +248,7 @@ class ColorPicker(
             saturationBrightnessPicker.updateFrom(outputColor)
             huePicker.updateFromColor(outputColor)
             hexInput.setTextQuiet(outputColor.toHex())
+            onChanged(outputColor)
         }
     }
 
@@ -279,6 +289,11 @@ class ColorPicker(
     {
         surface.setDrawColor(bgColor)
         surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value, cornerRadius = getCornerRadius())
+    }
+
+    fun setOnChanged(callback: (Color) -> Unit)
+    {
+        onChanged = callback
     }
 
     private fun String.toColor() = Color().setFromHex(this)

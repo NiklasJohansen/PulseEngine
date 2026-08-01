@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.editor
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
+import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
 import kotlin.reflect.KClass
@@ -143,6 +144,23 @@ object EditorUtil
         {
             Logger.error { "Failed to parse value: $value into required type: ${property.javaField?.type}, reason: ${e.message}" }
         }
+
+    /**
+     * Returns a copy of the given value.
+     */
+    fun Any?.createDeepCopy(): Any? = when (this)
+    {
+        is LongArray -> copyOf()
+        is IntArray -> copyOf()
+        is ShortArray -> copyOf()
+        is ByteArray -> copyOf()
+        is FloatArray -> copyOf()
+        is DoubleArray -> copyOf()
+        is CharArray -> copyOf()
+        is BooleanArray -> copyOf()
+        is Color -> Color(this)
+        else -> this
+    }
 
     /**
      * Returns the [Prop] annotations from the property if available.

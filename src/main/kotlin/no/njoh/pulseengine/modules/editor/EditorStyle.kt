@@ -22,6 +22,7 @@ class EditorStyle
         // Set default colors
         colors["LABEL"]           = Color(220, 220, 220, 255)
         colors["LABEL_DARK"]      = Color(127, 127, 127, 255)
+        colors["LABEL_GROUP"]     = Color(121, 184, 209, 255)
         colors["LIGHT_BG"]        = Color(14,  14,  14,  200)
         colors["DARK_BG"]         = Color(22,  22,  23,  200)
         colors["STROKE"]          = Color(23,  23,  23,  220)

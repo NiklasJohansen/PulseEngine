@@ -14,9 +14,7 @@ class ViewportContext(
     val isGridVisible get() = editor.isGridVisible()
     val iconFontName  get() = editor.uiFactory.style.iconFontName
 
-    fun selectSingle(engine: PulseEngine, entity: SceneEntity) = editor.selectSingleEntity(engine, entity)
-
-    fun selectMultiple(engine: PulseEngine, entities: List<SceneEntity>) = editor.selectEntities(engine, entities)
+    fun selectEntities(engine: PulseEngine, entities: List<SceneEntity>) = editor.selectEntities(engine, entities)
 
     fun clearSelection() = editor.clearViewportSelection()
 

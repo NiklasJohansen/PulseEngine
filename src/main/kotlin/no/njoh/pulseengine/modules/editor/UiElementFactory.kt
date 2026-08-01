@@ -54,15 +54,15 @@ open class UiElementFactory(
 
     /** Property UI factory functions for specific class types. */
     val propertyUiFactories = THashMap(mapOf(
-        String::class to ::createStringPropertyUi,
-        Boolean::class to ::createBooleanPropertyUi,
-        Enum::class to ::createEnumPropertyUi,
-        Color::class to { obj, prop, onChanged -> createColorPickerUI(outputColor = prop.getter.call(obj) as Color) },
-        LongArray::class to ::createInputFieldUI,
-        IntArray::class to ::createInputFieldUI,
-        ShortArray::class to ::createInputFieldUI,
-        ByteArray::class to ::createInputFieldUI,
-        FloatArray::class to ::createInputFieldUI,
+        String::class      to ::createStringPropertyUi,
+        Boolean::class     to ::createBooleanPropertyUi,
+        Enum::class        to ::createEnumPropertyUi,
+        Color::class       to ::createColorPickerUI,
+        LongArray::class   to ::createInputFieldUI,
+        IntArray::class    to ::createInputFieldUI,
+        ShortArray::class  to ::createInputFieldUI,
+        ByteArray::class   to ::createInputFieldUI,
+        FloatArray::class  to ::createInputFieldUI,
         DoubleArray::class to ::createInputFieldUI,
     ))
 
@@ -732,8 +732,12 @@ open class UiElementFactory(
     /**
      * Creates a new [ColorPicker] UI element.
      */
-    open fun createColorPickerUI(outputColor: Color) =
-        ColorPicker(outputColor).apply()
+    open fun createColorPickerUI(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): UiElement = 
+        ColorPicker(outputColor = prop.getter.call(obj) as Color).apply()
         {
             fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
             setCornerRadius(ScaledValue.of(2f))
@@ -758,6 +762,7 @@ open class UiElementFactory(
                 it.bgColor = style.getColor("INPUT_BG")
                 it.bgColorHover = style.getColor("BUTTON_HOVER")
             }
+            setOnChanged { color -> onChanged(prop.name, null, color) }
         }
 
     open fun createAssetPickerUI(
