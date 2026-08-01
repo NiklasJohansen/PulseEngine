@@ -260,7 +260,7 @@ open class SceneManagerImpl : SceneManagerInternal()
         addEntitiesFrom(
             sourceName = sourceScene.name,
             sourceEntities = sourceScene.getEntities(filter, includeChildren = true),
-            preserveExternalReferences = sourceScene === activeScene,
+            copyingWithinActiveScene = sourceScene === activeScene,
             targetParentId = targetParentId,
             configure = configure
         )
@@ -274,7 +274,13 @@ open class SceneManagerImpl : SceneManagerInternal()
             Logger.error { "Cannot copy entities: clipboard JSON does not contain scene entities" }
             return null
         }
-        return addEntitiesFrom("JSON scene", deserialized as List<SceneEntity>, preserveExternalReferences = false, targetParentId, configure)
+        return addEntitiesFrom(
+            sourceName = "JSON scene",
+            sourceEntities = deserialized as List<SceneEntity>,
+            copyingWithinActiveScene = false,
+            targetParentId = targetParentId,
+            configure = configure
+        )
     }
 
     override fun update()
@@ -392,7 +398,7 @@ open class SceneManagerImpl : SceneManagerInternal()
     private fun addEntitiesFrom(
         sourceName: String,
         sourceEntities: List<SceneEntity>,
-        preserveExternalReferences: Boolean,
+        copyingWithinActiveScene: Boolean,
         targetParentId: Long,
         configure: (List<SceneEntity>) -> Unit
     ): List<SceneEntity>? {
@@ -456,12 +462,14 @@ open class SceneManagerImpl : SceneManagerInternal()
                 val sourceEntity = sourceEntities[index]
                 val parentId = when
                 {
-                    sourceEntity.id in rootSourceIds -> validTargetParentId
+                    sourceEntity.id in rootSourceIds && targetParentId != INVALID_ID -> validTargetParentId
+                    sourceEntity.id in rootSourceIds && copyingWithinActiveScene -> sourceEntity.parentId
+                    sourceEntity.id in rootSourceIds -> INVALID_ID
                     sourceEntity.parentId in idMapping -> idMapping.getValue(sourceEntity.parentId)
                     else -> INVALID_ID
                 }
                 if (parentId != INVALID_ID) activeScene.entityIdMap[parentId]?.addChild(clone)
-                remapEntityReferences(clone, idMapping, preserveExternalReferences)
+                remapEntityReferences(clone, idMapping, preserveExternalReferences = copyingWithinActiveScene)
             }
 
             if (engine.scene.state == RUNNING)

@@ -143,7 +143,9 @@ abstract class SceneManager
      * Adds copies of entities and their children matching the [filter] from [sourceScene] to [activeScene].
      * References within the selection are remapped. References outside it are preserved when
      * copying from [activeScene], and cleared when copying from an external scene.
+     * When copying from [activeScene], each copied root keeps the parent of its source entity.
      * If [targetParentId] does not exist, the added root entities are left without a parent.
+     * An explicit [targetParentId] takes precedence over the source parent.
      * @param configure Called with all detached entity copies before they receive new IDs, are
      * inserted into [activeScene], and receive lifecycle callbacks. Use it to customize their properties.
      */

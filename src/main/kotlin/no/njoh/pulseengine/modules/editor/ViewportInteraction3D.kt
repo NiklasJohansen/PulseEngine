@@ -258,6 +258,28 @@ class ViewportInteraction3D(
         getObjectIdRenderer(engine)?.enabled = false
     }
 
+    override fun onEntitiesDuplicated(engine: PulseEngine, context: ViewportContext, duplicatesBySource: Map<SceneEntity, SceneEntity>)
+    {
+        val drag = transformDrag ?: return
+        val duplicateTargets = drag.targets.map { target ->
+            val duplicate = duplicatesBySource[target.entity] ?: return
+            val spatial = duplicate as? Translatable3D ?: return
+            TransformTarget(duplicate, spatial, target.snapshot)
+        }
+
+        // Rebase the active drag at the copies' current transforms. This keeps the movement seamless,
+        // while Escape restores the copies to where duplication occurred instead of the drag's old start.
+        gizmoMode = drag.mode
+        transformDrag = null
+        val duplicateSelection = getSelectedTransformables(context)
+        if (duplicateSelection == null || !beginTransformDrag(engine, context, duplicateSelection, drag.handle))
+            transformDrag = drag.copy(targets = duplicateTargets)
+
+        observedSelectionId = selectionId(context)
+        pickPending = false
+        updateOrbitPivotFromSelection(context)
+    }
+
     override fun onDestroy(engine: PulseEngine, context: ViewportContext)
     {
         engine.input.setCursorType(CursorType.ARROW)
@@ -542,7 +564,7 @@ class ViewportInteraction3D(
     private fun observeSelection(context: ViewportContext)
     {
         val selected = getSelectedTransformables(context)
-        val id = context.selection.fold(1L) { signature, entity -> signature * 31L + entity.id }
+        val id = selectionId(context)
         if (id == observedSelectionId) return
 
         observedSelectionId = id
@@ -554,6 +576,13 @@ class ViewportInteraction3D(
             orbitPivotValid = true
         }
         else orbitPivotValid = false
+    }
+
+    private fun selectionId(context: ViewportContext): Long
+    {
+        var id = 1L
+        context.selection.forEachFast { id = id * 31L + it.id } 
+        return id
     }
 
     private fun updateCamera(engine: PulseEngine, context: ViewportContext, hover: Boolean): Boolean

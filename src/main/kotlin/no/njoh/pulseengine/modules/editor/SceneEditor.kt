@@ -544,12 +544,22 @@ class SceneEditor(
         if (isCopying)
             return
 
-        val newEntities = engine.scene.addEntitiesFrom(engine.scene.activeScene, filter = Entities(entitySelection)) ?: emptyList()
-        
+        val selectedIds = entitySelection.mapTo(HashSet(entitySelection.size)) { it.id }
+        val sourceEntities = engine.scene.activeScene.getEntities(Entities(entitySelection), includeChildren = true)
+        val newEntities = engine.scene.addEntitiesFrom(engine.scene.activeScene, Entities(entitySelection)) ?: emptyList()
+
         sceneHierarchy?.addEntities(newEntities)
 
         if (newEntities.isNotEmpty())
+        {
+            val duplicatesBySource = sourceEntities.zip(newEntities)
+                .filter { (source, _) -> source.id in selectedIds }
+                .associate { (source, duplicate) -> source to duplicate }
+            val newSelection = duplicatesBySource.values.toList()
+            selectEntities(engine, newSelection)
+            viewportInteraction.onEntitiesDuplicated(engine, viewportContext, duplicatesBySource)
             markActiveEditorSceneDirty(engine)
+        }
 
         isCopying = true
     }

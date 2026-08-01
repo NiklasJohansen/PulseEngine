@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules.editor
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.scene.SceneEntity
 
 abstract class ViewportInteraction(val mode: EditorMode)
 {
@@ -9,6 +10,7 @@ abstract class ViewportInteraction(val mode: EditorMode)
     open fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext) {}
     open fun onUpdate(engine: PulseEngine, context: ViewportContext) {}
     open fun onRender(engine: PulseEngine, context: ViewportContext) {}
+    open fun onEntitiesDuplicated(engine: PulseEngine, context: ViewportContext, duplicatesBySource: Map<SceneEntity, SceneEntity>) {}
     open fun onDestroy(engine: PulseEngine, context: ViewportContext) {}
 
     abstract fun captureCameraState(context: ViewportContext): CameraState?
