@@ -26,6 +26,26 @@ object FileChooser
         }
     }
 
+    fun showOpenFileDialog(defaultPath: String? = null, onFileChosen: (String) -> Unit)
+    {
+        stackPush().use { stack ->
+
+            val openPath = stack.callocPointer(1)
+            val filters = NFDFilterItem.malloc(1)
+            filters.get(0).name(stack.UTF8("Pulse Engine Scene")).spec(stack.UTF8("scn"))
+
+            try
+            {
+                when (NFD_OpenDialog(openPath, filters, defaultPath))
+                {
+                    NFD_OKAY  -> try { onFileChosen(openPath.getStringUTF8(0)) } finally { NFD_FreePath(openPath[0]) }
+                    NFD_ERROR -> Logger.error { "FileChooser error: ${NFD_GetError()}" }
+                }
+            }
+            finally { filters.free() }
+        }
+    }
+    
     fun showMultipleFileSelectionDialog(defaultPath: String? = null, onFilesChosen: (List<String>) -> Unit)
     {
         stackPush().use { stack ->

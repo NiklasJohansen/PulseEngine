@@ -19,7 +19,6 @@ import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.forEachClassWithSupertype
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
-import no.njoh.pulseengine.core.shared.utils.ResourceResolver
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KMutableProperty1
@@ -37,6 +36,7 @@ open class SceneManagerImpl : SceneManagerInternal()
     private lateinit var engine: PulseEngine
 
     private val loadedScenes = ConcurrentHashMap<String, Scene>()
+    private val sceneKeys = ConcurrentHashMap<String, String>()
 
     private var nextStagedScene: Scene? = null
     private var nextSceneFileName: String? = null
@@ -376,15 +376,17 @@ open class SceneManagerImpl : SceneManagerInternal()
         Logger.info { "Destroying scene (${this::class.simpleName})" }
         activeScene.stop(engine)
         loadedScenes.clear()
+        sceneKeys.clear()
     }
 
     private fun sceneKey(fileName: String): String
     {
-        val file = File(fileName)
-        if (file.isAbsolute)
-            return runCatching { file.canonicalPath }.getOrElse { file.absolutePath }
+        sceneKeys[fileName]?.let { return it }
 
-        return ResourceResolver.normalizeRelativePath(fileName) ?: fileName.trim().replace('\\', '/')
+        val file = File(fileName)
+        val resolvedFile = if (file.isAbsolute) file else File(engine.config.saveDirectory, fileName)
+        val key = runCatching { resolvedFile.canonicalPath }.getOrElse { resolvedFile.absolutePath }
+        return sceneKeys.putIfAbsent(fileName, key) ?: key
     }
 
     private fun addEntitiesFrom(

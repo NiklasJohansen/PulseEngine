@@ -11,7 +11,10 @@ import no.njoh.pulseengine.core.shared.annotations.AssetRef
 import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
+import no.njoh.pulseengine.core.shared.annotations.EntityNameRef
+import no.njoh.pulseengine.core.shared.annotations.SceneRef
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.FileChooser
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
 import no.njoh.pulseengine.modules.ui.*
@@ -31,6 +34,7 @@ import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
 import no.njoh.pulseengine.modules.editor.EditorUtil.setArrayProperty
 import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
 import java.lang.IllegalArgumentException
+import java.io.File
 import kotlin.math.min
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.createInstance
@@ -69,10 +73,11 @@ open class UiElementFactory(
         obj: Any,
         prop: KMutableProperty<*>,
         onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
-    ): UiElement =
-        obj::class.findPropertyAnnotation<AssetRef>(prop.name)
-            ?.let { createAssetPickerUI(it, obj, prop, onChanged) }
-            ?: createInputFieldUI(obj, prop, onChanged)
+    ): UiElement {
+        obj::class.findPropertyAnnotation<SceneRef>(prop.name)?.let { return createSceneReferenceUI(obj, prop, onChanged) }
+        obj::class.findPropertyAnnotation<EntityNameRef>(prop.name)?.let { return createSceneEntityNameReferenceUI(it, obj, prop, onChanged) }
+        return obj::class.findPropertyAnnotation<AssetRef>(prop.name)?.let { createAssetPickerUI(it, obj, prop, onChanged) } ?: createInputFieldUI(obj, prop, onChanged)
+    }
 
     /**
      * Creates a [DropdownMenu] containing all the enum constants.
@@ -812,6 +817,74 @@ open class UiElementFactory(
             }
         }
 
+    open fun createSceneReferenceUI(
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): UiElement {
+        val input = createInputFieldUI(obj, prop, onChanged).apply { width.setQuiet(Size.relative(1f)) }
+        val browse = Button(width = Size.absolute(30f)).apply {
+            bgColor = style.getColor("INPUT_BG")
+            bgHoverColor = style.getColor("BUTTON_HOVER")
+            iconFontName = style.iconFontName
+            iconCharacter = style.getIcon("FOLDER")
+            color = style.getColor("LABEL")
+            hoverColor = style.getColor("LABEL")
+            setOnClicked {
+                val engine = PulseEngine.INSTANCE
+                FileChooser.showOpenFileDialog(engine.config.saveDirectory) { selected ->
+                    val saveDirectory = File(engine.config.saveDirectory).absoluteFile
+                    val selectedFile = File(selected).absoluteFile
+                    val storedValue = runCatching { selectedFile.relativeTo(saveDirectory).path }
+                        .getOrElse { selectedFile.path }
+                        .replace('\\', '/')
+                    val previous = prop.getter.call(obj)
+                    prop.setter.call(obj, storedValue)
+                    input.text = storedValue
+                    onChanged(prop.name, previous, storedValue)
+                }
+            }
+        }
+        return HorizontalPanel(width = Size.relative(0.5f)).apply { addChildren(input, browse) }
+    }
+
+    open fun createSceneEntityNameReferenceUI(
+        reference: EntityNameRef,
+        obj: Any,
+        prop: KMutableProperty<*>,
+        onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
+    ): UiElement {
+        val currentName = prop.getter.call(obj) as? String ?: ""
+
+        val sceneFile = obj::class.memberProperties
+            .firstOrNull { it.name == reference.sceneFileProperty }
+            ?.getter?.call(obj) as? String ?: ""
+
+        val entries = mutableListOf(SceneEntityNameItem("", "Entire scene"))
+        if (sceneFile.isNotBlank())
+        {
+            PulseEngine.INSTANCE.scene.load(sceneFile)
+                ?.getEntities()
+                ?.filterIsInstance<Named>()
+                ?.sortedWith(compareBy<Named> { it.name }.thenBy { (it as SceneEntity).id })
+                ?.forEach { entity -> entries += SceneEntityNameItem(entity.name, "${entity.name} (${(entity as SceneEntity).id})") }
+        }
+
+        val selected = entries.firstOrNull { it.name == currentName }
+            ?: SceneEntityNameItem(currentName, "$currentName (missing)").also { entries.add(1, it) }
+
+        return createItemSelectionDropdownUI(
+            selectedItem = selected,
+            items = entries,
+            searchable = true,
+            onItemToString = { it.label },
+            onItemChanged = { last, new ->
+                prop.setter.call(obj, new.name)
+                onChanged(prop.name, last?.name, new.name)
+            }
+        )
+    }
+
     private fun configureDropdownSearch(dropdown: DropdownMenu<*>, searchable: Boolean)
     {
         dropdown.searchable = searchable
@@ -986,6 +1059,7 @@ open class UiElementFactory(
     }
 
     private data class EntityReferenceItem(val id: Long, val label: String)
+    private data class SceneEntityNameItem(val name: String, val label: String)
 
     companion object
     {

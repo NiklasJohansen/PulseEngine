@@ -109,6 +109,17 @@ abstract class SceneRenderContextInternal : SceneRenderContext()
      */
     abstract fun <T: RenderView> getView(key: RenderViewKey<T>): T?
 
+    /**
+     * Overrides object IDs supplied by model and mesh submissions until [popObjectIdOverride] is called.
+     * Overrides may be nested.
+     */
+    abstract fun pushObjectIdOverride(objectId: Long)
+
+    /**
+     * Ends the most recently pushed object ID override.
+     */
+    abstract fun popObjectIdOverride()
+    
     abstract fun getLightBuffer(): LightBufferObject
     abstract fun getInstanceBuffer(): InstanceBufferObject
     abstract fun getLocalShadowAtlas(): LocalShadowAtlas

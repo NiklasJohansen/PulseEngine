@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlasRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.scene.interfaces.Translatable3D
 import no.njoh.pulseengine.core.shared.annotations.EnvMapRef
@@ -171,7 +172,7 @@ class Scene3DLightingSystem : SceneSystem()
         val context = engine.gfx.sceneContext
         engine.scene.forEachEntityOfType<Scene3DLightSource>()
         {
-            if ((it as SceneEntity).isNot(HIDDEN)) it.onRenderLight(engine, context)
+            if ((it as SceneEntity).isNot(HIDDEN or DEAD)) it.onRenderLight(engine, context)
         }
     }
 

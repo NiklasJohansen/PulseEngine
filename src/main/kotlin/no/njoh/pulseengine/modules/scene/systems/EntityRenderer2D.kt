@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.scene.interfaces.Renderable2D
 import no.njoh.pulseengine.core.shared.annotations.Name
@@ -98,7 +99,7 @@ open class EntityRendererImpl : EntityRenderer2D()
                 {
                     typeList.forEachFast()
                     {
-                        if (it.isNot(HIDDEN) && (condition == null || condition(it)))
+                        if (it.isNot(HIDDEN or DEAD) && (condition == null || condition(it)))
                         {
                             task.entities += it as Renderable2D
                         }

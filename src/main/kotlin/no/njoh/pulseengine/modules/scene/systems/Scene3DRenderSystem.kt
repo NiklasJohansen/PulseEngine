@@ -12,6 +12,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
@@ -67,12 +68,12 @@ class Scene3DRenderSystem() : SceneSystem()
         }
     }
 
-    override fun onRender(engine: PulseEngine) 
+    override fun onRender(engine: PulseEngine)
     {
         val context = engine.gfx.sceneContext
-        engine.scene.forEachEntityOfType<Scene3DRenderable>() 
+        engine.scene.forEachEntityOfType<Scene3DRenderable>()
         {
-            if ((it as SceneEntity).isNot(HIDDEN)) it.onRender(engine, context)
+            if ((it as SceneEntity).isNot(HIDDEN or DEAD)) it.onRender(engine, context)
         }
     }
 

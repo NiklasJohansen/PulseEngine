@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.scene3d
 
+import gnu.trove.list.array.TLongArrayList
 import gnu.trove.map.hash.THashMap
 import gnu.trove.set.hash.THashSet
 import no.njoh.pulseengine.core.PulseEngine
@@ -55,6 +56,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     private val lightBuffer        = LightBufferObject()
     private val drawCommandBuilder = DrawCommandBuilder(instanceBuffer, cullingBuffer)
     private val localShadowAtlas   = LocalShadowAtlas()
+    private val objectIdOverrides  = TLongArrayList()
 
     private var frameNumber = 0
     private var initialized = false
@@ -62,6 +64,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     override fun initFrame()
     {
+        objectIdOverrides.clear()
         frameNumber++
 
         nextFrameScene = thisFrameScene.also { thisFrameScene = nextFrameScene }
@@ -217,13 +220,13 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
             val meshTransform = Mat4f(mat4fArena).setMul(transform, instance.transform)
 
-            nextFrameScene.addMesh(instance.mesh, material, meshTransform, cullingBounds, boneMatrices, renderPassMask, objectId)
+            nextFrameScene.addMesh(instance.mesh, material, meshTransform, cullingBounds, boneMatrices, renderPassMask, resolveObjectId(objectId))
         }
     }
 
     override fun submitMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, objectId: Long)
     {
-        nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, renderPassMask, objectId)
+        nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, renderPassMask, resolveObjectId(objectId))
     }
 
     override fun submitPointLight(position: Vector3f, radius: Float, color: Color, shadowEnabled: Boolean, shadowResolution: Int, shadowBias: Float, shadowImportance: Float, shadowId: Long)
@@ -245,6 +248,16 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         shadowId: Long
     ) {
         nextFrameScene.addLight(position, direction, radius, color, innerConeAngle, outerConeAngle, shadowEnabled, shadowResolution, shadowBias, shadowImportance, shadowId)
+    }
+
+    override fun pushObjectIdOverride(objectId: Long)
+    {
+        objectIdOverrides.add(objectId)
+    }
+
+    override fun popObjectIdOverride()
+    {
+        objectIdOverrides.removeAt(objectIdOverrides.size() - 1)
     }
 
     override fun getSubmittedScene() = thisFrameScene
@@ -302,6 +315,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             ?: return
         nextLodCameraState.set(cameraState, frameNumber)
     }
+
+    private fun resolveObjectId(objectId: Long) = if (objectIdOverrides.isEmpty) objectId else objectIdOverrides[objectIdOverrides.size() - 1]
 
     private fun RenderView.wasRequested() = (lastFrameRequested == frameNumber)
 }

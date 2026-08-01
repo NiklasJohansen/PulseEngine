@@ -847,6 +847,12 @@ class SceneEditor(
         }
 
         val scene = engine.scene.load(fileName) ?: return
+        editorScenes.firstOrNull { it.scene === scene }?.let()
+        {
+            switchToEditorScene(engine, it)
+            return
+        }
+
         val editorScene = EditorScene(scene)
         editorScenes.add(editorScene)
         switchToEditorScene(engine, editorScene)
@@ -944,7 +950,7 @@ class SceneEditor(
     private fun captureActiveEditorCamera(engine: PulseEngine)
     {
         val activeScene = activeEditorScene(engine) ?: return
-        activeScene.cameraState = viewportInteraction?.captureCameraState(viewportContext)?.duplicate()
+        activeScene.cameraState = viewportInteraction.captureCameraState(viewportContext)?.duplicate()
     }
 
     private fun restoreActiveEditorCamera(engine: PulseEngine)
@@ -956,7 +962,7 @@ class SceneEditor(
     private fun restoreEditorCamera(engine: PulseEngine, editorScene: EditorScene)
     {
         val cameraState = editorScene.cameraState?.duplicate()
-        viewportInteraction?.restoreCameraState(engine, viewportContext, cameraState)
+        viewportInteraction.restoreCameraState(engine, viewportContext, cameraState)
     }
 
     private fun loadInitialEditorScenes(engine: PulseEngine)
