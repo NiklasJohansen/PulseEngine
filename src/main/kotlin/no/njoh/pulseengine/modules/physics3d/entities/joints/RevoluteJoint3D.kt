@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.modules.physics3d.box3d.joints.Box3DRevoluteJointDefinition
 import no.njoh.pulseengine.modules.physics3d.entities.bodies.PhysicsBodyEntity3D
+import org.joml.Vector3f
 
 /**
  * A one-axis revolute rotating around local Z, with optional limits, motor, and spring.
@@ -20,8 +21,8 @@ open class RevoluteJoint3D : SceneEntity(), Named, PhysicsJointEntity3D
 {
     @Prop(i=0) override var name = "Revolute Joint"
 
-    @Prop("Position [*P]", i=1) override var xPos = 0f; override var yPos = 0f; override var zPos = 0f
-    @Prop("Rotation [*R]", i=2) override var xRot = 0f; override var yRot = 0f; override var zRot = 0f
+    @Prop("Transform", i=1) override var position = Vector3f()
+    @Prop("Transform", i=2) override var rotation = Vector3f()
 
     @EntityRef(PhysicsBodyEntity3D::class)
     @Prop("Connection", i=1) var bodyAId = INVALID_ID
@@ -50,8 +51,8 @@ open class RevoluteJoint3D : SceneEntity(), Named, PhysicsJointEntity3D
 
     override fun getPhysicsJointDefinition(): Box3DRevoluteJointDefinition
     {
-        definition.worldPosA.set(xPos, yPos, zPos)
-        definition.worldRotA.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        definition.worldPosA.set(position)
+        definition.worldRotA.rotationXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
         definition.worldPosB.set(definition.worldPosA)
         definition.worldRotB.set(definition.worldRotA)
         definition.collision = collideConnected

@@ -357,7 +357,7 @@ class ViewportInteraction2D(
         val xDiff = engine.input.xWorldMouse - entity.x
         val yDiff = engine.input.yWorldMouse - entity.y
         val mouseEntityAngle = -atan2(yDiff, xDiff)
-        val angle = mouseEntityAngle - entity.rotation / 180f * PI.toFloat()
+        val angle = mouseEntityAngle - entity.zRotation / 180f * PI.toFloat()
         val len = sqrt(xDiff * xDiff + yDiff * yDiff)
         val xMouse = entity.x + cos(angle) * len
         val yMouse = entity.y + sin(angle) * len
@@ -387,7 +387,7 @@ class ViewportInteraction2D(
                     xMouseStart = xMouse
                     yMouseStart = yMouse
                     yResizeDirection = (if (yMouse > entity.y) -1f else 1f) * (if (entity.height < 0f) -1f else 1f)
-                    resizeIconAngle = getIconAngle(entity.rotation, resizeLeft, resizeRight, resizeTop, resizeBottom)
+                    resizeIconAngle = getIconAngle(entity.zRotation, resizeLeft, resizeRight, resizeTop, resizeBottom)
                 }
 
                 if (resizeLeft || resizeRight)
@@ -398,14 +398,14 @@ class ViewportInteraction2D(
                     xMouseStart = xMouse
                     yMouseStart = yMouse
                     xResizeDirection = (if (xMouse > entity.x) -1f else 1f) * (if (entity.width < 0f) -1f else 1f)
-                    resizeIconAngle = getIconAngle(entity.rotation, resizeLeft, resizeRight, resizeTop, resizeBottom)
+                    resizeIconAngle = getIconAngle(entity.zRotation, resizeLeft, resizeRight, resizeTop, resizeBottom)
                 }
 
                 if (!isResizingVertically && !isResizingHorizontally &&
                     (rotateTopLeft || rotateBottomLeft || rotateTopRight || rotateBottomRight))
                 {
                     isRotating = true
-                    entityStartAngle = entity.rotation
+                    entityStartAngle = entity.zRotation
                     mouseStartAngle = mouseEntityAngle
                 }
             }
@@ -424,7 +424,7 @@ class ViewportInteraction2D(
             isRotating -> 
             {
                 val diff = (mouseEntityAngle - mouseStartAngle) / PI.toFloat() * 180f
-                entity.rotation = if (controlPressed) ((entityStartAngle + diff).toInt() / 45 * 45).toFloat() else entityStartAngle + diff
+                entity.zRotation = if (controlPressed) ((entityStartAngle + diff).toInt() / 45 * 45).toFloat() else entityStartAngle + diff
             }
             isResizingHorizontally && shiftPressed -> 
             {
@@ -456,7 +456,7 @@ class ViewportInteraction2D(
         }
 
         if (!isResizingHorizontally && !isResizingVertically)
-            resizeIconAngle = getIconAngle(entity.rotation, resizeLeft, resizeRight, resizeTop, resizeBottom)
+            resizeIconAngle = getIconAngle(entity.zRotation, resizeLeft, resizeRight, resizeTop, resizeBottom)
 
         val cursorType =
             if (!isRotating && (isResizingHorizontally || isResizingVertically || resizeBottom || resizeTop || resizeLeft || resizeRight))
@@ -487,7 +487,7 @@ class ViewportInteraction2D(
         {
             entity.set(SIZE_UPDATED)
             entity.set(ROTATION_UPDATED)
-            context.notifyTransformChanged(engine, entity, entity::rotation.name, entity::width.name, entity::height.name)
+            context.notifyTransformChanged(engine, entity, entity::zRotation.name, entity::width.name, entity::height.name)
         }
     }
 
@@ -511,9 +511,9 @@ class ViewportInteraction2D(
         val size = 4f * UI_SCALE
         val halfSize = size / 2f
 
-        if (entity.rotation != 0f)
+        if (entity.zRotation != 0f)
         {
-            val radians = -entity.rotation / 180f * PI.toFloat()
+            val radians = -entity.zRotation / 180f * PI.toFloat()
             val cos = cos(radians)
             val sin = sin(radians)
             val x0 = -width * cos - height * sin
@@ -608,7 +608,7 @@ class ViewportInteraction2D(
         val paddedHeight = abs(height) + padding * 2f
         val xDiff = xWorld - x
         val yDiff = yWorld - y
-        val angle = -MathUtil.atan2(yDiff, xDiff) - rotation / 180f * PI.toFloat()
+        val angle = -MathUtil.atan2(yDiff, xDiff) - zRotation / 180f * PI.toFloat()
         val length = sqrt(xDiff * xDiff + yDiff * yDiff)
         val rotatedX = x + cos(angle) * length
         val rotatedY = y + sin(angle) * length

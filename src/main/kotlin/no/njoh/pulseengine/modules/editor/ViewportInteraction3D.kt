@@ -32,6 +32,7 @@ import no.njoh.pulseengine.modules.scene.systems.ConicalLight3D
 import no.njoh.pulseengine.modules.scene.systems.Light3D
 import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderSystem
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.AxisColors
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
@@ -339,7 +340,7 @@ class ViewportInteraction3D(
                 continue
 
             targets += SelectedTarget(entity, spatial)
-            pivot.add(spatial.xPos, spatial.yPos, spatial.zPos)
+            pivot.add(spatial.position)
         }
 
         if (targets.isEmpty()) return null
@@ -490,7 +491,7 @@ class ViewportInteraction3D(
             if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
                 return@forEachEntity
 
-            tmpV0.set(light.xPos, light.yPos, light.zPos)
+            tmpV0.set(light.position)
             if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, tmpP0))
                 return@forEachEntity
 
@@ -547,7 +548,7 @@ class ViewportInteraction3D(
             if (camera.isNot(EDITABLE) || camera.isSet(HIDDEN))
                 return@forEachEntity
 
-            tmpV0.set(camera.xPos, camera.yPos, camera.zPos)
+            tmpV0.set(camera.position)
             if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, tmpP0))
                 return@forEachEntity
 
@@ -735,9 +736,9 @@ class ViewportInteraction3D(
         }
 
         if (entity is Light3D)
-            return Vector3f(entity.xPos, entity.yPos, entity.zPos) to max(entity.radius, 1f)
+            return Vector3f(entity.position) to max(entity.radius, 1f)
 
-        return Vector3f(spatial.xPos, spatial.yPos, spatial.zPos) to 1f
+        return Vector3f(spatial.position) to 1f
     }
 
     private fun projectedBoundsOverlap(
@@ -753,7 +754,7 @@ class ViewportInteraction3D(
         if (entity.id in boundedMarqueeObjectIds)
             return entity.id in matchedMarqueeObjectIds
 
-        tmpV0.set(spatial.xPos, spatial.yPos, spatial.zPos)
+        tmpV0.set(spatial.position)
         if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, projectedBoundsMin))
             return false
 
@@ -1151,9 +1152,7 @@ class ViewportInteraction3D(
                     translation.set(axis).mul(delta)
                 }
                 drag.targets.forEach { target ->
-                    target.spatial.xPos = target.snapshot.position.x + translation.x
-                    target.spatial.yPos = target.snapshot.position.y + translation.y
-                    target.spatial.zPos = target.snapshot.position.z + translation.z
+                    target.spatial.position.set(target.snapshot.position).add(translation)
                 }
             }
             GizmoMode.ROTATE ->
@@ -1173,9 +1172,7 @@ class ViewportInteraction3D(
 
                 drag.targets.forEach { target ->
                     val position = rotateAroundPivot(target.snapshot.position, drag.pivot, axis, angle, Vector3f())
-                    target.spatial.xPos = position.x
-                    target.spatial.yPos = position.y
-                    target.spatial.zPos = position.z
+                    target.spatial.position.set(position)
 
                     (target.spatial as? Rotatable3D)?.let { rotatable ->
                         val start = Quaternionf().rotationXYZ(
@@ -1184,9 +1181,11 @@ class ViewportInteraction3D(
                             target.snapshot.rotation.z.toRadians()
                         )
                         val euler = Quaternionf(deltaRotation).mul(start).getEulerAnglesXYZ(Vector3f())
-                        rotatable.xRot = Math.toDegrees(euler.x.toDouble()).toFloat()
-                        rotatable.yRot = Math.toDegrees(euler.y.toDouble()).toFloat()
-                        rotatable.zRot = Math.toDegrees(euler.z.toDouble()).toFloat()
+                        rotatable.rotation.set(
+                            Math.toDegrees(euler.x.toDouble()).toFloat(),
+                            Math.toDegrees(euler.y.toDouble()).toFloat(),
+                            Math.toDegrees(euler.z.toDouble()).toFloat()
+                        )
                     }
                 }
             }
@@ -1222,13 +1221,13 @@ class ViewportInteraction3D(
                 }
                 drag.targets.forEach { target ->
                     val position = scaleAroundPivot(target.snapshot.position, drag.pivot, factors, Vector3f())
-                    target.spatial.xPos = position.x
-                    target.spatial.yPos = position.y
-                    target.spatial.zPos = position.z
+                    target.spatial.position.set(position)
                     val scalable = target.spatial as Spatial3D
-                    scalable.xScale = SceneEditor3DMath.clampScale(target.snapshot.scale.x * factors.x)
-                    scalable.yScale = SceneEditor3DMath.clampScale(target.snapshot.scale.y * factors.y)
-                    scalable.zScale = SceneEditor3DMath.clampScale(target.snapshot.scale.z * factors.z)
+                    scalable.scale.set(
+                        SceneEditor3DMath.clampScale(target.snapshot.scale.x * factors.x),
+                        SceneEditor3DMath.clampScale(target.snapshot.scale.y * factors.y),
+                        SceneEditor3DMath.clampScale(target.snapshot.scale.z * factors.z)
+                    )
                 }
             }
         }
@@ -1246,7 +1245,7 @@ class ViewportInteraction3D(
                 GizmoMode.MOVE ->
                 {
                     entity.set(POSITION_UPDATED)
-                    context.notifyTransformChanged(engine, entity, spatial::xPos.name, spatial::yPos.name, spatial::zPos.name)
+                    context.notifyTransformChanged(engine, entity, spatial::position.name)
                 }
                 GizmoMode.ROTATE ->
                 {
@@ -1257,11 +1256,10 @@ class ViewportInteraction3D(
                         entity.set(ROTATION_UPDATED)
                         context.notifyTransformChanged(
                             engine, entity,
-                            spatial::xPos.name, spatial::yPos.name, spatial::zPos.name,
-                            rotatable::xRot.name, rotatable::yRot.name, rotatable::zRot.name
+                            spatial::position.name, rotatable::rotation.name
                         )
                     }
-                    else context.notifyTransformChanged(engine, entity, spatial::xPos.name, spatial::yPos.name, spatial::zPos.name)
+                    else context.notifyTransformChanged(engine, entity, spatial::position.name)
                 }
                 GizmoMode.SCALE ->
                 {
@@ -1270,8 +1268,7 @@ class ViewportInteraction3D(
                     entity.set(SIZE_UPDATED)
                     context.notifyTransformChanged(
                         engine, entity,
-                        spatial::xPos.name, spatial::yPos.name, spatial::zPos.name,
-                        scalable::xScale.name, scalable::yScale.name, scalable::zScale.name
+                        spatial::position.name, scalable::scale.name
                     )
                 }
             }
@@ -1381,7 +1378,7 @@ class ViewportInteraction3D(
             if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
                 return@forEachEntity
 
-            tmpV0.set(light.xPos, light.yPos, light.zPos)
+            tmpV0.set(light.position)
             if (!project(context.camera, tmpV0, width, height, tmpP0))
                 return@forEachEntity
 
@@ -1410,7 +1407,7 @@ class ViewportInteraction3D(
             if (camera.isNot(EDITABLE) || camera.isSet(HIDDEN))
                 return@forEachEntity
 
-            tmpV0.set(camera.xPos, camera.yPos, camera.zPos)
+            tmpV0.set(camera.position)
             val isSelected = camera.id in selectedIds
             surface.setDrawColor(ACTIVE_COLOR)
             cameraDirections(camera, tmpV1, tmpV2, tmpV3)
@@ -1508,7 +1505,7 @@ class ViewportInteraction3D(
         val camera = context.camera
         val width = surface.config.width
         val height = surface.config.height
-        val origin = Vector3f(light.xPos, light.yPos, light.zPos)
+        val origin = Vector3f(light.position)
         surface.setDrawColor(LIGHT_VOLUME_COLOR)
 
         if (light !is ConicalLight3D)
@@ -1762,27 +1759,21 @@ class ViewportInteraction3D(
         val rotatable = spatial as? Rotatable3D
         val scalable = spatial as? Spatial3D
         return TransformSnapshot(
-            Vector3f(spatial.xPos, spatial.yPos, spatial.zPos),
-            Vector3f(rotatable?.xRot ?: 0f, rotatable?.yRot ?: 0f, rotatable?.zRot ?: 0f),
-            Vector3f(scalable?.xScale ?: 1f, scalable?.yScale ?: 1f, scalable?.zScale ?: 1f)
+            Vector3f(spatial.position),
+            Vector3f(rotatable?.rotation ?: Vector3f()),
+            Vector3f(scalable?.scale ?: Vector3f(1f))
         )
     }
 
     private fun restoreTransform(drag: TransformDrag)
     {
         drag.targets.forEach { target ->
-            target.spatial.xPos = target.snapshot.position.x
-            target.spatial.yPos = target.snapshot.position.y
-            target.spatial.zPos = target.snapshot.position.z
+            target.spatial.position.set(target.snapshot.position)
             (target.spatial as? Rotatable3D)?.let {
-                it.xRot = target.snapshot.rotation.x
-                it.yRot = target.snapshot.rotation.y
-                it.zRot = target.snapshot.rotation.z
+                it.rotation.set(target.snapshot.rotation)
             }
             (target.spatial as? Spatial3D)?.let {
-                it.xScale = target.snapshot.scale.x
-                it.yScale = target.snapshot.scale.y
-                it.zScale = target.snapshot.scale.z
+                it.scale.set(target.snapshot.scale)
             }
         }
     }
@@ -1855,17 +1846,17 @@ class ViewportInteraction3D(
 
     private fun color(handle: Handle) = when (handle)
     {
-        Handle.X -> X_COLOR
-        Handle.Y -> Y_COLOR
-        Handle.Z -> Z_COLOR
+        Handle.X -> AxisColors.X
+        Handle.Y -> AxisColors.Y
+        Handle.Z -> AxisColors.Z
         else -> CENTER_COLOR
     }
 
     private fun planeColor(handle: Handle) = when (handle)
     {
-        Handle.XY -> Z_COLOR
-        Handle.XZ -> Y_COLOR
-        Handle.YZ -> X_COLOR
+        Handle.XY -> AxisColors.Z
+        Handle.XZ -> AxisColors.Y
+        Handle.YZ -> AxisColors.X
         else -> CENTER_COLOR
     }
 
@@ -1879,7 +1870,11 @@ class ViewportInteraction3D(
 
     private fun cameraDirections(camera: Camera3D, right: Vector3f, up: Vector3f, forward: Vector3f)
     {
-        val rotation = Matrix4f().rotateXYZ(camera.xRot.toRadians(), camera.yRot.toRadians(), camera.zRot.toRadians())
+        val rotation = Matrix4f().rotateXYZ(
+            camera.rotation.x.toRadians(),
+            camera.rotation.y.toRadians(),
+            camera.rotation.z.toRadians()
+        )
         rotation.transformDirection(right.set(1f, 0f, 0f)).normalize()
         rotation.transformDirection(up.set(0f, 1f, 0f)).normalize()
         rotation.transformDirection(forward.set(0f, 0f, -1f)).normalize()
@@ -1983,9 +1978,6 @@ class ViewportInteraction3D(
         private val WORLD_X = Vector3f(1f, 0f, 0f)
         private val WORLD_Y = Vector3f(0f, 1f, 0f)
         private val WORLD_Z = Vector3f(0f, 0f, 1f)
-        private val X_COLOR = Color(0.92f, 0.18f, 0.18f, 1f)
-        private val Y_COLOR = Color(0.25f, 0.9f, 0.25f, 1f)
-        private val Z_COLOR = Color(0.2f, 0.45f, 1f, 1f)
         private val ACTIVE_COLOR = Color(1f, 0.8f, 0.12f, 1f)
         private val CENTER_COLOR = Color(0.85f, 0.85f, 0.85f, 1f)
         private val ACTIVE_PLANE_COLOR = Color(1f, 0.75f, 0.08f, 0.9f)

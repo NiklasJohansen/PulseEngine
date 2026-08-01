@@ -23,7 +23,7 @@ interface LineBody2D : PhysicsBody2D
     {
         if (this is Spatial2D)
         {
-            shape.init(x, y, width, rotation)
+            shape.init(x, y, width, zRotation)
         }
     }
 
@@ -121,7 +121,7 @@ interface LineBody2D : PhysicsBody2D
         {
             val xDelta = shape.x1 - shape.x0
             val yDelta = shape.y1 - shape.y0
-            rotation = (-atan2(yDelta, xDelta) / PI.toFloat() + 1.0f) * 180f
+            zRotation = (-atan2(yDelta, xDelta) / PI.toFloat() + 1.0f) * 180f
             x = (shape.x0 + shape.x1) * 0.5f
             y = (shape.y0 + shape.y1) * 0.5f
             set(POSITION_UPDATED and ROTATION_UPDATED)

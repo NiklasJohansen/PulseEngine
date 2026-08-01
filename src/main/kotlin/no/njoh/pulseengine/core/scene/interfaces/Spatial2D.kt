@@ -1,5 +1,8 @@
 package no.njoh.pulseengine.core.scene.interfaces
 
+import com.fasterxml.jackson.annotation.JsonAlias
+import com.fasterxml.jackson.annotation.JsonProperty
+
 /**
  * Gives the entity a spatial position, size and rotation.
  * Will be inserted into the [SpatialGrid] and accessible through all spatial queries.
@@ -34,7 +37,10 @@ interface Spatial2D
     /**
      * Rotation in degrees.
      */
-    var rotation: Float
+    @get:JsonProperty("zRotation")
+    @set:JsonProperty("zRotation")
+    @set:JsonAlias("rotation")
+    var zRotation: Float
 
     /**
      * Enables the entity to provide an interpolated x-position.
@@ -49,5 +55,5 @@ interface Spatial2D
     /**
      * Enables the entity to provide an interpolated rotation.
      */
-    fun rotationInterpolated() = rotation
+    fun rotationInterpolated() = zRotation
 }

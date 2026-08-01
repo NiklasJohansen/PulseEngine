@@ -33,7 +33,7 @@ interface PolygonBody2D : PhysicsBody2D
     {
         if (this is Spatial2D)
         {
-            shape.init(x, y, width, height, rotation, density)
+            shape.init(x, y, width, height, zRotation, density)
         }
     }
 
@@ -200,7 +200,7 @@ interface PolygonBody2D : PhysicsBody2D
         {
             x = shape.xCenter
             y = shape.yCenter
-            rotation = shape.angle
+            zRotation = shape.angle
             set(POSITION_UPDATED or ROTATION_UPDATED)
         }
     }

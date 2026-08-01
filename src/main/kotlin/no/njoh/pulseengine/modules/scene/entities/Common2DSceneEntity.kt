@@ -21,7 +21,7 @@ abstract class Common2DSceneEntity : SceneEntity(), Initiable, Updatable, Render
     @Prop("Transform", 2) override var z = -0.1f
     @Prop("Transform", 3) override var width = 100f
     @Prop("Transform", 4) override var height = 100f
-    @Prop("Transform", 5) override var rotation = 0f
+    @Prop("Transform", 5) override var zRotation = 0f
 
     override fun onCreate() {}
     override fun onStart(engine: PulseEngine) {}

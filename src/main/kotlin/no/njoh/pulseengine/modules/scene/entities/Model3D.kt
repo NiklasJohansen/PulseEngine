@@ -17,6 +17,7 @@ import no.njoh.pulseengine.core.shared.annotations.ModelRef
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderable
 import org.joml.Matrix4f
+import org.joml.Vector3f
 
 @Name("3D Model")
 class Model3D : SceneEntity(), Scene3DRenderable, Named, Spatial3D
@@ -26,9 +27,9 @@ class Model3D : SceneEntity(), Scene3DRenderable, Named, Spatial3D
     @ModelRef    var model    = "cube"
     @MaterialRef var material = ""
 
-    @Prop("Position [*P]", i=1) override var xPos=0f;   override var yPos=0f;   override var zPos=0f
-    @Prop("Rotation [*R]", i=2) override var xRot=0f;   override var yRot=0f;   override var zRot=0f
-    @Prop("Scale    [*S]", i=3) override var xScale=1f; override var yScale=1f; override var zScale=1f
+    @Prop("Transform", i=1) override var position = Vector3f(0f)
+    @Prop("Transform", i=2) override var rotation = Vector3f(0f)
+    @Prop("Transform", i=3) override var scale    = Vector3f(1f)
 
     @Prop("Shadows", i=4) var castLocalShadows = true
     @Prop("Shadows", i=5) var castSunShadows   = true
@@ -46,9 +47,9 @@ class Model3D : SceneEntity(), Scene3DRenderable, Named, Spatial3D
         val material = engine.asset.getOrNull<Material>(material)
 
         transform.identity()
-            .translation(xPos, yPos, zPos)
-            .rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
-            .scale(xScale, yScale, zScale)
+            .translation(position)
+            .rotateXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
+            .scale(scale)
 
         if (lodPixelHeightThresholds != lastLodPixelHeightThresholds)
         {

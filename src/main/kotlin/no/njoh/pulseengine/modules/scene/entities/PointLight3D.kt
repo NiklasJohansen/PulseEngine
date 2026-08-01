@@ -15,7 +15,7 @@ class PointLight3D : SceneEntity(), Light3D, Named
 {
     @Prop(i=0) override var name = "Point Light"
 
-    @Prop("Position [*P]", i=1) override var xPos=0f; override var yPos=1f; override var zPos=0f
+    @Prop("Transform", i=1) override var position = Vector3f(0f, 1f, 0f)
 
     @Prop("Lighting", i=1)                  var color     = Color(1f, 1f, 1f)
     @Prop("Lighting", i=2, min=0f)          var intensity = 4f
@@ -26,12 +26,10 @@ class PointLight3D : SceneEntity(), Light3D, Named
     @Prop("Shadow", i=3, min=0f)  var shadowBias       = 0.005f
     @Prop("Shadow", i=4, min=0f)  var shadowImportance = 1f
 
-    private val position = Vector3f()
     private val intensityColor = Color()
 
     override fun onRenderLight(engine: PulseEngine, context: SceneRenderContext)
     {
-        position.set(xPos, yPos, zPos)
         intensityColor.setFrom(color).multiplyRgb(intensity)
         context.submitPointLight(position, radius, intensityColor, shadowEnabled, shadowResolution, shadowBias, shadowImportance, id)
     }

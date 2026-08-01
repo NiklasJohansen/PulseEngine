@@ -210,8 +210,12 @@ class PhysicsSystem3D : SceneSystem()
 
             if (entity.hasPendingTransformChange())
             {
-                tmpPosition.set(entity.xPos, entity.yPos, entity.zPos)
-                tmpRotation.rotationXYZ(entity.xRot.toRadians(), entity.yRot.toRadians(), entity.zRot.toRadians())
+                tmpPosition.set(entity.position)
+                tmpRotation.rotationXYZ(
+                    entity.rotation.x.toRadians(),
+                    entity.rotation.y.toRadians(),
+                    entity.rotation.z.toRadians()
+                )
 
                 when (bodyDefinition.type)
                 {

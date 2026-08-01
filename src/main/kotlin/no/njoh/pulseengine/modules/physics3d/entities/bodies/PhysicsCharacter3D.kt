@@ -45,9 +45,9 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
     @Prop("Capsule", i=1, min=.01f) var capsuleRadius = 0.4f
     @Prop("Capsule", i=2, min=.02f) var capsuleHeight = 1.8f
 
-    @Prop("Position [*P]", i=1)         override var xPos   = 0f; override var yPos   = 1f; override var zPos   = 0f
-    @Prop("Rotation [*R]", i=2)         override var xRot   = 0f; override var yRot   = 0f; override var zRot   = 0f
-    @Prop("Scale [*S]", i=3, min=.001f) override var xScale = 1f; override var yScale = 1f; override var zScale = 1f
+    @Prop("Transform", i=1)            override var position = Vector3f(0f, 1f, 0f)
+    @Prop("Transform", i=2)            override var rotation = Vector3f(0f)
+    @Prop("Transform", i=3, min=.001f) override var scale    = Vector3f(1f)
 
     @Prop("Physics",   i=0)                 var bodyType       = DYNAMIC
     @Prop("Physics",   i=1, min=0f)         var density        = 1f
@@ -180,8 +180,8 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
 
     override fun onPhysicsBodyCreated(engine: PulseEngine, body: PhysicsBody3D)
     {
-        currentPosition.set(xPos, yPos, zPos)
-        currentRotation.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        currentPosition.set(position)
+        currentRotation.rotationXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
         previousPosition.set(currentPosition)
         previousRotation.set(currentRotation)
 
@@ -197,12 +197,12 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
         currentRotation.set(rotation)
         currentRotation.getEulerAnglesXYZ(tmpEulerRotation)
 
-        xPos = currentPosition.x
-        yPos = currentPosition.y
-        zPos = currentPosition.z
-        xRot = tmpEulerRotation.x.toDegrees()
-        yRot = tmpEulerRotation.y.toDegrees()
-        zRot = tmpEulerRotation.z.toDegrees()
+        this.position.set(currentPosition)
+        this.rotation.set(
+            tmpEulerRotation.x.toDegrees(),
+            tmpEulerRotation.y.toDegrees(),
+            tmpEulerRotation.z.toDegrees()
+        )
 
         recordSynchronizedTransform()
     }
@@ -218,13 +218,12 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
     }
 
     override fun hasPendingTransformChange() =
-        xPos != synchronizedPosition.x || yPos != synchronizedPosition.y || zPos != synchronizedPosition.z ||
-        xRot != synchronizedRotation.x || yRot != synchronizedRotation.y || zRot != synchronizedRotation.z
+        position != synchronizedPosition || rotation != synchronizedRotation
 
     override fun getPhysicsBodyDefinition() = physicsBodyDefinition.also()
     {
-        it.position.set(xPos, yPos, zPos)
-        it.rotation.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        it.position.set(position)
+        it.rotation.rotationXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
         it.type               = bodyType
         it.linearDamping      = linearDamping
         it.angularDamping     = angularDamping
@@ -234,8 +233,8 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
 
     override fun getPhysicsShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
     {
-        val scaledRadius = capsuleRadius * max(abs(xScale), abs(zScale))
-        val scaledHeight = max(capsuleHeight * abs(yScale), scaledRadius * 2f)
+        val scaledRadius = capsuleRadius * max(abs(scale.x), abs(scale.z))
+        val scaledHeight = max(capsuleHeight * abs(scale.y), scaledRadius * 2f)
         val segmentHalfHeight = scaledHeight * 0.5f - scaledRadius
 
         physicsCapsuleGeometry.point1.set(0f, -segmentHalfHeight, 0f)
@@ -266,14 +265,14 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
             val i = engine.data.interpolation
             previousPosition.lerp(currentPosition, i, tmpCameraPosition)
         }
-        else tmpCameraPosition.set(xPos, yPos, zPos)
+        else tmpCameraPosition.set(position)
 
-        camera.xPos = tmpCameraPosition.x
-        camera.yPos = tmpCameraPosition.y + eyeOffset * abs(yScale)
-        camera.zPos = tmpCameraPosition.z
-        camera.xRot = pitch
-        camera.yRot = yaw
-        camera.zRot = 0f
+        camera.position.set(
+            tmpCameraPosition.x,
+            tmpCameraPosition.y + eyeOffset * abs(scale.y),
+            tmpCameraPosition.z
+        )
+        camera.rotation.set(pitch, yaw, 0f)
         camera.applyTo(engine.gfx.mainCamera, engine.window.width, engine.window.height)
     }
 
@@ -285,8 +284,8 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
 
     private fun recordSynchronizedTransform()
     {
-        synchronizedPosition.set(xPos, yPos, zPos)
-        synchronizedRotation.set(xRot, yRot, zRot)
+        synchronizedPosition.set(position)
+        synchronizedRotation.set(rotation)
     }
 
     companion object

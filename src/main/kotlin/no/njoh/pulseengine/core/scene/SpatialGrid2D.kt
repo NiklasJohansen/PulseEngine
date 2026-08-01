@@ -158,7 +158,7 @@ class SpatialGrid2D (
             val isInside = when (it)
             {
                 is Physical2D -> MathUtil.isPointInsideShape(x, y, it.shape)
-                else -> MathUtil.isPointInsideRect(x, y, it.x, it.y, it.width, it.height, it.rotation.toRadians())
+                else -> MathUtil.isPointInsideRect(x, y, it.x, it.y, it.width, it.height, it.zRotation.toRadians())
             }
             if (isInside) action(it)
         }
@@ -200,7 +200,7 @@ class SpatialGrid2D (
                     val hitPoint = when (entity)
                     {
                         is Physical2D -> MathUtil.getLineShapeIntersection(x, y, xEnd, yEnd, entity.shape)
-                        else -> MathUtil.getLineRectIntersection(x, y, xEnd, yEnd, entity.x, entity.y, entity.width, entity.height, entity.rotation.toRadians())
+                        else -> MathUtil.getLineRectIntersection(x, y, xEnd, yEnd, entity.x, entity.y, entity.width, entity.height, entity.zRotation.toRadians())
                     }
 
                     if (hitPoint != null && hitPoint.z < minDist)
@@ -404,7 +404,7 @@ class SpatialGrid2D (
         val wasInserted = when
         {
             max(abs(entity.width), abs(entity.height)) < cellSize * 0.1 -> insertPoint(entity)
-            entity.rotation == 0.0f -> insertAxisAligned(entity)
+            entity.zRotation == 0.0f -> insertAxisAligned(entity)
             else -> insertRotated(entity)
         }
 
@@ -465,7 +465,7 @@ class SpatialGrid2D (
     private fun insertRotated(entity: SceneEntity): Boolean
     {
         entity as Spatial2D
-        val angle = -entity.rotation.toRadians()
+        val angle = -entity.zRotation.toRadians()
         val halfLength = entity.width * 0.5f
         val thickness = entity.height
         val xDelta = cos(angle) * halfLength

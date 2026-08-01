@@ -48,9 +48,9 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
 {
     override var name = "Physics body "
 
-    @Prop("Position [*P]", i=1)             override var xPos   = 0f; override var yPos   = 0f; override var zPos   = 0f
-    @Prop("Rotation [*R]", i=2)             override var xRot   = 0f; override var yRot   = 0f; override var zRot   = 0f
-    @Prop("Scale    [*S]", i=3, min=0.001f) override var xScale = 1f; override var yScale = 1f; override var zScale = 1f
+    @Prop("Transform", i=1)             override var position = Vector3f(0f)
+    @Prop("Transform", i=2)             override var rotation = Vector3f(0f)
+    @Prop("Transform", i=3, min=0.001f) override var scale    = Vector3f(1f)
 
     @Prop("Physics",   i=0)                 var bodyType       = DYNAMIC
     @Prop("Physics",   i=1, min=0f)         var density        = 1f
@@ -103,10 +103,10 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
         }
         else
         {
-            tmpTransform.translation(xPos, yPos, zPos).rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+            tmpTransform.translation(position).rotateXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
         }
 
-        tmpTransform.scale(xScale, yScale, zScale)
+        tmpTransform.scale(scale)
 
         context.submitModel(
             engine = engine,
@@ -120,8 +120,8 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
 
     override fun onPhysicsBodyCreated(engine: PulseEngine, body: PhysicsBody3D)
     {
-        currentPosition.set(xPos, yPos, zPos)
-        currentRotation.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        currentPosition.set(position)
+        currentRotation.rotationXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
         previousPosition.set(currentPosition)
         previousRotation.set(currentRotation)
 
@@ -137,12 +137,12 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
         currentRotation.set(rotation)
         currentRotation.getEulerAnglesXYZ(tmpEulerRotation)
 
-        xPos = currentPosition.x
-        yPos = currentPosition.y
-        zPos = currentPosition.z
-        xRot = tmpEulerRotation.x.toDegrees()
-        yRot = tmpEulerRotation.y.toDegrees()
-        zRot = tmpEulerRotation.z.toDegrees()
+        this.position.set(currentPosition)
+        this.rotation.set(
+            tmpEulerRotation.x.toDegrees(),
+            tmpEulerRotation.y.toDegrees(),
+            tmpEulerRotation.z.toDegrees()
+        )
 
         recordSynchronizedTransform() 
     }
@@ -158,13 +158,12 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
     }
 
     override fun hasPendingTransformChange() =
-        xPos != synchronizedPosition.x || yPos != synchronizedPosition.y || zPos != synchronizedPosition.z || 
-        xRot != synchronizedRotation.x || yRot != synchronizedRotation.y || zRot != synchronizedRotation.z
+        position != synchronizedPosition || rotation != synchronizedRotation
 
     override fun getPhysicsBodyDefinition() = bodyDefinition.also()
     {
-        it.position.set(xPos, yPos, zPos)
-        it.rotation.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        it.position.set(position)
+        it.rotation.rotationXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
         it.type               = bodyType
         it.linearDamping      = linearDamping
         it.angularDamping     = angularDamping
@@ -184,12 +183,12 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
         val yMax = bounds?.yMax ?: 0.5f
         val zMax = bounds?.zMax ?: 0.5f
 
-        val xCenter = (xMin + xMax) * 0.5f * xScale
-        val yCenter = (yMin + yMax) * 0.5f * yScale
-        val zCenter = (zMin + zMax) * 0.5f * zScale
-        val xSize   = (xMax - xMin) * abs(xScale)
-        val ySize   = (yMax - yMin) * abs(yScale)
-        val zSize   = (zMax - zMin) * abs(zScale)
+        val xCenter = (xMin + xMax) * 0.5f * scale.x
+        val yCenter = (yMin + yMax) * 0.5f * scale.y
+        val zCenter = (zMin + zMax) * 0.5f * scale.z
+        val xSize   = (xMax - xMin) * abs(scale.x)
+        val ySize   = (yMax - yMin) * abs(scale.y)
+        val zSize   = (zMax - zMin) * abs(scale.z)
 
         var shapeCount = 0
 
@@ -230,7 +229,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
                     updateShapeDefinition(shapeCount++, { ConvexHullGeometry3D(mesh) })
                     {
                         it.mesh = mesh
-                        it.scale.set(xScale, yScale, zScale)
+                        it.scale.set(scale)
                     }
                 }
             }
@@ -241,7 +240,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
                     updateShapeDefinition(shapeCount++, { TriangleMeshGeometry3D(mesh) })
                     {
                         it.mesh = mesh
-                        it.scale.set(xScale, yScale, zScale)
+                        it.scale.set(scale)
                     }
                 }
             }
@@ -273,7 +272,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
     
     private fun recordSynchronizedTransform()
     {
-        synchronizedPosition.set(xPos, yPos, zPos)
-        synchronizedRotation.set(xRot, yRot, zRot)
+        synchronizedPosition.set(position)
+        synchronizedRotation.set(rotation)
     }
 }

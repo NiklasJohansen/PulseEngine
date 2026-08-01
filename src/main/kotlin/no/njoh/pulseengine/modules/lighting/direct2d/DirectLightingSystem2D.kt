@@ -304,7 +304,7 @@ open class DirectLightingSystem2D : SceneSystem()
                 y = light.y,
                 width = light.radius * 1.7f + if (light.type == LINEAR) light.size * 2 else 0f,
                 height = light.radius * 1.7f,
-                angle = light.rotation
+                angle = light.zRotation
             ) {
                 if (it.castShadows && (it as SceneEntity).isNot(HIDDEN))
                 {
@@ -320,7 +320,7 @@ open class DirectLightingSystem2D : SceneSystem()
             y = light.y,
             z = light.z,
             radius = light.radius,
-            direction = light.rotation.toRadians(),
+            direction = light.zRotation.toRadians(),
             coneAngle = 0.5f * light.coneAngle.toRadians(),
             sourceSize = light.size,
             intensity = light.intensity,
@@ -351,7 +351,7 @@ open class DirectLightingSystem2D : SceneSystem()
             {
                 val xScreenCenter = (xMin + xMax) * 0.5f
                 val yScreenCenter = (yMin + yMax) * 0.5f
-                val angle = PI.toFloat() + light.rotation.toRadians()
+                val angle = PI.toFloat() + light.zRotation.toRadians()
                 val xHalf = cos(-angle) * light.size * 0.5f
                 val yHalf = sin(-angle) * light.size * 0.5f
                 val closestPoint = MathUtil.closestPointOnLineSegment(
@@ -429,7 +429,7 @@ open class DirectLightingSystem2D : SceneSystem()
 
         // Draw outline
         val size = if (light.type == LINEAR) light.size else 0f
-        val rotation = -light.rotation.toRadians()
+        val rotation = -light.zRotation.toRadians()
         val xOffset = size * cos(rotation)
         val yOffset = size * sin(rotation)
         var xLast = light.x + cos(0f + rotation) * light.radius + xOffset
@@ -452,7 +452,7 @@ open class DirectLightingSystem2D : SceneSystem()
         val height = light.radius * 2
         val cornerRadius = min(width, height)
         lightSurface.setDrawColor(light.lightColor.red, light.lightColor.green, light.lightColor.blue, 0.02f)
-        lightSurface.drawTexture(Texture.BLANK, light.x, light.y, width, height, light.rotation, 0.5f, 0.5f, cornerRadius = CornerRadius(cornerRadius))
+        lightSurface.drawTexture(Texture.BLANK, light.x, light.y, width, height, light.zRotation, 0.5f, 0.5f, cornerRadius = CornerRadius(cornerRadius))
     }
 
     private fun Graphics.getSurfaces(surfaceNames: String) =

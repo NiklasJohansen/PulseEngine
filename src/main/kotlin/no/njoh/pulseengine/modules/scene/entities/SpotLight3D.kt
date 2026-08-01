@@ -18,8 +18,8 @@ class SpotLight3D : SceneEntity(), Named, ConicalLight3D, Rotatable3D
 {
     @Prop(i=0) override var name = "Spot Light"
 
-    @Prop("Position [*P]", i=1) override var xPos=0f;   override var yPos=1f; override var zPos=0f
-    @Prop("Rotation [*R]", i=2) override var xRot=-90f; override var yRot=0f; override var zRot=0f
+    @Prop("Transform", i=1) override var position = Vector3f(0f, 1f, 0f)
+    @Prop("Transform", i=2) override var rotation = Vector3f(-90f, 0f, 0f)
 
     @Prop("Lighting", i=1)                            var color          = Color(1f, 1f, 1f)
     @Prop("Lighting", i=2, min=0f)                    var intensity      = 4f
@@ -32,14 +32,12 @@ class SpotLight3D : SceneEntity(), Named, ConicalLight3D, Rotatable3D
     @Prop("Shadow", i=9, min=0f)  var shadowBias       = 0.005f
     @Prop("Shadow", i=10, min=0f) var shadowImportance = 1f
 
-    private val position       = Vector3f()
     private val direction      = Vector3f()
-    private val rotation       = Matrix4f()
+    private val rotationMatrix = Matrix4f()
     private val intensityColor = Color()
 
     override fun onRenderLight(engine: PulseEngine, context: SceneRenderContext)
     {
-        position.set(xPos, yPos, zPos)
         getDirection(direction)
         intensityColor.setFrom(color).multiplyRgb(intensity)
         val outerAngle = outerConeAngle.coerceIn(0f, 89f)
@@ -49,7 +47,7 @@ class SpotLight3D : SceneEntity(), Named, ConicalLight3D, Rotatable3D
 
     override fun getDirection(out: Vector3f): Vector3f
     {
-        rotation.identity().rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
-        return rotation.transformDirection(out.set(0f, 0f, -1f)).normalize()
+        rotationMatrix.identity().rotateXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
+        return rotationMatrix.transformDirection(out.set(0f, 0f, -1f)).normalize()
     }
 }

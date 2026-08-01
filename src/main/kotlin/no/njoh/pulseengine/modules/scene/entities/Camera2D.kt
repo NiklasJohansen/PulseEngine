@@ -55,7 +55,7 @@ open class Camera2D : Common2DSceneEntity()
         if (!isSet(SELECTED))
             return
 
-        val r = -this.rotation / 180f * PI.toFloat()
+        val r = -this.zRotation / 180f * PI.toFloat()
         val c = cos(r) * 0.5f
         val s = sin(r) * 0.5f
 
@@ -102,7 +102,7 @@ open class Camera2D : Common2DSceneEntity()
         engine.gfx.mainCamera.apply()
         {
             position.set(surfaceWidth * xOrigin - x, y - surfaceHeight * yOrigin, 0f)
-            rotation.set(0f, 0f, -super.rotation.toRadians())
+            rotation.set(0f, 0f, -super.zRotation.toRadians())
             origin.set(surfaceWidth * xOrigin, surfaceHeight * (1f - yOrigin), 0f)
             scale.set(newScale, newScale, 1f)
         }
@@ -127,7 +127,7 @@ open class Camera2D : Common2DSceneEntity()
             x = entity.x
             y = entity.y
             if (trackRotation)
-                rotation = entity.rotation
+                zRotation = entity.zRotation
             initialized = true
             return
         }
@@ -137,8 +137,8 @@ open class Camera2D : Common2DSceneEntity()
 
         if (trackRotation)
         {
-            val diff = (entity.rotation - rotation).toRadians()
-            rotation += atan2(sin(diff), cos(diff)).toDegrees() * smoothing
+            val diff = (entity.zRotation - zRotation).toRadians()
+            zRotation += atan2(sin(diff), cos(diff)).toDegrees() * smoothing
         }
     }
 }

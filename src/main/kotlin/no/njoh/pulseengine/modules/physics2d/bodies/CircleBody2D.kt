@@ -22,7 +22,7 @@ interface CircleBody2D : PhysicsBody2D
     {
         if (this is Spatial2D)
         {
-            shape.init(x, y, max(width, height) * 0.5f, rotation, density)
+            shape.init(x, y, max(width, height) * 0.5f, zRotation, density)
         }
     }
 
@@ -166,7 +166,7 @@ interface CircleBody2D : PhysicsBody2D
         {
             x = shape.x
             y = shape.y
-            rotation = shape.rot / PI.toFloat() * 180f
+            zRotation = shape.rot / PI.toFloat() * 180f
             set(POSITION_UPDATED or ROTATION_UPDATED)
         }
     }

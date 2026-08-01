@@ -30,7 +30,7 @@ open class Ball2D : Common2DSceneEntity(), CircleBody2D
     override var drag = 0.01f
 
     /** Initialize the shape once when the entity is created */
-    override fun onCreate() = shape.init(x, y, max(width, height) * 0.5f, rotation, density)
+    override fun onCreate() = shape.init(x, y, max(width, height) * 0.5f, zRotation, density)
 
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
@@ -49,5 +49,5 @@ open class Ball2D : Common2DSceneEntity(), CircleBody2D
 
     override fun xInterpolated() = x.interpolateFrom(shape.xLast)
     override fun yInterpolated() = y.interpolateFrom(shape.yLast)
-    override fun rotationInterpolated() = rotation.interpolateAngleFrom(shape.rotLast.toDegrees())
+    override fun rotationInterpolated() = zRotation.interpolateAngleFrom(shape.rotLast.toDegrees())
 }

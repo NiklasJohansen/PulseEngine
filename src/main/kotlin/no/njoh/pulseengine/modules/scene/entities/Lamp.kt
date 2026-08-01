@@ -47,8 +47,8 @@ open class Lamp : Common2DSceneEntity(), DirectLightSource, GiLightSource2D
             val xDelta = x - target.x
             val yDelta = y - target.y
             initLength = sqrt(xDelta * xDelta + yDelta * yDelta)
-            initAngle = MathUtil.atan2(yDelta / initLength, xDelta / initLength) + target.rotation.toRadians()
-            initRotation = rotation - target.rotation
+            initAngle = MathUtil.atan2(yDelta / initLength, xDelta / initLength) + target.zRotation.toRadians()
+            initRotation = zRotation - target.zRotation
         }
     }
 
@@ -63,7 +63,7 @@ open class Lamp : Common2DSceneEntity(), DirectLightSource, GiLightSource2D
             val angle = initAngle - target.rotationInterpolated().toRadians()
             x = target.xInterpolated() + cos(angle) * initLength
             y = target.yInterpolated() + sin(angle) * initLength
-            rotation = target.rotationInterpolated() + initRotation
+            zRotation = target.rotationInterpolated() + initRotation
         }
     }
 

@@ -16,6 +16,7 @@ import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderable
 import org.joml.Matrix4f
+import org.joml.Vector3f
 
 @Name("3D Animated Model")
 class AnimatedModel3D : SceneEntity(), Updatable, Scene3DRenderable, Named, Spatial3D
@@ -24,9 +25,9 @@ class AnimatedModel3D : SceneEntity(), Updatable, Scene3DRenderable, Named, Spat
 
     @ModelRef var model = ""
 
-    @Prop("Position [*P]", i=1) override var xPos=0f;   override var yPos=0f;   override var zPos=0f
-    @Prop("Rotation [*R]", i=2) override var xRot=0f;   override var yRot=0f;   override var zRot=0f
-    @Prop("Scale    [*S]", i=3) override var xScale=1f; override var yScale=1f; override var zScale=1f
+    @Prop("Transform", i=1) override var position = Vector3f(0f)
+    @Prop("Transform", i=2) override var rotation = Vector3f(0f)
+    @Prop("Transform", i=3) override var scale    = Vector3f(1f)
 
     @AnimationRef
     @Prop("Animation", i=4) var animation = ""
@@ -64,9 +65,9 @@ class AnimatedModel3D : SceneEntity(), Updatable, Scene3DRenderable, Named, Spat
         )
 
         transform.identity()
-            .translation(xPos, yPos, zPos)
-            .rotateXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
-            .scale(xScale, yScale, zScale)
+            .translation(position)
+            .rotateXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
+            .scale(scale)
 
         context.submitModel(engine, model, transform, null, animationPose, objectId = id)
     }

@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.modules.physics3d.box3d.joints.Box3DDistanceJointDefinition
 import no.njoh.pulseengine.modules.physics3d.entities.bodies.PhysicsBodyEntity3D
+import org.joml.Vector3f
 
 /**
  * Connects anchor A at the entity origin to anchor B at an editable local offset.
@@ -19,8 +20,8 @@ import no.njoh.pulseengine.modules.physics3d.entities.bodies.PhysicsBodyEntity3D
 open class DistanceJoint3D : SceneEntity(), Named, PhysicsJointEntity3D
 {
     @Prop(i=0) override var name = "Distance Joint"
-    @Prop("Anchor A [*P]", i=1) override var xPos = 0f; override var yPos = 0f; override var zPos = 0f
-    @Prop("Rotation [*R]", i=2) override var xRot = 0f; override var yRot = 0f; override var zRot = 0f
+    @Prop("Transform", i=1) override var position = Vector3f()
+    @Prop("Transform", i=2) override var rotation = Vector3f()
 
     @EntityRef(PhysicsBodyEntity3D::class)
     @Prop("Connection", i=1) var bodyAId = INVALID_ID
@@ -48,8 +49,8 @@ open class DistanceJoint3D : SceneEntity(), Named, PhysicsJointEntity3D
 
     override fun getPhysicsJointDefinition(): Box3DDistanceJointDefinition
     {
-        definition.worldPosA.set(xPos, yPos, zPos)
-        definition.worldRotA.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        definition.worldPosA.set(position)
+        definition.worldRotA.rotationXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
         definition.worldPosB.set(xAnchorB, yAnchorB, zAnchorB)
         definition.worldRotA.transform(definition.worldPosB)
         definition.worldPosB.add(definition.worldPosA)

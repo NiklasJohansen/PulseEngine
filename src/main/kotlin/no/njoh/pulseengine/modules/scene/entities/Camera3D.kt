@@ -26,9 +26,9 @@ open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D
     @Prop(i=0) override var name = "Camera"
     @Prop(i=1)          var active = true
 
-    @Prop("Position [*P]", i=1) override var xPos = 0f; override var yPos = 1.5f; override var zPos = 5f
-    @Prop("Rotation [*R]", i=2) override var xRot = 0f; override var yRot = 0f;   override var zRot = 0f
-    @Prop("Rotation",      i=3) var rotationMode = XYZ
+    @Prop("Transform", i=1) override var position = Vector3f(0f, 1.5f, 5f)
+    @Prop("Transform", i=2) override var rotation = Vector3f()
+    @Prop("Rotation",  i=3) var rotationMode = XYZ
 
     @Prop("Projection", i=1, min=1f, max = 179f) var fov       = 90f
     @Prop("Projection", i=2, min=0.001f)         var nearPlane = 0.01f
@@ -88,14 +88,14 @@ open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D
     {
         val near = nearPlane.coerceAtLeast(0.001f)
         
-        val rotation = when (rotationMode)
+        val eulerRotation = when (rotationMode)
         {
-            XYZ -> tmpQuaternionRot.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians()).getEulerAnglesYXZ(tmpEulerRot)
-            YAW_PITCH -> tmpEulerRot.set(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+            XYZ -> tmpQuaternionRot.rotationXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians()).getEulerAnglesYXZ(tmpEulerRot)
+            YAW_PITCH -> tmpEulerRot.set(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
         }
 
-        camera.rotation.set(rotation)
-        camera.position.set(xPos, yPos, zPos)
+        camera.rotation.set(eulerRotation)
+        camera.position.set(position)
         camera.origin.zero()
         camera.scale.set(1f)
         camera.fov = fov.coerceIn(1f, 179f)
@@ -116,9 +116,9 @@ open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D
         }
         else deltaPos
 
-        xPos += (target.xPos + positionOffset.x - xPos) * factor
-        yPos += (target.yPos + positionOffset.y - yPos) * factor
-        zPos += (target.zPos + positionOffset.z - zPos) * factor
+        position.x += (target.position.x + positionOffset.x - position.x) * factor
+        position.y += (target.position.y + positionOffset.y - position.y) * factor
+        position.z += (target.position.z + positionOffset.z - position.z) * factor
 
         if (trackRotation && targetRotation != null)
         {
@@ -134,7 +134,7 @@ open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D
 
     private fun capturePositionOffset(target: Translatable3D, targetRotation: Rotatable3D?)
     {
-        deltaPos.set(xPos - target.xPos, yPos - target.yPos, zPos - target.zPos)
+        deltaPos.set(position).sub(target.position)
         positionOffsetTargetId = INVALID_ID
         if (targetRotation != null)
         {
@@ -152,13 +152,13 @@ open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D
     }
 
     private fun Rotatable3D.toQuaternion(dst: Quaternionf) = dst.rotationXYZ(
-        xRot.toRadians(), yRot.toRadians(), zRot.toRadians()
+        rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians()
     )
 
     private fun cameraRotationTo(dst: Quaternionf) = when (rotationMode)
     {
-        XYZ -> dst.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
-        YAW_PITCH -> dst.rotationYXZ(yRot.toRadians(), xRot.toRadians(), zRot.toRadians())
+        XYZ -> dst.rotationXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
+        YAW_PITCH -> dst.rotationYXZ(rotation.y.toRadians(), rotation.x.toRadians(), rotation.z.toRadians())
     }
 
     private fun applyCameraRotation(rotation: Quaternionf)
@@ -168,9 +168,11 @@ open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D
             XYZ -> rotation.getEulerAnglesXYZ(tmpEulerRot)
             YAW_PITCH -> rotation.getEulerAnglesYXZ(tmpEulerRot)
         }
-        xRot = normalizeAngle(tmpEulerRot.x.toDegrees())
-        yRot = normalizeAngle(tmpEulerRot.y.toDegrees())
-        zRot = normalizeAngle(tmpEulerRot.z.toDegrees())
+        this.rotation.set(
+            normalizeAngle(tmpEulerRot.x.toDegrees()),
+            normalizeAngle(tmpEulerRot.y.toDegrees()),
+            normalizeAngle(tmpEulerRot.z.toDegrees())
+        )
     }
 
     private fun normalizeAngle(angle: Float) = ((angle + 180f) % 360f + 360f) % 360f - 180f

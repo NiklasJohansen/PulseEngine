@@ -27,7 +27,7 @@ open class Box2D : Common2DSceneEntity(), PolygonBody2D
     override var drag = 0.01f
 
     /** Initialize the shape once when the entity is created */
-    override fun onCreate() = shape.init(x, y, width, height, rotation, density)
+    override fun onCreate() = shape.init(x, y, width, height, zRotation, density)
 
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
@@ -46,5 +46,5 @@ open class Box2D : Common2DSceneEntity(), PolygonBody2D
 
     override fun xInterpolated() = x.interpolateFrom(shape.xCenterLast)
     override fun yInterpolated() = y.interpolateFrom(shape.yCenterLast)
-    override fun rotationInterpolated() = rotation.interpolateAngleFrom(shape.angleLast)
+    override fun rotationInterpolated() = zRotation.interpolateAngleFrom(shape.angleLast)
 }

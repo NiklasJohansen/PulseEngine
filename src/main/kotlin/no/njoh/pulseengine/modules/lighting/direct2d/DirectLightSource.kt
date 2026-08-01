@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.lighting.direct2d
 
+import com.fasterxml.jackson.annotation.JsonAlias
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
 
@@ -44,6 +45,8 @@ interface DirectLightSource
     @get:Prop(GROUP, 10, desc = "Z-position in world space")
     var z: Float
 
+    @get:JsonAlias("rotation")
+    @set:JsonAlias("rotation")
     @get:Prop(GROUP, 11, desc = "Direction of the light beam in degrees")
-    var rotation: Float
+    var zRotation: Float
 }

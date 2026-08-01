@@ -12,6 +12,7 @@ import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.modules.physics3d.box3d.joints.Box3DWheelJointDefinition
 import no.njoh.pulseengine.modules.physics3d.entities.bodies.PhysicsBodyEntity3D
+import org.joml.Vector3f
 
 @Name("3D Physics Wheel Joint")
 @Icon("SHAPES", size = 24f, showInViewport = true)
@@ -19,8 +20,8 @@ open class WheelJoint3D : SceneEntity(), Named, Translatable3D, Rotatable3D, Phy
 {
     @Prop(i=0) override var name = "Wheel Joint"
 
-    @Prop("Position [*P]", i=1) override var xPos = 0f; override var yPos = 0f; override var zPos = 0f
-    @Prop("Rotation [*R]", i=2) override var xRot = 0f; override var yRot = 0f; override var zRot = 0f
+    @Prop("Transform", i=1) override var position = Vector3f()
+    @Prop("Transform", i=2) override var rotation = Vector3f()
 
     @Prop("Connection", i=1) @EntityRef(PhysicsBodyEntity3D::class) var chassisBodyId = INVALID_ID
     @Prop("Connection", i=2) @EntityRef(PhysicsBodyEntity3D::class) var wheelBodyId   = INVALID_ID
@@ -53,8 +54,8 @@ open class WheelJoint3D : SceneEntity(), Named, Translatable3D, Rotatable3D, Phy
 
     override fun getPhysicsJointDefinition(): Box3DWheelJointDefinition
     {
-        definition.worldPosA.set(xPos, yPos, zPos)
-        definition.worldRotA.rotationXYZ(xRot.toRadians(), yRot.toRadians(), zRot.toRadians())
+        definition.worldPosA.set(position)
+        definition.worldRotA.rotationXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
         definition.worldPosB.set(definition.worldPosA)
         definition.worldRotB.set(definition.worldRotA)
         definition.collision = collideConnected

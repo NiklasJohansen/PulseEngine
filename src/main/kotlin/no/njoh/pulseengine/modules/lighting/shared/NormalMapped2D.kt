@@ -34,7 +34,7 @@ interface NormalMapped2D
                 y = y,
                 w = width,
                 h = height,
-                rot = rotation,
+                rot = zRotation,
                 xOrigin = 0.5f,
                 yOrigin = 0.5f,
                 normalScale = normalMapIntensity,

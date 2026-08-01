@@ -58,23 +58,23 @@ open class Prefab : SceneEntity(), Named, Initiable, Renderable2D, Spatial2D, Sp
     @EntityNameRef("sceneFile")
     var entityName = ""
 
-    @Prop("Position [*Pos]", i=1) override var xPos   = 0f; override var yPos   = 0f; override var zPos   = 0f
-    @Prop("Rotation [*Rot]", i=2) override var xRot   = 0f; override var yRot   = 0f; override var zRot   = 0f
-    @Prop("Scale [*Scale]",  i=3) override var xScale = 1f; override var yScale = 1f; override var zScale = 1f
+    @Prop("Transform", i=1) override var position = Vector3f(0f)
+    @Prop("Transform", i=2) override var rotation = Vector3f(0f)
+    @Prop("Transform", i=3) override var scale    = Vector3f(1f)
 
-    @get:JsonIgnore @Prop(hidden = true) override var x get() = xPos; set(v) { xPos = v }
-    @get:JsonIgnore @Prop(hidden = true) override var y get() = yPos; set(v) { yPos = v }
-    @get:JsonIgnore @Prop(hidden = true) override var z get() = zPos; set(v) { zPos = v }
+    @get:JsonIgnore @Prop(hidden = true) override var x get() = position.x; set(v) { position.x = v }
+    @get:JsonIgnore @Prop(hidden = true) override var y get() = position.y; set(v) { position.y = v }
+    @get:JsonIgnore @Prop(hidden = true) override var z get() = position.z; set(v) { position.z = v }
 
-    @get:JsonIgnore @Prop(hidden = true) override var rotation get() = zRot; set(v) { zRot = v }
+    @get:JsonIgnore @set:JsonIgnore @Prop(hidden = true) override var zRotation get() = rotation.z; set(v) { rotation.z = v }
 
     @get:JsonIgnore @Prop(hidden = true) override var width  
-        get() = baseWidth  * abs(xScale)
-        set(v) { if (baseWidth > MIN_SIZE) xScale = v / baseWidth }
+        get() = baseWidth  * abs(scale.x)
+        set(v) { if (baseWidth > MIN_SIZE) scale.x = v / baseWidth }
     
     @get:JsonIgnore @Prop(hidden = true) override var height 
-        get() = baseHeight * abs(yScale) 
-        set(v) { if (baseHeight > MIN_SIZE) yScale = v / baseHeight }
+        get() = baseHeight * abs(scale.y)
+        set(v) { if (baseHeight > MIN_SIZE) scale.y = v / baseHeight }
 
     @Volatile private var requestedSceneKey = ""
     @Volatile private var failedSceneKey = ""
@@ -333,18 +333,18 @@ open class Prefab : SceneEntity(), Named, Initiable, Renderable2D, Spatial2D, Sp
             val entity = it
             if (entity is Translatable3D)
             {
-                if (entity.xPos < xMin) xMin = entity.xPos
-                if (entity.xPos > xMax) xMax = entity.xPos
-                if (entity.yPos < yMin) yMin = entity.yPos
-                if (entity.yPos > yMax) yMax = entity.yPos
-                if (entity.zPos < zMin) zMin = entity.zPos
-                if (entity.zPos > zMax) zMax = entity.zPos
+                if (entity.position.x < xMin) xMin = entity.position.x
+                if (entity.position.x > xMax) xMax = entity.position.x
+                if (entity.position.y < yMin) yMin = entity.position.y
+                if (entity.position.y > yMax) yMax = entity.position.y
+                if (entity.position.z < zMin) zMin = entity.position.z
+                if (entity.position.z > zMax) zMax = entity.position.z
                 foundPosition = true
             }
 
             if (entity is Spatial2D)
             {
-                val angle = entity.rotation * PI.toFloat() / 180f
+                val angle = entity.zRotation * PI.toFloat() / 180f
                 val cos = abs(cos(angle))
                 val sin = abs(sin(angle))
                 val halfWidth = abs(entity.width) * 0.5f
@@ -469,10 +469,8 @@ private object PrefabTransform
 {
     private val sourceTransform = Matrix4f()
     private val resultTransform = Matrix4f()
-    private val position = Vector3f()
     private val rotation = Quaternionf()
     private val eulerAngles = Vector3f()
-    private val scale = Vector3f()
 
     fun apply(entity: SceneEntity, prefab: Prefab, xCenter: Float, yCenter: Float, zCenter: Float) 
     {
@@ -487,21 +485,11 @@ private object PrefabTransform
     {
         if (source is Translatable3D && target is Translatable3D)
         {
-            target.xPos = source.xPos
-            target.yPos = source.yPos
-            target.zPos = source.zPos
+            target.position.set(source.position)
             if (source is Rotatable3D && target is Rotatable3D)
-            {
-                target.xRot = source.xRot
-                target.yRot = source.yRot
-                target.zRot = source.zRot
-            }
+                target.rotation.set(source.rotation)
             if (source is Scalable3D && target is Scalable3D)
-            {
-                target.xScale = source.xScale
-                target.yScale = source.yScale
-                target.zScale = source.zScale
-            }
+                target.scale.set(source.scale)
         }
         else if (source is Spatial2D && target is Spatial2D)
         {
@@ -510,24 +498,24 @@ private object PrefabTransform
             target.z = source.z
             target.width = source.width
             target.height = source.height
-            target.rotation = source.rotation
+            target.zRotation = source.zRotation
         }
     }
 
     private fun apply2D(entity: Spatial2D, prefab: Prefab, xCenter: Float, yCenter: Float, zCenter: Float)
     {
-        val x = (entity.x - xCenter) * prefab.xScale
-        val y = (entity.y - yCenter) * prefab.yScale
-        val angle = prefab.zRot * PI.toFloat() / 180f
+        val x = (entity.x - xCenter) * prefab.scale.x
+        val y = (entity.y - yCenter) * prefab.scale.y
+        val angle = prefab.rotation.z * PI.toFloat() / 180f
         val cos = cos(angle)
         val sin = sin(angle)
 
-        entity.x = prefab.xPos + cos * x - sin * y
-        entity.y = prefab.yPos + sin * x + cos * y
-        entity.z = prefab.zPos + entity.z - zCenter
-        entity.width *= abs(prefab.xScale)
-        entity.height *= abs(prefab.yScale)
-        entity.rotation += prefab.zRot
+        entity.x = prefab.position.x + cos * x - sin * y
+        entity.y = prefab.position.y + sin * x + cos * y
+        entity.z = prefab.position.z + entity.z - zCenter
+        entity.width *= abs(prefab.scale.x)
+        entity.height *= abs(prefab.scale.y)
+        entity.zRotation += prefab.rotation.z
     }
 
     private fun apply3D(entity: SceneEntity, prefab: Prefab, xCenter: Float, yCenter: Float, zCenter: Float)
@@ -538,44 +526,40 @@ private object PrefabTransform
 
         sourceTransform
             .identity()
-            .translation(translatable.xPos - xCenter, translatable.yPos - yCenter, translatable.zPos - zCenter)
+            .translation(translatable.position.x - xCenter, translatable.position.y - yCenter, translatable.position.z - zCenter)
             .rotateXYZ(
-                (rotatable?.xRot ?: 0f).toRadians(),
-                (rotatable?.yRot ?: 0f).toRadians(),
-                (rotatable?.zRot ?: 0f).toRadians()
+                (rotatable?.rotation?.x ?: 0f).toRadians(),
+                (rotatable?.rotation?.y ?: 0f).toRadians(),
+                (rotatable?.rotation?.z ?: 0f).toRadians()
             )
             .scale(
-                scalable?.xScale ?: 1f,
-                scalable?.yScale ?: 1f,
-                scalable?.zScale ?: 1f
+                scalable?.scale?.x ?: 1f,
+                scalable?.scale?.y ?: 1f,
+                scalable?.scale?.z ?: 1f
             )
 
         resultTransform
             .identity()
-            .translation(prefab.xPos, prefab.yPos, prefab.zPos)
-            .rotateXYZ(prefab.xRot.toRadians(), prefab.yRot.toRadians(), prefab.zRot.toRadians())
-            .scale(prefab.xScale, prefab.yScale, prefab.zScale)
+            .translation(prefab.position)
+            .rotateXYZ(prefab.rotation.x.toRadians(), prefab.rotation.y.toRadians(), prefab.rotation.z.toRadians())
+            .scale(prefab.scale)
             .mul(sourceTransform)
 
-        resultTransform.getTranslation(position)
-        translatable.xPos = position.x
-        translatable.yPos = position.y
-        translatable.zPos = position.z
+        resultTransform.getTranslation(translatable.position)
 
         if (rotatable != null)
         {
             resultTransform.getUnnormalizedRotation(rotation).getEulerAnglesXYZ(eulerAngles)
-            rotatable.xRot = eulerAngles.x.toDegrees()
-            rotatable.yRot = eulerAngles.y.toDegrees()
-            rotatable.zRot = eulerAngles.z.toDegrees()
+            rotatable.rotation.set(
+                eulerAngles.x.toDegrees(),
+                eulerAngles.y.toDegrees(),
+                eulerAngles.z.toDegrees()
+            )
         }
 
         if (scalable != null)
         {
-            resultTransform.getScale(scale)
-            scalable.xScale = scale.x
-            scalable.yScale = scale.y
-            scalable.zScale = scale.z
+            resultTransform.getScale(scalable.scale)
         }
     }
 }
