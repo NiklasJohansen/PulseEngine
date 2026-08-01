@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.GridRenderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.Key.*
@@ -45,6 +46,7 @@ class ViewportInteraction2D(
 
     // Movement
     private var isMoving = false
+    private var isSpacePanning = false
 
     // Rotation
     private var isRotating = false
@@ -71,17 +73,19 @@ class ViewportInteraction2D(
 
     override fun onCreate(engine: PulseEngine, context: ViewportContext)
     {
-        engine.gfx.createSurface(
-            name = GIZMO_SURFACE, 
-            zOrder = -50
-        )
+        engine.gfx.createSurface(name = GIZMO_SURFACE, zOrder = -50)
     }
 
     override fun onUpdate(engine: PulseEngine, context: ViewportContext)
     {
         engine.input.setCursorType(ARROW)
         cameraController.scrollSpeed = 40f * UI_SCALE
-        cameraController.update(engine, context.camera, enableScrolling = engine.input.hasHoverFocus(context.focusArea))
+        
+        val viewportHovered = engine.input.hasHoverFocus(context.focusArea)
+        cameraController.update(engine, context.camera, enableScrolling = viewportHovered)
+
+        if (updateSpacePanning(engine, context, viewportHovered))
+            return
 
         if (context.selection.size == 1)
             updateEntityTransformation(engine, context, context.selection.first())
@@ -130,11 +134,48 @@ class ViewportInteraction2D(
     override fun reset(engine: PulseEngine, context: ViewportContext)
     {
         isMoving = false
+        isSpacePanning = false
         isSelecting = false
         isRotating = false
         isResizingVertically = false
         isResizingHorizontally = false
         engine.input.setCursorType(ARROW)
+    }
+
+    private fun updateSpacePanning(engine: PulseEngine, context: ViewportContext, viewportHovered: Boolean): Boolean
+    {
+        val input = engine.input
+        val spacePressed = input.isPressed(SPACE)
+        val leftMousePressed = input.isPressed(MouseButton.LEFT)
+
+        if (isSpacePanning && (!spacePressed || !leftMousePressed))
+            isSpacePanning = false
+
+        if (!isSpacePanning && viewportHovered && spacePressed && leftMousePressed)
+        {
+            isSpacePanning = true
+            isMoving = false
+            isSelecting = false
+            isRotating = false
+            isResizingVertically = false
+            isResizingHorizontally = false
+        }
+
+        if (isSpacePanning)
+        {
+            context.camera.position.x += input.xdMouse / context.camera.scale.x
+            context.camera.position.y -= input.ydMouse / context.camera.scale.y
+            input.setCursorType(HAND_GRAB)
+            return true
+        }
+
+        if (viewportHovered && spacePressed)
+        {
+            input.setCursorType(HAND_OPEN)
+            return true
+        }
+
+        return false
     }
 
     override fun onDestroy(engine: PulseEngine, context: ViewportContext)

@@ -589,9 +589,11 @@ class ViewportInteraction3D(
     {
         val input = engine.input
         val camera = context.camera
+        val spacePressed = input.isPressed(Key.SPACE)
+        val spacePan = spacePressed && input.isPressed(MouseButton.LEFT) && (hover || cameraDragging)
         val fly = input.isPressed(MouseButton.RIGHT) && (hover || cameraDragging)
         val orbit = input.isPressed(Key.LEFT_ALT) && input.isPressed(MouseButton.MIDDLE) && (hover || cameraDragging)
-        val pan = input.isPressed(MouseButton.MIDDLE) && (hover || cameraDragging) && !orbit
+        val pan = (input.isPressed(MouseButton.MIDDLE) || spacePan) && (hover || cameraDragging) && !orbit
         val dragging = fly || orbit || pan
 
         if (dragging)
@@ -652,6 +654,12 @@ class ViewportInteraction3D(
         }
 
         if (!hover) return false
+
+        if (spacePressed)
+        {
+            input.setCursorType(CursorType.HAND_OPEN)
+            return true
+        }
 
         if (input.wasClicked(Key.F) && getSelectedTransformables(context) != null)
             frameSelection(engine, context)

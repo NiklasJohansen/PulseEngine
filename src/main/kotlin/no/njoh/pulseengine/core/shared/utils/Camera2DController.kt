@@ -26,7 +26,7 @@ class Camera2DController(
 
         if (enableScrolling)
         {
-            if (engine.input.isPressed(Key.LEFT_CONTROL))
+            if (engine.input.isPressed(Key.LEFT_CONTROL) || engine.input.isPressed(Key.LEFT_ALT))
             {
                 scaleChangeRate += engine.input.yScroll * 0.01f * min(1f, cam.scale.x)
             }

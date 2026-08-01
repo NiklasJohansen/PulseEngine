@@ -190,6 +190,7 @@ enum class CursorType
 {
     ARROW,
     HAND,
+    HAND_OPEN,
     HAND_GRAB,
     IBEAM,
     CROSSHAIR,
