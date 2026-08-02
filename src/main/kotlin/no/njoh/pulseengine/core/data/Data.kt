@@ -13,17 +13,17 @@ abstract class Data
     /** Total time in milliseconds used to process the most recent frame */
     abstract val totalFrameTimeMs: Float
 
-    /** Time in milliseconds used to upload GPU data and perform GPU draw calls in the most recent frame */
-    abstract val gpuRenderTimeMs: Float
+    /** Time in milliseconds used by the engine to prepare, batch, upload GPU data and perform GPU draw calls in the most recent frame */
+    abstract val engineRenderTimeMs: Float
 
-    /** Time in milliseconds used by the CPU to prepare GPU data for the next frame */
-    abstract val cpuRenderTimeMs: Float
+    /** Time in milliseconds used by the game and services to prepare and submit render data for the next frame */
+    abstract val gameRenderTimeMs: Float
 
-    /** Time in milliseconds used by the CPU to update the game state */
-    abstract val cpuUpdateTimeMs: Float
+    /** Time in milliseconds used by the game and services to update the game state */
+    abstract val gameUpdateTimeMs: Float
 
-    /**** Time in milliseconds used by the CPU to perform fixed update logic */
-    abstract val cpuFixedUpdateTimeMs: Float
+    /**** Time in milliseconds used by the game and services to perform fixed update logic */
+    abstract val gameFixedUpdateTimeMs: Float
 
     /** The fixed time step in seconds used for the fixed update loop. Equal to: 1.0 / fixedTickRate */
     abstract val fixedDeltaTime: Float
@@ -120,12 +120,12 @@ abstract class Data
 abstract class DataInternal : Data()
 {
     abstract override var deltaTime: Float
-    abstract override var cpuUpdateTimeMs: Float
-    abstract override var cpuRenderTimeMs: Float
-    abstract override var gpuRenderTimeMs: Float
+    abstract override var gameUpdateTimeMs: Float
+    abstract override var gameRenderTimeMs: Float
+    abstract override var engineRenderTimeMs: Float
     abstract override var interpolation: Float
     abstract override var fixedDeltaTime: Float
-    abstract override var cpuFixedUpdateTimeMs: Float
+    abstract override var gameFixedUpdateTimeMs: Float
 
     abstract fun init()
     abstract fun update()

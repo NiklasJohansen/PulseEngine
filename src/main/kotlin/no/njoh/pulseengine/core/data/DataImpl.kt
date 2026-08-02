@@ -7,6 +7,7 @@ import de.undercouch.bson4jackson.BsonFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromClassPath
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
@@ -20,10 +21,10 @@ open class DataImpl : DataInternal()
     override var currentFps           = 0
     override var frameNumber          = 0L
     override var totalFrameTimeMs     = 0f
-    override var gpuRenderTimeMs      = 0f
-    override var cpuRenderTimeMs      = 0f
-    override var cpuUpdateTimeMs      = 0f
-    override var cpuFixedUpdateTimeMs = 0f
+    override var engineRenderTimeMs      = 0f
+    override var gameRenderTimeMs      = 0f
+    override var gameUpdateTimeMs      = 0f
+    override var gameFixedUpdateTimeMs = 0f
     override var fixedDeltaTime       = 0.017f
     override var deltaTime            = 0.017f
     override var interpolation        = 0f
@@ -41,14 +42,17 @@ open class DataImpl : DataInternal()
     {
         Logger.info { "Initializing data (DataImpl)" }
 
-        addMetric("FRAMES PER SECOND (FPS)")    { sample(currentFps.toFloat())                }
-        addMetric("FRAME TIME (MS)")            { sample(totalFrameTimeMs)                    }
-        addMetric("GPU RENDER TIME (MS)")       { sample(gpuRenderTimeMs)                     }
-        addMetric("CPU RENDER TIME (MS)")       { sample(cpuRenderTimeMs)                     }
-        addMetric("CPU UPDATE TIME (MS)")       { sample(cpuUpdateTimeMs)                     }
-        addMetric("CPU FIXED UPDATE TIME (MS)") { sample(cpuFixedUpdateTimeMs)                }
-        addMetric("USED MEMORY (KB)")           { sample(usedMemoryKb.toFloat())              }
-        addMetric("MEMORY OF TOTAL (%)")        { sample(usedMemoryKb * 100f / totalMemoryKb) }
+        addMetric("FRAMES PER SECOND (FPS)")     { sample(currentFps.toFloat())                }
+        addMetric("FRAME TIME (MS)")             { sample(totalFrameTimeMs)                    }
+        addMetric("ENGINE RENDER TIME (MS)")     { sample(engineRenderTimeMs)                  }
+        addMetric("GAME RENDER TIME (MS)")       { sample(gameRenderTimeMs)                    }
+        addMetric("GAME UPDATE TIME (MS)")       { sample(gameUpdateTimeMs)                    }
+        addMetric("GAME FIXED UPDATE TIME (MS)") { sample(gameFixedUpdateTimeMs)               }
+        addMetric("USED MEMORY (KB)")            { sample(usedMemoryKb.toFloat())              }
+        addMetric("MEMORY OF TOTAL (%)")         { sample(usedMemoryKb * 100f / totalMemoryKb) }
+        
+        GpuProfiler
+        
     }
 
     override fun addMetric(name: String, onSample: Metric.() -> Unit)

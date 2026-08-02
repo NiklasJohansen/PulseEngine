@@ -84,6 +84,7 @@ open class GraphicsImpl : GraphicsInternal
 
         GpuLogger.setLogLevel(engine.config.gpuLogLevel)
 
+        engine.data.addMetric("GPU TIME (µs)")          { sample(GpuProfiler.gpuTimeNs.toFloat() / 1000f) }
         engine.data.addMetric("DRAW CALLS")             { sample(GpuProfiler.drawCalls.toFloat()) }
         engine.data.addMetric("DRAW INSTANCES")         { sample(GpuProfiler.instances.toFloat()) }
         engine.data.addMetric("3D INSTANCES")           { sample(GpuProfiler.scene3DInstances.toFloat()) }

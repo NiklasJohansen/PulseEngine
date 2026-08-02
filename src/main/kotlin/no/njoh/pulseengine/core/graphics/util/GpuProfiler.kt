@@ -19,6 +19,7 @@ object GpuProfiler
     private var uploadedBytesCounter = 0L
     private var statsReader = null as GpuStatsReader?
 
+    var gpuTimeNs = 0L;        private set
     var drawCalls = 0L;        private set
     var triangles = 0L;        private set
     var instances = 0L;        private set
@@ -129,6 +130,9 @@ object GpuProfiler
         if (!enabled) return
 
         GpuTimeQuery.end() // End the "Frame" timer
+        getMeasurements()
+            .firstOrNull { it.depth == 0 }
+            ?.let { gpuTimeNs = it.timeNanoSec }
     }
 
     /**

@@ -266,7 +266,7 @@ class PulseEngineImpl(
 
     private fun drawFrame()
     {
-        data.gpuRenderTimeMs = measureMillisTime()
+        data.engineRenderTimeMs = measureMillisTime()
         {
             service.drawFrame(this)
             gfx.drawFrame(this)
@@ -292,7 +292,7 @@ class PulseEngineImpl(
         service.update(this)
 
         lastFrameTimeNs = System.nanoTime()
-        data.cpuUpdateTimeMs = ((lastFrameTimeNs - startTime).toDouble() * 1e-6).toFloat()
+        data.gameUpdateTimeMs = ((lastFrameTimeNs - startTime).toDouble() * 1e-6).toFloat()
         data.updateMemoryStats()
     }
 
@@ -319,7 +319,7 @@ class PulseEngineImpl(
             updated = true
         }
 
-        if (updated) data.cpuFixedUpdateTimeMs = ((System.nanoTime() - nowNs) / 1e6).toFloat()
+        if (updated) data.gameFixedUpdateTimeMs = ((System.nanoTime() - nowNs) / 1e6).toFloat()
     }
 
     private fun render(game: PulseEngineGame)
@@ -327,7 +327,7 @@ class PulseEngineImpl(
         val fixedDeltaTimeNs = 1e9 / config.fixedTickRate.toDouble()
         data.interpolation = (fixedUpdateAccumulatorNs.toDouble() / fixedDeltaTimeNs).coerceIn(0.0, 1.0).toFloat()
 
-        data.cpuRenderTimeMs = measureMillisTime()
+        data.gameRenderTimeMs = measureMillisTime()
         {
             game.onRender()
             scene.render()
