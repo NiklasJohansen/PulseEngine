@@ -23,8 +23,7 @@ class RenderScene
     {
         val poolItem = ITEM_POOL.removeLastOrNull()?.also()
         {
-            it.mesh = mesh
-            it.material = material
+            it.setBatchState(mesh, material)
             it.transform = transform
             it.cullingBounds = cullingBounds
             it.boneMatrices = boneMatrices

@@ -114,92 +114,97 @@ object DrawUtils
     {
         DrawBatch.resetBoundProgramAndCullMode()
 
-        if (payload.useVisibleInstanceBuffer)
+        val useVisibleInstanceBuffer = payload.useVisibleInstanceBuffer
+        if (useVisibleInstanceBuffer)
             payload.visibleInstanceBuffer?.bindSubmittedRange()
 
-        var groupStart = null as DrawBatch?
-        var groupVao = null as VertexArrayObject?
-        var groupCommandStart = bucket.commandStartIndex
-        var commandIndex = bucket.commandStartIndex
-        var commandCount = 0
-        var triangleCount = 0L
-        var instanceCount = 0L
+        val batches = bucket.getBackingList()
+        val bucketSize = bucket.size
+        var batchIndex = 0
 
-        fun flushGroup()
+        while (batchIndex < bucketSize)
         {
-            val firstBatch = groupStart ?: return
-            val vao = groupVao ?: return
-
-            firstBatch.bindProgramAndSetCullMode(programs)
-            programs[firstBatch.shaderVariant].setUniform("uUseVisibleInstanceBuffer", payload.useVisibleInstanceBuffer)
-            vao.bind()
-
-            if (!payload.useVisibleInstanceBuffer && payload.instanceIndexMode == INSTANCE_ATTRIBUTE)
-                bindInstanceIndexAttribute(payload.instanceIndexBuffer)
-
-            val commandByteOffset = payload.getCommandByteOffset(cullViewIndex, groupCommandStart)
- 
-            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, payload.commandBuffer.id)
-            glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, commandByteOffset, commandCount, 0)
-            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0)
-
-            if (!payload.useVisibleInstanceBuffer && payload.instanceIndexMode == INSTANCE_ATTRIBUTE)
-                payload.instanceIndexBuffer?.release()
-
-            vao.release()
-
-            if (payload.useVisibleInstanceBuffer)
-            {
-                captureIndirectDrawStats(payload.commandBuffer.id, commandByteOffset, commandCount)
-            }
-            else
-            {
-                incrementDrawStats(commandCount.toLong(), triangleCount, instanceCount)
-                incrementScene3DInstances(instanceCount)
-            }
-
-            groupStart = null
-            groupVao = null
-            commandCount = 0
-            triangleCount = 0L
-            instanceCount = 0L
-        }
-
-        bucket.forEachBatch { batch ->
-            val vao = batch.mesh.vao
+            val firstBatch = batches[batchIndex]
+            val vao = firstBatch.mesh.vao
             if (vao == null)
             {
-                flushGroup()
-                commandIndex++
-                return@forEachBatch
+                batchIndex++
+                continue
             }
 
-            val firstBatch = groupStart
+            val groupCommandStart = bucket.commandStartIndex + batchIndex
+            var commandCount = 0
+            var triangleCount = 0L
+            var instanceCount = 0L
 
-            if (firstBatch == null)
+            while (batchIndex < bucketSize)
             {
-                groupStart = batch
-                groupVao = vao
-                groupCommandStart = commandIndex
-            }
-            else if (firstBatch.shaderVariant != batch.shaderVariant || firstBatch.cullMode != batch.cullMode || groupVao !== vao)
-            {
-                flushGroup()
-                groupStart = batch
-                groupVao = vao
-                groupCommandStart = commandIndex
+                val batch = batches[batchIndex]
+                if (firstBatch.shaderVariant != batch.shaderVariant || firstBatch.cullMode != batch.cullMode || batch.mesh.vao !== vao) 
+                    break
+
+                commandCount++
+                if (!useVisibleInstanceBuffer)
+                {
+                    triangleCount += batch.instanceCount * (batch.mesh.indexCount / 3L)
+                    instanceCount += batch.instanceCount
+                }
+                batchIndex++
             }
 
-            commandCount++
-            if (!payload.useVisibleInstanceBuffer)
-            {
-                triangleCount += batch.instanceCount * (batch.mesh.indexCount / 3L)
-                instanceCount += batch.instanceCount
-            }
-            commandIndex++
+            drawIndirectGroup(
+                firstBatch = firstBatch,
+                vao = vao,
+                programs = programs,
+                payload = payload,
+                cullViewIndex = cullViewIndex,
+                commandStart = groupCommandStart,
+                commandCount = commandCount,
+                triangleCount = triangleCount,
+                instanceCount = instanceCount
+            )
         }
+    }
 
-        flushGroup()
+    private fun drawIndirectGroup(
+        firstBatch: DrawBatch,
+        vao: VertexArrayObject,
+        programs: ShaderProgramSet,
+        payload: IndirectDrawPayload,
+        cullViewIndex: Int,
+        commandStart: Int,
+        commandCount: Int,
+        triangleCount: Long,
+        instanceCount: Long
+    ) {
+        val useVisibleInstanceBuffer = payload.useVisibleInstanceBuffer
+        firstBatch.bindProgramAndSetCullMode(programs)
+        programs[firstBatch.shaderVariant].setUniform("uUseVisibleInstanceBuffer", useVisibleInstanceBuffer)
+        vao.bind()
+
+        if (!useVisibleInstanceBuffer && payload.instanceIndexMode == INSTANCE_ATTRIBUTE)
+            bindInstanceIndexAttribute(payload.instanceIndexBuffer)
+
+        val commandByteOffset = payload.getCommandByteOffset(cullViewIndex, commandStart)
+
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, payload.commandBuffer.id)
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, commandByteOffset, commandCount, 0)
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0)
+
+        if (!useVisibleInstanceBuffer && payload.instanceIndexMode == INSTANCE_ATTRIBUTE)
+            payload.instanceIndexBuffer?.release()
+
+        vao.release()
+
+        if (useVisibleInstanceBuffer)
+        {
+            captureIndirectDrawStats(payload.commandBuffer.id, commandByteOffset, commandCount)
+        }
+        else
+        {
+            incrementDrawStats(commandCount.toLong(), triangleCount, instanceCount)
+            incrementScene3DInstances(instanceCount)
+        }
     }
 
     private fun drawDirectRenderBucket(bucket: RenderBucket, programs: ShaderProgramSet, payload: DirectDrawPayload)

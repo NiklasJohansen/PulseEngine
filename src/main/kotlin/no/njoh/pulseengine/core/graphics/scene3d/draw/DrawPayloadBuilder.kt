@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.scene3d.draw
 
+import gnu.trove.map.hash.TLongIntHashMap
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
 import no.njoh.pulseengine.core.asset.types.Model.Aabb
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
@@ -16,35 +17,53 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.E
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 
 class DrawPayloadBuilder(
-    val frustumPlaneSets: Array<FrustumPlaneSet>,
-    val gpuCullItemIndices: StreamingIntBufferObject?,
-    val gpuCullItemIndexOffset: Int,
-    val gpuCullItemBatchIndices: StreamingIntBufferObject?,
-    val gpuCullItemBatchIndexOffset: Int,
-    val frustumPlaneSetCount: Int = frustumPlaneSets.size
+    var frustumPlaneSets: Array<FrustumPlaneSet> = emptyArray(),
+    var gpuCullItemIndices: StreamingIntBufferObject? = null,
+    var gpuCullItemIndexOffset: Int = 0,
+    var gpuCullItemBatchIndices: StreamingIntBufferObject? = null,
+    var gpuCullItemBatchIndexOffset: Int = 0, 
+    var frustumPlaneSetCount: Int = frustumPlaneSets.size
 ) {
     internal val batches = DynamicList<DrawBatch>()
     internal var gpuCullInstanceCount = 0
         private set
 
     private val scratchItems = DynamicList<RenderItem>(256)
+    private val batchIndexBySortKey = TLongIntHashMap(128, 0.5f, Long.MIN_VALUE, NO_BATCH_INDEX)
+    private val batchingSortFunc: (RenderItem, RenderItem) -> Int = ::compareForBatching
     private var commandIndex = 0
+
+    fun clear()
+    {
+        batches.clear()
+        scratchItems.clear()
+        batchIndexBySortKey.clear()
+        gpuCullInstanceCount = 0
+        commandIndex = 0
+    }
 
     fun RenderBucket.fill(
         from: DynamicList<RenderItem>,
         renderPassMask: RenderPassMask = EMPTY,
-        sortFunc: ((a: RenderItem, b: RenderItem) -> Int)? = ::compareForBatching,
+        sortFunc: ((a: RenderItem, b: RenderItem) -> Int)? = batchingSortFunc,
         preserveDrawOrder: Boolean = false,
     ) {
         val bucket = this
         val useGpuCulling = (gpuCullItemIndices != null && gpuCullItemBatchIndices != null)
 
         bucket.clear(commandIndex)
-        scratchItems.clear()
 
         if (from.isEmpty())
             return
 
+        val useGpuKeyBatching = useGpuCulling && !preserveDrawOrder && sortFunc === batchingSortFunc
+        if (useGpuKeyBatching)
+        {
+            bucket.batchGpuRenderItemsByKey(from, renderPassMask)
+            return
+        }
+
+        scratchItems.clear()
         from.forEach()
         {
             if (renderPassMask != EMPTY && !it.isVisible(renderPassMask))
@@ -64,19 +83,57 @@ class DrawPayloadBuilder(
         bucket.batchRenderItems(scratchItems, preserveDrawOrder, useGpuCulling)
     }
 
-    private fun RenderBucket.batchRenderItems(
-        items: DynamicList<RenderItem>,
-        preserveDrawOrder: Boolean,
-        useGpuCulling: Boolean
-    ) {
-        if (useGpuCulling)
+    private fun RenderBucket.batchGpuRenderItemsByKey(items: DynamicList<RenderItem>, renderPassMask: RenderPassMask)
+    {
+        prepareGpuCullItems(items.size)
+        batchIndexBySortKey.clear()
+
+        var lastBatchSortKey = Long.MIN_VALUE
+        var lastBatchIndex = NO_BATCH_INDEX
+
+        items.forEach()
         {
-            // Ensure space for all items in the bucket
-            gpuCullItemIndices?.fill(scratchItems.size) {}
-            gpuCullItemBatchIndices?.fill(scratchItems.size) {}
+            if (renderPassMask != EMPTY && !it.isVisible(renderPassMask))
+                return@forEach
+
+            val instanceIndex = it.gpuInstanceIndex
+            if (instanceIndex == INVALID_INSTANCE_INDEX)
+                throw IllegalStateException("Render item has not been uploaded to the GPU instance buffer")
+
+            val batchSortKey = it.batchSortKey
+            var batchIndex = if (batchSortKey == lastBatchSortKey)
+                lastBatchIndex
+            else
+                batchIndexBySortKey.get(batchSortKey)
+
+            if (batchIndex == NO_BATCH_INDEX)
+            {
+                val shaderVariant = it.mesh.selectShaderVariant()
+                val cullMode = it.material?.cullMode ?: CullMode.BACK
+                val batch = addBatch(it.mesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
+
+                batchIndex = commandIndex++
+                batchIndexBySortKey.put(batchSortKey, batchIndex)
+                batches += batch
+            }
+            else
+            {
+                batches[batchIndex].instanceCount++
+                bumpInstanceCount()
+            }
+
+            lastBatchSortKey = batchSortKey
+            lastBatchIndex   = batchIndex
+            appendGpuCullItem(it, batchIndex)
         }
+    }
+
+    private fun RenderBucket.batchRenderItems(items: DynamicList<RenderItem>, preserveDrawOrder: Boolean, useGpuCulling: Boolean) 
+    {
+        if (useGpuCulling) prepareGpuCullItems(items.size)
 
         var lastBatch = null as DrawBatch?
+        var lastBatchSortKey = Long.MIN_VALUE
 
         items.forEach()
         {
@@ -84,46 +141,48 @@ class DrawPayloadBuilder(
             if (instanceIndex == INVALID_INSTANCE_INDEX)
                 throw IllegalStateException("Render item has not been uploaded to the GPU instance buffer")
 
-            val shaderVariant = it.mesh.selectShaderVariant()
-            val cullMode      = it.material?.cullMode ?: CullMode.BACK
-
-            val canAppendToBatch =
-                !preserveDrawOrder &&
-                 lastBatch?.matches(it.mesh, shaderVariant, cullMode) == true &&
-                 (useGpuCulling || lastBatch.instanceIndex + lastBatch.instanceCount == instanceIndex)
+            val batchSortKey = it.batchSortKey
+            val batch = lastBatch
+            val canAppendToBatch = !preserveDrawOrder &&
+                batch != null &&
+                batchSortKey == lastBatchSortKey &&
+                (useGpuCulling || batch.instanceIndex + batch.instanceCount == instanceIndex)
 
             if (canAppendToBatch)
             {
-                lastBatch.instanceCount++
+                batch.instanceCount++
                 bumpInstanceCount()
             }
             else
             {
+                val shaderVariant = it.mesh.selectShaderVariant()
+                val cullMode      = it.material?.cullMode ?: CullMode.BACK
                 val batch = addBatch(it.mesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
                 lastBatch = batch
+                lastBatchSortKey = batchSortKey
                 batches += batch
                 commandIndex++
             }
 
             if (useGpuCulling)
-            {
-                gpuCullItemIndices?.put(it.gpuCullItemIndex)
-                gpuCullItemBatchIndices?.put(commandIndex - 1)
-                gpuCullInstanceCount++
-            }
+                appendGpuCullItem(it, commandIndex - 1)
         }
     }
 
-    private fun compareForBatching(a: RenderItem, b: RenderItem): Int
+    private fun prepareGpuCullItems(itemCount: Int)
     {
-        var result = System.identityHashCode(a.mesh) - System.identityHashCode(b.mesh)
-        if (result != 0) return result
-
-        result = a.mesh.selectShaderVariant().ordinal - b.mesh.selectShaderVariant().ordinal
-        if (result != 0) return result
-
-        return (a.material?.cullMode ?: CullMode.BACK).ordinal - (b.material?.cullMode ?: CullMode.BACK).ordinal
+        gpuCullItemIndices?.fill(itemCount) {}
+        gpuCullItemBatchIndices?.fill(itemCount) {}
     }
+
+    private fun appendGpuCullItem(item: RenderItem, batchIndex: Int)
+    {
+        gpuCullItemIndices?.put(item.gpuCullItemIndex)
+        gpuCullItemBatchIndices?.put(batchIndex)
+        gpuCullInstanceCount++
+    }
+
+    private fun compareForBatching(a: RenderItem, b: RenderItem): Int = a.batchSortKey.compareTo(b.batchSortKey)
 
     private fun intersectsAnyFrustumPlaneSet(bounds: Aabb, transform: Mat4f): Boolean
     {
@@ -137,5 +196,10 @@ class DrawPayloadBuilder(
     private fun Mesh.selectShaderVariant(): ShaderVariant
     {
         return if (skinningBounds != null) SKINNED else STATIC
+    }
+
+    companion object
+    {
+        private const val NO_BATCH_INDEX = -1
     }
 }

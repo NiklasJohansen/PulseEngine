@@ -16,7 +16,6 @@ class InstanceBufferObject
 
     private lateinit var objectIdBuffer: StreamingIntBufferObject
     private lateinit var instanceBuffer: StreamingFloatBufferObject
-    private val tmpNormalMatrix = FloatArray(NORMAL_MATRIX_FLOATS)
 
     fun init()
     {
@@ -45,15 +44,28 @@ class InstanceBufferObject
     {
         val instanceIndex = instanceCount++
         val materialId = item.material?.id ?: Material.DEFAULT_ID
-        val handedness = computeNormalMatrix(item.transform, tmpNormalMatrix)
+        val transform = item.transform
+        val transformData = transform.data
+        val transformOffset = transform.offset
 
         instanceBuffer.fill(INSTANCE_FLOATS)
         {
-            put(item.transform)
-            put(tmpNormalMatrix[0], tmpNormalMatrix[1], tmpNormalMatrix[2], 0f)
-            put(tmpNormalMatrix[4], tmpNormalMatrix[5], tmpNormalMatrix[6], 0f)
-            put(tmpNormalMatrix[8], tmpNormalMatrix[9], tmpNormalMatrix[10], 0f)
-            put(materialId.toFloat(), boneOffsetIndex.toFloat(), handedness, 0f)
+            val dstOffset = instanceBuffer.size
+            val dstData   = instanceBuffer.data
+            System.arraycopy(transformData, transformOffset, dstData, dstOffset, Mat4f.MATRIX_SIZE)
+
+            val handedness = computeNormalMatrix(
+                matrixData = transformData,
+                matrixOffset = transformOffset,
+                outData = dstData,
+                outOffset = dstOffset + NORMAL_MATRIX_FLOAT_OFFSET
+            )
+
+            dstData[dstOffset + PARAMS_FLOAT_OFFSET    ] = materialId.toFloat()
+            dstData[dstOffset + PARAMS_FLOAT_OFFSET + 1] = boneOffsetIndex.toFloat()
+            dstData[dstOffset + PARAMS_FLOAT_OFFSET + 2] = handedness
+            dstData[dstOffset + PARAMS_FLOAT_OFFSET + 3] = 0f
+            size = dstOffset + INSTANCE_FLOATS
         }
 
         objectIdBuffer.fill(2)
@@ -105,7 +117,6 @@ class InstanceBufferObject
         const val NORMAL_MATRIX_FLOAT_OFFSET = 16
         const val PARAMS_FLOAT_OFFSET = 28
 
-        private const val NORMAL_MATRIX_FLOATS = 12
         private const val MIN_NORMAL_DETERMINANT = 1e-8f
 
         fun encodeObjectIdLow(id: Long) = id.toInt()
@@ -118,15 +129,15 @@ class InstanceBufferObject
          * handedness for mirrored transforms. Singular or non-finite transforms produce an identity
          * normal matrix and positive handedness so invalid values do not reach the shaders.
          */
-        internal fun computeNormalMatrix(transform: Mat4f, out: FloatArray): Float
-        {
-            require(out.size >= NORMAL_MATRIX_FLOATS)
-
-            val matrix = transform.data
-            val offset = transform.offset
-            val m00 = matrix[offset     ]; val m01 = matrix[offset +  1]; val m02 = matrix[offset +  2]
-            val m10 = matrix[offset +  4]; val m11 = matrix[offset +  5]; val m12 = matrix[offset +  6]
-            val m20 = matrix[offset +  8]; val m21 = matrix[offset +  9]; val m22 = matrix[offset + 10]
+        private fun computeNormalMatrix(
+            matrixData: FloatArray,
+            matrixOffset: Int,
+            outData: FloatArray,
+            outOffset: Int
+        ): Float {
+            val m00 = matrixData[matrixOffset    ]; val m01 = matrixData[matrixOffset +  1]; val m02 = matrixData[matrixOffset +  2]
+            val m10 = matrixData[matrixOffset + 4]; val m11 = matrixData[matrixOffset +  5]; val m12 = matrixData[matrixOffset +  6]
+            val m20 = matrixData[matrixOffset + 8]; val m21 = matrixData[matrixOffset +  9]; val m22 = matrixData[matrixOffset + 10]
 
             val c00 = m11 * m22 - m12 * m21
             val c01 = m12 * m20 - m10 * m22
@@ -144,17 +155,16 @@ class InstanceBufferObject
                 !c10.isFinite() || !c11.isFinite() || !c12.isFinite() ||
                 !c20.isFinite() || !c21.isFinite() || !c22.isFinite()
             ) {
-                out.fill(0f)
-                out[0]  = 1f
-                out[5]  = 1f
-                out[10] = 1f
+                outData[outOffset     ] = 1f; outData[outOffset +  1] = 0f; outData[outOffset +  2] = 0f; outData[outOffset +  3] = 0f
+                outData[outOffset +  4] = 0f; outData[outOffset +  5] = 1f; outData[outOffset +  6] = 0f; outData[outOffset +  7] = 0f
+                outData[outOffset +  8] = 0f; outData[outOffset +  9] = 0f; outData[outOffset + 10] = 1f; outData[outOffset + 11] = 0f
                 return 1f
             }
 
             val invDet = 1f / determinant
-            out[0] = c00 * invDet; out[1] = c01 * invDet; out[2] = c02 * invDet; out[3] = 0f
-            out[4] = c10 * invDet; out[5] = c11 * invDet; out[6] = c12 * invDet; out[7] = 0f
-            out[8] = c20 * invDet; out[9] = c21 * invDet; out[10] = c22 * invDet; out[11] = 0f
+            outData[outOffset     ] = c00 * invDet; outData[outOffset +  1] = c01 * invDet; outData[outOffset +  2] = c02 * invDet; outData[outOffset +  3] = 0f
+            outData[outOffset +  4] = c10 * invDet; outData[outOffset +  5] = c11 * invDet; outData[outOffset +  6] = c12 * invDet; outData[outOffset +  7] = 0f
+            outData[outOffset +  8] = c20 * invDet; outData[outOffset +  9] = c21 * invDet; outData[outOffset + 10] = c22 * invDet; outData[outOffset + 11] = 0f
             return if (determinant < 0f) -1f else 1f
         }
     }
