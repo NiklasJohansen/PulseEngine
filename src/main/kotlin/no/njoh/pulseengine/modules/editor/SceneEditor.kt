@@ -115,7 +115,7 @@ class SceneEditor(
 
     override fun onCreate(engine: PulseEngine)
     {
-        uiFactory.entityProvider = { engine.scene.getAllEntitiesByType().flatMap { it } }
+        uiFactory.bindSceneManager(engine.scene)
 
         // Load editor config
         engine.config.load("/pulseengine/config/editor_default.cfg")
@@ -344,7 +344,7 @@ class SceneEditor(
                 MODE_3D ->
                 {
                     engine.scene.addSystem(Scene3DRenderSystem().apply { init(engine) })
-                    engine.scene.addEntity(Model3D().apply { position.y = 0.5f; model = "cube" })
+                    engine.scene.addEntity(Model3D().apply { position.y = 1f; model = "cube" })
                 }
             }
 
@@ -422,7 +422,7 @@ class SceneEditor(
         val uiBaseBgSurface  = engine.gfx.getSurfaceOrDefault("scene_editor_ui_base_bg")
         val uiPopupBgSurface = engine.gfx.getSurfaceOrDefault("scene_editor_ui_popup_bg")
 
-        viewportInteraction?.onRender(engine, viewportContext)
+        viewportInteraction.onRender(engine, viewportContext)
 
         rootUI.render(engine, uiBaseSurface, renderPopup = false)
         rootUI.renderPopup(engine, uiPopupSurface)
@@ -433,7 +433,7 @@ class SceneEditor(
 
     private fun renderFrostedGlass(engine: PulseEngine, surface: Surface, node: UiElement, onlyPopups: Boolean = false)
     {
-        if (node.hidden) return
+        if (node.hidden || (node is RowPanel && node.children.size > 100)) return
 
         var onlyPopups = onlyPopups
         val isNodePopup = node === node.parent?.popup
@@ -872,13 +872,13 @@ class SceneEditor(
     private fun resetUI(engine: PulseEngine)
     {
         isCopying = false
-        viewportInteraction?.reset(engine, viewportContext)
+        viewportInteraction.reset(engine, viewportContext)
         clearEntitySelection()
     }
 
     override fun onDestroy(engine: PulseEngine)
     {
-        viewportInteraction?.onDestroy(engine, viewportContext)
+        viewportInteraction.onDestroy(engine, viewportContext)
 
         if (shouldPersistEditorLayout)
             dockingUI.saveLayout(engine, "/editor_layout.cfg")

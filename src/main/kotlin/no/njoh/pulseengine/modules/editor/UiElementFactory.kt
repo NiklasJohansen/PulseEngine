@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.editor
 import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.*
+import no.njoh.pulseengine.core.scene.SceneManager
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
@@ -36,6 +37,7 @@ import no.njoh.pulseengine.modules.editor.EditorUtil.setPrimitiveProperty
 import java.lang.IllegalArgumentException
 import java.io.File
 import kotlin.math.min
+import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.findAnnotation
@@ -50,8 +52,8 @@ import org.joml.Vector3f
 open class UiElementFactory(
     val style: EditorStyle = EditorStyle()
 ) {
-    /** Supplies entities to property editors that handle [EntityRef] values. */
-    var entityProvider: () -> List<SceneEntity> = { emptyList() }
+    private val entityTypeNameCache = HashMap<KClass<*>, String>()
+    private var sceneManager: SceneManager? = null
 
     /** Property UI factory functions for specific class types. */
     val propertyUiFactories = THashMap(mapOf(
@@ -67,6 +69,12 @@ open class UiElementFactory(
         FloatArray::class  to ::createInputFieldUI,
         DoubleArray::class to ::createInputFieldUI,
     ))
+
+    /** Binds the scene used to resolve properties annotated with [EntityRef]. */
+    fun bindSceneManager(sceneManager: SceneManager)
+    {
+        this.sceneManager = sceneManager
+    }
 
     /**
      * Creates an [AssetPicker] if the property is annotated with [AssetRef] or a default [InputField].
@@ -125,29 +133,29 @@ open class UiElementFactory(
         onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
     ): UiElement {
         val currentId = prop.getter.call(obj) as? Long ?: INVALID_ID
-        val entries = mutableListOf(EntityReferenceItem(INVALID_ID, "None"))
-        entityProvider()
-            .asSequence()
-            .filter { reference.type.java.isInstance(it) }
-            .sortedWith(compareBy({ (it as? Named)?.name ?: it::class.getName() }, { it.id }))
-            .mapTo(entries) { entity ->
-                val name = (entity as? Named)?.name?.takeIf { it.isNotBlank() } ?: entity::class.getName()
-                EntityReferenceItem(entity.id, "${entity.id} - $name")
-            }
-
-        val selected = entries.firstOrNull { it.id == currentId }
-            ?: EntityReferenceItem(currentId, "$currentId - Missing entity").also { entries.add(1, it) }
+        val selected = when (currentId)
+        {
+            INVALID_ID -> EntityReferenceItem(INVALID_ID, "None")
+            else -> sceneManager?.getEntity(currentId)
+                ?.takeIf { reference.type.java.isInstance(it) }
+                ?.let(::createEntityReferenceItem)
+                ?: EntityReferenceItem(currentId, "$currentId - Missing entity")
+        }
 
         return createItemSelectionDropdownUI(
             selectedItem = selected,
-            items = entries,
+            items = listOf(selected),
             searchable = true,
+            minimumDropDownWidth = ENTITY_REFERENCE_DROPDOWN_WIDTH,
+            minimumVisibleItemCount = DROPDOWN_MAX_VISIBLE_ITEMS,
             onItemToString = { it.label },
             onItemChanged = { lastValue, newValue ->
                 prop.setter.call(obj, newValue.id)
                 onChanged(prop.name, lastValue?.id, newValue.id)
             }
-        )
+        ).apply {
+            setItemProvider { query -> queryEntityReferences(reference, selected, query) }
+        }
     }
 
     /**
@@ -463,14 +471,18 @@ open class UiElementFactory(
         items: List<T>,
         onItemToString: (T) -> String,
         onItemChanged: (lastValue: T?, newValue: T) -> Unit,
-        searchable: Boolean = false
+        searchable: Boolean = false,
+        minimumDropDownWidth: Float = 0f,
+        minimumVisibleItemCount: Int = 0
     ): DropdownMenu<T> {
         val fontSize = style.getSize("CONTENT_FONT_SIZE")
         val font = style.getFont()
         val showScrollbar = items.size > 8
         val scrollBarWidth = if (showScrollbar) 25f else 0f
         val stringItems = items.map { onItemToString(it) }
-        val (width, height) = getDropDownDimensions(font, fontSize, scrollBarWidth, 35f, 8, stringItems)
+        val (contentWidth, contentHeight) = getDropDownDimensions(font, fontSize, scrollBarWidth, 35f, DROPDOWN_MAX_VISIBLE_ITEMS, stringItems)
+        val width = contentWidth.coerceAtLeast(minimumDropDownWidth)
+        val height = contentHeight.coerceAtLeast(5f + min(minimumVisibleItemCount, DROPDOWN_MAX_VISIBLE_ITEMS) * 35f)
         return DropdownMenu<T>(
             dropDownWidth = Size.absolute(width),
             dropDownHeight = Size.absolute(height + if (searchable) DROPDOWN_SEARCH_HEIGHT else 0f)
@@ -500,6 +512,85 @@ open class UiElementFactory(
             items.forEach(this::addItem)
         }
     }
+
+    private fun queryEntityReferences(reference: EntityRef, selected: EntityReferenceItem, query: String): List<EntityReferenceItem> 
+    {
+        val normalizedQuery = query.trim()
+        val queriedId = normalizedQuery.toLongOrNull()
+        val results = ArrayList<EntityReferenceItem>(ENTITY_REFERENCE_MAX_RESULTS)
+        val includedIds = HashSet<Long>(ENTITY_REFERENCE_MAX_RESULTS)
+
+        fun addIfMatching(item: EntityReferenceItem)
+        {
+            if (results.size < ENTITY_REFERENCE_MAX_RESULTS && item.label.contains(normalizedQuery, ignoreCase = true) && includedIds.add(item.id))
+                results.add(item)
+        }
+
+        addIfMatching(EntityReferenceItem(INVALID_ID, "None"))
+        addIfMatching(selected)
+
+        val remaining = ENTITY_REFERENCE_MAX_RESULTS - results.size
+        if (remaining > 0)
+        {
+            val entities = queryEntities(reference.type, remaining) { entity ->
+                if (queriedId != null)
+                {
+                    entity.id == queriedId
+                }
+                else if (normalizedQuery.isEmpty())
+                {
+                    true
+                }
+                else
+                {
+                    val name = (entity as? Named)?.name
+                    name?.contains(normalizedQuery, ignoreCase = true) == true || getEntityTypeName(entity).contains(normalizedQuery, ignoreCase = true)
+                }
+            }
+
+            entities.asSequence()
+                .map(::createEntityReferenceItem)
+                .filter { includedIds.add(it.id) }
+                .sortedWith(compareBy({ it.label.substringAfter(" - ") }, { it.id }))
+                .take(remaining)
+                .forEach(results::add)
+        }
+
+        return results
+    }
+
+    private fun queryEntities(type: KClass<*>, limit: Int, predicate: (SceneEntity) -> Boolean): List<SceneEntity> 
+    {
+        val sceneManager = sceneManager
+        if (sceneManager == null || limit <= 0)
+            return emptyList()
+
+        val matches = ArrayList<SceneEntity>(limit)
+        for (entities in sceneManager.getAllEntitiesByType())
+        {
+            val first = entities.firstOrNull() ?: continue
+            if (!type.java.isInstance(first)) continue
+
+            for (entity in entities)
+            {
+                if (!predicate(entity)) continue
+
+                matches.add(entity)
+                if (matches.size == limit)
+                    return matches
+            }
+        }
+
+        return matches
+    }
+
+    private fun createEntityReferenceItem(entity: SceneEntity): EntityReferenceItem
+    {
+        val name = (entity as? Named)?.name?.takeIf { it.isNotBlank() } ?: getEntityTypeName(entity)
+        return EntityReferenceItem(entity.id, "${entity.id} - $name")
+    }
+
+    private fun getEntityTypeName(entity: SceneEntity) = entityTypeNameCache.getOrPut(entity::class) { entity::class.getName() }
 
     /**
      * Creates a [Surface2D] viewport.
@@ -1090,6 +1181,9 @@ open class UiElementFactory(
     companion object
     {
         private const val DROPDOWN_SEARCH_HEIGHT = 30f
+        private const val DROPDOWN_MAX_VISIBLE_ITEMS = 8
+        private const val ENTITY_REFERENCE_DROPDOWN_WIDTH = 350f
+        private const val ENTITY_REFERENCE_MAX_RESULTS = 100
     }
 }
 

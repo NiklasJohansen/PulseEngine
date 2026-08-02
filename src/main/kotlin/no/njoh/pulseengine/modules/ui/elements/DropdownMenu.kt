@@ -58,6 +58,7 @@ class DropdownMenu <T> (
 
     private var onItemToString: (T) -> String = { it.toString() }
     private var onItemChanged: (lastItem: T?, newItem: T) -> Unit = { _, _ -> }
+    private var itemProvider: ((query: String) -> List<T>)? = null
     private var isMouseOver = false
     private val itemRows = mutableListOf<Pair<T, Button>>()
 
@@ -84,8 +85,13 @@ class DropdownMenu <T> (
             padding.setAll(5f)
             setCornerRadius(ScaledValue.of(4f))
             setOnTextChanged { input ->
-                for ((item, row) in itemRows)
-                    row.hidden = input.text.isNotBlank() && !onItemToString(item).contains(input.text, ignoreCase = true)
+                if (!refreshProvidedItems(input.text))
+                {
+                    for ((item, row) in itemRows)
+                    {
+                        row.hidden = input.text.isNotBlank() && !onItemToString(item).contains(input.text, ignoreCase = true)
+                    }
+                }
             }
         }
 
@@ -169,6 +175,8 @@ class DropdownMenu <T> (
     {
         super.onMouseClicked(engine)
         val isOpening = dropdown.hidden
+        if (isOpening)
+            refreshProvidedItems(searchInput.text)
         dropdown.hidden = !dropdown.hidden
         if (isOpening && searchable)
             engine.input.acquireFocus(searchInput.area)
@@ -201,6 +209,22 @@ class DropdownMenu <T> (
     fun setOnItemChanged(callback: (lastValue: T?, newValue: T) -> Unit)
     {
         this.onItemChanged = callback
+    }
+
+    fun setItemProvider(provider: (query: String) -> List<T>)
+    {
+        itemProvider = provider
+    }
+
+    fun refreshProvidedItems(query: String): Boolean
+    {
+        val providedItems = itemProvider?.invoke(query) ?: return false
+        rowPanel.clearChildren()
+        itemRows.clear()
+        providedItems.forEach(::addItem)
+        scrollbar.setTargetSliderFraction(0f)
+        scrollbar.hidden = providedItems.size <= MAX_VISIBLE_ITEMS
+        return true
     }
 
     private fun clearSearch()
@@ -239,5 +263,10 @@ class DropdownMenu <T> (
                 surface.drawQuadVertex(xArrow, yArrow - size / length)
             }
         }
+    }
+
+    private companion object
+    {
+        const val MAX_VISIBLE_ITEMS = 8
     }
 }
