@@ -28,6 +28,7 @@ class Font(
     private val leftSideBearing = IntArray(1)
     private val leftSideBearingCache = IntArray(MAX_CHAR_COUNT) { -1 }
     private val textWidthCache = THashMap<CharSequence, TFloatObjectHashMap<FloatArray>>()
+    private val advanceCache = FloatArray(MAX_CHAR_COUNT)
     private val quadCache = FloatArray(QUAD_STRIDE * MAX_CHAR_COUNT)
     private val quad = Quad(quadCache)
 
@@ -46,6 +47,7 @@ class Font(
 
         leftSideBearingCache.fill(-1)
         textWidthCache.clear()
+        advanceCache.fill(0f)
         quadCache.fill(0f)
 
         val glyphs = createSdfGlyphs()
@@ -53,7 +55,10 @@ class Font(
         {
             val atlasSize = packGlyphs(glyphs)
             val rgbaBuffer = createAtlas(glyphs, atlasSize)
-            glyphs.forEachIndexed { i, glyph -> glyph.writeQuad(quadCache, i * QUAD_STRIDE, atlasSize) }
+            glyphs.forEachIndexed { i, glyph ->
+                advanceCache[i] = glyph.advance
+                glyph.writeQuad(quadCache, i * QUAD_STRIDE, atlasSize)
+            }
             charTexture = Texture(filePath = "", name = "char_tex_$name", filter = LINEAR, wrapping = CLAMP_TO_EDGE, format = RGBA8, maxMipLevels = 1)
             charTexture.loadFrom(rgbaBuffer, atlasSize, atlasSize, false)
         }
@@ -168,38 +173,54 @@ class Font(
         return quad
     }
 
-    fun getWidth(text: String, fontSize: Float = this.fontSize): Float
-    {
-        var textWidthLength = 0f
-        var i = 0
-        while (i < text.length)
-        {
-            val cp = CodePoint.of(text, i)
-            stbtt_GetCodepointHMetrics(info, cp.code, advanceWidth, leftSideBearing)
-            textWidthLength += advanceWidth[0].toFloat()
-            i += cp.advanceCount
-        }
-        return textWidthLength * stbtt_ScaleForPixelHeight(info, fontSize)
-    }
+    fun getWidth(text: String, fontSize: Float = this.fontSize): Float =
+        calculateCharacterAdvances(text, fontSize)
 
     fun getCharacterWidths(text: CharSequence, fontSize: Float = this.fontSize, useCache: Boolean = false): FloatArray
     {
         if (useCache) textWidthCache[text]?.get(fontSize)?.let { return it }
 
-        val scale = stbtt_ScaleForPixelHeight(info, fontSize)
         val widths = FloatArray(text.length)
-        var i = 0
-        while (i < text.length)
-        {
-            val cp = CodePoint.of(text, i)
-            stbtt_GetCodepointHMetrics(info, cp.code, advanceWidth, leftSideBearing)
-            widths[i] = advanceWidth[0].toFloat() * scale
-            i += cp.advanceCount
-        }
+        calculateCharacterAdvances(text, fontSize, widths)
 
         if (useCache) textWidthCache.getOrPut(text) { TFloatObjectHashMap() }.putIfAbsent(fontSize, widths)
 
         return widths
+    }
+
+    /** 
+     * Fills [widths], when supplied, and returns the total without allocating for width-only queries. 
+     */
+    private fun calculateCharacterAdvances(text: CharSequence, fontSize: Float, widths: FloatArray? = null): Float
+    {
+        val bakedScale = fontSize / this.fontSize
+        var nativeScale = 0f
+        var hasNativeScale = false
+        var totalWidth = 0f
+        var i = 0
+        while (i < text.length)
+        {
+            val cp = CodePoint.of(text, i)
+            val charIndex = cp.code - FIRST_CHAR_CODE
+            val width = if (charIndex in 0 until MAX_CHAR_COUNT)
+            {
+                advanceCache[charIndex] * bakedScale
+            }
+            else
+            {
+                if (!hasNativeScale)
+                {
+                    nativeScale = stbtt_ScaleForPixelHeight(info, fontSize)
+                    hasNativeScale = true
+                }
+                stbtt_GetCodepointHMetrics(info, cp.code, advanceWidth, leftSideBearing)
+                advanceWidth[0] * nativeScale
+            }
+            widths?.set(i, width)
+            totalWidth += width
+            i += cp.advanceCount
+        }
+        return totalWidth
     }
 
     fun getLeftSideBearing(char: Char): Int
