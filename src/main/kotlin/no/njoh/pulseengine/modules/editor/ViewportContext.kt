@@ -16,6 +16,10 @@ class ViewportContext(
 
     fun selectEntities(engine: PulseEngine, entities: List<SceneEntity>) = editor.selectEntities(engine, entities)
 
+    fun previewSelection(entities: List<SceneEntity>) = editor.previewViewportSelection(entities)
+
+    fun commitSelection(engine: PulseEngine) = editor.commitViewportSelection(engine)
+
     fun clearSelection() = editor.clearViewportSelection()
 
     fun notifyTransformChanged(engine: PulseEngine, entity: SceneEntity, vararg propertyNames: String) = editor.notifyTransformChanged(engine, entity, propertyNames)

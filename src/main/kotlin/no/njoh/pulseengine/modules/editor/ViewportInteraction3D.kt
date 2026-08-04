@@ -149,7 +149,7 @@ class ViewportInteraction3D(
         val cameraConsumed = updateCamera(engine, context, hover, selected)
         if (cameraConsumed)
         {
-            cancelSelectionDrag(engine, context)
+            cancelSelectionDrag(context)
             hoveredHandle = Handle.NONE
             return
         }
@@ -439,7 +439,7 @@ class ViewportInteraction3D(
 
         if (engine.input.wasClicked(Key.ESCAPE))
         {
-            cancelSelectionDrag(engine, context)
+            cancelSelectionDrag(context)
             return
         }
 
@@ -455,16 +455,22 @@ class ViewportInteraction3D(
         if (!engine.input.isPressed(MouseButton.LEFT))
         {
             if (!drag.active)
+            {
                 requestObjectPick(engine, drag.start, drag.mode)
+            }
+            else if (context.selection != drag.initialSelection)
+            {
+                context.commitSelection(engine)
+            }
             selectionDrag = null
         }
     }
 
-    private fun cancelSelectionDrag(engine: PulseEngine, context: ViewportContext)
+    private fun cancelSelectionDrag(context: ViewportContext)
     {
         val drag = selectionDrag ?: return
         if (drag.active && context.selection != drag.initialSelection)
-            context.selectEntities(engine, drag.initialSelection)
+            context.previewSelection(drag.initialSelection)
         selectionDrag = null
     }
 
@@ -522,7 +528,7 @@ class ViewportInteraction3D(
         if (selection == context.selection)
             return
 
-        context.selectEntities(engine, selection)
+        context.previewSelection(selection)
         transformSelectionChanged = true
 
         getSelectedTransformables(context)?.let()

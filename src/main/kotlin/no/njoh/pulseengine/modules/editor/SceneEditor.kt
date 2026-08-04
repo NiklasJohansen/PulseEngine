@@ -622,11 +622,8 @@ class SceneEditor(
 
     fun selectEntities(engine: PulseEngine, entities: List<SceneEntity>)
     {
-        val selection = entities.toList()
-        clearEntitySelection()
-        selection.forEachFast { addEntityToSelection(it) }
-        sceneHierarchy?.selectEntities(entitySelection)
-        populateEntityInspector(engine, entitySelection)
+        replaceEntitySelection(entities)
+        refreshEntitySelectionUi(engine)
     }
 
     private fun populateEntityInspector(engine: PulseEngine, entities: List<SceneEntity>)
@@ -634,7 +631,7 @@ class SceneEditor(
         if (entities.isEmpty()) return
 
         val selectedProperties = linkedMapOf<CommonPropertyKey, MutableList<EntityPropertyBinding>>()
-        entities.forEach { entity ->
+        entities.forEachFast { entity ->
             entity::class.memberProperties
                 .filterIsInstance<KMutableProperty<*>>()
                 .filter { it.isEditable() && entity.getPropInfo(it)?.hidden != true }
@@ -828,11 +825,35 @@ class SceneEditor(
 
     private fun clearEntitySelection()
     {
+        clearEntitySelectionState()
+        clearEntityInspector()
+    }
+
+    private fun clearEntitySelectionState()
+    {
         entitySelection.forEachFast { it.setNot(SELECTED) }
         entitySelection.clear()
+    }
+
+    private fun clearEntityInspector()
+    {
         inspectorUI.clearChildren()
         entityPropertyUiRows.clear()
         entityPropertyUiRowsByEntity.clear()
+    }
+
+    private fun replaceEntitySelection(entities: List<SceneEntity>)
+    {
+        val source = if (entities === entitySelection) entities.toList() else entities
+        clearEntitySelectionState()
+        source.forEachFast { addEntityToSelection(it) }
+    }
+
+    private fun refreshEntitySelectionUi(engine: PulseEngine)
+    {
+        clearEntityInspector()
+        sceneHierarchy?.selectEntities(entitySelection)
+        populateEntityInspector(engine, entitySelection)
     }
 
     private fun addEntityToSelection(entity: SceneEntity)
@@ -887,6 +908,10 @@ class SceneEditor(
     internal fun selectedEntities() = entitySelection
 
     internal fun isGridVisible() = showGrid
+
+    internal fun previewViewportSelection(entities: List<SceneEntity>) = replaceEntitySelection(entities)
+
+    internal fun commitViewportSelection(engine: PulseEngine) = refreshEntitySelectionUi(engine)
 
     internal fun clearViewportSelection()
     {
