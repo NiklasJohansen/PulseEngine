@@ -24,6 +24,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.scene.interfaces.Rotatable3D
 import no.njoh.pulseengine.core.scene.interfaces.Spatial3D
@@ -79,9 +80,14 @@ class ViewportInteraction3D(
     private val pickResult = PixelReadResult()
     private var pickPending = false
     private var pendingPickMode = PickMode.REPLACE
-    private var observedSelectionId = Long.MIN_VALUE
     private var cameraDragging = false
     private var selectionDrag: SelectionDrag? = null
+    private val selectedTransformables = ArrayList<SceneEntity>()
+    private val selectedLights = ArrayList<Light3D>()
+    private val selectedPivot = Vector3f()
+    private val cachedTransformSelection = TransformSelection(selectedTransformables, selectedPivot)
+    private var transformSelectionChanged = true
+    private var outlineSelectionDirty = true
     private val orbitPivot = Vector3f()
     private var orbitPivotValid = false
 
@@ -135,11 +141,12 @@ class ViewportInteraction3D(
         objectIdRenderer?.enabled = true
 
         engine.input.setCursorType(CursorType.ARROW)
-        observeSelection(context)
         consumePickResult(engine, context)
+        val selected = getSelectedTransformables(context)
+        observeSelection(selected)
 
         val hover = engine.input.hasHoverFocus(context.focusArea)
-        val cameraConsumed = updateCamera(engine, context, hover)
+        val cameraConsumed = updateCamera(engine, context, hover, selected)
         if (cameraConsumed)
         {
             cancelSelectionDrag(engine, context)
@@ -147,7 +154,6 @@ class ViewportInteraction3D(
             return
         }
 
-        val selected = getSelectedTransformables(context)
         if (selected != null && !supportsMode(selected, gizmoMode))
             gizmoMode = GizmoMode.MOVE
 
@@ -232,12 +238,17 @@ class ViewportInteraction3D(
         }
 
         val selected = getSelectedTransformables(context)
-        selected?.targets?.forEachFast { outlineRenderer?.setSelected(it.entity.id) }
+        if (outlineRenderer != null && outlineSelectionDirty)
+        {
+            outlineRenderer.beginSelectionUpdate()
+            selectedTransformables.forEachFast { outlineRenderer.setSelected(it.id) }
+            outlineRenderer.finishSelectionUpdate()
+            outlineSelectionDirty = false
+        }
 
-        val selectedIds = selected?.targets?.mapTo(HashSet()) { it.entity.id } ?: emptySet()
-        renderLightMarkers(engine, context, selectedIds)
-        renderCameraMarkers(engine, context, selectedIds)
-        selected?.targets?.forEach { (it.entity as? Light3D)?.let { light -> renderLightInfluence(engine, context, light) } }
+        renderLightMarkers(engine, context)
+        renderCameraMarkers(engine, context)
+        selectedLights.forEachFast { renderLightInfluence(engine, context, it) }
 
         if (selected != null)
             renderGizmo(engine, context, selected.pivot)
@@ -252,7 +263,8 @@ class ViewportInteraction3D(
         hoveredHandle = Handle.NONE
         pickPending = false
         pendingPickMode = PickMode.REPLACE
-        observedSelectionId = Long.MIN_VALUE
+        transformSelectionChanged = true
+        outlineSelectionDirty = true
         cameraDragging = false
         orbitPivotValid = false
         engine.input.setCursorType(CursorType.ARROW)
@@ -276,7 +288,7 @@ class ViewportInteraction3D(
         if (duplicateSelection == null || !beginTransformDrag(engine, context, duplicateSelection, drag.handle))
             transformDrag = drag.copy(targets = duplicateTargets)
 
-        observedSelectionId = selectionId(context)
+        transformSelectionChanged = false
         pickPending = false
         updateOrbitPivotFromSelection(context)
     }
@@ -330,22 +342,66 @@ class ViewportInteraction3D(
 
     private fun getSelectedTransformables(context: ViewportContext): TransformSelection?
     {
-        if (context.selection.isEmpty()) return null
-        val targets = ArrayList<SelectedTarget>(context.selection.size)
-        val pivot = Vector3f()
-        for (entity in context.selection)
-        {
-            val spatial = entity as? Translatable3D ?: continue
+        var targetCount = 0
+        var lightCount = 0
+        var selectionChanged = false
+        var allScalable = true
+        selectedPivot.zero()
+        
+        context.selection.forEachFast { entity ->
+ 
+            val spatial = entity as? Translatable3D ?: return@forEachFast
             if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
-                continue
+                return@forEachFast
 
-            targets += SelectedTarget(entity, spatial)
-            pivot.add(spatial.position)
+            if (targetCount == selectedTransformables.size)
+            {
+                selectedTransformables.add(entity)
+                selectionChanged = true
+            }
+            else if (selectedTransformables[targetCount] !== entity)
+            {
+                selectedTransformables[targetCount] = entity
+                selectionChanged = true
+            }
+            
+            targetCount++
+            if (entity is Light3D)
+            {
+                if (lightCount == selectedLights.size)
+                {
+                    selectedLights.add(entity)
+                }
+                else
+                {
+                    selectedLights[lightCount] = entity
+                }
+                lightCount++
+            }
+            allScalable = allScalable && spatial is Spatial3D
+            selectedPivot.add(spatial.position)
         }
 
-        if (targets.isEmpty()) return null
-        pivot.div(targets.size.toFloat())
-        return TransformSelection(targets, pivot)
+        if (selectedTransformables.size > targetCount)
+        {
+            selectedTransformables.subList(targetCount, selectedTransformables.size).clear()
+            selectionChanged = true
+        }
+
+        if (selectedLights.size > lightCount)
+            selectedLights.subList(lightCount, selectedLights.size).clear()
+
+        if (selectionChanged)
+        {
+            transformSelectionChanged = true
+            outlineSelectionDirty = true
+        }
+
+        if (targetCount == 0) return null
+
+        cachedTransformSelection.allScalable = allScalable
+        selectedPivot.div(targetCount.toFloat())
+        return cachedTransformSelection
     }
 
     private fun currentPickMode(engine: PulseEngine) = when
@@ -364,13 +420,16 @@ class ViewportInteraction3D(
             PickMode.TOGGLE -> if (entity in context.selection) context.selection - entity else context.selection + entity
         }
         context.selectEntities(engine, selection)
-        observedSelectionId = Long.MIN_VALUE
-        getSelectedTransformables(context)?.let {
+        transformSelectionChanged = true
+
+        getSelectedTransformables(context)?.let()
+        {
             orbitPivot.set(it.pivot)
             orbitPivotValid = true
             if (!supportsMode(it, gizmoMode))
                 gizmoMode = GizmoMode.MOVE
         }
+
         if (selection.isEmpty()) orbitPivotValid = false
     }
 
@@ -428,12 +487,9 @@ class ViewportInteraction3D(
         val matches = ArrayList<SceneEntity>()
         collectMarqueeMatches(engine, context.camera, xMin, yMin, xMax, yMax)
 
-        engine.scene.forEachEntity { entity ->
-            val spatial = entity as? Translatable3D ?: return@forEachEntity
-            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
-                return@forEachEntity
-
-            if (projectedBoundsOverlap(engine, context, entity, spatial, xMin, yMin, xMax, yMax))
+        engine.scene.forEachEntityOfType<Translatable3D> { entity ->
+            entity as SceneEntity
+            if (entity.isSet(EDITABLE) && entity.isNot(HIDDEN) && projectedBoundsOverlap(engine, context, entity, entity, xMin, yMin, xMax, yMax))
                 matches.add(entity)
         }
 
@@ -467,7 +523,7 @@ class ViewportInteraction3D(
             return
 
         context.selectEntities(engine, selection)
-        observedSelectionId = Long.MIN_VALUE
+        transformSelectionChanged = true
 
         getSelectedTransformables(context)?.let()
         {
@@ -486,22 +542,24 @@ class ViewportInteraction3D(
         tmpMouse.set(engine.input.xMouse, engine.input.yMouse)
         var closest: SceneEntity? = null
         var closestDistance = LIGHT_MARKER_HIT_RADIUS
-        engine.scene.forEachEntity { entity ->
-            val light = entity as? Light3D ?: return@forEachEntity
-            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
-                return@forEachEntity
+        
+        engine.scene.forEachEntityOfType<Light3D> { light ->
+            light as SceneEntity
+            if (light.isNot(EDITABLE) || light.isSet(HIDDEN))
+                return@forEachEntityOfType
 
             tmpV0.set(light.position)
             if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, tmpP0))
-                return@forEachEntity
+                return@forEachEntityOfType
 
             val distance = tmpMouse.distance(tmpP0)
             if (distance < closestDistance)
             {
                 closestDistance = distance
-                closest = entity
+                closest = light
             }
         }
+
         return closest
     }
 
@@ -543,14 +601,15 @@ class ViewportInteraction3D(
         tmpMouse.set(engine.input.xMouse, engine.input.yMouse)
         var closest: Camera3D? = null
         var closestDistance = CAMERA_MARKER_HIT_RADIUS
-        engine.scene.forEachEntity { entity ->
-            val camera = entity as? Camera3D ?: return@forEachEntity
+
+        engine.scene.forEachEntityOfType<Camera3D> { camera ->
+            camera as SceneEntity
             if (camera.isNot(EDITABLE) || camera.isSet(HIDDEN))
-                return@forEachEntity
+                return@forEachEntityOfType
 
             tmpV0.set(camera.position)
             if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, tmpP0))
-                return@forEachEntity
+                return@forEachEntityOfType
 
             val distance = tmpMouse.distance(tmpP0)
             if (distance < closestDistance)
@@ -559,16 +618,15 @@ class ViewportInteraction3D(
                 closest = camera
             }
         }
+
         return closest
     }
 
-    private fun observeSelection(context: ViewportContext)
+    private fun observeSelection(selected: TransformSelection?)
     {
-        val selected = getSelectedTransformables(context)
-        val id = selectionId(context)
-        if (id == observedSelectionId) return
+        if (!transformSelectionChanged) return
 
-        observedSelectionId = id
+        transformSelectionChanged = false
         pickPending = false
         transformDrag = null
         if (selected != null)
@@ -579,14 +637,7 @@ class ViewportInteraction3D(
         else orbitPivotValid = false
     }
 
-    private fun selectionId(context: ViewportContext): Long
-    {
-        var id = 1L
-        context.selection.forEachFast { id = id * 31L + it.id } 
-        return id
-    }
-
-    private fun updateCamera(engine: PulseEngine, context: ViewportContext, hover: Boolean): Boolean
+    private fun updateCamera(engine: PulseEngine, context: ViewportContext, hover: Boolean, selected: TransformSelection?): Boolean
     {
         val input = engine.input
         val camera = context.camera
@@ -601,7 +652,7 @@ class ViewportInteraction3D(
         {
             if (!cameraDragging)
             {
-                ensureOrbitPivot(context, camera)
+                ensureOrbitPivot(camera, selected)
                 cameraDragging = true
             }
             input.setCursorType(CursorType.HAND_GRAB)
@@ -662,8 +713,8 @@ class ViewportInteraction3D(
             return true
         }
 
-        if (input.wasClicked(Key.F) && getSelectedTransformables(context) != null)
-            frameSelection(engine, context)
+        if (input.wasClicked(Key.F) && selected != null)
+            frameSelection(engine, context, selected)
 
         if (input.yScroll != 0f)
         {
@@ -676,10 +727,9 @@ class ViewportInteraction3D(
         return false
     }
 
-    private fun ensureOrbitPivot(context: ViewportContext, camera: Camera)
+    private fun ensureOrbitPivot(camera: Camera, selected: TransformSelection?)
     {
         if (orbitPivotValid) return
-        val selected = getSelectedTransformables(context)
         if (selected != null)
         {
             orbitPivot.set(selected.pivot)
@@ -699,14 +749,14 @@ class ViewportInteraction3D(
         orbitPivotValid = true
     }
 
-    private fun frameSelection(engine: PulseEngine, context: ViewportContext)
+    private fun frameSelection(engine: PulseEngine, context: ViewportContext, selected: TransformSelection)
     {
-        val selected = getSelectedTransformables(context) ?: return
         val center = Vector3f(selected.pivot)
         var radius = 1f
 
-        selected.targets.forEach { target ->
-            val (targetCenter, targetRadius) = getSelectionBounds(engine, target.entity, target.spatial)
+        selected.targets.forEachFast { entity ->
+            val spatial = entity as Translatable3D
+            val (targetCenter, targetRadius) = getSelectionBounds(engine, entity, spatial)
             radius = max(radius, center.distance(targetCenter) + targetRadius)
         }
 
@@ -1089,7 +1139,10 @@ class ViewportInteraction3D(
         val axisSigns = cameraFacingAxisSigns(context.camera.invViewMatrix.getTranslation(Vector3f()), pivot, Vector3f())
         val size = gizmoWorldSize(context.camera, pivot, engine.window.height)
         val drag = TransformDrag(
-            targets = selection.targets.map { TransformTarget(it.entity, it.spatial, snapshot(it.spatial)) },
+            targets = selection.targets.map { entity ->
+                val spatial = entity as Translatable3D
+                TransformTarget(entity, spatial, snapshot(spatial))
+            },
             mode = gizmoMode,
             handle = handle,
             pivot = pivot,
@@ -1368,21 +1421,22 @@ class ViewportInteraction3D(
         surface.drawLine(xMax, yMin, xMax, yMax)
     }
 
-    private fun renderLightMarkers(engine: PulseEngine, context: ViewportContext, selectedIds: Set<Long>)
+    private fun renderLightMarkers(engine: PulseEngine, context: ViewportContext)
     {
         val surface = engine.gfx.getSurface(GIZMO_SURFACE) ?: return
         val width = surface.config.width
         val height = surface.config.height
-        engine.scene.forEachEntity { entity ->
-            val light = entity as? Light3D ?: return@forEachEntity
+
+        engine.scene.forEachEntityOfType<Light3D> { light ->
+            val entity = light as SceneEntity
             if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
-                return@forEachEntity
+                return@forEachEntityOfType
 
             tmpV0.set(light.position)
             if (!project(context.camera, tmpV0, width, height, tmpP0))
-                return@forEachEntity
+                return@forEachEntityOfType
 
-            surface.setDrawColor(if (entity.id in selectedIds) ACTIVE_COLOR else LIGHT_MARKER_COLOR)
+            surface.setDrawColor(if (entity.isSet(SELECTED)) ACTIVE_COLOR else LIGHT_MARKER_COLOR)
             drawScreenCircle(surface, tmpP0.x, tmpP0.y, LIGHT_MARKER_RADIUS)
             surface.drawLine(tmpP0.x - LIGHT_MARKER_CROSS_SIZE, tmpP0.y, tmpP0.x + LIGHT_MARKER_CROSS_SIZE, tmpP0.y)
             surface.drawLine(tmpP0.x, tmpP0.y - LIGHT_MARKER_CROSS_SIZE, tmpP0.x, tmpP0.y + LIGHT_MARKER_CROSS_SIZE)
@@ -1397,18 +1451,18 @@ class ViewportInteraction3D(
         }
     }
 
-    private fun renderCameraMarkers(engine: PulseEngine, context: ViewportContext, selectedIds: Set<Long>)
+    private fun renderCameraMarkers(engine: PulseEngine, context: ViewportContext)
     {
         val surface = engine.gfx.getSurface(GIZMO_SURFACE) ?: return
         val width = surface.config.width
         val height = surface.config.height
-        engine.scene.forEachEntity { entity ->
-            val camera = entity as? Camera3D ?: return@forEachEntity
+        
+        engine.scene.forEachEntityOfType<Camera3D> { camera ->
             if (camera.isNot(EDITABLE) || camera.isSet(HIDDEN))
-                return@forEachEntity
+                return@forEachEntityOfType
 
             tmpV0.set(camera.position)
-            val isSelected = camera.id in selectedIds
+            val isSelected = camera.isSet(SELECTED)
             surface.setDrawColor(ACTIVE_COLOR)
             cameraDirections(camera, tmpV1, tmpV2, tmpV3)
             renderCameraFrustum(surface, context.camera, camera, tmpV0, tmpV1, tmpV2, tmpV3, width, height, isSelected)
@@ -1781,8 +1835,8 @@ class ViewportInteraction3D(
     private fun supportsMode(selection: TransformSelection, mode: GizmoMode) = when (mode)
     {
         GizmoMode.MOVE -> true
-        GizmoMode.ROTATE -> selection.targets.size > 1 || selection.targets.single().spatial is Rotatable3D
-        GizmoMode.SCALE -> selection.targets.all { it.spatial is Spatial3D }
+        GizmoMode.ROTATE -> selection.targets.size > 1 || selection.targets.single() is Rotatable3D
+        GizmoMode.SCALE -> selection.allScalable
     }
 
     private fun activeHandle() = transformDrag?.handle ?: Handle.NONE
@@ -1896,15 +1950,12 @@ class ViewportInteraction3D(
         val scale: Vector3f
     )
 
-    private data class SelectedTarget(
-        val entity: SceneEntity,
-        val spatial: Translatable3D
-    )
-
-    private data class TransformSelection(
-        val targets: List<SelectedTarget>,
+    private class TransformSelection(
+        val targets: List<SceneEntity>,
         val pivot: Vector3f
-    )
+    ) {
+        var allScalable = false
+    }
 
     private data class TransformTarget(
         val entity: SceneEntity,

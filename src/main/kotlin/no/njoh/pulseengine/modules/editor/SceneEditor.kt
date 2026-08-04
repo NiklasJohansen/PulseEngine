@@ -177,10 +177,10 @@ class SceneEditor(
         createSceneEditorUI(engine)
 
         viewportContext = ViewportContext(this, activeCamera, viewportArea)
-        viewportInteraction?.onCreate(engine, viewportContext)
+        viewportInteraction.onCreate(engine, viewportContext)
         if (isRunning)
         {
-            viewportInteraction?.onEditorActivated(engine, viewportContext)
+            viewportInteraction.onEditorActivated(engine, viewportContext)
             restoreActiveEditorCamera(engine)
         }
     }
