@@ -220,6 +220,12 @@ class ModelRenderer(
 
         val aoRenderer = surface.getRenderer<GtaoRenderer>()
         val aoTex = aoRenderer?.getAoRenderTexture()
+        if (aoTex != null && aoRenderer.intensity > 0f)
+        {
+            pbrFeatures = pbrFeatures or PBR_FEATURE_GTAO
+            program.setUniformSampler("uGtaoTex", aoTex)
+            program.setUniform("uAoIntensity", aoRenderer.intensity)
+        }
 
         // Cascaded shadow mapping
 
@@ -300,16 +306,8 @@ class ModelRenderer(
             program.setTexture("uEnvBrdfLutTex", brdfLut)
         }
 
-        if (aoTex != null && aoRenderer.intensity > 0f && pbrFeatures and (PBR_FEATURE_DIFFUSE_IBL or PBR_FEATURE_SPECULAR_IBL) != 0u)
-        {
-            pbrFeatures = pbrFeatures or PBR_FEATURE_GTAO
-            program.setUniformSampler("uGtaoTex", aoTex)
-            program.setUniform("uAoIntensity", aoRenderer.intensity)
-        }
-        
         if (pbrFeatures and PBR_FEATURE_SUN_LIGHT == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_SUN_SHADOWS.inv()
         if (pbrFeatures and PBR_FEATURE_LOCAL_LIGHTS == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_LOCAL_SHADOWS.inv()
-        if (pbrFeatures and (PBR_FEATURE_DIFFUSE_IBL or PBR_FEATURE_SPECULAR_IBL) == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_GTAO.inv()
 
         program.setUniform("uEnvIntensity", iblIntensity)
         program.setUniform("uEnvColor", envColor)

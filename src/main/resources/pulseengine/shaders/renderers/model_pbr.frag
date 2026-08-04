@@ -137,7 +137,7 @@ bool hasPbrFeature(uint feature)
     return (uPbrFeatures & feature) != 0;
 }
 
-float defaultStudioLighting(vec3 worldNormal)
+float defaultStudioLighting(vec3 worldNormal, float ao)
 {
     // Camera-relative studio lights keep geometry readable without requiring scene lights.
     vec3 viewNormal = normalize(mat3(uView) * worldNormal);
@@ -146,7 +146,7 @@ float defaultStudioLighting(vec3 worldNormal)
 
     float hemisphere = worldNormal.y * 0.5 + 0.5;
     float key = max(dot(viewNormal, keyDirection), 0.0);
-    float fill = max(dot(viewNormal, fillDirection), 0.0);
+    float fill = max(dot(viewNormal, fillDirection), 0.0) * ao;
     return clamp(0.30 + hemisphere * 0.10 + key * 0.50 + fill * 0.18, 0.0, 1.0);
 }
 
@@ -587,9 +587,18 @@ void main()
     float normalLength;
     vec3 N = sampleWorldSpaceNormal(material, normalLength);
 
+    // Ambient occlusion
+    float gtao = 1.0;
+    if (hasPbrFeature(PBR_FEATURE_GTAO))
+    {
+        vec2 uvScreen = gl_FragCoord.xy / uScreenSize;
+        gtao = texture(uGtaoTex, uvScreen).r;
+        gtao = clamp(exp(-uAoIntensity * (1.0 - gtao)), 0.0, 1.0);
+    }
+
     if (uUseDefaultLighting)
     {
-        vec3 color = baseColor.rgb * defaultStudioLighting(N) + emissive;
+        vec3 color = baseColor.rgb * defaultStudioLighting(N, gtao) + emissive;
         #ifdef PBR_OUTPUT_WBOIT_ACCUM
         float weight = computeWboitWeight(alpha);
         outAccum = vec4(color * alpha * weight, alpha * weight);
@@ -618,14 +627,7 @@ void main()
     r2 = clamp(r2 + k * variance, 0.0, 1.0);
     roughness = sqrt(r2);
 
-    // Ambient occlusion. GTAO only affects image-based ambient lighting.
-    float gtao = 1.0;
-    if (hasPbrFeature(PBR_FEATURE_GTAO))
-    {
-        vec2 uvScreen = gl_FragCoord.xy / uScreenSize;
-        gtao = texture(uGtaoTex, uvScreen).r;
-        gtao = clamp(exp(-uAoIntensity * (1.0 - gtao)), 0.0, 1.0);
-    }
+    // Combined ambient occlusion
     float aoCombined = gtao * ao;
 
     float NdotV = max(dot(N, V), 0.0001);
