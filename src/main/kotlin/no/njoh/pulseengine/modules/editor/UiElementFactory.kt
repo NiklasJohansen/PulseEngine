@@ -2,13 +2,13 @@ package no.njoh.pulseengine.modules.editor
 
 import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.scene.SceneManager
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.interfaces.Named
-import no.njoh.pulseengine.core.shared.annotations.AssetRef
 import no.njoh.pulseengine.core.shared.annotations.EntityRef
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
@@ -55,9 +55,12 @@ open class UiElementFactory(
     private val entityTypeNameCache = HashMap<KClass<*>, String>()
     private var sceneManager: SceneManager? = null
 
-    /** Property UI factory functions for specific class types. */
+    /**
+     * Property UI factory functions for specific class types.
+     */
     val propertyUiFactories = THashMap(mapOf(
         String::class      to ::createStringPropertyUi,
+        AssetHandle::class to ::createAssetPickerUI,
         Boolean::class     to ::createBooleanPropertyUi,
         Enum::class        to ::createEnumPropertyUi,
         Color::class       to ::createColorPickerUI,
@@ -70,14 +73,16 @@ open class UiElementFactory(
         DoubleArray::class to ::createInputFieldUI,
     ))
 
-    /** Binds the scene used to resolve properties annotated with [EntityRef]. */
+    /**
+     * Binds the scene used to resolve properties annotated with [EntityRef].
+     */
     fun bindSceneManager(sceneManager: SceneManager)
     {
         this.sceneManager = sceneManager
     }
 
     /**
-     * Creates an [AssetPicker] if the property is annotated with [AssetRef] or a default [InputField].
+     * Creates a specialized reference picker or a default [InputField].
      */
     open fun createStringPropertyUi(
         obj: Any,
@@ -86,7 +91,7 @@ open class UiElementFactory(
     ): UiElement {
         obj::class.findPropertyAnnotation<SceneRef>(prop.name)?.let { return createSceneReferenceUI(obj, prop, onChanged) }
         obj::class.findPropertyAnnotation<EntityNameRef>(prop.name)?.let { return createSceneEntityNameReferenceUI(it, obj, prop, onChanged) }
-        return obj::class.findPropertyAnnotation<AssetRef>(prop.name)?.let { createAssetPickerUI(it, obj, prop, onChanged) } ?: createInputFieldUI(obj, prop, onChanged)
+        return createInputFieldUI(obj, prop, onChanged)
     }
 
     /**
@@ -880,18 +885,26 @@ open class UiElementFactory(
             }
         }
 
+    /**
+     * Creates an asset picker for a typed [AssetHandle]. 
+     */
+    @Suppress("UNCHECKED_CAST")
     open fun createAssetPickerUI(
-        annotation: AssetRef,
         obj: Any,
         prop: KMutableProperty<*>,
         onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
-    ): UiElement =
-        AssetPicker(
-            initialAssetName = prop.getter.call(obj) as? String ?: "",
+    ): UiElement {
+        val handle = prop.getter.call(obj) as? AssetHandle<*> ?: return createInputFieldUI(obj, prop, onChanged)
+        val assetType = (prop.returnType.arguments.firstOrNull()?.type?.classifier as? KClass<*>)
+            ?.takeIf { it.isSubclassOf(Asset::class) } as? KClass<out Asset>
+            ?: Asset::class
+
+        return AssetPicker(
+            initialAssetName = handle.name,
             fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
         ).apply {
             previewIconCharacter = style.iconFontName
-            previewIconCharacter = style.getIcon(annotation.type.findAnnotation<Icon>()?.iconName ?: "BOX")
+            previewIconCharacter = style.getIcon(assetType.findAnnotation<Icon>()?.iconName ?: "BOX")
             nameInput.textColor = style.getColor("LABEL")
             nameInput.bgColorHover = style.getColor("BUTTON_HOVER")
             nameInput.bgColor = style.getColor("INPUT_BG")
@@ -925,16 +938,19 @@ open class UiElementFactory(
             searchInput.strokeColor = Color.BLANK
 
             PulseEngine.INSTANCE.asset
-                .getAllOfType(annotation.type.java)
+                .getAllOfType(assetType.java)
                 .sortedBy { it.name }
                 .forEachFast { addAssetRow(it, style) }
 
-            setOnValueChanged()
-            {
-                obj.setPrimitiveProperty(prop, it)
-                onChanged(prop.name, nameInput.text, it)
+            var currentName = handle.name
+            setOnValueChanged { newName ->
+                val lastName = currentName
+                currentName = newName
+                (prop.getter.call(obj) as? AssetHandle<*>)?.name = newName
+                onChanged(prop.name, lastName, newName)
             }
         }
+    }
 
     open fun createSceneReferenceUI(
         obj: Any,

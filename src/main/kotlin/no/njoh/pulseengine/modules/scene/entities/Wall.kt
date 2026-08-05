@@ -1,10 +1,10 @@
 package no.njoh.pulseengine.modules.scene.entities
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.Name
-import no.njoh.pulseengine.core.shared.annotations.TexRef
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.lighting.direct2d.DirectLightOccluder
 import no.njoh.pulseengine.modules.lighting.global2d.GiOccluder2D
@@ -17,18 +17,17 @@ import no.njoh.pulseengine.modules.physics2d.entities.Box2D
 @Name("2D Wall")
 class Wall : Box2D(), DirectLightOccluder, GiOccluder2D, NormalMapped2D
 {
-    @TexRef
-    var baseTexture = ""
+    var baseTexture = AssetHandle<Texture>()
     var color = Color(1f, 1f, 1f)
     var xTiling = 1f
     var yTiling = 1f
 
-    override var occluderTexture = ""
+    override var occluderTexture = AssetHandle<Texture>()
     override var bounceColor = Color(1f, 1f, 1f)
     override var castShadows = true
     override var edgeLight = 100f
 
-    override var normalMapTexture = ""
+    override var normalMapTexture = AssetHandle<Texture>()
     override var normalMapIntensity = 1f
     override var normalMapOrientation = Orientation.NORMAL
 

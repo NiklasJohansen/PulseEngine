@@ -1,13 +1,13 @@
 package no.njoh.pulseengine.modules.lighting.global2d
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.core.shared.annotations.TexRef
 import no.njoh.pulseengine.core.shared.primitives.Color
 
 /**
@@ -19,9 +19,8 @@ interface GiLightSource2D
     @get:Prop("Lighting", 0, desc = "RGB-color of the light")
     var lightColor: Color
 
-    @get:TexRef
     @get:Prop("Lighting", 1, desc = "Name of the light texture")
-    var lightTexture: String
+    var lightTexture: AssetHandle<Texture>
 
     @get:Prop("Lighting", 2, min = 0f, desc = "Light intensity multiplier")
     var intensity: Float

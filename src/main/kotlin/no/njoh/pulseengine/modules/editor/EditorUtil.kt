@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules.editor
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -151,17 +152,18 @@ object EditorUtil
      */
     fun Any?.createDeepCopy(): Any? = when (this)
     {
-        is LongArray    -> copyOf()
-        is IntArray     -> copyOf()
-        is ShortArray   -> copyOf()
-        is ByteArray    -> copyOf()
-        is FloatArray   -> copyOf()
-        is DoubleArray  -> copyOf()
-        is CharArray    -> copyOf()
-        is BooleanArray -> copyOf()
-        is Color        -> Color(this)
-        is Vector3f     -> Vector3f(this)
-        else            -> this
+        is LongArray      -> copyOf()
+        is IntArray       -> copyOf()
+        is ShortArray     -> copyOf()
+        is ByteArray      -> copyOf()
+        is FloatArray     -> copyOf()
+        is DoubleArray    -> copyOf()
+        is CharArray      -> copyOf()
+        is BooleanArray   -> copyOf()
+        is Color          -> Color(this)
+        is Vector3f       -> Vector3f(this)
+        is AssetHandle<*> -> copy()
+        else              -> this
     }
 
     /**

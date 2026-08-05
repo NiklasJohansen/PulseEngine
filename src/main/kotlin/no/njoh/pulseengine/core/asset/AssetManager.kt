@@ -29,24 +29,36 @@ abstract class AssetManager
     abstract fun unload(assetName: String)
 
     /**
-     * Returns the [Asset] with name [assetName] and type [T] or null if not found.
-     */
-    inline fun <reified T : Asset> getOrNull(assetName: String): T? = getOrNull(assetName, T::class.java)
-
-    /**
-     * Returns the [Asset] with name [assetName] and given class type or null if not found.
+     * Returns the [Asset] with name [assetName] and given class type, or null if not found.
      */
     abstract fun <T : Asset> getOrNull(assetName: String, type: Class<T>): T?
 
     /**
-     * Returns a list of all [Asset]s with given type [T].
+     * Returns the [Asset] referenced by the given [handle] and matching the [type], or null if not found.
      */
-    inline fun <reified T : Asset> getAllOfType(): List<T> = getAllOfType(T::class.java)
+    abstract fun <T : Asset> getOrNull(handle: AssetHandle<T>, type: Class<T>): T?
 
     /**
      * Returns a list of all [Asset]s with given class type.
      */
     abstract fun <T : Asset> getAllOfType(type: Class<T>): List<T>
+    
+    // Inline functions /////////////////////////////////////////////////////////////////
+
+    /**
+     * Returns the [Asset] with name [assetName] and type [T] or null if not found.
+     */
+    inline fun <reified T : Asset> getOrNull(assetName: String): T? = getOrNull(assetName, T::class.java)
+
+    /**
+     * Returns the [Asset] referenced by the given [handle] and matching type [T], or null if not found.
+     */
+    inline fun <reified T : Asset> getOrNull(handle: AssetHandle<T>): T? = getOrNull(handle, T::class.java)
+
+    /**
+     * Returns a list of all [Asset]s with given type [T].
+     */
+    inline fun <reified T : Asset> getAllOfType(): List<T> = getAllOfType(T::class.java)
 }
 
 abstract class AssetManagerInternal : AssetManager()

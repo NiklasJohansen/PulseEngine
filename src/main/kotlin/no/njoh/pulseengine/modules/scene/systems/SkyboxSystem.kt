@@ -1,9 +1,10 @@
 package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
+import no.njoh.pulseengine.core.asset.types.EnvMap
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.SkyboxRenderer
 import no.njoh.pulseengine.core.scene.SceneSystem
-import no.njoh.pulseengine.core.shared.annotations.EnvMapRef
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -11,9 +12,9 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 @Name("3D Skybox")
 class SkyboxSystem : SceneSystem()
 {
-    @Prop(i=0, min=0f)    var brightness     = 0.5f
-    @Prop(i=1) @EnvMapRef var texture        = ""
-    @Prop(i=4)            var targetSurfaces = "scene3d"
+    @Prop(i=0, min=0f) var brightness     = 0.5f
+    @Prop(i=1)         var texture        = AssetHandle<EnvMap>()
+    @Prop(i=4)         var targetSurfaces = "scene3d"
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()
@@ -58,6 +59,6 @@ class SkyboxSystem : SceneSystem()
         }
 
         renderer.brightness = brightness
-        renderer.envTexture = texture
+        renderer.envTexture = texture.name
     }
 }

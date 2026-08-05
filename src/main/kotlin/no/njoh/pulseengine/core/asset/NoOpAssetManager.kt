@@ -11,6 +11,7 @@ class NoOpAssetManager : AssetManagerInternal()
     override fun setOnAssetUnloaded(callback: (Asset) -> Unit) {}
     override fun <T : Asset> getAllOfType(type: Class<T>) = emptyList<T>()
     override fun <T : Asset> getOrNull(assetName: String, type: Class<T>) = null
+    override fun <T : Asset> getOrNull(handle: AssetHandle<T>, type: Class<T>): T? = null
     override fun load(asset: Asset) {}
     override fun loadAll(directory: String, toAsset: (filePath: String) -> Asset?) {}
     override fun unload(assetName: String) {}

@@ -344,7 +344,7 @@ class SceneEditor(
                 MODE_3D ->
                 {
                     engine.scene.addSystem(Scene3DRenderSystem().apply { init(engine) })
-                    engine.scene.addEntity(Model3D().apply { position.y = 1f; model = "cube" })
+                    engine.scene.addEntity(Model3D().apply { position.y = 1f })
                 }
             }
 

@@ -2,6 +2,8 @@ package no.njoh.pulseengine.modules.scene.systems
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
+import no.njoh.pulseengine.core.asset.types.EnvMap
 import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
 import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
@@ -14,7 +16,6 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.scene.interfaces.Translatable3D
-import no.njoh.pulseengine.core.shared.annotations.EnvMapRef
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
@@ -37,8 +38,8 @@ class Scene3DLightingSystem : SceneSystem()
     @Prop(i=7, min=0f)           var sunShadowDistance             = 50f
     @Prop(i=8, min=0f)           var envIntensity                  = 0.5f
     @Prop(i=9)                   var envColor                      = Color(1f, 1f, 1f)
-    @Prop(i=10) @EnvMapRef       var envDiffuseTexture             = ""
-    @Prop(i=11) @EnvMapRef       var envSpecularTexture            = ""
+    @Prop(i=10)                  var envDiffuseTexture             = AssetHandle<EnvMap>()
+    @Prop(i=11)                  var envSpecularTexture            = AssetHandle<EnvMap>()
     @Prop(i=12)                  var targetSurfaces                = "scene3d"
     @Prop(i=13)                  var localShadowsEnabled           = true
     @Prop(i=14, min=256f)        var localShadowAtlasResolution    = 4096
@@ -70,8 +71,8 @@ class Scene3DLightingSystem : SceneSystem()
             renderer?.sunRadius                   = sunRadius
             renderer?.sunShadowMapSurfaceName     = shadowMapSurfaceName
             renderer?.localShadowAtlasSurfaceName = localShadowAtlasSurfaceName
-            renderer?.iblDiffuseTexture           = envDiffuseTexture
-            renderer?.iblSpecularTexture          = envSpecularTexture
+            renderer?.iblDiffuseTexture           = envDiffuseTexture.name
+            renderer?.iblSpecularTexture          = envSpecularTexture.name
             renderer?.iblIntensity                = envIntensity
         }
 

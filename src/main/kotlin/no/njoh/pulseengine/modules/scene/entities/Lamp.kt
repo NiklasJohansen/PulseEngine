@@ -2,6 +2,8 @@ package no.njoh.pulseengine.modules.scene.entities
 
 import com.fasterxml.jackson.annotation.JsonAlias
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
+import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
@@ -26,7 +28,7 @@ open class Lamp : Common2DSceneEntity(), DirectLightSource, GiLightSource2D
 
     @JsonAlias("color")
     override var lightColor   = Color(1f, 0.92f, 0.75f)
-    override var lightTexture = ""
+    override var lightTexture = AssetHandle<Texture>()
     override var intensity    = 1f
     override var radius       = 0f // 0=infinite in global illumination
     override var size         = 30f

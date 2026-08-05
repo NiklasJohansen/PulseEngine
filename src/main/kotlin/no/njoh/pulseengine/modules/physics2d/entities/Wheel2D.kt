@@ -2,13 +2,13 @@ package no.njoh.pulseengine.modules.physics2d.entities
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.modules.scene.entities.Common2DSceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.core.shared.annotations.TexRef
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateAngleFrom
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
 import no.njoh.pulseengine.modules.physics2d.BodyType2D
@@ -37,8 +37,7 @@ open class Wheel2D : Common2DSceneEntity(), CircleBody2D
 
     @JsonIgnore private var acc = 0f
 
-    @TexRef
-    var baseTexture = ""
+    var baseTexture = AssetHandle<Texture>()
 
     /** Initialize the shape once when the entity is created */
     override fun onCreate() = shape.init(x, y, max(width, height) * 0.5f, zRotation, density)

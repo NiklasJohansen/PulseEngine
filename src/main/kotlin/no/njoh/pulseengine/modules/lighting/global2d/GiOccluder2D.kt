@@ -1,11 +1,11 @@
 package no.njoh.pulseengine.modules.lighting.global2d
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.core.shared.annotations.TexRef
 import no.njoh.pulseengine.core.shared.primitives.Color
 
 /**
@@ -13,9 +13,8 @@ import no.njoh.pulseengine.core.shared.primitives.Color
  */
 interface GiOccluder2D
 {
-    @get:TexRef
     @get:Prop("Lighting", 0, desc = "The name of the occluder texture")
-    var occluderTexture: String
+    var occluderTexture: AssetHandle<Texture>
 
     @get:Prop("Lighting", 1, desc = "The color of the occluder")
     var bounceColor: Color

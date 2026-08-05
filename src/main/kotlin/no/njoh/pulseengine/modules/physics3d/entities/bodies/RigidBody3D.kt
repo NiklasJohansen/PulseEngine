@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.physics3d.entities.bodies
 import kotlin.math.abs
 import kotlin.math.max
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
@@ -14,8 +15,6 @@ import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.shared.annotations.Icon
-import no.njoh.pulseengine.core.shared.annotations.MaterialRef
-import no.njoh.pulseengine.core.shared.annotations.ModelRef
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
@@ -66,9 +65,9 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
     @Prop("Collision", i=4) var continues      = false
     @Prop("Collision", i=5) var sensor         = false
 
-    @Prop("Rendering", i=1) @ModelRef    var model = "cube"
-    @Prop("Rendering", i=2) @MaterialRef var material = ""
-    
+    @Prop("Rendering", i=1) var model    = AssetHandle<Model>("cube")
+    @Prop("Rendering", i=2) var material = AssetHandle<Material>()
+
     @Prop("Shadows", i=1) var castLocalShadows = true
     @Prop("Shadows", i=2) var castSunShadows   = true
 
@@ -89,8 +88,8 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
 
     override fun onRender(engine: PulseEngine, context: SceneRenderContext)
     {
-        val model = engine.asset.getOrNull<Model>(model) ?: return
-        val material = engine.asset.getOrNull<Material>(material)
+        val model = engine.asset.getOrNull(model) ?: return
+        val material = engine.asset.getOrNull(material)
 
         tmpTransform.identity()
 
@@ -173,7 +172,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
 
     override fun getPhysicsShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
     {
-        val model = engine.asset.getOrNull<Model>(model)
+        val model = engine.asset.getOrNull(model)
         val bounds = model?.localBounds
 
         val xMin = bounds?.xMin ?: -0.5f

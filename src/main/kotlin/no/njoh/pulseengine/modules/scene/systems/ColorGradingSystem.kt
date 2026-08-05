@@ -1,19 +1,20 @@
 package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
+import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.postprocessing.ColorGradingEffect
 import no.njoh.pulseengine.core.graphics.postprocessing.ColorGradingEffect.ToneMapper.ACES
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
-import no.njoh.pulseengine.core.shared.annotations.TexRef
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
 @Name("Color Grading")
 class ColorGradingSystem : SceneSystem()
 {
     @Prop(i=0)                 var toneMapper     = ACES
-    @Prop(i=1) @TexRef         var lutTexture     = ""
+    @Prop(i=1)                 var lutTexture     = AssetHandle<Texture>()
     @Prop(i=2, min=0f, max=1f) var lutIntensity   = 1f
     @Prop(i=3, min=0f)         var exposure       = 1f
     @Prop(i=4)                 var contrast       = 1f
@@ -57,7 +58,7 @@ class ColorGradingSystem : SceneSystem()
             return
         }
 
-        effect.lutTexture   = lutTexture
+        effect.lutTexture   = lutTexture.name
         effect.lutIntensity = lutIntensity
         effect.toneMapper   = toneMapper
         effect.exposure     = exposure

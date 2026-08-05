@@ -1,9 +1,9 @@
 package no.njoh.pulseengine.modules.scene.entities
 
 import no.njoh.pulseengine.core.PulseEngine
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.surface.Surface
-import no.njoh.pulseengine.core.shared.annotations.AssetRef
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.lighting.shared.NormalMapRenderer
@@ -13,14 +13,13 @@ import no.njoh.pulseengine.modules.lighting.shared.NormalMapped2D
 @Name("2D Backdrop")
 open class Backdrop : Common2DSceneEntity(), NormalMapped2D
 {
-    @AssetRef(Texture::class)
-    var baseTexture: String = ""
+    var baseTexture = AssetHandle<Texture>()
 
     var color = Color(1f, 1f, 1f)
     var xTiling = 1f
     var yTiling = 1f
 
-    override var normalMapTexture: String = ""
+    override var normalMapTexture = AssetHandle<Texture>()
     override var normalMapIntensity = 1f
     override var normalMapOrientation = Orientation.NORMAL
 
