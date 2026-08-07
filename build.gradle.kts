@@ -2,8 +2,8 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins{
     `maven-publish`
-    kotlin("jvm") version "2.2.0"
-    kotlin("kapt") version "2.2.0"
+    id("org.jetbrains.kotlin.jvm") version "2.4.10"
+    id("org.jetbrains.kotlin.kapt") version "2.4.10"
     id("me.champeau.jmh") version "0.7.3"
     id("com.gradleup.shadow") version "8.3.8"
 }
@@ -27,8 +27,8 @@ repositories {
 
 dependencies {
     // Kotlin
-    implementation("org.jetbrains.kotlin:kotlin-reflect:2.2.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation(kotlin("reflect"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
 
     // LWJGL
     implementation(platform("org.lwjgl:lwjgl-bom:3.3.6"))
@@ -46,6 +46,7 @@ dependencies {
     }
 
     // Other
+    compileOnly("org.jspecify:jspecify:1.0.0")
     implementation("org.joml:joml:1.10.8")
     implementation("net.sf.trove4j:trove4j:3.0.3")
     implementation("de.undercouch:bson4jackson:2.15.1")
@@ -79,7 +80,7 @@ tasks.register<Jar>("sourcesJar") {
 }
 
 kotlin {
-    jvmToolchain(23)
+    jvmToolchain(25)
     compilerOptions {
         freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
     }
