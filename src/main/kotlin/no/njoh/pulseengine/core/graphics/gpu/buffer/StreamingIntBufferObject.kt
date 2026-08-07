@@ -58,6 +58,25 @@ class StreamingIntBufferObject private constructor(
         data[i + 1] = v1
     }
 
+    fun put(v0: Int, v1: Int, v2: Int)
+    {
+        val i = size
+        size += 3
+        data[i    ] = v0
+        data[i + 1] = v1
+        data[i + 2] = v2
+    }
+
+    fun put(v0: Int, v1: Int, v2: Int, v3: Int)
+    {
+        val i = size
+        size += 4
+        data[i    ] = v0
+        data[i + 1] = v1
+        data[i + 2] = v2
+        data[i + 3] = v3
+    }
+
     fun putCommand(
         indexCount: Int,    // Number of indices to draw for this mesh
         instanceCount: Int, // Number of instances to draw

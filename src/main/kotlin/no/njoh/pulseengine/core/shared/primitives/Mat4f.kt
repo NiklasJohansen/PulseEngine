@@ -2,14 +2,29 @@ package no.njoh.pulseengine.core.shared.primitives
 
 import no.njoh.pulseengine.core.shared.primitives.Mat4fArena.Companion.ARENAS
 import org.joml.Matrix4f
+import org.joml.Matrix4fc
+import org.joml.Matrix4fc.PROPERTY_AFFINE
+import org.joml.Matrix4fc.PROPERTY_IDENTITY
+import org.joml.Matrix4fc.PROPERTY_ORTHONORMAL
+import org.joml.Matrix4fc.PROPERTY_PERSPECTIVE
+import org.joml.Matrix4fc.PROPERTY_TRANSLATION
 import org.joml.Vector3f
 
+/**
+ * A 4x4 matrix backed by a shared global float array.
+ */
 @JvmInline
 value class Mat4f internal constructor(@PublishedApi internal val handle: Long)
 {
-    constructor(arena: Mat4fArena) : this(arena.alloc().handle)
-    
-    constructor(arenaId: Int, offset: Int) : this((arenaId.toLong() shl 32) or (offset.toLong() and OFFSET_MASK))
+    constructor(arena: Mat4fArena) : this(arena.alloc(Mat4fProps.UNKNOWN).handle)
+
+    constructor(arena: Mat4fArena, properties: Mat4fProps) : this(arena.alloc(properties).handle)
+
+    internal constructor(arenaId: Int, offset: Int, properties: Mat4fProps) : this(
+        ((properties.bits.toLong() and PROPERTIES_MASK) shl PROPERTIES_SHIFT) or
+        ((arenaId.toLong() and ARENA_ID_MASK) shl 32) or
+        (offset.toLong() and OFFSET_MASK)
+    )
 
     val m00 inline get() = get(0)
     val m01 inline get() = get(1)
@@ -28,9 +43,10 @@ value class Mat4f internal constructor(@PublishedApi internal val handle: Long)
     val m32 inline get() = get(14)
     val m33 inline get() = get(15)
 
-    val arenaId inline get() = (handle ushr 32).toInt()
-    val offset  inline get() = (handle and OFFSET_MASK).toInt()
-    val data    inline get() = ARENAS[arenaId]
+    val arenaId    inline get() = ((handle ushr 32) and ARENA_ID_MASK).toInt()
+    val offset     inline get() = (handle and OFFSET_MASK).toInt()
+    val data       inline get() = ARENAS[arenaId]
+    val properties inline get() = Mat4fProps.fromPackedBits((handle ushr PROPERTIES_SHIFT).toInt())
 
     inline fun get(index: Int) = data[offset + index]
 
@@ -46,13 +62,18 @@ value class Mat4f internal constructor(@PublishedApi internal val handle: Long)
         return dst.set(srcArena[srcOffset + 12], srcArena[srcOffset + 13], srcArena[srcOffset + 14])
     }
 
-    fun set(src: Matrix4f): Mat4f
+    fun set(src: Matrix4f): Mat4f = set(src, Mat4fProps.from(src))
+
+    fun set(src: Matrix4f, properties: Mat4fProps): Mat4f
     {
         src.get(data, offset)
-        return this
+        return withProperties(properties)
     }
 
-    fun setMul(left: Matrix4f, right: Matrix4f): Mat4f
+    fun setMul(left: Matrix4f, right: Matrix4f): Mat4f = 
+        setMul(left, right, Mat4fProps.from(left).commonWith(Mat4fProps.from(right)))
+
+    fun setMul(left: Matrix4f, right: Matrix4f, properties: Mat4fProps): Mat4f
     {
         val data = data
         val offset = offset
@@ -89,7 +110,7 @@ value class Mat4f internal constructor(@PublishedApi internal val handle: Long)
             data[offset + 14] = lm02 * rm30 + lm12 * rm31 + lm22 * rm32 + lm32
             data[offset + 15] = 1f
 
-            return this
+            return withProperties(properties)
         }
 
         data[offset     ] = lm00 * rm00 + lm10 * rm01 + lm20 * rm02 + lm30 * rm03
@@ -112,11 +133,12 @@ value class Mat4f internal constructor(@PublishedApi internal val handle: Long)
         data[offset + 14] = lm02 * rm30 + lm12 * rm31 + lm22 * rm32 + lm32 * rm33
         data[offset + 15] = lm03 * rm30 + lm13 * rm31 + lm23 * rm32 + lm33 * rm33
 
-        return this
+        return withProperties(properties)
     }
 
     fun mul(right: Matrix4f): Mat4f
     {
+        val resultProperties = properties.commonWith(Mat4fProps.from(right))
         val data = data
         val offset = offset
         
@@ -152,7 +174,7 @@ value class Mat4f internal constructor(@PublishedApi internal val handle: Long)
             data[offset + 14] = lm02 * rm30 + lm12 * rm31 + lm22 * rm32 + lm32
             data[offset + 15] = 1f
 
-            return this
+            return withProperties(resultProperties)
         }
 
         data[offset     ] = lm00 * rm00 + lm10 * rm01 + lm20 * rm02 + lm30 * rm03
@@ -175,12 +197,55 @@ value class Mat4f internal constructor(@PublishedApi internal val handle: Long)
         data[offset + 14] = lm02 * rm30 + lm12 * rm31 + lm22 * rm32 + lm32 * rm33
         data[offset + 15] = lm03 * rm30 + lm13 * rm31 + lm23 * rm32 + lm33 * rm33
 
-        return this
+        return withProperties(resultProperties)
     }
+    
+    fun withProperties(properties: Mat4fProps) = 
+        Mat4f((handle and PROPERTIES_CLEAR_MASK) or ((properties.bits.toLong() and PROPERTIES_MASK) shl PROPERTIES_SHIFT))
 
     companion object
     {
         const val MATRIX_SIZE = 16
+
         const val OFFSET_MASK = 0xFFFF_FFFFL
+        const val ARENA_ID_MASK = 0x00FF_FFFFL
+        const val PROPERTIES_MASK = 0xFFL
+        const val PROPERTIES_SHIFT = 56
+        const val PROPERTIES_CLEAR_MASK = 0x00FF_FFFF_FFFF_FFFFL
+    }
+}
+
+/**
+ * Allocation-free description of the structural guarantees of a [Mat4f].
+ *
+ * The packed representation is owned by the engine but intentionally matches the
+ * JOML property bits so matrices can be classified without translating
+ * individual flags. Unknown properties are represented by zero.
+ */
+@JvmInline
+value class Mat4fProps private constructor(@PublishedApi internal val bits: Int)
+{
+    val isIdentity                    inline get() = has(PROPERTY_IDENTITY)
+    val hasIdentityLinearTransform    inline get() = has(PROPERTY_TRANSLATION)
+    val hasOrthonormalLinearTransform inline get() = has(PROPERTY_ORTHONORMAL)
+
+    fun commonWith(other: Mat4fProps) = Mat4fProps(bits and other.bits)
+
+    fun has(property: Byte) = bits and property.toInt() != 0
+
+    companion object
+    {
+        val UNKNOWN = Mat4fProps(0)
+
+        private const val PACKED_MASK =
+            PROPERTY_PERSPECTIVE.toInt() or
+            PROPERTY_AFFINE.toInt() or
+            PROPERTY_IDENTITY.toInt() or
+            PROPERTY_TRANSLATION.toInt() or
+            PROPERTY_ORTHONORMAL.toInt()
+
+        fun from(matrix: Matrix4fc) = Mat4fProps(matrix.properties() and PACKED_MASK)
+
+        fun fromPackedBits(bits: Int) = Mat4fProps(bits and PACKED_MASK)
     }
 }

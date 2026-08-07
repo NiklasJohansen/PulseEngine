@@ -140,7 +140,7 @@ class ModelBank
             }
             else
             {
-                mesh.gpuMetadataIndex = meshMetadata.size
+                mesh.assignGpuMetadataIndex(meshMetadata.size)
                 meshMetadata += metadata
             }
         }

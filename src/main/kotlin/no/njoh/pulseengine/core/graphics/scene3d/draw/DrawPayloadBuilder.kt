@@ -1,6 +1,5 @@
 package no.njoh.pulseengine.core.graphics.scene3d.draw
 
-import gnu.trove.map.hash.TLongIntHashMap
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
 import no.njoh.pulseengine.core.asset.types.Model.Aabb
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
@@ -15,6 +14,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.EMPTY
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.primitives.GenerationalIntLookup
 
 class DrawPayloadBuilder(
     var frustumPlaneSets: Array<FrustumPlaneSet> = emptyArray(),
@@ -29,7 +29,7 @@ class DrawPayloadBuilder(
         private set
 
     private val scratchItems = DynamicList<RenderItem>(256)
-    private val batchIndexBySortKey = TLongIntHashMap(128, 0.5f, Long.MIN_VALUE, NO_BATCH_INDEX)
+    private val batchIndexBySortKey = GenerationalIntLookup(128, NO_BATCH_INDEX)
     private val batchingSortFunc: (RenderItem, RenderItem) -> Int = ::compareForBatching
     private var commandIndex = 0
 
@@ -88,7 +88,7 @@ class DrawPayloadBuilder(
         prepareGpuCullItems(items.size)
         batchIndexBySortKey.clear()
 
-        var lastBatchSortKey = Long.MIN_VALUE
+        var lastBatchSortKey = INVALID_BATCH_SORT_KEY
         var lastBatchIndex = NO_BATCH_INDEX
 
         items.forEach()
@@ -101,10 +101,7 @@ class DrawPayloadBuilder(
                 throw IllegalStateException("Render item has not been uploaded to the GPU instance buffer")
 
             val batchSortKey = it.batchSortKey
-            var batchIndex = if (batchSortKey == lastBatchSortKey)
-                lastBatchIndex
-            else
-                batchIndexBySortKey.get(batchSortKey)
+            var batchIndex = if (batchSortKey == lastBatchSortKey) lastBatchIndex else batchIndexBySortKey[batchSortKey]
 
             if (batchIndex == NO_BATCH_INDEX)
             {
@@ -113,7 +110,7 @@ class DrawPayloadBuilder(
                 val batch = addBatch(it.mesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
 
                 batchIndex = commandIndex++
-                batchIndexBySortKey.put(batchSortKey, batchIndex)
+                batchIndexBySortKey[batchSortKey] = batchIndex
                 batches += batch
             }
             else
@@ -133,7 +130,7 @@ class DrawPayloadBuilder(
         if (useGpuCulling) prepareGpuCullItems(items.size)
 
         var lastBatch = null as DrawBatch?
-        var lastBatchSortKey = Long.MIN_VALUE
+        var lastBatchSortKey = INVALID_BATCH_SORT_KEY
 
         items.forEach()
         {
@@ -201,5 +198,6 @@ class DrawPayloadBuilder(
     companion object
     {
         private const val NO_BATCH_INDEX = -1
+        private const val INVALID_BATCH_SORT_KEY = -1
     }
 }

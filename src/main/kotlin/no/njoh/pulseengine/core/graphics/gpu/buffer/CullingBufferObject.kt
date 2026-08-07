@@ -27,6 +27,11 @@ class CullingBufferObject
         dynamicBoundsBuffer.clear()
     }
 
+    fun reserveItemCapacity(itemCount: Int)
+    {
+        cullItemBuffer.ensureWriteCapacity(itemCount * CULL_ITEM_INTS)
+    }
+
     fun addItem(item: RenderItem)
     {
         val bounds = item.cullingBounds
@@ -50,13 +55,7 @@ class CullingBufferObject
         else STATIC_BOUNDS_INDEX
 
         item.gpuCullItemIndex = size
-        cullItemBuffer.fill(CULL_ITEM_INTS)
-        {
-            put(item.mesh.gpuMetadataIndex)
-            put(item.gpuInstanceIndex)
-            put(boundsIndex)
-            put(flags)
-        }
+        cullItemBuffer.put(item.mesh.gpuMetadataIndex, item.gpuInstanceIndex, boundsIndex, flags)
         size++
     }
 

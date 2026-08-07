@@ -6,7 +6,7 @@ import kotlin.math.max
 @JvmInline
 value class Mat4fArena(val id: Int)
 {
-    fun alloc(): Mat4f
+    fun alloc(properties: Mat4fProps): Mat4f
     {
         val arena = ARENAS[id]
         val offset = OFFSETS[id]
@@ -14,7 +14,7 @@ value class Mat4fArena(val id: Int)
         if (nextOffset > arena.size)
             ARENAS[id] = arena.copyOf(max(nextOffset, arena.size * 2))
         OFFSETS[id] = nextOffset
-        return Mat4f(id, offset)
+        return Mat4f(id, offset, properties)
     }
 
     fun reset() 

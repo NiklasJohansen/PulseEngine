@@ -9,7 +9,6 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.*
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
-import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.graphics.gpu.buffer.BoneBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.CullingBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
@@ -29,6 +28,8 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.LodCameraState
 import no.njoh.pulseengine.core.graphics.util.LodUtils
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.primitives.Mat4f
+import no.njoh.pulseengine.core.shared.primitives.Mat4fProps
 import no.njoh.pulseengine.core.shared.primitives.Mat4fArena
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachInstance
@@ -112,6 +113,11 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         cullingBuffer.clear()
         boneBuffer.clear()
         lightBuffer.clear()
+
+        // Reserve buffers
+        val itemCount = thisFrameScene.getItemCount()
+        instanceBuffer.reserveItemCapacity(itemCount)
+        cullingBuffer.reserveItemCapacity(itemCount)
 
         // Upload items
         thisFrameScene.opaqueItems.addToBuffers()
@@ -210,17 +216,28 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     ) {
         val lodLevel = LodUtils.getLodLevel(model, transform, lodPixelHeightThresholds, lodHysteresis, lodKey, thisLodCameraState)
         val meshInstances = model.getMeshInstancesAtLevel(lodLevel)
+        val transformProperties = Mat4fProps.from(transform)
+        val hasBones = model.hasBones
 
-        for (instance in meshInstances)
+        meshInstances.forEachFast()
         {
-            val material      = material ?: model.materials.getOrNull(instance.mesh.materialIndex)?.let { engine.asset.getOrNull(it.name) }
-            val animatedPose  = animationPose?.getAnimatedMeshPose(instance.nodeName)
-            val boneMatrices  = animatedPose?.boneMatrices ?: model.getBindPoseBoneMatrices(instance.nodeName)
-            val cullingBounds = instance.mesh.animatedBounds?.takeIf { animatedPose != null } ?: instance.cullingBounds
+            val animatedMeshPose = if (hasBones) animationPose?.getAnimatedMeshPose(it.nodeName) else null
+            val boneMatrices     = if (hasBones) animatedMeshPose?.boneMatrices ?: model.getBindPoseBoneMatrices(it.nodeName) else null
+            val cullingBounds    = if (hasBones && animatedMeshPose != null) it.mesh.animatedBounds ?: it.cullingBounds else it.cullingBounds
+            val material         = material ?: engine.asset.getOrNull(it.materialHandle)
+            val meshTransform    = Mat4f(mat4fArena)
 
-            val meshTransform = Mat4f(mat4fArena).setMul(transform, instance.transform)
+            if (it.transformProperties.isIdentity)
+            {
+                meshTransform.set(transform, transformProperties)
+            }
+            else
+            {
+                val properties = transformProperties.commonWith(it.transformProperties)
+                meshTransform.setMul(transform, it.transform, properties)
+            }
 
-            nextFrameScene.addMesh(instance.mesh, material, meshTransform, cullingBounds, boneMatrices, renderPassMask, resolveObjectId(objectId))
+            nextFrameScene.addMesh(it.mesh, material, meshTransform, cullingBounds, boneMatrices, renderPassMask, resolveObjectId(objectId))
         }
     }
 

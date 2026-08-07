@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.asset.types
 import gnu.trove.map.hash.THashMap
 import gnu.trove.map.hash.TIntObjectHashMap
 import gnu.trove.map.hash.TObjectIntHashMap
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Animation.QuaternionKey
 import no.njoh.pulseengine.core.asset.types.Animation.VectorKey
 import no.njoh.pulseengine.core.asset.types.Material.*
@@ -14,6 +15,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.Mat4fProps
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromPath
 import no.njoh.pulseengine.core.shared.utils.ResourceResolver
@@ -157,11 +159,13 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                 nodesByName.clear()
                 collectGlobalNodeTransforms(nodeHierarchy!!, Matrix4f(), globalNodeTransforms)
                 bindPoseBoneMatricesByNodeName.clear()
+
                 val instances = mutableListOf<MeshInstance>()
                 val collisionMeshes = mutableListOf<CollisionMesh>()
                 buildSubMeshInstances(it, Matrix4f(), instances, collisionMeshes)
-                meshInstances = instances
+                this.meshInstances = instances
                 this.collisionMeshes = collisionMeshes
+
                 buildBoundsAndLodLevels()
                 buildConservativeAnimatedBounds()
             }
@@ -810,7 +814,8 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
                         cullingBounds = localBounds,
                         worldBounds = worldBounds,
                         nodeName = nodeName,
-                        lodLevel = lodLevel
+                        lodLevel = lodLevel,
+                        materialHandle = AssetHandle(materials.getOrNull(mesh.materialIndex)?.name ?: "")
                     )
                 }
             }
@@ -1278,7 +1283,34 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         var animatedBounds: Aabb? = null,
         var gpuMetadataIndex: Int = -1,
         var vao: VertexArrayObject? = null
-    )
+    ) {
+        var batchSortKeyBase = createBatchSortKeyBase(gpuMetadataIndex)
+            private set
+
+        fun assignGpuMetadataIndex(index: Int)
+        {
+            gpuMetadataIndex = index
+            batchSortKeyBase = createBatchSortKeyBase(index)
+        }
+
+        fun getBatchSortKey(cullMode: CullMode) = batchSortKeyBase or cullMode.ordinal
+
+        private fun createBatchSortKeyBase(metadataIndex: Int): Int
+        {
+            if (metadataIndex < 0)
+                return INVALID_BATCH_SORT_KEY
+
+            val shaderVariantBit = if (skinningBounds == null) 0 else 1
+            return (metadataIndex shl BATCH_STATE_BITS) or (shaderVariantBit shl CULL_MODE_BITS)
+        }
+
+        companion object
+        {
+            private const val CULL_MODE_BITS = 1
+            private const val BATCH_STATE_BITS = 2
+            private const val INVALID_BATCH_SORT_KEY = -1
+        }
+    }
 
     data class MeshInstance(
         val mesh: Mesh,
@@ -1286,8 +1318,11 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         val cullingBounds: Aabb,
         val worldBounds: Aabb,
         val nodeName: String,
-        val lodLevel: Int? = null
-    )
+        val lodLevel: Int?,
+        val materialHandle: AssetHandle<Material>
+    ) {
+        val transformProperties = Mat4fProps.from(transform)
+    }
 
     data class CollisionMesh(
         val name: String,

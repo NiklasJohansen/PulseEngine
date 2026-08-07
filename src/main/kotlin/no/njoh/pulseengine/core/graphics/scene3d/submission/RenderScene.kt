@@ -19,7 +19,7 @@ class RenderScene
     val blendedItems = DynamicList<RenderItem>(256)
     val localLights  = DynamicList<RenderLight>(64)
 
-    fun addMesh(mesh: Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, objectId: Long = -1L)
+    fun addMesh(mesh: Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, objectId: Long)
     {
         val poolItem = ITEM_POOL.removeLastOrNull()?.also()
         {
@@ -90,8 +90,10 @@ class RenderScene
         blendedItems.clear()
         localLights.clear()
     }
- 
-    fun hasAnyItems() = opaqueItems.isNotEmpty() || maskedItems.isNotEmpty() || blendedItems.isNotEmpty()
+
+    fun hasAnyItems() = getItemCount() > 0
+
+    fun getItemCount() = opaqueItems.size + maskedItems.size + blendedItems.size
 
     private fun Float.sanitizeAngle() = if (isFinite()) coerceIn(0f, 180f) else 0f
 
