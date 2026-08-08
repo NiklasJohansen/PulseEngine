@@ -58,6 +58,7 @@ class DropdownMenu <T> (
 
     private var onItemToString: (T) -> String = { it.toString() }
     private var onItemChanged: (lastItem: T?, newItem: T) -> Unit = { _, _ -> }
+    private var onItemRowCreated: (item: T, row: Button) -> Unit = { _, _ -> }
     private var itemProvider: ((query: String) -> List<T>)? = null
     private var isMouseOver = false
     private val itemRows = mutableListOf<Pair<T, Button>>()
@@ -155,6 +156,7 @@ class DropdownMenu <T> (
             if (closeOnItemSelect)
                 dropdown.hidden = true
         }
+        onItemRowCreated(item, button)
 
         rowPanel.children.lastOrNull()?.padding?.bottom = rowPadding
         rowPanel.addChildren(button)
@@ -209,6 +211,11 @@ class DropdownMenu <T> (
     fun setOnItemChanged(callback: (lastValue: T?, newValue: T) -> Unit)
     {
         this.onItemChanged = callback
+    }
+
+    fun setOnItemRowCreated(callback: (item: T, row: Button) -> Unit)
+    {
+        this.onItemRowCreated = callback
     }
 
     fun setItemProvider(provider: (query: String) -> List<T>)

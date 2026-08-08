@@ -184,7 +184,10 @@ abstract class UiElement(
         if (!isVisible())
             return
 
-        popup?.update(engine)
+        popup?.let {
+            it.update(engine)
+            it.updatePopup(engine)
+        }
         children.forEachFast { it.updatePopup(engine) }
     }
 
@@ -285,7 +288,7 @@ abstract class UiElement(
         if (!isVisible())
             return
 
-        popup?.render(engine, surface)
+        popup?.render(engine, surface, renderPopup = true)
         children.forEachFast { it.renderPopup(engine, surface) }
     }
 

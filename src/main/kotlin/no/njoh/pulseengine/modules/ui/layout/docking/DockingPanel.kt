@@ -139,6 +139,21 @@ class DockingPanel(
     fun insertInsideTop(target: WindowPanel, panel: WindowPanel) = target.insertInsideVertical(panel, topSide = true)
     fun insertInsideBottom(target: WindowPanel, panel: WindowPanel) = target.insertInsideVertical(panel, topSide = false)
 
+    fun removeWindow(window: WindowPanel)
+    {
+        val parent = window.parent ?: return
+        var ancestor: UiElement? = parent
+        while (ancestor != null && ancestor !== dockingPanel)
+            ancestor = ancestor.parent
+        
+        if (ancestor !== dockingPanel)
+            return
+
+        window.removeFromParent()
+        collapseDockingBranch(parent)
+        setLayoutDirty()
+    }
+
     private fun insertOutsideHorizontal(panel: WindowPanel, leftSide: Boolean)
     {
         panel.removeFromParent()
@@ -270,6 +285,31 @@ class DockingPanel(
             child.height.setQuiet(this.height)
             this.parent?.replaceChild(this, child)
             this.parent?.destroy()
+        }
+    }
+
+    private fun collapseDockingBranch(start: UiElement)
+    {
+        var current: UiElement? = start
+        while (current != null && current !== dockingPanel && current !== viewport)
+        {
+            val parent = current.parent ?: break
+            if (current is VerticalPanel || current is HorizontalPanel)
+            {
+                when (current.children.size)
+                {
+                    0 -> parent.removeChildren(current)
+                    1 ->
+                    {
+                        val child = current.children.first()
+                        child.width.setQuiet(current.width)
+                        child.height.setQuiet(current.height)
+                        parent.replaceChild(current, child)
+                    }
+                    else -> current.setMinSizeFromChildren()
+                }
+            }
+            current = parent
         }
     }
 

@@ -29,6 +29,7 @@ import no.njoh.pulseengine.modules.ui.elements.*
 import no.njoh.pulseengine.modules.ui.elements.InputField.ContentType.*
 import no.njoh.pulseengine.modules.ui.elements.Label.TextSizeStrategy.UPDATE_WIDTH
 import no.njoh.pulseengine.modules.ui.layout.*
+import no.njoh.pulseengine.modules.ui.layout.docking.DockingPanel
 import no.njoh.pulseengine.modules.editor.EditorUtil.getPropInfo
 import no.njoh.pulseengine.modules.editor.EditorUtil.getName
 import no.njoh.pulseengine.modules.editor.EditorUtil.isEditable
@@ -217,7 +218,7 @@ open class UiElementFactory(
             setCornerRadius(ScaledValue.of(4f))
             setOnClicked()
             {
-                windowPanel.parent?.removeChildren(windowPanel)
+                removeWindow(windowPanel)
                 onClosed()
             }
             addChildren(crossIcon)
@@ -431,7 +432,11 @@ open class UiElementFactory(
         val items = menuBarButton.items.map { it.labelText }
         val dropdownRowHeight = style.getSize("DROPDOWN_ROW_HEIGHT")
         val dropdownRowPadding = 5f
-        val (width, height) = getDropDownDimensions(font, fontSize, scrollBarWidth, dropdownRowHeight + dropdownRowPadding, maxItemCount, items)
+        val (contentWidth, height) = getDropDownDimensions(font, fontSize, scrollBarWidth, dropdownRowHeight + dropdownRowPadding, maxItemCount, items)
+        val hasCheckableItems = menuBarButton.items.any { it.isChecked != null }
+        val width = contentWidth +
+            (if (hasCheckableItems) MENU_CHECK_MARK_WIDTH else 0f) +
+            (if (menuBarButton.items.any { it.items.isNotEmpty() }) MENU_SUBMENU_ARROW_WIDTH else 0f)
         return DropdownMenu<MenuBarItem>(
             width = Size.absolute(55f),
             dropDownWidth = Size.absolute(width),
@@ -462,10 +467,179 @@ open class UiElementFactory(
             scrollbar.hidden = !showScrollbar
             scrollbar.cornerRadius = ScaledValue.of(2f)
             configureDropdownSearch(this, searchable)
+
+            val submenus = mutableListOf<UiElement>()
             setOnItemToString { it.labelText }
+            setOnItemRowCreated { item, row ->
+                row.setOnMouseEnter { submenus.forEach(::hideMenuTree) }
+                if (hasCheckableItems)
+                    addMenuCheckMark(row, item.isChecked)
+                if (item.items.isNotEmpty())
+                {
+                    addSubmenuArrow(row, fontSize)
+                    val submenu = createSubmenuUI(item.items, this, font, fontSize)
+                    submenus += submenu
+                    row.addPopup(submenu)
+                    row.setOnMouseEnter() 
+                    {
+                        submenus.filterNot { it === submenu }.forEach(::hideMenuTree)
+                        positionSubmenu(row, submenu)
+                        submenu.hidden = false
+                    }
+                    row.setOnClicked() 
+                    {
+                        positionSubmenu(row, submenu)
+                        submenu.hidden = false
+                    }
+                }
+            }
+
+            setOnClicked { submenus.forEach(::hideMenuTree) }
             menuBarButton.items.forEachFast { addItem(it) }
-            setOnItemChanged { _, item -> item.onClick() }
+            setOnItemChanged { _, item -> if (item.items.isEmpty()) item.onClick() }
         }
+    }
+
+    private fun createSubmenuUI(items: List<MenuBarItem>, rootMenu: DropdownMenu<MenuBarItem>, font: Font, fontSize: Float): VerticalPanel
+    {
+        val rowHeight = style.getSize("DROPDOWN_ROW_HEIGHT")
+        val rowPadding = 5f
+        val (contentWidth, height) = getDropDownDimensions(
+            font = font,
+            fontSize = fontSize,
+            scrollBarWidth = 0f,
+            rowHeight = rowHeight + rowPadding,
+            maxItemCount = 100,
+            items = items.map { it.labelText }
+        )
+        val hasCheckableItems = items.any { it.isChecked != null }
+        val width = contentWidth +
+            (if (hasCheckableItems) MENU_CHECK_MARK_WIDTH else 0f) +
+            (if (items.any { it.items.isNotEmpty() }) MENU_SUBMENU_ARROW_WIDTH else 0f)
+
+        val siblingSubmenus = mutableListOf<UiElement>()
+
+        return VerticalPanel(width = Size.absolute(width), height = Size.absolute(height)).apply()
+        {
+            hidden = true
+            focusable = true
+            color = style.getColor("DROPDOWN_BG")
+            setCornerRadius(ScaledValue.of(2f))
+
+            items.forEachIndexed { index, item ->
+
+                val row = Button(height = Size.absolute(rowHeight)).apply()
+                {
+                    color = Color.BLANK
+                    hoverColor = style.getColor("BUTTON_HOVER")
+                    padding.left = ScaledValue.of(5f)
+                    padding.right = ScaledValue.of(5f)
+                    if (index == 0) padding.top = ScaledValue.of(5f)
+                    padding.bottom = ScaledValue.of(rowPadding)
+
+                    addChildren(Label(item.labelText).apply()
+                    {
+                        focusable = false
+                        padding.left = ScaledValue.of(5f)
+                        this.font = font
+                        this.fontSize = ScaledValue.of(fontSize)
+                        this.color = style.getColor("LABEL")
+                    })
+                }
+
+                if (hasCheckableItems)
+                    addMenuCheckMark(row, item.isChecked)
+                
+                row.setOnMouseEnter { siblingSubmenus.forEach(::hideMenuTree) }
+                
+                if (item.items.isEmpty())
+                {
+                    row.setOnClicked() 
+                    {
+                        item.onClick()
+                        rootMenu.dropdown.hidden = true
+                        hideMenuTree(this)
+                    }
+                }
+                else
+                {
+                    addSubmenuArrow(row, fontSize)
+                    val submenu = createSubmenuUI(item.items, rootMenu, font, fontSize)
+                    siblingSubmenus += submenu
+                    row.addPopup(submenu)
+                    row.setOnMouseEnter() 
+                    {
+                        siblingSubmenus.filterNot { it === submenu }.forEach(::hideMenuTree)
+                        positionSubmenu(row, submenu)
+                        submenu.hidden = false
+                    }
+                    row.setOnClicked() 
+                    {
+                        positionSubmenu(row, submenu)
+                        submenu.hidden = false
+                    }
+                }
+                addChildren(row)
+            }
+        }
+    }
+
+    private fun addMenuCheckMark(row: Button, isChecked: (() -> Boolean)?)
+    {
+        row.children.firstOrNull()?.padding?.left = ScaledValue.of(MENU_CHECK_MARK_WIDTH + 5f)
+        if (isChecked == null)
+            return
+
+        val checkMark = CheckMark(
+            isChecked = isChecked,
+            x = Position.alignLeft(),
+            width = Size.absolute(MENU_CHECK_MARK_WIDTH)
+        ).apply {
+            padding.left = ScaledValue.of(4f)
+            color = style.getColor("LABEL")
+        }
+
+        row.addChildren(checkMark)
+    }
+
+    private fun addSubmenuArrow(row: Button, fontSize: Float)
+    {
+        val icon = Icon(
+            x = Position.alignRight(),
+            width = Size.absolute(MENU_SUBMENU_ARROW_WIDTH)
+        ).apply {
+            padding.right = ScaledValue.of(4f)
+            iconFontName = style.iconFontName
+            iconCharacter = style.getIcon("ARROW_RIGHT")
+            iconSize = ScaledValue.of(fontSize * 0.75f)
+            color = style.getColor("LABEL")
+        }
+
+        row.children.firstOrNull()?.padding?.right = ScaledValue.of(MENU_SUBMENU_ARROW_WIDTH)
+        row.addChildren(icon)
+    }
+
+    private fun positionSubmenu(row: Button, submenu: UiElement)
+    {
+        var root: UiElement = row
+        while (root.parent != null) root = root.parent!!
+
+        var parentMenu: UiElement = row
+        while (parentMenu.parent != null && parentMenu.parent?.popup !== parentMenu)
+            parentMenu = parentMenu.parent!!
+
+        val parentMenuLeft = parentMenu.x.value
+        val parentMenuRight = parentMenuLeft + parentMenu.width.value
+        val openToLeft = parentMenuRight + submenu.width.value > root.x.value + root.width.value
+        val submenuX = if (openToLeft) parentMenuLeft - submenu.width.value else parentMenuRight
+        submenu.padding.left = ScaledValue.unscaled(submenuX - row.x.value)
+    }
+
+    private fun hideMenuTree(menu: UiElement)
+    {
+        menu.hidden = true
+        menu.popup?.let(::hideMenuTree)
+        menu.children.forEach { child -> child.popup?.let(::hideMenuTree) }
     }
 
     /**
@@ -1190,6 +1364,18 @@ open class UiElementFactory(
         return Pair(width, height)
     }
 
+    private fun removeWindow(window: WindowPanel)
+    {
+        var parent = window.parent
+        while (parent != null && parent !is DockingPanel)
+            parent = parent.parent
+
+        if (parent is DockingPanel)
+            parent.removeWindow(window)
+        else
+            window.parent?.removeChildren(window)
+    }
+
     private data class EntityReferenceItem(val id: Long, val label: String)
     private data class SceneEntityNameItem(val name: String, val label: String)
 
@@ -1197,6 +1383,8 @@ open class UiElementFactory(
     {
         private const val DROPDOWN_SEARCH_HEIGHT = 30f
         private const val DROPDOWN_MAX_VISIBLE_ITEMS = 8
+        private const val MENU_CHECK_MARK_WIDTH = 20f
+        private const val MENU_SUBMENU_ARROW_WIDTH = 20f
         private const val ENTITY_REFERENCE_DROPDOWN_WIDTH = 350f
         private const val ENTITY_REFERENCE_MAX_RESULTS = 100
     }
