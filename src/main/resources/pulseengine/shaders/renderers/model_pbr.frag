@@ -13,7 +13,29 @@ const uint PBR_FEATURE_DIFFUSE_IBL   = 1u << 4;
 const uint PBR_FEATURE_SPECULAR_IBL  = 1u << 5;
 const uint PBR_FEATURE_GTAO          = 1u << 6;
 
+const int VIEW_MODE_SHADED                  = 0;
+const int VIEW_MODE_PBR_ALBEDO              = 1;
+const int VIEW_MODE_PBR_NORMAL              = 2;
+const int VIEW_MODE_PBR_ROUGHNESS           = 3;
+const int VIEW_MODE_PBR_METALLIC            = 4;
+const int VIEW_MODE_PBR_EMISSIVE            = 5;
+const int VIEW_MODE_PBR_AO                  = 6;
+const int VIEW_MODE_SCREEN_SPACE_AO         = 7;
+const int VIEW_MODE_COMBINED_AO             = 8;
+const int VIEW_MODE_GEOMETRY_NORMAL         = 9;
+const int VIEW_MODE_LINEAR_DEPTH            = 10;
+const int VIEW_MODE_LIGHTING                = 11;
+const int VIEW_MODE_SUN_SHADOW              = 12;
+const int VIEW_MODE_SHADOW_CASCADES         = 13;
+const int VIEW_MODE_LIGHT_CLUSTER_OCCUPANCY = 14;
+
 const vec2 CASCADE_OFFSETS[CASCADE_COUNT] = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0), vec2(0.0, 0.5), vec2(0.5, 0.5));
+const vec3 CASCADE_VIEW_COLORS[CASCADE_COUNT] = vec3[](
+    vec3(1.00, 0.15, 0.10),
+    vec3(0.15, 1.00, 0.20),
+    vec3(0.15, 0.35, 1.00),
+    vec3(1.00, 0.80, 0.10)
+);
 
 in vec3 vWorldPos;
 in vec3 vWorldNormal;
@@ -58,9 +80,11 @@ uniform int   uLocalShadowFaceCount;
 
 uniform vec3  uCameraPos;
 uniform vec2  uScreenSize;
+uniform vec2  uCameraNearFar;
 uniform mat4  uView;
 uniform uint  uPbrFeatures;
 uniform bool  uUseDefaultLighting;
+uniform int   uViewMode;
 
 // Cascaded shadow mapping
 uniform sampler2DShadow uShadowMapTex;
@@ -339,21 +363,23 @@ vec3 shadowWorldPos(vec3 worldPos, vec3 N, int cascade)
     return worldPos + N * texelSize;
 }
 
+int shadowCascadeIndex(float viewDepth)
+{
+    for (int cascade = 0; cascade < CASCADE_COUNT; cascade++)
+    {
+        if (viewDepth < uShadowCascadeSplitDistances[cascade])
+            return cascade;
+    }
+    return CASCADE_COUNT - 1;
+}
+
 float cascadedShadow(vec3 worldPos, vec3 N, float lightRadius)
 {
     // Compute view-space depth for cascade selection
     float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
 
     // Find the first cascade that contains this fragment
-    int cascade = CASCADE_COUNT - 1;
-    for (int i = 0; i < CASCADE_COUNT; i++)
-    {
-        if (viewDepth < uShadowCascadeSplitDistances[i])
-        {
-            cascade = i;
-            break;
-        }
-    }
+    int cascade = shadowCascadeIndex(viewDepth);
 
     vec3 swp = shadowWorldPos(worldPos, N, cascade);
     float shadow = pcssShadowCascade(swp, N, lightRadius, cascade);
@@ -376,6 +402,18 @@ float cascadedShadow(vec3 worldPos, vec3 N, float lightRadius)
     return shadow;
 }
 
+vec3 shadowCascadeViewColor(vec3 worldPos)
+{
+    if (!hasPbrFeature(PBR_FEATURE_SUN_SHADOWS))
+        return vec3(0.0);
+
+    float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
+    if (viewDepth > uShadowCascadeSplitDistances[CASCADE_COUNT - 1])
+        return vec3(0.025);
+
+    return CASCADE_VIEW_COLORS[shadowCascadeIndex(viewDepth)];
+}
+
 // ------------------------------------------------------------------
 // Local lights
 // ------------------------------------------------------------------ 
@@ -390,6 +428,28 @@ int clusterIndexForFragment(float viewDepth)
     int zSlice = int(clamp(floor(z), 0.0, float(uClusterGridSize.z - 1)));
     int clusterIndex = (zSlice * uClusterGridSize.y + tile.y) * uClusterGridSize.x + tile.x;
     return (clusterIndex >= 0 && clusterIndex < uClusterCount) ? clusterIndex : -1;
+}
+
+vec3 lightClusterOccupancyColor(vec3 worldPos)
+{
+    if (!hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
+        return vec3(0.0);
+
+    float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
+    int clusterIndex = clusterIndexForFragment(viewDepth);
+    if (clusterIndex < 0)
+        return vec3(0.0);
+
+    float lightCount = float(uClusterRanges[clusterIndex].y);
+    if (lightCount < 0.5)
+        return vec3(0.0);
+
+    float t = clamp(log2(lightCount + 1.0) / 4.0, 0.0, 1.0);
+    return clamp(vec3(
+        1.5 - abs(4.0 * t - 3.0),
+        1.5 - abs(4.0 * t - 2.0),
+        1.5 - abs(4.0 * t - 1.0)
+    ), 0.0, 1.0);
 }
 
 int pointShadowFaceIndex(vec3 fromLight)
@@ -555,6 +615,16 @@ bool isBehindOpaqueDepth()
 }
 #endif
 
+void writeFragment(vec3 color, float alpha)
+{
+    #ifdef PBR_OUTPUT_WBOIT_ACCUM
+    float weight = computeWboitWeight(alpha);
+    outAccum = vec4(color * alpha * weight, alpha * weight);
+    #else
+    fragColor = vec4(color, alpha);
+    #endif
+}
+
 // ------------------------------------------------------------------
 // Main
 // ------------------------------------------------------------------
@@ -596,15 +666,87 @@ void main()
         gtao = clamp(exp(-uAoIntensity * (1.0 - gtao)), 0.0, 1.0);
     }
 
+    // A draw-wide switch keeps the regular shaded path coherent. Most diagnostic modes return
+    // before the expensive direct/IBL lighting work, making them cheaper than shaded output.
+    switch (uViewMode)
+    {
+        case VIEW_MODE_PBR_ALBEDO:
+        {
+            writeFragment(baseColor.rgb, alpha);
+            return;
+        }
+        case VIEW_MODE_PBR_NORMAL:
+        {
+            writeFragment(N * 0.5 + 0.5, alpha);
+            return;
+        }
+        case VIEW_MODE_GEOMETRY_NORMAL:
+        {
+            vec3 geometryNormal = normalize(vWorldNormal);
+            if (!gl_FrontFacing) geometryNormal = -geometryNormal;
+            writeFragment(geometryNormal * 0.5 + 0.5, alpha);
+            return;
+        }
+        case VIEW_MODE_SCREEN_SPACE_AO:
+        {
+            writeFragment(vec3(gtao), alpha);
+            return;
+        }
+        case VIEW_MODE_PBR_EMISSIVE:
+        {
+            writeFragment(emissive, alpha);
+            return;
+        }
+        case VIEW_MODE_LINEAR_DEPTH:
+        {
+            float viewDepth = -(uView * vec4(vWorldPos, 1.0)).z;
+            float depth = clamp((viewDepth - uCameraNearFar.x) / max(uCameraNearFar.y - uCameraNearFar.x, 1e-5), 0.0, 1.0);
+            writeFragment(vec3(depth), alpha);
+            return;
+        }
+        case VIEW_MODE_SUN_SHADOW:
+        {
+            float sunShadow = hasPbrFeature(PBR_FEATURE_SUN_SHADOWS) ? cascadedShadow(vWorldPos, N, uSunRadius) : 1.0;
+            writeFragment(vec3(sunShadow), alpha);
+            return;
+        }
+        case VIEW_MODE_SHADOW_CASCADES:
+        {
+            writeFragment(shadowCascadeViewColor(vWorldPos), alpha);
+            return;
+        }
+        case VIEW_MODE_LIGHT_CLUSTER_OCCUPANCY:
+        {
+            writeFragment(lightClusterOccupancyColor(vWorldPos), alpha);
+            return;
+        }
+        case VIEW_MODE_PBR_AO:
+        case VIEW_MODE_COMBINED_AO:
+        case VIEW_MODE_PBR_ROUGHNESS:
+        case VIEW_MODE_PBR_METALLIC:
+        {
+            vec3 viewAomr = sampleTexOrDefault(material.aoMetalRoughTex, vec3(1.0, 1.0, 0.0), tiling).rgb;
+            float materialAo = clamp(mix(1.0, viewAomr.r, material.aoMetalRoughNormalFactor.x), 0.0, 1.0);
+            float viewValue = materialAo;
+            if (uViewMode == VIEW_MODE_COMBINED_AO)
+                viewValue = materialAo * gtao;
+            else if (uViewMode == VIEW_MODE_PBR_ROUGHNESS)
+                viewValue = clamp(viewAomr.g * material.aoMetalRoughNormalFactor.y, 0.04, 1.0);
+            else if (uViewMode == VIEW_MODE_PBR_METALLIC)
+                viewValue = clamp(viewAomr.b * material.aoMetalRoughNormalFactor.z, 0.0, 1.0);
+
+            writeFragment(vec3(viewValue), alpha);
+            return;
+        }
+        default:
+            break; // Shaded and lighting-only views continue through the normal PBR path.
+    }
+
     if (uUseDefaultLighting)
     {
-        vec3 color = baseColor.rgb * defaultStudioLighting(N, gtao) + emissive;
-        #ifdef PBR_OUTPUT_WBOIT_ACCUM
-        float weight = computeWboitWeight(alpha);
-        outAccum = vec4(color * alpha * weight, alpha * weight);
-        #else
-        fragColor = vec4(color, alpha);
-        #endif
+        float lighting = defaultStudioLighting(N, gtao);
+        vec3 color = uViewMode == VIEW_MODE_LIGHTING ? vec3(lighting) : baseColor.rgb * lighting + emissive;
+        writeFragment(color, alpha);
         return;
     }
 
@@ -631,7 +773,8 @@ void main()
     float aoCombined = gtao * ao;
 
     float NdotV = max(dot(N, V), 0.0001);
-    vec3 F0 = mix(vec3(0.04), baseColor.rgb, metallic);
+    vec3 pbrColor = uViewMode == VIEW_MODE_LIGHTING ? vec3(1.0) : baseColor.rgb;
+    vec3 F0 = mix(vec3(0.04), pbrColor, metallic);
 
     //--------------------------------------------------
     // Direct lighting with Cook-Torrance BRDF
@@ -650,7 +793,7 @@ void main()
             float G = geometrySmith(N, V, L, roughness);
             float NDF = distributionGGX(N, H, roughness);
             float denom = 4.0 * NdotV * NdotL + 0.000001;
-            vec3 diffuse = kD_dir * baseColor.rgb / PI;
+            vec3 diffuse = kD_dir * pbrColor / PI;
             vec3 specular = (NDF * G * F_dir) / denom;
             float shadow = 1.0;
             if (hasPbrFeature(PBR_FEATURE_SUN_SHADOWS))
@@ -661,7 +804,7 @@ void main()
 
     vec3 LoLocalLights = vec3(0.0);
     if (hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
-        LoLocalLights = accumulateLocalLights(N, V, NdotV, baseColor.rgb, metallic, roughness, F0);
+        LoLocalLights = accumulateLocalLights(N, V, NdotV, pbrColor, metallic, roughness, F0);
 
     vec3 Lo = LoSun + LoLocalLights;
 
@@ -686,18 +829,13 @@ void main()
 
     vec3 kD_ibl = (vec3(1.0) - F) * (1.0 - metallic);
     vec3 irradiance = diffuseIblEnabled ? sampleEnvMap(uEnvDiffuseTex, N, 0.0) : uEnvColor.rgb;
-    ambient += irradiance * baseColor.rgb * kD_ibl * aoCombined;
+    ambient += irradiance * pbrColor * kD_ibl * aoCombined;
 
     //--------------------------------------------------
     // Final color composition
     //--------------------------------------------------
 
-    vec3 color = ambient * uEnvIntensity + Lo + emissive;
-
-    #ifdef PBR_OUTPUT_WBOIT_ACCUM
-    float weight = computeWboitWeight(alpha);
-    outAccum = vec4(color * alpha * weight, alpha * weight);
-    #else
-    fragColor = vec4(color, alpha);
-    #endif
+    vec3 lighting = ambient * uEnvIntensity + Lo;
+    vec3 color = uViewMode == VIEW_MODE_LIGHTING ? lighting : lighting + emissive;
+    writeFragment(color, alpha);
 }

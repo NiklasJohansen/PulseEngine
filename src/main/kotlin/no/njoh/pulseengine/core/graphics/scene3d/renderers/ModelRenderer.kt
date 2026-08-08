@@ -47,13 +47,13 @@ class ModelRenderer(
     var iblBrdfTexture     = "ibl_brdf_lut"
     var envColor           = Color(0f, 0f, 0f)
 
-    /** Use viewport-style studio lighting until a scene lighting system configures this renderer. */
     var useDefaultLighting          = true
     var sunColor                    = Color(1f, 1f, 1f)
     var sunRadius                   = 1f
     var sunShadowMapSurfaceName     = ""
     var localShadowAtlasSurfaceName = ""
 
+    var viewMode                 = ViewMode.SHADED
     var transparencyMode         = WEIGHTED_BLENDED_OIT
     var weightedBlendAlphaCutoff = 0.04f
 
@@ -313,10 +313,12 @@ class ModelRenderer(
         program.setUniform("uEnvColor", envColor)
         program.setUniform("uPbrFeatures", pbrFeatures)
         program.setUniform("uUseDefaultLighting", useDefaultLighting)
+        program.setUniform("uViewMode", viewMode.shaderValue)
 
         // Camera
 
         program.setUniform("uScreenSize", cameraState.screenWidth.toFloat(), cameraState.screenHeight.toFloat())
+        program.setUniform("uCameraNearFar", cameraState.nearPlane, cameraState.farPlane)
         program.setUniform("uViewProjection", cameraState.viewProjectionMatrix)
         program.setUniform("uView", cameraState.viewMatrix)
         program.setUniform("uCameraPos", cameraState.cameraPosition)
@@ -349,4 +351,26 @@ class ModelRenderer(
 
         private val fallbackSunDirection = Vector3f(0f, 1f, 0f)
     }
+}
+
+/**
+ * Defines the final value written by [ModelRenderer]'s PBR shader.
+ */
+enum class ViewMode(val shaderValue: Int, val displayName: String)
+{
+    SHADED(0, "Default Shading"),
+    PBR_ALBEDO(1, "PBR Albedo"),
+    PBR_NORMAL(2, "PBR Normals"),
+    PBR_ROUGHNESS(3, "PBR Roughness"),
+    PBR_METALLIC(4, "PBR Metallic"),
+    PBR_EMISSIVE(5, "PBR Emissive"),
+    PBR_AO(6, "PBR AO"),
+    SCREEN_SPACE_AO(7, "Screen-space AO"),
+    COMBINED_AO(8, "Combined AO"),
+    GEOMETRY_NORMAL(9, "Geometry Normals"),
+    LINEAR_DEPTH(10, "Linear Depth"),
+    LIGHTING(11, "Lighting"),
+    SUN_SHADOW(12, "Sun Shadow"),
+    SHADOW_CASCADES(13, "Shadow Cascades"),
+    LIGHT_CLUSTER_OCCUPANCY(14, "Light Cluster Occupancy")
 }
