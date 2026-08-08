@@ -43,7 +43,7 @@ class InstanceBufferObject
 
     fun reserveItemCapacity(itemCount: Int)
     {
-        instanceBuffer.ensureCapacity(itemCount * INSTANCE_FLOATS)
+        instanceBuffer.ensureWriteCapacity(itemCount * INSTANCE_FLOATS)
         objectIdBuffer.ensureWriteCapacity(itemCount * 2)
         instanceIndexBuffer?.ensureWriteCapacity(itemCount)
     }
@@ -120,15 +120,16 @@ class InstanceBufferObject
         outMatrixOffset: Int,
         matrixProperties: Mat4fProps
     ): Float {
-        val m00 = inMatrixData[inMatrixOffset    ]; val m01 = inMatrixData[inMatrixOffset +  1]; val m02 = inMatrixData[inMatrixOffset +  2]
-        val m10 = inMatrixData[inMatrixOffset + 4]; val m11 = inMatrixData[inMatrixOffset +  5]; val m12 = inMatrixData[inMatrixOffset +  6]
-        val m20 = inMatrixData[inMatrixOffset + 8]; val m21 = inMatrixData[inMatrixOffset +  9]; val m22 = inMatrixData[inMatrixOffset + 10]
 
         if (matrixProperties.hasIdentityLinearTransform)
         {
             setIdentityNormalMatrix(outMatrixData, outMatrixOffset)
             return 1f
         }
+
+        val m00 = inMatrixData[inMatrixOffset    ]; val m01 = inMatrixData[inMatrixOffset +  1]; val m02 = inMatrixData[inMatrixOffset +  2]
+        val m10 = inMatrixData[inMatrixOffset + 4]; val m11 = inMatrixData[inMatrixOffset +  5]; val m12 = inMatrixData[inMatrixOffset +  6]
+        val m20 = inMatrixData[inMatrixOffset + 8]; val m21 = inMatrixData[inMatrixOffset +  9]; val m22 = inMatrixData[inMatrixOffset + 10]
 
         if (matrixProperties.hasOrthonormalLinearTransform)
         {

@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
+import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.scene.interfaces.Spatial3D
@@ -43,6 +44,7 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
     override fun onStart(engine: PulseEngine)
     {
         parsedLodPixelHeightThresholds = lodPixelHeightThresholds.split(',').mapNotNull { it.trim().toIntOrNull()?.coerceAtLeast(0) }.takeIf { it.isNotEmpty() }?.toIntArray()
+        updateTransform()
     }
 
     override fun onRender(engine: PulseEngine, context: SceneRenderContext)
@@ -50,10 +52,8 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
         val model = engine.asset.getOrNull(model) ?: return
         val material = engine.asset.getOrNull(material)
 
-        transform.identity()
-            .translation(position)
-            .rotateXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
-            .scale(scale)
+        if (engine.scene.state == SceneState.STOPPED)
+            updateTransform() // Update only when in editor
 
         context.submitModel(
             engine = engine,
@@ -65,5 +65,13 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
             lodHysteresis = lodHysteresis,
             objectId = id
         )
+    }
+    
+    private fun updateTransform()
+    {
+        transform.identity()
+            .translation(position)
+            .rotateXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
+            .scale(scale)
     }
 }

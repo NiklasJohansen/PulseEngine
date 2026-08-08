@@ -84,7 +84,7 @@ class StreamingFloatBufferObject private constructor(
     }
 
     @PublishedApi
-    internal fun ensureCapacity(requiredCapacity: Int)
+    internal fun ensureWriteCapacity(requiredCapacity: Int)
     {
         if (requiredCapacity > data.size)
         {

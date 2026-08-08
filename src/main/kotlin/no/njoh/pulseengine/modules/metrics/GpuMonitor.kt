@@ -296,7 +296,8 @@ class GpuMonitor : Service()
                     iconSize = ScaledValue.of(15f)
                     iconCharacter = uiFactory.style.getIcon("ARROW_DOWN")
                     pressedIconCharacter = uiFactory.style.getIcon("ARROW_RIGHT")
-                    xOrigin = 0.70f
+                    xOrigin = 0.75f
+                    yOrigin = 0.55f
                     color = uiFactory.style.getColor("LABEL")
                     activeColor = uiFactory.style.getColor("LABEL")
                     hoverColor = uiFactory.style.getColor("LABEL_DARK")

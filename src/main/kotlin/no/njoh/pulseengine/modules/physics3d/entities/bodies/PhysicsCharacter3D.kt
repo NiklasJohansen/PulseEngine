@@ -106,7 +106,7 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
 
     override fun onStart(engine: PulseEngine)
     {
-        updateCamera(engine)
+        if (enabled) updateCamera(engine)
     }
 
     override fun onUpdate(engine: PulseEngine)

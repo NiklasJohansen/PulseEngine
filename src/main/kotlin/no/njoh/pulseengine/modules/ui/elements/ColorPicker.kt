@@ -127,14 +127,16 @@ class ColorPicker(
         {
             contentType = InputField.ContentType.HEX_COLOR
             bgColor = Color.BLANK
-            setCornerRadius(ScaledValue.of(4f))
+            cornerRadiusTopLeft = ScaledValue.of(4f)
+            cornerRadiusBottomLeft = ScaledValue.of(4f)
         }
 
         colorPreviewButton = Button(
             width = Size.absolute(10f),
             height = Size.absolute(10f)
         ).apply {
-            setCornerRadius(ScaledValue.of(4f))
+            cornerRadiusTopRight = ScaledValue.of(4f)
+            cornerRadiusBottomRight = ScaledValue.of(4f)
             addChildren(
                 Panel().apply {
                     focusable = false

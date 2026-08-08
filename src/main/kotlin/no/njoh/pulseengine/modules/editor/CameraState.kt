@@ -92,7 +92,7 @@ data class CameraState(
             fov = 90f,
             orthographicHeight = 10f,
             nearPlane = 0.01f,
-            farPlane = 200f,
+            farPlane = 500f,
             projectionType = PERSPECTIVE_3D
         )
 

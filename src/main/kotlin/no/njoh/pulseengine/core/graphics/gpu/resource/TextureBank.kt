@@ -36,6 +36,7 @@ class TextureBank
     private val textureArrays = mutableListOf<TextureArray>()
     private val emptyTextureArray = TextureArray(0, 0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
     private val fallbackTextures = THashMap<Color, RenderTexture>()
+    private var overCapacityUploadCount = 0
 
     fun upload(texture: Texture)
     {
@@ -47,11 +48,16 @@ class TextureBank
                 array.upload(texture)
                 return
             }
-            else Logger.error()
+            else
             {
-                "Failed to load texture: ${texture.filePath}. Texture array for " +
-                "textureSize=${array.textureSize}px and format=${array.format} is full " +
-                "(${array.size}/${array.maxCapacity}). Consider increasing its capacity."
+                overCapacityUploadCount++
+                Logger.error()
+                {
+                    "Failed to load texture: ${texture.filePath}. Texture array for " +
+                    "textureSize=${array.textureSize}px and format=${array.format} is full " +
+                    "(${array.size}/${array.maxCapacity}). Consider increasing its capacity to at least " +
+                    "${array.maxCapacity + overCapacityUploadCount}."
+                }
             }
         }
 

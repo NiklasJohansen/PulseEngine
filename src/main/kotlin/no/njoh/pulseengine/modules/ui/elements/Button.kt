@@ -30,6 +30,7 @@ open class Button(
 
     var textureAssetName: String? = null
     var textureScale = 1f
+    var textureCornerRadiusScale = 1f
 
     var cornerRadiusTopLeft     = ScaledValue.of(0f)
     var cornerRadiusTopRight    = ScaledValue.of(0f)
@@ -144,8 +145,15 @@ open class Button(
             texWidth *= textureScale
             texHeight *= textureScale
 
+            val texCornerRadius = CornerRadius(
+                topLeft     = cornerRadiusTopLeft.value * textureCornerRadiusScale,
+                topRight    = cornerRadiusTopRight.value * textureCornerRadiusScale,
+                bottomRight = cornerRadiusBottomRight.value * textureCornerRadiusScale,
+                bottomLeft  = cornerRadiusBottomLeft.value * textureCornerRadiusScale
+            )
+
             surface.setDrawColor(color)
-            surface.drawTexture(texture, xCenter, yCenter, texWidth, texHeight, 0f, 0.5f, 0.5f, cornerRadius)
+            surface.drawTexture(texture, xCenter, yCenter, texWidth, texHeight, 0f, 0.5f, 0.5f, texCornerRadius)
             return
         }
 

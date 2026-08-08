@@ -845,7 +845,6 @@ open class UiElementFactory(
             hexInput.bgColorHover = style.getColor("BUTTON_HOVER")
             hexInput.bgColor = style.getColor("INPUT_BG")
             hexInput.strokeColor = Color.BLANK
-            hexInput.setCornerRadius(ScaledValue.of(4f))
             colorPreviewButton.bgColor = style.getColor("INPUT_BG")
             colorPreviewButton.bgHoverColor = style.getColor("BUTTON_HOVER")
             colorEditor.color = style.getColor("LIGHT_BG")

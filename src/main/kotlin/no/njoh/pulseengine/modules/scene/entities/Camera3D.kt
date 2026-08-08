@@ -32,7 +32,7 @@ open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D
 
     @Prop("Projection", i=1, min=1f, max = 179f) var fov       = 90f
     @Prop("Projection", i=2, min=0.001f)         var nearPlane = 0.01f
-    @Prop("Projection", i=3, min=0.002f)         var farPlane  = 200f
+    @Prop("Projection", i=3, min=0.002f)         var farPlane  = 500f
 
     @EntityRef
     @Prop("Tracking", i=1)                 var targetEntityId = INVALID_ID

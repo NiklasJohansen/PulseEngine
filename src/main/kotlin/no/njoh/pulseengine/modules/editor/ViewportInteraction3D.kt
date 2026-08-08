@@ -857,7 +857,7 @@ class ViewportInteraction3D(
         {
             val start = boundsCorners[AABB_EDGES[i]]
             val end = boundsCorners[AABB_EDGES[i + 1]]
-            if (!projectLine(camera, start, end, width, height, tmpP0, tmpP1))
+            if (!projectLine(camera, start, end, width, height, tmpP0, tmpP1, clipDepth = true))
                 continue
 
             pointCount = addProjectedPoint(tmpP0, pointCount)
@@ -1032,10 +1032,16 @@ class ViewportInteraction3D(
 
     private fun setTransformedPoint(out: Vector3f, x: Float, y: Float, z: Float, transform: Mat4f)
     {
+        val matrix = transform.data
+        val offset = transform.offset
+        val m00 = matrix[offset     ]; val m01 = matrix[offset +  1]; val m02 = matrix[offset +  2]
+        val m10 = matrix[offset +  4]; val m11 = matrix[offset +  5]; val m12 = matrix[offset +  6]
+        val m20 = matrix[offset +  8]; val m21 = matrix[offset +  9]; val m22 = matrix[offset + 10]
+        val m30 = matrix[offset + 12]; val m31 = matrix[offset + 13]; val m32 = matrix[offset + 14]
         out.set(
-            transform.m00 * x + transform.m10 * y + transform.m20 * z + transform.m30,
-            transform.m01 * x + transform.m11 * y + transform.m21 * z + transform.m31,
-            transform.m02 * x + transform.m12 * y + transform.m22 * z + transform.m32
+            m00 * x + m10 * y + m20 * z + m30,
+            m01 * x + m11 * y + m21 * z + m31,
+            m02 * x + m12 * y + m22 * z + m32
         )
     }
 
@@ -1069,9 +1075,9 @@ class ViewportInteraction3D(
             if (item.objectId < 0L)
                 return@forEach
 
-            boundedMarqueeObjectIds += item.objectId
+            boundedMarqueeObjectIds.add(item.objectId)
             if (item.objectId !in matchedMarqueeObjectIds && projectRenderItemOverlaps(camera, item, width, height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)) 
-                matchedMarqueeObjectIds += item.objectId
+                matchedMarqueeObjectIds.add(item.objectId)
         }
     }
 
@@ -1478,7 +1484,7 @@ class ViewportInteraction3D(
             {
                 drawScreenCircle(surface, tmpP0.x, tmpP0.y, CAMERA_MARKER_RADIUS)
                 tmpV3.mul(gizmoWorldSize(context.camera, tmpV0, height) * 0.6f).add(tmpV0)
-                if (projectLine(context.camera, tmpV0, tmpV3, width, height, tmpP0, tmpP1))
+                if (projectLine(context.camera, tmpV0, tmpV3, width, height, tmpP0, tmpP1, clipDepth = true))
                     surface.drawLine(tmpP0.x, tmpP0.y, tmpP1.x, tmpP1.y)
             }
         }
@@ -1585,14 +1591,14 @@ class ViewportInteraction3D(
         val baseRadius = tan(light.outerConeAngle.coerceIn(0f, MAX_CONE_ANGLE).toRadians()) * radius
 
         drawProjectedCircle(surface, camera, baseCenter, right, up, baseRadius, width, height)
-        drawProjectedLine(surface, camera, origin, baseCenter, width, height)
+        drawProjectedLine(surface, camera, origin, baseCenter, width, height, clipDepth = true)
         for (i in 0 until LIGHT_CONE_SIDE_COUNT)
         {
             val angle = i.toFloat() / LIGHT_CONE_SIDE_COUNT * Math.PI.toFloat() * 2f
             val endpoint = Vector3f(baseCenter)
                 .add(Vector3f(right).mul(cos(angle) * baseRadius))
                 .add(Vector3f(up).mul(sin(angle) * baseRadius))
-            drawProjectedLine(surface, camera, origin, endpoint, width, height)
+            drawProjectedLine(surface, camera, origin, endpoint, width, height, clipDepth = true)
         }
     }
 
@@ -1648,7 +1654,7 @@ class ViewportInteraction3D(
         end: Vector3f,
         width: Int,
         height: Int,
-        clipDepth: Boolean = true
+        clipDepth: Boolean
     ) {
         if (projectLine(camera, start, end, width, height, tmpP0, tmpP1, clipDepth))
             surface.drawLine(tmpP0.x, tmpP0.y, tmpP1.x, tmpP1.y)

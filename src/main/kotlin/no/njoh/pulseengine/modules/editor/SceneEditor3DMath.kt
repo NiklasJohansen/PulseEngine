@@ -8,6 +8,7 @@ import org.joml.Vector4f
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sqrt
 import kotlin.math.tan
 
@@ -50,64 +51,62 @@ object SceneEditor3DMath
         return xNdc in -2f..2f && yNdc in -2f..2f
     }
 
+    private val a = Vector4f()
+    private val b = Vector4f()
+    private val range = Vector2f()
+    private val clippedStart = Vector4f()
+    private val clippedEnd = Vector4f()
+
     /** 
      * Projects a world-space line after clipping it against the camera view volume. 
      */
-    fun projectLine(
-        camera: Camera,
-        start: Vector3f,
-        end: Vector3f,
-        width: Int,
-        height: Int,
-        outStart: Vector2f,
-        outEnd: Vector2f,
-        clipDepth: Boolean = true
-    ): Boolean {
+    fun projectLine(camera: Camera, start: Vector3f, end: Vector3f, width: Int, height: Int, outStart: Vector2f, outEnd: Vector2f, clipDepth: Boolean): Boolean 
+    {
         if (width <= 0 || height <= 0)
             return false
 
-        val a = Vector4f(start, 1f).mul(camera.viewProjectionMatrix)
-        val b = Vector4f(end, 1f).mul(camera.viewProjectionMatrix)
-        var tMin = 0f
-        var tMax = 1f
+        val a = a.set(start, 1f).mul(camera.viewProjectionMatrix)
+        val b = b.set(end, 1f).mul(camera.viewProjectionMatrix)
+        val range = range.set(0f, 1f)
 
-        fun clip(startDistance: Float, endDistance: Float): Boolean
-        {
-            if (startDistance < 0f && endDistance < 0f)
-                return false
-            if (startDistance >= 0f && endDistance >= 0f)
-                return true
-
-            val t = startDistance / (startDistance - endDistance)
-            if (startDistance < 0f)
-                tMin = max(tMin, t)
-            else
-                tMax = kotlin.math.min(tMax, t)
-            return tMin <= tMax
-        }
-
-        if (!clip(a.x + a.w, b.x + b.w) || !clip(a.w - a.x, b.w - b.x) ||
-            !clip(a.y + a.w, b.y + b.w) || !clip(a.w - a.y, b.w - b.y))
+        if (!range.clip(a.x + a.w, b.x + b.w) || !range.clip(a.w - a.x, b.w - b.x) || !range.clip(a.y + a.w, b.y + b.w) || !range.clip(a.w - a.y, b.w - b.y))
             return false
 
-        if (clipDepth && (!clip(a.z + a.w, b.z + b.w) || !clip(a.w - a.z, b.w - b.z)))
+        if (clipDepth && (!range.clip(a.z + a.w, b.z + b.w) || !range.clip(a.w - a.z, b.w - b.z)))
             return false
 
-        if (!clip(a.w - EPSILON, b.w - EPSILON))
+        if (!range.clip(a.w - EPSILON, b.w - EPSILON))
             return false
 
-        val clippedStart = Vector4f(a).lerp(b, tMin)
-        val clippedEnd = Vector4f(a).lerp(b, tMax)
+        val clippedStart = clippedStart.set(a).lerp(b, range.x)
+        val clippedEnd = clippedEnd.set(a).lerp(b, range.y)
         if (abs(clippedStart.w) < EPSILON || abs(clippedEnd.w) < EPSILON)
             return false
 
-        val startX = clippedStart.x / clippedStart.w
-        val startY = clippedStart.y / clippedStart.w
-        val endX = clippedEnd.x / clippedEnd.w
-        val endY = clippedEnd.y / clippedEnd.w
-        outStart.set((startX * 0.5f + 0.5f) * width, (1f - (startY * 0.5f + 0.5f)) * height)
-        outEnd.set((endX * 0.5f + 0.5f) * width, (1f - (endY * 0.5f + 0.5f)) * height)
+        val xStart = clippedStart.x / clippedStart.w
+        val yStart = clippedStart.y / clippedStart.w
+        val xEnd = clippedEnd.x / clippedEnd.w
+        val yEnd = clippedEnd.y / clippedEnd.w
+        outStart.set((xStart * 0.5f + 0.5f) * width, (1f - (yStart * 0.5f + 0.5f)) * height)
+        outEnd.set((xEnd * 0.5f + 0.5f) * width, (1f - (yEnd * 0.5f + 0.5f)) * height)
         return true
+    }
+
+    fun Vector2f.clip(startDistance: Float, endDistance: Float): Boolean
+    {
+        if (startDistance < 0f && endDistance < 0f)
+            return false
+
+        if (startDistance >= 0f && endDistance >= 0f)
+            return true
+
+        val t = startDistance / (startDistance - endDistance)
+        if (startDistance < 0f)
+            this.x = max(this.x, t)
+        else
+            this.y = min(this.y, t)
+
+        return this.x <= this.y
     }
 
     fun gizmoWorldSize(camera: Camera, pivot: Vector3f, viewportHeight: Int, pixelSize: Float = 90f): Float

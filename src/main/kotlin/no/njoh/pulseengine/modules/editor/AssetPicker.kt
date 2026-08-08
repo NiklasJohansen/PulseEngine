@@ -114,6 +114,8 @@ class AssetPicker(
         ).apply {
             cornerRadiusTopRight = ScaledValue.of(4f)
             cornerRadiusBottomRight = ScaledValue.of(4f)
+            textureScale = 0.8f
+            textureCornerRadiusScale = 0f
         }
 
         val hPanelButton = HorizontalPanel().apply { addChildren(nameInput, previewButton) }

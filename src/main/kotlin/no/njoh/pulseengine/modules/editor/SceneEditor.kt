@@ -213,7 +213,7 @@ class SceneEditor(
                 {
                     createSceneEditorUI(engine)
                     showGrid = true
-                    viewportInteraction?.resetCamera(engine, viewportContext)
+                    viewportInteraction.resetCamera(engine, viewportContext)
                     captureActiveEditorCamera(engine)
                 }
             )),
@@ -321,8 +321,6 @@ class SceneEditor(
         dockingUI.addChildren(viewportWindow)
     }
 
-    
-    
     override fun onUpdate(engine: PulseEngine)
     {
         while (true)
@@ -379,7 +377,7 @@ class SceneEditor(
 
         if (engine.scene.state == SceneState.STOPPED)
         {
-            viewportInteraction?.onUpdate(engine, viewportContext)
+            viewportInteraction.onUpdate(engine, viewportContext)
             handleEntityCopying(engine)
         }
 
