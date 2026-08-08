@@ -246,9 +246,9 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, renderPassMask, resolveObjectId(objectId))
     }
 
-    override fun submitPointLight(position: Vector3f, radius: Float, color: Color, shadowEnabled: Boolean, shadowResolution: Int, shadowBias: Float, shadowImportance: Float, shadowId: Long)
+    override fun submitPointLight(position: Vector3f, radius: Float, color: Color, shadowEnabled: Boolean, shadowResolution: Int, shadowNearPlane: Float, shadowBias: Float, shadowImportance: Float, shadowId: Long)
     {
-        nextFrameScene.addLight(position, null, radius, color, 180f, 180f, shadowEnabled, shadowResolution, shadowBias, shadowImportance, shadowId)
+        nextFrameScene.addLight(position, null, radius, color, 180f, 180f, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId)
     }
 
     override fun submitSpotLight(
@@ -260,11 +260,12 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         outerConeAngle: Float,
         shadowEnabled: Boolean,
         shadowResolution: Int,
+        shadowNearPlane: Float,
         shadowBias: Float,
         shadowImportance: Float,
         shadowId: Long
     ) {
-        nextFrameScene.addLight(position, direction, radius, color, innerConeAngle, outerConeAngle, shadowEnabled, shadowResolution, shadowBias, shadowImportance, shadowId)
+        nextFrameScene.addLight(position, direction, radius, color, innerConeAngle, outerConeAngle, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId)
     }
 
     override fun pushObjectIdOverride(objectId: Long)

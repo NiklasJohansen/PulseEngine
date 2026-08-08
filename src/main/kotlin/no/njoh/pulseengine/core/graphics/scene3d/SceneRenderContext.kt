@@ -63,6 +63,7 @@ abstract class SceneRenderContext()
         color: Color,
         shadowEnabled: Boolean = false,
         shadowResolution: Int = 512,
+        shadowNearPlane: Float = 0.05f,
         shadowBias: Float = 0.005f,
         shadowImportance: Float = 1f,
         shadowId: Long = 0L
@@ -80,6 +81,7 @@ abstract class SceneRenderContext()
         outerConeAngle: Float,
         shadowEnabled: Boolean = false,
         shadowResolution: Int = 512,
+        shadowNearPlane: Float = 0.05f,
         shadowBias: Float = 0.005f,
         shadowImportance: Float = 1f,
         shadowId: Long = 0L

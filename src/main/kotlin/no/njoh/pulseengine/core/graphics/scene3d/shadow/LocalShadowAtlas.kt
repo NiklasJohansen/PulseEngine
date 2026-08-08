@@ -422,8 +422,8 @@ class LocalShadowAtlas
         val up = if (abs(direction.dot(WORLD_UP)) > 0.99f) WORLD_FORWARD else WORLD_UP
         tmpCenter.set(position).add(direction)
         val fov = min(max(outerConeAngle * 2f, 1f), 178f).toRadians()
-        val near = 0.05f
-        val far = max(radius, near + 0.01f)
+        val far = getShadowFarPlane()
+        val near = getShadowNearPlane(far)
         tmpView.identity().lookAt(position, tmpCenter, up)
         return tmpProjection.identity().perspective(fov, 1f, near, far).mul(tmpView)
     }
@@ -431,12 +431,17 @@ class LocalShadowAtlas
     private fun RenderLight.getPointShadowViewProjection(faceIndex: Int): Matrix4f
     {
         val direction = POINT_DIRECTIONS[faceIndex]
-        val near = 0.05f
-        val far = max(radius, near + 0.01f)
+        val far = getShadowFarPlane()
+        val near = getShadowNearPlane(far)
         tmpCenter.set(position).add(direction)
         tmpView.identity().lookAt(position, tmpCenter, POINT_UPS[faceIndex])
         return tmpProjection.identity().perspective(90f.toRadians(), 1f, near, far).mul(tmpView)
     }
+
+    private fun RenderLight.getShadowFarPlane() = max(radius, MIN_SHADOW_NEAR_PLANE + MIN_SHADOW_DEPTH_RANGE)
+
+    private fun RenderLight.getShadowNearPlane(farPlane: Float) =
+        shadowNearPlane.coerceIn(MIN_SHADOW_NEAR_PLANE, farPlane - MIN_SHADOW_DEPTH_RANGE)
 
     fun getShadowFace(index: Int) = shadowFaces[index]
 
@@ -510,6 +515,8 @@ class LocalShadowAtlas
         private const val BACKGROUND_BLOCK_UPDATE_SCORE = 0f
         private const val INITIAL_LAST_RENDERED_FRAME = -1_000_000
         private const val SHADOW_MATRIX_EPSILON = 0.00001f
+        private const val MIN_SHADOW_NEAR_PLANE = 0.001f
+        private const val MIN_SHADOW_DEPTH_RANGE = 0.01f
 
         private val WORLD_UP = Vector3f(0f, 1f, 0f)
         private val WORLD_FORWARD = Vector3f(0f, 0f, 1f)

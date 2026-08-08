@@ -50,6 +50,7 @@ class RenderScene
         outerConeAngle: Float,
         shadowEnabled: Boolean,
         shadowResolution: Int,
+        shadowNearPlane: Float,
         shadowBias: Float,
         shadowImportance: Float,
         shadowId: Long
@@ -70,6 +71,7 @@ class RenderScene
         light.innerConeAngle = min(innerConeAngle.sanitizeAngle(), light.outerConeAngle)
         light.shadowEnabled = shadowEnabled
         light.shadowResolution = shadowResolution.coerceAtLeast(0)
+        light.shadowNearPlane = shadowNearPlane.sanitizeNonNegative()
         light.shadowBias = shadowBias.sanitizeNonNegative()
         light.shadowImportance = shadowImportance.sanitizeNonNegative()
         light.shadowId = shadowId

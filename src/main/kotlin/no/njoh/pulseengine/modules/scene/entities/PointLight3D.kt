@@ -23,14 +23,15 @@ class PointLight3D : SceneEntity(), Light3D, Named
 
     @Prop("Shadow", i=1)          var shadowEnabled    = false
     @Prop("Shadow", i=2, min=64f) var shadowResolution = 512
-    @Prop("Shadow", i=3, min=0f)  var shadowBias       = 0.005f
-    @Prop("Shadow", i=4, min=0f)  var shadowImportance = 1f
+    @Prop("Shadow", i=3, min=0f)  var shadowNearPlane  = 0.05f
+    @Prop("Shadow", i=4, min=0f)  var shadowBias       = 0.005f
+    @Prop("Shadow", i=5, min=0f)  var shadowImportance = 1f
 
     private val intensityColor = Color()
 
     override fun onRenderLight(engine: PulseEngine, context: SceneRenderContext)
     {
         intensityColor.setFrom(color).multiplyRgb(intensity)
-        context.submitPointLight(position, radius, intensityColor, shadowEnabled, shadowResolution, shadowBias, shadowImportance, id)
+        context.submitPointLight(position, radius, intensityColor, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, id)
     }
 }

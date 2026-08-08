@@ -13,6 +13,7 @@ class RenderLight
     var innerConeAngle   = 180f
     var shadowEnabled    = false
     var shadowResolution = 512
+    var shadowNearPlane  = 0.05f
     var shadowBias       = 0.005f
     var shadowImportance = 1f
     var shadowId         = 0L
