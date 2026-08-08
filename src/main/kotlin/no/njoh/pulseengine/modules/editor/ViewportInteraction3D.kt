@@ -12,6 +12,8 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RG32I
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.GridRenderer
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.ViewMode
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ObjectIdRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ObjectOutlineRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
@@ -91,7 +93,6 @@ class ViewportInteraction3D(
     private var outlineSelectionDirty = true
     private val orbitPivot = Vector3f()
     private var orbitPivotValid = false
-
     private val ray = SceneEditor3DMath.Ray()
     private val tmpV0 = Vector3f()
     private val tmpV1 = Vector3f()
@@ -138,6 +139,8 @@ class ViewportInteraction3D(
 
     override fun onUpdate(engine: PulseEngine, context: ViewportContext)
     {
+        updateViewMode(engine, context.viewMode)
+
         val objectIdRenderer = getObjectIdRenderer(engine)
         objectIdRenderer?.enabled = true
 
@@ -296,6 +299,7 @@ class ViewportInteraction3D(
 
     override fun onDestroy(engine: PulseEngine, context: ViewportContext)
     {
+        updateViewMode(engine, ViewMode.SHADED)
         engine.input.setCursorType(CursorType.ARROW)
         val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
         val renderer = surface?.getRenderer<GridRenderer>()
@@ -319,6 +323,13 @@ class ViewportInteraction3D(
         {
             surface.deleteRenderer(renderer)
         }
+    }
+
+    private fun updateViewMode(engine: PulseEngine, viewMode: ViewMode)
+    {
+        val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE) ?: return
+        surface.getRenderer<ModelRenderer>()?.viewMode = viewMode
+        surface.config.drawPostEffects = viewMode == ViewMode.SHADED
     }
 
     private fun consumePickResult(engine: PulseEngine, context: ViewportContext)
@@ -572,12 +583,14 @@ class ViewportInteraction3D(
 
     override fun onEditorActivated(engine: PulseEngine, context: ViewportContext)
     {
+        updateViewMode(engine, context.viewMode)
         reset(engine, context)
         updateOrbitPivotFromSelection(context)
     }
 
     override fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext)
     {
+        updateViewMode(engine, ViewMode.SHADED)
         val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
         val renderer = surface?.getRenderer<GridRenderer>()
         if (renderer != null)

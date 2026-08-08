@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.graphics.camera.Camera
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.ViewMode
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
 import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
@@ -90,6 +91,7 @@ class SceneEditor(
     private var collapsedPropertyHeaders = mutableListOf<String>()
     private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
     private var showGrid = true
+    private var viewMode = ViewMode.SHADED
     private var sceneHierarchy: SceneHierarchy? = null
 
     // Camera
@@ -194,7 +196,14 @@ class SceneEditor(
         inspectorUI = RowPanel()
         systemPropertiesUI = RowPanel()
 
-        // Create content
+        // View mode menu
+        val modes = when (viewportInteraction.mode)
+        {
+            MODE_2D -> listOf(ViewMode.SHADED)
+            MODE_3D -> ViewMode.entries
+        }
+
+        // Create menu bar content
         val menuBar = uiFactory.createMenuBarUI(
             MenuBarButton("File", listOf(
                 MenuBarItem("New...")     { onNewScene(engine) },
@@ -204,15 +213,42 @@ class SceneEditor(
                 MenuBarItem("Close")      { closeActiveEditorScene(engine) }
             )),
             MenuBarButton("View", listOf(
-                MenuBarItem("Entity Inspector") { createInspectorWindow() },
-                MenuBarItem("Scene Hierarchy")  { createSceneHierarchyWindow(engine) },
-                MenuBarItem("Scene systems")    { createSceneSystemsPropertyWindow(engine) },
-                MenuBarItem("Viewport")         { createViewportWindow(engine) },
-                MenuBarItem("Grid")             { showGrid = !showGrid },
-                MenuBarItem("Reset")
+                MenuBarItem(
+                    labelText = "Mode",
+                    items = modes.map { MenuBarItem(it.displayName, isChecked = { viewMode == it }, onClick = { viewMode = it }) }
+                ),
+                MenuBarItem(
+                    labelText = "Grid",
+                    isChecked = { showGrid },
+                    onClick = { showGrid = !showGrid }
+                ),
+                MenuBarItem(
+                    labelText = "Entity Inspector",
+                    isChecked = { isEditorWindowOpen(INSPECTOR_WINDOW_ID) },
+                    onClick = { toggleEditorWindow(INSPECTOR_WINDOW_ID, onCreate = ::createInspectorWindow) }
+                ),
+                MenuBarItem(
+                    labelText = "Scene Hierarchy",
+                    isChecked = { isEditorWindowOpen(SCENE_HIERARCHY_WINDOW_ID) },
+                    onClick = {
+                        toggleEditorWindow(
+                            windowId = SCENE_HIERARCHY_WINDOW_ID,
+                            onCreate = { createSceneHierarchyWindow(engine) },
+                            onClosed = { sceneHierarchy = null }
+                        )
+                    }
+                ),
+                MenuBarItem(
+                    labelText = "Scene systems",
+                    isChecked = { isEditorWindowOpen(SCENE_SYSTEMS_WINDOW_ID) },
+                    onClick = { toggleEditorWindow(SCENE_SYSTEMS_WINDOW_ID, onCreate = { createSceneSystemsPropertyWindow(engine) }) }
+                ),
+                MenuBarItem("Open Viewport") { createViewportWindow(engine) },
+                MenuBarItem("Reset Editor")
                 {
                     createSceneEditorUI(engine)
                     showGrid = true
+                    viewMode = ViewMode.SHADED
                     viewportInteraction.resetCamera(engine, viewportContext)
                     captureActiveEditorCamera(engine)
                 }
@@ -251,7 +287,7 @@ class SceneEditor(
 
     private fun createSceneSystemsPropertyWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElement("Scene Systems") != null)
+        if (isEditorWindowOpen(SCENE_SYSTEMS_WINDOW_ID))
             return // Already exists
 
         updateSceneSystemProperties(engine)
@@ -260,14 +296,14 @@ class SceneEditor(
             propertiesRowPanel = systemPropertiesUI,
             onChanged = { markActiveEditorSceneDirty(engine) }
         )
-        val sceneSystemWindow = uiFactory.createWindowUI("Scene Systems", "GEARS")
+        val sceneSystemWindow = uiFactory.createWindowUI(SCENE_SYSTEMS_WINDOW_ID, "GEARS")
         sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
         dockingUI.insertRight(sceneSystemWindow)
     }
 
     private fun createSceneHierarchyWindow(engine: PulseEngine)
     {
-        if (dockingUI.findElement("Scene Hierarchy") != null)
+        if (isEditorWindowOpen(SCENE_HIERARCHY_WINDOW_ID))
             return // Already exists
 
         sceneHierarchy = SceneHierarchy.build(
@@ -290,27 +326,43 @@ class SceneEditor(
         )
         sceneHierarchy!!.reloadEntitiesFromActiveScene()
 
-        val window = uiFactory.createWindowUI(title = "Scene Hierarchy", iconName = "LIST", onClosed = { sceneHierarchy = null })
-        window.id = "Scene Hierarchy" // Keep the stable ID used by saved editor layouts
+        val window = uiFactory.createWindowUI(title = SCENE_HIERARCHY_WINDOW_ID, iconName = "LIST", onClosed = { sceneHierarchy = null })
+        window.id = SCENE_HIERARCHY_WINDOW_ID // Keep the stable ID used by saved editor layouts
         window.body.addChildren(sceneHierarchy!!.ui)
         dockingUI.insertLeft(window)
     }
 
     private fun createInspectorWindow()
     {
-        if (dockingUI.findElement("Inspector") != null)
+        if (isEditorWindowOpen(INSPECTOR_WINDOW_ID))
             return // Already exists
 
         val inspectorWindow = uiFactory.createWindowUI("Entity Inspector", "CUBE")
-        inspectorWindow.id = "Inspector" // Keep the stable ID used by saved editor layouts
+        inspectorWindow.id = INSPECTOR_WINDOW_ID // Keep the stable ID used by saved editor layouts
         val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
         inspectorWindow.body.addChildren(propertyPanel)
 
-        val propWindow = dockingUI.findElement("Scene Hierarchy")
+        val propWindow = dockingUI.findElement(SCENE_HIERARCHY_WINDOW_ID)
         if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
             dockingUI.insertInsideBottom(target = propWindow as WindowPanel, inspectorWindow)
         else
             dockingUI.insertLeft(inspectorWindow)
+    }
+
+    private fun isEditorWindowOpen(windowId: String) = dockingUI.findElement(windowId) != null
+
+    private fun toggleEditorWindow(windowId: String, onCreate: () -> Unit, onClosed: () -> Unit = { })
+    {
+        val window = dockingUI.findElement(windowId) as? WindowPanel
+        if (window == null)
+        {
+            onCreate()
+        }
+        else
+        {
+            dockingUI.removeWindow(window)
+            onClosed()
+        }
     }
 
     private fun createViewportWindow(engine: PulseEngine)
@@ -907,6 +959,8 @@ class SceneEditor(
 
     internal fun isGridVisible() = showGrid
 
+    internal fun viewMode() = viewMode
+
     internal fun previewViewportSelection(entities: List<SceneEntity>) = replaceEntitySelection(entities)
 
     internal fun commitViewportSelection(engine: PulseEngine) = refreshEntitySelectionUi(engine)
@@ -1145,4 +1199,11 @@ class SceneEditor(
     )
 
     private fun KType.toInspectorName() = toString().replace("kotlin.", "")
+
+    private companion object
+    {
+        const val INSPECTOR_WINDOW_ID = "Inspector"
+        const val SCENE_HIERARCHY_WINDOW_ID = "Scene Hierarchy"
+        const val SCENE_SYSTEMS_WINDOW_ID = "Scene Systems"
+    }
 }
