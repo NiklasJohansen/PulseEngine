@@ -133,7 +133,7 @@ class SurfaceImpl(
 
     override fun runPostProcessingPipeline(engine: PulseEngineInternal)
     {
-        if (postEffects.isEmpty()) return // No post-processing effects to run
+        if (!config.drawPostEffects || postEffects.isEmpty()) return
 
         // Make sure the view port is set to the same size as the scaled surface texture
         ViewportState.apply(this)
@@ -225,7 +225,8 @@ class SurfaceImpl(
 
     override fun getTexture(index: Int, final: Boolean): RenderTexture
     {
-        if (final) postEffects.forEachReversed { effect -> effect.getTexture(index)?.let { return it } }
+        if (final && config.drawPostEffects)
+            postEffects.forEachReversed { effect -> effect.getTexture(index)?.let { return it } }
 
         return renderTarget.getTexture(index) ?: throw RuntimeException(
             "Failed to get texture with index: $index from surface with name: ${config.name}. " +

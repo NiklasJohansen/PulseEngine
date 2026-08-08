@@ -270,6 +270,7 @@ open class GraphicsImpl : GraphicsInternal
                 height = surfaceHeight,
                 zOrder = zOrder ?: this.lastZOrder--,
                 isVisible = isVisible,
+                drawPostEffects = true,
                 drawWireframe = false,
                 mipmapGenerators = mipmapGenerators,
                 textureScale = textureScale,

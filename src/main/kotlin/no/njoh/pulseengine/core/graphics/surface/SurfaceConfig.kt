@@ -18,6 +18,7 @@ interface SurfaceConfig
     val height: Int
     val zOrder: Int
     val isVisible: Boolean
+    var drawPostEffects: Boolean
     var drawWireframe: Boolean
     val textureScale: Float
     val textureFormat: TextureFormat
@@ -36,6 +37,7 @@ class SurfaceConfigInternal(
     override var height: Int,
     override var zOrder: Int,
     override var isVisible: Boolean,
+    override var drawPostEffects: Boolean,
     override var drawWireframe: Boolean,
     override var textureScale: Float,
     override var textureFormat: TextureFormat,

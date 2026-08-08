@@ -30,6 +30,7 @@ class NoOpSurface: SurfaceInternal()
         height = 0,
         zOrder = 0,
         isVisible = false,
+        drawPostEffects = false,
         drawWireframe = false,
         textureScale = 1f,
         textureFormat = TextureFormat.RGBA8,
