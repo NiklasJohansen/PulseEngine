@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.shared.utils
 
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import gnu.trove.map.hash.TObjectLongHashMap
+import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import java.io.File
 
@@ -38,18 +39,17 @@ object FileWatcher
         watcherTask.running = false
     }
 
-    private fun getFiles(path: String, fileTypes: List<String>, maxDepth: Int): List<File>
+    private inline fun forEachFile(path: String, fileTypes: List<String>, maxDepth: Int, action: (File) -> Unit)
     {
         val file = File(path)
         return when
         {
-            file.isFile -> listOf(file)
+            file.isFile -> action(file)
             file.isDirectory -> file
                 .walkTopDown()
                 .maxDepth(maxDepth)
-                .filter { f -> f.isFile && (fileTypes.isEmpty() || fileTypes.any { f.name.endsWith(it) } ) }
-                .toList()
-            else -> emptyList()
+                .forEach { f -> if (f.isFile && (fileTypes.isEmpty() || fileTypes.anyMatches { f.name.endsWith(it) } )) action(f) }
+            else -> {}
         }
     }
 
@@ -65,10 +65,11 @@ object FileWatcher
                 val now = System.currentTimeMillis()
                 watchers.forEachFiltered({ it.lastCheckTimeMillis + it.checkIntervalMillis < now })
                 {
-                    getFiles(it.path, it.fileTypes, it.maxSearchDepth).forEachFast { file ->
-                        if (it.lastModifiedTimes[file] != file.lastModified())
+                    forEachFile(it.path, it.fileTypes, it.maxSearchDepth) { file ->
+
+                        if (it.lastModifiedTimes[file.path] != file.lastModified())
                         {
-                            it.lastModifiedTimes[file] = file.lastModified()
+                            it.lastModifiedTimes.put(file.path, file.lastModified())
                             it.onFileChanged(file.absolutePath.replace("\\", "/"))
                         }
                     }
@@ -86,9 +87,9 @@ object FileWatcher
         val checkIntervalMillis: Int,
         val onFileChanged: (filePath: String) -> Unit,
     ) {
-        var lastCheckTimeMillis: Long = 0
-        val lastModifiedTimes = getFiles(path, fileTypes, maxSearchDepth)
-            .associateWith { it.lastModified() }
-            .toMutableMap()
+        var lastCheckTimeMillis = 0L
+        val lastModifiedTimes = TObjectLongHashMap<String>()
+
+        init { forEachFile(path, fileTypes, maxSearchDepth) { lastModifiedTimes.put(it.path, it.lastModified()) } }
     }
 }

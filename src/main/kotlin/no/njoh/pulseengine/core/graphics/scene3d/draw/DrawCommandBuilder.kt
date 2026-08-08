@@ -34,8 +34,9 @@ class DrawCommandBuilder(
     private lateinit var gpuCommandBuffer: StreamingIntBufferObject
     private lateinit var cpuCommandBuffer: StreamingIntBufferObject
 
+    private val payloadBuilderPool = DynamicList<DrawPayloadBuilder>(1)
+    private val gpuCullDispatchPool = DynamicList<GpuCullDispatch>(8)
     private val pendingGpuCullDispatches = DynamicList<GpuCullDispatch>(8)
-    private val payloadBuilders = DynamicList<DrawPayloadBuilder>(1)
     private var visibleInstanceCapacity = 0
 
     private var initialized = false
@@ -74,6 +75,7 @@ class DrawCommandBuilder(
     fun beginFrame()
     {
         visibleInstanceCapacity = 0
+        gpuCullDispatchPool += pendingGpuCullDispatches
         pendingGpuCullDispatches.clear()
 
         cpuCommandsBufferSubmitted = false
@@ -107,7 +109,7 @@ class DrawCommandBuilder(
     @PublishedApi
     internal fun acquirePayloadBuilder(frustumPlaneSets: Array<FrustumPlaneSet>, frustumPlaneSetCount: Int): DrawPayloadBuilder
     {
-        val builder = payloadBuilders.removeLastOrNull() ?: DrawPayloadBuilder()
+        val builder = payloadBuilderPool.removeLastOrNull() ?: DrawPayloadBuilder()
 
         if (gpuCullingSupported)
         {
@@ -135,7 +137,7 @@ class DrawCommandBuilder(
     internal fun releasePayloadBuilder(builder: DrawPayloadBuilder)
     {
         builder.clear()
-        payloadBuilders += builder
+        payloadBuilderPool += builder
     }
 
     @PublishedApi
@@ -194,7 +196,8 @@ class DrawCommandBuilder(
 
     fun destroy()
     {
-        payloadBuilders.clear()
+        payloadBuilderPool.clear()
+        gpuCullDispatchPool.clear()
         if (this::program.isInitialized) program.destroy()
         if (this::cpuCommandBuffer.isInitialized) cpuCommandBuffer.destroy()
         if (this::gpuCommandBuffer.isInitialized) gpuCommandBuffer.destroy()
@@ -267,15 +270,15 @@ class DrawCommandBuilder(
 
         visibleInstanceCapacity += instanceCount
 
-        pendingGpuCullDispatches += GpuCullDispatch(
-            commandBaseIndex = commandBaseIndex,
-            commandCount = commandCount,
-            cullInstanceCount = builder.gpuCullInstanceCount,
-            cullItemIndexOffset = builder.gpuCullItemIndexOffset,
-            cullItemBatchIndexOffset = builder.gpuCullItemBatchIndexOffset,
-            frustumMetadataOffset = frustumMetadataOffset,
-            frustumCount = cullViewCount
-        )
+        val dispatch = gpuCullDispatchPool.removeLastOrNull() ?: GpuCullDispatch()
+        dispatch.commandBaseIndex = commandBaseIndex
+        dispatch.commandCount = commandCount
+        dispatch.cullInstanceCount = builder.gpuCullInstanceCount
+        dispatch.cullItemIndexOffset = builder.gpuCullItemIndexOffset
+        dispatch.cullItemBatchIndexOffset = builder.gpuCullItemBatchIndexOffset
+        dispatch.frustumMetadataOffset = frustumMetadataOffset
+        dispatch.frustumCount = cullViewCount
+        pendingGpuCullDispatches += dispatch
 
         return IndirectDrawPayload(
             cullViewCount = payloadCullViewCount,
@@ -360,14 +363,14 @@ class DrawCommandBuilder(
         instanceBuffer.instanceIndexMode != UNIFORM_OFFSET
 
     private data class GpuCullDispatch(
-        val commandBaseIndex: Int,
-        val commandCount: Int,
-        val cullInstanceCount: Int,
-        val cullItemIndexOffset: Int,
-        val cullItemBatchIndexOffset: Int,
-        val frustumMetadataOffset: Int,
-        val frustumCount: Int
-    )
+        var commandBaseIndex: Int = -1,
+        var commandCount: Int = -1,
+        var cullInstanceCount: Int = -1,
+        var cullItemIndexOffset: Int = -1,
+        var cullItemBatchIndexOffset: Int = -1,
+        var frustumMetadataOffset: Int = -1,
+        var frustumCount: Int = -1
+     )
 
     companion object
     {

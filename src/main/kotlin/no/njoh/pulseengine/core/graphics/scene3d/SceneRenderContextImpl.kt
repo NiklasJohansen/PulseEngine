@@ -65,7 +65,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     override fun initFrame()
     {
-        objectIdOverrides.clear()
+        objectIdOverrides.resetQuick()
         frameNumber++
 
         nextFrameScene = thisFrameScene.also { thisFrameScene = nextFrameScene }

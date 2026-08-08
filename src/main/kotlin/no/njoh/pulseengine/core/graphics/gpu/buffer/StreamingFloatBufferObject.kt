@@ -35,7 +35,7 @@ class StreamingFloatBufferObject private constructor(
 
     inline fun fill(amount: Int, fillBuffer: StreamingFloatBufferObject.(i: Int) -> Unit)
     {
-        ensureCapacity(size + amount)
+        ensureWriteCapacity(size + amount)
         fillBuffer(this, size)
     }
 

@@ -485,7 +485,7 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             bodies.forEach { it.destroy() }
             bodies.clear()
             shapesByNativeId.clear()
-            destroyedShapeIds.clear()
+            destroyedShapeIds.resetQuick()
             cookedMeshes.forEach { (_, mesh) -> b3DestroyMesh(mesh) }
             cookedMeshes.clear()
         }
@@ -1015,7 +1015,7 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             shapesByNativeId.remove(destroyedShapeIds[index])
             index++
         }
-        destroyedShapeIds.clear()
+        destroyedShapeIds.resetQuick()
     }
 
     private fun findShape(shapeId: MemorySegment) = shapesByNativeId[shapeKey(shapeId)]
