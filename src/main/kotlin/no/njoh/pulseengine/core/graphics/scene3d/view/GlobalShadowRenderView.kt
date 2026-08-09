@@ -5,36 +5,31 @@ import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload.EmptyDrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.draw.RenderBucket
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
-import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
 
 class GlobalShadowRenderView : RenderView(GLOBAL_SHADOW)
 {
-    val bucket = RenderBucket()
+    val opaqueBucket = RenderBucket()
+    val maskedBucket = RenderBucket()
 
     var drawPayload: DrawPayload = EmptyDrawPayload
         private set
 
     private var cascadeFrustumPlaneSets = arrayOf<FrustumPlaneSet>()
-    private val allItems = DynamicList<RenderItem>(1024)
-
     override fun beginFrame()
     {
         drawPayload = EmptyDrawPayload
-        bucket.clear()
+        opaqueBucket.clear()
+        maskedBucket.clear()
     }
 
     override fun prepare(scene: RenderScene, builder: DrawCommandBuilder)
     {
-        allItems.clear()
-        allItems += scene.opaqueItems
-        allItems += scene.maskedItems
-
         drawPayload = builder.prepareDrawPayload(cascadeFrustumPlaneSets)
         {
-            bucket.fill(allItems, renderPassMask)
+            opaqueBucket.fill(scene.opaqueItems, renderPassMask)
+            maskedBucket.fill(scene.maskedItems, renderPassMask)
         }
     }
 

@@ -31,30 +31,39 @@ import org.lwjgl.opengl.GL11.*
 import kotlin.math.*
 
 class CascadedShadowMapRenderer(
-    var enabled: Boolean      = true,
+    enabled: Boolean          = true,
     var resolution: Int       = 4096,
     var splitLambda: Float    = 0.5f,
     var shadowDistance: Float = 0f,
+    var maxCascadeUpdatesPerFrame: Int = 2,
     override val order: Int   = 0,
     val renderViewGroup: RenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
 
-    private lateinit var staticProgram: ShaderProgram
-    private lateinit var skinnedProgram: ShaderProgram
-    private lateinit var programs: ShaderProgramSet
+    var enabled = enabled
+        set(value)
+        {
+            if (value && !field) cascadeStateInitialized = false
+            field = value
+        }
+
+    private lateinit var opaqueStaticProgram: ShaderProgram
+    private lateinit var opaqueSkinnedProgram: ShaderProgram
+    private lateinit var maskedStaticProgram: ShaderProgram
+    private lateinit var maskedSkinnedProgram: ShaderProgram
+    private lateinit var opaquePrograms: ShaderProgramSet
+    private lateinit var maskedPrograms: ShaderProgramSet
     private lateinit var vao: VertexArrayObject
     private lateinit var vbo: StaticBufferObject
 
     private val cascadeFrustums = Array(CASCADE_COUNT) { Frustum() }
     private val lightDirection = Vector3f()
-    private var readViewProjectionMatrices = Array(CASCADE_COUNT) { Matrix4f() }
-    private var writeViewProjectionMatrices = Array(CASCADE_COUNT) { Matrix4f() }
-    private var readCascadeSplits = FloatArray(CASCADE_COUNT)
-    private var writeCascadeSplits = FloatArray(CASCADE_COUNT)
-    private var readCascadeSizeMeters = FloatArray(CASCADE_COUNT)
-    private var writeCascadeSizeMeters = FloatArray(CASCADE_COUNT)
-    private var readCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
-    private var writeCascadeFrustumPlaneSets = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
+
+    private var renderState = CascadeFrameState()
+    private var buildState = CascadeFrameState()
+    private var nextFarCascade = 1
+    private var cascadeStateInitialized = false
+    private val cascadeSplitScratch = FloatArray(CASCADE_COUNT)
 
     private lateinit var viewKey: RenderViewKey<GlobalShadowRenderView>
 
@@ -62,40 +71,39 @@ class CascadedShadowMapRenderer(
     {
         viewKey = RenderViewKey(renderViewGroup ?: surface.viewGroup) { GlobalShadowRenderView() }
 
-        if (!this::staticProgram.isInitialized)
+        if (!this::opaqueStaticProgram.isInitialized)
         {
-            staticProgram = ShaderProgram.create(
-                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/shadow.vert", ::transformModelVertexShader)),
-                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/shadow.frag"))
-            )
-            skinnedProgram = ShaderProgram.create(
-                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/shadow_skinned.vert", ::transformModelVertexShader)),
-                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/shadow.frag"))
-            )
+            val staticVertex    = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/shadow.vert", ::transformModelVertexShader))
+            val skinnedVertex   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/shadow_skinned.vert", ::transformModelVertexShader))
+            val opaqueFragment  = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/shadow_opaque.frag"))
+            val maskedFragment  = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/shadow.frag"))
+
+            opaqueStaticProgram  = ShaderProgram.create(staticVertex, opaqueFragment)
+            opaqueSkinnedProgram = ShaderProgram.create(skinnedVertex, opaqueFragment)
+            maskedStaticProgram  = ShaderProgram.create(staticVertex, maskedFragment)
+            maskedSkinnedProgram = ShaderProgram.create(skinnedVertex, maskedFragment)
+            opaquePrograms = ShaderProgramSet(opaqueStaticProgram, opaqueSkinnedProgram)
+            maskedPrograms = ShaderProgramSet(maskedStaticProgram, maskedSkinnedProgram)
             vbo = StaticBufferObject.createFullscreenUvTriangleArrayBuffer()
-            programs = ShaderProgramSet(staticProgram, skinnedProgram)
         }
 
         vao = VertexArrayObject.createAndBind()
         vbo.bind()
-        staticProgram.bind()
-        VertexAttributeLayout().withAttribute("position", 2, GL_FLOAT).bind(staticProgram)
+        opaqueStaticProgram.bind()
+        VertexAttributeLayout().withAttribute("position", 2, GL_FLOAT).bind(opaqueStaticProgram)
         vao.release()
     }
 
     override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
-        readViewProjectionMatrices = writeViewProjectionMatrices.also { writeViewProjectionMatrices = readViewProjectionMatrices }
-        readCascadeSplits = writeCascadeSplits.also { writeCascadeSplits = readCascadeSplits }
-        readCascadeSizeMeters = writeCascadeSizeMeters.also { writeCascadeSizeMeters = readCascadeSizeMeters }
-        readCascadeFrustumPlaneSets = writeCascadeFrustumPlaneSets.also { writeCascadeFrustumPlaneSets = readCascadeFrustumPlaneSets }
+        renderState = buildState.also { buildState = renderState }
     }
 
     override fun declareRenderViews(engine: PulseEngineInternal, surface: SurfaceInternal, context: SceneRenderContextInternal)
     {
         if (!enabled) return
 
-        context.requestView(viewKey).setFrustumPlaneSets(readCascadeFrustumPlaneSets)
+        context.requestView(viewKey).setFrustumPlaneSets(renderState.cullingPlanes)
         increaseBatchSize() // Ensure that the batch size is at least 1
     }
 
@@ -107,14 +115,15 @@ class CascadedShadowMapRenderer(
 
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LEQUAL)
+        glDepthMask(true)
         glColorMask(false, false, false, false)
         glEnable(GL_POLYGON_OFFSET_FILL)
         glPolygonOffset(SHADOW_SLOPE_BIAS, SHADOW_CONST_BIAS)
 
-        staticProgram.bind()
-        staticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        skinnedProgram.bind()
-        skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+        maskedStaticProgram.bind()
+        maskedStaticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+        maskedSkinnedProgram.bind()
+        maskedSkinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
 
         render(view)
 
@@ -129,26 +138,42 @@ class CascadedShadowMapRenderer(
 
         for (cascadeIdx in 0 until CASCADE_COUNT)
         {
+            if (!renderState.shouldUpdate[cascadeIdx])
+                continue
+
             measure(id = "cascade", label = { "Cascade #" plus cascadeIdx })
             {
-                val col = cascadeIdx % 2
-                val row = cascadeIdx / 2
-                glViewport(col * halfRes, row * halfRes, halfRes, halfRes)
+                val x = (cascadeIdx % 2) * halfRes
+                val y = (cascadeIdx / 2) * halfRes
 
-                staticProgram.bind()
-                staticProgram.setUniform("viewProjection", readViewProjectionMatrices[cascadeIdx])
-                skinnedProgram.bind()
-                skinnedProgram.setUniform("viewProjection", readViewProjectionMatrices[cascadeIdx])
+                glEnable(GL_SCISSOR_TEST)
+                glScissor(x, y, halfRes, halfRes)
+                glClearDepth(1.0)
+                glClear(GL_DEPTH_BUFFER_BIT)
+                glDisable(GL_SCISSOR_TEST)
+                glViewport(x, y, halfRes, halfRes)
 
-                drawRenderBucket(view.bucket, view.drawPayload, programs, cascadeIdx)
+                opaqueStaticProgram.bind()
+                opaqueStaticProgram.setUniform("viewProjection", renderState.viewProjections[cascadeIdx])
+                opaqueSkinnedProgram.bind()
+                opaqueSkinnedProgram.setUniform("viewProjection", renderState.viewProjections[cascadeIdx])
+                maskedStaticProgram.bind()
+                maskedStaticProgram.setUniform("viewProjection", renderState.viewProjections[cascadeIdx])
+                maskedSkinnedProgram.bind()
+                maskedSkinnedProgram.setUniform("viewProjection", renderState.viewProjections[cascadeIdx])
+
+                drawRenderBucket(view.opaqueBucket, view.drawPayload, opaquePrograms, cascadeIdx)
+                drawRenderBucket(view.maskedBucket, view.drawPayload, maskedPrograms, cascadeIdx)
             }
         }
     }
 
     override fun destroy(engine: PulseEngineInternal)
     {
-        staticProgram.destroy()
-        skinnedProgram.destroy()
+        opaqueStaticProgram.destroy()
+        opaqueSkinnedProgram.destroy()
+        maskedStaticProgram.destroy()
+        maskedSkinnedProgram.destroy()
         vbo.destroy()
         vao.destroy()
     }
@@ -160,13 +185,18 @@ class CascadedShadowMapRenderer(
         // Compute cascade split distances
         val camNear = camera.nearPlane
         val camFar  = if (shadowDistance > 0f) min(shadowDistance, camera.farPlane) else camera.farPlane
-        val cascadeSplitDistances = getCascadeSplitDistances(camNear, camFar, splitLambda, writeCascadeSplits)
+        val cascadeSplitDistances = getCascadeSplitDistances(camNear, camFar, splitLambda)
+        prepareCascadeUpdates(cascadeSplitDistances)
 
         // Derive aspect ratio from the camera's projection matrix
         val aspectRatio = camera.projectionMatrix.m11() / camera.projectionMatrix.m00()
         
         for (cascadeIdx in 0 until CASCADE_COUNT)
         {
+            if (!buildState.shouldUpdate[cascadeIdx])
+                continue
+
+            buildState.splitDistances[cascadeIdx] = cascadeSplitDistances[cascadeIdx]
             val splitFar = cascadeSplitDistances[cascadeIdx]
             val overlappedSplitNear = getOverlappedCascadeSplitNear(cascadeIdx, camNear, cascadeSplitDistances)
 
@@ -186,7 +216,7 @@ class CascadedShadowMapRenderer(
             // This is used to create a tight orthographic projection for the cascade.
             val frustumBoundingSphereRadius = getFrustumBoundingSphereRadius(camera.fov.toRadians(), aspectRatio, overlappedSplitNear, splitFar)
             val cascadeWorldSize = frustumBoundingSphereRadius * 2f
-            writeCascadeSizeMeters[cascadeIdx] = cascadeWorldSize
+            buildState.sizeMeters[cascadeIdx] = cascadeWorldSize
 
             // Project the frustum center into light space for X/Y centering
             val center = tmpVec4.set(frustumSliceCenter.x, frustumSliceCenter.y, frustumSliceCenter.z, 1f).mul(lightViewMatrix)
@@ -219,17 +249,17 @@ class CascadedShadowMapRenderer(
             zMin -= SHADOW_BACKOFF_METERS
 
             // Build the orthographic projection matrix for this cascade slice
-            writeViewProjectionMatrices[cascadeIdx]
+            buildState.viewProjections[cascadeIdx]
                 .identity()
                 .ortho(xMin, xMax, yMin, yMax, -zMax, -zMin)
                 .mul(lightViewMatrix)
 
             // Build the cascade and receiver frustum for this cascade slice
-            cascadeFrustums[cascadeIdx].setForViewProjection(writeViewProjectionMatrices[cascadeIdx])
+            cascadeFrustums[cascadeIdx].setForViewProjection(buildState.viewProjections[cascadeIdx])
             receiverFrustum.setForViewProjection(frustumSliceViewProjection)
 
             // Build receiver-based caster culling planes for this cascade slice
-            writeCascadeFrustumPlaneSets[cascadeIdx].buildCascadeCasterCullPlanes(
+            buildState.cullingPlanes[cascadeIdx].buildCascadeCasterCullPlanes(
                 shadowFrustum = cascadeFrustums[cascadeIdx],
                 receiverFrustum = receiverFrustum,
                 receiverCenter = frustumSliceCenter
@@ -258,11 +288,16 @@ class CascadedShadowMapRenderer(
 
         if (sharedFar <= sharedNear) return
 
-        val cascadeSplitDistances = getCascadeSplitDistances(sharedNear, sharedFar, splitLambda, writeCascadeSplits)
+        val cascadeSplitDistances = getCascadeSplitDistances(sharedNear, sharedFar, splitLambda)
+        prepareCascadeUpdates(cascadeSplitDistances)
         val halfRes = resolution * 0.5f
 
         for (cascadeIdx in 0 until CASCADE_COUNT)
         {
+            if (!buildState.shouldUpdate[cascadeIdx])
+                continue
+
+            buildState.splitDistances[cascadeIdx] = cascadeSplitDistances[cascadeIdx]
             val splitFar = cascadeSplitDistances[cascadeIdx]
             val splitNear = getOverlappedCascadeSplitNear(cascadeIdx, sharedNear, cascadeSplitDistances)
             var xMin =  Float.MAX_VALUE
@@ -298,22 +333,22 @@ class CascadedShadowMapRenderer(
             val yCenter = floor((yMin + yMax) * 0.5f / texelSize) * texelSize
             val halfCascadeSize = baseCascadeSize * 0.5f + texelSize
             val cascadeWorldSize = halfCascadeSize * 2f
-            writeCascadeSizeMeters[cascadeIdx] = cascadeWorldSize
+            buildState.sizeMeters[cascadeIdx] = cascadeWorldSize
 
             zMax += SHADOW_BACKOFF_METERS
             zMin -= SHADOW_BACKOFF_METERS
 
-            writeViewProjectionMatrices[cascadeIdx]
+            buildState.viewProjections[cascadeIdx]
                 .identity()
                 .ortho(xCenter - halfCascadeSize, xCenter + halfCascadeSize, yCenter - halfCascadeSize, yCenter + halfCascadeSize, -zMax, -zMin)
                 .mul(lightViewMatrix)
 
-            cascadeFrustums[cascadeIdx].setForViewProjection(writeViewProjectionMatrices[cascadeIdx])
+            cascadeFrustums[cascadeIdx].setForViewProjection(buildState.viewProjections[cascadeIdx])
 
             // Multiple receiver frustums form a union, which cannot be represented by one convex
             // plane set. Keep conservative per-cascade shadow-box culling in multi-camera mode.
-            writeCascadeFrustumPlaneSets[cascadeIdx].clear()
-            cascadeFrustums[cascadeIdx].planeSet.forEach { writeCascadeFrustumPlaneSets[cascadeIdx].add(it) }
+            buildState.cullingPlanes[cascadeIdx].clear()
+            cascadeFrustums[cascadeIdx].planeSet.forEach { buildState.cullingPlanes[cascadeIdx].add(it) }
         }
     }
 
@@ -338,19 +373,51 @@ class CascadedShadowMapRenderer(
     private fun getShadowFar(camera: Camera) =
         if (shadowDistance > 0f) min(shadowDistance, camera.farPlane) else camera.farPlane
 
+    private fun prepareCascadeUpdates(cascadeSplitDistances: FloatArray)
+    {
+        // Cascades not scheduled this frame retain their previous matrices and culling planes.
+        buildState.copyFrom(renderState)
+
+        val splitsChanged = !cascadeStateInitialized || cascadeSplitDistances.indices.any {
+            abs(cascadeSplitDistances[it] - renderState.splitDistances[it]) > CASCADE_SPLIT_EPSILON
+        }
+
+        scheduleCascadeUpdates(forceAll = splitsChanged)
+        cascadeStateInitialized = true
+    }
+
+    private fun scheduleCascadeUpdates(forceAll: Boolean)
+    {
+        buildState.shouldUpdate.fill(forceAll)
+        if (forceAll)
+        {
+            nextFarCascade = 1
+            return
+        }
+
+        buildState.shouldUpdate[0] = true // Cascade zero is always refreshed.
+        val farCascadeUpdates = (maxCascadeUpdatesPerFrame.coerceIn(2, CASCADE_COUNT) - 1)
+        repeat(farCascadeUpdates)
+        {
+            buildState.shouldUpdate[nextFarCascade] = true
+            nextFarCascade++
+            if (nextFarCascade >= CASCADE_COUNT) nextFarCascade = 1
+        }
+    }
+
     /**
      * Computes cascade split distances using a split scheme that blends between logarithmic and uniform splits.
      */
-    private fun getCascadeSplitDistances(near: Float, far: Float, splitLambda: Float, cascadeSplitDistances: FloatArray): FloatArray 
+    private fun getCascadeSplitDistances(near: Float, far: Float, splitLambda: Float): FloatArray 
     {
-        for (i in 0 until cascadeSplitDistances.size)
+        for (i in 0 until cascadeSplitScratch.size)
         {
-            val p = (i + 1f) / cascadeSplitDistances.size.toFloat()
+            val p = (i + 1f) / cascadeSplitScratch.size.toFloat()
             val log = near * (far / near).pow(p)
             val uniform = near + (far - near) * p
-            cascadeSplitDistances[i] = splitLambda * log + (1f - splitLambda) * uniform
+            cascadeSplitScratch[i] = splitLambda * log + (1f - splitLambda) * uniform
         }
-        return cascadeSplitDistances
+        return cascadeSplitScratch
     }
 
     /**
@@ -488,25 +555,48 @@ class CascadedShadowMapRenderer(
     /**
      * Returns the cascade view-projection matrices.
      */
-    fun getViewProjectionMatrices() = readViewProjectionMatrices
+    fun getViewProjectionMatrices() = renderState.viewProjections
 
     /**
      * Returns the far cascade split distances in view space depth.
      */
-    fun getCascadeSplitDistances() = readCascadeSplits
+    fun getCascadeSplitDistances() = renderState.splitDistances
 
     /**
      * Returns the world-space size of each cascade in meters.
      */
-    fun getCascadeSizeMeters() = readCascadeSizeMeters
+    fun getCascadeSizeMeters() = renderState.sizeMeters
+
+    private class CascadeFrameState
+    {
+        val viewProjections = Array(CASCADE_COUNT) { Matrix4f() }
+        val splitDistances = FloatArray(CASCADE_COUNT)
+        val sizeMeters = FloatArray(CASCADE_COUNT)
+        val cullingPlanes = Array(CASCADE_COUNT) { FrustumPlaneSet.ofCapacity(MAX_FRUSTUM_PLANES) }
+        val shouldUpdate = BooleanArray(CASCADE_COUNT) { true }
+
+        fun copyFrom(source: CascadeFrameState)
+        {
+            for (cascadeIdx in 0 until CASCADE_COUNT)
+            {
+                viewProjections[cascadeIdx].set(source.viewProjections[cascadeIdx])
+                splitDistances[cascadeIdx] = source.splitDistances[cascadeIdx]
+                sizeMeters[cascadeIdx] = source.sizeMeters[cascadeIdx]
+
+                cullingPlanes[cascadeIdx].clear()
+                source.cullingPlanes[cascadeIdx].forEach { cullingPlanes[cascadeIdx].add(it) }
+            }
+        }
+    }
 
     companion object
     {
         private val WORLD_UP = Vector3f(0f, 1f, 0f)
         private val WORLD_FORWARD = Vector3f(0f, 0f, 1f)
 
-                const val CASCADE_COUNT              = 4
+        const val CASCADE_COUNT                      = 4
         private const val MAX_FRUSTUM_PLANES         = 24
+        private const val CASCADE_SPLIT_EPSILON       = 0.0001f
         private const val SHADOW_CASCADE_BLEND_RATIO = 0.15f
         private const val SHADOW_BACKOFF_METERS      = 150f
         private const val SHADOW_SLOPE_BIAS          = 3.0f

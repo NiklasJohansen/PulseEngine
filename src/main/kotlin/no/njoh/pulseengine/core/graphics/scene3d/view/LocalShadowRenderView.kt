@@ -17,7 +17,8 @@ class LocalShadowRenderView(private val atlas: LocalShadowAtlas) : RenderView(LO
 {
     private val shadowFacePasses   = DynamicList<ShadowFaceRenderPass>(16)
     private val shadowFaceFrustums = DynamicList<Frustum>(16)
-    private val shadowFaceItems    = DynamicList<RenderItem>(1024)
+    private val shadowFaceOpaqueItems = DynamicList<RenderItem>(1024)
+    private val shadowFaceMaskedItems = DynamicList<RenderItem>(256)
 
     var shadowFacePassCount = 0
         private set
@@ -54,11 +55,13 @@ class LocalShadowRenderView(private val atlas: LocalShadowAtlas) : RenderView(LO
 
             pass.drawPayload = builder.prepareDrawPayload(pass.frustumPlaneSets, pass.getNumShadowFacesToRender())
             {
-                shadowFaceItems.clear()
-                scene.opaqueItems.forEach { if (it.intersectsAnyFace(pass)) shadowFaceItems += it }
-                scene.maskedItems.forEach { if (it.intersectsAnyFace(pass)) shadowFaceItems += it }
+                shadowFaceOpaqueItems.clear()
+                scene.opaqueItems.forEach { if (it.intersectsAnyFace(pass)) shadowFaceOpaqueItems += it }
+                pass.opaqueBucket.fill(shadowFaceOpaqueItems, renderPassMask)
 
-                pass.bucket.fill(shadowFaceItems, renderPassMask)
+                shadowFaceMaskedItems.clear()
+                scene.maskedItems.forEach { if (it.intersectsAnyFace(pass)) shadowFaceMaskedItems += it }
+                pass.maskedBucket.fill(shadowFaceMaskedItems, renderPassMask)
             }
 
             shadowFacePassCount++
@@ -87,7 +90,8 @@ class LocalShadowRenderView(private val atlas: LocalShadowAtlas) : RenderView(LO
 
     class ShadowFaceRenderPass
     {
-        val bucket = RenderBucket()
+        val opaqueBucket = RenderBucket()
+        val maskedBucket = RenderBucket()
         val frustumPlaneSets = Array(POINT_LIGHT_SHADOW_FACE_COUNT) { FrustumPlaneSet.ofCapacity(0) }
         var drawPayload: DrawPayload = EmptyDrawPayload
 
@@ -95,7 +99,8 @@ class LocalShadowRenderView(private val atlas: LocalShadowAtlas) : RenderView(LO
 
         fun clear()
         {
-            bucket.clear()
+            opaqueBucket.clear()
+            maskedBucket.clear()
             drawPayload = EmptyDrawPayload
             shadowFaceIndices.resetQuick()
         }

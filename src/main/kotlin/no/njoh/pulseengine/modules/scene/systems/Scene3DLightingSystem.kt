@@ -36,21 +36,23 @@ class Scene3DLightingSystem : SceneSystem()
     @Prop(i=5, min=1f)           var sunShadowMapResolution        = 4096
     @Prop(i=6, min=0f, max=1f)   var sunShadowCascadeSplitLambda   = 0.5f
     @Prop(i=7, min=0f)           var sunShadowDistance             = 50f
-    @Prop(i=8, min=0f)           var envIntensity                  = 0.5f
-    @Prop(i=9)                   var envColor                      = Color(1f, 1f, 1f)
-    @Prop(i=10)                  var envDiffuseTexture             = AssetHandle<EnvMap>()
-    @Prop(i=11)                  var envSpecularTexture            = AssetHandle<EnvMap>()
-    @Prop(i=12)                  var targetSurfaces                = "scene3d"
-    @Prop(i=13)                  var localShadowsEnabled           = true
-    @Prop(i=14, min=256f)        var localShadowAtlasResolution    = 4096
-    @Prop(i=15, min=64f)         var localShadowTileResolution     = 512
-    @Prop(i=16, min=0f)          var localShadowMaxUpdatesPerFrame = 3
+    @Prop(i=8, min=2f, max=4f)   var sunShadowMaxUpdatesPerFrame   = 2
+    @Prop(i=9, min=0f)           var envIntensity                  = 0.5f
+    @Prop(i=10)                  var envColor                      = Color(1f, 1f, 1f)
+    @Prop(i=11)                  var envDiffuseTexture             = AssetHandle<EnvMap>()
+    @Prop(i=12)                  var envSpecularTexture            = AssetHandle<EnvMap>()
+    @Prop(i=13)                  var targetSurfaces                = "scene3d"
+    @Prop(i=14)                  var localShadowsEnabled           = true
+    @Prop(i=15, min=256f)        var localShadowAtlasResolution    = 4096
+    @Prop(i=16, min=64f)         var localShadowTileResolution     = 512
+    @Prop(i=17, min=0f)          var localShadowMaxUpdatesPerFrame = 3
 
     private var shadowMapSurfaceName        = ""
     private var localShadowAtlasSurfaceName = ""
     private var lastTargetSurfaces          = ""
     private var targetSurfaceNames          = emptyList<String>()
     private val shadowCameras               = mutableListOf<Camera>()
+    private var lastSunShadowMapResolution  = 0
     private var lastLocalAtlasResolution    = 0
 
     override fun onUpdate(engine: PulseEngine)
@@ -103,16 +105,21 @@ class Scene3DLightingSystem : SceneSystem()
     private fun setUpSunShadowMap(engine: PulseEngine, cameras: List<Camera>)
     {
         val shadowMapSurface = engine.gfx.getSurface(shadowMapSurfaceName)
-        if (shadowMapSurface == null)
+        if (shadowMapSurface == null || sunShadowMapResolution != lastSunShadowMapResolution)
         {
+            if (shadowMapSurfaceName.isNotBlank())
+                engine.gfx.deleteSurface(shadowMapSurfaceName)
+
             val index = 1 + (engine.gfx.getAllSurfaces().maxOfOrNull { it.config.name.substringAfterLast("_").toIntOrNull() ?: 0 } ?: 0)
             shadowMapSurfaceName = "global_shadow_map_$index"
+            lastSunShadowMapResolution = sunShadowMapResolution
 
             engine.gfx.createSurface(
                 name = shadowMapSurfaceName,
                 width = sunShadowMapResolution,
                 height = sunShadowMapResolution,
                 isVisible = false,
+                clearColor = null, // Cascades clear only the atlas quadrants they refresh.
                 zOrder = 50,
                 attachments = listOf(Attachment.DEPTH_TEXTURE),
                 textureSizeFunc = { _,_,_ -> PackedSize(sunShadowMapResolution, sunShadowMapResolution) }
@@ -125,10 +132,11 @@ class Scene3DLightingSystem : SceneSystem()
 
         val shadowMapRenderer = shadowMapSurface.getRenderer<CascadedShadowMapRenderer>() ?: return
 
-        shadowMapRenderer.enabled          = sunIntensity > 0f
-        shadowMapRenderer.resolution       = sunShadowMapResolution
-        shadowMapRenderer.splitLambda      = sunShadowCascadeSplitLambda
-        shadowMapRenderer.shadowDistance   = sunShadowDistance
+        shadowMapRenderer.enabled                   = sunIntensity > 0f
+        shadowMapRenderer.resolution                = sunShadowMapResolution
+        shadowMapRenderer.splitLambda               = sunShadowCascadeSplitLambda
+        shadowMapRenderer.shadowDistance            = sunShadowDistance
+        shadowMapRenderer.maxCascadeUpdatesPerFrame = sunShadowMaxUpdatesPerFrame
         shadowMapRenderer.setFor(cameras, sunDirection, sunHeight)
     }
 
@@ -197,6 +205,8 @@ class Scene3DLightingSystem : SceneSystem()
         engine.gfx.deleteSurface(localShadowAtlasSurfaceName)
         shadowMapSurfaceName = ""
         localShadowAtlasSurfaceName = ""
+        lastSunShadowMapResolution = 0
+        lastLocalAtlasResolution = 0
     }
 
     override fun onStateChanged(engine: PulseEngine)

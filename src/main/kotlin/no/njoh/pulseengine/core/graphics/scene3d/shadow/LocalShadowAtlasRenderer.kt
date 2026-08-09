@@ -22,24 +22,29 @@ class LocalShadowAtlasRenderer(
     val renderViewGroup: RenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
 
-    private lateinit var staticProgram: ShaderProgram
-    private lateinit var skinnedProgram: ShaderProgram
-    private lateinit var programs: ShaderProgramSet
+    private lateinit var opaqueStaticProgram: ShaderProgram
+    private lateinit var opaqueSkinnedProgram: ShaderProgram
+    private lateinit var maskedStaticProgram: ShaderProgram
+    private lateinit var maskedSkinnedProgram: ShaderProgram
+    private lateinit var opaquePrograms: ShaderProgramSet
+    private lateinit var maskedPrograms: ShaderProgramSet
     private lateinit var viewKey: RenderViewKey<LocalShadowRenderView>
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
-        if (!this::staticProgram.isInitialized)
+        if (!this::opaqueStaticProgram.isInitialized)
         {
-            staticProgram = ShaderProgram.create(
-                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/shadow.vert", ::transformModelVertexShader)),
-                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/shadow.frag"))
-            )
-            skinnedProgram = ShaderProgram.create(
-                engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/shadow_skinned.vert", ::transformModelVertexShader)),
-                engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/shadow.frag"))
-            )
-            programs = ShaderProgramSet(staticProgram, skinnedProgram)
+            val staticVertex   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/shadow.vert", ::transformModelVertexShader))
+            val skinnedVertex  = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/shadow_skinned.vert", ::transformModelVertexShader))
+            val opaqueFragment = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/shadow_opaque.frag"))
+            val maskedFragment = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/shadow.frag"))
+
+            opaqueStaticProgram  = ShaderProgram.create(staticVertex, opaqueFragment)
+            opaqueSkinnedProgram = ShaderProgram.create(skinnedVertex, opaqueFragment)
+            maskedStaticProgram  = ShaderProgram.create(staticVertex, maskedFragment)
+            maskedSkinnedProgram = ShaderProgram.create(skinnedVertex, maskedFragment)
+            opaquePrograms       = ShaderProgramSet(opaqueStaticProgram, opaqueSkinnedProgram)
+            maskedPrograms       = ShaderProgramSet(maskedStaticProgram, maskedSkinnedProgram)
         }
 
         val atlas = engine.gfx.sceneContext.getLocalShadowAtlas()
@@ -69,10 +74,10 @@ class LocalShadowAtlasRenderer(
         glEnable(GL_POLYGON_OFFSET_FILL)
         glPolygonOffset(SHADOW_SLOPE_BIAS, SHADOW_CONST_BIAS)
 
-        staticProgram.bind()
-        staticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        skinnedProgram.bind()
-        skinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+        maskedStaticProgram.bind()
+        maskedStaticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+        maskedSkinnedProgram.bind()
+        maskedSkinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
         
         for (i in 0 until numFacesToRender)
         {
@@ -88,12 +93,18 @@ class LocalShadowAtlasRenderer(
                 glDisable(GL_SCISSOR_TEST)
                 glViewport(shadowFace.x, shadowFace.y, shadowFace.size, shadowFace.size)
 
-                staticProgram.bind()
-                staticProgram.setUniform("viewProjection", shadowFace.viewProjection)
-                skinnedProgram.bind()
-                skinnedProgram.setUniform("viewProjection", shadowFace.viewProjection)
+                opaqueStaticProgram.bind()
+                opaqueStaticProgram.setUniform("viewProjection", shadowFace.viewProjection)
+                opaqueSkinnedProgram.bind()
+                opaqueSkinnedProgram.setUniform("viewProjection", shadowFace.viewProjection)
+                maskedStaticProgram.bind()
+                maskedStaticProgram.setUniform("viewProjection", shadowFace.viewProjection)
+                maskedSkinnedProgram.bind()
+                maskedSkinnedProgram.setUniform("viewProjection", shadowFace.viewProjection)
 
-                drawRenderBucket(pass.bucket, pass.drawPayload, programs, pass.cullViewIndexOf(shadowFaceIndex))
+                val cullViewIndex = pass.cullViewIndexOf(shadowFaceIndex)
+                drawRenderBucket(pass.opaqueBucket, pass.drawPayload, opaquePrograms, cullViewIndex)
+                drawRenderBucket(pass.maskedBucket, pass.drawPayload, maskedPrograms, cullViewIndex)
             }
         }
 
@@ -104,8 +115,10 @@ class LocalShadowAtlasRenderer(
 
     override fun destroy(engine: PulseEngineInternal)
     {
-        if (this::staticProgram.isInitialized) staticProgram.destroy()
-        if (this::skinnedProgram.isInitialized) skinnedProgram.destroy()
+        if (this::opaqueStaticProgram.isInitialized) opaqueStaticProgram.destroy()
+        if (this::opaqueSkinnedProgram.isInitialized) opaqueSkinnedProgram.destroy()
+        if (this::maskedStaticProgram.isInitialized) maskedStaticProgram.destroy()
+        if (this::maskedSkinnedProgram.isInitialized) maskedSkinnedProgram.destroy()
     }
 
     companion object
