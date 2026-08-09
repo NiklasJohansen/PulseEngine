@@ -93,6 +93,7 @@ class SceneEditor(
     private var showGrid = true
     private var viewMode = ViewMode.SHADED
     private var sceneHierarchy: SceneHierarchy? = null
+    private val editorWindowsById = mutableMapOf<String, WindowPanel>()
 
     // Camera
     private lateinit var activeCamera: Camera
@@ -274,6 +275,7 @@ class SceneEditor(
         rootUI.addChildren(menuBar, sceneTabsUI, dockingUI, footer)
         rootUI.updateLayout()
         rootUI.setLayoutClean()
+        editorWindowsById.clear()
 
         // Create default windows and insert into docking
         createSceneSystemsPropertyWindow(engine)
@@ -282,7 +284,13 @@ class SceneEditor(
 
         // Load previous layout from file
         if (shouldPersistEditorLayout)
-            dockingUI.loadLayout(engine, "/editor_layout.cfg")
+        {
+            dockingUI.loadLayout(engine, "/editor_layout.cfg")?.let { restoredWindowIds ->
+                editorWindowsById.keys.retainAll(restoredWindowIds)
+                if (SCENE_HIERARCHY_WINDOW_ID !in editorWindowsById)
+                    sceneHierarchy = null
+            }
+        }
     }
 
     private fun createSceneSystemsPropertyWindow(engine: PulseEngine)
@@ -296,7 +304,12 @@ class SceneEditor(
             propertiesRowPanel = systemPropertiesUI,
             onChanged = { markActiveEditorSceneDirty(engine) }
         )
-        val sceneSystemWindow = uiFactory.createWindowUI(SCENE_SYSTEMS_WINDOW_ID, "GEARS")
+        val sceneSystemWindow = uiFactory.createWindowUI(
+            title = SCENE_SYSTEMS_WINDOW_ID,
+            iconName = "GEARS",
+            onClosed = { editorWindowsById.remove(SCENE_SYSTEMS_WINDOW_ID) }
+        )
+        editorWindowsById[SCENE_SYSTEMS_WINDOW_ID] = sceneSystemWindow
         sceneSystemWindow.body.addChildren(sceneSystemPropertiesUi)
         dockingUI.insertRight(sceneSystemWindow)
     }
@@ -326,8 +339,16 @@ class SceneEditor(
         )
         sceneHierarchy!!.reloadEntitiesFromActiveScene()
 
-        val window = uiFactory.createWindowUI(title = SCENE_HIERARCHY_WINDOW_ID, iconName = "LIST", onClosed = { sceneHierarchy = null })
+        val window = uiFactory.createWindowUI(
+            title = SCENE_HIERARCHY_WINDOW_ID,
+            iconName = "LIST",
+            onClosed = {
+                editorWindowsById.remove(SCENE_HIERARCHY_WINDOW_ID)
+                sceneHierarchy = null
+            }
+        )
         window.id = SCENE_HIERARCHY_WINDOW_ID // Keep the stable ID used by saved editor layouts
+        editorWindowsById[SCENE_HIERARCHY_WINDOW_ID] = window
         window.body.addChildren(sceneHierarchy!!.ui)
         dockingUI.insertLeft(window)
     }
@@ -337,23 +358,28 @@ class SceneEditor(
         if (isEditorWindowOpen(INSPECTOR_WINDOW_ID))
             return // Already exists
 
-        val inspectorWindow = uiFactory.createWindowUI("Entity Inspector", "CUBE")
+        val inspectorWindow = uiFactory.createWindowUI(
+            title = "Entity Inspector",
+            iconName = "CUBE",
+            onClosed = { editorWindowsById.remove(INSPECTOR_WINDOW_ID) }
+        )
         inspectorWindow.id = INSPECTOR_WINDOW_ID // Keep the stable ID used by saved editor layouts
+        editorWindowsById[INSPECTOR_WINDOW_ID] = inspectorWindow
         val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
         inspectorWindow.body.addChildren(propertyPanel)
 
-        val propWindow = dockingUI.findElement(SCENE_HIERARCHY_WINDOW_ID)
-        if (propWindow != null && propWindow.parent != dockingUI) // If parent is docking then it is a free floating window
-            dockingUI.insertInsideBottom(target = propWindow as WindowPanel, inspectorWindow)
+        val hierarchyWindow = editorWindowsById[SCENE_HIERARCHY_WINDOW_ID]
+        if (hierarchyWindow != null && hierarchyWindow.parent != dockingUI) // If parent is docking then it is a free floating window
+            dockingUI.insertInsideBottom(target = hierarchyWindow, inspectorWindow)
         else
             dockingUI.insertLeft(inspectorWindow)
     }
 
-    private fun isEditorWindowOpen(windowId: String) = dockingUI.findElement(windowId) != null
+    private fun isEditorWindowOpen(windowId: String) = windowId in editorWindowsById
 
     private fun toggleEditorWindow(windowId: String, onCreate: () -> Unit, onClosed: () -> Unit = { })
     {
-        val window = dockingUI.findElement(windowId) as? WindowPanel
+        val window = editorWindowsById[windowId]
         if (window == null)
         {
             onCreate()
@@ -361,6 +387,7 @@ class SceneEditor(
         else
         {
             dockingUI.removeWindow(window)
+            editorWindowsById.remove(windowId)
             onClosed()
         }
     }

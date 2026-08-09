@@ -402,20 +402,21 @@ class DockingPanel(
         engine.data.saveObject(layoutGraph, layoutFileName)
     }
 
-    fun loadLayout(engine: PulseEngine, layoutFileName: String)
+    fun loadLayout(engine: PulseEngine, layoutFileName: String): Set<String>?
     {
-        engine.data.loadObject<LayoutNode>(layoutFileName)?.let { layoutGraph ->
-            rebuildLayoutFromGraph(dockingPanel, layoutGraph)?.let { newDockingPanel ->
-                dockingPanel.clearChildren()
-                dockingPanel.addChildren(*newDockingPanel.children.toTypedArray())
-                dockingPanel.findElement("viewport")?.let {
-                    viewport = it as Panel
-                }
+        val layoutGraph = engine.data.loadObject<LayoutNode>(layoutFileName) ?: return null
+        val restoredWindowIds = mutableSetOf<String>()
+        rebuildLayoutFromGraph(dockingPanel, layoutGraph, restoredWindowIds)?.let { newDockingPanel ->
+            dockingPanel.clearChildren()
+            dockingPanel.addChildren(*newDockingPanel.children.toTypedArray())
+            dockingPanel.findElement("viewport")?.let {
+                viewport = it as Panel
             }
         }
+        return restoredWindowIds
     }
 
-    private fun rebuildLayoutFromGraph(root: UiElement, node: LayoutNode): UiElement? =
+    private fun rebuildLayoutFromGraph(root: UiElement, node: LayoutNode, restoredWindowIds: MutableSet<String>): UiElement? =
         when (node.type)
         {
             DockingPanel::class.simpleName ->
@@ -424,7 +425,7 @@ class DockingPanel(
                 {
                     clearChildren() // Removes default viewport
                     node.children
-                        .mapNotNull { rebuildLayoutFromGraph(root, it) }
+                        .mapNotNull { rebuildLayoutFromGraph(root, it, restoredWindowIds) }
                         .forEachFast { addChildren(it) }
                 }
             }
@@ -437,7 +438,7 @@ class DockingPanel(
                     width.setQuiet(node.width)
                     height.setQuiet(node.height)
                     node.children
-                        .mapNotNull { rebuildLayoutFromGraph(root, it) }
+                        .mapNotNull { rebuildLayoutFromGraph(root, it, restoredWindowIds) }
                         .forEachFast { addChildren(it) }
                     setMinSizeFromChildren()
                 }
@@ -450,7 +451,7 @@ class DockingPanel(
                     width.setQuiet(node.width)
                     height.setQuiet(node.height)
                     node.children
-                        .mapNotNull { rebuildLayoutFromGraph(root, it) }
+                        .mapNotNull { rebuildLayoutFromGraph(root, it, restoredWindowIds) }
                         .forEachFast { addChildren(it) }
 
                     setMinSizeFromChildren()
@@ -459,6 +460,7 @@ class DockingPanel(
             WindowPanel::class.simpleName ->
             {
                 root.findElement(node.id)?.apply {
+                    restoredWindowIds += node.id
                     width.setQuiet(node.width)
                     height.setQuiet(node.height)
                     x.setQuiet(node.x)
