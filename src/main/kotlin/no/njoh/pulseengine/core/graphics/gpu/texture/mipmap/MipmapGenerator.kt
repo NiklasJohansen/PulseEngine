@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.graphics.gpu.texture.mipmap
 
 import no.njoh.pulseengine.core.PulseEngineInternal
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
@@ -33,7 +33,7 @@ abstract class MipmapGenerator
         if (texture.multisampling != Multisampling.NONE)
             return
 
-        if (!texture.attachment.hasColor && texture.attachment != DEPTH_TEXTURE)
+        if (!texture.attachmentPoint.isColor && texture.attachmentPoint != DEPTH_TEXTURE)
             return 
 
         if (!initialized)

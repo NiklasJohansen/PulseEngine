@@ -11,28 +11,22 @@ import no.njoh.pulseengine.core.graphics.gpu.FullscreenPass
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.resource.MaterialBank
 import no.njoh.pulseengine.core.graphics.gpu.resource.ModelBank
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.MSAA4
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderType.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA16F
-import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextImpl
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderType
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
-import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.resource.TextureBank
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import no.njoh.pulseengine.core.shared.utils.Extensions.noneMatches
@@ -73,11 +67,14 @@ open class GraphicsImpl : GraphicsInternal
             width = viewPortWidth,
             height = viewPortHeight,
             camera = mainCamera,
-            multisampling = MSAA4,
-            textureFormat = RGBA16F,
-            textureFilter = LINEAR,
             clearColor = defaultClearColor.copy(),
-            attachments = listOf(COLOR_TEXTURE_0, DEPTH_STENCIL_BUFFER),
+            output = SurfaceOutputSpec(
+                multisampling = MSAA4,
+                attachments = listOf(
+                    colorAttachment(format = RGBA16F, filter = LINEAR),
+                    depthStencilBuffer()
+                )
+            )
         )
 
         onWindowChanged(engine, viewPortWidth, viewPortHeight, windowRecreated = true)
@@ -248,15 +245,9 @@ open class GraphicsImpl : GraphicsInternal
         zOrder: Int?,
         camera: Camera?,
         isVisible: Boolean,
-        mipmapGenerators: Map<Attachment, MipmapGenerator>,
-        textureScale: Float,
-        textureFormat: TextureFormat,
-        textureFilter: TextureFilter,
-        textureSizeFunc: (width: Int, height: Int, scale: Float) -> PackedSize,
-        multisampling: Multisampling,
+        clearColor: Color?,
         blendFunction: BlendFunction,
-        attachments: List<Attachment>,
-        clearColor: Color?
+        output: SurfaceOutputSpec
     ): SurfaceInternal {
 
         val surfaceWidth = width ?: mainSurface.config.width
@@ -272,15 +263,9 @@ open class GraphicsImpl : GraphicsInternal
                 isVisible = isVisible,
                 drawPostEffects = true,
                 drawWireframe = false,
-                mipmapGenerators = mipmapGenerators,
-                textureScale = textureScale,
-                textureFormat = textureFormat,
-                textureFilter = textureFilter,
-                textureSizeFunc = textureSizeFunc,
-                multisampling = multisampling,
+                clearColor = clearColor,
                 blendFunction = blendFunction,
-                attachments = attachments,
-                clearColor = clearColor
+                outputSpec = output
             )
         )
 

@@ -3,14 +3,14 @@ package no.njoh.pulseengine.core.graphics.surface.renderers
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
 import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.DEPTH_TEXTURE
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode.PREMULTIPLIED
 import no.njoh.pulseengine.core.graphics.surface.SurfaceConfigInternal
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleStripVertices
@@ -157,8 +157,8 @@ class RenderTextureRenderer(
         data[base + 15] = vMax
         data[base + 16] = config.currentDrawColor
         data[base + 17] = texture.handle.textureIndex.toFloat()
-        data[base + 18] = if (texture.attachment == Attachment.DEPTH_TEXTURE) 1f else 0f
-        data[base + 19] = if (texture.alphaMode == TextureAlphaMode.PREMULTIPLIED) 1f else 0f
+        data[base + 18] = if (texture.attachmentPoint == DEPTH_TEXTURE) 1f else 0f
+        data[base + 19] = if (texture.alphaMode == PREMULTIPLIED) 1f else 0f
         writeCount++
         config.increaseDepth()
         increaseBatchSize()

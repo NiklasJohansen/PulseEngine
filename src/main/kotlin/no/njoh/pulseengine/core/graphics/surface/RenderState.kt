@@ -3,12 +3,14 @@ package no.njoh.pulseengine.core.graphics.surface
 import no.njoh.pulseengine.core.graphics.surface.StencilState.Action.CLEAR
 import no.njoh.pulseengine.core.graphics.surface.StencilState.Action.SET
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode.*
 import no.njoh.pulseengine.core.graphics.surface.renderers.StencilRenderer
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_SRGB
+import org.lwjgl.opengl.GL30.glClearBufferfv
 
 /**
  * Base interface for all render states.
@@ -139,14 +141,21 @@ object BatchRenderBaseState : RenderState
         if (c != null)
         {
             val alphaMultiplier = if (blendFunc.outputAlphaMode == PREMULTIPLIED) c.alpha else 1f
-            glClearColor(c.red * alphaMultiplier, c.green * alphaMultiplier, c.blue * alphaMultiplier, c.alpha)
+            CLEAR_COLOR[0] = c.red   * alphaMultiplier
+            CLEAR_COLOR[1] = c.green * alphaMultiplier
+            CLEAR_COLOR[2] = c.blue  * alphaMultiplier
+            CLEAR_COLOR[3] = c.alpha
+
             glColorMask(true, true, true, true)
-            glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+            glClearBufferfv(GL_COLOR, COLOR_TEXTURE_0.glLocation, CLEAR_COLOR)
+            glClear(GL_DEPTH_BUFFER_BIT)
         }
 
         // Disable sRGB color space
         glDisable(GL_FRAMEBUFFER_SRGB)
     }
+
+    private val CLEAR_COLOR = FloatArray(4)
 }
 
 /**
@@ -156,7 +165,8 @@ object ViewportState : RenderState
 {
     override fun onApply(surface: SurfaceInternal)
     {
-        glViewport(0, 0, (surface.config.width * surface.config.textureScale).toInt(), (surface.config.height * surface.config.textureScale).toInt())
+        val scale = surface.config.resolutionScale
+        glViewport(0, 0, (surface.config.width * scale).toInt(), (surface.config.height * scale).toInt())
     }
 }
 

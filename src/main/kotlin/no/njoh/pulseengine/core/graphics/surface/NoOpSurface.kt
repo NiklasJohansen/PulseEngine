@@ -3,11 +3,12 @@ package no.njoh.pulseengine.core.graphics.surface
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.camera.DefaultCamera
 import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC_2D
-import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
@@ -16,7 +17,6 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Border
 import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.shared.primitives.Degrees
-import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 
@@ -32,15 +32,9 @@ class NoOpSurface: SurfaceInternal()
         isVisible = false,
         drawPostEffects = false,
         drawWireframe = false,
-        textureScale = 1f,
-        textureFormat = TextureFormat.RGBA8,
-        textureFilter = TextureFilter.LINEAR,
-        textureSizeFunc = { w: Int, h: Int, s: Float -> PackedSize(w * s, h * s) },
-        multisampling = Multisampling.NONE,
-        blendFunction = BlendFunction.NORMAL,
-        attachments = emptyList(),
         clearColor = Color.BLANK,
-        mipmapGenerators = emptyMap()
+        blendFunction = BlendFunction.NORMAL,
+        outputSpec = SurfaceOutputSpec.EMPTY
     )
     override val renderTarget = RenderTarget(emptyList())
     override fun addPostProcessingEffect(effect: PostProcessingEffect) {}
@@ -63,8 +57,10 @@ class NoOpSurface: SurfaceInternal()
     override fun getPostProcessingEffects() = emptyList<PostProcessingEffect>()
     override fun getAllRenderers() = emptyList<Renderer>()
     override fun getTexture(index: Int, final: Boolean) = RenderTexture.BLANK
+    override fun getTexture(attachmentPoint: AttachmentPoint, final: Boolean) = RenderTexture.BLANK
     override fun getTextures() = emptyList<RenderTexture>()
     override fun readPixel(x: Int, y: Int, textureIndex: Int, final: Boolean, dstResult: PixelReadResult) = dstResult
+    override fun readPixel(x: Int, y: Int, attachmentPoint: AttachmentPoint, final: Boolean, dstResult: PixelReadResult) = dstResult
     override fun hasContent() = false
     override fun hasPendingPixelReads() = false
     override fun hasPostProcessingEffects() = false
@@ -79,7 +75,9 @@ class NoOpSurface: SurfaceInternal()
     override fun setDrawColor(color: Color) = this
     override fun setIsVisible(isVisible: Boolean) = this
     override fun setMultisampling(multisampling: Multisampling) = this
-    override fun setTextureFilter(filter: TextureFilter) = this
-    override fun setTextureFormat(format: TextureFormat) = this
-    override fun setTextureScale(scale: Float) = this
+    override fun setAttachment(attachment: SurfaceAttachment) = this
+    override fun removeAttachment(attachmentPoint: AttachmentPoint) = this
+    override fun setTextureFormat(format: TextureFormat, attachmentPoint: AttachmentPoint) = this
+    override fun setTextureFilter(filter: TextureFilter, attachmentPoint: AttachmentPoint) = this
+    override fun setResolutionScale(scale: Float) = this
 }

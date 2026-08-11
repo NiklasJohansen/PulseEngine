@@ -4,13 +4,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.EnvMap
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
 import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.CascadedShadowMapRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlasRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
+import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
+import no.njoh.pulseengine.core.graphics.surface.depthTexture
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
@@ -121,8 +122,10 @@ class Scene3DLightingSystem : SceneSystem()
                 isVisible = false,
                 clearColor = null, // Cascades clear only the atlas quadrants they refresh.
                 zOrder = 50,
-                attachments = listOf(Attachment.DEPTH_TEXTURE),
-                textureSizeFunc = { _,_,_ -> PackedSize(sunShadowMapResolution, sunShadowMapResolution) }
+                output = SurfaceOutputSpec(
+                    attachments = listOf(depthTexture()),
+                    sizeFunction = { _,_,_ -> PackedSize(sunShadowMapResolution, sunShadowMapResolution) }
+                )
             ).apply {
                 addRenderer(CascadedShadowMapRenderer())
             }
@@ -168,8 +171,10 @@ class Scene3DLightingSystem : SceneSystem()
                 isVisible = false,
                 clearColor = null, // Dont clear surface each frame
                 zOrder = 49,
-                attachments = listOf(Attachment.DEPTH_TEXTURE),
-                textureSizeFunc = { _,_,_ -> PackedSize(localShadowAtlasResolution, localShadowAtlasResolution) }
+                output = SurfaceOutputSpec(
+                    attachments = listOf(depthTexture()),
+                    sizeFunction = { _,_,_ -> PackedSize(localShadowAtlasResolution, localShadowAtlasResolution) }
+                )
             ).apply {
                 addRenderer(LocalShadowAtlasRenderer())
             }

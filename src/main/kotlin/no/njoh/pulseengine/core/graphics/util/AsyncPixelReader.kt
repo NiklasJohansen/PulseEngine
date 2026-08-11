@@ -270,7 +270,7 @@ class AsyncPixelReader
 
     private fun bindTextureForRead(texture: RenderTexture)
     {
-        require(texture.attachment.hasColor) { "Surface pixel readback requires a color texture" }
+        require(texture.attachmentPoint.isColor) { "Surface pixel readback requires a color texture" }
         if (readFramebufferId == 0) readFramebufferId = glGenFramebuffers()
         glBindFramebuffer(GL_READ_FRAMEBUFFER, readFramebufferId)
         glFramebufferTexture(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture.handle.textureIndex, 0)

@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.DEPTH_TEXTURE
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderView
@@ -87,8 +87,8 @@ class DepthPrepassRenderer(
         glColorMask(true, true, true, true)
         glDisable(GL_CULL_FACE)
 
-        surface.renderTarget.resolveDepth(engine)
-        surface.getTextures().firstOrNullFast { it.attachment == DEPTH_TEXTURE }?.generateMips(engine)
+        surface.renderTarget.resolveDepth()
+        surface.getTextures().firstOrNullFast { it.attachmentPoint == DEPTH_TEXTURE }?.generateMips(engine)
         surface.renderTarget.begin()
     }
 

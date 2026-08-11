@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -32,6 +33,10 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 
     fun begin() = writeFbo.bind()
 
+    fun setDrawBuffer(attachmentPoint: AttachmentPoint) = writeFbo.setDrawBuffer(attachmentPoint)
+
+    fun setDrawBuffers(first: AttachmentPoint, second: AttachmentPoint) = writeFbo.setDrawBuffers(first, second)
+
     fun end()
     {
         writeFbo.release()
@@ -46,7 +51,7 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
         }
     }
 
-    fun resolveDepth(engine: PulseEngineInternal) 
+    fun resolveDepth()
     {
         if (hasMultisampling)
         {
@@ -62,13 +67,15 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 
     fun getTexture(index: Int) = readFbo.getTextureOrNull(index)
 
+    fun getTexture(attachmentPoint: AttachmentPoint) = readFbo.getTextureOrNull(attachmentPoint)
+
     fun getTextures() = readFbo.getTextures()
 
     fun setColorAlphaMode(alphaMode: TextureAlphaMode)
     {
         readFbo.getTextures().forEachFast() 
         {
-            if (it.attachment.hasColor) it.alphaMode = alphaMode
+            if (it.attachmentPoint.isColor) it.alphaMode = alphaMode
         }
     }
 

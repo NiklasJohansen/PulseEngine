@@ -6,12 +6,14 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.camera.CameraInternal
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.graphics.postprocessing.PostProcessingEffect
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer.Companion.MAX_BATCH_COUNT
 import no.njoh.pulseengine.core.graphics.surface.renderers.LineRenderer
@@ -32,9 +34,11 @@ import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachIndexedFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachReversed
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
+import kotlin.text.format
 
 class SurfaceImpl(
     override val camera: CameraInternal,
@@ -42,9 +46,11 @@ class SurfaceImpl(
 ): SurfaceInternal() {
 
     override val viewGroup            = RenderViewGroup.create()
-    override var renderTarget         = createRenderTarget(config)
+    override var renderTarget         = createRenderTarget()
+
     private var initialized           = false
     private var shouldRerender        = false
+    private var pendingTargetRebuild  = false
     private val onInitFrame           = ArrayList<(PulseEngineInternal) -> Unit>()
     private var readRenderStates      = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private var writeRenderStates     = ArrayList<RenderState>(MAX_BATCH_COUNT)
@@ -69,6 +75,14 @@ class SurfaceImpl(
         config.width = width
         config.height = height
 
+        if (pendingTargetRebuild)
+        {
+            if (initialized) 
+                renderTarget.destroy()
+            renderTarget = createRenderTarget()
+            pendingTargetRebuild = false
+        }
+
         if (!initialized)
         {
             textRenderer          = TextRenderer(config)
@@ -86,7 +100,7 @@ class SurfaceImpl(
         {
             renderers.forEachFast { it.init(engine, this) }
             postEffects.forEachFast { it.init(engine) }
-            config.mipmapGenerators.values.forEach { it.init(engine) }
+            config.attachments.forEachFast { it.mipmapGenerator?.init(engine) }
         }
 
         renderers.sortBy { it.order }
@@ -151,7 +165,7 @@ class SurfaceImpl(
     override fun pollPixelReads()
     {
         val readers = pixelReaders
-        for (slot in readers.indices)
+        for (slot in 0 until readers.size)
         {
             val reader = readers[slot] ?: continue
             if (!reader.hasPendingWork()) continue
@@ -168,7 +182,7 @@ class SurfaceImpl(
         postEffects.forEachFast { it.destroy() }
         pixelReaders.forEachFast { it?.destroy() }
         renderTarget.destroy()
-        config.mipmapGenerators.forEach { it.value.destroy() }
+        config.attachments.forEachFast { it.mipmapGenerator?.destroy() }
     }
 
     override fun hasContent() = shouldRerender || renderers.anyMatches { it.hasContentToRender() }
@@ -234,6 +248,17 @@ class SurfaceImpl(
         )
     }
 
+    override fun getTexture(attachmentPoint: AttachmentPoint, final: Boolean): RenderTexture
+    {
+        if (final && attachmentPoint == COLOR_TEXTURE_0)
+            return getTexture(0, final = true)
+
+        return renderTarget.getTexture(attachmentPoint) ?: throw RuntimeException(
+            "Failed to get texture for attachment point: $attachmentPoint from surface with name: ${config.name}. " +
+            "Surface has the following output specification: ${config.attachments}"
+        )
+    }
+
     override fun getTextures(): List<RenderTexture>
     {
         return renderTarget.getTextures()
@@ -266,6 +291,15 @@ class SurfaceImpl(
             }
         }
         return reader!!.readPixel(x, y, dstResult)
+    }
+
+    override fun readPixel(x: Int, y: Int, attachmentPoint: AttachmentPoint, final: Boolean, dstResult: PixelReadResult): PixelReadResult
+    {
+        renderTarget.getTextures().forEachIndexedFast { i, texture ->
+            if (texture.attachmentPoint == attachmentPoint)
+                return readPixel(x, y, i, final = final && attachmentPoint == COLOR_TEXTURE_0, dstResult)
+        }
+        throw IllegalArgumentException("Surface ${config.name} has no texture for attachment point $attachmentPoint")
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -323,64 +357,84 @@ class SurfaceImpl(
 
     override fun setMultisampling(multisampling: Multisampling): Surface
     {
-        if (multisampling != config.multisampling)
+        if (config.multisampling == multisampling)
+            return this
+
+        config.multisampling = multisampling
+        requestRenderTargetRebuild()
+        return this
+    }
+
+    override fun setAttachment(attachment: SurfaceAttachment): Surface
+    {
+        val index = attachmentIndexOf(attachment.attachmentPoint)
+        if (index >= 0 && config.attachments[index] == attachment)
+            return this // No change
+
+        if (initialized)
         {
-            config.multisampling = multisampling
-            runOnInitFrame()
+            val currentGenerator = if (index >= 0) config.attachments[index].mipmapGenerator else null
+            require(currentGenerator === attachment.mipmapGenerator) 
             {
-                renderTarget.destroy()
-                renderTarget = createRenderTarget(config)
-                renderTarget.init(this@SurfaceImpl.config.width, config.height)
+                "Mipmap generators are creation-time surface resources and cannot be changed after initialization"
             }
         }
+
+        val attachments = config.attachments.toMutableList()
+        if (index >= 0)
+        {
+            attachments[index] = attachment
+        }
+        else
+        {
+            val firstDepth = attachments.indexOfFirst { it.attachmentPoint.isDepth }
+            if (attachment.attachmentPoint.isColor && firstDepth >= 0)
+            {
+                attachments.add(firstDepth, attachment)
+            }
+            else attachments.add(attachment)
+        }
+
+        config.attachments = attachments
+        requestRenderTargetRebuild()
         return this
     }
 
-    private fun createRenderTarget(config: SurfaceConfig) = RenderTarget(
-        textureDescriptors = config.attachments.map { attachment ->
-            TextureDescriptor(
-                format = config.textureFormat,
-                filter = config.textureFilter,
-                wrapping = TextureWrapping.CLAMP_TO_EDGE,
-                multisampling = config.multisampling,
-                attachment = attachment,
-                scale = config.textureScale,
-                sizeFunc = config.textureSizeFunc,
-                mipmapGenerator = config.mipmapGenerators[attachment],
-            )
-        }
-    )
-
-    override fun setTextureFormat(format: TextureFormat): Surface
+    override fun removeAttachment(attachmentPoint: AttachmentPoint): Surface
     {
-        if (format != config.textureFormat)
+        val index = attachmentIndexOf(attachmentPoint)
+        if (index < 0) return this
+
+        require(!initialized || config.attachments[index].mipmapGenerator == null) 
         {
-            config.textureFormat = format
-            renderTarget.textureDescriptors.forEachFast { it.format = format }
-            runOnInitFrame { renderTarget.init(config.width, config.height) }
+            "Attachments with mipmap generators cannot be removed after surface initialization"
         }
+
+        config.attachments = config.attachments.toMutableList().also { it.removeAt(index) }
+        requestRenderTargetRebuild()
         return this
     }
 
-    override fun setTextureFilter(filter: TextureFilter): Surface
+    override fun setTextureFormat(format: TextureFormat, attachmentPoint: AttachmentPoint): Surface
     {
-        if (filter != config.textureFilter)
-        {
-            config.textureFilter = filter
-            renderTarget.textureDescriptors.forEachFast { it.filter = filter }
-            runOnInitFrame { renderTarget.init(config.width, config.height) }
-        }
-        return this
+        val current = config.getAttachment(attachmentPoint) ?: return this
+        return if (current.format == format) this else setAttachment(current.copy(format = format))
     }
 
-    override fun setTextureScale(scale: Float): Surface
+    override fun setTextureFilter(filter: TextureFilter, attachmentPoint: AttachmentPoint): Surface
     {
-        if (scale != config.textureScale)
-        {
-            config.textureScale = scale
-            renderTarget.textureDescriptors.forEachFast { it.scale = scale }
-            runOnInitFrame { renderTarget.init(config.width, config.height) }
-        }
+        val current = config.getAttachment(attachmentPoint) ?: return this
+        return if (current.filter == filter) this else setAttachment(current.copy(filter = filter))
+    }
+
+    override fun setResolutionScale(scale: Float): Surface
+    {
+        if (config.resolutionScale == scale)
+            return this
+
+        require(scale.isFinite() && scale > 0f) { "Surface output resolution scale must be finite and positive" }
+        config.resolutionScale = scale
+        requestRenderTargetRebuild()
         return this
     }
 
@@ -458,6 +512,50 @@ class SurfaceImpl(
             renderer.destroy(it)
         }
     }
-    
+
+    private fun createRenderTarget(): RenderTarget = RenderTarget(
+        textureDescriptors = config.attachments.map()
+        {
+            TextureDescriptor(
+                format = it.format,
+                filter = it.filter,
+                wrapping = CLAMP_TO_EDGE,
+                multisampling = config.multisampling,
+                mipmapGenerator = it.mipmapGenerator,
+                attachmentPoint = it.attachmentPoint,
+                scale = config.resolutionScale,
+                sizeFunc = config.sizeFunction
+            )
+        }
+    )
+
+    private fun requestRenderTargetRebuild()
+    {
+        shouldRerender = true
+        if (pendingTargetRebuild) 
+            return
+
+        pendingTargetRebuild = true
+        if (!initialized)
+            return
+
+        runOnInitFrame() 
+        {
+            if (pendingTargetRebuild)
+            {
+                pendingTargetRebuild = false
+                renderTarget.destroy()
+                renderTarget = createRenderTarget()
+                renderTarget.init(config.width, config.height)
+            }
+        }
+    }
+
+    private fun attachmentIndexOf(attachmentPoint: AttachmentPoint): Int
+    {
+        config.attachments.forEachIndexedFast { i, att -> if (att.attachmentPoint == attachmentPoint) return i }
+        return -1
+    }
+
     private fun runOnInitFrame(command: (PulseEngineInternal) -> Unit) { onInitFrame.add(command) }
 }

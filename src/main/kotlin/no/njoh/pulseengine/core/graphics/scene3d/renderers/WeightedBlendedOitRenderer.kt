@@ -3,8 +3,10 @@ package no.njoh.pulseengine.core.graphics.scene3d.renderers
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.DEPTH_TEXTURE
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_0
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_1
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_2
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
@@ -53,6 +55,8 @@ class WeightedBlendedOitRenderer
     private val oitTextureDescriptors = listOf(
         TextureDescriptor(format = RGBA16F, filter = NEAREST, attachment = Attachment.COLOR_TEXTURE_0),
         TextureDescriptor(format = R16F, filter = NEAREST, attachment = Attachment.COLOR_TEXTURE_1)
+        TextureDescriptor(format = RGBA16F, filter = NEAREST, attachmentPoint = COLOR_TEXTURE_0),
+        TextureDescriptor(format = R16F, filter = NEAREST, attachmentPoint = COLOR_TEXTURE_1)
     )
 
     fun init(engine: PulseEngineInternal, surface: SurfaceInternal)

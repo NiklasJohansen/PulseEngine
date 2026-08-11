@@ -139,6 +139,7 @@ class ModelRenderer(
         glDepthFunc(GL_LEQUAL)
 
         if (surface.config.hasDepthAttachment) glEnable(GL_DEPTH_TEST) else glDisable(GL_DEPTH_TEST)
+        surface.renderTarget.setDrawBuffer(COLOR_TEXTURE_0)
 
         glBlendEquation(GL_FUNC_ADD)
         val blendFunc = surface.config.blendFunction

@@ -6,13 +6,15 @@ import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.shared.primitives.Shape2D
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.*
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
+import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
+import no.njoh.pulseengine.core.graphics.surface.colorAttachment
+import no.njoh.pulseengine.core.graphics.surface.depthStencilBuffer
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneSystem
@@ -84,12 +86,12 @@ open class DirectLightingSystem2D : SceneSystem()
             name = LIGHT_SURFACE_NAME,
             camera = engine.gfx.mainCamera,
             isVisible = false,
-            textureFormat = textureFormat,
-            textureFilter = textureFilter,
-            textureScale = textureScale,
-            multisampling = multisampling,
             blendFunction = ADDITIVE,
-            attachments = listOf(COLOR_TEXTURE_0)
+            output = SurfaceOutputSpec(
+                resolutionScale = textureScale,
+                multisampling = multisampling,
+                attachments = listOf(colorAttachment(format = textureFormat, filter = textureFilter))
+            )
         ).also {
             it.addRenderer(DirectLightRenderer(it.config))
             configureNormalMap(engine, it, useNormalMap)
@@ -110,7 +112,7 @@ open class DirectLightingSystem2D : SceneSystem()
         val lightRenderer = lightSurface.getRenderer<DirectLightRenderer>() ?: return
 
         lightSurface.setMultisampling(multisampling)
-        lightSurface.setTextureScale(textureScale)
+        lightSurface.setResolutionScale(textureScale)
         lightSurface.setTextureFilter(textureFilter)
         lightSurface.setTextureFormat(textureFormat)
 
@@ -178,8 +180,11 @@ open class DirectLightingSystem2D : SceneSystem()
                 camera = engine.gfx.mainCamera,
                 zOrder = lightSurface.config.zOrder + 1, // Render normal map before lightmap
                 clearColor = Color(0.5f, 0.5f, 1.0f, 1f),
-                textureFormat = TextureFormat.RGBA16F,
-                isVisible = false
+                isVisible = false,
+                output = SurfaceOutputSpec(listOf(
+                    colorAttachment(format = TextureFormat.RGBA16F),
+                    depthStencilBuffer()
+                ))
             )
             val surfaceConfig = (surface as SurfaceInternal).config
             surface.addRenderer(NormalMapRenderer(surfaceConfig))

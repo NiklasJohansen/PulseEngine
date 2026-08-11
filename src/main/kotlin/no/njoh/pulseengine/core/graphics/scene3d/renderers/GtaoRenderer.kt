@@ -3,7 +3,7 @@ package no.njoh.pulseengine.core.graphics.scene3d.renderers
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
@@ -76,7 +76,7 @@ class GtaoRenderer(
         (0..1).map { TextureDescriptor(format = R16F, filter = LINEAR) } // 2 ping-pong textures for temporal acc
 
     private var prevDepthTextureDescriptors = 
-        listOf(TextureDescriptor(filter = NEAREST, attachment = DEPTH_TEXTURE))
+        listOf(TextureDescriptor(filter = NEAREST, attachmentPoint = DEPTH_TEXTURE))
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
@@ -141,7 +141,7 @@ class GtaoRenderer(
 
         // TODO: The resolved single sampled depth textures has jagged edges. Make custom MSAA resolver that writes coverage to a separate channel
         // TODO: See latest reply here: https://chatgpt.com/share/697694a7-2ce0-8007-89e9-49ac8be5095d
-        val depthTex = surface.renderTarget.getTextures().firstOrNull { it.attachment == DEPTH_TEXTURE } ?: return
+        val depthTex = surface.renderTarget.getTexture(DEPTH_TEXTURE) ?: return
 
         // Main GTAO render pass
         var aoTex = renderGtao(surface, depthTex)

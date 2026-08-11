@@ -2,13 +2,16 @@ package no.njoh.pulseengine.modules.lighting.global2d
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.ADDITIVE
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.NONE
 import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.CustomMipmapGenerator
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.postprocessing.MultiplyEffect
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
+import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
+import no.njoh.pulseengine.core.graphics.surface.colorAttachment
+import no.njoh.pulseengine.core.graphics.surface.depthStencilBuffer
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.modules.scene.systems.EntityRenderer2D
 import no.njoh.pulseengine.modules.scene.systems.EntityRenderer2D.EntityRenderPass
@@ -79,9 +82,13 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             zOrder = engine.gfx.mainSurface.config.zOrder + 9,
             isVisible = false,
             blendFunction = NONE,
-            textureFilter = NEAREST,
-            textureScale = localSceneTexScale,
-            attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
+            output = SurfaceOutputSpec(
+                resolutionScale = localSceneTexScale,
+                attachments = listOf(
+                    colorAttachment(COLOR_TEXTURE_0, filter = NEAREST),
+                    colorAttachment(COLOR_TEXTURE_1, filter = NEAREST)
+                )
+            )
         ).apply {
             addRenderer(GiSceneRenderer((this as SurfaceInternal).config))
             addPostProcessingEffect(GiBounce(GI_LIGHT_EXTERIOR, order = 0))
@@ -92,9 +99,13 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             zOrder = engine.gfx.mainSurface.config.zOrder + 8,
             isVisible = false,
             blendFunction = NONE,
-            textureFilter = NEAREST,
-            textureScale = globalSceneTexScale,
-            attachments = listOf(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
+            output = SurfaceOutputSpec(
+                resolutionScale = globalSceneTexScale,
+                attachments = listOf(
+                    colorAttachment(COLOR_TEXTURE_0, filter = NEAREST),
+                    colorAttachment(COLOR_TEXTURE_1, filter = NEAREST)
+                )
+            )
         ).apply {
             addRenderer(GiSceneRenderer((this as SurfaceInternal).config))
         }
@@ -104,8 +115,10 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             zOrder = engine.gfx.mainSurface.config.zOrder + 7,
             isVisible = false,
             blendFunction = NONE,
-            textureScale = localSceneTexScale,
-            attachments = listOf(COLOR_TEXTURE_0)
+            output = SurfaceOutputSpec(
+                resolutionScale = localSceneTexScale,
+                attachments = listOf(colorAttachment())
+            )
         ).apply {
             addPostProcessingEffect(GiJfaSeed(mode = EXTERNAL_INTERNAL, sceneSurfaceName = GI_LOCAL_SCENE))
             addPostProcessingEffect(GiJfa(mode = EXTERNAL_INTERNAL))
@@ -117,8 +130,10 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             zOrder = engine.gfx.mainSurface.config.zOrder + 6,
             isVisible = false,
             blendFunction = NONE,
-            textureScale = globalSceneTexScale,
-            attachments = listOf(COLOR_TEXTURE_0)
+            output = SurfaceOutputSpec(
+                resolutionScale = globalSceneTexScale,
+                attachments = listOf(colorAttachment())
+            )
         ).apply {
             addPostProcessingEffect(GiJfaSeed(mode = EXTERNAL, sceneSurfaceName = GI_GLOBAL_SCENE))
             addPostProcessingEffect(GiJfa(mode = EXTERNAL))
@@ -131,8 +146,12 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             zOrder = engine.gfx.mainSurface.config.zOrder + 5,
             isVisible = false,
             clearColor = Color(0.5f, 0.5f, 1.0f, 1f),
-            textureFilter = LINEAR_MIPMAP,
-            mipmapGenerators = mapOf(COLOR_TEXTURE_0 to CustomMipmapGenerator())
+            output = SurfaceOutputSpec(
+                attachments = listOf(
+                    colorAttachment(filter = LINEAR_MIPMAP, mipmapGenerator = CustomMipmapGenerator()),
+                    depthStencilBuffer()
+                )
+            )
         ).apply {
             addRenderer(NormalMapRenderer((this as SurfaceInternal).config))
         }
@@ -142,8 +161,10 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 4,
             isVisible = false,
-            attachments = listOf(COLOR_TEXTURE_0),
-            textureSizeFunc = ::lightTextureSizeFunc
+            output = SurfaceOutputSpec(
+                attachments = listOf(colorAttachment()),
+                sizeFunction = ::lightTextureSizeFunc
+            )
         ).apply {
             addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_LOCAL_SDF, GI_GLOBAL_SDF, GI_NORMAL_MAP))
         }
@@ -153,7 +174,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 3,
             isVisible = false,
-            attachments = listOf(COLOR_TEXTURE_0),
+            output = SurfaceOutputSpec(attachments = listOf(colorAttachment())),
         ).apply {
             addPostProcessingEffect(GiInterior(GI_LOCAL_SCENE, GI_LOCAL_SDF, GI_LIGHT_EXTERIOR, GI_NORMAL_MAP))
         }
@@ -165,7 +186,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             isVisible = false,
             clearColor = Color.WHITE,
             blendFunction = NONE,
-            attachments = listOf(COLOR_TEXTURE_0)
+            output = SurfaceOutputSpec(attachments = listOf(colorAttachment()))
         ).apply {
             addPostProcessingEffect(GiAo(GI_LOCAL_SCENE, GI_LOCAL_SDF))
         }
@@ -176,7 +197,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             zOrder = engine.gfx.mainSurface.config.zOrder + 1,
             isVisible = false,
             blendFunction = ADDITIVE,
-            attachments = listOf(COLOR_TEXTURE_0)
+            output = SurfaceOutputSpec(attachments = listOf(colorAttachment()))
         ).apply {
             addPostProcessingEffect(GiFinal(GI_LOCAL_SCENE, GI_LIGHT_EXTERIOR, GI_LIGHT_INTERIOR, GI_AO))
         }
@@ -191,13 +212,13 @@ open class GlobalIlluminationSystem2D : SceneSystem()
 
     override fun onUpdate(engine: PulseEngine)
     {
-        engine.gfx.getSurface(GI_LIGHT_EXTERIOR)?.setTextureScale(lightTexScale)
-        engine.gfx.getSurface(GI_LIGHT_INTERIOR)?.setTextureScale(localSceneTexScale)
-        engine.gfx.getSurface(GI_LOCAL_SDF)?.setTextureScale(localSceneTexScale)
-        engine.gfx.getSurface(GI_LOCAL_SCENE)?.setTextureScale(localSceneTexScale)
-        engine.gfx.getSurface(GI_GLOBAL_SDF)?.setTextureScale(globalSceneTexScale)
-        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.setTextureScale(globalSceneTexScale)
-        engine.gfx.getSurface(GI_AO)?.setTextureScale(localSceneTexScale)
+        engine.gfx.getSurface(GI_LIGHT_EXTERIOR)?.setResolutionScale(lightTexScale)
+        engine.gfx.getSurface(GI_LIGHT_INTERIOR)?.setResolutionScale(localSceneTexScale)
+        engine.gfx.getSurface(GI_LOCAL_SDF)?.setResolutionScale(localSceneTexScale)
+        engine.gfx.getSurface(GI_LOCAL_SCENE)?.setResolutionScale(localSceneTexScale)
+        engine.gfx.getSurface(GI_GLOBAL_SDF)?.setResolutionScale(globalSceneTexScale)
+        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.setResolutionScale(globalSceneTexScale)
+        engine.gfx.getSurface(GI_AO)?.setResolutionScale(localSceneTexScale)
 
         engine.gfx.getSurface(GI_LOCAL_SCENE)?.getRenderer<GiSceneRenderer>()?.jitterFix = jitterFix
         engine.gfx.getSurface(GI_GLOBAL_SCENE)?.getRenderer<GiSceneRenderer>()?.let()
@@ -275,8 +296,8 @@ open class GlobalIlluminationSystem2D : SceneSystem()
     {
         val lightSurface = engine.gfx.getSurface(GI_LIGHT_EXTERIOR) ?: return UV_MAX.set(1f, 1f)
         val lightTex = lightSurface.getTexture()
-        val scaledLightTexWidth = lightSurface.config.width * lightSurface.config.textureScale
-        val scaledLightTexHeight = lightSurface.config.height * lightSurface.config.textureScale
+        val scaledLightTexWidth = lightSurface.config.width * lightSurface.config.resolutionScale
+        val scaledLightTexHeight = lightSurface.config.height * lightSurface.config.resolutionScale
         val uMax = (scaledLightTexWidth / lightTex.width)
         val vMax = (scaledLightTexHeight / lightTex.height)
         return UV_MAX.set(uMax, vMax)

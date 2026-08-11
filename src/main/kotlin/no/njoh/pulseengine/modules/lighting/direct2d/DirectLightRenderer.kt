@@ -97,7 +97,7 @@ class DirectLightRenderer(
 
         val zRotCamera = surface.camera.rotation.z.interpolateFrom(surface.camera.rotationLast.z)
         val renderStartTime = System.nanoTime()
-        val texScale = surface.config.textureScale
+        val texScale = surface.config.resolutionScale
         val view = surface.camera.viewMatrix
         var index = 0
         val size = readEdges * 4

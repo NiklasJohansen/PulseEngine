@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode.PREMULTIPL
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
 import no.njoh.pulseengine.core.shared.primitives.Border
 import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
 import no.njoh.pulseengine.core.shared.primitives.CornerRadius
@@ -104,7 +105,11 @@ class FrostedGlassEffect(
             val effectSurface = engine.gfx.getSurface("frosted_glass")
             if (effectSurface == null)
             {
-                val newSurface = engine.gfx.createSurface("frosted_glass", textureScale = 0.5f, isVisible = false)
+                val newSurface = engine.gfx.createSurface(
+                    name = "frosted_glass",
+                    isVisible = false,
+                    output = SurfaceOutputSpec(resolutionScale = 0.5f)
+                )
                 newSurface.addPostProcessingEffect(FrostedGlassEffect(zThreshold = -80))
                 return // Surface will be initialized next frame, return now
             }

@@ -124,35 +124,50 @@ abstract class Surface
 
     /**
      * Sets the visibility of the [Surface]. Invisible surfaces will not be drawn to the back-buffer.
-     * Useful when the surface acts as off-screen render target to be used as a texture in e.g. post-processing effects.
+     * Useful when the surface acts as an off-screen render target to be used as a texture in e.g. post-processing effects.
      */
     abstract fun setIsVisible(isVisible: Boolean): Surface
 
     /**
-     * Sets the texture format of the [Surface].
-     * Set this when the surface requires higher precision than the default RGBA8 format.
+     * Sets or replaces one output attachment. Its mipmap generator is fixed after initialization. 
      */
-    abstract fun setTextureFormat(format: TextureFormat): Surface
+    abstract fun setAttachment(attachment: SurfaceAttachment): Surface
 
     /**
-     * Sets the texture filter used when scaling the [Surface] texture.
+     * Removes an output attachment and its GPU resource. 
      */
-    abstract fun setTextureFilter(filter: TextureFilter): Surface
+    abstract fun removeAttachment(attachmentPoint: AttachmentPoint): Surface
 
-    /**
-     * Sets the scale of render target texture for the [Surface].
-     * Default scale is 1.0. Higher values will increase the resolution of the surface and wise versa.
+    /** 
+     * Sets the format of an existing output attachment.
      */
-    abstract fun setTextureScale(scale: Float): Surface
+    abstract fun setTextureFormat(format: TextureFormat, attachmentPoint: AttachmentPoint = AttachmentPoint.COLOR_TEXTURE_0): Surface
+
+    /** 
+     * Sets the filter of an existing output attachment.
+     */
+    abstract fun setTextureFilter(filter: TextureFilter, attachmentPoint: AttachmentPoint = AttachmentPoint.COLOR_TEXTURE_0): Surface
+
+    /** 
+     * Sets the resolution scale shared by all attachments. 
+     */
+    abstract fun setResolutionScale(scale: Float): Surface
 
     ///////////////////////////////////////// Surface Textures /////////////////////////////////////////
 
     /**
-     * Gets the texture of the off-screen render target. The render target can have multiple texture
-     * attachments and the [index] can be used to get a specific one.
+     * Gets the render texture of the off-screen render target. The render target can have multiple texture
+     * attachments, and the [index] can be used to get a specific one.
      * @param final If true, the final post-processed texture is returned.
      */
     abstract fun getTexture(index: Int = 0, final: Boolean = true): RenderTexture
+
+    /**
+     * Gets the render texture of the off-screen render target. The render target can have multiple texture
+     * attachments, and the [attachmentPoint] can be used to get a specific one.
+     * @param final If true, the final post-processed texture is returned.
+     */
+    abstract fun getTexture(attachmentPoint: AttachmentPoint, final: Boolean = false): RenderTexture
 
     /**
      * Gets all textures from the off-screen render target.
@@ -166,6 +181,15 @@ abstract class Surface
      * @param final If true, reads the final post-processed texture.
      */
     abstract fun readPixel(x: Int, y: Int, textureIndex: Int = 0, final: Boolean = true, dstResult: PixelReadResult = PixelReadResult()): PixelReadResult
+
+    /**
+     * Starts an asynchronous pixel read from the requested framebuffer [attachmentPoint] into
+     * [dstResult] and returns it. If [dstResult] already has a pending read, no additional
+     * request is queued.
+     * @param attachmentPoint The framebuffer attachment point to read from.
+     * @param final If true, reads the final post-processed texture.
+     */
+    abstract fun readPixel(x: Int, y: Int, attachmentPoint: AttachmentPoint, final: Boolean = false, dstResult: PixelReadResult = PixelReadResult()): PixelReadResult
 
     ///////////////////////////////////////// Post-Processing /////////////////////////////////////////
 

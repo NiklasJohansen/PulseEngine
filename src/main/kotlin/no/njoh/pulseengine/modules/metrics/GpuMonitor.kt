@@ -9,6 +9,7 @@ import no.njoh.pulseengine.core.graphics.GraphicsInternal
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
 import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.graphics.util.GpuTimeQueryResult
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -112,7 +113,7 @@ class GpuMonitor : Service()
         if (engine.gfx.getSurface(FOREGROUND_SURFACE) == null)
         {
             val zOrder = engine.gfx.getAllSurfaces().minOf { it.config.zOrder } - 2
-            engine.gfx.createSurface(FOREGROUND_SURFACE, zOrder = zOrder, multisampling = MSAA16)
+            engine.gfx.createSurface(FOREGROUND_SURFACE, zOrder = zOrder, output = SurfaceOutputSpec(multisampling = MSAA16))
         }
 
         window = window ?: createWindow(engine)

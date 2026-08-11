@@ -1,14 +1,11 @@
 package no.njoh.pulseengine.core.graphics.surface
 
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
-import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import java.lang.Float.intBitsToFloat
 
 interface SurfaceConfig
@@ -20,15 +17,20 @@ interface SurfaceConfig
     val isVisible: Boolean
     var drawPostEffects: Boolean
     var drawWireframe: Boolean
-    val textureScale: Float
-    val textureFormat: TextureFormat
-    val textureFilter: TextureFilter
-    val textureSizeFunc: (width: Int, height: Int, scale: Float) -> PackedSize
+    val resolutionScale: Float
     val multisampling: Multisampling
-    val blendFunction: BlendFunction
-    val attachments: List<Attachment>
+    val sizeFunction: SurfaceSizeFunction
     val clearColor: Color?
-    val mipmapGenerators: Map<Attachment, MipmapGenerator>
+    val blendFunction: BlendFunction
+    val attachments: List<SurfaceAttachment>
+
+    fun hasAttachment(attachmentPoint: AttachmentPoint) = getAttachment(attachmentPoint) != null
+
+    fun getAttachment(attachmentPoint: AttachmentPoint): SurfaceAttachment?
+    {
+        attachments.forEachFast { if (it.attachmentPoint == attachmentPoint) return it }
+        return null
+    }
 }
 
 class SurfaceConfigInternal(
@@ -39,21 +41,21 @@ class SurfaceConfigInternal(
     override var isVisible: Boolean,
     override var drawPostEffects: Boolean,
     override var drawWireframe: Boolean,
-    override var textureScale: Float,
-    override var textureFormat: TextureFormat,
-    override var textureFilter: TextureFilter,
-    override var textureSizeFunc: (width: Int, height: Int, scale: Float) -> PackedSize,
-    override var multisampling: Multisampling,
-    override var blendFunction: BlendFunction,
-    override val attachments: List<Attachment>,
     override var clearColor: Color?,
-    override val mipmapGenerators: Map<Attachment, MipmapGenerator>
+    override var blendFunction: BlendFunction,
+    outputSpec: SurfaceOutputSpec,
 ) : SurfaceConfig {
 
-    val hasDepthAttachment = attachments.anyMatches { it.hasDepth }
-    var currentDrawColor   = 0f
-    var currentDepth       = 0f
-    var hasDepthPrepass    = false
+    override var attachments     = outputSpec.attachments.toList(); internal set
+    override var resolutionScale = outputSpec.resolutionScale; internal set
+    override var multisampling   = outputSpec.multisampling; internal set
+    override var sizeFunction    = outputSpec.sizeFunction; internal set
+
+    val hasDepthAttachment get() = attachments.anyMatches { it.attachmentPoint.isDepth }
+
+    var currentDrawColor = 0f
+    var currentDepth     = 0f
+    var hasDepthPrepass  = false
 
     init { setDrawColor(1f, 1f, 1f, 1f) }
 

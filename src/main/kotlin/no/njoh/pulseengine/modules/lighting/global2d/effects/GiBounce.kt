@@ -3,8 +3,8 @@ package no.njoh.pulseengine.modules.lighting.global2d.effects
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.COLOR_TEXTURE_0
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.COLOR_TEXTURE_1
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_0
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_1
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
@@ -19,8 +19,8 @@ class GiBounce(
     override val name: String = "gi_bounce",
     override val order: Int = 0
 ) : BaseEffect(
-    TextureDescriptor(filter = NEAREST, format = RGBA16F, attachment = COLOR_TEXTURE_0), // Scene radiance
-    TextureDescriptor(filter = NEAREST, format = RGBA16F, attachment = COLOR_TEXTURE_1)  // Scene metadata
+    TextureDescriptor(filter = NEAREST, format = RGBA16F, attachmentPoint = COLOR_TEXTURE_0), // Scene radiance
+    TextureDescriptor(filter = NEAREST, format = RGBA16F, attachmentPoint = COLOR_TEXTURE_1)  // Scene metadata
 ) {
     private val lastViewProjectionMatrix = Matrix4f()
 

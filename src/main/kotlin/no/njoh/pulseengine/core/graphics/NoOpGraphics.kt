@@ -5,27 +5,23 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.camera.DefaultCamera
 import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHIC_2D
 import no.njoh.pulseengine.core.graphics.gpu.resource.MaterialBank
 import no.njoh.pulseengine.core.graphics.gpu.resource.ModelBank
-import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
-import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.resource.TextureBank
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextImpl
 import no.njoh.pulseengine.core.graphics.surface.NoOpSurface
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
+import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 
-class NoOpGraphics() : GraphicsInternal
+class NoOpGraphics : GraphicsInternal
 {
     override var mainCamera = DefaultCamera(ORTHOGRAPHIC_2D)
     override var mainSurface = NoOpSurface()
@@ -41,15 +37,9 @@ class NoOpGraphics() : GraphicsInternal
         zOrder: Int?,
         camera: Camera?,
         isVisible: Boolean,
-        mipmapGenerators: Map<Attachment, MipmapGenerator>,
-        textureScale: Float,
-        textureFormat: TextureFormat,
-        textureFilter: TextureFilter,
-        textureSizeFunc: (width: Int, height: Int, scale: Float) -> PackedSize,
-        multisampling: Multisampling,
+        clearColor: Color?,
         blendFunction: BlendFunction,
-        attachments: List<Attachment>,
-        clearColor: Color?
+        output: SurfaceOutputSpec
     ): Surface = mainSurface
     override fun getAllSurfaces() = emptyList<SurfaceInternal>()
     override fun getSurface(name: String) = null

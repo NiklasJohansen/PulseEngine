@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.console.CommandResult
 import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ViewMode
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
 import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
 import no.njoh.pulseengine.core.input.CursorMode
@@ -136,9 +137,9 @@ class SceneEditor(
 
         // Create surfaces
         engine.gfx.createSurface("scene_editor_ui_base_bg",  zOrder = -90)
-        engine.gfx.createSurface("scene_editor_ui_base",     zOrder = -92, multisampling = MSAA8)
+        engine.gfx.createSurface("scene_editor_ui_base",     zOrder = -92, output = SurfaceOutputSpec(multisampling = MSAA8))
         engine.gfx.createSurface("scene_editor_ui_popup_bg", zOrder = -93)
-        engine.gfx.createSurface("scene_editor_ui_popup",    zOrder = -94, multisampling = MSAA8)
+        engine.gfx.createSurface("scene_editor_ui_popup",    zOrder = -94, output = SurfaceOutputSpec(multisampling = MSAA8))
 
         // Load editor icon font
         engine.asset.load(Font("/pulseengine/assets/editor_icons.ttf", uiFactory.style.iconFontName))

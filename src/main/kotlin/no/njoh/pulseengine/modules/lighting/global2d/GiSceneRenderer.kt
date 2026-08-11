@@ -86,7 +86,7 @@ class GiSceneRenderer(
         program.bind()
         program.setUniform("viewProjection", surface.camera.viewProjectionMatrix)
         program.setUniform("uvDrawOffset", getUvSampleOffset(surface, enabled = jitterFix))
-        program.setUniform("resolution", surface.config.width.toFloat() * surface.config.textureScale, surface.config.height.toFloat() * surface.config.textureScale)
+        program.setUniform("resolution", surface.config.width.toFloat() * surface.config.resolutionScale, surface.config.height.toFloat() * surface.config.resolutionScale)
         program.setUniform("camScale", surface.camera.scale.x)
         program.setUniform("globalWorldScale", globalWorldScale)
         program.setUniform("upscaleSmallSources", upscaleSmallSources)
@@ -152,7 +152,7 @@ class GiSceneRenderer(
         {
             if (!enabled) return OFFSET.set(0f, 0f)
 
-            val pixelSize = 1f / surface.config.textureScale
+            val pixelSize = 1f / surface.config.resolutionScale
             val viewMatrix = surface.camera.viewMatrix
             val xTranslation = -viewMatrix.m30()
             val yTranslation = viewMatrix.m31()

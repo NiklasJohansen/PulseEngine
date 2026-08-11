@@ -3,7 +3,7 @@ package no.njoh.pulseengine.core.graphics.postprocessing
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.*
 import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
@@ -87,8 +87,8 @@ class VolumetricSunEffect(
         val shadowMapSurface = engine.gfx.getSurface(shadowMapSurfaceName) ?: return inTextures
         val shadowMapRenderer = shadowMapSurface.getRenderer<CascadedShadowMapRenderer>() ?: return inTextures
         val shadowTex = shadowMapSurface.getTexture(final = false)
-        val sceneTex = inTextures.firstOrNull { it.attachment.hasColor } ?: return inTextures
-        val depthTex = inTextures.firstOrNull { it.attachment == DEPTH_TEXTURE } ?: return inTextures
+        val sceneTex = inTextures.firstOrNull { it.attachmentPoint.isColor } ?: return inTextures
+        val depthTex = inTextures.firstOrNull { it.attachmentPoint == DEPTH_TEXTURE } ?: return inTextures
 
         fbo.bind()
         fbo.clear()

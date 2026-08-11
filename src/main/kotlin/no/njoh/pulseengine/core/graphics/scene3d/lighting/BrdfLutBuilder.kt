@@ -6,8 +6,8 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.gpu.buffer.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
 import no.njoh.pulseengine.core.graphics.gpu.FullscreenPass
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_0
 import org.lwjgl.opengl.GL11.*
 
 object BrdfLutBuilder
@@ -29,7 +29,7 @@ object BrdfLutBuilder
         fbo.attachOutputTextureArray(
             textureArray = texArray,
             index = dstTex.handle.textureIndex,
-            attachment = Attachment.COLOR_TEXTURE_0,
+            attachmentPoint = COLOR_TEXTURE_0,
             mipLevel = 0
         )
         fbo.checkStatus()

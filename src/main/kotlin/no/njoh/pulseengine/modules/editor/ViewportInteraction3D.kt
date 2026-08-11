@@ -18,6 +18,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.renderers.ObjectIdRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ObjectOutlineRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.util.PixelReadResult
+import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.MouseButton
@@ -115,21 +116,8 @@ class ViewportInteraction3D(
     override fun onCreate(engine: PulseEngine, context: ViewportContext)
     {
         engine.gfx.createSurface(
-            name = OBJECT_ID_SURFACE,
-            zOrder = 100,
-            camera = context.camera,
-            isVisible = false,
-            textureFormat = RG32I,
-            textureFilter = NEAREST,
-            multisampling = Multisampling.NONE,
-            blendFunction = NONE,
-            attachments = listOf(COLOR_TEXTURE_0, DEPTH_TEXTURE),
-            clearColor = null
-        ).addRenderer(ObjectIdRenderer())
-
-        engine.gfx.createSurface(
             name = GIZMO_SURFACE,
-            multisampling = Multisampling.MSAA8,
+            output = SurfaceOutputSpec(multisampling = Multisampling.MSAA8),
             clearColor = Color(0.5f, 0.5f, 0.5f, 0f),
             zOrder = -50
         ).addRenderer(ObjectOutlineRenderer(OBJECT_ID_SURFACE))

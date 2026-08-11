@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.*
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode.*
 import no.njoh.pulseengine.core.graphics.util.DrawUtils
@@ -38,7 +38,7 @@ class FullscreenPass(private val program: ShaderProgram)
     {
         program.bind()
         program.setUniformSampler("tex", texture)
-        program.setUniform("isDepthTexture", texture.attachment == DEPTH_TEXTURE)
+        program.setUniform("isDepthTexture", texture.attachmentPoint == DEPTH_TEXTURE)
         program.setUniform("isPremultipliedAlpha", texture.alphaMode == PREMULTIPLIED)
         DrawUtils.drawTriangleVertices(vao, 0, 3)
     }

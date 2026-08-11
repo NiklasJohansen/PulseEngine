@@ -12,7 +12,7 @@ data class TextureDescriptor(
     var wrapping: TextureWrapping = TextureWrapping.CLAMP_TO_EDGE,
     var multisampling: Multisampling = Multisampling.NONE,
     var mipmapGenerator: MipmapGenerator? = null,
-    var attachment: Attachment = Attachment.COLOR_TEXTURE_0,
+    var attachmentPoint: AttachmentPoint = AttachmentPoint.COLOR_TEXTURE_0,
     var scale: Float = 1f,
     var sizeFunc: (width: Int, height: Int, scale: Float) -> PackedSize = { w, h, s -> PackedSize(max(w * s, 1f), max(h * s, 1f)) }
 ) {
@@ -23,6 +23,6 @@ data class TextureDescriptor(
         wrapping == other.wrapping &&
         multisampling == other.multisampling &&
         mipmapGenerator === other.mipmapGenerator &&
-        attachment == other.attachment &&
+        attachmentPoint == other.attachmentPoint &&
         scale == other.scale
 }

@@ -6,7 +6,7 @@ import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.gpu.buffer.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint
 import no.njoh.pulseengine.core.graphics.gpu.FullscreenPass
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL11.*
@@ -47,7 +47,7 @@ object EnvironmentMapBuilder
 
                 program.setUniform("roughness", roughness)
 
-                frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachment = Attachment.COLOR_TEXTURE_0, mip)
+                frameBufferObject.attachOutputTextureArray(dstTextureArray, dstEnv.handle.textureIndex, AttachmentPoint.COLOR_TEXTURE_0, mip)
                 frameBufferObject.checkStatus()
 
                 glViewport(0, 0, mipWidth, mipHeight)
@@ -85,7 +85,7 @@ object EnvironmentMapBuilder
             program.setUniform("srcEnv", srcEnv.handle.textureIndex.toFloat(), srcEnv.uMax, srcEnv.vMax)
 
             frameBufferObject.bind()
-            frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachment = Attachment.COLOR_TEXTURE_0, mipLevel = 0)
+            frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachmentPoint = AttachmentPoint.COLOR_TEXTURE_0, mipLevel = 0)
             FrameBufferObject.checkStatus()
 
             glViewport(0, 0, dstEnv.width, dstEnv.height)
