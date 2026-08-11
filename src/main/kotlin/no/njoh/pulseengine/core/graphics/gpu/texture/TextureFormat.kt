@@ -13,6 +13,7 @@ enum class TextureFormat(val internalFormat: Int, val pixelFormat: Int, val type
     R32F(GL_R32F,  GL_RED,          GL_FLOAT),
     R16I (GL_R16I, GL_RED_INTEGER,  GL_SHORT),
     R32I (GL_R32I, GL_RED_INTEGER,  GL_INT),
+    R32UI(GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT),
 
     // RG
     RG16F(GL_RG16F, GL_RG,         GL_FLOAT),
@@ -50,5 +51,10 @@ enum class TextureFormat(val internalFormat: Int, val pixelFormat: Int, val type
         else -> false
     }
 
-    val readType get() = if (isIntegerFormat) GL_INT else GL_FLOAT
+    val readType get() = when
+    {
+        isIntegerFormat && type == GL_UNSIGNED_INT -> GL_UNSIGNED_INT
+        isIntegerFormat -> GL_INT
+        else -> GL_FLOAT
+    }
 }

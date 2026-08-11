@@ -4,18 +4,12 @@ import gnu.trove.set.hash.TLongHashSet
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.graphics.camera.Camera
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.COLOR_TEXTURE_0
-import no.njoh.pulseengine.core.graphics.gpu.texture.Attachment.DEPTH_TEXTURE
-import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.NONE
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RG32I
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.GridRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ViewMode
-import no.njoh.pulseengine.core.graphics.scene3d.renderers.ObjectIdRenderer
-import no.njoh.pulseengine.core.graphics.scene3d.renderers.ObjectOutlineRenderer
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.RenderIdOutlineRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
@@ -110,8 +104,8 @@ class ViewportInteraction3D(
     private val projectedEdgePoints = Array(24) { Vector2f() }
     private val projectedHullPoints = Array(24) { Vector2f() }
     private val submittedBounds = Model.Aabb()
-    private val boundedMarqueeObjectIds = TLongHashSet()
-    private val matchedMarqueeObjectIds = TLongHashSet()
+    private val boundedMarqueeRenderIds = TLongHashSet()
+    private val matchedMarqueeRenderIds = TLongHashSet()
 
     override fun onCreate(engine: PulseEngine, context: ViewportContext)
     {
@@ -120,7 +114,12 @@ class ViewportInteraction3D(
             output = SurfaceOutputSpec(multisampling = Multisampling.MSAA8),
             clearColor = Color(0.5f, 0.5f, 0.5f, 0f),
             zOrder = -50
-        ).addRenderer(ObjectOutlineRenderer(OBJECT_ID_SURFACE))
+        ).addRenderer(
+            RenderIdOutlineRenderer(
+                renderIdSurfaceName = Scene3DRenderSystem.SCENE_3D_SURFACE,
+                renderIdAttachmentPoint = Scene3DRenderSystem.RENDER_ID_ATTACHMENT_POINT
+            )
+        )
 
         updateOrbitPivotFromSelection(context)
     }
@@ -128,9 +127,6 @@ class ViewportInteraction3D(
     override fun onUpdate(engine: PulseEngine, context: ViewportContext)
     {
         updateViewMode(engine, context.viewMode)
-
-        val objectIdRenderer = getObjectIdRenderer(engine)
-        objectIdRenderer?.enabled = true
 
         engine.input.setCursorType(CursorType.ARROW)
         consumePickResult(engine, context)
@@ -212,13 +208,11 @@ class ViewportInteraction3D(
 
     override fun onRender(engine: PulseEngine, context: ViewportContext)
     {
-        val objectIdRenderer = getObjectIdRenderer(engine)
         val outlineRenderer = getSelectionOutlineRenderer(engine)
         updateGrid(engine, context)
 
         if (engine.scene.state != SceneState.STOPPED)
         {
-            objectIdRenderer?.enabled = false
             transformDrag = null
             selectionDrag = null
             if (cameraDragging)
@@ -260,7 +254,6 @@ class ViewportInteraction3D(
         cameraDragging = false
         orbitPivotValid = false
         engine.input.setCursorType(CursorType.ARROW)
-        getObjectIdRenderer(engine)?.enabled = false
     }
 
     override fun onEntitiesDuplicated(engine: PulseEngine, context: ViewportContext, duplicatesBySource: Map<SceneEntity, SceneEntity>)
@@ -293,7 +286,6 @@ class ViewportInteraction3D(
         val renderer = surface?.getRenderer<GridRenderer>()
         if (renderer != null)
             surface.deleteRenderer(renderer)
-        engine.gfx.deleteSurface(OBJECT_ID_SURFACE)
         engine.gfx.deleteSurface(GIZMO_SURFACE)
     }
 
@@ -325,11 +317,9 @@ class ViewportInteraction3D(
         if (!pickPending || pickResult.isPending || !pickResult.isReady) return
         pickPending = false
 
-        val low = pickResult.redInt
-        val high = pickResult.greenInt
-        val objectId = if (low == -1 && high == -1) -1L else InstanceBufferObject.decodeObjectId(low, high)
+        val renderId = InstanceBufferObject.decodeRenderId(pickResult.redInt)
 
-        val entity = engine.scene.getEntity(objectId)
+        val entity = engine.scene.getEntity(renderId)
         if (entity != null && entity is Translatable3D && entity.isSet(EDITABLE) && entity.isNot(HIDDEN))
         {
             applyPickedEntity(engine, context, entity, pendingPickMode)
@@ -478,9 +468,14 @@ class ViewportInteraction3D(
     {
         if (pickResult.isPending) return
 
-        val objectIdSurface = engine.gfx.getSurface(OBJECT_ID_SURFACE) ?: return
+        val renderIdSurface = getRenderIdSurface(engine) ?: return
+        renderIdSurface.readPixel(
+            x = position.x.toInt(),
+            y = position.y.toInt(),
+            attachmentPoint = Scene3DRenderSystem.RENDER_ID_ATTACHMENT_POINT,
+            dstResult = pickResult
+        )
         pendingPickMode = mode
-        objectIdSurface.readPixel(position.x.toInt(), position.y.toInt(), dstResult = pickResult)
         pickPending = true
     }
 
@@ -493,9 +488,10 @@ class ViewportInteraction3D(
         val matches = ArrayList<SceneEntity>()
         collectMarqueeMatches(engine, context.camera, xMin, yMin, xMax, yMax)
 
-        engine.scene.forEachEntityOfType<Translatable3D> { entity ->
-            entity as SceneEntity
-            if (entity.isSet(EDITABLE) && entity.isNot(HIDDEN) && projectedBoundsOverlap(engine, context, entity, entity, xMin, yMin, xMax, yMax))
+        engine.scene.forEachEntityOfType<Translatable3D>
+        {
+            val entity = it as SceneEntity
+            if (entity.isSet(EDITABLE) && entity.isNot(HIDDEN) && projectedBoundsOverlap(engine, context, entity, it, xMin, yMin, xMax, yMax))
                 matches.add(entity)
         }
 
@@ -549,12 +545,13 @@ class ViewportInteraction3D(
         var closest: SceneEntity? = null
         var closestDistance = LIGHT_MARKER_HIT_RADIUS
         
-        engine.scene.forEachEntityOfType<Light3D> { light ->
-            light as SceneEntity
-            if (light.isNot(EDITABLE) || light.isSet(HIDDEN))
+        engine.scene.forEachEntityOfType<Light3D>
+        {
+            val entity = it as SceneEntity
+            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
                 return@forEachEntityOfType
 
-            tmpV0.set(light.position)
+            tmpV0.set(it.position)
             if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, tmpP0))
                 return@forEachEntityOfType
 
@@ -562,7 +559,7 @@ class ViewportInteraction3D(
             if (distance < closestDistance)
             {
                 closestDistance = distance
-                closest = light
+                closest = entity
             }
         }
 
@@ -610,12 +607,13 @@ class ViewportInteraction3D(
         var closest: Camera3D? = null
         var closestDistance = CAMERA_MARKER_HIT_RADIUS
 
-        engine.scene.forEachEntityOfType<Camera3D> { camera ->
-            camera as SceneEntity
-            if (camera.isNot(EDITABLE) || camera.isSet(HIDDEN))
+        engine.scene.forEachEntityOfType<Camera3D>
+        {
+            val entity = it as SceneEntity
+            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
                 return@forEachEntityOfType
 
-            tmpV0.set(camera.position)
+            tmpV0.set(it.position)
             if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, tmpP0))
                 return@forEachEntityOfType
 
@@ -623,7 +621,7 @@ class ViewportInteraction3D(
             if (distance < closestDistance)
             {
                 closestDistance = distance
-                closest = camera
+                closest = it
             }
         }
 
@@ -780,7 +778,7 @@ class ViewportInteraction3D(
 
     private fun getSelectionBounds(engine: PulseEngine, entity: SceneEntity, spatial: Translatable3D): Pair<Vector3f, Float>
     {
-        if (getSubmittedObjectBounds(engine, entity.id, submittedBounds))
+        if (getSubmittedRenderIdBounds(engine, entity.id, submittedBounds))
         {
             val center = Vector3f(
                 (submittedBounds.xMin + submittedBounds.xMax) * 0.5f,
@@ -809,8 +807,8 @@ class ViewportInteraction3D(
         selectionXMax: Float,
         selectionYMax: Float
     ): Boolean {
-        if (entity.id in boundedMarqueeObjectIds)
-            return entity.id in matchedMarqueeObjectIds
+        if (entity.id in boundedMarqueeRenderIds)
+            return entity.id in matchedMarqueeRenderIds
 
         tmpV0.set(spatial.position)
         if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, projectedBoundsMin))
@@ -1054,8 +1052,8 @@ class ViewportInteraction3D(
         selectionXMax: Float,
         selectionYMax: Float
     ) {
-        boundedMarqueeObjectIds.clear()
-        matchedMarqueeObjectIds.clear()
+        boundedMarqueeRenderIds.clear()
+        matchedMarqueeRenderIds.clear()
         val scene = engine.gfx.sceneContext.getSubmittedScene()
         collectMarqueeMatches(scene.opaqueItems, camera, engine.window.width, engine.window.height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
         collectMarqueeMatches(scene.maskedItems, camera, engine.window.width, engine.window.height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
@@ -1073,30 +1071,30 @@ class ViewportInteraction3D(
         selectionYMax: Float
     ) {
         items.forEach { item ->
-            if (item.objectId < 0L)
+            if (item.renderId < 0L)
                 return@forEach
 
-            boundedMarqueeObjectIds.add(item.objectId)
-            if (item.objectId !in matchedMarqueeObjectIds && projectRenderItemOverlaps(camera, item, width, height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)) 
-                matchedMarqueeObjectIds.add(item.objectId)
+            boundedMarqueeRenderIds.add(item.renderId)
+            if (item.renderId !in matchedMarqueeRenderIds && projectRenderItemOverlaps(camera, item, width, height, selectionXMin, selectionYMin, selectionXMax, selectionYMax))
+                matchedMarqueeRenderIds.add(item.renderId)
         }
     }
 
-    private fun getSubmittedObjectBounds(engine: PulseEngine, objectId: Long, outBounds: Model.Aabb): Boolean
+    private fun getSubmittedRenderIdBounds(engine: PulseEngine, renderId: Long, outBounds: Model.Aabb): Boolean
     {
         val scene = engine.gfx.sceneContext.getSubmittedScene()
         var found = false
-        found = includeObjectBounds(scene.opaqueItems, objectId, outBounds, found)
-        found = includeObjectBounds(scene.maskedItems, objectId, outBounds, found)
-        found = includeObjectBounds(scene.blendedItems, objectId, outBounds, found)
+        found = includeRenderIdBounds(scene.opaqueItems, renderId, outBounds, found)
+        found = includeRenderIdBounds(scene.maskedItems, renderId, outBounds, found)
+        found = includeRenderIdBounds(scene.blendedItems, renderId, outBounds, found)
         return found
     }
 
-    private fun includeObjectBounds(items: DynamicList<RenderItem>, objectId: Long, outBounds: Model.Aabb, hasExistingBounds: Boolean): Boolean 
+    private fun includeRenderIdBounds(items: DynamicList<RenderItem>, renderId: Long, outBounds: Model.Aabb, hasExistingBounds: Boolean): Boolean
     {
         var found = hasExistingBounds
         items.forEach { item ->
-            if (item.objectId != objectId) return@forEach
+            if (item.renderId != renderId) return@forEach
             includeRenderItemBounds(item, outBounds, found)
             found = true
         }
@@ -1948,9 +1946,11 @@ class ViewportInteraction3D(
         rotation.transformDirection(forward.set(0f, 0f, -1f)).normalize()
     }
 
-    private fun getObjectIdRenderer(engine: PulseEngine) = engine.gfx.getSurface(OBJECT_ID_SURFACE)?.getRenderer<ObjectIdRenderer>()
+    private fun getRenderIdSurface(engine: PulseEngine) = engine.gfx
+        .getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
+        ?.takeIf { it.config.hasAttachment(Scene3DRenderSystem.RENDER_ID_ATTACHMENT_POINT) }
 
-    private fun getSelectionOutlineRenderer(engine: PulseEngine) = engine.gfx.getSurface(GIZMO_SURFACE)?.getRenderer<ObjectOutlineRenderer>()
+    private fun getSelectionOutlineRenderer(engine: PulseEngine) = engine.gfx.getSurface(GIZMO_SURFACE)?.getRenderer<RenderIdOutlineRenderer>()
 
     enum class GizmoMode { MOVE, ROTATE, SCALE }
 
@@ -2000,7 +2000,6 @@ class ViewportInteraction3D(
 
     companion object
     {
-        private const val OBJECT_ID_SURFACE = "scene_editor_object_ids"
         private const val GIZMO_SURFACE = "scene_editor_3d_gizmo"
         private const val LOOK_SENSITIVITY = 0.003f
         private const val FLY_SPEED = 5f

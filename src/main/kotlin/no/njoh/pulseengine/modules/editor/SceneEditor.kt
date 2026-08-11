@@ -15,7 +15,6 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.*
 import no.njoh.pulseengine.core.graphics.postprocessing.FrostedGlassEffect
 import no.njoh.pulseengine.core.input.CursorMode
-import no.njoh.pulseengine.modules.ui.UiUtils.findElement
 import no.njoh.pulseengine.modules.ui.UiUtils.firstElementOrNull
 import no.njoh.pulseengine.modules.ui.elements.InputField
 import no.njoh.pulseengine.modules.ui.elements.Label

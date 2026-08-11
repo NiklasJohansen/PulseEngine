@@ -6,6 +6,8 @@ import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.gpu.FullscreenPass
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
@@ -13,8 +15,9 @@ import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 
-class ObjectOutlineRenderer(
-    val objectIdSurfaceName: String,
+class RenderIdOutlineRenderer(
+    var renderIdSurfaceName: String,
+    var renderIdAttachmentPoint: AttachmentPoint = COLOR_TEXTURE_0,
     var outlineWidthPixels: Int = 1,
     override val order: Int = 5
 ) : Renderer() {
@@ -23,8 +26,8 @@ class ObjectOutlineRenderer(
     private lateinit var pass: FullscreenPass
     private lateinit var selectionBuffer: StreamingIntBufferObject
 
-    private var readSelection = ObjectSelectionBitset()
-    private var writeSelection = ObjectSelectionBitset()
+    private var readSelection = RenderIdSelectionBitset()
+    private var writeSelection = RenderIdSelectionBitset()
 
     @Volatile
     private var pendingSelectionGeneration = 0L
@@ -35,7 +38,7 @@ class ObjectOutlineRenderer(
     {
         program = ShaderProgram.create(
             engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/surface.vert")),
-            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_object_id_outline.frag"))
+            engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/render_id_outline.frag"))
         )
         pass = FullscreenPass(program).apply { init() }
         selectionBuffer = StreamingIntBufferObject.createUnboundShaderStorageBuffer(INITIAL_SELECTION_WORD_CAPACITY)
@@ -58,7 +61,7 @@ class ObjectOutlineRenderer(
     {
         if (startIndex != 0) return
 
-        val objectIdTexture = engine.gfx.getSurface(objectIdSurfaceName)?.getTexture() ?: return
+        val renderIdTexture = engine.gfx.getSurface(renderIdSurfaceName)?.getTexture(renderIdAttachmentPoint, final = false) ?: return
 
         if (selectionBufferDirty)
         {
@@ -78,8 +81,8 @@ class ObjectOutlineRenderer(
         glDisable(GL_CULL_FACE)
 
         program.bind()
-        program.setUniformSampler("uObjectIdTexture", objectIdTexture, filter = TextureFilter.NEAREST)
-        program.setUniform("uTextureSize", objectIdTexture.width.toFloat(), objectIdTexture.height.toFloat())
+        program.setUniformSampler("uRenderIdTexture", renderIdTexture, filter = TextureFilter.NEAREST)
+        program.setUniform("uTextureSize", renderIdTexture.width.toFloat(), renderIdTexture.height.toFloat())
         program.setUniform("uOutlineWidth", outlineWidthPixels.coerceAtLeast(1))
         program.setUniform("uSelectionWordCount", readSelection.wordCount)
         selectionBuffer.bindSubmittedRange(SELECTION_BUFFER_BINDING)
@@ -105,11 +108,11 @@ class ObjectOutlineRenderer(
 
     fun beginSelectionUpdate() = writeSelection.clear()
 
-    fun setSelected(objectId: Long) = writeSelection.add(objectId)
+    fun setSelected(renderId: Long) = writeSelection.add(renderId)
 
     fun finishSelectionUpdate() { pendingSelectionGeneration++ }
 
-    private class ObjectSelectionBitset
+    private class RenderIdSelectionBitset
     {
         var words = IntArray(INITIAL_WORD_CAPACITY); private set
         var wordCount = 0; private set
@@ -122,16 +125,16 @@ class ObjectOutlineRenderer(
             hasSelection = false
         }
 
-        fun add(objectId: Long)
+        fun add(renderId: Long)
         {
-            if (objectId !in 0L..MAX_OBJECT_ID)
+            if (renderId !in 0L..MAX_RENDER_ID)
                 return
 
-            val wordIndex = (objectId ushr WORD_SHIFT).toInt()
+            val wordIndex = (renderId ushr WORD_SHIFT).toInt()
             val requiredCapacity = wordIndex + 1
             if (requiredCapacity > words.size)
                 words = words.copyOf(maxOf(requiredCapacity, words.size * 2))
-            words[wordIndex] = words[wordIndex] or (1 shl (objectId.toInt() and WORD_MASK))
+            words[wordIndex] = words[wordIndex] or (1 shl (renderId.toInt() and WORD_MASK))
             wordCount = maxOf(wordCount, wordIndex + 1)
             hasSelection = true
         }
@@ -142,7 +145,7 @@ class ObjectOutlineRenderer(
             private const val WORD_SHIFT = 5
             private const val WORD_MASK = 31
             private const val MAX_BITSET_BYTES = 16 * 1024 * 1024
-            private const val MAX_OBJECT_ID = (MAX_BITSET_BYTES / Int.SIZE_BYTES) * 32L - 1L
+            private const val MAX_RENDER_ID = (MAX_BITSET_BYTES / Int.SIZE_BYTES) * 32L - 1L
         }
     }
 

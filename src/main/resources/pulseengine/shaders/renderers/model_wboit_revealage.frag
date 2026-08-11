@@ -2,8 +2,16 @@
 
 in vec2 vTexCoord;
 flat in int vMaterialId;
+#ifdef WBOIT_OUTPUT_RENDER_ID
+flat in uint vRenderId;
+#endif
 
+#ifdef WBOIT_OUTPUT_RENDER_ID
+layout(location = 1) out float outRevealage;
+layout(location = 2) out uint outRenderId;
+#else
 layout(location = 0) out float outRevealage;
+#endif
 
 uniform sampler2DArray textureArrays[16];
 
@@ -69,4 +77,8 @@ void main()
         discard;
 
     outRevealage = alpha;
+
+    #ifdef WBOIT_OUTPUT_RENDER_ID
+    outRenderId = vRenderId;
+    #endif
 }

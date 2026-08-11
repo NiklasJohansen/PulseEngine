@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.*
 import no.njoh.pulseengine.core.graphics.util.getSupportedModelInstanceIndexMode
 import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.shared.primitives.Mat4fProps
+import no.njoh.pulseengine.core.shared.utils.Logger
 import kotlin.math.abs
 
 class InstanceBufferObject
@@ -15,14 +16,13 @@ class InstanceBufferObject
     var instanceIndexMode = UNIFORM_OFFSET; private set
     var instanceIndexBuffer = null as StreamingIntBufferObject?; private set
 
-    private lateinit var objectIdBuffer: StreamingIntBufferObject
     private lateinit var instanceBuffer: StreamingFloatBufferObject
+    private var loggedInvalidRenderId = false
 
     fun init()
     {
         if (this::instanceBuffer.isInitialized)
             return
-        objectIdBuffer = StreamingIntBufferObject.createUnboundShaderStorageBuffer(initCapacity = 2 * 512)
         instanceBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(
             blockBinding = INSTANCE_BUFFER_BINDING,
             initCapacity = INSTANCE_FLOATS * 512
@@ -35,7 +35,6 @@ class InstanceBufferObject
 
     fun clear()
     {
-        objectIdBuffer.clear()
         instanceBuffer.clear()
         instanceIndexBuffer?.clear()
         instanceCount = 0
@@ -44,20 +43,18 @@ class InstanceBufferObject
     fun reserveItemCapacity(itemCount: Int)
     {
         instanceBuffer.ensureWriteCapacity(itemCount * INSTANCE_FLOATS)
-        objectIdBuffer.ensureWriteCapacity(itemCount * 2)
         instanceIndexBuffer?.ensureWriteCapacity(itemCount)
     }
 
     fun addItem(item: RenderItem, boneOffsetIndex: Int): Int
     {
-        val instanceIndex = instanceCount++
         val materialId = item.material?.id ?: Material.DEFAULT_ID
         val transform = item.transform
         val transformData = transform.data
         val transformOffset = transform.offset
 
-        val dstOffset = instanceBuffer.size
         val dstData   = instanceBuffer.data
+        val dstOffset = instanceBuffer.size
         System.arraycopy(transformData, transformOffset, dstData, dstOffset, Mat4f.MATRIX_SIZE)
 
         val handedness = computeSurfaceNormalMatrix(
@@ -71,11 +68,10 @@ class InstanceBufferObject
         dstData[dstOffset + PARAMS_FLOAT_OFFSET    ] = materialId.toFloat()
         dstData[dstOffset + PARAMS_FLOAT_OFFSET + 1] = boneOffsetIndex.toFloat()
         dstData[dstOffset + PARAMS_FLOAT_OFFSET + 2] = handedness
-        dstData[dstOffset + PARAMS_FLOAT_OFFSET + 3] = 0f
+        dstData[dstOffset + RENDER_ID_WORD_OFFSET  ] = Float.fromBits(encodeRenderId(item.renderId))
         instanceBuffer.size = dstOffset + INSTANCE_FLOATS
 
-        objectIdBuffer.put(encodeObjectIdLow(item.objectId), encodeObjectIdHigh(item.objectId))
-
+        val instanceIndex = instanceCount++
         instanceIndexBuffer?.put(instanceIndex)
 
         return instanceIndex
@@ -83,17 +79,13 @@ class InstanceBufferObject
 
     fun submit() = measure("Instance buffers")
     {
-        objectIdBuffer.submit()
         instanceBuffer.submit()
         instanceIndexBuffer?.submit()
     }
 
-    fun bindObjectIds() = objectIdBuffer.bindSubmittedRange(OBJECT_ID_BUFFER_BINDING)
-
     fun markSubmittedDataInUse() = measure("Instance buffers")
     {
         instanceBuffer.markSubmittedDataInUse()
-        objectIdBuffer.markSubmittedDataInUse()
         instanceIndexBuffer?.markSubmittedDataInUse()
     }
 
@@ -103,8 +95,29 @@ class InstanceBufferObject
             return
 
         instanceBuffer.destroy()
-        objectIdBuffer.destroy()
         instanceIndexBuffer?.destroy()
+    }
+
+    private fun encodeRenderId(renderId: Long): Int
+    {
+        if (renderId == INVALID_RENDER_ID)
+            return INVALID_RENDER_ID_BITS
+
+        if (renderId < 0L || renderId > MAX_RENDER_ID)
+        {
+            if (!loggedInvalidRenderId)
+            {
+                Logger.error()
+                {
+                    "Render ID $renderId cannot be represented safely by the float-backed GPU render-ID field. " +
+                    "Valid IDs are 0..$MAX_RENDER_ID; writing the invalid render ID instead."
+                }
+                loggedInvalidRenderId = true
+            }
+            return INVALID_RENDER_ID_BITS
+        }
+
+        return renderId.toInt()
     }
 
     /**
@@ -183,17 +196,25 @@ class InstanceBufferObject
 
     companion object
     {
-        const val INSTANCE_BUFFER_BINDING = 1
-        const val OBJECT_ID_BUFFER_BINDING = 12
-        const val INVALID_INSTANCE_INDEX = -1
+        // Every bit pattern through this value represents a finite float and is therefore preserved
+        // exactly when the uint field is staged in the float-backed instance buffer.
+        const val MAX_RENDER_ID = 0x7f7f_ffffL
+        const val INVALID_RENDER_ID = -1L
+        const val INVALID_RENDER_ID_BITS = 0x7f80_0000 // The bit pattern of a float representing NaN
         const val INSTANCE_FLOATS = 32
         const val NORMAL_MATRIX_FLOAT_OFFSET = 16
         const val PARAMS_FLOAT_OFFSET = 28
+        const val RENDER_ID_WORD_OFFSET = PARAMS_FLOAT_OFFSET + 3
+
+        const val INSTANCE_BUFFER_BINDING = 1
+        const val INVALID_INSTANCE_INDEX = -1
 
         private const val MIN_NORMAL_DETERMINANT = 1e-8f
 
-        fun encodeObjectIdLow(id: Long) = id.toInt()
-        fun encodeObjectIdHigh(id: Long) = (id ushr 32).toInt()
-        fun decodeObjectId(low: Int, high: Int) = (low.toLong() and 0xffffffffL) or (high.toLong() shl 32)
+        fun decodeRenderId(bits: Int): Long
+        {
+            val renderId = bits.toLong() and 0xffff_ffffL
+            return if (renderId <= MAX_RENDER_ID) renderId else INVALID_RENDER_ID
+        }
     }
 }

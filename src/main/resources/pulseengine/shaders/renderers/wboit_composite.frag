@@ -1,11 +1,17 @@
-#version 150 core
+#version 330 core
 
 in vec2 uv;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
+#ifdef WBOIT_OUTPUT_RENDER_ID
+layout(location = 1) out uint outRenderId;
+#endif
 
 uniform sampler2D uAccumTex;
 uniform sampler2D uRevealageTex;
+#ifdef WBOIT_OUTPUT_RENDER_ID
+uniform usampler2D uRenderIdTex;
+#endif
 
 void main()
 {
@@ -18,4 +24,8 @@ void main()
 
     vec3 color = accum.rgb / max(accum.a, 0.00001);
     fragColor = vec4(color, alpha);
+
+    #ifdef WBOIT_OUTPUT_RENDER_ID
+    outRenderId = texture(uRenderIdTex, uv).r;
+    #endif
 }

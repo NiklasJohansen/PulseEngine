@@ -57,7 +57,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     private val lightBuffer        = LightBufferObject()
     private val drawCommandBuilder = DrawCommandBuilder(instanceBuffer, cullingBuffer)
     private val localShadowAtlas   = LocalShadowAtlas()
-    private val objectIdOverrides  = TLongArrayList()
+    private val renderIdOverrides  = TLongArrayList()
 
     private var frameNumber = 0
     private var initialized = false
@@ -65,7 +65,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     override fun initFrame()
     {
-        objectIdOverrides.resetQuick()
+        renderIdOverrides.resetQuick()
         frameNumber++
 
         nextFrameScene = thisFrameScene.also { thisFrameScene = nextFrameScene }
@@ -212,7 +212,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         lodPixelHeightThresholds: IntArray?,
         lodHysteresis: Float,
         lodKey: Long,
-        objectId: Long
+        renderId: Long
     ) {
         val lodLevel = LodUtils.getLodLevel(model, transform, lodPixelHeightThresholds, lodHysteresis, lodKey, thisLodCameraState)
         val meshInstances = model.getMeshInstancesAtLevel(lodLevel)
@@ -237,13 +237,13 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
                 meshTransform.setMul(transform, it.transform, properties)
             }
 
-            nextFrameScene.addMesh(it.mesh, material, meshTransform, cullingBounds, boneMatrices, renderPassMask, resolveObjectId(objectId))
+            nextFrameScene.addMesh(it.mesh, material, meshTransform, cullingBounds, boneMatrices, renderPassMask, resolveRenderId(renderId))
         }
     }
 
-    override fun submitMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, objectId: Long)
+    override fun submitMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, renderId: Long)
     {
-        nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, renderPassMask, resolveObjectId(objectId))
+        nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, renderPassMask, resolveRenderId(renderId))
     }
 
     override fun submitPointLight(position: Vector3f, radius: Float, color: Color, shadowEnabled: Boolean, shadowResolution: Int, shadowNearPlane: Float, shadowBias: Float, shadowImportance: Float, shadowId: Long)
@@ -268,14 +268,14 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         nextFrameScene.addLight(position, direction, radius, color, innerConeAngle, outerConeAngle, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId)
     }
 
-    override fun pushObjectIdOverride(objectId: Long)
+    override fun pushRenderIdOverride(renderId: Long)
     {
-        objectIdOverrides.add(objectId)
+        renderIdOverrides.add(renderId)
     }
 
-    override fun popObjectIdOverride()
+    override fun popRenderIdOverride()
     {
-        objectIdOverrides.removeAt(objectIdOverrides.size() - 1)
+        renderIdOverrides.removeAt(renderIdOverrides.size() - 1)
     }
 
     override fun getSubmittedScene() = thisFrameScene
@@ -334,7 +334,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         nextLodCameraState.set(cameraState, frameNumber)
     }
 
-    private fun resolveObjectId(objectId: Long) = if (objectIdOverrides.isEmpty) objectId else objectIdOverrides[objectIdOverrides.size() - 1]
+    private fun resolveRenderId(renderId: Long) = if (renderIdOverrides.isEmpty) renderId else renderIdOverrides[renderIdOverrides.size() - 1]
 
     private fun RenderView.wasRequested() = (lastFrameRequested == frameNumber)
 }

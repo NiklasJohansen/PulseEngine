@@ -113,7 +113,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
             transform = tmpTransform,
             material = material,
             renderPassMask = CAMERA or LOCAL_SHADOW.takeIf(castLocalShadows) or GLOBAL_SHADOW.takeIf(castSunShadows),
-            objectId = id
+            renderId = id
         )
     }
 

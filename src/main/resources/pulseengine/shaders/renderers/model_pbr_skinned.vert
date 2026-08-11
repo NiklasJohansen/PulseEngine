@@ -21,7 +21,10 @@ struct InstanceData
 {
     mat4 model;
     mat3 normalMatrix;
-    vec4 params; // x=materialId, y=boneOffset, z=handedness, w=reserved
+    float materialId;
+    float boneOffset;
+    float handedness;
+    uint renderId;
 };
 
 layout(std430, binding = 1) readonly buffer InstanceBuffer
@@ -39,6 +42,7 @@ out vec3 vWorldNormal;
 out mat3 vTBN;
 out vec2 vTexCoord;
 flat out int vMaterialId;
+flat out uint vRenderId;
 
 void accumulateBoneInfluence(
     int boneOffset,
@@ -62,9 +66,10 @@ void accumulateBoneInfluence(
 
 void main()
 {
-    InstanceData instance = uInstances[MODEL_INSTANCE_INDEX];
+    uint instanceIndex = MODEL_INSTANCE_INDEX;
+    InstanceData instance = uInstances[instanceIndex];
 
-    int boneOffset = int(instance.params.y);
+    int boneOffset = int(instance.boneOffset);
     vec4 skinnedPosition = vec4(0.0);
     vec3 skinnedNormal = vec3(0.0);
     vec3 skinnedTangent = vec3(0.0);
@@ -89,7 +94,7 @@ void main()
 
     T = normalize(T - N * dot(T, N));
 
-    float sign = tangent.w * instance.params.z;
+    float sign = tangent.w * instance.handedness;
     vec3 B = normalize(cross(N, T)) * sign;
 
     vec4 worldPos = model * skinnedPosition;
@@ -98,7 +103,8 @@ void main()
     vWorldNormal = N;
     vTBN = mat3(T, B, N);
     vTexCoord = vec2(texCoord.x, 1.0 - texCoord.y);
-    vMaterialId = int(instance.params.x);
+    vMaterialId = int(instance.materialId);
+    vRenderId = instance.renderId;
 
     gl_Position = uViewProjection * worldPos;
 }

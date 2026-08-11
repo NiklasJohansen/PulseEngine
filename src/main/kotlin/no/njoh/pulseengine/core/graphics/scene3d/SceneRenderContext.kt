@@ -38,7 +38,7 @@ abstract class SceneRenderContext()
         lodPixelHeightThresholds: IntArray? = null,
         lodHysteresis: Float = 0.15f,
         lodKey: Long = 0L,
-        objectId: Long = -1
+        renderId: Long = -1
     )
 
     /**
@@ -51,7 +51,7 @@ abstract class SceneRenderContext()
         cullingBounds: Model.Aabb? = mesh.localBounds,
         boneMatrices: Array<Matrix4f>? = null,
         renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
-        objectId: Long = -1
+        renderId: Long = -1
     )
 
     /**
@@ -112,15 +112,15 @@ abstract class SceneRenderContextInternal : SceneRenderContext()
     abstract fun <T: RenderView> getView(key: RenderViewKey<T>): T?
 
     /**
-     * Overrides object IDs supplied by model and mesh submissions until [popObjectIdOverride] is called.
+     * Overrides render IDs supplied by model and mesh submissions until [popRenderIdOverride] is called.
      * Overrides may be nested.
      */
-    abstract fun pushObjectIdOverride(objectId: Long)
+    abstract fun pushRenderIdOverride(renderId: Long)
 
     /**
-     * Ends the most recently pushed object ID override.
+     * Ends the most recently pushed render ID override.
      */
-    abstract fun popObjectIdOverride()
+    abstract fun popRenderIdOverride()
     
     abstract fun getLightBuffer(): LightBufferObject
     abstract fun getInstanceBuffer(): InstanceBufferObject

@@ -150,7 +150,7 @@ open class Prefab : SceneEntity(), Named, Initiable, Renderable2D, Spatial2D, Sp
     // Scene3DRenderable
     override fun onRender(engine: PulseEngine, context: SceneRenderContext)
     {
-        render3D(engine, context, id, setObjectId = true)
+        render3D(engine, context, id, setRenderId = true)
     }
 
     // Scene3DLightSource
@@ -164,24 +164,24 @@ open class Prefab : SceneEntity(), Named, Initiable, Renderable2D, Spatial2D, Sp
         }
     }
 
-    private fun render3D(engine: PulseEngine, context: SceneRenderContext, objectId: Long, setObjectId: Boolean)
+    private fun render3D(engine: PulseEngine, context: SceneRenderContext, renderId: Long, setRenderId: Boolean)
     {
         if (!updatePreview(engine)) return
 
         val context = context as SceneRenderContextInternal
-        val overrideObjectId = setObjectId && objectId != INVALID_ID
-        if (overrideObjectId) context.pushObjectIdOverride(objectId)
+        val overrideRenderId = setRenderId && renderId != INVALID_ID
+        if (overrideRenderId) context.pushRenderIdOverride(renderId)
 
         previewEntries.forEachFiltered({ it.preview.isNot(HIDDEN or DEAD) })
         {
             when (val entity = it.preview)
             {
-                is Prefab -> entity.render3D(engine, context, objectId, setObjectId = false)
+                is Prefab -> entity.render3D(engine, context, renderId, setRenderId = false)
                 is Scene3DRenderable -> entity.onRender(engine, context)
             }
         }
 
-        if (overrideObjectId) context.popObjectIdOverride()
+        if (overrideRenderId) context.popRenderIdOverride()
     }
 
 

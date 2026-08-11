@@ -13,6 +13,7 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.R16F
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.R32UI
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.gpu.buffer.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
@@ -41,23 +42,30 @@ import org.lwjgl.opengl.GL14.GL_FUNC_ADD
 import org.lwjgl.opengl.GL14.glBlendEquation
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import org.lwjgl.opengl.GL30.glClearBufferfv
+import org.lwjgl.opengl.GL30.glClearBufferuiv
+import org.lwjgl.opengl.GL30.glDisablei
+import org.lwjgl.opengl.GL30.glEnablei
 
 class WeightedBlendedOitRenderer
 {
     var alphaCutoff = 0.04f
 
     private lateinit var accumPrograms: ShaderProgramSet
+    private lateinit var renderIdViewAccumPrograms: ShaderProgramSet
     private lateinit var revealagePrograms: ShaderProgramSet
+    private lateinit var renderIdRevealagePrograms: ShaderProgramSet
     private lateinit var compositeProgram: ShaderProgram
+    private lateinit var renderIdCompositeProgram: ShaderProgram
     private lateinit var compositePass: FullscreenPass
+    private lateinit var renderIdCompositePass: FullscreenPass
     private lateinit var fbo: FrameBufferObject
 
-    private val oitTextureDescriptors = listOf(
-        TextureDescriptor(format = RGBA16F, filter = NEAREST, attachment = Attachment.COLOR_TEXTURE_0),
-        TextureDescriptor(format = R16F, filter = NEAREST, attachment = Attachment.COLOR_TEXTURE_1)
+    private val baseTextureDescriptors = listOf(
         TextureDescriptor(format = RGBA16F, filter = NEAREST, attachmentPoint = COLOR_TEXTURE_0),
         TextureDescriptor(format = R16F, filter = NEAREST, attachmentPoint = COLOR_TEXTURE_1)
     )
+    private val renderIdTextureDescriptors = baseTextureDescriptors +
+        TextureDescriptor(format = R32UI, filter = NEAREST, attachmentPoint = COLOR_TEXTURE_2)
 
     fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
@@ -66,6 +74,16 @@ class WeightedBlendedOitRenderer
             val compositeVertex = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/surface.vert"))
             val compositeFragment = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/wboit_composite.frag"))
             val revealageFragment = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_wboit_revealage.frag"))
+            val renderIdCompositeFragment = engine.asset.loadNow(FragmentShader(
+                name = "/pulseengine/shaders/renderers/wboit_composite.frag#render_id",
+                filePath = "/pulseengine/shaders/renderers/wboit_composite.frag",
+                transform = defineShaderVariant("WBOIT_OUTPUT_RENDER_ID")
+            ))
+            val renderIdRevealageFragment = engine.asset.loadNow(FragmentShader(
+                name = "/pulseengine/shaders/renderers/model_wboit_revealage.frag#render_id",
+                filePath = "/pulseengine/shaders/renderers/model_wboit_revealage.frag",
+                transform = defineShaderVariant("WBOIT_OUTPUT_RENDER_ID")
+            ))
             val staticVertex = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr.vert", ::transformModelVertexShader))
             val skinnedVertex = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr_skinned.vert", ::transformModelVertexShader))
             val accumFragment = engine.asset.loadNow(FragmentShader(
@@ -73,21 +91,35 @@ class WeightedBlendedOitRenderer
                 filePath = "/pulseengine/shaders/renderers/model_pbr.frag",
                 transform = defineShaderVariant("PBR_OUTPUT_WBOIT_ACCUM")
             ))
+            val renderIdViewAccumFragment = engine.asset.loadNow(FragmentShader(
+                name = "/pulseengine/shaders/renderers/model_pbr.frag#wboit_accum_render_id",
+                filePath = "/pulseengine/shaders/renderers/model_pbr.frag",
+                transform = defineShaderVariant("PBR_OUTPUT_WBOIT_ACCUM", "PBR_USE_RENDER_ID")
+            ))
 
             val accumStaticProgram = ShaderProgram.create(staticVertex, accumFragment)
             val accumSkinnedProgram = ShaderProgram.create(skinnedVertex, accumFragment)
+            val renderIdViewAccumStaticProgram = ShaderProgram.create(staticVertex, renderIdViewAccumFragment)
+            val renderIdViewAccumSkinnedProgram = ShaderProgram.create(skinnedVertex, renderIdViewAccumFragment)
             val revealageStaticProgram = ShaderProgram.create(staticVertex, revealageFragment)
             val revealageSkinnedProgram = ShaderProgram.create(skinnedVertex, revealageFragment)
+            val renderIdRevealageStaticProgram = ShaderProgram.create(staticVertex, renderIdRevealageFragment)
+            val renderIdRevealageSkinnedProgram = ShaderProgram.create(skinnedVertex, renderIdRevealageFragment)
 
             accumPrograms = ShaderProgramSet(accumStaticProgram, accumSkinnedProgram)
+            renderIdViewAccumPrograms = ShaderProgramSet(renderIdViewAccumStaticProgram, renderIdViewAccumSkinnedProgram)
             revealagePrograms = ShaderProgramSet(revealageStaticProgram, revealageSkinnedProgram)
+            renderIdRevealagePrograms = ShaderProgramSet(renderIdRevealageStaticProgram, renderIdRevealageSkinnedProgram)
             compositeProgram = ShaderProgram.create(compositeVertex, compositeFragment)
+            renderIdCompositeProgram = ShaderProgram.create(compositeVertex, renderIdCompositeFragment)
             compositePass = FullscreenPass(compositeProgram)
+            renderIdCompositePass = FullscreenPass(renderIdCompositeProgram)
         }
         else fbo.destroy()
 
-        fbo = FrameBufferObject.create(surface.config.width, surface.config.height, oitTextureDescriptors)
+        fbo = FrameBufferObject.create(surface.config.width, surface.config.height, baseTextureDescriptors)
         compositePass.init()
+        renderIdCompositePass.init()
     }
 
     fun render(
@@ -95,17 +127,19 @@ class WeightedBlendedOitRenderer
         surface: SurfaceInternal,
         bucket: RenderBucket,
         drawPayload: DrawPayload,
+        writeRenderIds: Boolean,
+        visualizeRenderIds: Boolean,
         configureAccumProgram: (ShaderProgram) -> Unit
     ) {
         if (bucket.size == 0) return
 
-        updateFbo(surface)
-        surface.renderTarget.resolveDepth(engine)
+        updateFbo(surface, writeRenderIds)
+        surface.renderTarget.resolveDepth()
 
-        val opaqueDepthTex = surface.renderTarget.getTextures().firstOrNull { it.attachment == DEPTH_TEXTURE }
+        val opaqueDepthTex = surface.renderTarget.getTexture(DEPTH_TEXTURE)
 
-        accumulate(engine, surface, bucket, drawPayload, opaqueDepthTex, configureAccumProgram)
-        composite(surface)
+        accumulate(engine, surface, bucket, drawPayload, opaqueDepthTex, writeRenderIds, visualizeRenderIds, configureAccumProgram)
+        composite(surface, writeRenderIds)
     }
 
     private fun accumulate(
@@ -114,15 +148,20 @@ class WeightedBlendedOitRenderer
         bucket: RenderBucket,
         drawPayload: DrawPayload,
         opaqueDepthTex: RenderTexture?,
+        writeRenderIds: Boolean,
+        visualizeRenderIds: Boolean,
         configureAccumProgram: (ShaderProgram) -> Unit
     ) = measure("wboit_accumulate", label = { "Wboit accumulate (" plus bucket.instanceCount plus "i, " plus bucket.size plus "b)" }) {
 
-        configureAccumProgram(accumPrograms.staticProgram)
-        configureAccumProgram(accumPrograms.skinnedProgram)
-        configureWboitProgram(accumPrograms.staticProgram, opaqueDepthTex, alphaCutoff)
-        configureWboitProgram(accumPrograms.skinnedProgram, opaqueDepthTex, alphaCutoff)
-        configureRevealageProgram(revealagePrograms.staticProgram, engine, surface, opaqueDepthTex, alphaCutoff)
-        configureRevealageProgram(revealagePrograms.skinnedProgram, engine, surface, opaqueDepthTex, alphaCutoff)
+        val activeAccumPrograms = if (visualizeRenderIds) renderIdViewAccumPrograms else accumPrograms
+        val activeRevealagePrograms = if (writeRenderIds) renderIdRevealagePrograms else revealagePrograms
+
+        configureAccumProgram(activeAccumPrograms.staticProgram)
+        configureAccumProgram(activeAccumPrograms.skinnedProgram)
+        configureWboitProgram(activeAccumPrograms.staticProgram, opaqueDepthTex, alphaCutoff)
+        configureWboitProgram(activeAccumPrograms.skinnedProgram, opaqueDepthTex, alphaCutoff)
+        configureRevealageProgram(activeRevealagePrograms.staticProgram, engine, surface, opaqueDepthTex, alphaCutoff)
+        configureRevealageProgram(activeRevealagePrograms.skinnedProgram, engine, surface, opaqueDepthTex, alphaCutoff)
 
         fbo.bind()
         glViewport(0, 0, surface.config.width, surface.config.height)
@@ -130,26 +169,44 @@ class WeightedBlendedOitRenderer
         glDepthMask(false)
         glEnable(GL_BLEND)
         glBlendEquation(GL_FUNC_ADD)
-        glClearBufferfv(GL_COLOR, 0, ZERO_ARRAY)
-        glClearBufferfv(GL_COLOR, 1, ONE_ARRAY)
+        glClearBufferfv(GL_COLOR, COLOR_TEXTURE_0.glLocation, ZERO_ARRAY)
+        glClearBufferfv(GL_COLOR, COLOR_TEXTURE_1.glLocation, ONE_ARRAY)
+
+        if (writeRenderIds)
+            glClearBufferuiv(GL_COLOR, COLOR_TEXTURE_2.glLocation, BACKGROUND_RENDER_ID)
 
         fbo.attachOutputTexture(fbo.getTexture(0))
         glBlendFunc(GL_ONE, GL_ONE)
-        drawRenderBucket(bucket, drawPayload, accumPrograms)
+        drawRenderBucket(bucket, drawPayload, activeAccumPrograms)
 
-        fbo.attachOutputTexture(fbo.getTexture(1))
+        if (writeRenderIds)
+        {
+            fbo.setDrawBuffers(COLOR_TEXTURE_1, COLOR_TEXTURE_2)
+            glEnablei(GL_BLEND, COLOR_TEXTURE_1.glLocation)
+            glDisablei(GL_BLEND, COLOR_TEXTURE_2.glLocation)
+        }
+        else fbo.attachOutputTexture(fbo.getTexture(1))
+
         glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR)
-        drawRenderBucket(bucket, drawPayload, revealagePrograms)
+        drawRenderBucket(bucket, drawPayload, activeRevealagePrograms)
 
         fbo.release()
     }
 
-    private fun composite(surface: SurfaceInternal) = measure("Wboit composite")
+    private fun composite(surface: SurfaceInternal, writeRenderIds: Boolean) = measure("Wboit composite")
     {
         val accumTex = fbo.getTexture(0)
         val revealageTex = fbo.getTexture(1)
+        val activeProgram = if (writeRenderIds) renderIdCompositeProgram else compositeProgram
+        val activePass = if (writeRenderIds) renderIdCompositePass else compositePass
 
         surface.renderTarget.begin()
+ 
+        if (writeRenderIds)
+            surface.renderTarget.setDrawBuffers(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
+        else 
+            surface.renderTarget.setDrawBuffer(COLOR_TEXTURE_0)
+        
         glViewport(0, 0, surface.config.width, surface.config.height)
         glDisable(GL_DEPTH_TEST)
         glDepthMask(false)
@@ -157,10 +214,20 @@ class WeightedBlendedOitRenderer
         glBlendEquation(GL_FUNC_ADD)
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
 
-        compositeProgram.bind()
-        compositeProgram.setUniformSampler("uAccumTex", accumTex, filter = NEAREST)
-        compositeProgram.setUniformSampler("uRevealageTex", revealageTex, filter = NEAREST)
-        compositePass.draw()
+        if (writeRenderIds)
+        {
+            glEnablei(GL_BLEND, COLOR_TEXTURE_0.glLocation)
+            glDisablei(GL_BLEND, COLOR_TEXTURE_1.glLocation)
+        }
+
+        activeProgram.bind()
+        activeProgram.setUniformSampler("uAccumTex", accumTex, filter = NEAREST)
+        activeProgram.setUniformSampler("uRevealageTex", revealageTex, filter = NEAREST)
+
+        if (writeRenderIds)
+            activeProgram.setUniformSampler("uRenderIdTex", fbo.getTexture(2), filter = NEAREST)
+
+        activePass.draw()
     }
 
     private fun configureWboitProgram(program: ShaderProgram, opaqueDepthTex: RenderTexture?, alphaCutoff: Float) 
@@ -184,12 +251,13 @@ class WeightedBlendedOitRenderer
         configureWboitProgram(program, opaqueDepthTex, alphaCutoff)
     }
 
-    private fun updateFbo(surface: Surface)
+    private fun updateFbo(surface: Surface, writeRenderIds: Boolean)
     {
-        if (!fbo.matches(surface.config.width, surface.config.height, oitTextureDescriptors))
+        val descriptors = if (writeRenderIds) renderIdTextureDescriptors else baseTextureDescriptors
+        if (!fbo.matches(surface.config.width, surface.config.height, descriptors))
         {
             fbo.destroy()
-            fbo = FrameBufferObject.create(surface.config.width, surface.config.height, oitTextureDescriptors)
+            fbo = FrameBufferObject.create(surface.config.width, surface.config.height, descriptors)
         }
     }
 
@@ -199,10 +267,16 @@ class WeightedBlendedOitRenderer
         {
             accumPrograms.staticProgram.destroy()
             accumPrograms.skinnedProgram.destroy()
+            renderIdViewAccumPrograms.staticProgram.destroy()
+            renderIdViewAccumPrograms.skinnedProgram.destroy()
             revealagePrograms.staticProgram.destroy()
             revealagePrograms.skinnedProgram.destroy()
+            renderIdRevealagePrograms.staticProgram.destroy()
+            renderIdRevealagePrograms.skinnedProgram.destroy()
             compositePass.destroy()
+            renderIdCompositePass.destroy()
             compositeProgram.destroy()
+            renderIdCompositeProgram.destroy()
             fbo.destroy()
         }
     }
@@ -211,5 +285,6 @@ class WeightedBlendedOitRenderer
     {
         val ZERO_ARRAY = floatArrayOf(0f, 0f, 0f, 0f)
         val ONE_ARRAY = floatArrayOf(1f, 1f, 1f, 1f)
+        val BACKGROUND_RENDER_ID = intArrayOf(-1, 0, 0, 0)
     }
 }

@@ -28,6 +28,7 @@ const int VIEW_MODE_LIGHTING                = 11;
 const int VIEW_MODE_SUN_SHADOW              = 12;
 const int VIEW_MODE_SHADOW_CASCADES         = 13;
 const int VIEW_MODE_LIGHT_CLUSTER_OCCUPANCY = 14;
+const int VIEW_MODE_RENDER_ID               = 15;
 
 const vec2 CASCADE_OFFSETS[CASCADE_COUNT] = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0), vec2(0.0, 0.5), vec2(0.5, 0.5));
 const vec3 CASCADE_VIEW_COLORS[CASCADE_COUNT] = vec3[](
@@ -42,11 +43,17 @@ in vec3 vWorldNormal;
 in mat3 vTBN;
 in vec2 vTexCoord;
 flat in int vMaterialId;
+#ifdef PBR_USE_RENDER_ID
+flat in uint vRenderId;
+#endif
 
 #ifdef PBR_OUTPUT_WBOIT_ACCUM
 layout(location = 0) out vec4 outAccum;
 #else
 layout(location = 0) out vec4 fragColor;
+#ifdef PBR_USE_RENDER_ID
+layout(location = 1) out uint outRenderId;
+#endif
 #endif
 
 // Textures
@@ -625,12 +632,38 @@ void writeFragment(vec3 color, float alpha)
     #endif
 }
 
+#ifdef PBR_USE_RENDER_ID
+uint hashRenderId(uint value)
+{
+    value ^= value >> 16;
+    value *= 0x7feb352du;
+    value ^= value >> 15;
+    value *= 0x846ca68bu;
+    value ^= value >> 16;
+    return value;
+}
+
+vec3 renderIdColor(uint renderId)
+{
+    uint hash = hashRenderId(renderId);
+    float hue = float(hash & 0xffffu) / 65536.0;
+    float saturation = mix(0.65, 0.95, float((hash >> 16) & 0xffu) / 255.0);
+    float value = mix(0.75, 1.0, float((hash >> 24) & 0xffu) / 255.0);
+    vec3 hueRamp = abs(fract(hue + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+    return value * mix(vec3(1.0), clamp(hueRamp - 1.0, 0.0, 1.0), saturation);
+}
+#endif
+
 // ------------------------------------------------------------------
 // Main
 // ------------------------------------------------------------------
 
 void main()
 {
+    #if defined(PBR_USE_RENDER_ID) && !defined(PBR_OUTPUT_WBOIT_ACCUM)
+    outRenderId = vRenderId;
+    #endif
+
     MaterialData material = uMaterials[vMaterialId];
     vec2 tiling = material.tilingAlphaFlags.xy;
     float alphaCutoff = material.tilingAlphaFlags.z;
@@ -652,8 +685,16 @@ void main()
     if (alpha <= uWboitAlphaCutoff || isBehindOpaqueDepth()) discard;
     #endif
 
+    #ifdef PBR_USE_RENDER_ID
+    if (uViewMode == VIEW_MODE_RENDER_ID)
+    {
+        writeFragment(renderIdColor(vRenderId), alpha);
+        return;
+    }
+    #endif
+
     // PBR material properties
-    vec3 emissive   = sampleTexOrDefault(material.emissiveTex, vec3(1.0), tiling).rgb * material.emissiveFactor.rgb;
+    vec3 emissive = sampleTexOrDefault(material.emissiveTex, vec3(1.0), tiling).rgb * material.emissiveFactor.rgb;
     float normalLength;
     vec3 N = sampleWorldSpaceNormal(material, normalLength);
 

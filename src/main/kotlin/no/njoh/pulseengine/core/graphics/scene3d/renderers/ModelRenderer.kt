@@ -6,6 +6,9 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderView
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
+import no.njoh.pulseengine.core.graphics.gpu.shader.defineShaderVariant
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_0
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_1
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureCompare
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.NONE
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
@@ -16,6 +19,7 @@ import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.SORTED_BLEND
 import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.WEIGHTED_BLENDED_OIT
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.ViewMode.RENDER_ID
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.BrdfLutBuilder
@@ -35,10 +39,14 @@ import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_ONE
 import org.lwjgl.opengl.GL14.GL_FUNC_ADD
 import org.lwjgl.opengl.GL14.glBlendEquation
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
+import org.lwjgl.opengl.GL30.GL_COLOR
+import org.lwjgl.opengl.GL30.glClearBufferuiv
+import org.lwjgl.opengl.GL30.glDisablei
 
 class ModelRenderer(
     override val order: Int = 40,
-    val viewGroup: CameraRenderViewGroup? = null
+    val viewGroup: CameraRenderViewGroup? = null,
+    var writeRenderIds: Boolean = false
 ) : Renderer(), RenderViewDeclarer {
 
     var iblDiffuseTexture  = ""
@@ -60,6 +68,9 @@ class ModelRenderer(
     private lateinit var staticProgram: ShaderProgram
     private lateinit var skinnedProgram: ShaderProgram
     private lateinit var programs: ShaderProgramSet
+    private lateinit var renderIdStaticProgram: ShaderProgram
+    private lateinit var renderIdSkinnedProgram: ShaderProgram
+    private lateinit var renderIdPrograms: ShaderProgramSet
 
     private val weightedBlendedRenderer = WeightedBlendedOitRenderer()
     private lateinit var viewKey: RenderViewKey<CameraRenderView>
@@ -73,10 +84,18 @@ class ModelRenderer(
             val staticVertex = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr.vert", ::transformModelVertexShader))
             val skinnedVertex = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr_skinned.vert", ::transformModelVertexShader))
             val pbrFragment = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_pbr.frag"))
+            val renderIdFragment = engine.asset.loadNow(FragmentShader(
+                name = "/pulseengine/shaders/renderers/model_pbr.frag#render_id",
+                filePath = "/pulseengine/shaders/renderers/model_pbr.frag",
+                transform = defineShaderVariant("PBR_USE_RENDER_ID")
+            ))
 
             staticProgram = ShaderProgram.create(staticVertex, pbrFragment)
             skinnedProgram = ShaderProgram.create(skinnedVertex, pbrFragment)
             programs = ShaderProgramSet(staticProgram, skinnedProgram)
+            renderIdStaticProgram = ShaderProgram.create(staticVertex, renderIdFragment)
+            renderIdSkinnedProgram = ShaderProgram.create(skinnedVertex, renderIdFragment)
+            renderIdPrograms = ShaderProgramSet(renderIdStaticProgram, renderIdSkinnedProgram)
         }
 
         weightedBlendedRenderer.init(engine, surface)
@@ -124,12 +143,22 @@ class ModelRenderer(
         glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
         glDepthMask(!hasDepthPrepass)
 
-        configureProgram(staticProgram, engine, surface, cameraState)
-        configureProgram(skinnedProgram, engine, surface, cameraState)
+        val writesRenderIds = writeRenderIds && surface.renderTarget.getTexture(COLOR_TEXTURE_1) != null
+        val visualizesRenderIds = viewMode == RENDER_ID
+        val activePrograms = if (writesRenderIds || visualizesRenderIds) renderIdPrograms else programs
+        if (writesRenderIds)
+        {
+            surface.renderTarget.setDrawBuffers(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
+            glClearBufferuiv(GL_COLOR, COLOR_TEXTURE_1.glLocation, BACKGROUND_RENDER_ID)
+        }
+        else surface.renderTarget.setDrawBuffer(COLOR_TEXTURE_0)
+
+        configureProgram(activePrograms.staticProgram, engine, surface, cameraState)
+        configureProgram(activePrograms.skinnedProgram, engine, surface, cameraState)
         
         // Draw
         
-        render(engine, surface, view, cameraState)
+        render(engine, surface, view, cameraState, activePrograms, writesRenderIds, visualizesRenderIds)
 
         // Restore
 
@@ -151,11 +180,11 @@ class ModelRenderer(
         else glDisable(GL_BLEND)
     }
 
-    private fun render(engine: PulseEngineInternal, surface: SurfaceInternal, view: CameraRenderView, cameraState: CameraRenderState)
+    private fun render(engine: PulseEngineInternal, surface: SurfaceInternal, view: CameraRenderView, cameraState: CameraRenderState, activePrograms: ShaderProgramSet, writesRenderIds: Boolean, visualizesRenderIds: Boolean)
     {
         measure("opaque", label = { "Draw opaque (" plus view.opaqueBucket.instanceCount plus "i, " plus view.opaqueBucket.size plus "b)" })
         {
-            drawRenderBucket(view.opaqueBucket, view.drawPayload, programs)
+            drawRenderBucket(view.opaqueBucket, view.drawPayload, activePrograms)
         }
 
         val maskedCount = view.maskedBucket.instanceCount
@@ -168,7 +197,7 @@ class ModelRenderer(
                 glDepthFunc(GL_LEQUAL)
                 glDepthMask(true)
 
-                drawRenderBucket(view.maskedBucket, view.drawPayload, programs)
+                drawRenderBucket(view.maskedBucket, view.drawPayload, activePrograms)
 
                 glDisable(GL_SAMPLE_ALPHA_TO_ONE)
                 glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
@@ -184,10 +213,12 @@ class ModelRenderer(
                 {
                     glEnable(GL_BLEND)
                     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
+                    if (writesRenderIds) 
+                        glDisablei(GL_BLEND, COLOR_TEXTURE_1.glLocation)
                     glDepthFunc(GL_LEQUAL)
                     glDepthMask(false)
 
-                    drawRenderBucket(view.blendedBucket, view.drawPayload, programs)
+                    drawRenderBucket(view.blendedBucket, view.drawPayload, activePrograms)
                 }
                 WEIGHTED_BLENDED_OIT ->
                 {
@@ -197,6 +228,8 @@ class ModelRenderer(
                         surface = surface,
                         bucket = view.blendedBucket,
                         drawPayload = view.drawPayload,
+                        writeRenderIds = writesRenderIds,
+                        visualizeRenderIds = visualizesRenderIds,
                         configureAccumProgram = { program -> configureProgram(program, engine, surface, cameraState) }
                     )
                 }
@@ -337,6 +370,8 @@ class ModelRenderer(
     {
         staticProgram.destroy()
         skinnedProgram.destroy()
+        renderIdStaticProgram.destroy()
+        renderIdSkinnedProgram.destroy()
         weightedBlendedRenderer.destroy()
     }
 
@@ -351,6 +386,7 @@ class ModelRenderer(
         private val PBR_FEATURE_GTAO           = 1u shl 6
 
         private val fallbackSunDirection = Vector3f(0f, 1f, 0f)
+        private val BACKGROUND_RENDER_ID = intArrayOf(-1, 0, 0, 0)
     }
 }
 
@@ -373,5 +409,6 @@ enum class ViewMode(val shaderValue: Int, val displayName: String)
     LIGHTING(11, "Lighting"),
     SUN_SHADOW(12, "Sun Shadow"),
     SHADOW_CASCADES(13, "Shadow Cascades"),
-    LIGHT_CLUSTER_OCCUPANCY(14, "Light Cluster Occupancy")
+    LIGHT_CLUSTER_OCCUPANCY(14, "Light Cluster Occupancy"),
+    RENDER_ID(15, "Render ID")
 }
