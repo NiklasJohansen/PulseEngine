@@ -58,8 +58,60 @@ layout(location = 1) out uint outRenderId;
 
 // Textures
 
-uniform sampler2DArray textureArrays[16]; // TODO: Prefix with u
+uniform sampler2DArray uTextureBanks[16];
 uniform sampler2D uGtaoTex;
+
+// Use fixed sampler indices as some OpenGL drivers reject dynamic indexing of sampler arrays.
+vec4 sampleTextureBankGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
+{
+    switch (index)
+    {
+        case 0:  return textureGrad(uTextureBanks[0],  texCoords, ddx, ddy);
+        case 1:  return textureGrad(uTextureBanks[1],  texCoords, ddx, ddy);
+        case 2:  return textureGrad(uTextureBanks[2],  texCoords, ddx, ddy);
+        case 3:  return textureGrad(uTextureBanks[3],  texCoords, ddx, ddy);
+        case 4:  return textureGrad(uTextureBanks[4],  texCoords, ddx, ddy);
+        case 5:  return textureGrad(uTextureBanks[5],  texCoords, ddx, ddy);
+        case 6:  return textureGrad(uTextureBanks[6],  texCoords, ddx, ddy);
+        case 7:  return textureGrad(uTextureBanks[7],  texCoords, ddx, ddy);
+        case 8:  return textureGrad(uTextureBanks[8],  texCoords, ddx, ddy);
+        case 9:  return textureGrad(uTextureBanks[9],  texCoords, ddx, ddy);
+        case 10: return textureGrad(uTextureBanks[10], texCoords, ddx, ddy);
+        case 11: return textureGrad(uTextureBanks[11], texCoords, ddx, ddy);
+        case 12: return textureGrad(uTextureBanks[12], texCoords, ddx, ddy);
+        case 13: return textureGrad(uTextureBanks[13], texCoords, ddx, ddy);
+        case 14: return textureGrad(uTextureBanks[14], texCoords, ddx, ddy);
+        case 15: return textureGrad(uTextureBanks[15], texCoords, ddx, ddy);
+        default: break;
+    }
+    return vec4(0.0);
+}
+
+// Use fixed sampler indices as some OpenGL drivers reject dynamic indexing of sampler arrays.
+vec4 sampleTextureBankLod(int index, vec3 texCoords, float lod)
+{
+    switch (index)
+    {
+        case 0:  return textureLod(uTextureBanks[0],  texCoords, lod);
+        case 1:  return textureLod(uTextureBanks[1],  texCoords, lod);
+        case 2:  return textureLod(uTextureBanks[2],  texCoords, lod);
+        case 3:  return textureLod(uTextureBanks[3],  texCoords, lod);
+        case 4:  return textureLod(uTextureBanks[4],  texCoords, lod);
+        case 5:  return textureLod(uTextureBanks[5],  texCoords, lod);
+        case 6:  return textureLod(uTextureBanks[6],  texCoords, lod);
+        case 7:  return textureLod(uTextureBanks[7],  texCoords, lod);
+        case 8:  return textureLod(uTextureBanks[8],  texCoords, lod);
+        case 9:  return textureLod(uTextureBanks[9],  texCoords, lod);
+        case 10: return textureLod(uTextureBanks[10], texCoords, lod);
+        case 11: return textureLod(uTextureBanks[11], texCoords, lod);
+        case 12: return textureLod(uTextureBanks[12], texCoords, lod);
+        case 13: return textureLod(uTextureBanks[13], texCoords, lod);
+        case 14: return textureLod(uTextureBanks[14], texCoords, lod);
+        case 15: return textureLod(uTextureBanks[15], texCoords, lod);
+        default: break;
+    }
+    return vec4(0.0);
+}
 
 // Environment
 
@@ -185,7 +237,7 @@ float defaultStudioLighting(vec3 worldNormal, float ao)
 // Texture sampling
 // ------------------------------------------------------------------
 
-vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling)
+vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
 {
     int samplerIndex = int(texDesc.x);
     if (samplerIndex < 0) 
@@ -193,16 +245,19 @@ vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling)
 
     float layer = texDesc.y;
     vec2 uvMax = texDesc.zw;
-    return texture(textureArrays[samplerIndex], vec3(fract(vTexCoord * tiling) * uvMax, layer));
+    vec2 uv = fract(vTexCoord * tiling) * uvMax;
+    vec2 uvDx = texCoordDx * tiling * uvMax;
+    vec2 uvDy = texCoordDy * tiling * uvMax;
+    return sampleTextureBankGrad(samplerIndex, vec3(uv, layer), uvDx, uvDy);
 }
 
-vec3 sampleWorldSpaceNormal(MaterialData material, out float normalLenTS)
+vec3 sampleWorldSpaceNormal(MaterialData material, vec2 texCoordDx, vec2 texCoordDy, out float normalLenTS)
 {
     vec2 tiling = material.tilingAlphaFlags.xy;
     int flags = int(material.tilingAlphaFlags.w);
 
     // Tangent-space normal
-    vec3 normalTs = sampleTexOrDefault(material.normalTex, vec3(0.5, 0.5, 1.0), tiling).rgb * 2.0 - 1.0;
+    vec3 normalTs = sampleTexOrDefault(material.normalTex, vec3(0.5, 0.5, 1.0), tiling, texCoordDx, texCoordDy).rgb * 2.0 - 1.0;
 
     normalTs.xy *= material.aoMetalRoughNormalFactor.w; // Normal scale
 
@@ -233,7 +288,7 @@ vec3 sampleEnvMap(vec4 texDesc, vec3 dir, float lod)
     float layer = texDesc.y;
     vec2 uvMax = texDesc.zw;
     vec2 uv = vec2(u, v) * uvMax;
-    return textureLod(textureArrays[samplerIndex], vec3(uv, layer), lod).rgb;
+    return sampleTextureBankLod(samplerIndex, vec3(uv, layer), lod).rgb;
 }
 
 vec2 sampleBrdfLut(float NdotV, float roughness)
@@ -244,8 +299,10 @@ vec2 sampleBrdfLut(float NdotV, float roughness)
     float layer = uEnvBrdfLutTex.y;
     vec2 uvMax = uEnvBrdfLutTex.zw;
     vec2 uv = vec2(NdotV, roughness) * uvMax;
+    vec2 uvDx = dFdx(uv);
+    vec2 uvDy = dFdy(uv);
 
-    return texture(textureArrays[int(samplerIndex)], vec3(uv, layer)).rg;
+    return sampleTextureBankGrad(samplerIndex, vec3(uv, layer), uvDx, uvDy).rg;
 }
 
 // ------------------------------------------------------------------
@@ -660,6 +717,9 @@ vec3 renderIdColor(uint renderId)
 
 void main()
 {
+    vec2 texCoordDx = dFdx(vTexCoord);
+    vec2 texCoordDy = dFdy(vTexCoord);
+
     #if defined(PBR_USE_RENDER_ID) && !defined(PBR_OUTPUT_WBOIT_ACCUM)
     outRenderId = vRenderId;
     #endif
@@ -668,7 +728,7 @@ void main()
     vec2 tiling = material.tilingAlphaFlags.xy;
     float alphaCutoff = material.tilingAlphaFlags.z;
 
-    vec4 baseColor = material.baseColor * sampleTexOrDefault(material.albedoTex, vec3(1.0), tiling);
+    vec4 baseColor = material.baseColor * sampleTexOrDefault(material.albedoTex, vec3(1.0), tiling, texCoordDx, texCoordDy);
     float alpha = baseColor.a;
 
     if (alphaCutoff > 0.0)
@@ -694,9 +754,9 @@ void main()
     #endif
 
     // PBR material properties
-    vec3 emissive = sampleTexOrDefault(material.emissiveTex, vec3(1.0), tiling).rgb * material.emissiveFactor.rgb;
+    vec3 emissive = sampleTexOrDefault(material.emissiveTex, vec3(1.0), tiling, texCoordDx, texCoordDy).rgb * material.emissiveFactor.rgb;
     float normalLength;
-    vec3 N = sampleWorldSpaceNormal(material, normalLength);
+    vec3 N = sampleWorldSpaceNormal(material, texCoordDx, texCoordDy, normalLength);
 
     // Ambient occlusion
     float gtao = 1.0;
@@ -766,7 +826,7 @@ void main()
         case VIEW_MODE_PBR_ROUGHNESS:
         case VIEW_MODE_PBR_METALLIC:
         {
-            vec3 viewAomr = sampleTexOrDefault(material.aoMetalRoughTex, vec3(1.0, 1.0, 0.0), tiling).rgb;
+            vec3 viewAomr = sampleTexOrDefault(material.aoMetalRoughTex, vec3(1.0, 1.0, 0.0), tiling, texCoordDx, texCoordDy).rgb;
             float materialAo = clamp(mix(1.0, viewAomr.r, material.aoMetalRoughNormalFactor.x), 0.0, 1.0);
             float viewValue = materialAo;
             if (uViewMode == VIEW_MODE_COMBINED_AO)
@@ -791,7 +851,7 @@ void main()
         return;
     }
 
-    vec3 aomr       = sampleTexOrDefault(material.aoMetalRoughTex, vec3(1.0, 1.0, 0.0), tiling).rgb; // Default AO=1, rough=1, metal=0
+    vec3 aomr       = sampleTexOrDefault(material.aoMetalRoughTex, vec3(1.0, 1.0, 0.0), tiling, texCoordDx, texCoordDy).rgb; // Default AO=1, rough=1, metal=0
     float ao        = clamp(mix(1.0, aomr.r, material.aoMetalRoughNormalFactor.x), 0.0,  1.0);
     float roughness = clamp(aomr.g * material.aoMetalRoughNormalFactor.y, 0.04, 1.0);
     float metallic  = clamp(aomr.b * material.aoMetalRoughNormalFactor.z, 0.0,  1.0);

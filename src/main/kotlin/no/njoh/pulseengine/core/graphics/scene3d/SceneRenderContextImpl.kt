@@ -13,6 +13,7 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.BoneBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.CullingBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.LightBufferObject
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredLightGrid
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
@@ -88,6 +89,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
         if (!thisFrameScene.hasAnyItems() && !lastFrameHadAnyItems)
             return // This and last frame had no items, skip frame. If the last frame had items, do a pass to clear everything.
+
+        GlCapabilities.requireFullGraphics("3D scene rendering")
 
         if (!initialized)
         {

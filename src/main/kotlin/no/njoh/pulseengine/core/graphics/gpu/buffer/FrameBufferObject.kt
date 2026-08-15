@@ -320,7 +320,7 @@ open class FrameBufferObject(
                 if (mipmapGenerator != null)
                 {
                     val levels = mipmapGenerator.getLevelCount(width, height)
-                    glTexStorage2D(target, levels, format.internalFormat, width, height)
+                    allocateTextureStorage2D(target, levels, format.internalFormat, width, height, format.pixelFormat, format.type)
                 }
                 else glTexImage2D(target, 0, format.internalFormat, width, height, 0, format.pixelFormat, format.type, 0L)
 
@@ -350,7 +350,7 @@ open class FrameBufferObject(
                 if (mipmapGenerator != null)
                 {
                     val levels = mipmapGenerator.getLevelCount(width, height)
-                    glTexStorage2D(target, levels, GL_DEPTH_COMPONENT24, width, height)
+                    allocateTextureStorage2D(target, levels, GL_DEPTH_COMPONENT24, width, height, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT)
                 }
                 else glTexImage2D(target, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, 0L)
 
@@ -380,6 +380,23 @@ open class FrameBufferObject(
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthBufferId)
             glBindRenderbuffer(GL_RENDERBUFFER, 0)
             return depthBufferId
+        }
+
+        private fun allocateTextureStorage2D(target: Int, levels: Int, internalFormat: Int, width: Int, height: Int, pixelFormat: Int, type: Int)
+        {
+            if (GlCapabilities.immutableTextureStorage)
+            {
+                glTexStorage2D(target, levels, internalFormat, width, height)
+            }
+            else
+            {
+                for (level in 0 until levels)
+                {
+                    glTexImage2D(target, level, internalFormat, maxOf(width shr level, 1), maxOf(height shr level, 1), 0, pixelFormat, type, 0L)
+                }
+            }
+            glTexParameteri(target, GL_TEXTURE_BASE_LEVEL, 0)
+            glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, levels - 1)
         }
     }
 }

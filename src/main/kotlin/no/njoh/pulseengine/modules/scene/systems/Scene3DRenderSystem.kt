@@ -2,6 +2,7 @@ package no.njoh.pulseengine.modules.scene.systems
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_1
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.R32UI
@@ -36,6 +37,7 @@ class Scene3DRenderSystem : SceneSystem()
 
     override fun onCreate(engine: PulseEngine)
     {
+        GlCapabilities.requireFullGraphics("Scene3DRenderSystem")
         engine.gfx.createSurface(
             name = SCENE_3D_SURFACE,
             isVisible = true,

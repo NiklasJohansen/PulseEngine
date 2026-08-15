@@ -3,12 +3,12 @@ package no.njoh.pulseengine.core
 abstract class PulseEngineGame
 {
     /**
-     * Main reference to the [PulseEngine]
+     * Main reference to the [PulseEngine]. It becomes available after the game has been constructed.
      */
-    val engine: PulseEngine = PulseEngine.INSTANCE
+    val engine: PulseEngine get() = PulseEngine.INSTANCE
 
     /**
-     * Runs one time at startup
+     * Runs once after the engine subsystems have been initialized.
      */
     open fun onCreate() { }
 

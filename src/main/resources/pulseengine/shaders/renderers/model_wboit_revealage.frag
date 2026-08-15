@@ -13,7 +13,33 @@ layout(location = 2) out uint outRenderId;
 layout(location = 0) out float outRevealage;
 #endif
 
-uniform sampler2DArray textureArrays[16];
+uniform sampler2DArray uTextureBanks[16];
+
+// Use fixed sampler indices as some OpenGL drivers reject dynamic indexing of sampler arrays.
+vec4 sampleTextureBankGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
+{
+    switch (index)
+    {
+        case 0:  return textureGrad(uTextureBanks[0],  texCoords, ddx, ddy);
+        case 1:  return textureGrad(uTextureBanks[1],  texCoords, ddx, ddy);
+        case 2:  return textureGrad(uTextureBanks[2],  texCoords, ddx, ddy);
+        case 3:  return textureGrad(uTextureBanks[3],  texCoords, ddx, ddy);
+        case 4:  return textureGrad(uTextureBanks[4],  texCoords, ddx, ddy);
+        case 5:  return textureGrad(uTextureBanks[5],  texCoords, ddx, ddy);
+        case 6:  return textureGrad(uTextureBanks[6],  texCoords, ddx, ddy);
+        case 7:  return textureGrad(uTextureBanks[7],  texCoords, ddx, ddy);
+        case 8:  return textureGrad(uTextureBanks[8],  texCoords, ddx, ddy);
+        case 9:  return textureGrad(uTextureBanks[9],  texCoords, ddx, ddy);
+        case 10: return textureGrad(uTextureBanks[10], texCoords, ddx, ddy);
+        case 11: return textureGrad(uTextureBanks[11], texCoords, ddx, ddy);
+        case 12: return textureGrad(uTextureBanks[12], texCoords, ddx, ddy);
+        case 13: return textureGrad(uTextureBanks[13], texCoords, ddx, ddy);
+        case 14: return textureGrad(uTextureBanks[14], texCoords, ddx, ddy);
+        case 15: return textureGrad(uTextureBanks[15], texCoords, ddx, ddy);
+        default: break;
+    }
+    return vec4(0.0);
+}
 
 uniform sampler2D uOpaqueDepthTex;
 uniform bool      uUseOpaqueDepthTex;
@@ -37,14 +63,17 @@ layout(std430, binding = 2) readonly buffer MaterialBuffer
     MaterialData uMaterials[];
 };
 
-vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling)
+vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
 {
     int samplerIndex = int(texDesc.x);
     if (samplerIndex < 0) return vec4(defaultColor, 1.0);
 
     float layer = texDesc.y;
     vec2 uvMax = texDesc.zw;
-    return texture(textureArrays[samplerIndex], vec3(fract(vTexCoord * tiling) * uvMax, layer));
+    vec2 uv = fract(vTexCoord * tiling) * uvMax;
+    vec2 uvDx = texCoordDx * tiling * uvMax;
+    vec2 uvDy = texCoordDy * tiling * uvMax;
+    return sampleTextureBankGrad(samplerIndex, vec3(uv, layer), uvDx, uvDy);
 }
 
 bool isBehindOpaqueDepth()
@@ -58,11 +87,13 @@ bool isBehindOpaqueDepth()
 
 void main()
 {
+    vec2 texCoordDx = dFdx(vTexCoord);
+    vec2 texCoordDy = dFdy(vTexCoord);
     MaterialData material = uMaterials[vMaterialId];
     vec2 tiling = material.tilingAlphaFlags.xy;
     float alphaCutoff = material.tilingAlphaFlags.z;
 
-    vec4 baseColor = material.baseColor * sampleTexOrDefault(material.albedoTex, vec3(1.0), tiling);
+    vec4 baseColor = material.baseColor * sampleTexOrDefault(material.albedoTex, vec3(1.0), tiling, texCoordDx, texCoordDy);
     float alpha = baseColor.a;
 
     if (alphaCutoff > 0.0)

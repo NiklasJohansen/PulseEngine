@@ -19,7 +19,7 @@ import java.util.Properties
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
-open class ConfigurationImpl : ConfigurationInternal
+open class ConfigurationImpl(override val runtimeProfile: RuntimeProfile) : ConfigurationInternal 
 {
     private val properties = Properties()
     private var defaultSaveDir = File("$homeDir/ExampleGame").absolutePath
@@ -29,8 +29,9 @@ open class ConfigurationImpl : ConfigurationInternal
     override var saveDirectory: String      by StringConfig(defaultSaveDir)
     override var targetFps: Int             by IntConfig(120)
     override var fixedTickRate: Float       by FloatConfig(60f, minValue = 0.000000001f)
-    override var windowWidth: Int           by IntConfig(1920)
-    override var windowHeight: Int          by IntConfig(1080)
+    override var windowWidth: Int           by IntConfig(1400)
+    override var windowHeight: Int          by IntConfig(1000)
+
     override var screenMode: ScreenMode     by EnumConfig(WINDOWED, ScreenMode::class)
     override var gameLoopMode: GameLoopMode by EnumConfig(MULTITHREADED, GameLoopMode::class)
     override var logTarget: LogTarget       by EnumConfig(STDOUT, LogTarget::class)

@@ -15,6 +15,8 @@ import no.njoh.pulseengine.core.graphics.surface.SurfaceConfig
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedTriangleStripVertices
 import no.njoh.pulseengine.core.shared.utils.Extensions.interpolateFrom
+import org.lwjgl.opengl.GL11.*
+import org.lwjgl.opengl.GL30.GL_RGBA32F
 import org.lwjgl.opengl.GL31.*
 import kotlin.math.max
 
@@ -37,6 +39,7 @@ class DirectLightRenderer(
     private lateinit var lightBuffer: DoubleBufferedFloatObject
     private lateinit var edgeBuffer: DoubleBufferedFloatObject
     private lateinit var instanceLayout: VertexAttributeLayout
+    private var edgeTexture = 0
 
     private var readLights = 0
     private var readEdges = 0
@@ -48,7 +51,8 @@ class DirectLightRenderer(
         if (!this::program.isInitialized)
         {
             lightBuffer = DoubleBufferedFloatObject.createArrayBuffer()
-            edgeBuffer = DoubleBufferedFloatObject.createShaderStorageBuffer(blockBinding = 0)
+            edgeBuffer = DoubleBufferedFloatObject.createTextureBuffer(initCapacity = 4)
+            edgeTexture = glGenTextures()
             vertexBuffer = StaticBufferObject.createQuadVertexArrayBuffer()
             instanceLayout = VertexAttributeLayout()
                 .withAttribute("position",3, GL_FLOAT, 1)
@@ -71,7 +75,6 @@ class DirectLightRenderer(
 
         vao = VertexArrayObject.createAndBind()
         program.bind()
-        edgeBuffer.bind()
         vertexBuffer.bind()
         VertexAttributeLayout().withAttribute("vertexPos", 2, GL_FLOAT).bind(program)
         lightBuffer.bind()
@@ -140,6 +143,12 @@ class DirectLightRenderer(
         program.setUniform("drawOffset", xDrawOffset, yDrawOffset)
         program.setUniform("zRotation", zRotCamera)
 
+        // Bind edge texture buffer
+        val edgeTextureUnit = program.assignSamplerUnit("edgeBuffer")
+        glActiveTexture(GL_TEXTURE0 + edgeTextureUnit)
+        glBindTexture(GL_TEXTURE_BUFFER, edgeTexture)
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, edgeBuffer.id)
+
         // Bind normal map texture if available
         normalMapTextureHandle?.let {
             program.setUniformSampler("normalMap", it)
@@ -164,6 +173,7 @@ class DirectLightRenderer(
         vertexBuffer.destroy()
         lightBuffer.destroy()
         edgeBuffer.destroy()
+        glDeleteTextures(edgeTexture)
         program.destroy()
         vao.destroy()
     }

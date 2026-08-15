@@ -3,13 +3,14 @@ package testbed
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneState.STOPPED
 import no.njoh.pulseengine.core.PulseEngineGame
+import no.njoh.pulseengine.core.config.RuntimeProfile.BASE_GRAPHICS
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.modules.cli.CommandLine
 import no.njoh.pulseengine.modules.metrics.MetricViewer
 import no.njoh.pulseengine.modules.editor.SceneEditor2D
 import no.njoh.pulseengine.modules.metrics.GpuMonitor
 
-fun main() = PulseEngine.run<Testbed>()
+fun main() = PulseEngine.run<Testbed>(BASE_GRAPHICS)
 
 class Testbed : PulseEngineGame()
 {

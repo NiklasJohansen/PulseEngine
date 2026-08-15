@@ -1,10 +1,12 @@
 package no.njoh.pulseengine.core.graphics.gpu.buffer
 
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementUploadedBytes
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.shared.utils.Extensions.formatted
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL15.*
+import org.lwjgl.opengl.GL31.GL_TEXTURE_BUFFER
 import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BUFFER
 import java.nio.ByteBuffer
 import kotlin.math.max
@@ -134,8 +136,14 @@ class DoubleBufferedFloatObject private constructor(
         fun createArrayBuffer(initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
             createBuffer(initCapacity, usage, GL_ARRAY_BUFFER, null)
 
-        fun createShaderStorageBuffer(blockBinding: Int, initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
-            createBuffer(initCapacity, usage, GL_SHADER_STORAGE_BUFFER, blockBinding)
+        fun createTextureBuffer(initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
+            createBuffer(initCapacity, usage, GL_TEXTURE_BUFFER, null)
+
+        fun createShaderStorageBuffer(blockBinding: Int, initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW): DoubleBufferedFloatObject
+        {
+            GlCapabilities.requireFullGraphics("Shader storage buffers")
+            return createBuffer(initCapacity, usage, GL_SHADER_STORAGE_BUFFER, blockBinding)
+        }
 
         fun createUniformBuffer(blockBinding: Int, initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
             createBuffer(initCapacity, usage, GL_UNIFORM_BUFFER, blockBinding)

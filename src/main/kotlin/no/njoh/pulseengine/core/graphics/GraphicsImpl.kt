@@ -8,7 +8,9 @@ import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.camera.CameraInternal
 import no.njoh.pulseengine.core.graphics.camera.DefaultCamera
 import no.njoh.pulseengine.core.graphics.gpu.FullscreenPass
+import no.njoh.pulseengine.core.graphics.gpu.GlContract
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
+import no.njoh.pulseengine.core.graphics.gpu.glContract
 import no.njoh.pulseengine.core.graphics.gpu.resource.MaterialBank
 import no.njoh.pulseengine.core.graphics.gpu.resource.ModelBank
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.MSAA4
@@ -44,6 +46,7 @@ open class GraphicsImpl : GraphicsInternal
     override lateinit var sceneContext: SceneRenderContextInternal
     override lateinit var gpuName: String
     private  lateinit var fullscreenPass: FullscreenPass
+    private  lateinit var glContract: GlContract
 
     private val onInitFrame  = ArrayList<PulseEngineInternal.() -> Unit>()
     private val surfaceMap   = THashMap<String, SurfaceInternal>()
@@ -54,6 +57,8 @@ open class GraphicsImpl : GraphicsInternal
     override fun init(engine: PulseEngineInternal)
     {
         Logger.info { "Initializing graphics (GraphicsImpl)" }
+        glContract = checkNotNull(engine.config.runtimeProfile.glContract) { "GraphicsImpl cannot be initialized with runtime profile ${engine.config.runtimeProfile}" }
+
         val viewPortWidth = engine.window.width
         val viewPortHeight = engine.window.height
 
@@ -94,14 +99,15 @@ open class GraphicsImpl : GraphicsInternal
         if (windowRecreated)
         {
             // Create OpenGL context in current thread
-            GlCapabilities.create()
+            GlCapabilities.create(glContract)
             gpuName = glGetString(GL_RENDERER) ?: "Unknown GPU"
             Logger.debug { "Running OpenGL on GPU: $gpuName" }
 
             // Load error shaders
             errorShaders[VERTEX]   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/error/error.vert"))
-            errorShaders[COMPUTE]  = engine.asset.loadNow(ComputeShader("/pulseengine/shaders/error/error.comp"))
             errorShaders[FRAGMENT] = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/error/error.frag"))
+            if (GlCapabilities.computeShaders)
+                errorShaders[COMPUTE] = engine.asset.loadNow(ComputeShader("/pulseengine/shaders/error/error.comp"))
 
             // Create and initialize full frame renderer
             if (!this::fullscreenPass.isInitialized)
@@ -319,6 +325,7 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun compileShader(shader: Shader)
     {
+        validateShaderContract(shader)
         val id = shader.currentId.takeIf { it != INVALID_ID } ?: glCreateShader(shader.type.value)
 
         Logger.debug { "Compiling shader #$id (${shader.name})" }
@@ -330,10 +337,27 @@ open class GraphicsImpl : GraphicsInternal
             val info = glGetShaderInfoLog(id).removeSuffix("\n")
             Logger.error { "Failed to compile shader #$id (${shader.name}) \n$info" }
             shader.setId(INVALID_ID)
-            shader.setErrorId(errorShaders[shader.type]!!.currentId)
             glDeleteShader(id)
+
+            val errorShader = errorShaders[shader.type]
+            check(errorShader != null && errorShader !== shader && errorShader.currentId != INVALID_ID)
+            {
+                "Failed to compile bootstrap ${shader.type.name.lowercase()} error shader '${shader.filePath}': $info"
+            }
+            shader.setErrorId(errorShader.currentId)
         }
         else shader.setId(id)
+    }
+
+    private fun validateShaderContract(shader: Shader)
+    {
+        val contract = GlCapabilities.glContract
+        if (shader.type == COMPUTE && !GlCapabilities.computeShaders)
+            throw IllegalStateException("Compute shader '${shader.filePath}' requires RuntimeProfile.FULL_GRAPHICS, but this game configured RuntimeProfile.BASE_GRAPHICS")
+
+        val declaredVersion = GLSL_VERSION_REGEX.find(shader.sourceCode)?.groupValues?.get(1)?.toIntOrNull()
+        if (declaredVersion != null && declaredVersion > contract.glslVersion)
+            throw IllegalStateException("Shader '${shader.filePath}' declares GLSL $declaredVersion, which exceeds the $contract limit of GLSL ${contract.glslVersion}")
     }
 
     override fun setGpuLogLevel(logLevel: LogLevel)
@@ -372,6 +396,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         private var updateNumber = 0
         private var defaultClearColor = Color(63, 63, 63, 255)
+        private val GLSL_VERSION_REGEX = Regex("(?m)^\\s*#version\\s+(\\d+)")
     }
 
     private fun runOnInitFrame(command: PulseEngineInternal.() -> Unit) { onInitFrame.add(command) }

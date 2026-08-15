@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.gpu.buffer
 
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementUploadedBytes
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.shared.utils.Extensions.formatted
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.ARBUniformBufferObject.*
@@ -134,8 +135,11 @@ class DoubleBufferedIntObject private constructor(
         fun createArrayBuffer(initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
             createBuffer(initCapacity, usage, GL_ARRAY_BUFFER, null)
 
-        fun createShaderStorageBuffer(blockBinding: Int, initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
-            createBuffer(initCapacity, usage, GL_SHADER_STORAGE_BUFFER, blockBinding)
+        fun createShaderStorageBuffer(blockBinding: Int, initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW): DoubleBufferedIntObject
+        {
+            GlCapabilities.requireFullGraphics("Shader storage buffers")
+            return createBuffer(initCapacity, usage, GL_SHADER_STORAGE_BUFFER, blockBinding)
+        }
 
         fun createUniformBuffer(blockBinding: Int, initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
             createBuffer(initCapacity, usage, GL_UNIFORM_BUFFER, blockBinding)

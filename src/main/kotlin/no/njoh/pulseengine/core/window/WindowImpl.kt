@@ -2,6 +2,8 @@ package no.njoh.pulseengine.core.window
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.config.ConfigurationInternal
+import no.njoh.pulseengine.core.graphics.gpu.GlContract.OPENGL_41
+import no.njoh.pulseengine.core.graphics.gpu.glContract
 import no.njoh.pulseengine.core.input.CursorMode.*
 import no.njoh.pulseengine.core.shared.platform.*
 import no.njoh.pulseengine.core.shared.platform.KeyEvent.*
@@ -41,10 +43,12 @@ open class WindowImpl : WindowInternal
     private var connectedGamepadIds = ArrayList<Int>()
     private var initWidth = 800
     private var initHeight = 600
+    private var glContract = OPENGL_41
 
     override fun init(config: ConfigurationInternal)
     {
         Logger.info { "Initializing window (WindowImpl)" }
+        val glContract = checkNotNull(config.runtimeProfile.glContract) { "WindowImpl cannot be initialized in RuntimeProfile.HEADLESS" }
 
         if (!glfwInit()) throw IllegalStateException("Unable to initialize GLFW")
 
@@ -53,8 +57,8 @@ open class WindowImpl : WindowInternal
         glfwDefaultWindowHints()
         glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE)
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE)
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3)
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, glContract.glMajorVersion)
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, glContract.glMinorVersion)
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
         glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE)
@@ -62,10 +66,11 @@ open class WindowImpl : WindowInternal
         if (config.gpuLogLevel != LogLevel.OFF)
             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE)
 
-        this.title      = config.gameName
-        this.screenMode = config.screenMode
-        this.initWidth  = config.windowWidth
-        this.initHeight = config.windowHeight
+        this.title               = config.gameName
+        this.screenMode          = config.screenMode
+        this.initWidth           = config.windowWidth
+        this.initHeight          = config.windowHeight
+        this.glContract          = glContract
 
         createWindow()
     }
@@ -95,7 +100,10 @@ open class WindowImpl : WindowInternal
         val prevWindowHandle = windowHandle
         windowHandle = glfwCreateWindow(windowWidth, windowHeight, title, monitor, prevWindowHandle)
         if (windowHandle == MemoryUtil.NULL)
-            throw RuntimeException("Failed to create the GLFW windowHandle")
+            throw RuntimeException(
+                "Failed to create the GLFW window: $glContract requires an OpenGL " +
+                "${glContract.glMajorVersion}.${glContract.glMinorVersion} core context"
+            )
 
         // Destroy previous window if it exists
         if (prevWindowHandle != MemoryUtil.NULL)

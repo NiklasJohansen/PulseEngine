@@ -8,6 +8,9 @@ import kotlin.reflect.KClass
 
 interface Configuration
 {
+    /** The runtime profile selected when launching the game. */
+    val runtimeProfile: RuntimeProfile
+
     /** The name of the game. Sets the default save folder name and window title */
     var gameName: String
 

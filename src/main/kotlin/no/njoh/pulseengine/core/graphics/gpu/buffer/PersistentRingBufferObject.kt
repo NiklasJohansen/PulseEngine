@@ -44,6 +44,7 @@ class PersistentRingBufferObject(
 
     init
     {
+        GlCapabilities.requireFullGraphics("Persistent GPU ring buffers")
         require(GlCapabilities.persistentMappedBuffers) { "Persistent mapped model buffers require OpenGL 4.4 or GL_ARB_buffer_storage" }
         require(segmentCount >= 2) { "At least two ring buffer segments are required" }
 

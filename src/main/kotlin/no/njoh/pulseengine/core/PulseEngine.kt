@@ -7,7 +7,12 @@ import no.njoh.pulseengine.core.audio.Audio
 import no.njoh.pulseengine.core.audio.AudioInternal
 import no.njoh.pulseengine.core.audio.NoOpAudio
 import no.njoh.pulseengine.core.config.Configuration
+import no.njoh.pulseengine.core.config.ConfigurationImpl
 import no.njoh.pulseengine.core.config.ConfigurationInternal
+import no.njoh.pulseengine.core.config.RuntimeProfile
+import no.njoh.pulseengine.core.config.RuntimeProfile.BASE_GRAPHICS
+import no.njoh.pulseengine.core.config.RuntimeProfile.FULL_GRAPHICS
+import no.njoh.pulseengine.core.config.RuntimeProfile.HEADLESS
 import no.njoh.pulseengine.core.console.Console
 import no.njoh.pulseengine.core.console.ConsoleInternal
 import no.njoh.pulseengine.core.data.Data
@@ -71,18 +76,26 @@ interface PulseEngine
     {
         /**
          * Runs a [PulseEngineGame] with the default [PulseEngineImpl] implementation.
-         * Set [headless] to true to run without window, graphics, audio, input and assets.
+         * The explicitly selected [profile] determines which engine implementation is created.
          */
-        inline fun <reified T: PulseEngineGame> run(headless: Boolean = false)
+        inline fun <reified T: PulseEngineGame> run(profile: RuntimeProfile)
         {
-            val engine = if (!headless) PulseEngineImpl() else PulseEngineImpl(
-                window = NoOpWindow(),
-                gfx    = NoOpGraphics(),
-                audio  = NoOpAudio(),
-                input  = NoOpInput(),
-                asset  = NoOpAssetManager()
-            )
-            engine.run(T::class.createInstance())
+            val game   = T::class.createInstance()
+            val config = ConfigurationImpl(profile)
+            val engine = when (profile)
+            {
+                HEADLESS -> PulseEngineImpl(
+                    config = config,
+                    window = NoOpWindow(),
+                    gfx    = NoOpGraphics(),
+                    audio  = NoOpAudio(),
+                    input  = NoOpInput(),
+                    asset  = NoOpAssetManager()
+                )
+                BASE_GRAPHICS, 
+                FULL_GRAPHICS -> PulseEngineImpl(config = config)
+            }
+            engine.run(game)
         }
 
         /** Holds a global reference to the current engine instance */

@@ -170,7 +170,7 @@ class ShaderProgram(
         compare: TextureCompare = TextureCompare.NONE,
         borderColor: Color? = null,
     ) {
-        val samplerName = textureArrayNames[textureArray.samplerIndex]
+        val samplerName = textureBankNames[textureArray.samplerIndex]
         val unit = assignSamplerUnit(samplerName)
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)
@@ -245,7 +245,7 @@ class ShaderProgram(
         private val shaderCount = IntArray(1)
         private val matrixFloatArray = FloatArray(16)
         private var matrixFloatArrays = Array<FloatArray?>(0) { null }
-        private val textureArrayNames = Array(64) { "textureArrays[$it]" }
+        private val textureBankNames = Array(64) { "uTextureBanks[$it]" }
 
         fun create(vararg shaders: Shader) = ShaderProgram(glCreateProgram(), shaders.toList())
     }

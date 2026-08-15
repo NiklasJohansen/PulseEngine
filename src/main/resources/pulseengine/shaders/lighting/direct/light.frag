@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 #define LIGHT_TYPE_RADIAL 1
 #define LIGHT_TYPE_LINEAR 2
@@ -48,10 +48,13 @@ struct Edge
     vec2 point1;
 };
 
-layout(std430, binding = 0) buffer edgeLayout
+uniform samplerBuffer edgeBuffer;
+
+Edge getEdge(int index)
 {
-    Edge edges[];
-};
+    vec4 edge = texelFetch(edgeBuffer, index);
+    return Edge(edge.xy, edge.zw);
+}
 
 const int MASK_RES = 128;
 const Mask fullMask = Mask(-0x1, -0x1, -0x1, -0x1);
@@ -242,7 +245,7 @@ float calcluateLinearSoftShadow(vec2 pixelPos, vec2 light0, vec2 light1)
 
     for (int i = firstEdgeIndex; i < lastEdgeIndex; i++)
     {
-        Edge edge = edges[i];
+        Edge edge = getEdge(i);
 
         // Calculate shadow mask for current edge
         Mask mask = calculateShadowMask(pixelPos, light0, light1, edge.point0, edge.point1, lightAxis, lightProjection);
@@ -262,7 +265,7 @@ float calcluateLinearHardShadow(vec2 pixelPos, vec2 light0, vec2 light1)
 
     for (int i = firstEdgeIndex; i < lastEdgeIndex; i++)
     {
-        Edge edge = edges[i];
+        Edge edge = getEdge(i);
         if (hasIntersection(pixelPos, closestLightPoint, edge.point0, edge.point1))
             return 1.0;
     }
@@ -288,7 +291,7 @@ float calcluateRadialHardShadow(vec2 pixelPos)
 {
     for (int i = firstEdgeIndex; i < lastEdgeIndex; i++)
     {
-        Edge edge = edges[i];
+        Edge edge = getEdge(i);
 
         if (hasIntersection(lightPos0, pixelPos, edge.point0, edge.point1))
            return 1.0;

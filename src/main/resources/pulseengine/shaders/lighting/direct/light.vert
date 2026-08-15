@@ -1,4 +1,4 @@
-#version 330 core
+#version 410 core
 
 #define PI 3.1415926538
 #define RADIAL_LIGHT_TYPE 1

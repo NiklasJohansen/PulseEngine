@@ -2,7 +2,6 @@ package no.njoh.pulseengine.core.window
 
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.config.ConfigurationInternal
-import no.njoh.pulseengine.core.shared.platform.PlatformEvent
 import no.njoh.pulseengine.core.shared.platform.PlatformEventBuffer
 
 class NoOpWindow : WindowInternal

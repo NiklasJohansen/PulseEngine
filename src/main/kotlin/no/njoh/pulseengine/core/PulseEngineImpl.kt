@@ -5,7 +5,6 @@ import no.njoh.pulseengine.core.asset.AssetManagerInternal
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.audio.AudioImpl
 import no.njoh.pulseengine.core.audio.AudioInternal
-import no.njoh.pulseengine.core.config.ConfigurationImpl
 import no.njoh.pulseengine.core.config.ConfigurationInternal
 import no.njoh.pulseengine.core.console.ConsoleImpl
 import no.njoh.pulseengine.core.console.ConsoleInternal
@@ -42,7 +41,7 @@ import kotlin.math.min
  * Main [PulseEngine] implementation.
  */
 class PulseEngineImpl(
-    override val config: ConfigurationInternal   = ConfigurationImpl(),
+    override val config: ConfigurationInternal,
     override val window: WindowInternal          = WindowImpl(),
     override val gfx: GraphicsInternal           = GraphicsImpl(),
     override val audio: AudioInternal            = AudioImpl(),
