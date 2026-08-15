@@ -114,20 +114,20 @@ class DrawCommandBuilder(
         if (gpuCullingSupported)
         {
             builder.frustumPlaneSets = frustumPlaneSets
+            builder.frustumPlaneSetCount = frustumPlaneSetCount
             builder.gpuCullItemIndices = cullItemIndexBuffer
             builder.gpuCullItemIndexOffset = cullItemIndexBuffer.size
             builder.gpuCullItemBatchIndices = cullItemBatchIndexBuffer
             builder.gpuCullItemBatchIndexOffset = cullItemBatchIndexBuffer.size
-            builder.frustumPlaneSetCount = frustumPlaneSetCount
         }
         else
         {
             builder.frustumPlaneSets = frustumPlaneSets
+            builder.frustumPlaneSetCount = frustumPlaneSetCount
             builder.gpuCullItemIndices = null
             builder.gpuCullItemIndexOffset = 0
             builder.gpuCullItemBatchIndices = null
             builder.gpuCullItemBatchIndexOffset = 0
-            builder.frustumPlaneSetCount = 0
         }
 
         return builder

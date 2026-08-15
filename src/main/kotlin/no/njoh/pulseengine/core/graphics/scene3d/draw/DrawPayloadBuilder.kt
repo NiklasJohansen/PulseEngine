@@ -18,11 +18,11 @@ import no.njoh.pulseengine.core.shared.primitives.GenerationalIntLookup
 
 class DrawPayloadBuilder(
     var frustumPlaneSets: Array<FrustumPlaneSet> = emptyArray(),
+    var frustumPlaneSetCount: Int = frustumPlaneSets.size,
     var gpuCullItemIndices: StreamingIntBufferObject? = null,
     var gpuCullItemIndexOffset: Int = 0,
     var gpuCullItemBatchIndices: StreamingIntBufferObject? = null,
-    var gpuCullItemBatchIndexOffset: Int = 0, 
-    var frustumPlaneSetCount: Int = frustumPlaneSets.size
+    var gpuCullItemBatchIndexOffset: Int = 0
 ) {
     internal val batches = DynamicList<DrawBatch>()
     internal var gpuCullInstanceCount = 0
