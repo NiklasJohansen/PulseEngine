@@ -69,7 +69,7 @@ open class FrameBufferObject(
         if (destroyed) return
 
         destroyed = true
-        textures.forEachFast { glDeleteTextures(it.handle.textureIndex) }
+        textures.forEachFast { glDeleteTextures(it.handle.glId) }
         renderBufferIds.forEachFast { glDeleteRenderbuffers(it) }
 
         // GLFW shares texture and renderbuffer objects with the replacement context, so these are
@@ -97,17 +97,17 @@ open class FrameBufferObject(
         val buf = if (attachmentPoint.isColor) attachmentPoint.glValue else GL_NONE
         when (texture.multisampling) 
         {
-            NONE -> glFramebufferTexture2D(GL_FRAMEBUFFER, attachmentPoint.glValue, target, texture.handle.textureIndex, mipLevel)
-            else -> glFramebufferTexture(GL_FRAMEBUFFER, attachmentPoint.glValue, texture.handle.textureIndex, mipLevel)
+            NONE -> glFramebufferTexture2D(GL_FRAMEBUFFER, attachmentPoint.glValue, target, texture.handle.glId, mipLevel)
+            else -> glFramebufferTexture(GL_FRAMEBUFFER, attachmentPoint.glValue, texture.handle.glId, mipLevel)
         }
         glDrawBuffer(buf)
         glReadBuffer(buf)
     }
 
-    fun attachOutputTextureArray(textureArray: TextureArray, index: Int, attachmentPoint: AttachmentPoint, mipLevel: Int = 0)
+    fun attachOutputTextureArray(textureArray: TextureArray, layerIndex: Int, attachmentPoint: AttachmentPoint, mipLevel: Int = 0)
     {
         val buf = if (attachmentPoint.isColor) attachmentPoint.glValue else GL_NONE
-        glFramebufferTextureLayer(GL_FRAMEBUFFER, attachmentPoint.glValue, textureArray.id, mipLevel, index)
+        glFramebufferTextureLayer(GL_FRAMEBUFFER, attachmentPoint.glValue, textureArray.id, mipLevel, layerIndex)
         glDrawBuffer(buf)
         glReadBuffer(buf)
     }
@@ -250,7 +250,7 @@ open class FrameBufferObject(
                 {
                     renderTextures += RenderTexture(
                         name = "fbo_${texDesc.attachmentPoint.name.lowercase()}",
-                        handle = TextureHandle.create(0, textureId),
+                        handle = TextureHandle.createGlHandle(textureId),
                         width = texWidth,
                         height = texHeight,
                         filter = texDesc.filter,

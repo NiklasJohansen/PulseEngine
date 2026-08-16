@@ -7,10 +7,10 @@ layout(location = 0) out vec4 fragColor;
 
 uniform sampler2DArray uTextureBanks[16];
 
-// Use fixed sampler indices as some OpenGL drivers reject dynamic indexing of sampler arrays.
-vec4 sampleTextureBankGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
+// Use fixed texture-array slots as some OpenGL drivers reject dynamic indexing of sampler arrays.
+vec4 sampleTextureBankGrad(int textureArraySlot, vec3 texCoords, vec2 ddx, vec2 ddy)
 {
-    switch (index)
+    switch (textureArraySlot)
     {
         case 0:  return textureGrad(uTextureBanks[0],  texCoords, ddx, ddy);
         case 1:  return textureGrad(uTextureBanks[1],  texCoords, ddx, ddy);
@@ -52,15 +52,15 @@ layout(std430, binding = 2) readonly buffer MaterialBuffer
 
 vec4 sampleTexOrDefault(vec4 texDesc, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
 {
-    int samplerIndex = int(texDesc.x);
-    if (samplerIndex < 0)
+    int textureArraySlot = int(texDesc.x);
+    if (textureArraySlot < 0)
         return vec4(1.0);
 
     vec2 uvMax = texDesc.zw;
     vec2 uv = fract(vTexCoord * tiling) * uvMax;
     vec2 uvDx = texCoordDx * tiling * uvMax;
     vec2 uvDy = texCoordDy * tiling * uvMax;
-    return sampleTextureBankGrad(samplerIndex, vec3(uv, texDesc.y), uvDx, uvDy);
+    return sampleTextureBankGrad(textureArraySlot, vec3(uv, texDesc.y), uvDx, uvDy);
 }
 
 void main()

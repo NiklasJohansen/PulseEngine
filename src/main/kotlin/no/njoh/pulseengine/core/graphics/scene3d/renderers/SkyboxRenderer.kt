@@ -61,7 +61,7 @@ class SkyboxRenderer(
 
         program.bind()
         program.setUniformSamplerArray("textureArray", texArray)
-        program.setUniform("texDesc", tex.handle.textureIndex.toFloat(), tex.uMax, tex.vMax)
+        program.setUniform("texDesc", tex.handle.textureArrayLayer.toFloat(), tex.uMax, tex.vMax)
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", surface.camera.viewMatrix)
         program.setUniform("brightness", brightness)

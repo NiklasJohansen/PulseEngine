@@ -29,21 +29,27 @@ class RenderTextureRenderer(
     private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram
     private lateinit var data: FloatArray
+    private lateinit var textureHandles: LongArray
 
-    private var readCount   = 0
-    private var writeCount  = 0
-    private var readOffset  = 0
-    private var writeOffset = 0
-    private val capacity    = 100
-    private val stride      = 20
+    private var readCount         = 0
+    private var writeCount        = 0
+    private var readDataOffset    = 0
+    private var writeDataOffset   = 0
+    private var readHandleOffset  = 0
+    private var writeHandleOffset = 0
+    private val capacity          = 100
+    private val stride            = 19
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
         if (!this::program.isInitialized)
         {
-            readOffset = 0
-            writeOffset = capacity * stride
+            readDataOffset = 0
+            writeDataOffset = capacity * stride
+            readHandleOffset = 0
+            writeHandleOffset = capacity
             data = FloatArray(capacity * stride * 2)
+            textureHandles = LongArray(capacity * 2)
             vbo = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/render_texture.vert")),
@@ -60,8 +66,9 @@ class RenderTextureRenderer(
 
     override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
-        readOffset = writeOffset.also { writeOffset = readOffset }
         readCount = writeCount.also { writeCount = 0 }
+        readDataOffset = writeDataOffset.also { writeDataOffset = readDataOffset }
+        readHandleOffset = writeHandleOffset.also { writeHandleOffset = readHandleOffset }
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -76,7 +83,7 @@ class RenderTextureRenderer(
         // Draw each texture with separate draw call
         for (i in startIndex until startIndex + drawCount)
         {
-            val base          = readOffset + i * stride
+            val base          = readDataOffset + i * stride
             val x             = data[base + 0]
             val y             = data[base + 1]
             val z             = data[base + 2]
@@ -94,13 +101,15 @@ class RenderTextureRenderer(
             val uMax          = data[base + 14]
             val vMax          = data[base + 15]
             val rgba          = data[base + 16]
-            val textureId     = data[base + 17].toInt()
-            val isDepth       = data[base + 18]
-            val alphaMode     = data[base + 19]
+            val isDepth       = data[base + 17]
+            val alphaMode     = data[base + 18]
+
+            val textureHandle = TextureHandle.fromLong(textureHandles[readHandleOffset + i])
+            val sampleTexture = textureHandle.isGlTexture
 
             // Bind texture
-            if (textureId != TextureHandle.NONE.textureIndex)
-                program.setUniformSampler("tex", TextureHandle.create(0, textureId))
+            if (sampleTexture)
+                program.setUniformSampler("tex", textureHandle)
 
             // Set uniforms
             program.setUniform("position", x, config.height - y, z)
@@ -111,7 +120,7 @@ class RenderTextureRenderer(
             program.setUniform("cornerRadiusPacked", cornerRadius0, cornerRadius1)
             program.setUniform("borderPacked", border0, border1)
             program.setUniform("uvMinMax", uMin, vMin, uMax, vMax)
-            program.setUniform("sampleTexture", textureId != TextureHandle.NONE.textureIndex)
+            program.setUniform("sampleTexture", sampleTexture)
             program.setUniform("isDepthTexture", isDepth > 0)
             program.setUniform("isPremultipliedAlpha", alphaMode > 0)
 
@@ -138,7 +147,7 @@ class RenderTextureRenderer(
             return
         }
 
-        val base = writeOffset + writeCount * stride
+        val base = writeDataOffset + writeCount * stride
         data[base +  0] = x
         data[base +  1] = y
         data[base +  2] = config.currentDepth
@@ -156,9 +165,10 @@ class RenderTextureRenderer(
         data[base + 14] = uMax
         data[base + 15] = vMax
         data[base + 16] = config.currentDrawColor
-        data[base + 17] = texture.handle.textureIndex.toFloat()
-        data[base + 18] = if (texture.attachmentPoint == DEPTH_TEXTURE) 1f else 0f
-        data[base + 19] = if (texture.alphaMode == PREMULTIPLIED) 1f else 0f
+        data[base + 17] = if (texture.attachmentPoint == DEPTH_TEXTURE) 1f else 0f
+        data[base + 18] = if (texture.alphaMode == PREMULTIPLIED) 1f else 0f
+
+        textureHandles[writeHandleOffset + writeCount] = texture.handle.toLong()
         writeCount++
         config.increaseDepth()
         increaseBatchSize()

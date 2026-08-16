@@ -99,6 +99,7 @@ open class Texture(
 
     open fun onUploaded(handle: TextureHandle, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)
     {
+        require(handle.isArrayTexture || handle.isNone) { "Textures must use an array texture handle or NONE" }
         this.handle = handle
         this.uMin = uMin
         this.vMin = vMin
@@ -107,6 +108,11 @@ open class Texture(
         this.afterUpload(this)
         this.pixelsLDR = null
         this.pixelsHDR = null
+    }
+
+    open fun onDeleted()
+    {
+        this.handle = INVALID
     }
 
     override fun unload() { }

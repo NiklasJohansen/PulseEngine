@@ -20,7 +20,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 class TextureArray(
-    val samplerIndex: Int,
+    val textureArraySlot: Int,
     val textureSize: Int,
     val maxCapacity: Int,
     val format: TextureFormat,
@@ -29,12 +29,20 @@ class TextureArray(
     val wrapping: TextureWrapping,
     val maxMipLevels: Int
 ) {
+    init
+    {
+        require(textureArraySlot in 0..MAX_TEXTURE_ARRAY_SLOT) { "Texture array slot: $textureArraySlot must be in the range 0..$MAX_TEXTURE_ARRAY_SLOT" }
+        require(maxCapacity in 0..MAX_CAPACITY) { "Texture array capacity: $maxCapacity must be in the range 0..$MAX_CAPACITY" }
+    }
+
     var id  = -1; private set
     var size = 0; private set
 
     val mipLevels = if (textureSize > 0) min(maxMipLevels, floor(log2(textureSize.toDouble())).toInt() + 1) else 1
 
+    private val slotOwners = arrayOfNulls<Texture>(maxCapacity)
     private var freeSlots = TIntArrayList()
+    private var mipmapsDirty = false
 
     fun init()
     {
@@ -79,10 +87,21 @@ class TextureArray(
         check(texture.width <= textureSize) { "Texture width (${texture.width} px) cannot be larger than $textureSize px" }
         check(texture.height <= textureSize) { "Texture height (${texture.height} px) cannot be larger than $textureSize px" }
 
+        val pixelsLDR = texture.pixelsLDR
+        val pixelsHDR = texture.pixelsHDR
+        if (pixelsLDR != null)
+        {
+            check(format.type == GL_UNSIGNED_BYTE) { "Pixel buffer type: ${pixelsLDR::class.simpleName} doesn't match texture format: $format" }
+        }
+        else if (pixelsHDR != null)
+        {
+            check(format.type == GL_FLOAT) { "Pixel buffer type: ${pixelsHDR::class.simpleName} doesn't match texture format: $format" }
+        }
+
         if (id == -1)
             init()
 
-        val texIndex = when
+        val layerIndex = when
         {
             !freeSlots.isEmpty -> freeSlots.removeAt(freeSlots.size() - 1)
             size >= maxCapacity -> throw RuntimeException("Texture array with capacity: $maxCapacity is full!")
@@ -92,36 +111,53 @@ class TextureArray(
         glBindTexture(GL_TEXTURE_2D_ARRAY, id)
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
 
-        if (texture.pixelsLDR != null)
+        if (pixelsLDR != null)
         {
-            check(format.type == GL_UNSIGNED_BYTE) { "Pixel buffer type: ${texture.pixelsLDR!!::class.simpleName} doesn't match texture format: $format" }
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, texIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, texture.pixelsLDR!!)
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, pixelsLDR)
         }
-        else if (texture.pixelsHDR != null)
+        else if (pixelsHDR != null)
         {
-            check(format.type == GL_FLOAT) { "Pixel buffer type: ${texture.pixelsHDR!!::class.simpleName} doesn't match texture format: $format" }
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, texIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, texture.pixelsHDR!!)
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, pixelsHDR)
         }
-
-        if (mipLevels > 1 && (texture.pixelsHDR != null || texture.pixelsLDR != null))
-            glGenerateMipmap(GL_TEXTURE_2D_ARRAY) // TODO: This generate mipmaps for the whole array on every upload
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
 
+        if (mipLevels > 1 && (pixelsHDR != null || pixelsLDR != null))
+            mipmapsDirty = true
+
         val u = texture.width / textureSize.toFloat()
         val v = texture.height / textureSize.toFloat()
-        val handle = TextureHandle.create(samplerIndex, texIndex)
+        val handle = TextureHandle.createArrayHandle(textureArraySlot, layerIndex)
 
+        slotOwners[layerIndex] = texture
         texture.onUploaded(handle, uMin = 0.0f, vMin = 0.0f, uMax = u, vMax = v)
+    }
+
+    internal fun generatePendingMipmaps()
+    {
+        if (!mipmapsDirty)
+            return
+
+        glBindTexture(GL_TEXTURE_2D_ARRAY, id)
+        glGenerateMipmap(GL_TEXTURE_2D_ARRAY)
+        glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
+        mipmapsDirty = false
     }
 
     fun isFull() = (size >= maxCapacity && freeSlots.isEmpty)
 
     fun delete(texture: Texture)
     {
-        val texIndex = texture.handle.textureIndex
-        if (texture.handle.samplerIndex == samplerIndex && !freeSlots.contains(texIndex))
-            freeSlots.add(texIndex)
+        val handle = texture.handle
+        if (!handle.isArrayTexture || handle.textureArraySlot != textureArraySlot)
+            return
+
+        val layerIndex = handle.textureArrayLayer
+        if (slotOwners.getOrNull(layerIndex) !== texture)
+            return
+
+        slotOwners[layerIndex] = null
+        freeSlots.add(layerIndex)
     }
 
     fun destroy()
@@ -130,7 +166,9 @@ class TextureArray(
             glDeleteTextures(id)
         id = -1
         size = 0
+        mipmapsDirty = false
         freeSlots.clear()
+        slotOwners.fill(null)
     }
 
     /**
@@ -159,11 +197,14 @@ class TextureArray(
         }
     }
 
-    override fun toString(): String = "slot=$samplerIndex, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, anisotropy=$anisotropy, wrapping=$wrapping, mips=$mipLevels"
+    override fun toString(): String = "slot=$textureArraySlot, maxSize=${textureSize}px, capacity=($size/$maxCapacity), format=$format, filter=$filter, anisotropy=$anisotropy, wrapping=$wrapping, mips=$mipLevels"
 
     companion object
     {
+        private const val MAX_CAPACITY           = 32_768
+        private const val MAX_TEXTURE_ARRAY_SLOT = 32_767
+
         private val ZERO_FLOAT_COLOR = floatArrayOf(0f, 0f, 0f, 0f)
-        private val ZERO_INT_COLOR = intArrayOf(0, 0, 0, 0)
+        private val ZERO_INT_COLOR   = intArrayOf(0, 0, 0, 0)
     }
 }

@@ -30,7 +30,7 @@ class ColorGradingEffect(
     override fun applyEffect(engine: PulseEngineInternal, inTextures: List<RenderTexture>): List<RenderTexture>
     {
         val lutTex = engine.asset.getOrNull<Texture>(lutTexture)
-        val lutTexIndex = lutTex?.handle?.textureIndex?.toFloat() ?: -1f
+        val lutLayerIndex = lutTex?.handle?.textureArrayLayer?.toFloat() ?: -1f
         val lutTexArray = engine.gfx.textureBank.getTextureArrayOrDefault(lutTex)
 
         fbo.bind()
@@ -38,7 +38,7 @@ class ColorGradingEffect(
         program.bind()
         program.setUniformSampler("baseTex", inTextures[0])
         program.setUniformSamplerArray("lutTexArray", lutTexArray, filter = NEAREST, wrapping = CLAMP_TO_EDGE)
-        program.setUniform("lutTexCoord", lutTex?.uMax ?: 0f, lutTex?.vMax ?: 0f, lutTexIndex)
+        program.setUniform("lutTexCoord", lutTex?.uMax ?: 0f, lutTex?.vMax ?: 0f, lutLayerIndex)
         program.setUniform("lutIntensity", lutIntensity)
         program.setUniform("lutSize", lutTex?.height?.toFloat() ?: 0f)
         program.setUniform("toneMapper", toneMapper.value)

@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping
 import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
 @Icon("IMAGE")
 class SpriteSheet(
@@ -53,6 +54,13 @@ class SpriteSheet(
                 it.onUploaded(handle, uMinCell, vMinCell, uMaxCell, vMaxCell)
             }
         }
+    }
+
+    override fun onDeleted()
+    {
+        super.onDeleted()
+        if (this::textures.isInitialized)
+            textures.forEachFast { it.onDeleted() }
     }
 
     fun getTexture(xIndex: Int, yIndex: Int): Texture

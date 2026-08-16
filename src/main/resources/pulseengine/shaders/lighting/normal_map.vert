@@ -19,14 +19,14 @@ out vec2 texStart;
 out vec2 texCoord;
 out vec2 texTiling;
 out float texIndex;
-flat out uint texSamplerIndex;
+flat out uint textureArraySlot;
 out mat2 normalRotation;
 out vec2 normalScale;
 
 uniform float cameraAngle;
 uniform mat4 viewProjection;
 
-uint getTexSamplerIndex(uint textureHandle)
+uint getTextureArraySlot(uint textureHandle)
 {
     return (textureHandle >> uint(16)) & ((uint(1) << uint(16)) - uint(1));
 }
@@ -50,7 +50,7 @@ void main()
     texCoord = vec2(vertexPos.x, 1.0 - vertexPos.y);
     texTiling = tiling;
     texIndex = getTexIndex(texHandle);
-    texSamplerIndex = getTexSamplerIndex(texHandle);
+    textureArraySlot = getTextureArraySlot(texHandle);
 
     float angle = radians(rotation);
     normalRotation = rotMatrix(angle + cameraAngle);

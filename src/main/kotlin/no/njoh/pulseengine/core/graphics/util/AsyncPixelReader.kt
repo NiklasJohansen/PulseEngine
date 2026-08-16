@@ -273,7 +273,7 @@ class AsyncPixelReader
         require(texture.attachmentPoint.isColor) { "Surface pixel readback requires a color texture" }
         if (readFramebufferId == 0) readFramebufferId = glGenFramebuffers()
         glBindFramebuffer(GL_READ_FRAMEBUFFER, readFramebufferId)
-        glFramebufferTexture(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture.handle.textureIndex, 0)
+        glFramebufferTexture(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture.handle.glId, 0)
         glReadBuffer(GL_COLOR_ATTACHMENT0)
         check(glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) { "Failed to attach surface texture for pixel readback" }
     }

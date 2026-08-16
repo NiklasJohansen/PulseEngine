@@ -61,10 +61,10 @@ layout(location = 1) out uint outRenderId;
 uniform sampler2DArray uTextureBanks[16];
 uniform sampler2D uGtaoTex;
 
-// Use fixed sampler indices as some OpenGL drivers reject dynamic indexing of sampler arrays.
-vec4 sampleTextureBankGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
+// Use fixed texture-array slots as some OpenGL drivers reject dynamic indexing of sampler arrays.
+vec4 sampleTextureBankGrad(int textureArraySlot, vec3 texCoords, vec2 ddx, vec2 ddy)
 {
-    switch (index)
+    switch (textureArraySlot)
     {
         case 0:  return textureGrad(uTextureBanks[0],  texCoords, ddx, ddy);
         case 1:  return textureGrad(uTextureBanks[1],  texCoords, ddx, ddy);
@@ -87,10 +87,10 @@ vec4 sampleTextureBankGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
     return vec4(0.0);
 }
 
-// Use fixed sampler indices as some OpenGL drivers reject dynamic indexing of sampler arrays.
-vec4 sampleTextureBankLod(int index, vec3 texCoords, float lod)
+// Use fixed texture-array slots as some OpenGL drivers reject dynamic indexing of sampler arrays.
+vec4 sampleTextureBankLod(int textureArraySlot, vec3 texCoords, float lod)
 {
-    switch (index)
+    switch (textureArraySlot)
     {
         case 0:  return textureLod(uTextureBanks[0],  texCoords, lod);
         case 1:  return textureLod(uTextureBanks[1],  texCoords, lod);
@@ -169,12 +169,12 @@ struct LocalLightData
     vec4 positionRadius;
     vec4 colorDirectionX;
     vec4 directionYZOuterInnerCos;
-    vec4 isSpotShadowInfo;  // x=isSpotLight, y=ShadowBias, z=firstFace, w=faceCount,
+    vec4 isSpotShadowInfo; // x=isSpotLight, y=ShadowBias, z=firstFace, w=faceCount,
 };
 
 struct LocalShadowFaceData
 {
-    vec4 atlasScaleBias;        // xy=scale, zw=bias
+    vec4 atlasScaleBias; // xy=scale, zw=bias
     mat4 shadowViewProjection;
 };
 
@@ -239,8 +239,8 @@ float defaultStudioLighting(vec3 worldNormal, float ao)
 
 vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
 {
-    int samplerIndex = int(texDesc.x);
-    if (samplerIndex < 0) 
+    int textureArraySlot = int(texDesc.x);
+    if (textureArraySlot < 0)
         return vec4(defaultColor, 1.0);
 
     float layer = texDesc.y;
@@ -248,7 +248,7 @@ vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling, vec2 texCo
     vec2 uv = fract(vTexCoord * tiling) * uvMax;
     vec2 uvDx = texCoordDx * tiling * uvMax;
     vec2 uvDy = texCoordDy * tiling * uvMax;
-    return sampleTextureBankGrad(samplerIndex, vec3(uv, layer), uvDx, uvDy);
+    return sampleTextureBankGrad(textureArraySlot, vec3(uv, layer), uvDx, uvDy);
 }
 
 vec3 sampleWorldSpaceNormal(MaterialData material, vec2 texCoordDx, vec2 texCoordDy, out float normalLenTS)
@@ -275,8 +275,8 @@ vec3 sampleWorldSpaceNormal(MaterialData material, vec2 texCoordDx, vec2 texCoor
 
 vec3 sampleEnvMap(vec4 texDesc, vec3 dir, float lod)
 {
-    int samplerIndex = int(texDesc.x);
-    if (samplerIndex < 0) return vec3(0.0);
+    int textureArraySlot = int(texDesc.x);
+    if (textureArraySlot < 0) return vec3(0.0);
 
     // Convert direction to lat-long UV
     dir = normalize(dir);
@@ -288,13 +288,13 @@ vec3 sampleEnvMap(vec4 texDesc, vec3 dir, float lod)
     float layer = texDesc.y;
     vec2 uvMax = texDesc.zw;
     vec2 uv = vec2(u, v) * uvMax;
-    return sampleTextureBankLod(samplerIndex, vec3(uv, layer), lod).rgb;
+    return sampleTextureBankLod(textureArraySlot, vec3(uv, layer), lod).rgb;
 }
 
 vec2 sampleBrdfLut(float NdotV, float roughness)
 {
-    int samplerIndex = int(uEnvBrdfLutTex.x);
-    if (samplerIndex < 0) return vec2(0.0);
+    int textureArraySlot = int(uEnvBrdfLutTex.x);
+    if (textureArraySlot < 0) return vec2(0.0);
 
     float layer = uEnvBrdfLutTex.y;
     vec2 uvMax = uEnvBrdfLutTex.zw;
@@ -302,7 +302,7 @@ vec2 sampleBrdfLut(float NdotV, float roughness)
     vec2 uvDx = dFdx(uv);
     vec2 uvDy = dFdy(uv);
 
-    return sampleTextureBankGrad(samplerIndex, vec3(uv, layer), uvDx, uvDy).rg;
+    return sampleTextureBankGrad(textureArraySlot, vec3(uv, layer), uvDx, uvDy).rg;
 }
 
 // ------------------------------------------------------------------

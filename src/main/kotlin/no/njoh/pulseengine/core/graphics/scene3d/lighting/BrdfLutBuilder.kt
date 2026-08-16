@@ -28,7 +28,7 @@ object BrdfLutBuilder
         fbo.bind()
         fbo.attachOutputTextureArray(
             textureArray = texArray,
-            index = dstTex.handle.textureIndex,
+            layerIndex = dstTex.handle.textureArrayLayer,
             attachmentPoint = COLOR_TEXTURE_0,
             mipLevel = 0
         )

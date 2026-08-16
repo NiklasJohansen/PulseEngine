@@ -24,7 +24,7 @@ out vec2 texTiling;
 out vec2 quadSize;
 flat out uvec2 quadCornerRadiusPacked;
 flat out uvec2 quadBorderPacked;
-flat out uint samplerIndex;
+flat out uint textureArraySlot;
 flat out uint texIndex;
 
 uniform mat4 viewProjection;
@@ -39,7 +39,7 @@ vec4 unpackAndConvert(uint rgba)
     return vec4(linearRgb, sRgba.a);
 }
 
-uint getSamplerIndex(uint textureHandle)
+uint getTextureArraySlot(uint textureHandle)
 {
     return (textureHandle >> uint(16)) & ((uint(1) << uint(16)) - uint(1));
 }
@@ -67,7 +67,7 @@ void main()
     quadCornerRadiusPacked = floatBitsToUint(cornerRadiusPacked);
     quadBorderPacked = floatBitsToUint(borderPacked);
 
-    samplerIndex = getSamplerIndex(texHandle);
+    textureArraySlot = getTextureArraySlot(texHandle);
     texIndex = getTexIndex(texHandle);
 
     vec2 offset = (vertexPos - origin) * size * rotate(radians(angle));

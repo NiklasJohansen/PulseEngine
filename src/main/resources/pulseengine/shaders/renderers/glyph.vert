@@ -14,7 +14,7 @@ in uint texHandle;
 
 out vec4 vertexColor;
 out vec2 texCoord;
-flat out uint samplerIndex;
+flat out uint textureArraySlot;
 out float texIndex;
 
 uniform mat4 viewProjection;
@@ -29,7 +29,7 @@ vec4 unpackAndConvert(uint rgba)
     return vec4(linearRgb, sRgba.a);
 }
 
-uint getSamplerIndex(uint textureHandle)
+uint getTextureArraySlot(uint textureHandle)
 {
     return (textureHandle >> uint(16)) & ((uint(1) << uint(16)) - uint(1));
 }
@@ -54,7 +54,7 @@ void main()
     vertexColor = unpackAndConvert(color);
     texCoord = uvMin + (uvMax - uvMin) * vec2(vertexPos.x, 1.0 - vertexPos.y);
     texIndex = getTexIndex(texHandle);
-    samplerIndex = getSamplerIndex(texHandle);
+    textureArraySlot = getTextureArraySlot(texHandle);
 
     vec2 offset = vertexPos * size * rotate(radians(rotation));
     vec4 vertexPos = vec4(worldPos, 1.0) + vec4(offset, 0.0, 0.0);

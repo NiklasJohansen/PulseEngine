@@ -67,13 +67,20 @@ class TextureBank
 
     fun delete(texture: Texture)
     {
-        val samplerIndex = texture.handle.samplerIndex
-        textureArrays.find { it.samplerIndex == samplerIndex }?.delete(texture)
+        val handle = texture.handle
+        if (handle.isArrayTexture)
+            textureArrays.firstOrNullFast { it.textureArraySlot == handle.textureArraySlot }?.delete(texture)
+        texture.onDeleted()
     }
 
     fun destroy()
     {
         textureArrays.forEachFast { it.destroy() }
+    }
+
+    fun generatePendingMipmaps()
+    {
+        textureArrays.forEachFast { it.generatePendingMipmaps() }
     }
 
     fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat = RGBA8)
@@ -83,8 +90,13 @@ class TextureBank
         capacitySpecs.sortBy { it.texSize }
     }
 
-    fun getTextureArray(texture: Texture?): TextureArray? =
-        textureArrays.firstOrNullFast { it.samplerIndex == texture?.handle?.samplerIndex }
+    fun getTextureArray(texture: Texture?): TextureArray?
+    {
+        if (texture == null || !texture.handle.isArrayTexture)
+            return null
+
+        return textureArrays.firstOrNullFast { it.textureArraySlot == texture.handle.textureArraySlot }
+    }
 
     fun getTextureArrayOrDefault(texture: Texture?): TextureArray =
         getTextureArray(texture) ?: emptyTextureArray.also { if (it.id == -1) it.init() }
@@ -111,7 +123,7 @@ class TextureBank
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
         glBindTexture(GL_TEXTURE_2D, 0)
 
-        return RenderTexture(name = "fallback", handle = TextureHandle.create(0, id), width = 1, height = 1)
+        return RenderTexture(name = "fallback", handle = TextureHandle.createGlHandle(id), width = 1, height = 1)
     }
 
     private fun getOrCreateTextureArrayFor(texture: Texture): TextureArray?

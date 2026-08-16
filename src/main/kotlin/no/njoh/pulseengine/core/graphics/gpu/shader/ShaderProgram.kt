@@ -155,7 +155,7 @@ class ShaderProgram(
         val unit = assignSamplerUnit(samplerName)
         val target = if (multisampling == Multisampling.NONE) GL_TEXTURE_2D else GL_TEXTURE_2D_MULTISAMPLE
         glActiveTexture(GL_TEXTURE0 + unit)
-        glBindTexture(target, textureHandle.textureIndex)
+        glBindTexture(target, textureHandle.glId)
         TextureSampler.getFor(filter, anisotropy, wrapping, compare, borderColor).bind(unit)
     }
 
@@ -170,7 +170,7 @@ class ShaderProgram(
         compare: TextureCompare = TextureCompare.NONE,
         borderColor: Color? = null,
     ) {
-        val samplerName = textureBankNames[textureArray.samplerIndex]
+        val samplerName = textureBankNames[textureArray.textureArraySlot]
         val unit = assignSamplerUnit(samplerName)
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, textureArray.id)

@@ -29,7 +29,7 @@ out vec2 texSize;
 out vec2 texCoord;
 out vec2 texTiling;
 out float texIndex;
-flat out uint texSamplerIndex;
+flat out uint textureArraySlot;
 
 uniform mat4 viewProjection;
 uniform vec2 uvDrawOffset; // Used to prevent jitter when lightmap scale is below 1.0
@@ -55,7 +55,7 @@ mat2 rotate(float angle)
     return mat2(c, s, -s,	c);
 }
 
-uint getSamplerIndex(uint textureHandle)
+uint getTextureArraySlot(uint textureHandle)
 {
     return (textureHandle >> uint(16)) & ((uint(1) << uint(16)) - uint(1));
 }
@@ -79,7 +79,7 @@ void main()
     sourceAngle = angle;
     sourceConeAngle = coneAngle;
 
-    texSamplerIndex = getSamplerIndex(texHandle);
+    textureArraySlot = getTextureArraySlot(texHandle);
     texIndex = getTexIndex(texHandle);
 
     // Adjust size to make sure it covers at least one pixel

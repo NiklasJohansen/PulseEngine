@@ -14,17 +14,17 @@ in vec2 texSize;
 in vec2 texCoord;
 in vec2 texTiling;
 in float texIndex;
-flat in uint texSamplerIndex;
+flat in uint textureArraySlot;
 
 out vec4 sceneColor;
 out vec4 metadata;
 
 uniform sampler2DArray uTextureBanks[16];
 
-// Use fixed sampler indices as some OpenGL drivers reject dynamic indexing of sampler arrays.
-vec4 sampleTextureBankGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
+// Use fixed texture-array slots as some OpenGL drivers reject dynamic indexing of sampler arrays.
+vec4 sampleTextureBankGrad(int textureArraySlot, vec3 texCoords, vec2 ddx, vec2 ddy)
 {
-    switch (index)
+    switch (textureArraySlot)
     {
         case 0:  return textureGrad(uTextureBanks[0],  texCoords, ddx, ddy);
         case 1:  return textureGrad(uTextureBanks[1],  texCoords, ddx, ddy);
@@ -69,7 +69,7 @@ void main()
         vec2 ddy = dFdy(coord) * texSize;
         vec2 uv = texStart + texSize * fract(coord);
 
-        texColor = sampleTextureBankGrad(int(texSamplerIndex), vec3(uv, floor(texIndex)), ddx, ddy);
+        texColor = sampleTextureBankGrad(int(textureArraySlot), vec3(uv, floor(texIndex)), ddx, ddy);
 
         if (texColor.a < 0.5)
             discard; // Discard transparent pixels

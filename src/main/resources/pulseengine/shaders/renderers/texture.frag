@@ -11,7 +11,7 @@ in vec2 quadSize;
 flat in uvec2 quadCornerRadiusPacked;
 flat in uvec2 quadBorderPacked;
 flat in uint texIndex;
-flat in uint samplerIndex;
+flat in uint textureArraySlot;
 
 out vec4 fragColor;
 
@@ -38,10 +38,10 @@ float roundedRectDistance(vec2 pos, vec2 size, vec4 radii)
     return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - radius;
 }
 
-// Use fixed sampler indices as some OpenGL drivers reject dynamic indexing of sampler arrays.
-vec4 sampleTextureBankGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
+// Use fixed texture-array slots as some OpenGL drivers reject dynamic indexing of sampler arrays.
+vec4 sampleTextureBankGrad(int textureArraySlot, vec3 texCoords, vec2 ddx, vec2 ddy)
 {
-    switch (index)
+    switch (textureArraySlot)
     {
         case 0:  return textureGrad(uTextureBanks[0],  texCoords, ddx, ddy);
         case 1:  return textureGrad(uTextureBanks[1],  texCoords, ddx, ddy);
@@ -77,7 +77,7 @@ void main()
         vec2 ddx = dFdx(coord) * texSize;
         vec2 ddy = dFdy(coord) * texSize;
         vec2 uv = texStart + texSize * tiled;
-        textureColor = sampleTextureBankGrad(int(samplerIndex), vec3(uv, float(texIndex)), ddx, ddy);
+        textureColor = sampleTextureBankGrad(int(textureArraySlot), vec3(uv, float(texIndex)), ddx, ddy);
     }
 
     vec4 fillColor = vertexColor * textureColor;

@@ -131,7 +131,7 @@ class MaterialBank
     private fun DoubleBufferedFloatObject.putTexture(texture: Texture?)
     {
         if (texture != null)
-            put(texture.handle.samplerIndex.toFloat(), texture.handle.textureIndex.toFloat(), texture.uMax, texture.vMax)
+            put(texture.handle.textureArraySlot.toFloat(), texture.handle.textureArrayLayer.toFloat(), texture.uMax, texture.vMax)
         else
             put(-1f, 0f, 0f, 0f)
     }

@@ -14,7 +14,7 @@ class NativeMipmapGenerator : MipmapGenerator()
     override fun onDestroy() {}
     override fun onGenerate(engine: PulseEngineInternal, texture: RenderTexture)
     {
-        glBindTexture(GL_TEXTURE_2D, texture.handle.textureIndex)
+        glBindTexture(GL_TEXTURE_2D, texture.handle.glId)
         glGenerateMipmap(GL_TEXTURE_2D)
     }
 }

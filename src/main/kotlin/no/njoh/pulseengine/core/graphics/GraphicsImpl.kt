@@ -138,6 +138,8 @@ open class GraphicsImpl : GraphicsInternal
         onInitFrame.forEachFast { it.invoke(engine) }
         onInitFrame.clear()
 
+        textureBank.generatePendingMipmaps()
+
         sceneContext.initFrame()
 
         surfaces.forEachFast { it.initFrame(engine) }

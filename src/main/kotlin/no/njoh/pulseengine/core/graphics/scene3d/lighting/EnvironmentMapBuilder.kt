@@ -20,6 +20,7 @@ object EnvironmentMapBuilder
 
         val dstTextureArray = engine.gfx.textureBank.getTextureArray(dstEnv) ?: error("No texture array found for dstEnv (${dstEnv.name})")
         val srcTextureArray = engine.gfx.textureBank.getTextureArray(srcEnv) ?: error("No texture array found for srcEnv (${srcEnv.name})")
+        engine.gfx.textureBank.generatePendingMipmaps()
         val program = ShaderProgram.create(
             engine.asset.loadNow(VertexShader("/pulseengine/shaders/utils/ibl.vert")),
             engine.asset.loadNow(FragmentShader("/pulseengine/shaders/utils/ibl_specular.frag"))
@@ -31,7 +32,7 @@ object EnvironmentMapBuilder
         {
             program.bind()
             program.setUniformSamplerArray("textureArray", srcTextureArray)
-            program.setUniform("srcEnv", srcEnv.handle.textureIndex.toFloat(), srcEnv.uMax, srcEnv.vMax)
+            program.setUniform("srcEnv", srcEnv.handle.textureArrayLayer.toFloat(), srcEnv.uMax, srcEnv.vMax)
             program.setUniform("srcEnvSize", srcEnv.width.toFloat(), srcEnv.height.toFloat())
 
             val err = glGetError()
@@ -47,7 +48,7 @@ object EnvironmentMapBuilder
 
                 program.setUniform("roughness", roughness)
 
-                frameBufferObject.attachOutputTextureArray(dstTextureArray, dstEnv.handle.textureIndex, AttachmentPoint.COLOR_TEXTURE_0, mip)
+                frameBufferObject.attachOutputTextureArray(dstTextureArray, dstEnv.handle.textureArrayLayer, AttachmentPoint.COLOR_TEXTURE_0, mip)
                 frameBufferObject.checkStatus()
 
                 glViewport(0, 0, mipWidth, mipHeight)
@@ -71,6 +72,7 @@ object EnvironmentMapBuilder
 
         val dstTextureArray = engine.gfx.textureBank.getTextureArray(dstEnv) ?: error("No texture array found for dstEnv (${dstEnv.name})")
         val srcTextureArray = engine.gfx.textureBank.getTextureArray(srcEnv) ?: error("No texture array found for srcEnv (${srcEnv.name})")
+        engine.gfx.textureBank.generatePendingMipmaps()
         val program = ShaderProgram.create(
             engine.asset.loadNow(VertexShader("/pulseengine/shaders/utils/ibl.vert")),
             engine.asset.loadNow(FragmentShader("/pulseengine/shaders/utils/ibl_diffuse.frag"))
@@ -82,10 +84,10 @@ object EnvironmentMapBuilder
         {
             program.bind()
             program.setUniformSamplerArray("textureArray", srcTextureArray)
-            program.setUniform("srcEnv", srcEnv.handle.textureIndex.toFloat(), srcEnv.uMax, srcEnv.vMax)
+            program.setUniform("srcEnv", srcEnv.handle.textureArrayLayer.toFloat(), srcEnv.uMax, srcEnv.vMax)
 
             frameBufferObject.bind()
-            frameBufferObject.attachOutputTextureArray(dstTextureArray, index = dstEnv.handle.textureIndex, attachmentPoint = AttachmentPoint.COLOR_TEXTURE_0, mipLevel = 0)
+            frameBufferObject.attachOutputTextureArray(dstTextureArray, layerIndex = dstEnv.handle.textureArrayLayer, attachmentPoint = AttachmentPoint.COLOR_TEXTURE_0, mipLevel = 0)
             FrameBufferObject.checkStatus()
 
             glViewport(0, 0, dstEnv.width, dstEnv.height)

@@ -22,6 +22,8 @@ class RenderTexture(
     val mipmapGenerator: MipmapGenerator? = null,
     var alphaMode: TextureAlphaMode = STRAIGHT
 ) {
+    init { require(handle.isGlTexture || handle.isNone) { "Render textures must use a GL texture handle or NONE" } }
+
     fun generateMips(engine: PulseEngineInternal) = mipmapGenerator?.generateMipmaps(engine, this)
 
     companion object

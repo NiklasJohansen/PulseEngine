@@ -3,7 +3,7 @@
 in vec4 vertexColor;
 in vec2 texCoord;
 in float texIndex;
-flat in uint samplerIndex;
+flat in uint textureArraySlot;
 
 out vec4 fragColor;
 
@@ -12,10 +12,10 @@ uniform sampler2DArray uTextureBanks[16];
 const float SDF_EDGE_VALUE = 128.0 / 255.0;
 const float SDF_SMOOTHING = 0.85;
 
-// Use fixed sampler indices as some OpenGL drivers reject dynamic indexing of sampler arrays.
-vec4 sampleTextureBankGrad(int index, vec3 texCoords, vec2 ddx, vec2 ddy)
+// Use fixed texture-array slots as some OpenGL drivers reject dynamic indexing of sampler arrays.
+vec4 sampleTextureBankGrad(int textureArraySlot, vec3 texCoords, vec2 ddx, vec2 ddy)
 {
-    switch (index)
+    switch (textureArraySlot)
     {
         case 0:  return textureGrad(uTextureBanks[0],  texCoords, ddx, ddy);
         case 1:  return textureGrad(uTextureBanks[1],  texCoords, ddx, ddy);
@@ -42,7 +42,7 @@ void main()
 {
     vec2 texCoordDx = dFdx(texCoord);
     vec2 texCoordDy = dFdy(texCoord);
-    float signedDistance = sampleTextureBankGrad(int(samplerIndex), vec3(texCoord, floor(texIndex)), texCoordDx, texCoordDy).a;
+    float signedDistance = sampleTextureBankGrad(int(textureArraySlot), vec3(texCoord, floor(texIndex)), texCoordDx, texCoordDy).a;
     vec2 distanceGradient = vec2(dFdx(signedDistance), dFdy(signedDistance));
     float screenSpaceWidth = max(length(distanceGradient) * SDF_SMOOTHING, 0.0001);
     float coverage = clamp((signedDistance - SDF_EDGE_VALUE) / screenSpaceWidth + 0.5, 0.0, 1.0);

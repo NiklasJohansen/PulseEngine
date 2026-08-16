@@ -361,7 +361,7 @@ class ModelRenderer(
     private fun ShaderProgram.setTexture(name: String, tex: Texture?)
     {
         if (tex != null)
-            setUniform(name, tex.handle.samplerIndex.toFloat(), tex.handle.textureIndex.toFloat(), tex.uMax, tex.vMax)
+            setUniform(name, tex.handle.textureArraySlot.toFloat(), tex.handle.textureArrayLayer.toFloat(), tex.uMax, tex.vMax)
         else
             setUniform(name, -1f, 0f, 0f, 0f)
     }

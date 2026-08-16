@@ -120,13 +120,13 @@ class BloomEffect(
         val outputTexture = fbo.getTexture(0)
         val lensDirtTex = engine.asset.getOrNull<Texture>(lensDirtTexture)
         val lensDirtTexArray = engine.gfx.textureBank.getTextureArrayOrDefault(lensDirtTex)
-        val lensDirtTexIndex = lensDirtTex?.handle?.textureIndex?.toFloat() ?: -1f
+        val lensDirtLayerIndex = lensDirtTex?.handle?.textureArrayLayer?.toFloat() ?: -1f
 
         program.bind()
         program.setUniformSampler("srcTex", srcTexture)
         program.setUniformSampler("bloomTex", bloomTexture)
         program.setUniform("lensDirtIntensity", lensDirtIntensity)
-        program.setUniform("lensDirtTexCoord", lensDirtTex?.uMax ?: 0f, lensDirtTex?.vMax ?: 0f, lensDirtTexIndex)
+        program.setUniform("lensDirtTexCoord", lensDirtTex?.uMax ?: 0f, lensDirtTex?.vMax ?: 0f, lensDirtLayerIndex)
         program.setUniformSamplerArray("lensDirtTexArray", lensDirtTexArray)
 
         setViewportSizeToFit(outputTexture)
