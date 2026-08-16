@@ -107,8 +107,8 @@ open class AssetManagerImpl : AssetManagerInternal()
     override fun update(engine: PulseEngineInternal)
     {
         handleAssetUnloading()
-        handleAssetLoading(engine)
         handleAssetReloading(engine)
+        handleAssetLoading(engine)
     }
 
     override fun setOnAssetLoaded(callback: (Asset) -> Unit)
@@ -210,11 +210,17 @@ open class AssetManagerImpl : AssetManagerInternal()
         {
             try
             {
+                val previousSubAssetNames = it.getSubAssets().map { it.name }
+
                 it.unload()
                 notifyAssetUnloaded(it)
                 it.load()
                 notifyAssetLoaded(it)
                 it.postProcess(engine)
+
+                previousSubAssetNames.forEachFast { name -> unload(name) }
+                it.getSubAssets().forEachFast { subAsset -> load(subAsset) }
+
                 Logger.debug { "Reloaded asset: ${it.filePath}" }
             }
             catch (e: Exception) { Logger.error { "Failed to reload asset: ${it.name}, reason: ${e.message}" } }
