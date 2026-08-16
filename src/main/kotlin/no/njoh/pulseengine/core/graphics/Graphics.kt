@@ -6,7 +6,6 @@ import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Shader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.camera.CameraInternal
 import no.njoh.pulseengine.core.graphics.gpu.resource.MaterialBank
@@ -15,7 +14,6 @@ import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.gpu.resource.TextureBank
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
@@ -71,14 +69,8 @@ interface Graphics
 
     /**
      * Deletes the [Surface] with the given name.
-     */
+    */
     fun deleteSurface(name: String)
-
-    /**
-     * Sets the number of textures that should be allocated up-front on the GPU when a
-     * texture asset matching the given size and format is loaded.
-     */
-    fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat = RGBA8)
 }
 
 interface GraphicsInternal : Graphics

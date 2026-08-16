@@ -171,35 +171,59 @@ open class AssetManagerImpl : AssetManagerInternal()
     {
         if (assetsToLoad.isEmpty()) return
 
-        if (assetsToLoad.size > 1)
+        val assetCount = assetsToLoad.size
+        val startTime = System.nanoTime()
+        var loadTimeNanos = 0L
+        var batchStart = 0
+
+        while (batchStart < assetCount)
         {
-            val startTime = System.nanoTime()
-            runBlocking(Dispatchers.IO)
+            val batchEnd = minOf(batchStart + ASSET_LOAD_BATCH_SIZE, assetCount)
+            val loadStartTime = System.nanoTime()
+
+            if (batchEnd - batchStart > 1)
             {
-                assetsToLoad.forEachFast()
+                runBlocking()
                 {
-                    launch { runCatching { it.load() }.onFailure { e -> Logger.error { "Failed to load asset: ${it.name}, reason: ${e.message}" } } }
+                    var i = batchStart
+                    while (i < batchEnd)
+                    {
+                        val asset = assetsToLoad[i++]
+                        launch(ASSET_LOAD_DISPATCHER) { loadAsset(asset) }
+                    }
                 }
             }
-            assetsToLoad.forEachFast { subAssetsToLoad += it.getSubAssets() }
-            Logger.debug { "Loaded ${assetsToLoad.size} assets in ${startTime.toNowFormatted()}. [${assetsToLoad.joinToString { it.name }}]" }
-        }
-        else
-        {
-            assetsToLoad[0].load()
-            subAssetsToLoad += assetsToLoad[0].getSubAssets()
+            else loadAsset(assetsToLoad[batchStart])
+
+            loadTimeNanos += System.nanoTime() - loadStartTime
+
+            var i = batchStart
+            while (i < batchEnd)
+            {
+                val asset = assetsToLoad[i++]
+                subAssetsToLoad += asset.getSubAssets()
+                register(asset)
+                runCatching { notifyAssetLoaded(asset) }.onFailure { error -> Logger.error { "onAssetLoadedCallback failed for asset: ${asset.name}, reason: ${error.message}" } }
+                asset.postProcess(engine)
+            }
+
+            batchStart = batchEnd
         }
 
-        assetsToLoad.forEachFast()
+        if (assetCount > 1)
         {
-            register(it)
-            runCatching { notifyAssetLoaded(it) }.onFailure { error -> Logger.error { "onAssetLoadedCallback failed for asset: ${it.name}, reason: ${error.message}" } }
-            it.postProcess(engine)
+            val loadTime = "%.3f ms".format(loadTimeNanos.toDouble() * 1e-6)
+            Logger.debug { "Loaded and initialized $assetCount assets in ${startTime.toNowFormatted()} (loading: $loadTime). [${assetsToLoad.subList(0, assetCount).joinToString { it.name }}]" }
         }
 
         assetsToLoad.clear()
         assetsToLoad += subAssetsToLoad
         subAssetsToLoad.clear()
+    }
+
+    private fun loadAsset(asset: Asset)
+    {
+        runCatching { asset.load() }.onFailure { error -> Logger.error { "Failed to load asset: ${asset.name}, reason: ${error.message}" } }
     }
 
     private fun handleAssetReloading(engine: PulseEngineInternal)
@@ -258,5 +282,12 @@ open class AssetManagerImpl : AssetManagerInternal()
         }
 
         return newSlot
+    }
+
+    private companion object
+    {
+        const val MAX_ASSET_LOAD_BATCH_SIZE = 8
+        val ASSET_LOAD_BATCH_SIZE = Runtime.getRuntime().availableProcessors().coerceIn(2, MAX_ASSET_LOAD_BATCH_SIZE)
+        val ASSET_LOAD_DISPATCHER = Dispatchers.Default.limitedParallelism(ASSET_LOAD_BATCH_SIZE)
     }
 }

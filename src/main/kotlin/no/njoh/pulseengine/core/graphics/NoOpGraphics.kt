@@ -12,7 +12,6 @@ import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.ORTHOGRAPHI
 import no.njoh.pulseengine.core.graphics.gpu.resource.MaterialBank
 import no.njoh.pulseengine.core.graphics.gpu.resource.ModelBank
 import no.njoh.pulseengine.core.graphics.gpu.resource.TextureBank
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextImpl
 import no.njoh.pulseengine.core.graphics.surface.NoOpSurface
 import no.njoh.pulseengine.core.graphics.surface.Surface
@@ -58,6 +57,5 @@ class NoOpGraphics : GraphicsInternal
     override fun deleteMaterial(material: Material) {}
     override fun updateCameras() {}
     override fun setGpuLogLevel(logLevel: LogLevel) {}
-    override fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat) {}
     override fun destroy(engine: PulseEngineInternal) {}
 }

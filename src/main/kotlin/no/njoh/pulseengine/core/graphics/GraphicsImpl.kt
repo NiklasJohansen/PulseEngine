@@ -23,7 +23,6 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderType
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.gpu.resource.TextureBank
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.surface.*
 import no.njoh.pulseengine.core.graphics.util.GpuLogger
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler
@@ -369,11 +368,6 @@ open class GraphicsImpl : GraphicsInternal
     override fun setGpuLogLevel(logLevel: LogLevel)
     {
         runOnInitFrame { GpuLogger.setLogLevel(logLevel) }
-    }
-
-    override fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat)
-    {
-        textureBank.setTextureCapacity(maxCount, textureSize, format)
     }
 
     override fun destroy(engine: PulseEngineInternal)

@@ -13,8 +13,9 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromPath
 import no.njoh.pulseengine.core.shared.utils.Logger
-import org.lwjgl.BufferUtils
 import org.lwjgl.stb.STBImage.*
+import org.lwjgl.system.MemoryUtil.memAlloc
+import org.lwjgl.system.MemoryUtil.memFree
 import java.io.FileNotFoundException
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
@@ -52,35 +53,43 @@ open class Texture(
 
         try {
             val bytes = filePath.loadBytesFromPath() ?: throw FileNotFoundException("File not found: $filePath")
-            val buffer = BufferUtils.createByteBuffer(bytes.size).put(bytes).flip() as ByteBuffer
-            val width = IntArray(1)
-            val height = IntArray(1)
-            val components = IntArray(1)
-
-            stbi_info_from_memory(buffer, width, height, components)
-
-            when (format)
+            val encodedPixels = memAlloc(bytes.size)
+            try
             {
-                SRGBA8, RGBA8 ->
-                {
-                    if (stbi_is_hdr_from_memory(buffer))
-                        Logger.warn { "Loading HDR texture: $filePath into LDR format: $format" }
+                encodedPixels.put(bytes).flip()
+                val width = IntArray(1)
+                val height = IntArray(1)
+                val components = IntArray(1)
 
-                    this.pixelsLDR = stbi_load_from_memory(buffer, width, height, components, STBI_rgb_alpha)
-                        ?: throw RuntimeException("Could not load image into memory: " + stbi_failure_reason())
-                }
-                RGBA16F, RGBA32F ->
+                stbi_info_from_memory(encodedPixels, width, height, components)
+
+                when (format)
                 {
-                    this.pixelsHDR = stbi_loadf_from_memory(buffer, width, height, components, STBI_rgb_alpha)
-                        ?: throw RuntimeException("Could not load HDR image into memory: " + stbi_failure_reason())
+                    SRGBA8, RGBA8 ->
+                    {
+                        if (stbi_is_hdr_from_memory(encodedPixels))
+                            Logger.warn { "Loading HDR texture: $filePath into LDR format: $format" }
+
+                        this.pixelsLDR = stbi_load_from_memory(encodedPixels, width, height, components, STBI_rgb_alpha)
+                            ?: throw RuntimeException("Could not load image into memory: " + stbi_failure_reason())
+                    }
+                    RGBA16F, RGBA32F ->
+                    {
+                        this.pixelsHDR = stbi_loadf_from_memory(encodedPixels, width, height, components, STBI_rgb_alpha)
+                            ?: throw RuntimeException("Could not load HDR image into memory: " + stbi_failure_reason())
+                    }
+                    else -> throw RuntimeException("Unsupported texture format: $format")
                 }
-                else -> throw RuntimeException("Unsupported texture format: $format")
+                this.width = width[0]
+                this.height = height[0]
+                this.afterUpload = { tex ->
+                    tex.pixelsLDR?.let { stbi_image_free(it) }
+                    tex.pixelsHDR?.let { stbi_image_free(it) }
+                }
             }
-            this.width = width[0]
-            this.height = height[0]
-            this.afterUpload = { tex ->
-                tex.pixelsLDR?.let { stbi_image_free(it) }
-                tex.pixelsHDR?.let { stbi_image_free(it) }
+            finally
+            {
+                memFree(encodedPixels)
             }
         }
         catch (e: Exception)

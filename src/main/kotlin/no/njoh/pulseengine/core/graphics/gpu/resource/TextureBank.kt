@@ -2,18 +2,18 @@ package no.njoh.pulseengine.core.graphics.gpu.resource
 
 import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.asset.types.Texture
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAnisotropy.OFF
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureArray
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureArrayAllocationException
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
-import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.GL_RGBA
@@ -29,35 +29,29 @@ import org.lwjgl.opengl.GL11.glTexParameteri
 import org.lwjgl.opengl.GL12.GL_TEXTURE_BASE_LEVEL
 import org.lwjgl.opengl.GL12.GL_TEXTURE_MAX_LEVEL
 import kotlin.math.max
+import kotlin.math.min
 
 class TextureBank
 {
-    private val capacitySpecs = mutableListOf<TextureCapacitySpec>().apply { addAll(DEFAULT_CAPACITIES) }
     private val textureArrays = mutableListOf<TextureArray>()
-    private val emptyTextureArray = TextureArray(0, 0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
+    private val emptyTextureArray = TextureArray(0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
     private val fallbackTextures = THashMap<Color, RenderTexture>()
-    private var overCapacityUploadCount = 0
 
     fun upload(texture: Texture)
     {
         val array = getOrCreateTextureArrayFor(texture)
         if (array != null)
         {
-            if (!array.isFull())
+            try
             {
                 array.upload(texture)
                 return
             }
-            else
+            catch (e: TextureArrayAllocationException)
             {
-                overCapacityUploadCount++
-                Logger.error()
-                {
-                    "Failed to load texture: ${texture.filePath}. Texture array for " +
-                    "textureSize=${array.textureSize}px and format=${array.format} is full " +
-                    "(${array.size}/${array.maxCapacity}). Consider increasing its capacity to at least " +
-                    "${array.maxCapacity + overCapacityUploadCount}."
-                }
+                if (array.id == -1 && array.size == 0)
+                    textureArrays.remove(array)
+                Logger.error(e) { "Failed to upload texture '${texture.filePath}" }
             }
         }
 
@@ -81,13 +75,6 @@ class TextureBank
     fun generatePendingMipmaps()
     {
         textureArrays.forEachFast { it.generatePendingMipmaps() }
-    }
-
-    fun setTextureCapacity(maxCount: Int, textureSize: Int, format: TextureFormat = RGBA8)
-    {
-        capacitySpecs.removeWhen { it.texSize == textureSize && it.format == format }
-        capacitySpecs.add(TextureCapacitySpec(textureSize, maxCount, format))
-        capacitySpecs.sortBy { it.texSize }
     }
 
     fun getTextureArray(texture: Texture?): TextureArray?
@@ -128,31 +115,36 @@ class TextureBank
 
     private fun getOrCreateTextureArrayFor(texture: Texture): TextureArray?
     {
-        val textureSize = max(texture.width, texture.height)
-        val textureArray = textureArrays.find()
+        val imageSize = max(texture.width, texture.height)
+        val textureSize = try
         {
-            it.textureSize >= textureSize &&
+            calculateTextureArraySize(imageSize, GlCapabilities.limits.maxTextureSize)
+        }
+        catch (e: IllegalArgumentException)
+        {
+            Logger.error { "Failed to load texture '${texture.filePath}': ${e.message}" }
+            return null
+        }
+
+        val textureArray = textureArrays.firstOrNullFast()
+        {
+            it.textureSize == textureSize &&
             it.format == texture.format &&
             it.filter == texture.filter &&
             it.anisotropy == texture.anisotropy &&
             it.wrapping == texture.wrapping &&
-            it.maxMipLevels == texture.maxMipLevels
+            it.maxMipLevels == texture.maxMipLevels &&
+            !it.isFull()
         }
 
-        val isMoreTextureSlotsAvailable = textureArrays.size < MAX_TEXTURE_SLOTS
         if (textureArray != null)
-        {
-            val foundArrayHasAppropriateSize = textureSize > textureArray.textureSize / 2
-            val isTextureSmallerThanSmallestSpec = textureSize < capacitySpecs.first().texSize
-            if (foundArrayHasAppropriateSize || isTextureSmallerThanSmallestSpec || !isMoreTextureSlotsAvailable)
-                return textureArray
-        }
+            return textureArray
 
-        if (!isMoreTextureSlotsAvailable)
+        if (textureArrays.size >= MAX_TEXTURE_SLOTS)
         {
             Logger.error()
             {
-                "Failed to load texture: name=${texture.name}, size=${textureSize}px, format=${texture.format}, " +
+                "Failed to load texture: name=${texture.name}, size=${imageSize}px, format=${texture.format}, " +
                 "filter=${texture.filter}, anisotropy=${texture.anisotropy}, wrapping=${texture.wrapping} and maxMipLevels=${texture.maxMipLevels}.\n" +
                 "All $MAX_TEXTURE_SLOTS texture array slots are in use:\n\n" +
                 textureArrays.joinToString("\n") { "  $it" } +
@@ -161,66 +153,26 @@ class TextureBank
             return null
         }
 
-        val closestTextureSize = capacitySpecs.firstOrNull { it.texSize >= textureSize }?.texSize
-        val spec = capacitySpecs.find { it.texSize == closestTextureSize && it.format == texture.format }
-        if (spec == null)
-        {
-            Logger.error { "Failed to load texture: ${texture.filePath}. No texture capacity set for textures with size=${textureSize}px and format ${texture.format}." }
-            return null
-        }
-
-        val newArray = TextureArray(textureArrays.size, spec.texSize, spec.capacity, texture.format, texture.filter, texture.anisotropy, texture.wrapping, texture.maxMipLevels)
+        val newArray = TextureArray(textureArrays.size, textureSize, texture.format, texture.filter, texture.anisotropy, texture.wrapping, texture.maxMipLevels)
         textureArrays.add(newArray)
-        textureArrays.sortBy { it.textureSize }
         Logger.debug { "New texture array created: $newArray" }
 
         return newArray
     }
 
-    private data class TextureCapacitySpec(
-        val texSize: Int,
-        val capacity: Int,
-        val format: TextureFormat
-    )
+    private fun calculateTextureArraySize(imageSize: Int, maximumTextureSize: Int): Int
+    {
+        require(imageSize > 0) { "Texture dimensions must be positive: $imageSize" }
+        require(imageSize <= maximumTextureSize) { "Texture dimension is ${imageSize}px, but this device supports at most ${maximumTextureSize}px" }
+
+        val minimumSize = max(imageSize, MIN_TEXTURE_SIZE)
+        val powerOfTwoSize = Integer.highestOneBit(minimumSize - 1) shl 1
+        return min(powerOfTwoSize, maximumTextureSize)
+    }
 
     companion object
     {
+        private const val MIN_TEXTURE_SIZE = 128
         private const val MAX_TEXTURE_SLOTS = 16
-        private val DEFAULT_CAPACITIES = listOf(
-            TextureCapacitySpec(texSize = 128,  capacity = 100, format = SRGBA8),
-            TextureCapacitySpec(texSize = 128,  capacity = 100, format = RGBA8),
-            TextureCapacitySpec(texSize = 128,  capacity = 70,  format = RGBA16F),
-            TextureCapacitySpec(texSize = 128,  capacity = 50,  format = RGBA32F),
-
-            TextureCapacitySpec(texSize = 256,  capacity = 100, format = SRGBA8),
-            TextureCapacitySpec(texSize = 256,  capacity = 100, format = RGBA8),
-            TextureCapacitySpec(texSize = 256,  capacity = 70,  format = RGBA16F),
-            TextureCapacitySpec(texSize = 256,  capacity = 50,  format = RGBA32F),
-
-            TextureCapacitySpec(texSize = 512,  capacity = 50,  format = SRGBA8),
-            TextureCapacitySpec(texSize = 512,  capacity = 50,  format = RGBA8),
-            TextureCapacitySpec(texSize = 512,  capacity = 30,  format = RGBA16F),
-            TextureCapacitySpec(texSize = 512,  capacity = 20,  format = RGBA32F),
-
-            TextureCapacitySpec(texSize = 1024, capacity = 50,  format = SRGBA8),
-            TextureCapacitySpec(texSize = 1024, capacity = 50,  format = RGBA8),
-            TextureCapacitySpec(texSize = 1024, capacity = 30,  format = RGBA16F),
-            TextureCapacitySpec(texSize = 1024, capacity = 20,  format = RGBA32F),
-
-            TextureCapacitySpec(texSize = 2048, capacity = 15,  format = SRGBA8),
-            TextureCapacitySpec(texSize = 2048, capacity = 15,  format = RGBA8),
-            TextureCapacitySpec(texSize = 2048, capacity = 10,  format = RGBA16F),
-            TextureCapacitySpec(texSize = 2048, capacity = 5,   format = RGBA32F),
-
-            TextureCapacitySpec(texSize = 4096, capacity = 10,  format = SRGBA8),
-            TextureCapacitySpec(texSize = 4096, capacity = 10,  format = RGBA8),
-            TextureCapacitySpec(texSize = 4096, capacity = 5,   format = RGBA16F),
-            TextureCapacitySpec(texSize = 4096, capacity = 5,   format = RGBA32F),
-
-            TextureCapacitySpec(texSize = 8192, capacity = 5,   format = SRGBA8),
-            TextureCapacitySpec(texSize = 8192, capacity = 5,   format = RGBA8),
-            TextureCapacitySpec(texSize = 8192, capacity = 3,   format = RGBA16F),
-            TextureCapacitySpec(texSize = 8192, capacity = 2,   format = RGBA32F)
-        )
     }
 }
