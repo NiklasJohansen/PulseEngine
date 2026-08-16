@@ -28,6 +28,7 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
     var model    = AssetHandle<Model>("cube")
     var material = AssetHandle<Material>()
 
+    @Prop("Transform", i=0)          var mode     = TransformMode.STATIC
     @Prop("Transform", i=1) override var position = Vector3f(0f)
     @Prop("Transform", i=2) override var rotation = Vector3f(0f)
     @Prop("Transform", i=3) override var scale    = Vector3f(1f)
@@ -52,8 +53,8 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
         val model = engine.asset.getOrNull(model) ?: return
         val material = engine.asset.getOrNull(material)
 
-        if (engine.scene.state == SceneState.STOPPED)
-            updateTransform() // Update only when in editor
+        if (mode == TransformMode.DYNAMIC || engine.scene.state == SceneState.STOPPED) 
+            updateTransform() // Only recalculate if the model is dynamic or the scene is stopped (editor mode)
 
         context.submitModel(
             engine = engine,
@@ -66,12 +67,14 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
             renderId = id
         )
     }
-    
-    private fun updateTransform()
+
+    fun updateTransform()
     {
         transform.identity()
             .translation(position)
             .rotateXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
             .scale(scale)
     }
+
+    enum class TransformMode { STATIC, DYNAMIC }
 }
