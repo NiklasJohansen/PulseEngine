@@ -112,7 +112,8 @@ class PulseEngineImpl(
         audio.setOnOutputDeviceChanged { asset.getAllOfType<Sound>().forEachFast { audio.uploadSound(it) } }
 
         // Notify modules about loaded assets
-        asset.setOnAssetLoaded {
+        asset.setOnAssetLoaded() 
+        {
             when (it)
             {
                 is Texture  -> gfx.uploadTexture(it)
@@ -126,12 +127,14 @@ class PulseEngineImpl(
         }
 
         // Notify modules about unloaded assets
-        asset.setOnAssetUnloaded {
+        asset.setOnAssetUnloaded()
+        {
             when (it)
             {
                 is Texture  -> gfx.deleteTexture(it)
                 is Font     -> gfx.deleteTexture(it.charTexture)
                 is Material -> gfx.deleteMaterial(it)
+                is Model    -> gfx.deleteModel(it)
                 is Sound    -> audio.deleteSound(it)
                 is Cursor   -> input.deleteCursor(it)
             }

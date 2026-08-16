@@ -139,6 +139,7 @@ open class GraphicsImpl : GraphicsInternal
         onInitFrame.clear()
 
         textureBank.generatePendingMipmaps()
+        modelBank.initFrame()
 
         sceneContext.initFrame()
 
@@ -169,6 +170,7 @@ open class GraphicsImpl : GraphicsInternal
         measure("End draw")
         {
             sceneContext.endFrame()
+            modelBank.endFrame()
         }
 
         GpuProfiler.endFrame()
@@ -314,6 +316,8 @@ open class GraphicsImpl : GraphicsInternal
     }
 
     override fun uploadModel(model: Model) = modelBank.upload(model)
+
+    override fun deleteModel(model: Model) = modelBank.delete(model)
 
     override fun uploadTexture(texture: Texture) = textureBank.upload(texture)
 

@@ -66,8 +66,12 @@ import java.nio.file.Paths
 import kotlin.math.ceil
 import kotlin.math.min
 
-class Model(filePath: String, name: String) : Asset(filePath, name) 
-{
+class Model(
+    filePath: String,
+    name: String,
+    val maxTrianglesPerMesh: Int = 0
+) : Asset(filePath, name) {
+
     var vao: VertexArrayObject?  = null; private set
     var vbo: StaticBufferObject? = null; private set
     var ebo: StaticBufferObject? = null; private set
@@ -108,14 +112,11 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
     
     override fun unload()
     {
-        this.vao = null
-        this.vbo = null
-        this.ebo = null
+        // ModelBank owns the GPU allocation and deletes it after queued draws have completed.
         this.vertices = FloatArray(0)
         this.vertexBytes = ByteArray(0)
         this.indices = IntArray(0)
         this.collisionMeshes = emptyList()
-        this.meshes.forEachFast { it.vao = null }
     }
 
     fun onUploaded(vao: VertexArrayObject, vbo: StaticBufferObject, ebo: StaticBufferObject)
@@ -129,11 +130,20 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
         this.meshes.forEachFast { it.vao = vao }
     }
 
+    fun onDeleted()
+    {
+        this.vao = null
+        this.vbo = null
+        this.ebo = null
+    }
+
     private fun loadWithAssimp(assetFileIO: AssimpAssetFileIO)
     {
         Logger.debug { "Loading model $name..." }
 
-        val flags =
+        require(maxTrianglesPerMesh >= 0) { "maxTrianglesPerMesh must be zero (disabled) or positive" }
+
+        var flags =
             aiProcess_Triangulate or
             aiProcess_JoinIdenticalVertices or
             aiProcess_CalcTangentSpace or
@@ -142,35 +152,55 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             aiProcess_OptimizeMeshes or
             aiProcess_SortByPType
 
-        val scene = aiImportFileEx(filePath, flags, assetFileIO.fileIO)
-            ?: throw RuntimeException(listOfNotNull(aiGetErrorString()?.takeIf { it.isNotBlank() }, assetFileIO.lastFailure).joinToString(". "))
+        val splitLargeMeshes = maxTrianglesPerMesh > 0
+        if (splitLargeMeshes) 
+            flags = flags or aiProcess_SplitLargeMeshes
+        
+        val properties = if (splitLargeMeshes) checkNotNull(aiCreatePropertyStore()) { "Failed to create Assimp property store" } else null
 
         try
         {
-            readMeshes(scene)
-            readEmbeddedTextures(scene)
-            readMaterials(scene)
-            readAnimations(scene)
-
-            scene.mRootNode()?.let()
+            val scene = if (properties != null)
             {
-                nodeHierarchy = readNodeHierarchy(it)
-                globalNodeTransforms.clear()
-                nodesByName.clear()
-                collectGlobalNodeTransforms(nodeHierarchy!!, Matrix4f(), globalNodeTransforms)
-                bindPoseBoneMatricesByNodeName.clear()
-
-                val instances = mutableListOf<MeshInstance>()
-                val collisionMeshes = mutableListOf<CollisionMesh>()
-                buildSubMeshInstances(it, Matrix4f(), instances, collisionMeshes)
-                this.meshInstances = instances
-                this.collisionMeshes = collisionMeshes
-
-                buildBoundsAndLodLevels()
-                buildConservativeAnimatedBounds()
+                aiSetImportPropertyInteger(properties, AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, maxTrianglesPerMesh)
+                aiImportFileExWithProperties(filePath, flags, assetFileIO.fileIO, properties)
             }
+            else
+            {
+                aiImportFileEx(filePath, flags, assetFileIO.fileIO)
+            }
+
+            if (scene == null)
+                throw RuntimeException(listOfNotNull(aiGetErrorString()?.takeIf { it.isNotBlank() }, assetFileIO.lastFailure).joinToString(". "))
+
+            try
+            {
+                readMeshes(scene)
+                readEmbeddedTextures(scene)
+                readMaterials(scene)
+                readAnimations(scene)
+
+                scene.mRootNode()?.let()
+                {
+                    nodeHierarchy = readNodeHierarchy(it)
+                    globalNodeTransforms.clear()
+                    nodesByName.clear()
+                    collectGlobalNodeTransforms(nodeHierarchy!!, Matrix4f(), globalNodeTransforms)
+                    bindPoseBoneMatricesByNodeName.clear()
+
+                    val instances = mutableListOf<MeshInstance>()
+                    val collisionMeshes = mutableListOf<CollisionMesh>()
+                    buildSubMeshInstances(it, Matrix4f(), instances, collisionMeshes)
+                    this.meshInstances = instances
+                    this.collisionMeshes = collisionMeshes
+
+                    buildBoundsAndLodLevels()
+                    buildConservativeAnimatedBounds()
+                }
+            }
+            finally { aiReleaseImport(scene) }
         }
-        finally { aiReleaseImport(scene) }
+        finally { if (properties != null) aiReleasePropertyStore(properties) }
     }
 
     // Read scene //////////////////////////////////////////////////////////////
@@ -403,6 +433,13 @@ class Model(filePath: String, name: String) : Asset(filePath, name)
             }
         }
         else meshes
+
+        if (maxTrianglesPerMesh > 0) Logger.debug()
+        {
+            val totalTriangles = this.meshes.sumOf { it.indexCount / 3 }
+            val largestMeshTriangles = this.meshes.maxOfOrNull { it.indexCount / 3 } ?: 0
+            "Imported model $name with ${this.meshes.size} meshes and $totalTriangles triangles; largest mesh has $largestMeshTriangles triangles (limit=$maxTrianglesPerMesh)"
+        }
     }
 
     private fun readBoneWeights(

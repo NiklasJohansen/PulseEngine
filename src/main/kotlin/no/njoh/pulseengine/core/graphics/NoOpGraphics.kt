@@ -47,6 +47,7 @@ class NoOpGraphics : GraphicsInternal
     override fun compileShader(shader: Shader) {}
     override fun init(engine: PulseEngineInternal) {}
     override fun uploadModel(model: Model) {}
+    override fun deleteModel(model: Model) {}
     override fun initFrame(engine: PulseEngineInternal) {}
     override fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean) {}
     override fun drawFrame(engine: PulseEngineInternal) {}

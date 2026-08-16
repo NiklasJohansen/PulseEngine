@@ -93,6 +93,7 @@ interface GraphicsInternal : Graphics
 
     fun init(engine: PulseEngineInternal)
     fun uploadModel(model: Model)
+    fun deleteModel(model: Model)
     fun uploadTexture(texture: Texture)
     fun deleteTexture(texture: Texture)
     fun uploadMaterial(material: Material)
