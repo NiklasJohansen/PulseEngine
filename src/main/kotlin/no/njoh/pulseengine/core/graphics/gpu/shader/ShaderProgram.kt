@@ -235,6 +235,7 @@ class ShaderProgram(
             throw RuntimeException("Failed to link shaders: ${shaders.joinToString { it.filePath }} \n${glGetProgramInfoLog(id)}")
 
         uniformLocations.clear()
+        attributeLocations.clear()
         textureUnits.clear()
         shaderCompileHash = hash
     }

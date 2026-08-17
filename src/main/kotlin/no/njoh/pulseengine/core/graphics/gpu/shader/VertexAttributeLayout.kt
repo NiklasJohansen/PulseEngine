@@ -40,14 +40,22 @@ class VertexAttributeLayout
     {
         var index = 0
         var byteOffset = strideInBytes * instanceOffset
-        for (attr in attributes) {
+        for (attr in attributes) 
+        {
             val location = attr.location ?: program?.attributeLocationOf(attr.name) ?: index
-            glEnableVertexAttribArray(location)
-            if (attr.integer)
-                glVertexAttribIPointer(location, attr.count, attr.type, strideInBytes.toInt(), byteOffset)
-            else
-                glVertexAttribPointer(location, attr.count, attr.type, attr.normalized, strideInBytes.toInt(), byteOffset)
-            glVertexAttribDivisor(location, attr.divisor)
+            if (location >= 0) 
+            {
+                glEnableVertexAttribArray(location)
+                if (attr.integer)
+                {
+                    glVertexAttribIPointer(location, attr.count, attr.type, strideInBytes.toInt(), byteOffset)
+                }
+                else
+                {
+                    glVertexAttribPointer(location, attr.count, attr.type, attr.normalized, strideInBytes.toInt(), byteOffset)
+                }
+                glVertexAttribDivisor(location, attr.divisor)
+            }
             byteOffset += attr.bytes
             index++
         }
