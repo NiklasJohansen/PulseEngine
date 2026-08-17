@@ -54,7 +54,7 @@ object GpuLogger
         val caps = GL.getCapabilities()
         if (caps.GL_KHR_debug)
         {
-            Logger.debug { "Using KHR_debug for OpenGL logging" }
+            Logger.info { "Using KHR_debug for OpenGL logging" }
             val callback = GLDebugMessageCallback.create { source, type, id, severity, length, message, userParam ->
                 val type = KHR.typeMapping[type]
                 val level = KHR.getLoglevel(severity, type)
@@ -70,7 +70,7 @@ object GpuLogger
         }
         else if (caps.GL_ARB_debug_output)
         {
-            Logger.debug { "Using ARB_debug_output for OpenGL logging" }
+            Logger.info { "Using ARB_debug_output for OpenGL logging" }
             val callback = GLDebugMessageARBCallback.create { source, type, id, severity, length, message, userParam ->
                 val type = ARB.typeMapping[type]
                 val level = ARB.getLoglevel(severity, type)

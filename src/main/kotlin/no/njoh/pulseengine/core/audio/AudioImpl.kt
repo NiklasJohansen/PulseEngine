@@ -59,13 +59,13 @@ open class AudioImpl : AudioInternal
         attributes.flip()
 
         if (!alcResetDeviceSOFT(device, attributes))
-            Logger.error { "Failed to reset device: ${ALC10.alcGetString(device, alcGetError(device))}" }
+            Logger.error { "Failed to reset device: ${alcGetString(device, alcGetError(device))}" }
 
         val hrtfState = alcGetInteger(device, ALC_HRTF_SOFT)
         if (hrtfState == 0)
             Logger.warn { "HRTF not enabled" }
         else
-            Logger.debug { "HRTF enabled, using ${ALC10.alcGetString(device, ALC_HRTF_SPECIFIER_SOFT)}" }
+            Logger.debug { "HRTF enabled, using ${alcGetString(device, ALC_HRTF_SPECIFIER_SOFT)}" }
 
         this.device = device
     }

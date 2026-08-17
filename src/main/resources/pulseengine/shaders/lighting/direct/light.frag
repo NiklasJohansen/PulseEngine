@@ -26,8 +26,6 @@ out vec4 fragColor;
 uniform sampler2D normalMap;
 uniform sampler2D occluderMap;
 
-uniform int edgeCount;
-uniform vec4 ambientColor;
 uniform vec2 resolution;
 uniform float hasNormalMap;
 uniform float hasOccluderMap;

@@ -295,7 +295,7 @@ open class SceneManagerImpl : SceneManagerInternal()
                     loadingScene = false
                     nextStagedScene = scene
                     scene.fileName = fileName
-                    Logger.debug { "Transitioning into scene: $fileName" }
+                    Logger.info { "Transitioning into scene: $fileName" }
                 },
                 onFail = {
                     loadingScene = false
@@ -373,7 +373,7 @@ open class SceneManagerImpl : SceneManagerInternal()
         }.let { nanoTime ->
             val entityCount = SceneEntity.REGISTERED_TYPES.size
             val systemCount = SceneSystem.REGISTERED_TYPES.size
-            Logger.debug { "Registered $entityCount SceneEntity classes and $systemCount SceneSystem classes in ${"%.3f".format(nanoTime / 1_000_000f)} ms." }
+            Logger.info { "Registered $entityCount SceneEntity classes and $systemCount SceneSystem classes in ${"%.3f".format(nanoTime / 1_000_000f)} ms." }
         }
     }
 

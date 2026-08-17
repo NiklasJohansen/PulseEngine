@@ -177,7 +177,7 @@ class PulseEngineImpl(
         val startTime = System.nanoTime()
         Logger.info { "Initializing game (${game::class.simpleName})" }
         game.onCreate()
-        Logger.debug { "Finished initializing game in: ${startTime.toNowFormatted()}" }
+        Logger.info { "Finished initializing game in: ${startTime.toNowFormatted()}" }
     }
 
     private fun postGameInit()

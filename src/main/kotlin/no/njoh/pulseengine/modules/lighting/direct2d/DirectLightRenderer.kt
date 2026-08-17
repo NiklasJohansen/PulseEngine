@@ -25,7 +25,6 @@ class DirectLightRenderer(
     override val order: Int = 50
 ) : Renderer() {
 
-    var ambientColor = Color(0.1f, 0.1f, 0.1f)
     var normalMapTextureHandle: TextureHandle? = null
     var occluderMapTextureHandle: TextureHandle? = null
 
@@ -136,8 +135,6 @@ class DirectLightRenderer(
         program.bind()
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", view)
-        program.setUniform("edgeCount", readEdges)
-        program.setUniform("ambientColor", ambientColor)
         program.setUniform("resolution", surface.config.width * texScale, surface.config.height * texScale)
         program.setUniform("textureScale", texScale)
         program.setUniform("drawOffset", xDrawOffset, yDrawOffset)

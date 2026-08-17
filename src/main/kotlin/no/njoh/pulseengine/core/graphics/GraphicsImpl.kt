@@ -100,7 +100,6 @@ open class GraphicsImpl : GraphicsInternal
             // Create OpenGL context in current thread
             GlCapabilities.create(glContract)
             gpuName = glGetString(GL_RENDERER) ?: "Unknown GPU"
-            Logger.debug { "Running OpenGL on GPU: $gpuName" }
 
             // Load error shaders
             errorShaders[VERTEX]   = engine.asset.loadNow(VertexShader("/pulseengine/shaders/error/error.vert"))

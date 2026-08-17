@@ -7,7 +7,6 @@ import de.undercouch.bson4jackson.BsonFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromClassPath
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
@@ -50,9 +49,6 @@ open class DataImpl : DataInternal()
         addMetric("GAME FIXED UPDATE TIME (MS)") { sample(gameFixedUpdateTimeMs)               }
         addMetric("USED MEMORY (KB)")            { sample(usedMemoryKb.toFloat())              }
         addMetric("MEMORY OF TOTAL (%)")         { sample(usedMemoryKb * 100f / totalMemoryKb) }
-        
-        GpuProfiler
-        
     }
 
     override fun addMetric(name: String, onSample: Metric.() -> Unit)
@@ -72,7 +68,7 @@ open class DataImpl : DataInternal()
                     file.parentFile.mkdirs()
                 file.writeBytes(getMapper(format).writeValueAsBytes(data))
             }
-            Logger.debug { "Saved state into $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms" }
+            Logger.info { "Saved object into $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms" }
             true
         }
         .onFailure { Logger.error { "Failed to save file: $filePath - reason: ${it.message}" } }
@@ -93,7 +89,7 @@ open class DataImpl : DataInternal()
                 }
                 state = getMapper(getFormat(byteArray)).readValue(byteArray, type)
             }
-            Logger.debug { "Loaded state from $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms" }
+            Logger.info { "Loaded object from $filePath in ${"%.3f".format(nanoTime / 1_000_000f)} ms" }
             state
         }
         .onFailure { Logger.error { "Failed to load state: $filePath - reason: ${it.message}" } }

@@ -141,7 +141,7 @@ open class AssetManagerImpl : AssetManagerInternal()
             val toLoadCount = assetsToLoad.size
             load(it)
             if (assetsToLoad.size != toLoadCount)
-                Logger.debug { "Loaded new asset from path: $filePath" }
+                Logger.info { "Loaded new asset from path: $filePath" }
         }
     }
 
@@ -213,7 +213,7 @@ open class AssetManagerImpl : AssetManagerInternal()
         if (assetCount > 1)
         {
             val loadTime = "%.3f ms".format(loadTimeNanos.toDouble() * 1e-6)
-            Logger.debug { "Loaded and initialized $assetCount assets in ${startTime.toNowFormatted()} (loading: $loadTime). [${assetsToLoad.subList(0, assetCount).joinToString { it.name }}]" }
+            Logger.info { "Loaded and initialized $assetCount assets in ${startTime.toNowFormatted()} (loading: $loadTime). [${assetsToLoad.subList(0, assetCount).joinToString { it.name }}]" }
         }
 
         assetsToLoad.clear()
@@ -245,7 +245,7 @@ open class AssetManagerImpl : AssetManagerInternal()
                 previousSubAssetNames.forEachFast { name -> unload(name) }
                 it.getSubAssets().forEachFast { subAsset -> load(subAsset) }
 
-                Logger.debug { "Reloaded asset: ${it.filePath}" }
+                Logger.info { "Reloaded asset: ${it.filePath}" }
             }
             catch (e: Exception) { Logger.error { "Failed to reload asset: ${it.name}, reason: ${e.message}" } }
         }

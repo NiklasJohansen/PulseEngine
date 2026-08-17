@@ -145,8 +145,7 @@ object GlCapabilities
             throw IllegalStateException(message)
         }
 
-        Logger.info { "Graphics contract: $contract, OpenGL: $openGlVersion, GLSL: $glslVersion, GPU: $renderer ($vendor)" }
-        Logger.debug { "Graphics limits: $limits" }
+        Logger.info { "Graphics contract: $contract, OpenGL: $openGlVersion, GLSL: $glslVersion, GPU: $renderer ($vendor), Limits: $limits" }
     }
 
     fun requireFullGraphics(feature: String)

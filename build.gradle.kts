@@ -60,6 +60,15 @@ dependencies {
     // Java Microbenchmark Harness
     jmh("org.openjdk.jmh:jmh-core:1.37")
     kaptJmh("org.openjdk.jmh:jmh-generator-annprocess:1.37")
+
+val lwjglJvmArgs = listOf(
+    "--enable-native-access=ALL-UNNAMED",
+    "--sun-misc-unsafe-memory-access=allow" // Temporary until LWJGL 3.3.6
+)
+
+tasks.withType<JavaExec>().configureEach {
+    jvmArgs(lwjglJvmArgs)
+}
 }
 
 tasks.named<Jar>("jar") { enabled = false }
@@ -69,6 +78,10 @@ tasks.named<ShadowJar>("shadowJar") {
     mergeServiceFiles()
     exclude("testbed/**") // Comment this line out when running JAR locally
     manifest { attributes["Main-Class"] = mainClass }
+    manifest {
+        attributes["Main-Class"] = mainClass
+        attributes["Enable-Native-Access"] = "ALL-UNNAMED"
+    }
 }
 
 tasks.named("assemble") { dependsOn("shadowJar") }

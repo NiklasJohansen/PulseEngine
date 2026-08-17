@@ -116,7 +116,6 @@ open class DirectLightingSystem2D : SceneSystem()
         lightSurface.setTextureFilter(textureFilter)
         lightSurface.setTextureFormat(textureFormat)
 
-        lightRenderer.ambientColor = ambientColor
         lightRenderer.normalMapTextureHandle = engine.gfx.getSurface(NORMAL_SURFACE_NAME)?.getTexture()?.handle
         lightRenderer.occluderMapTextureHandle = engine.gfx.getSurface(OCCLUDER_SURFACE_NAME)?.getTexture()?.handle
 

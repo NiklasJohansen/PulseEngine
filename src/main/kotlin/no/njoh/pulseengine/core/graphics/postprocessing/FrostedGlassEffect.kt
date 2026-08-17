@@ -100,11 +100,16 @@ class FrostedGlassEffect(
 
     companion object
     {
+        private var surfacePending = false
+        
         fun drawToTargetSurface(engine: PulseEngine, target: Surface, x: Float, y: Float, width: Float, height: Float, cornerRadius: CornerRadius = ZERO)
         {
             val effectSurface = engine.gfx.getSurface("frosted_glass")
             if (effectSurface == null)
             {
+                if (surfacePending) return
+                surfacePending = true
+    
                 val newSurface = engine.gfx.createSurface(
                     name = "frosted_glass",
                     isVisible = false,
@@ -113,6 +118,7 @@ class FrostedGlassEffect(
                 newSurface.addPostProcessingEffect(FrostedGlassEffect(zThreshold = -80))
                 return // Surface will be initialized next frame, return now
             }
+            else surfacePending = false
 
             val uMin = x / effectSurface.config.width
             val vMin = y / effectSurface.config.height
