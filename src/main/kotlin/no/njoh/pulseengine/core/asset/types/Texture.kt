@@ -45,6 +45,8 @@ open class Texture(
     var pixelsLDR: ByteBuffer?  = null; private set
     var pixelsHDR: FloatBuffer? = null; private set
 
+    open val uploadExactTextureDimensions = false
+
     private var afterUpload: (Texture) -> Unit = { }
 
     override fun load()

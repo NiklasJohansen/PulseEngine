@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAnisotropy.Companion.defaultFor
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR_MIPMAP
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA32F
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.REPEAT
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.REPEAT_HORIZONTAL_CLAMP_VERTICAL
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAnisotropy
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
@@ -21,12 +21,14 @@ class EnvMap(
     initHeight: Int = 1,
     filter: TextureFilter = LINEAR_MIPMAP,
     anisotropy: TextureAnisotropy = defaultFor(filter),
-    wrapping: TextureWrapping = REPEAT,
+    wrapping: TextureWrapping = REPEAT_HORIZONTAL_CLAMP_VERTICAL,
     format: TextureFormat = RGBA32F,
     maxMipLevels: Int = 10,
     val buildIblMaps: Boolean = true,
     val iblSourceName: String? = null
 ) : Texture(filePath, name, initWidth, initHeight, filter, anisotropy, wrapping, format, maxMipLevels) {
+
+    override val uploadExactTextureDimensions = true
 
     override fun getSubAssets(): List<Asset>
     {

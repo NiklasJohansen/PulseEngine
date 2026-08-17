@@ -38,7 +38,7 @@ import kotlin.math.min
 class TextureBank
 {
     private val textureArrays = mutableListOf<TextureArray>()
-    private val emptyTextureArray = TextureArray(0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
+    private val emptyTextureArray = TextureArray(0, 0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
     private val fallbackTextures = THashMap<Color, RenderTexture>()
     private var fallbackDepthTexture: RenderTexture? = null
 
@@ -144,9 +144,22 @@ class TextureBank
     private fun getOrCreateTextureArrayFor(texture: Texture): TextureArray?
     {
         val imageSize = max(texture.width, texture.height)
-        val textureSize = try
+        val textureWidth: Int
+        val textureHeight: Int
+        try
         {
-            calculateTextureArraySize(imageSize, GlCapabilities.limits.maxTextureSize)
+            validateTextureDimensions(texture.width, texture.height, GlCapabilities.limits.maxTextureSize)
+            if (texture.uploadExactTextureDimensions)
+            {
+                textureWidth = texture.width
+                textureHeight = texture.height
+            }
+            else
+            {
+                val textureSize = calculateTextureArraySize(imageSize, GlCapabilities.limits.maxTextureSize)
+                textureWidth = textureSize
+                textureHeight = textureSize
+            }
         }
         catch (e: IllegalArgumentException)
         {
@@ -156,7 +169,8 @@ class TextureBank
 
         val textureArray = textureArrays.firstOrNullFast()
         {
-            it.textureSize == textureSize &&
+            it.textureWidth == textureWidth &&
+            it.textureHeight == textureHeight &&
             it.format == texture.format &&
             it.filter == texture.filter &&
             it.anisotropy == texture.anisotropy &&
@@ -172,7 +186,7 @@ class TextureBank
         {
             Logger.error()
             {
-                "Failed to load texture: name=${texture.name}, size=${imageSize}px, format=${texture.format}, " +
+                "Failed to load texture: name=${texture.name}, size=${texture.width}x${texture.height}px, format=${texture.format}, " +
                 "filter=${texture.filter}, anisotropy=${texture.anisotropy}, wrapping=${texture.wrapping} and maxMipLevels=${texture.maxMipLevels}.\n" +
                 "All $MAX_TEXTURE_SLOTS texture array slots are in use:\n\n" +
                 textureArrays.joinToString("\n") { "  $it" } +
@@ -181,18 +195,21 @@ class TextureBank
             return null
         }
 
-        val newArray = TextureArray(textureArrays.size, textureSize, texture.format, texture.filter, texture.anisotropy, texture.wrapping, texture.maxMipLevels)
+        val newArray = TextureArray(textureArrays.size, textureWidth, textureHeight, texture.format, texture.filter, texture.anisotropy, texture.wrapping, texture.maxMipLevels)
         textureArrays.add(newArray)
         Logger.debug { "New texture array created: $newArray" }
 
         return newArray
     }
 
+    private fun validateTextureDimensions(width: Int, height: Int, maximumTextureSize: Int)
+    {
+        require(width > 0 && height > 0) { "Texture dimensions must be positive: ${width}x${height}" }
+        require(width <= maximumTextureSize && height <= maximumTextureSize) { "Texture dimensions are ${width}x${height}px, but this device supports at most ${maximumTextureSize}x${maximumTextureSize}px" }
+    }
+
     private fun calculateTextureArraySize(imageSize: Int, maximumTextureSize: Int): Int
     {
-        require(imageSize > 0) { "Texture dimensions must be positive: $imageSize" }
-        require(imageSize <= maximumTextureSize) { "Texture dimension is ${imageSize}px, but this device supports at most ${maximumTextureSize}px" }
-
         val minimumSize = max(imageSize, MIN_TEXTURE_SIZE)
         val powerOfTwoSize = Integer.highestOneBit(minimumSize - 1) shl 1
         return min(powerOfTwoSize, maximumTextureSize)

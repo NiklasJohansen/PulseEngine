@@ -3,6 +3,12 @@ package no.njoh.pulseengine.core.graphics.gpu.texture
 import gnu.trove.list.array.TIntArrayList
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST_MIPMAP
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_BORDER
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.REPEAT
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.REPEAT_HORIZONTAL_CLAMP_VERTICAL
 import org.lwjgl.opengl.ARBClearTexture.glClearTexImage
 import org.lwjgl.opengl.ARBFramebufferObject.glGenerateMipmap
 import org.lwjgl.opengl.ARBTextureStorage.glTexStorage3D
@@ -14,6 +20,8 @@ import org.lwjgl.opengl.GL12.glTexImage3D
 import org.lwjgl.opengl.GL12.glTexSubImage3D
 import org.lwjgl.opengl.GL30.*
 import org.lwjgl.opengl.GL32.glFramebufferTexture
+import org.lwjgl.stb.STBImageResize.*
+import org.lwjgl.system.MemoryUtil.*
 import java.nio.ByteBuffer
 import kotlin.math.floor
 import kotlin.math.log2
@@ -22,7 +30,8 @@ import kotlin.math.min
 
 class TextureArray(
     val textureArraySlot: Int,
-    val textureSize: Int,
+    val textureWidth: Int,
+    val textureHeight: Int,
     val format: TextureFormat,
     val filter: TextureFilter,
     val anisotropy: TextureAnisotropy,
@@ -38,7 +47,7 @@ class TextureArray(
     var size              =  0; private set
     var allocatedCapacity =  0; private set
 
-    val mipLevels = if (textureSize > 0) min(maxMipLevels, floor(log2(textureSize.toDouble())).toInt() + 1) else 1
+    val mipLevels = if (textureWidth > 0 && textureHeight > 0) min(maxMipLevels, floor(log2(max(textureWidth, textureHeight).toDouble())).toInt() + 1) else 1
 
     private var slotOwners = emptyArray<Texture?>()
     private var freeSlots = TIntArrayList()
@@ -49,7 +58,7 @@ class TextureArray(
     {
         if (id != -1) return
 
-        val initialCapacity = if (textureSize > 0) 1 else 0
+        val initialCapacity = if (textureWidth > 0 && textureHeight > 0) 1 else 0
         try
         {
             id = createStorage(max(initialCapacity, 1))
@@ -64,8 +73,8 @@ class TextureArray(
 
     fun upload(texture: Texture)
     {
-        check(texture.width <= textureSize) { "Texture width (${texture.width} px) cannot be larger than $textureSize px" }
-        check(texture.height <= textureSize) { "Texture height (${texture.height} px) cannot be larger than $textureSize px" }
+        check(texture.width <= textureWidth) { "Texture width (${texture.width} px) cannot be larger than $textureWidth px" }
+        check(texture.height <= textureHeight) { "Texture height (${texture.height} px) cannot be larger than $textureHeight px" }
 
         val pixelsLDR = texture.pixelsLDR
         val pixelsHDR = texture.pixelsHDR
@@ -91,29 +100,54 @@ class TextureArray(
             }
         }
 
-        glBindTexture(GL_TEXTURE_2D_ARRAY, id)
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+        // Fill the complete array layer so mipmaps cannot sample unused or stale texels.
+        val resamplingRequired = texture.width != textureWidth || texture.height != textureHeight
+        if (resamplingRequired)
+            check(pixelsLDR != null || pixelsHDR != null) { "Texture '${texture.name}' has no image data to resample from ${texture.width}x${texture.height} to ${textureWidth}x${textureHeight}" }
 
-        if (pixelsLDR != null)
+        val resampledImage = when
         {
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, pixelsLDR)
-        }
-        else if (pixelsHDR != null)
-        {
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, pixelsHDR)
+            !resamplingRequired -> null
+            pixelsLDR != null ->
+            {
+                val dataType = if (format == TextureFormat.SRGBA8) STBIR_TYPE_UINT8_SRGB_ALPHA else STBIR_TYPE_UINT8
+                resampleImage(pixelsLDR, texture.width, texture.height, bytesPerComponent = 1, dataType)
+            }
+            pixelsHDR != null ->
+            {
+                val source = memByteBuffer(memAddress(pixelsHDR), Math.toIntExact(pixelsHDR.remaining().toLong() * Float.SIZE_BYTES))
+                resampleImage(source, texture.width, texture.height, Float.SIZE_BYTES, STBIR_TYPE_FLOAT)
+            }
+            else -> error("Texture '${texture.name}' has no pixels")
         }
 
-        glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
+        try
+        {
+            glBindTexture(GL_TEXTURE_2D_ARRAY, id)
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+
+            when
+            {
+                resampledImage != null -> glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, textureWidth, textureHeight, 1, format.pixelFormat, format.type, resampledImage)
+                pixelsLDR != null      -> glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, pixelsLDR)
+                pixelsHDR != null      -> glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, pixelsHDR)
+            }
+
+            glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
+        }
+        finally
+        {
+            if (resampledImage != null)
+                memFree(resampledImage)
+        }
 
         if (mipLevels > 1 && (pixelsHDR != null || pixelsLDR != null))
             mipmapsDirty = true
 
-        val u = texture.width / textureSize.toFloat()
-        val v = texture.height / textureSize.toFloat()
         val handle = TextureHandle.createArrayHandle(textureArraySlot, layerIndex)
 
         slotOwners[layerIndex] = texture
-        texture.onUploaded(handle, uMin = 0.0f, vMin = 0.0f, uMax = u, vMax = v)
+        texture.onUploaded(handle)
     }
 
     fun generatePendingMipmaps()
@@ -152,6 +186,48 @@ class TextureArray(
         mipmapsDirty = false
         freeSlots.clear()
         slotOwners = emptyArray()
+    }
+
+    private fun resampleImage(source: ByteBuffer, sourceWidth: Int, sourceHeight: Int, bytesPerComponent: Int, dataType: Int): ByteBuffer
+    {
+        val componentCount = format.componentCount
+        val pixelLayout = when (componentCount)
+        {
+            1 -> STBIR_1CHANNEL
+            2 -> STBIR_2CHANNEL
+            3 -> STBIR_RGB
+            4 -> STBIR_RGBA
+            else -> error("Unsupported texture component count: $componentCount")
+        }
+
+        val edgeMode = when (wrapping)
+        {
+            REPEAT                           -> STBIR_EDGE_WRAP
+            CLAMP_TO_EDGE                    -> STBIR_EDGE_CLAMP
+            CLAMP_TO_BORDER                  -> STBIR_EDGE_CLAMP
+            REPEAT_HORIZONTAL_CLAMP_VERTICAL -> error("Mixed-axis wrapping requires exact texture-array dimensions")
+        }
+
+        val resamplingFilter = when (filter)
+        {
+            NEAREST,
+            NEAREST_MIPMAP -> STBIR_FILTER_POINT_SAMPLE
+            else           -> STBIR_FILTER_DEFAULT
+        }
+
+        val sourceBytes = Math.toIntExact(sourceWidth.toLong() * sourceHeight * componentCount * bytesPerComponent)
+        require(source.remaining() >= sourceBytes) { "Texture pixel buffer has ${source.remaining()} bytes, but ${sourceWidth}x${sourceHeight} $format requires $sourceBytes" }
+
+        val outputBytes = Math.toIntExact(textureWidth.toLong() * textureHeight * componentCount * bytesPerComponent)
+        val output = memAlloc(outputBytes)
+
+        if (stbir_resize(source, sourceWidth, sourceHeight, 0, output, textureWidth, textureHeight, 0, pixelLayout, dataType, edgeMode, resamplingFilter) == null)
+        {
+            memFree(output)
+            error("Failed to resample texture from ${sourceWidth}x${sourceHeight} to ${textureWidth}x${textureHeight}")
+        }
+
+        return output
     }
 
     private fun ensureCapacity(requiredCapacity: Int)
@@ -203,18 +279,20 @@ class TextureArray(
         try
         {
             glBindTexture(GL_TEXTURE_2D_ARRAY, textureId)
-            val storageWidth = max(textureSize, 1)
+            val storageWidth = max(textureWidth, 1)
+            val storageHeight = max(textureHeight, 1)
 
             if (GlCapabilities.immutableTextureStorage)
             {
-                glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, format.internalFormat, storageWidth, storageWidth, capacity)
+                glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevels, format.internalFormat, storageWidth, storageHeight, capacity)
             }
             else
             {
                 for (level in 0 until mipLevels)
                 {
-                    val levelSize = max(storageWidth shr level, 1)
-                    glTexImage3D(GL_TEXTURE_2D_ARRAY, level, format.internalFormat, levelSize, levelSize, capacity, 0, format.pixelFormat, format.type, null as ByteBuffer?)
+                    val levelWidth = max(storageWidth shr level, 1)
+                    val levelHeight = max(storageHeight shr level, 1)
+                    glTexImage3D(GL_TEXTURE_2D_ARRAY, level, format.internalFormat, levelWidth, levelHeight, capacity, 0, format.pixelFormat, format.type, null as ByteBuffer?)
                 }
             }
 
@@ -229,8 +307,8 @@ class TextureArray(
 
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BASE_LEVEL, 0)
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, mipLevels - 1)
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, wrapping.value)
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, wrapping.value)
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, wrapping.horizontalValue)
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, wrapping.verticalValue)
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, filter.minValue)
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, filter.magValue)
             check(glGetTexLevelParameteri(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_DEPTH) == capacity) { "OpenGL did not allocate the requested texture-array depth of $capacity layers" }
@@ -270,7 +348,8 @@ class TextureArray(
 
             for (level in 0 until mipLevels)
             {
-                val levelSize = max(textureSize shr level, 1)
+                val levelWidth = max(textureWidth shr level, 1)
+                val levelHeight = max(textureHeight shr level, 1)
                 for (layer in 0 until size)
                 {
                     if (slotOwners[layer] == null)
@@ -285,8 +364,8 @@ class TextureArray(
                     check(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) { "Destination texture layer $layer mip $level is not framebuffer-copyable" }
 
                     glBlitFramebuffer(
-                        0, 0, levelSize, levelSize,
-                        0, 0, levelSize, levelSize,
+                        0, 0, levelWidth, levelHeight,
+                        0, 0, levelWidth, levelHeight,
                         GL_COLOR_BUFFER_BIT,
                         GL_NEAREST
                     )
@@ -327,7 +406,7 @@ class TextureArray(
         }
     }
 
-    override fun toString(): String = "slot=$textureArraySlot, maxSize=${textureSize}px, layers=($size/$allocatedCapacity), format=$format, filter=$filter, anisotropy=$anisotropy, wrapping=$wrapping, mips=$mipLevels"
+    override fun toString(): String = "slot=$textureArraySlot, size=${textureWidth}x${textureHeight}px, layers=($size/$allocatedCapacity), format=$format, filter=$filter, anisotropy=$anisotropy, wrapping=$wrapping, mips=$mipLevels"
 
     companion object
     {

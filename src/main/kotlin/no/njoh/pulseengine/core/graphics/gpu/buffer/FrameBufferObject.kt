@@ -337,8 +337,8 @@ open class FrameBufferObject(
 
                 glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter.minValue)
                 glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter.magValue)
-                glTexParameteri(target, GL_TEXTURE_WRAP_S, wrapping.value)
-                glTexParameteri(target, GL_TEXTURE_WRAP_T, wrapping.value)
+                glTexParameteri(target, GL_TEXTURE_WRAP_S, wrapping.horizontalValue)
+                glTexParameteri(target, GL_TEXTURE_WRAP_T, wrapping.verticalValue)
                 glFramebufferTexture2D(GL_FRAMEBUFFER, attachmentPoint.glValue, target, textureId, 0)
             }
 

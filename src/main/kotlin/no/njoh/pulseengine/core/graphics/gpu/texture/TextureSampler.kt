@@ -54,8 +54,8 @@ data class TextureSampler(
             if (anisotropyValue > 1f)
                 glSamplerParameterf(id, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropyValue)
 
-            glSamplerParameteri(id, GL_TEXTURE_WRAP_S, wrapping.value)
-            glSamplerParameteri(id, GL_TEXTURE_WRAP_T, wrapping.value)
+            glSamplerParameteri(id, GL_TEXTURE_WRAP_S, wrapping.horizontalValue)
+            glSamplerParameteri(id, GL_TEXTURE_WRAP_T, wrapping.verticalValue)
 
             glSamplerParameteri(id, GL_TEXTURE_COMPARE_MODE, compare.mode)
             if (compare.mode != GL_NONE)
