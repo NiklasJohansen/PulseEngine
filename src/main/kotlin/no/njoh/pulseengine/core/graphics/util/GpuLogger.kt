@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.core.graphics.util
 
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 import no.njoh.pulseengine.core.shared.utils.LogLevel.*
 import no.njoh.pulseengine.core.shared.utils.Logger
@@ -15,6 +16,7 @@ import org.lwjgl.opengl.GLDebugMessageCallback
 import org.lwjgl.opengl.KHRDebug
 import org.lwjgl.opengl.KHRDebug.GL_CONTEXT_FLAG_DEBUG_BIT
 import org.lwjgl.opengl.KHRDebug.GL_DEBUG_OUTPUT
+import org.lwjgl.system.Callback
 
 /**
  * Utility class for logging GPU debug messages.
@@ -23,17 +25,23 @@ import org.lwjgl.opengl.KHRDebug.GL_DEBUG_OUTPUT
 object GpuLogger
 {
     private var logLevel = INFO
-    private var loggingEnabled = false
+    private var backend = Backend.NONE
+    private var callback = null as Callback?
+    private var contextGeneration = -1L
 
     fun setLogLevel(level: LogLevel)
     {
         logLevel = level
 
-        if (level != OFF && !loggingEnabled)
+        if (contextGeneration != GlCapabilities.contextGeneration)
+        {
+            onContextRecreated(level)
+        }
+        else if (level != OFF && backend == Backend.NONE)
         {
             enableLogging()
         }
-        else if (level == OFF && loggingEnabled)
+        else if (level == OFF && backend != Backend.NONE)
         {
             disableLogging()
         }
@@ -41,12 +49,41 @@ object GpuLogger
 
     fun beginGroup(label: CharSequence)
     {
-        if (logLevel != OFF) KHRDebug.glPushDebugGroup(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, 0, label)
+        if (logLevel != OFF && backend == Backend.KHR && contextGeneration == GlCapabilities.contextGeneration)
+            KHRDebug.glPushDebugGroup(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, 0, label)
     }
 
     fun endGroup()
     {
-        if (logLevel != OFF) KHRDebug.glPopDebugGroup()
+        if (logLevel != OFF && backend == Backend.KHR && contextGeneration == GlCapabilities.contextGeneration)
+            KHRDebug.glPopDebugGroup()
+    }
+
+    internal fun onContextRecreated(level: LogLevel)
+    {
+        callback?.free()
+        callback = null
+        backend = Backend.NONE
+        contextGeneration = GlCapabilities.contextGeneration
+        logLevel = level
+
+        if (level != OFF)
+            enableLogging()
+    }
+
+    internal fun destroy()
+    {
+        if (contextGeneration == GlCapabilities.contextGeneration)
+        {
+            disableLogging()
+        }
+        else
+        {
+            callback?.free()
+            callback = null
+            backend = Backend.NONE
+        }
+        contextGeneration = -1L
     }
 
     private fun enableLogging()
@@ -67,6 +104,12 @@ object GpuLogger
                 }
             }
             KHRDebug.glDebugMessageCallback(callback, 0L)
+            this.callback = callback
+            this.backend = Backend.KHR
+
+            if ((glGetInteger(GL_CONTEXT_FLAGS) and GL_CONTEXT_FLAG_DEBUG_BIT) == 0)
+                Logger.warn { "Current OpenGL context does not have the debug flag enabled" }
+            glEnable(GL_DEBUG_OUTPUT)
         }
         else if (caps.GL_ARB_debug_output)
         {
@@ -83,33 +126,34 @@ object GpuLogger
                 }
             }
             glDebugMessageCallbackARB(callback, 0L)
+            this.callback = callback
+            this.backend = Backend.ARB
         }
-
-        // Enable debug output if not already enabled.
-        // Should be enabled by default when buildType is DEBUG and GLFW_OPENGL_DEBUG_CONTEXT is set GLFW_TRUE
-        if (caps.OpenGL30 && (glGetInteger(GL_CONTEXT_FLAGS) and GL_CONTEXT_FLAG_DEBUG_BIT) == 0)
+        else
         {
-            Logger.warn { "Current OpenGL context does not have the debug flag enabled. Enabling: GL_DEBUG_OUTPUT" }
-            glEnable(GL_DEBUG_OUTPUT)
+            Logger.warn { "OpenGL debug logging is unavailable in the current context" }
         }
-
-        loggingEnabled = true
     }
 
     private fun disableLogging()
     {
-        val caps = GL.getCapabilities()
-        if (caps.GL_KHR_debug)
+        when (backend)
         {
-            KHRDebug.glDebugMessageCallback(null, 0L)
+            Backend.KHR ->
+            {
+                KHRDebug.glDebugMessageCallback(null, 0L)
+                glDisable(GL_DEBUG_OUTPUT)
+            }
+            Backend.ARB -> glDebugMessageCallbackARB(null, 0L)
+            Backend.NONE -> Unit
         }
-        else if (caps.GL_ARB_debug_output)
-        {
-            glDebugMessageCallbackARB(null, 0L)
-        }
-        glDisable(GL_DEBUG_OUTPUT)
-        loggingEnabled = false
+
+        callback?.free()
+        callback = null
+        backend = Backend.NONE
     }
+
+    private enum class Backend { NONE, KHR, ARB }
 
     private object KHR
     {

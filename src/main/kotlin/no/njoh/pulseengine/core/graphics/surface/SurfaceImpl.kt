@@ -8,6 +8,7 @@ import no.njoh.pulseengine.core.graphics.camera.CameraInternal
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_0
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.DEPTH_STENCIL_BUFFER
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
@@ -74,6 +75,9 @@ class SurfaceImpl(
     {
         config.width = width
         config.height = height
+
+        if (initialized)
+            resetPixelReaders()
 
         if (pendingTargetRebuild)
         {
@@ -178,9 +182,9 @@ class SurfaceImpl(
 
     override fun destroy(engine: PulseEngineInternal)
     {
+        resetPixelReaders()
         renderers.forEachFast { it.destroy(engine) }
         postEffects.forEachFast { it.destroy() }
-        pixelReaders.forEachFast { it?.destroy() }
         renderTarget.destroy()
         config.attachments.forEachFast { it.mipmapGenerator?.destroy() }
     }
@@ -267,9 +271,12 @@ class SurfaceImpl(
     override fun readPixel(x: Int, y: Int, textureIndex: Int, final: Boolean, dstResult: PixelReadResult): PixelReadResult
     {
         require(textureIndex >= 0) { "Texture index must be non-negative" }
+        require(textureIndex < outputTextureCount()) { "Texture index $textureIndex does not exist on surface ${config.name}" }
+        
         val slot = textureIndex * 2 + if (final) 1 else 0
         var readers = pixelReaders
         var reader = readers.getOrNull(slot)
+
         if (reader == null)
         {
             synchronized(this)
@@ -290,6 +297,7 @@ class SurfaceImpl(
                 }
             }
         }
+        
         return reader!!.readPixel(x, y, dstResult)
     }
 
@@ -543,10 +551,11 @@ class SurfaceImpl(
         {
             if (pendingTargetRebuild)
             {
-                pendingTargetRebuild = false
+                resetPixelReaders()
                 renderTarget.destroy()
                 renderTarget = createRenderTarget()
                 renderTarget.init(config.width, config.height)
+                pendingTargetRebuild = false
             }
         }
     }
@@ -556,6 +565,15 @@ class SurfaceImpl(
         config.attachments.forEachIndexedFast { i, att -> if (att.attachmentPoint == attachmentPoint) return i }
         return -1
     }
+
+    private fun outputTextureCount(): Int
+    {
+        var count = 0
+        config.attachments.forEachFast { if (it.attachmentPoint != DEPTH_STENCIL_BUFFER) count++ }
+        return count
+    }
+
+    private fun resetPixelReaders() = pixelReaders.forEachFast { it?.reset() }
 
     private fun runOnInitFrame(command: (PulseEngineInternal) -> Unit) { onInitFrame.add(command) }
 }

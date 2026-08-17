@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.core.graphics.util
 
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
+import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL15.*
 import org.lwjgl.opengl.GL21.GL_PIXEL_PACK_BUFFER
@@ -40,10 +42,11 @@ class AsyncPixelReader
     private var pixelFormat       = 0
     private var pixelType         = 0
     private var componentCount    = 0
-    private var readFloat        = false
+    private var readFloat         = false
     private var initializedFormat = null as TextureFormat?
     private var readFramebufferId = 0
     private var nextSlot          = 0
+    private var contextGeneration = -1L
 
     fun readPixel(x: Int, y: Int, dstResult: PixelReadResult): PixelReadResult
     {
@@ -67,6 +70,9 @@ class AsyncPixelReader
 
     fun update(texture: RenderTexture?)
     {
+        if (contextGeneration >= 0L && contextGeneration != GlCapabilities.contextGeneration)
+            reset()
+
         if (bufferIds != null)
         {
             pollGpuResults()
@@ -101,6 +107,11 @@ class AsyncPixelReader
 
     fun destroy()
     {
+        reset()
+    }
+
+    fun reset()
+    {
         cancelPendingRequests()
         cancelInFlightRequests()
         releaseGpuResources()
@@ -108,6 +119,7 @@ class AsyncPixelReader
     
     private fun initialize(texture: RenderTexture)
     {
+        contextGeneration = GlCapabilities.contextGeneration
         componentCount = texture.format.componentCount
         pixelFormat = texture.format.pixelFormat
         pixelType = texture.format.readType
@@ -204,7 +216,17 @@ class AsyncPixelReader
             if (fence == 0L) continue
 
             val status = glClientWaitSync(fence, 0, 0L)
-            if (status != GL_ALREADY_SIGNALED && status != GL_CONDITION_SATISFIED) continue
+            if (status == GL_WAIT_FAILED)
+            {
+                cancelBatch(slot, activeBatchCounts, activeVersions, activeResults)
+                if (glIsSync(fence)) glDeleteSync(fence)
+                activeFences[slot] = 0L
+                Logger.error { "Failed waiting for asynchronous pixel read; cancelling batch" }
+                continue
+            }
+
+            if (status != GL_ALREADY_SIGNALED && status != GL_CONDITION_SATISFIED) 
+                continue
 
             val count = activeBatchCounts[slot]
             val batchOffset = slot * MAX_READS_PER_BATCH
@@ -250,6 +272,19 @@ class AsyncPixelReader
             glDeleteSync(fence)
             activeFences[slot] = 0L
         }
+    }
+
+    private fun cancelBatch(slot: Int, activeBatchCounts: IntArray, activeVersions: LongArray, activeResults: Array<PixelReadResult?>) 
+    {
+        val count = activeBatchCounts[slot]
+        val batchOffset = slot * MAX_READS_PER_BATCH
+        for (readIndex in 0 until count)
+        {
+            val resultIndex = batchOffset + readIndex
+            activeResults[resultIndex]?.cancel(activeVersions[resultIndex])
+            activeResults[resultIndex] = null
+        }
+        activeBatchCounts[slot] = 0
     }
 
     private fun findFreeSlot(): Int
@@ -314,6 +349,7 @@ class AsyncPixelReader
     {
         val activeBuffers = bufferIds
         val activeFences = fences
+        
         if (activeBuffers != null && activeFences != null)
         {
             for (i in activeBuffers.indices)
@@ -322,7 +358,11 @@ class AsyncPixelReader
                 if (activeBuffers[i] != 0) glDeleteBuffers(activeBuffers[i])
             }
         }
-        if (readFramebufferId != 0) glDeleteFramebuffers(readFramebufferId)
+
+        val canDeleteContextLocalObjects = (contextGeneration == GlCapabilities.contextGeneration)
+        if (readFramebufferId != 0 && canDeleteContextLocalObjects)
+            glDeleteFramebuffers(readFramebufferId)
+
         bufferIds = null
         fences = null
         batchCounts = null
@@ -331,6 +371,7 @@ class AsyncPixelReader
         initializedFormat = null
         readFramebufferId = 0
         nextSlot = 0
+        contextGeneration = -1L
     }
 
     private companion object

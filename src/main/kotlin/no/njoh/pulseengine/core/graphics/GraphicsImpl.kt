@@ -83,8 +83,6 @@ open class GraphicsImpl : GraphicsInternal
 
         onWindowChanged(engine, viewPortWidth, viewPortHeight, windowRecreated = true)
 
-        GpuLogger.setLogLevel(engine.config.gpuLogLevel)
-
         engine.data.addMetric("GPU TIME (µs)")          { sample(GpuProfiler.gpuTimeNs.toFloat() / 1000f) }
         engine.data.addMetric("DRAW CALLS")             { sample(GpuProfiler.drawCalls.toFloat()) }
         engine.data.addMetric("DRAW INSTANCES")         { sample(GpuProfiler.instances.toFloat()) }
@@ -99,6 +97,8 @@ open class GraphicsImpl : GraphicsInternal
         {
             // Create OpenGL context in current thread
             GlCapabilities.create(glContract)
+            GpuProfiler.onContextRecreated()
+            GpuLogger.onContextRecreated(engine.config.gpuLogLevel)
             gpuName = glGetString(GL_RENDERER) ?: "Unknown GPU"
 
             // Load error shaders
@@ -378,6 +378,8 @@ open class GraphicsImpl : GraphicsInternal
         materialBank.destroy()
         modelBank.destroy()
         fullscreenPass.destroy()
+        GpuProfiler.destroy()
+        GpuLogger.destroy()
     }
 
     private inline fun List<SurfaceInternal>.forEachCamera(block: (CameraInternal) -> Unit)

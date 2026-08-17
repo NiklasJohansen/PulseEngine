@@ -135,6 +135,20 @@ object GpuProfiler
             ?.let { gpuTimeNs = it.timeNanoSec }
     }
 
+    internal fun onContextRecreated()
+    {
+        GpuTimeQuery.onContextRecreated()
+        statsReader?.destroy()
+        statsReader = null
+        gpuTimeNs = 0L
+    }
+
+    internal fun destroy()
+    {
+        statsReader?.destroy()
+        statsReader = null
+    }
+
     /**
      * Increments all draw work counters.
      */

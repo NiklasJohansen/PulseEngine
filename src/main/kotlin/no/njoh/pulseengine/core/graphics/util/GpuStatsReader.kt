@@ -65,6 +65,15 @@ class GpuStatsReader(initialCommandCapacity: Int = 256)
         }
     }
 
+    fun destroy()
+    {
+        while (activeQueries.size > 0)
+            activeQueries.removeLastOrNull()?.destroy()
+
+        while (queryPool.size > 0)
+            queryPool.removeLastOrNull()?.destroy()
+    }
+
     private fun isResultReady(query: Query): Boolean =
         when (glClientWaitSync(query.syncObject, 0, 0L))
         {

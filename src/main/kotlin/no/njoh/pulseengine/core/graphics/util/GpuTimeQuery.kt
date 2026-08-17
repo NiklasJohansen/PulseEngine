@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.util
 
 import gnu.trove.list.array.TIntArrayList
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import org.lwjgl.opengl.GL33.*
 
@@ -65,8 +66,19 @@ class GpuTimeQuery
 
     private fun destroy()
     {
-        glDeleteQueries(startQueryId)
-        glDeleteQueries(endQueryId)
+        if (startQueryId >= 0) glDeleteQueries(startQueryId)
+        if (endQueryId >= 0) glDeleteQueries(endQueryId)
+        reset()
+    }
+
+    private fun reset()
+    {
+        timerId = 0L
+        startQueryId = -1
+        endQueryId = -1
+        depth = 0
+        label.clear()
+        framesWithoutResult = 0
     }
 
     companion object
@@ -78,6 +90,7 @@ class GpuTimeQuery
         private val activeTimers = ArrayDeque<GpuTimeQuery>()
         private val writeResults = DynamicList<GpuTimeQueryResult>()
         private val readyResults = DynamicList<GpuTimeQueryResult>()
+        private var contextGeneration = -1L
 
         /**
          * Returns all ready results. Safe to call from game thread.
@@ -90,6 +103,8 @@ class GpuTimeQuery
          */
         fun pollResults()
         {
+            ensureContextGeneration()
+
             while (activeTimers.isNotEmpty())
             {
                 val timer = activeTimers.first()
@@ -121,6 +136,7 @@ class GpuTimeQuery
          */
         fun start(timerId: Long, label: CharSequence)
         {
+            ensureContextGeneration()
             val timer = timerPool.removeLastOrNull() ?: GpuTimeQuery()
             timer.start(timerId, label, depth = timerStack.size)
             timerStack += timer
@@ -130,9 +146,41 @@ class GpuTimeQuery
         /**
          * Ends the last started timer.
          */
-        fun end() = timerStack.removeLastOrNull()?.end()
+        fun end()
+        {
+            ensureContextGeneration()
+            timerStack.removeLastOrNull()?.end()
+        }
+
+        internal fun onContextRecreated()
+        {
+            val currentGeneration = GlCapabilities.contextGeneration
+            if (contextGeneration == currentGeneration) return
+
+            contextGeneration = currentGeneration
+            queryIdPool.clear()
+            timerStack.clear()
+
+            while (activeTimers.isNotEmpty())
+            {
+                val timer = activeTimers.removeFirst()
+                timer.reset()
+                timerPool += timer
+            }
+
+            resultPool += readyResults
+            readyResults.clear()
+            resultPool += writeResults
+            writeResults.clear()
+        }
 
         private fun getQueryId() = if (queryIdPool.isEmpty) glGenQueries() else queryIdPool.removeAt(queryIdPool.size() - 1)
+
+        private fun ensureContextGeneration()
+        {
+            if (contextGeneration != GlCapabilities.contextGeneration)
+                onContextRecreated()
+        }
     }
 }
 
