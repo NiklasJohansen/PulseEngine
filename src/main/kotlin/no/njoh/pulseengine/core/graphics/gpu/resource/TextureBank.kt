@@ -18,16 +18,20 @@ import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.GL_RGBA
 import org.lwjgl.opengl.GL11.GL_RGBA8
+import org.lwjgl.opengl.GL11.GL_DEPTH_COMPONENT
+import org.lwjgl.opengl.GL11.GL_FLOAT
 import org.lwjgl.opengl.GL11.GL_TEXTURE_2D
 import org.lwjgl.opengl.GL11.GL_UNPACK_ALIGNMENT
 import org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE
 import org.lwjgl.opengl.GL11.glBindTexture
+import org.lwjgl.opengl.GL11.glDeleteTextures
 import org.lwjgl.opengl.GL11.glGenTextures
 import org.lwjgl.opengl.GL11.glPixelStorei
 import org.lwjgl.opengl.GL11.glTexImage2D
 import org.lwjgl.opengl.GL11.glTexParameteri
 import org.lwjgl.opengl.GL12.GL_TEXTURE_BASE_LEVEL
 import org.lwjgl.opengl.GL12.GL_TEXTURE_MAX_LEVEL
+import org.lwjgl.opengl.GL14.GL_DEPTH_COMPONENT24
 import kotlin.math.max
 import kotlin.math.min
 
@@ -36,6 +40,7 @@ class TextureBank
     private val textureArrays = mutableListOf<TextureArray>()
     private val emptyTextureArray = TextureArray(0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
     private val fallbackTextures = THashMap<Color, RenderTexture>()
+    private var fallbackDepthTexture: RenderTexture? = null
 
     fun upload(texture: Texture)
     {
@@ -70,6 +75,10 @@ class TextureBank
     fun destroy()
     {
         textureArrays.forEachFast { it.destroy() }
+        fallbackTextures.forEachValue { glDeleteTextures(it.handle.glId); true }
+        fallbackTextures.clear()
+        fallbackDepthTexture?.let { glDeleteTextures(it.handle.glId) }
+        fallbackDepthTexture = null
     }
 
     fun generatePendingMipmaps()
@@ -93,6 +102,9 @@ class TextureBank
     fun getOrCreateFallbackTexture(color: Color): RenderTexture =
         fallbackTextures.getOrPut(color) { createFallbackTexture(color) }
 
+    fun getOrCreateFallbackDepthTexture(): RenderTexture =
+        fallbackDepthTexture ?: createFallbackDepthTexture().also { fallbackDepthTexture = it }
+
     private fun createFallbackTexture(color: Color): RenderTexture
     {
         val pixels = BufferUtils.createByteBuffer(4)
@@ -111,6 +123,22 @@ class TextureBank
         glBindTexture(GL_TEXTURE_2D, 0)
 
         return RenderTexture(name = "fallback", handle = TextureHandle.createGlHandle(id), width = 1, height = 1)
+    }
+
+    private fun createFallbackDepthTexture(): RenderTexture
+    {
+        val pixel = BufferUtils.createFloatBuffer(1)
+        pixel.put(1f)
+        pixel.flip()
+
+        val id = glGenTextures()
+        glBindTexture(GL_TEXTURE_2D, id)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, 1, 1, 0, GL_DEPTH_COMPONENT, GL_FLOAT, pixel)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
+        glBindTexture(GL_TEXTURE_2D, 0)
+
+        return RenderTexture(name = "fallback_depth", handle = TextureHandle.createGlHandle(id), width = 1, height = 1)
     }
 
     private fun getOrCreateTextureArrayFor(texture: Texture): TextureArray?

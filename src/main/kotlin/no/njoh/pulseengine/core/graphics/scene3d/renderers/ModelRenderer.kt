@@ -247,8 +247,6 @@ class ModelRenderer(
         program.bind()
         program.setUniformSamplerArrays(texBank.getAllTextureArrays())
         program.assignSamplerUnit("uGtaoTex")
-        program.assignSamplerUnit("uShadowMapTex")
-        program.assignSamplerUnit("uLocalShadowAtlasTex")
 
         // Ambient occlusion
 
@@ -274,13 +272,20 @@ class ModelRenderer(
         program.setUniform("uSunColor", sunColor)
         program.setUniform("uSunDirection", shadowMapRenderer?.getDirection() ?: fallbackSunDirection)
         program.setUniform("uSunRadius", sunRadius)
+        program.setUniformSampler(
+            samplerName = "uShadowMapTex",
+            texture = shadowMapTex ?: texBank.getOrCreateFallbackDepthTexture(),
+            filter = LINEAR,
+            wrapping = CLAMP_TO_BORDER,
+            compare = TextureCompare.LEQUAL,
+            borderColor = WHITE
+        )
 
         if (sunEnabled && shadowMapRenderer != null && shadowMapTex != null)
         {
             pbrFeatures = pbrFeatures or PBR_FEATURE_SUN_SHADOWS
             val splitDist = shadowMapRenderer.getCascadeSplitDistances()
             val cascadeSize = shadowMapRenderer.getCascadeSizeMeters()
-            program.setUniformSampler("uShadowMapTex", shadowMapTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
             program.setUniform("uShadowMapTexSize", shadowMapRenderer.resolution.toFloat())
             program.setUniform("uShadowViewProjections", shadowMapRenderer.getViewProjectionMatrices())
             program.setUniform("uShadowCascadeSplitDistances", splitDist[0], splitDist[1], splitDist[2], splitDist[3])
@@ -294,6 +299,14 @@ class ModelRenderer(
         val localShadowAtlasTex = localShadowAtlasSurface?.getTexture()
         val localShadowAtlas = engine.gfx.sceneContext.getLocalShadowAtlas()
         program.setUniform("uLocalShadowFaceCount", lightBuffer.shadowFaceCount)
+        program.setUniformSampler(
+            samplerName = "uLocalShadowAtlasTex",
+            texture = localShadowAtlasTex ?: texBank.getOrCreateFallbackDepthTexture(),
+            filter = LINEAR,
+            wrapping = CLAMP_TO_BORDER,
+            compare = TextureCompare.LEQUAL,
+            borderColor = WHITE
+        )
 
         // Local clustered lights
 
@@ -308,7 +321,6 @@ class ModelRenderer(
         if (localLightsEnabled && localShadowAtlasTex != null && lightBuffer.shadowFaceCount > 0)
         {
             pbrFeatures = pbrFeatures or PBR_FEATURE_LOCAL_SHADOWS
-            program.setUniformSampler("uLocalShadowAtlasTex", localShadowAtlasTex, filter = LINEAR, wrapping = CLAMP_TO_BORDER, compare = TextureCompare.LEQUAL, borderColor = WHITE)
             program.setUniform("uLocalShadowAtlasTexSize", localShadowAtlas.resolution.toFloat())
         }
 
