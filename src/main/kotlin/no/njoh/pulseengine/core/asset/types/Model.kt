@@ -65,6 +65,7 @@ import java.nio.ByteBuffer
 import java.nio.file.Paths
 import kotlin.math.ceil
 import kotlin.math.min
+import kotlin.math.sqrt
 
 class Model(
     filePath: String,
@@ -87,11 +88,8 @@ class Model(
     var materials       = emptyList<MeshMaterial>();  private set
     var bones           = emptyList<Bone>();          private set
     var localBounds     = null as Aabb?;              private set
-
-    var hasNormals   = false; private set
-    var hasTangents  = false; private set
-    var hasTexCoords = false; private set
-    var hasBones     = false; private set
+    var hasTexCoords    = false;                      private set
+    var hasBones        = false;                      private set
 
     private var animations                     = ArrayList<Animation>()
     private val embeddedTextures               = TIntObjectHashMap<EmbeddedTexture>()
@@ -215,8 +213,6 @@ class Model(
 
         var totalVertices = 0
         var totalIndices  = 0
-        var hasNormals    = false
-        var hasTangents   = false
         var hasTexCoords  = false
         var hasBones      = false
 
@@ -226,22 +222,14 @@ class Model(
             totalVertices += mesh.mNumVertices()
             totalIndices  += mesh.mNumFaces() * 3
 
-            if (mesh.mNormals() != null)
-                hasNormals = true
-
             if (mesh.mTextureCoords(0) != null)
                 hasTexCoords = true
-
-            if (mesh.mTangents() != null && mesh.mBitangents() != null)
-                hasTangents = true
 
             if (mesh.mNumBones() > 0)
                 hasBones = true
         }
 
-        val stride = 3 +
-            (if (hasNormals) 3 else 0) +
-            (if (hasTangents) 4 else 0) +
+        val stride = BASE_VERTEX_FLOATS +
             (if (hasTexCoords) 2 else 0) +
             (if (hasBones) MAX_BONE_INFLUENCES + MAX_BONE_INFLUENCES else 0)
 
@@ -310,49 +298,97 @@ class Model(
                 vertexData[dst++] = y
                 vertexData[dst++] = z
 
-                if (hasNormals)
+                val sourceNormal = normals?.get(i)
+                var nx = sourceNormal?.x() ?: 0f
+                var ny = sourceNormal?.y() ?: 0f
+                var nz = sourceNormal?.z() ?: 1f
+                val normalLengthSquared = nx * nx + ny * ny + nz * nz
+                if (!normalLengthSquared.isFinite() || normalLengthSquared <= MIN_SURFACE_VECTOR_LENGTH_SQUARED)
                 {
-                    if (normals != null)
+                    nx = 0f
+                    ny = 0f
+                    nz = 1f
+                }
+                else
+                {
+                    val inverseLength = 1f / sqrt(normalLengthSquared)
+                    nx *= inverseLength
+                    ny *= inverseLength
+                    nz *= inverseLength
+                }
+                vertexData[dst++] = nx
+                vertexData[dst++] = ny
+                vertexData[dst++] = nz
+
+                val sourceTangent = tangents?.get(i)
+                var tx = sourceTangent?.x() ?: 0f
+                var ty = sourceTangent?.y() ?: 0f
+                var tz = sourceTangent?.z() ?: 0f
+
+                val normalProjection = tx * nx + ty * ny + tz * nz
+                tx -= nx * normalProjection
+                ty -= ny * normalProjection
+                tz -= nz * normalProjection
+
+                val tangentLengthSquared = tx * tx + ty * ty + tz * tz
+                val sourceTangentIsValid = tangentLengthSquared.isFinite() &&
+                    tangentLengthSquared > MIN_SURFACE_VECTOR_LENGTH_SQUARED
+                if (sourceTangentIsValid)
+                {
+                    val inverseLength = 1f / sqrt(tangentLengthSquared)
+                    tx *= inverseLength
+                    ty *= inverseLength
+                    tz *= inverseLength
+                }
+                else
+                {
+                    val nxSquared = nx * nx
+                    val nySquared = ny * ny
+                    val nzSquared = nz * nz
+                    if (nxSquared <= nySquared && nxSquared <= nzSquared)
                     {
-                        val n = normals[i]
-                        vertexData[dst++] = n.x()
-                        vertexData[dst++] = n.y()
-                        vertexData[dst++] = n.z()
+                        tx = 0f
+                        ty = -nz
+                        tz = ny
+                    }
+                    else if (nySquared <= nzSquared)
+                    {
+                        tx = nz
+                        ty = 0f
+                        tz = -nx
                     }
                     else
                     {
-                        vertexData[dst++] = 0f
-                        vertexData[dst++] = 0f
-                        vertexData[dst++] = 0f
+                        tx = -ny
+                        ty = nx
+                        tz = 0f
                     }
+
+                    val inverseLength = 1f / sqrt(tx * tx + ty * ty + tz * tz)
+                    tx *= inverseLength
+                    ty *= inverseLength
+                    tz *= inverseLength
                 }
 
-                if (hasTangents)
-                {
-                    if (tangents != null)
-                    {
-                        val t = tangents[i]
-                        val sign = if (normals != null && bitangents != null)
-                        {
-                            val n = normals[i]
-                            val b = bitangents[i]
-                            val cx = n.y() * t.z() - n.z() * t.y()
-                            val cy = n.z() * t.x() - n.x() * t.z()
-                            val cz = n.x() * t.y() - n.y() * t.x()
-                            if (cx * b.x() + cy * b.y() + cz * b.z() < 0f) -1f else 1f
-                        }
-                        else 1f
-
-                        vertexData[dst++] = t.x()
-                        vertexData[dst++] = t.y()
-                        vertexData[dst++] = t.z()
-                        vertexData[dst++] = sign
-                    }
-                    else
-                    {
-                        vertexData[dst++] = 0f; vertexData[dst++] = 0f; vertexData[dst++] = 0f; vertexData[dst++] = 1f
-                    }
+                var tangentSign = 1f
+                val sourceBitangent = bitangents?.get(i)
+                if (sourceTangentIsValid && sourceBitangent != null &&
+                    sourceBitangent.x().isFinite() &&
+                    sourceBitangent.y().isFinite() &&
+                    sourceBitangent.z().isFinite()
+                ) {
+                    val cx = ny * tz - nz * ty
+                    val cy = nz * tx - nx * tz
+                    val cz = nx * ty - ny * tx
+                    val handedness = cx * sourceBitangent.x() + cy * sourceBitangent.y() + cz * sourceBitangent.z()
+                    if (handedness.isFinite() && handedness < 0f)
+                        tangentSign = -1f
                 }
+
+                vertexData[dst++] = tx
+                vertexData[dst++] = ty
+                vertexData[dst++] = tz
+                vertexData[dst++] = tangentSign
 
                 if (hasTexCoords)
                 {
@@ -409,24 +445,20 @@ class Model(
 
         val hasBoneAttributes = bones.isNotEmpty()
         this.vertices     = vertexData
-        this.vertexBytes  = ModelVertexCompressor.compress(vertexData, totalVertices, stride, hasNormals, hasTangents, hasTexCoords, hasBoneAttributes)
+        this.vertexBytes  = ModelVertexCompressor.compress(vertexData, totalVertices, stride, hasTexCoords, hasBoneAttributes)
         this.indices      = indices
-        this.hasNormals   = hasNormals
-        this.hasTangents  = hasTangents
         this.hasTexCoords = hasTexCoords
         this.hasBones     = hasBoneAttributes
         this.bones        = bones
         this.meshes       = if (this.hasBones)
         {
-            meshes.map {
+            meshes.map()
+            {
                 it.copy(
                     skinningBounds = buildSkinningBounds(
                         mesh = it,
                         vertices = vertexData,
                         bones = bones,
-                        hasBones = this.hasBones,
-                        hasNormals = hasNormals,
-                        hasTangents = hasTangents,
                         hasTexCoords = hasTexCoords
                     )
                 )
@@ -1543,8 +1575,12 @@ class Model(
     companion object
     {
         const val MAX_BONE_INFLUENCES = 4
+        internal const val NORMAL_FLOAT_OFFSET = 3
+        internal const val TANGENT_FLOAT_OFFSET = 6
+        internal const val BASE_VERTEX_FLOATS = 10
         private val IDENTITY_MATRIX = Matrix4f()
         private val LOD_NAME_REGEX = Regex("""(?:^|_)LOD(\d+)$""", RegexOption.IGNORE_CASE)
+        private const val MIN_SURFACE_VECTOR_LENGTH_SQUARED = 1e-12f
         private const val POSE_CACHE_FRAME_SLOT_COUNT = 2
         private const val ANIMATION_BOUNDS_SAMPLE_RATE = 15.0
         private const val MAX_ANIMATION_BOUNDS_SAMPLES_PER_CLIP = 120

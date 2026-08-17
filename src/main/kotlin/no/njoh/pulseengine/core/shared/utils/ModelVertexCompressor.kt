@@ -1,6 +1,9 @@
 package no.njoh.pulseengine.core.shared.utils
 
+import no.njoh.pulseengine.core.asset.types.Model.Companion.BASE_VERTEX_FLOATS
 import no.njoh.pulseengine.core.asset.types.Model.Companion.MAX_BONE_INFLUENCES
+import no.njoh.pulseengine.core.asset.types.Model.Companion.NORMAL_FLOAT_OFFSET
+import no.njoh.pulseengine.core.asset.types.Model.Companion.TANGENT_FLOAT_OFFSET
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -10,20 +13,16 @@ object ModelVertexCompressor
         source: FloatArray,
         vertexCount: Int,
         sourceStride: Int,
-        hasNormals: Boolean,
-        hasTangents: Boolean,
         hasTexCoords: Boolean,
         hasBones: Boolean
     ): ByteArray {
 
-        var offset = 3 // Position
-        val normalOffset = if (hasNormals) offset.also { offset += 3 } else -1
-        val tangentOffset = if (hasTangents) offset.also { offset += 4 } else -1
+        var offset = BASE_VERTEX_FLOATS
         val texCoordOffset = if (hasTexCoords) offset.also { offset += 2 } else -1
         val boneIndexOffset = if (hasBones) offset.also { offset += MAX_BONE_INFLUENCES } else -1
         val boneWeightOffset = if (hasBones) offset else -1
 
-        val byteStride = getCompressedVertexStride(hasNormals, hasTangents, hasTexCoords, hasBones)
+        val byteStride = getCompressedVertexStride(hasTexCoords, hasBones)
         val result = ByteArray(vertexCount * byteStride)
         val quantizedWeights = IntArray(MAX_BONE_INFLUENCES)
         val weightFractions = FloatArray(MAX_BONE_INFLUENCES)
@@ -37,20 +36,20 @@ object ModelVertexCompressor
             dst = result.putFloat(dst, source[src + 1])
             dst = result.putFloat(dst, source[src + 2])
 
-            if (normalOffset >= 0)
-            {
-                dst = result.putSnorm16(dst, source[src + normalOffset])
-                dst = result.putSnorm16(dst, source[src + normalOffset + 1])
-                dst = result.putSnorm16(dst, source[src + normalOffset + 2])
-            }
-
-            if (tangentOffset >= 0)
-            {
-                dst = result.putSnorm16(dst, source[src + tangentOffset])
-                dst = result.putSnorm16(dst, source[src + tangentOffset + 1])
-                dst = result.putSnorm16(dst, source[src + tangentOffset + 2])
-                dst = result.putSnorm16(dst, source[src + tangentOffset + 3])
-            }
+            dst = result.putPackedSnorm(
+                index = dst,
+                x = source[src + NORMAL_FLOAT_OFFSET],
+                y = source[src + NORMAL_FLOAT_OFFSET + 1],
+                z = source[src + NORMAL_FLOAT_OFFSET + 2],
+                w = 0f
+            )
+            dst = result.putPackedSnorm(
+                index = dst,
+                x = source[src + TANGENT_FLOAT_OFFSET],
+                y = source[src + TANGENT_FLOAT_OFFSET + 1],
+                z = source[src + TANGENT_FLOAT_OFFSET + 2],
+                w = source[src + TANGENT_FLOAT_OFFSET + 3]
+            )
 
             if (texCoordOffset >= 0)
             {
@@ -74,11 +73,11 @@ object ModelVertexCompressor
         return result
     }
 
-    fun getCompressedVertexStride(hasNormals: Boolean, hasTangents: Boolean, hasTexCoords: Boolean, hasBones: Boolean): Int
+    fun getCompressedVertexStride(hasTexCoords: Boolean, hasBones: Boolean): Int
     {
-        val bytes = 12 +                   // Position float4x3
-            (if (hasNormals) 6 else 0) +   // Normal snorm16x3
-            (if (hasTangents) 8 else 0) +  // Tangent snorm16x4
+        val bytes = 12 +                   // Position float32x3
+            4 +                            // Normal snorm10x3
+            4 +                            // Tangent snorm10x3 + 2-bit sign
             (if (hasTexCoords) 4 else 0) + // Texcoord float16x2
             (if (hasBones) 12 else 0)      // Bone indices uint16x4 + weights unorm8x4
 
@@ -91,18 +90,32 @@ object ModelVertexCompressor
         return if (remainder == 0) value else value + alignment - remainder
     }
 
-    private fun ByteArray.putFloat(index: Int, value: Float): Int
+    private fun ByteArray.putFloat(index: Int, value: Float): Int =
+        putInt(index, java.lang.Float.floatToRawIntBits(value))
+
+    private fun ByteArray.putPackedSnorm(index: Int, x: Float, y: Float, z: Float, w: Float): Int
     {
-        val bits = java.lang.Float.floatToRawIntBits(value)
-        this[index] = (bits and 0xFF).toByte()
-        this[index + 1] = ((bits ushr 8) and 0xFF).toByte()
-        this[index + 2] = ((bits ushr 16) and 0xFF).toByte()
-        this[index + 3] = ((bits ushr 24) and 0xFF).toByte()
-        return index + 4
+        val packed = (quantizeSnorm(x, 10) and 0x3FF) or
+            ((quantizeSnorm(y, 10) and 0x3FF) shl 10) or
+            ((quantizeSnorm(z, 10) and 0x3FF) shl 20) or
+            ((quantizeSnorm(w, 2) and 0x3) shl 30)
+        return putInt(index, packed)
     }
 
-    private fun ByteArray.putSnorm16(index: Int, value: Float): Int =
-        putShort(index, (value.coerceIn(-1f, 1f) * 32767f).roundToInt().coerceIn(-32767, 32767))
+    private fun quantizeSnorm(value: Float, bits: Int): Int
+    {
+        val maxValue = (1 shl (bits - 1)) - 1
+        return (value.coerceIn(-1f, 1f) * maxValue).roundToInt().coerceIn(-maxValue, maxValue)
+    }
+
+    private fun ByteArray.putInt(index: Int, value: Int): Int
+    {
+        this[index] = (value and 0xFF).toByte()
+        this[index + 1] = ((value ushr 8) and 0xFF).toByte()
+        this[index + 2] = ((value ushr 16) and 0xFF).toByte()
+        this[index + 3] = ((value ushr 24) and 0xFF).toByte()
+        return index + 4
+    }
 
     private fun ByteArray.putUnsignedShort(index: Int, value: Int): Int =
         putShort(index, value.coerceIn(0, UShort.MAX_VALUE.toInt()))

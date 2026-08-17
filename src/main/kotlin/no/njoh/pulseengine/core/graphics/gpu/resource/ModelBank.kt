@@ -9,7 +9,6 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL11.GL_FLOAT
-import org.lwjgl.opengl.GL11.GL_SHORT
 import org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE
 import org.lwjgl.opengl.GL11.GL_UNSIGNED_SHORT
 import org.lwjgl.opengl.GL30.GL_HALF_FLOAT
@@ -20,6 +19,7 @@ import org.lwjgl.opengl.GL32.GL_WAIT_FAILED
 import org.lwjgl.opengl.GL32.glClientWaitSync
 import org.lwjgl.opengl.GL32.glDeleteSync
 import org.lwjgl.opengl.GL32.glFenceSync
+import org.lwjgl.opengl.GL33.GL_INT_2_10_10_10_REV
 import java.util.ArrayDeque
 import java.util.IdentityHashMap
 
@@ -196,20 +196,16 @@ class ModelBank
         VertexAttributeLayout().apply()
         {
             withAttribute("position", 3, GL_FLOAT, location = 0)
-
-            if (model.hasNormals)
-                withAttribute("normal", 3, GL_SHORT, normalized = true, location = 1)
-
-            if (model.hasTangents)
-                withAttribute("tangent", 4, GL_SHORT, normalized = true, location = 2)
+            withAttribute("normal",   4, GL_INT_2_10_10_10_REV, location = 1, normalized = true)
+            withAttribute("tangent",  4, GL_INT_2_10_10_10_REV, location = 2, normalized = true)
 
             if (model.hasTexCoords)
                 withAttribute("texCoord", 2, GL_HALF_FLOAT, location = 3)
 
             if (model.hasBones)
             {
-                withAttribute("boneIndices", 4, GL_UNSIGNED_SHORT, integer = true, location = 4)
-                withAttribute("boneWeights", 4, GL_UNSIGNED_BYTE, normalized = true, location = 5)
+                withAttribute("boneIndices", 4, GL_UNSIGNED_SHORT, location = 4, integer = true)
+                withAttribute("boneWeights", 4, GL_UNSIGNED_BYTE,  location = 5, normalized = true)
             }
             alignStride(4)
         }.bind()

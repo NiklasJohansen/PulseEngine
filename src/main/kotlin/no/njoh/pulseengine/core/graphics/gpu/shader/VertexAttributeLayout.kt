@@ -5,6 +5,7 @@ import org.lwjgl.opengl.GL20.glEnableVertexAttribArray
 import org.lwjgl.opengl.GL20.glVertexAttribPointer
 import org.lwjgl.opengl.GL30.GL_HALF_FLOAT
 import org.lwjgl.opengl.GL30.glVertexAttribIPointer
+import org.lwjgl.opengl.GL33.GL_INT_2_10_10_10_REV
 import org.lwjgl.opengl.GL33.glVertexAttribDivisor
 import java.lang.IllegalArgumentException
 
@@ -22,7 +23,7 @@ class VertexAttributeLayout
         integer: Boolean = (type == GL_INT || type == GL_UNSIGNED_INT),
         location: Int? = null
     ): VertexAttributeLayout {
-        val size = count * sizeOf(type)
+        val size = sizeOf(type, count)
         strideInBytes += size
         attributes.add(Attribute(name, count, type, size, divisor, normalized, integer, location))
         return this
@@ -72,7 +73,17 @@ class VertexAttributeLayout
         val location: Int?
     )
 
-    private fun sizeOf(glType: Int): Int = when (glType)
+    private fun sizeOf(glType: Int, componentCount: Int): Int = when (glType)
+    {
+        GL_INT_2_10_10_10_REV ->
+        {
+            require(componentCount == 4) { "Packed 2_10_10_10 vertex attributes must have four components" }
+            Int.SIZE_BYTES
+        }
+        else -> componentCount * componentSizeOf(glType)
+    }
+
+    private fun componentSizeOf(glType: Int): Int = when (glType)
     {
         GL_FLOAT -> 4
         GL_HALF_FLOAT -> 2

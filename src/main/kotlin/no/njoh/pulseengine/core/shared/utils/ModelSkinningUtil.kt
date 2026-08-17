@@ -120,23 +120,12 @@ internal fun getSkinnedMeshBounds(
 /** 
  * Builds per-bone rest-pose bounds for a mesh from its weighted vertices. 
  */
-internal fun buildSkinningBounds(
-    mesh: Mesh,
-    vertices: FloatArray,
-    bones: List<Model.Bone>,
-    hasBones: Boolean,
-    hasNormals: Boolean,
-    hasTangents: Boolean,
-    hasTexCoords: Boolean
-): Model.SkinningBounds? {
-
-    if (!hasBones || bones.isEmpty() || vertices.isEmpty())
+fun buildSkinningBounds(mesh: Mesh, vertices: FloatArray, bones: List<Model.Bone>, hasTexCoords: Boolean): Model.SkinningBounds?
+{
+    if (bones.isEmpty() || vertices.isEmpty())
         return null
 
-    val boneIndexOffset = 3 +
-        (if (hasNormals) 3 else 0) +
-        (if (hasTangents) 4 else 0) +
-        (if (hasTexCoords) 2 else 0)
+    val boneIndexOffset = Model.BASE_VERTEX_FLOATS + if (hasTexCoords) 2 else 0
     val boneWeightOffset = boneIndexOffset + Model.MAX_BONE_INFLUENCES
     val stride = mesh.vertexStride
 
