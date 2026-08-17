@@ -377,10 +377,9 @@ const vec2 POISSON_DISK_16[16] = vec2[]
     vec2( 0.14383161, -0.14100790)
 );
 
-float pcssShadowCascade(vec3 shadowWorldPos, vec3 N, float lightRadius, int cascade)
+float pcfShadowCascade(vec3 shadowWorldPos, float filterRadiusTexels, int cascade)
 {
     vec2 atlasOffset = CASCADE_OFFSETS[cascade];
-    float cascadeSizeMeters = uShadowCascadeSizeMeters[cascade];
 
     // Project the normal-offset world position into cascade's light space
     vec4 lightPos = uShadowViewProjections[cascade] * vec4(shadowWorldPos, 1.0);
@@ -398,10 +397,9 @@ float pcssShadowCascade(vec3 shadowWorldPos, vec3 N, float lightRadius, int casc
     float s = sin(angle), c = cos(angle);
     mat2 R = mat2(c, -s, s, c);
 
-    // Half-res texel size in atlas UV space
-    float halfRes = uShadowMapTexSize * 0.5;
-    float texelUv = 1.0 / halfRes;
-    float filterRadiusUv = lightRadius * texelUv;
+    // Atlas texel size (also one texel within a cascade tile)
+    float texelUv = 1.0 / uShadowMapTexSize;
+    float filterRadiusUv = filterRadiusTexels * texelUv;
 
     // Clamp bounds with half-texel inset to prevent bleeding across quadrant edges
     vec2 clampMin = atlasOffset + vec2(texelUv * 0.5);
@@ -437,16 +435,18 @@ int shadowCascadeIndex(float viewDepth)
     return CASCADE_COUNT - 1;
 }
 
-float cascadedShadow(vec3 worldPos, vec3 N, float lightRadius)
+float cascadedShadow(vec3 worldPos, vec3 N, float filterRadiusTexels)
 {
     // Compute view-space depth for cascade selection
     float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
+    if (viewDepth <= 0.0 || viewDepth >= uShadowCascadeSplitDistances[CASCADE_COUNT - 1])
+        return 1.0;
 
     // Find the first cascade that contains this fragment
     int cascade = shadowCascadeIndex(viewDepth);
 
     vec3 swp = shadowWorldPos(worldPos, N, cascade);
-    float shadow = pcssShadowCascade(swp, N, lightRadius, cascade);
+    float shadow = pcfShadowCascade(swp, filterRadiusTexels, cascade);
 
     // Blend between cascades at the transition boundary to hide seams
     float splitDist = uShadowCascadeSplitDistances[cascade];
@@ -458,7 +458,7 @@ float cascadedShadow(vec3 worldPos, vec3 N, float lightRadius)
     if (distToEdge < blendZone && cascade < CASCADE_COUNT - 1)
     {
         vec3 nextSwp = shadowWorldPos(worldPos, N, cascade + 1);
-        float nextShadow = pcssShadowCascade(nextSwp, N, lightRadius, cascade + 1);
+        float nextShadow = pcfShadowCascade(nextSwp, filterRadiusTexels, cascade + 1);
         float t = smoothstep(0.0, blendZone, distToEdge);
         shadow = mix(nextShadow, shadow, t);
     }
@@ -472,7 +472,7 @@ vec3 shadowCascadeViewColor(vec3 worldPos)
         return vec3(0.0);
 
     float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
-    if (viewDepth > uShadowCascadeSplitDistances[CASCADE_COUNT - 1])
+    if (viewDepth <= 0.0 || viewDepth >= uShadowCascadeSplitDistances[CASCADE_COUNT - 1])
         return vec3(0.025);
 
     return CASCADE_VIEW_COLORS[shadowCascadeIndex(viewDepth)];

@@ -87,10 +87,9 @@ float sampleShadowCascade(vec3 worldPos, int cascade)
 
     vec2 atlasOffset = CASCADE_OFFSETS[cascade];
     vec2 atlasUv = pos.xy * 0.5 + atlasOffset;
-    float halfRes = uShadowMapTexSize * 0.5;
-    float texelUv = 1.0 / max(halfRes, 1.0);
-    float filterRadius = texelUv * (1.5 + uSunRadius);
-    float bias = max(0.00035, texelUv * 0.75);
+    float texelUv = 1.0 / max(uShadowMapTexSize, 1.0);
+    float filterRadius = texelUv * uSunRadius;
+    float bias = max(0.00035, texelUv * 1.5);
 
     vec2 clampMin = atlasOffset + vec2(texelUv * 0.5);
     vec2 clampMax = atlasOffset + vec2(0.5) - vec2(texelUv * 0.5);
@@ -108,6 +107,9 @@ float sampleShadowCascade(vec3 worldPos, int cascade)
 float sampleShadow(vec3 worldPos)
 {
     float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
+    if (viewDepth <= 0.0 || viewDepth >= uShadowCascadeSplitDistances[CASCADE_COUNT - 1])
+        return 1.0;
+
     int cascade = CASCADE_COUNT - 1;
 
     for (int i = 0; i < CASCADE_COUNT; i++)
