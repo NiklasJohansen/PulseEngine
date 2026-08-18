@@ -449,10 +449,10 @@ class SurfaceImpl(
     override fun addPostProcessingEffect(effect: PostProcessingEffect)
     {
         runOnInitFrame { engine ->
-            getPostProcessingEffect(effect.name)?.let()
-            {
-                Logger.warn { "Replacing existing post processing effect with same name: ${it.name}" }
-                deletePostProcessingEffect(it.name)
+            getPostProcessingEffect(effect.name)?.let { existingEffect ->
+                Logger.warn { "Replacing existing post processing effect with same name: ${existingEffect.name}" }
+                existingEffect.destroy()
+                postEffects.removeWhen { it.name == existingEffect.name }
             }
             effect.init(engine)
             postEffects.add(effect)
