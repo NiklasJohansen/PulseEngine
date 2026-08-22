@@ -370,7 +370,7 @@ open class WindowImpl : WindowInternal
 
             // True if center of window is within the monitor bounds
             xWindowCenter >= xMonitor[0] && xWindowCenter <= xMonitor[0] + widthMonitor &&
-            yWindowCenter >= yMonitor[0] && yWindow[0] <= yWindowCenter + heightMonitor
+            yWindowCenter >= yMonitor[0] && yWindowCenter <= yMonitor[0] + heightMonitor
 
         } ?: glfwGetPrimaryMonitor()
     }
