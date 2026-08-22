@@ -527,22 +527,59 @@ int pointShadowFaceIndex(vec3 fromLight)
     return fromLight.z >= 0.0 ? 4 : 5;
 }
 
-float localShadowFace(int faceIndex, vec3 shadowWorldPos)
+const vec3 POINT_SHADOW_FACE_RIGHT[6] = vec3[](
+    vec3( 0.0,  0.0, -1.0), vec3( 0.0,  0.0,  1.0),
+    vec3( 1.0,  0.0,  0.0), vec3( 1.0,  0.0,  0.0),
+    vec3( 1.0,  0.0,  0.0), vec3(-1.0,  0.0,  0.0)
+);
+
+const vec3 POINT_SHADOW_FACE_UP[6] = vec3[](
+    vec3(0.0, -1.0,  0.0), vec3(0.0, -1.0,  0.0),
+    vec3(0.0,  0.0,  1.0), vec3(0.0,  0.0, -1.0),
+    vec3(0.0, -1.0,  0.0), vec3(0.0, -1.0,  0.0)
+);
+
+bool projectLocalShadowFace(int faceIndex, vec3 shadowWorldPos, out vec3 pos)
 {
     if (faceIndex < 0 || faceIndex >= uLocalShadowFaceCount)
-        return 1.0;
+        return false;
 
     LocalShadowFaceData face = uLocalShadowFaces[faceIndex];
     vec4 lightPos = face.shadowViewProjection * vec4(shadowWorldPos, 1.0);
-    vec3 pos = (lightPos.xyz / lightPos.w) * 0.5 + 0.5;
+    if (lightPos.w <= 0.0)
+        return false;
 
-    if (pos.x < 0.0 || pos.x > 1.0 || pos.y < 0.0 || pos.y > 1.0 || pos.z < 0.0 || pos.z > 1.0)
+    pos = (lightPos.xyz / lightPos.w) * 0.5 + 0.5;
+
+    return pos.x >= 0.0 && pos.x <= 1.0 && pos.y >= 0.0 && pos.y <= 1.0 && pos.z >= 0.0 && pos.z <= 1.0;
+}
+
+float sampleLocalShadowFaceProjected(int faceIndex, vec3 pos)
+{
+    LocalShadowFaceData face = uLocalShadowFaces[faceIndex];
+    vec4 atlas = face.atlasScaleBias;
+    float texelUv = 1.0 / max(uLocalShadowAtlasTexSize, 1.0);
+    vec2 atlasUv = pos.xy * atlas.xy + atlas.zw;
+    vec2 clampMin = atlas.zw + vec2(texelUv * 0.5);
+    vec2 clampMax = atlas.zw + atlas.xy - vec2(texelUv * 0.5);
+    return texture(uLocalShadowAtlasTex, vec3(clamp(atlasUv, clampMin, clampMax), pos.z));
+}
+
+float sampleLocalShadowFace(int faceIndex, vec3 shadowWorldPos)
+{
+    vec3 pos;
+    if (!projectLocalShadowFace(faceIndex, shadowWorldPos, pos))
         return 1.0;
 
+    return sampleLocalShadowFaceProjected(faceIndex, pos);
+}
+
+float filterLocalShadowFaceProjected(int faceIndex, vec3 pos)
+{
+    LocalShadowFaceData face = uLocalShadowFaces[faceIndex];
     vec4 atlas = face.atlasScaleBias;
     vec2 atlasUv = pos.xy * atlas.xy + atlas.zw;
     float texelUv = 1.0 / max(uLocalShadowAtlasTexSize, 1.0);
-
     vec2 clampMin = atlas.zw + vec2(texelUv * 0.5);
     vec2 clampMax = atlas.zw + atlas.xy - vec2(texelUv * 0.5);
 
@@ -554,6 +591,64 @@ float localShadowFace(int faceIndex, vec3 shadowWorldPos)
             vec2 offset = vec2(x, y) * texelUv;
             vec2 sampleUv = clamp(atlasUv + offset, clampMin, clampMax);
             sum += texture(uLocalShadowAtlasTex, vec3(sampleUv, pos.z));
+        }
+    }
+
+    return sum / 9.0;
+}
+
+float localShadowFace(int faceIndex, vec3 shadowWorldPos)
+{
+    vec3 pos;
+    if (!projectLocalShadowFace(faceIndex, shadowWorldPos, pos))
+        return 1.0;
+
+    return filterLocalShadowFaceProjected(faceIndex, pos);
+}
+
+float pointLightShadow(int firstFace, vec3 lightPos, vec3 shadowWorldPos)
+{
+    vec3 fromLight = shadowWorldPos - lightPos;
+    vec3 absFromLight = abs(fromLight);
+    float majorDistance = max(absFromLight.x, max(absFromLight.y, absFromLight.z));
+    if (majorDistance <= 1e-6)
+        return 1.0;
+
+    int centerFaceInLight = pointShadowFaceIndex(fromLight);
+    int centerFace = firstFace + centerFaceInLight;
+    vec3 centerPos;
+    if (!projectLocalShadowFace(centerFace, shadowWorldPos, centerPos))
+        return 1.0;
+
+    LocalShadowFaceData face = uLocalShadowFaces[centerFace];
+    float faceResolution = max(face.atlasScaleBias.x * uLocalShadowAtlasTexSize, 1.0);
+    float edgeMargin = 1.5 / faceResolution;
+
+    // Preserve the cheaper face-local filter when its complete footprint stays inside the tile
+    if (centerPos.x >= edgeMargin && centerPos.x <= 1.0 - edgeMargin && centerPos.y >= edgeMargin && centerPos.y <= 1.0 - edgeMargin)
+        return filterLocalShadowFaceProjected(centerFace, centerPos);
+
+    vec3 faceRight = POINT_SHADOW_FACE_RIGHT[centerFaceInLight];
+    vec3 faceUp = POINT_SHADOW_FACE_UP[centerFaceInLight];
+    float texelStep = 2.0 * majorDistance / faceResolution;
+    float sum = 0.0;
+
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            if (x == 0 && y == 0)
+            {
+                sum += sampleLocalShadowFaceProjected(centerFace, centerPos);
+                continue;
+            }
+
+            vec3 tapFromLight = fromLight + (faceRight * float(x) + faceUp * float(y)) * texelStep;
+            float tapMajorDistance = max(abs(tapFromLight.x), max(abs(tapFromLight.y), abs(tapFromLight.z)));
+            tapFromLight *= majorDistance / tapMajorDistance;
+            vec3 tapWorldPos = lightPos + tapFromLight;
+            int tapFace = firstFace + pointShadowFaceIndex(tapFromLight);
+            sum += sampleLocalShadowFace(tapFace, tapWorldPos);
         }
     }
 
@@ -576,11 +671,10 @@ float localLightShadow(LocalLightData light, vec3 lightPos, vec3 worldPos, vec3 
     if (firstFace < 0 || faceCount <= 0)
         return 1.0;
 
-    int faceIndex = firstFace;
     if (light.isSpotShadowInfo.x < 0.5 && faceCount >= 6)
-        faceIndex += pointShadowFaceIndex(worldPos - lightPos);
+        return pointLightShadow(firstFace, lightPos, shadowWorldPos);
 
-    return localShadowFace(faceIndex, shadowWorldPos);
+    return localShadowFace(firstFace, shadowWorldPos);
 }
 
 vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0)
