@@ -39,7 +39,6 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachIndexedFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachReversed
 import no.njoh.pulseengine.core.shared.utils.Extensions.removeWhen
 import no.njoh.pulseengine.core.shared.utils.Logger
-import kotlin.text.format
 
 class SurfaceImpl(
     override val camera: CameraInternal,
@@ -73,8 +72,7 @@ class SurfaceImpl(
 
     override fun init(engine: PulseEngineInternal, width: Int, height: Int, glContextRecreated: Boolean)
     {
-        config.width = width
-        config.height = height
+        config.updateSize(width, height)
 
         if (initialized)
             resetPixelReaders()
@@ -108,7 +106,7 @@ class SurfaceImpl(
         }
 
         renderers.sortBy { it.order }
-        renderTarget.init(width, height)
+        renderTarget.init(config.renderWidth, config.renderHeight)
         shouldRerender = true
         initialized = true
     }
@@ -435,13 +433,14 @@ class SurfaceImpl(
         return if (current.filter == filter) this else setAttachment(current.copy(filter = filter))
     }
 
-    override fun setResolutionScale(scale: Float): Surface
+    override fun setRenderScale(scale: Float): Surface
     {
-        if (config.resolutionScale == scale)
+        if (config.renderScale == scale)
             return this
 
-        require(scale.isFinite() && scale > 0f) { "Surface output resolution scale must be finite and positive" }
-        config.resolutionScale = scale
+        require(scale.isFinite() && scale > 0f) { "Surface output render scale must be finite and positive" }
+        config.renderScale = scale
+        config.updateRenderSize()
         requestRenderTargetRebuild()
         return this
     }
@@ -530,9 +529,7 @@ class SurfaceImpl(
                 wrapping = CLAMP_TO_EDGE,
                 multisampling = config.multisampling,
                 mipmapGenerator = it.mipmapGenerator,
-                attachmentPoint = it.attachmentPoint,
-                scale = config.resolutionScale,
-                sizeFunc = config.sizeFunction
+                attachmentPoint = it.attachmentPoint
             )
         }
     )
@@ -551,10 +548,11 @@ class SurfaceImpl(
         {
             if (pendingTargetRebuild)
             {
+                config.updateRenderSize()
                 resetPixelReaders()
                 renderTarget.destroy()
                 renderTarget = createRenderTarget()
-                renderTarget.init(config.width, config.height)
+                renderTarget.init(config.renderWidth, config.renderHeight)
                 pendingTargetRebuild = false
             }
         }

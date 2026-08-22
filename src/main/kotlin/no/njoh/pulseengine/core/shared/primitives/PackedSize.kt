@@ -3,6 +3,8 @@ package no.njoh.pulseengine.core.shared.primitives
 @JvmInline
 value class PackedSize(val data: Long)
 {
+    constructor(size: Int) : this(size, size) 
+    constructor(size: Float) : this(size, size) 
     constructor(width: Int, height: Int) : this((width.toLong() and ((1L shl 32) - 1)) or (height.toLong() shl 32))
     constructor(width: Float, height: Float) : this((width.toLong() and ((1L shl 32) - 1)) or (height.toLong() shl 32))
 

@@ -110,11 +110,11 @@ class GtaoRenderer(
             prevDepthFbo.destroy()
         }
 
-        aoFbo = FrameBufferObject.create(surface.config.width, surface.config.height, aoTextureDescriptors)
-        denoiseFbo = FrameBufferObject.create(surface.config.width, surface.config.height, denoiseTextureDescriptors)
-        upsampleFbo = FrameBufferObject.create(surface.config.width, surface.config.height, upsampleTextureDescriptors)
-        temporalFbo = FrameBufferObject.create(surface.config.width, surface.config.height, temporalTextureDescriptors)
-        prevDepthFbo = FrameBufferObject.create(surface.config.width, surface.config.height, prevDepthTextureDescriptors)
+        aoFbo = FrameBufferObject.create(surface.config.renderWidth, surface.config.renderHeight, aoTextureDescriptors)
+        denoiseFbo = FrameBufferObject.create(surface.config.renderWidth, surface.config.renderHeight, denoiseTextureDescriptors)
+        upsampleFbo = FrameBufferObject.create(surface.config.renderWidth, surface.config.renderHeight, upsampleTextureDescriptors)
+        temporalFbo = FrameBufferObject.create(surface.config.renderWidth, surface.config.renderHeight, temporalTextureDescriptors)
+        prevDepthFbo = FrameBufferObject.create(surface.config.renderWidth, surface.config.renderHeight, prevDepthTextureDescriptors)
         outputAoTex = null
         historyValid = false
         prevInvProjection.identity()
@@ -167,7 +167,7 @@ class GtaoRenderer(
         
         // Rebind surface render target for further rendering
         surface.renderTarget.begin()
-        glViewport(0, 0, surface.config.width, surface.config.height)
+        glViewport(0, 0, surface.config.renderWidth, surface.config.renderHeight)
     }
 
     private fun renderGtao(surface: SurfaceInternal, depthTex: RenderTexture): RenderTexture = measure("Gtao render")
@@ -342,12 +342,12 @@ class GtaoRenderer(
         surface.renderTarget.getFbo().resolveDepthToFBO(prevDepthFbo)
     }
 
-    private inline fun updateFbo(fbo: FrameBufferObject, texDescriptors: List<TextureDescriptor>, surface: Surface, onNewFbo: (FrameBufferObject) -> Unit)
+    private inline fun updateFbo(fbo: FrameBufferObject, texDescriptors: List<TextureDescriptor>, surface: SurfaceInternal, onNewFbo: (FrameBufferObject) -> Unit)
     {
-        if (fbo.matches(surface.config.width, surface.config.height, texDescriptors))
+        if (fbo.matches(surface.config.renderWidth, surface.config.renderHeight, texDescriptors))
             return // No need to update
         fbo.destroy()
-        onNewFbo(FrameBufferObject.create(surface.config.width, surface.config.height, texDescriptors))
+        onNewFbo(FrameBufferObject.create(surface.config.renderWidth, surface.config.renderHeight, texDescriptors))
     }
 
     override fun destroy(engine: PulseEngineInternal)

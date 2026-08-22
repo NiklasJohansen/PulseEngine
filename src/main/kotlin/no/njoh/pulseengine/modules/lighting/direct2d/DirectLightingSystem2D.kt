@@ -88,7 +88,7 @@ open class DirectLightingSystem2D : SceneSystem()
             isVisible = false,
             blendFunction = ADDITIVE,
             output = SurfaceOutputSpec(
-                resolutionScale = textureScale,
+                renderScale = textureScale,
                 multisampling = multisampling,
                 attachments = listOf(colorAttachment(format = textureFormat, filter = textureFilter))
             )
@@ -112,7 +112,7 @@ open class DirectLightingSystem2D : SceneSystem()
         val lightRenderer = lightSurface.getRenderer<DirectLightRenderer>() ?: return
 
         lightSurface.setMultisampling(multisampling)
-        lightSurface.setResolutionScale(textureScale)
+        lightSurface.setRenderScale(textureScale)
         lightSurface.setTextureFilter(textureFilter)
         lightSurface.setTextureFormat(textureFormat)
 

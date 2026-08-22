@@ -165,8 +165,7 @@ object ViewportState : RenderState
 {
     override fun onApply(surface: SurfaceInternal)
     {
-        val scale = surface.config.resolutionScale
-        glViewport(0, 0, (surface.config.width * scale).toInt(), (surface.config.height * scale).toInt())
+        glViewport(0, 0, surface.config.renderWidth, surface.config.renderHeight)
     }
 }
 

@@ -19,6 +19,7 @@ import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.shared.primitives.Degrees
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.util.PixelReadResult
+import no.njoh.pulseengine.core.shared.primitives.PackedSize
 
 class NoOpSurface: SurfaceInternal()
 {
@@ -32,6 +33,7 @@ class NoOpSurface: SurfaceInternal()
         isVisible = false,
         drawPostEffects = false,
         drawWireframe = false,
+        sizeFunction = { w, h -> PackedSize(w, h) },
         clearColor = Color.BLANK,
         blendFunction = BlendFunction.NORMAL,
         outputSpec = SurfaceOutputSpec.EMPTY
@@ -79,5 +81,5 @@ class NoOpSurface: SurfaceInternal()
     override fun removeAttachment(attachmentPoint: AttachmentPoint) = this
     override fun setTextureFormat(format: TextureFormat, attachmentPoint: AttachmentPoint) = this
     override fun setTextureFilter(filter: TextureFilter, attachmentPoint: AttachmentPoint) = this
-    override fun setResolutionScale(scale: Float) = this
+    override fun setRenderScale(scale: Float) = this
 }

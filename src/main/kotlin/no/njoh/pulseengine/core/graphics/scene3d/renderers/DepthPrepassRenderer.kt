@@ -60,7 +60,7 @@ class DepthPrepassRenderer(
     override fun declareRenderViews(engine: PulseEngineInternal, surface: SurfaceInternal, context: SceneRenderContextInternal)
     {
         increaseBatchSize() // Ensure that the batch size is at least 1
-        context.requestView(viewKey).addCameraStateFor(surface.camera, surface.config.width, surface.config.height)
+        context.requestView(viewKey).addCameraStateFor(surface.camera, surface.config.renderWidth, surface.config.renderHeight)
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -76,7 +76,7 @@ class DepthPrepassRenderer(
         glDepthMask(true)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
-        glViewport(0, 0, surface.config.width, surface.config.height)
+        glViewport(0, 0, surface.config.renderWidth, surface.config.renderHeight)
 
         configureOpaqueProgram(opaqueStaticProgram, cameraState)
         configureOpaqueProgram(opaqueSkinnedProgram, cameraState)

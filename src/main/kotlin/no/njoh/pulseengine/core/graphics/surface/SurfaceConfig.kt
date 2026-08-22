@@ -4,40 +4,43 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
+import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
-import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import java.lang.Float.intBitsToFloat
+
+typealias SurfaceSizeFunction = (windowWidth: Int, windowHeight: Int) -> PackedSize
 
 interface SurfaceConfig
 {
     val name: String
+    val zOrder: Int
     val width: Int
     val height: Int
-    val zOrder: Int
+    val sizeFunction: SurfaceSizeFunction
+    val renderWidth: Int
+    val renderHeight: Int
+    val renderScale: Float
     val isVisible: Boolean
     var drawPostEffects: Boolean
     var drawWireframe: Boolean
-    val resolutionScale: Float
-    val multisampling: Multisampling
-    val sizeFunction: SurfaceSizeFunction
     val clearColor: Color?
     val blendFunction: BlendFunction
+    val multisampling: Multisampling
     val attachments: List<SurfaceAttachment>
 
     fun hasAttachment(attachmentPoint: AttachmentPoint) = getAttachment(attachmentPoint) != null
 
-    fun getAttachment(attachmentPoint: AttachmentPoint): SurfaceAttachment?
-    {
-        attachments.forEachFast { if (it.attachmentPoint == attachmentPoint) return it }
-        return null
-    }
+    fun getAttachment(attachmentPoint: AttachmentPoint) = 
+        attachments.firstOrNullFast { it.attachmentPoint == attachmentPoint }
 }
 
 class SurfaceConfigInternal(
     override val name: String,
+    override var zOrder: Int,
     override var width: Int,
     override var height: Int,
-    override var zOrder: Int,
+    override val sizeFunction: SurfaceSizeFunction,
     override var isVisible: Boolean,
     override var drawPostEffects: Boolean,
     override var drawWireframe: Boolean,
@@ -46,10 +49,11 @@ class SurfaceConfigInternal(
     outputSpec: SurfaceOutputSpec,
 ) : SurfaceConfig {
 
-    override var attachments     = outputSpec.attachments.toList(); internal set
-    override var resolutionScale = outputSpec.resolutionScale; internal set
-    override var multisampling   = outputSpec.multisampling; internal set
-    override var sizeFunction    = outputSpec.sizeFunction; internal set
+    override var attachments   = outputSpec.attachments.toList(); internal set
+    override var renderScale   = outputSpec.renderScale;          internal set
+    override var multisampling = outputSpec.multisampling;        internal set
+    override var renderWidth   = width;                           internal set
+    override var renderHeight  = height;                          internal set
 
     val hasDepthAttachment get() = attachments.anyMatches { it.attachmentPoint.isDepth }
 
@@ -57,7 +61,26 @@ class SurfaceConfigInternal(
     var currentDepth     = 0f
     var hasDepthPrepass  = false
 
+    private var renderSizeFunction = outputSpec.renderSizeFunction
+
     init { setDrawColor(1f, 1f, 1f, 1f) }
+
+    fun updateSize(windowWidth: Int, windowHeight: Int)
+    {
+        val size = sizeFunction(windowWidth, windowHeight)
+        require(size.width > 0 && size.height > 0) { "Surface size must be positive" }
+        width = size.width
+        height = size.height
+        updateRenderSize()
+    }
+
+    fun updateRenderSize()
+    {
+        val size = renderSizeFunction(width, height, renderScale)
+        require(size.width > 0 && size.height > 0) { "Surface render size must be positive" }
+        renderWidth = size.width
+        renderHeight = size.height
+    }
 
     fun increaseDepth()
     {

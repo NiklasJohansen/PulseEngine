@@ -149,9 +149,9 @@ abstract class Surface
     abstract fun setTextureFilter(filter: TextureFilter, attachmentPoint: AttachmentPoint = AttachmentPoint.COLOR_TEXTURE_0): Surface
 
     /** 
-     * Sets the resolution scale shared by all attachments. 
+     * Sets the render scale shared by all attachments.
      */
-    abstract fun setResolutionScale(scale: Float): Surface
+    abstract fun setRenderScale(scale: Float): Surface
 
     ///////////////////////////////////////// Surface Textures /////////////////////////////////////////
 

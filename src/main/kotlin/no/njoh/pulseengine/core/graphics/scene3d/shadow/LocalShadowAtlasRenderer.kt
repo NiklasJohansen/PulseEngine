@@ -108,7 +108,7 @@ class LocalShadowAtlasRenderer(
             }
         }
 
-        glViewport(0, 0, surface.config.width, surface.config.height)
+        glViewport(0, 0, surface.config.renderWidth, surface.config.renderHeight)
         glDisable(GL_POLYGON_OFFSET_FILL)
         glColorMask(true, true, true, true)
     }

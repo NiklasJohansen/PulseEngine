@@ -16,18 +16,20 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.gpu.resource.TextureBank
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
+import no.njoh.pulseengine.core.graphics.surface.SurfaceSizeFunction
 import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
+import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import no.njoh.pulseengine.core.shared.utils.LogLevel
 
 interface Graphics
 {
     /**
-     * A standard surface set up with default parameters intended for easy access to rendering.
+     * A standard surface with default parameters intended for easy access to rendering.
      */
     val mainSurface: Surface
 
     /**
-     * A reference to camera associated with the main surface.
+     * A reference to the camera associated with the main surface.
      */
     val mainCamera: Camera
 
@@ -42,12 +44,11 @@ interface Graphics
      */
     fun createSurface(
         name: String,
-        width: Int? = null,
-        height: Int? = null,
         zOrder: Int? = null,
         camera: Camera? = null,
         isVisible: Boolean = true,
         clearColor: Color? = Color.BLANK,
+        sizeFunction: SurfaceSizeFunction = ::defaultSurfaceSizeFunc,
         blendFunction: BlendFunction = BlendFunction.NORMAL,
         output: SurfaceOutputSpec = SurfaceOutputSpec.DEFAULT
     ): Surface
@@ -71,6 +72,14 @@ interface Graphics
      * Deletes the [Surface] with the given name.
     */
     fun deleteSurface(name: String)
+
+    companion object
+    {
+        /**
+         * The default [SurfaceSizeFunction] uses the window size as the surface size.
+         */
+        fun defaultSurfaceSizeFunc(windowWidth: Int, windowHeight: Int) = PackedSize(windowWidth, windowHeight)
+    }
 }
 
 interface GraphicsInternal : Graphics

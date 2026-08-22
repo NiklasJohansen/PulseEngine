@@ -113,7 +113,7 @@ class FrostedGlassEffect(
                 val newSurface = engine.gfx.createSurface(
                     name = "frosted_glass",
                     isVisible = false,
-                    output = SurfaceOutputSpec(resolutionScale = 0.5f)
+                    output = SurfaceOutputSpec(renderScale = 0.5f)
                 )
                 newSurface.addPostProcessingEffect(FrostedGlassEffect(zThreshold = -80))
                 return // Surface will be initialized next frame, return now

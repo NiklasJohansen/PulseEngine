@@ -3,7 +3,6 @@ package no.njoh.pulseengine.modules.lighting.direct2d
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
-import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
 import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
@@ -99,13 +98,13 @@ class DirectLightRenderer(
 
         val zRotCamera = surface.camera.rotation.z.interpolateFrom(surface.camera.rotationLast.z)
         val renderStartTime = System.nanoTime()
-        val texScale = surface.config.resolutionScale
+        val renderScale = surface.config.renderScale
         val view = surface.camera.viewMatrix
         var index = 0
         val size = readEdges * 4
         val buffer = edgeBuffer.readArray
-        val xEdgeDrawOffset = xDrawOffset * texScale
-        val yEdgeDrawOffset = yDrawOffset * texScale
+        val xEdgeDrawOffset = xDrawOffset * renderScale
+        val yEdgeDrawOffset = yDrawOffset * renderScale
 
         // Transform world coordinates of edges to screen space
         while (index < size)
@@ -114,10 +113,10 @@ class DirectLightRenderer(
             val y0 = buffer[index + 1]
             val x1 = buffer[index + 2]
             val y1 = buffer[index + 3]
-            buffer[index + 0] = (view.m00() * x0 + view.m10() * y0 + view.m30()) * texScale - xEdgeDrawOffset
-            buffer[index + 1] = (view.m01() * x0 + view.m11() * y0 + view.m31()) * texScale - yEdgeDrawOffset
-            buffer[index + 2] = (view.m00() * x1 + view.m10() * y1 + view.m30()) * texScale - xEdgeDrawOffset
-            buffer[index + 3] = (view.m01() * x1 + view.m11() * y1 + view.m31()) * texScale - yEdgeDrawOffset
+            buffer[index + 0] = (view.m00() * x0 + view.m10() * y0 + view.m30()) * renderScale - xEdgeDrawOffset
+            buffer[index + 1] = (view.m01() * x0 + view.m11() * y0 + view.m31()) * renderScale - yEdgeDrawOffset
+            buffer[index + 2] = (view.m00() * x1 + view.m10() * y1 + view.m30()) * renderScale - xEdgeDrawOffset
+            buffer[index + 3] = (view.m01() * x1 + view.m11() * y1 + view.m31()) * renderScale - yEdgeDrawOffset
             index += 4
         }
 
@@ -135,8 +134,8 @@ class DirectLightRenderer(
         program.bind()
         program.setUniform("projection", surface.camera.projectionMatrix)
         program.setUniform("view", view)
-        program.setUniform("resolution", surface.config.width * texScale, surface.config.height * texScale)
-        program.setUniform("textureScale", texScale)
+        program.setUniform("resolution", surface.config.renderWidth.toFloat(), surface.config.renderHeight.toFloat())
+        program.setUniform("textureScale", renderScale)
         program.setUniform("drawOffset", xDrawOffset, yDrawOffset)
         program.setUniform("zRotation", zRotCamera)
 

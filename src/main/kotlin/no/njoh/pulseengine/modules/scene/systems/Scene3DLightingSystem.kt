@@ -117,14 +117,12 @@ class Scene3DLightingSystem : SceneSystem()
 
             engine.gfx.createSurface(
                 name = shadowMapSurfaceName,
-                width = sunShadowMapResolution,
-                height = sunShadowMapResolution,
+                sizeFunction = { _,_ -> PackedSize(sunShadowMapResolution) },
                 isVisible = false,
                 clearColor = null, // Cascades clear only the atlas quadrants they refresh.
                 zOrder = 50,
                 output = SurfaceOutputSpec(
-                    attachments = listOf(depthTexture()),
-                    sizeFunction = { _,_,_ -> PackedSize(sunShadowMapResolution, sunShadowMapResolution) }
+                    attachments = listOf(depthTexture())
                 )
             ).apply {
                 addRenderer(CascadedShadowMapRenderer())
@@ -166,14 +164,12 @@ class Scene3DLightingSystem : SceneSystem()
 
             engine.gfx.createSurface(
                 name = localShadowAtlasSurfaceName,
-                width = localShadowAtlasResolution,
-                height = localShadowAtlasResolution,
+                sizeFunction = { _,_ -> PackedSize(localShadowAtlasResolution) },
                 isVisible = false,
                 clearColor = null, // Dont clear surface each frame
                 zOrder = 49,
                 output = SurfaceOutputSpec(
-                    attachments = listOf(depthTexture()),
-                    sizeFunction = { _,_,_ -> PackedSize(localShadowAtlasResolution, localShadowAtlasResolution) }
+                    attachments = listOf(depthTexture())
                 )
             ).apply {
                 addRenderer(LocalShadowAtlasRenderer())

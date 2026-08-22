@@ -52,24 +52,25 @@ open class GraphicsImpl : GraphicsInternal
     private val surfaces     = ArrayList<SurfaceInternal>()
     private val errorShaders = THashMap<ShaderType, Shader>()
     private var lastZOrder   = 0
+    private var windowWidth  = 1
+    private var windowHeight = 1
 
     override fun init(engine: PulseEngineInternal)
     {
         Logger.info { "Initializing graphics (GraphicsImpl)" }
         glContract = checkNotNull(engine.config.runtimeProfile.glContract) { "GraphicsImpl cannot be initialized with runtime profile ${engine.config.runtimeProfile}" }
 
-        val viewPortWidth = engine.window.width
-        val viewPortHeight = engine.window.height
+        windowWidth = engine.window.width
+        windowHeight = engine.window.height
 
         textureBank = TextureBank()
         materialBank = MaterialBank()
         modelBank = ModelBank()
+
         sceneContext = SceneRenderContextImpl()
-        mainCamera = DefaultCamera.createOrthographic(viewPortWidth, viewPortHeight)
+        mainCamera = DefaultCamera.createOrthographic(windowWidth, windowHeight)
         mainSurface = createSurface(
             name = "main",
-            width = viewPortWidth,
-            height = viewPortHeight,
             camera = mainCamera,
             clearColor = defaultClearColor.copy(),
             output = SurfaceOutputSpec(
@@ -81,7 +82,7 @@ open class GraphicsImpl : GraphicsInternal
             )
         )
 
-        onWindowChanged(engine, viewPortWidth, viewPortHeight, windowRecreated = true)
+        onWindowChanged(engine, windowWidth, windowHeight, windowRecreated = true)
 
         engine.data.addMetric("GPU TIME (µs)")          { sample(GpuProfiler.gpuTimeNs.toFloat() / 1000f) }
         engine.data.addMetric("DRAW CALLS")             { sample(GpuProfiler.drawCalls.toFloat()) }
@@ -93,6 +94,9 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean)
     {
+        windowWidth = width
+        windowHeight = height
+
         if (windowRecreated)
         {
             // Create OpenGL context in current thread
@@ -123,7 +127,7 @@ open class GraphicsImpl : GraphicsInternal
         surfaces.forEachFast { it.init(engine, width, height, windowRecreated) }
 
         // Update camera projection
-        surfaces.forEachCamera { it.updateProjection(width, height) }
+        surfaces.forEachCameraSurface { it.camera.updateProjection(it.config.width, it.config.height) }
 
         // Set viewport size
         ViewportState.apply(mainSurface)
@@ -143,15 +147,12 @@ open class GraphicsImpl : GraphicsInternal
 
         surfaces.forEachFast { it.initFrame(engine) }
         
-        surfaces.forEachCamera()
-        {
-            it.onFrameStart(engine)
-        }
+        surfaces.forEachCameraSurface { it.camera.onFrameStart(engine) }
     }
 
     override fun drawFrame(engine: PulseEngineInternal)
     {
-        surfaces.forEachCamera { it.onFrameDraw(engine) }
+        surfaces.forEachCameraSurface { it.camera.onFrameDraw(engine) }
 
         measure("Prepare draw")
         {
@@ -248,34 +249,31 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun createSurface(
         name: String,
-        width: Int?,
-        height: Int?,
         zOrder: Int?,
         camera: Camera?,
         isVisible: Boolean,
         clearColor: Color?,
+        sizeFunction: SurfaceSizeFunction,
         blendFunction: BlendFunction,
         output: SurfaceOutputSpec
     ): SurfaceInternal {
-
-        val surfaceWidth = width ?: mainSurface.config.width
-        val surfaceHeight = height ?: mainSurface.config.height
-        val newCamera = (camera ?: DefaultCamera.createOrthographic(surfaceWidth, surfaceHeight)) as CameraInternal
-        val newSurface = SurfaceImpl(
-            camera = newCamera,
-            config = SurfaceConfigInternal(
-                name = name,
-                width = surfaceWidth,
-                height = surfaceHeight,
-                zOrder = zOrder ?: this.lastZOrder--,
-                isVisible = isVisible,
-                drawPostEffects = true,
-                drawWireframe = false,
-                clearColor = clearColor,
-                blendFunction = blendFunction,
-                outputSpec = output
-            )
+        val config = SurfaceConfigInternal(
+            name = name,
+            zOrder = zOrder ?: this.lastZOrder--,
+            width = windowWidth,
+            height = windowHeight,
+            sizeFunction = sizeFunction,
+            isVisible = isVisible,
+            drawPostEffects = true,
+            drawWireframe = false,
+            clearColor = clearColor,
+            blendFunction = blendFunction,
+            outputSpec = output
         )
+        config.updateSize(windowWidth, windowHeight)
+
+        val newCamera = (camera ?: DefaultCamera.createOrthographic(config.width, config.height)) as CameraInternal
+        val newSurface = SurfaceImpl(newCamera, config)
 
         runOnInitFrame()
         {
@@ -285,7 +283,7 @@ open class GraphicsImpl : GraphicsInternal
                 surfaces.remove(it)
                 it.destroy(this)
             }
-            newSurface.init(this, surfaceWidth, surfaceHeight, true)
+            newSurface.init(this, window.width, window.height, true)
             surfaceMap[name] = newSurface
             surfaces.add(newSurface)
             surfaces.sortBy { -it.config.zOrder }
@@ -325,7 +323,7 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun deleteMaterial(material: Material) = materialBank.delete(material)
 
-    override fun updateCameras() = surfaces.forEachCamera { it.updateLastState() }
+    override fun updateCameras() = surfaces.forEachCameraSurface { it.camera.updateLastState() }
 
     override fun compileShader(shader: Shader)
     {
@@ -382,13 +380,13 @@ open class GraphicsImpl : GraphicsInternal
         GpuLogger.destroy()
     }
 
-    private inline fun List<SurfaceInternal>.forEachCamera(block: (CameraInternal) -> Unit)
+    private inline fun List<SurfaceInternal>.forEachCameraSurface(block: (SurfaceInternal) -> Unit)
     {
         // Iterates through each camera only once.
         val number = updateNumber++
         this.forEachFiltered({ it.camera.updateNumber != number })
         {
-            block(it.camera)
+            block(it)
             it.camera.updateNumber = number
         }
     }

@@ -122,7 +122,7 @@ class ModelRenderer(
         increaseBatchSize() // Ensure that the batch size is at least 1
 
         val view = context.requestView(viewKey)
-        val cameraState = view.addCameraStateFor(surface.camera, surface.config.width, surface.config.height)
+        val cameraState = view.addCameraStateFor(surface.camera, surface.config.renderWidth, surface.config.renderHeight)
         context.requestClusteredLightGrid(cameraState)
         view.transparencyMode = transparencyMode
     }

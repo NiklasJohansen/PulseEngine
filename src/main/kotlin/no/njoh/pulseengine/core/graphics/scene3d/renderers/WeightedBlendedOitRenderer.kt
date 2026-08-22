@@ -117,7 +117,7 @@ class WeightedBlendedOitRenderer
         }
         else fbo.destroy()
 
-        fbo = FrameBufferObject.create(surface.config.width, surface.config.height, baseTextureDescriptors)
+        fbo = FrameBufferObject.create(surface.config.renderWidth, surface.config.renderHeight, baseTextureDescriptors)
         compositePass.init()
         renderIdCompositePass.init()
     }
@@ -144,7 +144,7 @@ class WeightedBlendedOitRenderer
 
     private fun accumulate(
         engine: PulseEngineInternal,
-        surface: Surface,
+        surface: SurfaceInternal,
         bucket: RenderBucket,
         drawPayload: DrawPayload,
         opaqueDepthTex: RenderTexture?,
@@ -164,7 +164,7 @@ class WeightedBlendedOitRenderer
         configureRevealageProgram(activeRevealagePrograms.skinnedProgram, engine, surface, opaqueDepthTex, alphaCutoff)
 
         fbo.bind()
-        glViewport(0, 0, surface.config.width, surface.config.height)
+        glViewport(0, 0, surface.config.renderWidth, surface.config.renderHeight)
         glDisable(GL_DEPTH_TEST)
         glDepthMask(false)
         glEnable(GL_BLEND)
@@ -207,7 +207,7 @@ class WeightedBlendedOitRenderer
         else 
             surface.renderTarget.setDrawBuffer(COLOR_TEXTURE_0)
         
-        glViewport(0, 0, surface.config.width, surface.config.height)
+        glViewport(0, 0, surface.config.renderWidth, surface.config.renderHeight)
         glDisable(GL_DEPTH_TEST)
         glDepthMask(false)
         glEnable(GL_BLEND)
@@ -251,13 +251,13 @@ class WeightedBlendedOitRenderer
         configureWboitProgram(program, opaqueDepthTex, alphaCutoff)
     }
 
-    private fun updateFbo(surface: Surface, writeRenderIds: Boolean)
+    private fun updateFbo(surface: SurfaceInternal, writeRenderIds: Boolean)
     {
         val descriptors = if (writeRenderIds) renderIdTextureDescriptors else baseTextureDescriptors
-        if (!fbo.matches(surface.config.width, surface.config.height, descriptors))
+        if (!fbo.matches(surface.config.renderWidth, surface.config.renderHeight, descriptors))
         {
             fbo.destroy()
-            fbo = FrameBufferObject.create(surface.config.width, surface.config.height, descriptors)
+            fbo = FrameBufferObject.create(surface.config.renderWidth, surface.config.renderHeight, descriptors)
         }
     }
 

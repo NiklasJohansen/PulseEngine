@@ -15,20 +15,20 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.shared.primitives.PackedSize
 import kotlin.math.max
 
-typealias SurfaceSizeFunction = (width: Int, height: Int, scale: Float) -> PackedSize
+typealias RenderSizeFunction = (surfaceWidth: Int, surfaceHeight: Int, renderScale: Float) -> PackedSize
 
 /** 
  * Specification of the GPU outputs to create for a [Surface]. 
  */
 data class SurfaceOutputSpec(
     val attachments: List<SurfaceAttachment> = DEFAULT_ATTACHMENTS,
-    val resolutionScale: Float = 1f,
     val multisampling: Multisampling = NONE,
-    val sizeFunction: SurfaceSizeFunction = ::defaultTexSizeFunc
+    val renderScale: Float = 1f,
+    val renderSizeFunction: RenderSizeFunction = ::defaultRenderSizeFunc
 ) {
     init
     {
-        require(resolutionScale.isFinite() && resolutionScale > 0f) { "Surface output resolution scale must be finite and positive" }
+        require(renderScale.isFinite() && renderScale > 0f) { "Surface output render scale must be finite and positive" }
         require(attachments.distinctBy { it.attachmentPoint }.size == attachments.size) { "Surface output attachments must be unique" }
     }
 
@@ -37,8 +37,8 @@ data class SurfaceOutputSpec(
         /** 
          * Scales the output size while ensuring a minimum size of 1x1. 
          */
-        fun defaultTexSizeFunc(width: Int, height: Int, scale: Float) =
-            PackedSize(max(width * scale, 1f), max(height * scale, 1f))
+        fun defaultRenderSizeFunc(width: Int, height: Int, renderScale: Float) =
+            PackedSize(max(width * renderScale, 1f), max(height * renderScale, 1f))
 
         val DEFAULT_ATTACHMENTS = listOf(colorAttachment(), depthStencilBuffer())
         val DEFAULT = SurfaceOutputSpec()

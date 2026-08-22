@@ -83,7 +83,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             isVisible = false,
             blendFunction = NONE,
             output = SurfaceOutputSpec(
-                resolutionScale = localSceneTexScale,
+                renderScale = localSceneTexScale,
                 attachments = listOf(
                     colorAttachment(COLOR_TEXTURE_0, filter = NEAREST),
                     colorAttachment(COLOR_TEXTURE_1, filter = NEAREST)
@@ -100,7 +100,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             isVisible = false,
             blendFunction = NONE,
             output = SurfaceOutputSpec(
-                resolutionScale = globalSceneTexScale,
+                renderScale = globalSceneTexScale,
                 attachments = listOf(
                     colorAttachment(COLOR_TEXTURE_0, filter = NEAREST),
                     colorAttachment(COLOR_TEXTURE_1, filter = NEAREST)
@@ -116,7 +116,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             isVisible = false,
             blendFunction = NONE,
             output = SurfaceOutputSpec(
-                resolutionScale = localSceneTexScale,
+                renderScale = localSceneTexScale,
                 attachments = listOf(colorAttachment())
             )
         ).apply {
@@ -131,7 +131,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             isVisible = false,
             blendFunction = NONE,
             output = SurfaceOutputSpec(
-                resolutionScale = globalSceneTexScale,
+                renderScale = globalSceneTexScale,
                 attachments = listOf(colorAttachment())
             )
         ).apply {
@@ -163,7 +163,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             isVisible = false,
             output = SurfaceOutputSpec(
                 attachments = listOf(colorAttachment()),
-                sizeFunction = ::lightTextureSizeFunc
+                renderSizeFunction = ::lightTextureSizeFunc
             )
         ).apply {
             addPostProcessingEffect(GiRadianceCascades(GI_LOCAL_SCENE, GI_GLOBAL_SCENE, GI_LOCAL_SDF, GI_GLOBAL_SDF, GI_NORMAL_MAP))
@@ -212,13 +212,13 @@ open class GlobalIlluminationSystem2D : SceneSystem()
 
     override fun onUpdate(engine: PulseEngine)
     {
-        engine.gfx.getSurface(GI_LIGHT_EXTERIOR)?.setResolutionScale(lightTexScale)
-        engine.gfx.getSurface(GI_LIGHT_INTERIOR)?.setResolutionScale(localSceneTexScale)
-        engine.gfx.getSurface(GI_LOCAL_SDF)?.setResolutionScale(localSceneTexScale)
-        engine.gfx.getSurface(GI_LOCAL_SCENE)?.setResolutionScale(localSceneTexScale)
-        engine.gfx.getSurface(GI_GLOBAL_SDF)?.setResolutionScale(globalSceneTexScale)
-        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.setResolutionScale(globalSceneTexScale)
-        engine.gfx.getSurface(GI_AO)?.setResolutionScale(localSceneTexScale)
+        engine.gfx.getSurface(GI_LIGHT_EXTERIOR)?.setRenderScale(lightTexScale)
+        engine.gfx.getSurface(GI_LIGHT_INTERIOR)?.setRenderScale(localSceneTexScale)
+        engine.gfx.getSurface(GI_LOCAL_SDF)?.setRenderScale(localSceneTexScale)
+        engine.gfx.getSurface(GI_LOCAL_SCENE)?.setRenderScale(localSceneTexScale)
+        engine.gfx.getSurface(GI_GLOBAL_SDF)?.setRenderScale(globalSceneTexScale)
+        engine.gfx.getSurface(GI_GLOBAL_SCENE)?.setRenderScale(globalSceneTexScale)
+        engine.gfx.getSurface(GI_AO)?.setRenderScale(localSceneTexScale)
 
         engine.gfx.getSurface(GI_LOCAL_SCENE)?.getRenderer<GiSceneRenderer>()?.jitterFix = jitterFix
         engine.gfx.getSurface(GI_GLOBAL_SCENE)?.getRenderer<GiSceneRenderer>()?.let()
@@ -296,8 +296,8 @@ open class GlobalIlluminationSystem2D : SceneSystem()
     {
         val lightSurface = engine.gfx.getSurface(GI_LIGHT_EXTERIOR) ?: return UV_MAX.set(1f, 1f)
         val lightTex = lightSurface.getTexture()
-        val scaledLightTexWidth = lightSurface.config.width * lightSurface.config.resolutionScale
-        val scaledLightTexHeight = lightSurface.config.height * lightSurface.config.resolutionScale
+        val scaledLightTexWidth = lightSurface.config.width * lightSurface.config.renderScale
+        val scaledLightTexHeight = lightSurface.config.height * lightSurface.config.renderScale
         val uMax = (scaledLightTexWidth / lightTex.width)
         val vMax = (scaledLightTexHeight / lightTex.height)
         return UV_MAX.set(uMax, vMax)

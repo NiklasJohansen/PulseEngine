@@ -215,7 +215,7 @@ class TextRenderer(
 
     private fun snapToPixelGrid(value: Float): Float
     {
-        val scale = config.resolutionScale
+        val scale = config.renderScale
         return if (scale > 0f) round(value * scale) / scale else value
     }
 

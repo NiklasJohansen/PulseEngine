@@ -16,6 +16,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextImpl
 import no.njoh.pulseengine.core.graphics.surface.NoOpSurface
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
+import no.njoh.pulseengine.core.graphics.surface.SurfaceSizeFunction
 import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.LogLevel
@@ -31,12 +32,11 @@ class NoOpGraphics : GraphicsInternal
     override val gpuName = "none"
     override fun createSurface(
         name: String,
-        width: Int?,
-        height: Int?,
         zOrder: Int?,
         camera: Camera?,
         isVisible: Boolean,
         clearColor: Color?,
+        sizeFunction: SurfaceSizeFunction,
         blendFunction: BlendFunction,
         output: SurfaceOutputSpec
     ): Surface = mainSurface
