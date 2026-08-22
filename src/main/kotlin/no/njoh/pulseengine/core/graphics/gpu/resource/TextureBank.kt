@@ -26,6 +26,7 @@ import org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE
 import org.lwjgl.opengl.GL11.glBindTexture
 import org.lwjgl.opengl.GL11.glDeleteTextures
 import org.lwjgl.opengl.GL11.glGenTextures
+import org.lwjgl.opengl.GL11.glGetInteger
 import org.lwjgl.opengl.GL11.glPixelStorei
 import org.lwjgl.opengl.GL11.glTexImage2D
 import org.lwjgl.opengl.GL11.glTexParameteri
@@ -44,6 +45,12 @@ class TextureBank
 
     fun upload(texture: Texture)
     {
+        if (texture.loadFailed)
+        {
+            texture.onUploaded(handle = TextureHandle.NONE)
+            return
+        }
+
         val array = getOrCreateTextureArrayFor(texture)
         if (array != null)
         {
@@ -56,7 +63,8 @@ class TextureBank
             {
                 if (array.id == -1 && array.size == 0)
                     textureArrays.remove(array)
-                Logger.error(e) { "Failed to upload texture '${texture.filePath}" }
+
+                Logger.error(e) { "Failed to upload texture: ${texture.filePath}" }
             }
         }
 
@@ -116,11 +124,19 @@ class TextureBank
 
         val id = glGenTextures()
         glBindTexture(GL_TEXTURE_2D, id)
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
-        glBindTexture(GL_TEXTURE_2D, 0)
+        val previousUnpackAlignment = glGetInteger(GL_UNPACK_ALIGNMENT)
+        try
+        {
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
+        }
+        finally
+        {
+            glPixelStorei(GL_UNPACK_ALIGNMENT, previousUnpackAlignment)
+            glBindTexture(GL_TEXTURE_2D, 0)
+        }
 
         return RenderTexture(name = "fallback", handle = TextureHandle.createGlHandle(id), width = 1, height = 1)
     }

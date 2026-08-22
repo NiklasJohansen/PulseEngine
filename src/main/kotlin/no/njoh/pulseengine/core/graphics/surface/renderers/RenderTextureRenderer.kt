@@ -104,7 +104,7 @@ class RenderTextureRenderer(
             val isDepth       = data[base + 17]
             val alphaMode     = data[base + 18]
 
-            val textureHandle = TextureHandle.fromLong(textureHandles[readHandleOffset + i])
+            val textureHandle = TextureHandle.createFromLong(textureHandles[readHandleOffset + i])
             val sampleTexture = textureHandle.isGlTexture
 
             // Bind texture

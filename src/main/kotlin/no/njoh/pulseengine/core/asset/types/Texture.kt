@@ -33,6 +33,8 @@ open class Texture(
     val maxMipLevels: Int = 15
 ) : Asset(filePath, name) {
 
+    open val uploadExactTextureDimensions = false
+
     var handle = INVALID;    private set
     var width  = initWidth;  private set
     var height = initHeight; private set
@@ -41,11 +43,11 @@ open class Texture(
     var vMin = 0f; private set
     var uMax = 1f; private set
     var vMax = 1f; private set
-
+    
     var pixelsLDR: ByteBuffer?  = null; private set
     var pixelsHDR: FloatBuffer? = null; private set
 
-    open val uploadExactTextureDimensions = false
+    var loadFailed = false; private set
 
     private var afterUpload: (Texture) -> Unit = { }
 
@@ -53,6 +55,7 @@ open class Texture(
     {
         if (filePath.isBlank() || pixelsLDR != null || pixelsHDR != null) return
 
+        loadFailed = false
         try {
             val bytes = filePath.loadBytesFromPath() ?: throw FileNotFoundException("File not found: $filePath")
             val encodedPixels = memAlloc(bytes.size)
@@ -96,16 +99,20 @@ open class Texture(
         }
         catch (e: Exception)
         {
+            loadFailed = true
             Logger.error { "Failed to load image $filePath: ${e.message}" }
         }
     }
 
     fun loadFrom(pixels: ByteBuffer?, width: Int, height: Int, freeWithStbi: Boolean)
     {
+        this.loadFailed = (pixels == null)
         this.pixelsLDR = pixels
         this.width = width
         this.height = height
         this.afterUpload = { tex -> if (freeWithStbi) tex.pixelsLDR?.let { stbi_image_free(it) } }
+        if (pixels == null)
+            Logger.error { "Failed to load image data for texture '$name': pixel buffer is null" }
     }
 
     open fun onUploaded(handle: TextureHandle, uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f)

@@ -1,5 +1,7 @@
 #version 150 core
 
+#define NO_TEXTURE 65534.0
+
 in vec4 vertexColor;
 in vec2 texCoord;
 in float texIndex;
@@ -40,6 +42,9 @@ vec4 sampleTextureBankGrad(int textureArraySlot, vec3 texCoords, vec2 ddx, vec2 
 
 void main()
 {
+    if (texIndex == NO_TEXTURE)
+        discard;
+
     vec2 texCoordDx = dFdx(texCoord);
     vec2 texCoordDy = dFdy(texCoord);
     float signedDistance = sampleTextureBankGrad(int(textureArraySlot), vec3(texCoord, floor(texIndex)), texCoordDx, texCoordDy).a;

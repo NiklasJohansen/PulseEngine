@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle.Companion.NONE
 import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.gpu.buffer.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
@@ -115,7 +116,7 @@ class NormalMapRenderer(
             put(xTiling, yTiling)
             put(normalScale * orientation.xDir)
             put(normalScale * orientation.yDir)
-            put(texture?.handle?.toFloat() ?: -1f)
+            put((texture?.handle ?: NONE).toFloat())
         }
 
         increaseBatchSize()

@@ -32,7 +32,7 @@ class EnvMap(
 
     override fun getSubAssets(): List<Asset>
     {
-        if (!buildIblMaps) return emptyList()
+        if (!buildIblMaps || loadFailed) return emptyList()
         
         // Specular map
         val maxSpecWidth = 2048
@@ -78,6 +78,9 @@ class EnvMap(
     override fun postProcess(engine: PulseEngineInternal)
     {
         val srcEnvMap = engine.asset.getOrNull<EnvMap>(iblSourceName ?: return) ?: return
+        if (!handle.isArrayTexture || !srcEnvMap.handle.isArrayTexture) 
+            return
+
         when
         {
             "_specular_ibl" in name -> generateSpecularIBL(engine, srcEnvMap, dstEnv = this, maxMipLevels)

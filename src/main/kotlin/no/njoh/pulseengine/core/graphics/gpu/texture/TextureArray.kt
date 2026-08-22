@@ -87,19 +87,6 @@ class TextureArray(
             check(format.type == GL_FLOAT) { "Pixel buffer type: ${pixelsHDR::class.simpleName} doesn't match texture format: $format" }
         }
 
-        if (id == -1)
-            init()
-
-        val layerIndex = when
-        {
-            !freeSlots.isEmpty -> freeSlots.removeAt(freeSlots.size() - 1)
-            else ->
-            {
-                ensureCapacity(size + 1)
-                size++
-            }
-        }
-
         // Fill the complete array layer so mipmaps cannot sample unused or stale texels.
         val resamplingRequired = texture.width != textureWidth || texture.height != textureHeight
         if (resamplingRequired)
@@ -123,31 +110,49 @@ class TextureArray(
 
         try
         {
-            glBindTexture(GL_TEXTURE_2D_ARRAY, id)
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+            if (id == -1) init()
 
-            when
+            val layerIndex = when
             {
-                resampledImage != null -> glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, textureWidth, textureHeight, 1, format.pixelFormat, format.type, resampledImage)
-                pixelsLDR != null      -> glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, pixelsLDR)
-                pixelsHDR != null      -> glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, pixelsHDR)
+                !freeSlots.isEmpty -> freeSlots.removeAt(freeSlots.size() - 1)
+                else ->
+                {
+                    ensureCapacity(size + 1)
+                    size++
+                }
             }
 
-            glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
+            val previousUnpackAlignment = glGetInteger(GL_UNPACK_ALIGNMENT)
+            try
+            {
+                glBindTexture(GL_TEXTURE_2D_ARRAY, id)
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+
+                when
+                {
+                    resampledImage != null -> glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, textureWidth, textureHeight, 1, format.pixelFormat, format.type, resampledImage)
+                    pixelsLDR != null      -> glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, pixelsLDR)
+                    pixelsHDR != null      -> glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, texture.width, texture.height, 1, format.pixelFormat, format.type, pixelsHDR)
+                }
+            }
+            finally
+            {
+                glPixelStorei(GL_UNPACK_ALIGNMENT, previousUnpackAlignment)
+                glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
+            }
+
+            if (mipLevels > 1 && (pixelsHDR != null || pixelsLDR != null))
+                mipmapsDirty = true
+
+            val handle = TextureHandle.createArrayHandle(textureArraySlot, layerIndex)
+
+            slotOwners[layerIndex] = texture
+            texture.onUploaded(handle)
         }
         finally
         {
-            if (resampledImage != null)
-                memFree(resampledImage)
+            if (resampledImage != null) memFree(resampledImage)
         }
-
-        if (mipLevels > 1 && (pixelsHDR != null || pixelsLDR != null))
-            mipmapsDirty = true
-
-        val handle = TextureHandle.createArrayHandle(textureArraySlot, layerIndex)
-
-        slotOwners[layerIndex] = texture
-        texture.onUploaded(handle)
     }
 
     fun generatePendingMipmaps()

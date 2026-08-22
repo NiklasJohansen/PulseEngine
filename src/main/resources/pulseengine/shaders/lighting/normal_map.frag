@@ -1,5 +1,7 @@
 #version 150 core
 
+#define NO_TEXTURE 65534.0
+
 in vec2 texSize;
 in vec2 texStart;
 in vec2 texCoord;
@@ -41,6 +43,9 @@ vec4 sampleTextureBankGrad(int textureArraySlot, vec3 texCoords, vec2 ddx, vec2 
 
 void main()
 {
+    if (texIndex == NO_TEXTURE)
+        discard;
+
     vec4 normal = vec4(0.0, 0.0, 1.0, 1.0);
 
     if (texIndex >= 0)

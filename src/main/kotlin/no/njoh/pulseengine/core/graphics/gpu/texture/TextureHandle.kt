@@ -23,6 +23,10 @@ value class TextureHandle private constructor(private val handle: Long)
 
     companion object
     {
+        fun createFromLong(handle: Long) = TextureHandle(handle)
+
+        fun createGlHandle(glId: Int) = TextureHandle((GL_TEXTURE_TYPE shl PAYLOAD_BITS) or (glId.toLong() and PAYLOAD_MASK))
+        
         fun createArrayHandle(textureArraySlot: Int, textureArrayLayer: Int): TextureHandle
         {
             require(textureArraySlot in 0..MAX_TEXTURE_ARRAY_SLOT) { "Texture array slot must be in the range 0..$MAX_TEXTURE_ARRAY_SLOT: $textureArraySlot" }
@@ -31,10 +35,10 @@ value class TextureHandle private constructor(private val handle: Long)
             return TextureHandle((payload shl PAYLOAD_BITS) or payload)
         }
 
-        fun createGlHandle(glId: Int) = TextureHandle((GL_TEXTURE_TYPE shl PAYLOAD_BITS) or (glId.toLong() and PAYLOAD_MASK))
-
-        internal fun fromLong(handle: Long) = TextureHandle(handle)
-
+        /**
+         * Used when there is no texture available.
+         * The shader reads 65534 as the texture layer and knows that it should not sample a texture.
+         */
         val NONE    = TextureHandle((NONE_TYPE shl PAYLOAD_BITS) or NO_TEXTURE_SHADER_PAYLOAD)
         val INVALID = TextureHandle((INVALID_TYPE shl PAYLOAD_BITS) or NO_TEXTURE_SHADER_PAYLOAD)
 
