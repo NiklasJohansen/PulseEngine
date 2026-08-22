@@ -8,6 +8,7 @@ import org.lwjgl.opengl.ARBBufferStorage.GL_DYNAMIC_STORAGE_BIT
 import org.lwjgl.opengl.ARBBufferStorage.GL_MAP_COHERENT_BIT
 import org.lwjgl.opengl.ARBBufferStorage.GL_MAP_PERSISTENT_BIT
 import org.lwjgl.opengl.ARBBufferStorage.glBufferStorage
+import org.lwjgl.opengl.GL11.glGetError
 import org.lwjgl.opengl.GL11.glGetInteger
 import org.lwjgl.opengl.GL15.*
 import org.lwjgl.opengl.GL30.GL_MAP_WRITE_BIT
@@ -124,11 +125,13 @@ class PersistentRingBufferObject(
     {
         if (id == 0) return
 
-        repeat(segmentCount) { idx -> waitForSegment(idx) }
+        for (idx in segmentSyncObjects.indices)
+        {
+            val syncObj = segmentSyncObjects[idx]
+            if (syncObj != 0L) glDeleteSync(syncObj)
+            segmentSyncObjects[idx] = 0L
+        }
 
-        glBindBuffer(target, id)
-        glUnmapBuffer(target)
-        glBindBuffer(target, 0)
         glDeleteBuffers(id)
         id = 0
     }
@@ -148,6 +151,7 @@ class PersistentRingBufferObject(
         if (requiredCapacity <= segmentCapacity)
             return
 
+        repeat(segmentCount) { idx -> waitForSegment(idx) }
         destroy()
 
         val currentSizeKb  = (segmentStrideBytes * segmentCount) / 1024f
@@ -182,15 +186,23 @@ class PersistentRingBufferObject(
         val syncObj = segmentSyncObjects[segmentIndex]
         if (syncObj == 0L) return
 
-        var result = glClientWaitSync(syncObj, GL_SYNC_FLUSH_COMMANDS_BIT, 0L)
-        while (result == GL_TIMEOUT_EXPIRED)
-            result = glClientWaitSync(syncObj, GL_SYNC_FLUSH_COMMANDS_BIT, 1_000_000L) // timeout = 1 ms
+        val waitStartNs = System.nanoTime()
+        val result = glClientWaitSync(syncObj, GL_SYNC_FLUSH_COMMANDS_BIT, MAX_SEGMENT_WAIT_NS)
+        if (result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED)
+        {
+            glDeleteSync(syncObj)
+            segmentSyncObjects[segmentIndex] = 0L
+            return
+        }
 
-        if (result == GL_WAIT_FAILED)
-            Logger.warn { "Failed waiting for persistent model buffer sync object" }
-
-        glDeleteSync(syncObj)
-        segmentSyncObjects[segmentIndex] = 0L
+        val reason = if (result == GL_TIMEOUT_EXPIRED) "Timed out" else "Failed"
+        val waitTimeMs = (System.nanoTime() - waitStartNs) / 1_000_000L
+        val glError = glGetError()
+        throw IllegalStateException(
+            "$reason waiting for persistent GPU buffer fence: buffer=$id, target=$target, binding=$blockBinding, " +
+            "segment=$segmentIndex/$segmentCount, fence=$syncObj, wait=${waitTimeMs}ms, result=$result, " +
+            "glError=0x${Integer.toHexString(glError)}, contextGeneration=${GlCapabilities.contextGeneration}"
+        )
     }
 
     private fun getOffsetAlignment(target: Int) =
@@ -206,4 +218,9 @@ class PersistentRingBufferObject(
     private fun alignUp(value: Int, alignment: Int): Int = ((value + alignment - 1) / alignment) * alignment
 
     private fun grow(current: Int, required: Int, minCapacity: Int = 16) = max(required, max(current * 2, minCapacity))
+
+    companion object
+    {
+        private const val MAX_SEGMENT_WAIT_NS = 5_000_000_000L
+    }
 }
