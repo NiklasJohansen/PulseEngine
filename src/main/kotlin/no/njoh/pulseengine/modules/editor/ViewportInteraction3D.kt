@@ -98,6 +98,14 @@ class ViewportInteraction3D(
     private val tmpP2 = Vector2f()
     private val tmpP3 = Vector2f()
     private val tmpMouse = Vector2f()
+    private val lightBaseCenter = Vector3f()
+    private val lightEndpoint = Vector3f()
+    private val cameraRotation = Matrix4f()
+    private val projectedCircleWorld = Vector3f()
+    private val projectedCircleOffsetA = Vector3f()
+    private val projectedCircleOffsetB = Vector3f()
+    private val projectedCirclePrevious = Vector2f()
+    private val projectedCircleCurrent = Vector2f()
     private val projectedBoundsMin = Vector2f()
     private val projectedBoundsMax = Vector2f()
     private val boundsCorners = Array(8) { Vector3f() }
@@ -792,7 +800,7 @@ class ViewportInteraction3D(
         }
 
         if (entity is Light3D)
-            return Vector3f(entity.position) to max(entity.radius, 1f)
+            return Vector3f(entity.position) to max(entity.range, 1f)
 
         return Vector3f(spatial.position) to 1f
     }
@@ -1564,40 +1572,60 @@ class ViewportInteraction3D(
 
     private fun renderLightInfluence(engine: PulseEngine, context: ViewportContext, light: Light3D)
     {
-        val radius = light.radius.coerceAtLeast(0f)
-        if (radius <= 0f) return
+        val range = if (light.range.isFinite()) light.range.coerceAtLeast(0f) else 0f
+        if (range <= 0f) return
+        val sourceRadius = if (light.sourceRadius.isFinite()) light.sourceRadius.coerceIn(0f, range) else 0f
 
         val surface = engine.gfx.getSurface(GIZMO_SURFACE) ?: return
         val camera = context.camera
         val width = surface.config.width
         val height = surface.config.height
-        val origin = Vector3f(light.position)
-        surface.setDrawColor(LIGHT_VOLUME_COLOR)
-
+        val origin = tmpV0.set(light.position)
         if (light !is ConicalLight3D)
         {
-            drawProjectedCircle(surface, camera, origin, WORLD_X, WORLD_Y, radius, width, height)
-            drawProjectedCircle(surface, camera, origin, WORLD_X, WORLD_Z, radius, width, height)
-            drawProjectedCircle(surface, camera, origin, WORLD_Y, WORLD_Z, radius, width, height)
+            cameraDirections(camera, tmpV1, tmpV2, tmpV3)
+            surface.setDrawColor(LIGHT_VOLUME_COLOR)
+            drawProjectedCircle(surface, camera, origin, tmpV1, tmpV2, range, width, height)
+            if (sourceRadius > 0f)
+            {
+                surface.setDrawColor(LIGHT_SOURCE_RADIUS_COLOR)
+                drawProjectedCircle(surface, camera, origin, tmpV1, tmpV2, sourceRadius, width, height)
+            }
             return
         }
 
-        val forward = light.getDirection(Vector3f())
-        val helper = if (abs(forward.y) < 0.99f) Vector3f(WORLD_Y) else Vector3f(WORLD_X)
-        val right = forward.cross(helper, Vector3f()).normalize()
-        val up = right.cross(forward, Vector3f()).normalize()
-        val baseCenter = Vector3f(forward).mul(radius).add(origin)
-        val baseRadius = tan(light.outerConeAngle.coerceIn(0f, MAX_CONE_ANGLE).toRadians()) * radius
+        val forward = light.getDirection(tmpV1)
+        val right = if (abs(forward.y) < 0.99f) forward.cross(WORLD_Y, tmpV2) else forward.cross(WORLD_X, tmpV2)
+        right.normalize()
+        val up = right.cross(forward, tmpV3).normalize()
+        val outerConeAngle = if (light.outerConeAngle.isFinite()) light.outerConeAngle.coerceIn(0f, MAX_CONE_ANGLE) else 0f
+        val coneSlope = tan(outerConeAngle.toRadians())
+        val baseCenter = lightBaseCenter.set(forward).mul(range).add(origin)
+        val baseRadius = coneSlope * range
 
+        surface.setDrawColor(LIGHT_VOLUME_COLOR)
         drawProjectedCircle(surface, camera, baseCenter, right, up, baseRadius, width, height)
         drawProjectedLine(surface, camera, origin, baseCenter, width, height, clipDepth = true)
         for (i in 0 until LIGHT_CONE_SIDE_COUNT)
         {
             val angle = i.toFloat() / LIGHT_CONE_SIDE_COUNT * Math.PI.toFloat() * 2f
-            val endpoint = Vector3f(baseCenter)
-                .add(Vector3f(right).mul(cos(angle) * baseRadius))
-                .add(Vector3f(up).mul(sin(angle) * baseRadius))
-            drawProjectedLine(surface, camera, origin, endpoint, width, height, clipDepth = true)
+            val rightScale = cos(angle) * baseRadius
+            val upScale = sin(angle) * baseRadius
+            lightEndpoint.set(baseCenter).add(
+                right.x * rightScale + up.x * upScale,
+                right.y * rightScale + up.y * upScale,
+                right.z * rightScale + up.z * upScale
+            )
+            drawProjectedLine(surface, camera, origin, lightEndpoint, width, height, clipDepth = true)
+        }
+
+        if (sourceRadius > 0f && coneSlope > 0f)
+        {
+            val sourceDistance = (sourceRadius / coneSlope).coerceAtMost(range)
+            val visibleSourceRadius = coneSlope * sourceDistance
+            val sourceCenter = lightEndpoint.set(forward).mul(sourceDistance).add(origin)
+            surface.setDrawColor(LIGHT_SOURCE_RADIUS_COLOR)
+            drawProjectedCircle(surface, camera, sourceCenter, right, up, visibleSourceRadius, width, height)
         }
     }
 
@@ -1626,11 +1654,11 @@ class ViewportInteraction3D(
         width: Int,
         height: Int
     ) {
-        val world = Vector3f()
-        val offsetA = Vector3f()
-        val offsetB = Vector3f()
-        val previous = Vector2f()
-        val current = Vector2f()
+        val world = projectedCircleWorld
+        val offsetA = projectedCircleOffsetA
+        val offsetB = projectedCircleOffsetB
+        val previous = projectedCirclePrevious
+        val current = projectedCircleCurrent
         var previousValid = false
         for (i in 0..LIGHT_VOLUME_SEGMENTS)
         {
@@ -1928,7 +1956,7 @@ class ViewportInteraction3D(
 
     private fun cameraDirections(camera: Camera, right: Vector3f, up: Vector3f, forward: Vector3f)
     {
-        val rotation = Matrix4f().rotateY(camera.rotation.y).rotateX(camera.rotation.x).rotateZ(camera.rotation.z)
+        val rotation = cameraRotation.identity().rotateY(camera.rotation.y).rotateX(camera.rotation.x).rotateZ(camera.rotation.z)
         rotation.transformDirection(right.set(1f, 0f, 0f)).normalize()
         rotation.transformDirection(up.set(0f, 1f, 0f)).normalize()
         rotation.transformDirection(forward.set(0f, 0f, -1f)).normalize()
@@ -1936,7 +1964,7 @@ class ViewportInteraction3D(
 
     private fun cameraDirections(camera: Camera3D, right: Vector3f, up: Vector3f, forward: Vector3f)
     {
-        val rotation = Matrix4f().rotateXYZ(
+        val rotation = cameraRotation.identity().rotateXYZ(
             camera.rotation.x.toRadians(),
             camera.rotation.y.toRadians(),
             camera.rotation.z.toRadians()
@@ -2047,6 +2075,7 @@ class ViewportInteraction3D(
         private val ACTIVE_PLANE_COLOR = Color(1f, 0.75f, 0.08f, 0.9f)
         private val LIGHT_MARKER_COLOR = Color(1f, 0.72f, 0.16f, 1f)
         private val LIGHT_VOLUME_COLOR = Color(1f, 0.72f, 0.16f, 0.8f)
+        private val LIGHT_SOURCE_RADIUS_COLOR = Color(0.3f, 0.85f, 1f, 0.9f)
         private val SELECTION_RECT_BORDER_COLOR = Color(1f, 1f, 1f, 1f)
     }
 }

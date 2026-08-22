@@ -387,9 +387,9 @@ class LocalShadowAtlas
         val manualImportance = max(0f, light.shadowImportance)
         val brightness = max(light.color.red, max(light.color.green, light.color.blue))
         val brightnessFactor = min(max(0.1f, brightness), 8f)
-        val radius = max(1f, light.radius)
-        val radiusFactor = min(max(0.5f, sqrt(radius) * 0.25f), 4f)
-        var importance = manualImportance * brightnessFactor * radiusFactor
+        val range = max(1f, light.range)
+        val rangeFactor = min(max(0.5f, sqrt(range) * 0.25f), 4f)
+        var importance = manualImportance * brightnessFactor * rangeFactor
 
         if (cameraPosition == null)
             return max(MIN_SHADOW_UPDATE_IMPORTANCE, importance)
@@ -398,8 +398,8 @@ class LocalShadowAtlas
         val dy = light.position.y - cameraPosition.y()
         val dz = light.position.z - cameraPosition.z()
         val distanceToLight = sqrt(dx * dx + dy * dy + dz * dz)
-        val distanceToInfluence = max(1f, distanceToLight - radius)
-        val distanceFactor = min(max(radius / (radius + distanceToInfluence), 0.05f), 1f)
+        val distanceToInfluence = max(1f, distanceToLight - range)
+        val distanceFactor = min(max(range / (range + distanceToInfluence), 0.05f), 1f)
         importance *= distanceFactor
 
         return max(MIN_SHADOW_UPDATE_IMPORTANCE, importance)
@@ -438,7 +438,7 @@ class LocalShadowAtlas
         return tmpProjection.identity().perspective(90f.toRadians(), 1f, near, far).mul(tmpView)
     }
 
-    private fun RenderLight.getShadowFarPlane() = max(radius, MIN_SHADOW_NEAR_PLANE + MIN_SHADOW_DEPTH_RANGE)
+    private fun RenderLight.getShadowFarPlane() = max(range, MIN_SHADOW_NEAR_PLANE + MIN_SHADOW_DEPTH_RANGE)
 
     private fun RenderLight.getShadowNearPlane(farPlane: Float) =
         shadowNearPlane.coerceIn(MIN_SHADOW_NEAR_PLANE, farPlane - MIN_SHADOW_DEPTH_RANGE)

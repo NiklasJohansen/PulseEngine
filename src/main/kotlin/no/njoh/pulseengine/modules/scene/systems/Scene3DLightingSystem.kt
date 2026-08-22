@@ -1,5 +1,6 @@
 package no.njoh.pulseengine.modules.scene.systems
 
+import com.fasterxml.jackson.annotation.JsonAlias
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.AssetHandle
@@ -227,12 +228,15 @@ interface Scene3DLightSource
     fun onRenderLight(engine: PulseEngine, context: SceneRenderContext)
 }
 
-/** 
- * Finite-radius 3D light. 
+/**
+ * Finite-range 3D light.
  */
 interface Light3D : Scene3DLightSource, Translatable3D
 {
-    var radius: Float
+    @get:JsonAlias("radius")
+    @set:JsonAlias("radius")
+    var range: Float
+    var sourceRadius: Float
 }
 
 /** 

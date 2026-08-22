@@ -149,18 +149,18 @@ class ClusteredLightGrid()
 
     private inline fun forEachTouchedCluster(state: CameraRenderState, light: RenderLight, action: (cluster: Int) -> Unit)
     {
-        if (!state.frustum.intersectsSphere(light.position.x, light.position.y, light.position.z, light.radius))
+        if (!state.frustum.intersectsSphere(light.position.x, light.position.y, light.position.z, light.range))
             return
 
         tmpViewPos.set(light.position.x, light.position.y, light.position.z, 1f).mul(state.viewMatrix)
         val viewDepth = -tmpViewPos.z
-        val radius = max(light.radius, 0.001f)
-        val minDepth = max(nearPlane, viewDepth - radius)
-        val maxDepth = min(farPlane, viewDepth + radius)
+        val range = max(light.range, 0.001f)
+        val minDepth = max(nearPlane, viewDepth - range)
+        val maxDepth = min(farPlane, viewDepth + range)
         if (maxDepth < minDepth)
             return
 
-        if (!projectSphereBoundsToNdc(state, tmpViewPos.x, tmpViewPos.y, radius, minDepth, maxDepth))
+        if (!projectSphereBoundsToNdc(state, tmpViewPos.x, tmpViewPos.y, range, minDepth, maxDepth))
             return
 
         val xMin = screenXToTile(state, xNdcProjectedMin).coerceIn(0, gridWidth - 1)

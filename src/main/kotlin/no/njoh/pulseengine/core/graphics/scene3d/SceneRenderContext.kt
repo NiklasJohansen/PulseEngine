@@ -59,8 +59,9 @@ abstract class SceneRenderContext()
      */
     abstract fun submitPointLight(
         position: Vector3f,
-        radius: Float,
+        range: Float,
         color: Color,
+        sourceRadius: Float = 0.1f,
         shadowEnabled: Boolean = false,
         shadowResolution: Int = 512,
         shadowNearPlane: Float = 0.05f,
@@ -75,10 +76,11 @@ abstract class SceneRenderContext()
     abstract fun submitSpotLight(
         position: Vector3f,
         direction: Vector3f,
-        radius: Float,
+        range: Float,
         color: Color,
         innerConeAngle: Float,
         outerConeAngle: Float,
+        sourceRadius: Float = 0.1f,
         shadowEnabled: Boolean = false,
         shadowResolution: Int = 512,
         shadowNearPlane: Float = 0.05f,

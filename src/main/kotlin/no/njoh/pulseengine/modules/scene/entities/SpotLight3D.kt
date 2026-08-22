@@ -21,11 +21,12 @@ class SpotLight3D : SceneEntity(), Named, ConicalLight3D, Rotatable3D
     @Prop("Transform", i=1) override var position = Vector3f(0f, 1f, 0f)
     @Prop("Transform", i=2) override var rotation = Vector3f(-90f, 0f, 0f)
 
-    @Prop("Lighting", i=1)                            var color          = Color(1f, 1f, 1f)
-    @Prop("Lighting", i=2, min=0f)                    var intensity      = 4f
-    @Prop("Lighting", i=3, min=0f)           override var radius         = 10f
-    @Prop("Lighting", i=4, min=0f, max=89f)  override var outerConeAngle = 40f
-    @Prop("Lighting", i=5, min=0f, max=89f)           var innerConeAngle = 0f
+    @Prop("Lighting", i=1)                           var color          = Color(1f, 1f, 1f)
+    @Prop("Lighting", i=2, min=0f)                   var intensity      = 4f
+    @Prop("Lighting", i=3, min=0f)          override var range          = 10f
+    @Prop("Lighting", i=4, min=0f)          override var sourceRadius   = 0.1f
+    @Prop("Lighting", i=5, min=0f, max=89f) override var outerConeAngle = 40f
+    @Prop("Lighting", i=6, min=0f, max=89f)          var innerConeAngle = 0f
 
     @Prop("Shadow", i=1)          var shadowEnabled    = false
     @Prop("Shadow", i=2, min=64f) var shadowResolution = 512
@@ -43,7 +44,7 @@ class SpotLight3D : SceneEntity(), Named, ConicalLight3D, Rotatable3D
         intensityColor.setFrom(color).multiplyRgb(intensity)
         val outerAngle = outerConeAngle.coerceIn(0f, 89f)
         val innerAngle = innerConeAngle.coerceIn(0f, outerAngle)
-        context.submitSpotLight(position, direction, radius, intensityColor, innerAngle, outerAngle, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, id)
+        context.submitSpotLight(position, direction, range, intensityColor, innerAngle, outerAngle, sourceRadius, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, id)
     }
 
     override fun getDirection(out: Vector3f): Vector3f

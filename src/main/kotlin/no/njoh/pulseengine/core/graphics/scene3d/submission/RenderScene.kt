@@ -44,7 +44,8 @@ class RenderScene
     fun addLight(
         position: Vector3f,
         direction: Vector3f?,
-        radius: Float,
+        range: Float,
+        sourceRadius: Float,
         color: Color,
         innerConeAngle: Float,
         outerConeAngle: Float,
@@ -65,7 +66,8 @@ class RenderScene
         else light.direction.set(0f, -1f, 0f)
 
         light.position.set(position)
-        light.radius = radius.coerceAtLeast(0f)
+        light.range = range.sanitizeNonNegative()
+        light.sourceRadius = sourceRadius.sanitizeNonNegative().coerceAtMost(light.range)
         light.color.setFrom(color)
         light.outerConeAngle = outerConeAngle.sanitizeAngle()
         light.innerConeAngle = min(innerConeAngle.sanitizeAngle(), light.outerConeAngle)

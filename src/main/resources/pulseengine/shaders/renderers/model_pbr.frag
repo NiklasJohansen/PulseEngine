@@ -166,10 +166,11 @@ uniform float     uWboitAlphaCutoff;
 
 struct LocalLightData
 {
-    vec4 positionRadius;
+    vec4 positionRange;
     vec4 colorDirectionX;
     vec4 directionYZOuterInnerCos;
     vec4 isSpotShadowInfo; // x=isSpotLight, y=ShadowBias, z=firstFace, w=faceCount,
+    vec4 sourceRadiusPadding;
 };
 
 struct LocalShadowFaceData
@@ -603,29 +604,30 @@ vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float me
             continue;
 
         LocalLightData light = uLocalLights[int(lightIndex)];
-        vec3  lightPos   = light.positionRadius.xyz;
-        float radius     = light.positionRadius.w;
-        vec3  lightColor = light.colorDirectionX.rgb;
-        vec3  lightDir   = vec3(light.colorDirectionX.w, light.directionYZOuterInnerCos.xy);
-        float outerCos   = light.directionYZOuterInnerCos.z;
-        float innerCos   = light.directionYZOuterInnerCos.w;
-        float isSpot     = light.isSpotShadowInfo.x;
+        vec3  lightPos    = light.positionRange.xyz;
+        float lightRange  = light.positionRange.w;
+        vec3  lightColor  = light.colorDirectionX.rgb;
+        vec3  lightDir    = vec3(light.colorDirectionX.w, light.directionYZOuterInnerCos.xy);
+        float outerCos    = light.directionYZOuterInnerCos.z;
+        float innerCos    = light.directionYZOuterInnerCos.w;
+        float isSpot      = light.isSpotShadowInfo.x;
+        float sourceRadius = max(light.sourceRadiusPadding.x, 0.0);
 
         vec3 toL = lightPos - vWorldPos;
         float d2 = dot(toL, toL);
         float d  = sqrt(max(d2, 1e-6));
 
-        if (d >= radius) continue;
+        if (d >= lightRange) continue;
 
         vec3 L = toL / d;
         float NdotL = max(dot(N, L), 0.0);
         if (NdotL <= 0.0) continue;
 
         // Distance attenuation
-        float x = d / max(radius, 1e-6);
+        float x = d / max(lightRange, 1e-6);
         float smoothCutoff = clamp(1.0 - x*x*x*x, 0.0, 1.0);
         smoothCutoff *= smoothCutoff;
-        float invD2 = 1.0 / max(d2, 1e-4);
+        float invD2 = 1.0 / max(d2 + sourceRadius * sourceRadius, 1e-4);
         float attenuation = invD2 * smoothCutoff;
 
         // Spot light cone attenuation

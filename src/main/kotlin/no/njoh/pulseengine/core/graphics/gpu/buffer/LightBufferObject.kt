@@ -57,10 +57,11 @@ class LightBufferObject
             val castsShadow = if (light.shadowEnabled && light.shadowFaceOffset >= 0 && light.shadowFaceCount > 0) 1f else 0f
             val shadowBias = if (castsShadow > 0f) light.shadowBias else -1f
 
-            put(light.position.x, light.position.y, light.position.z, light.radius)
+            put(light.position.x, light.position.y, light.position.z, light.range)
             put(color.red, color.green, color.blue, light.direction.x)
             put(light.direction.y, light.direction.z, cos(light.outerConeAngle.toRadians()), cos(light.innerConeAngle.toRadians()))
             put(isSpotLight, shadowBias, light.shadowFaceOffset.toFloat(), light.shadowFaceCount.toFloat())
+            put(light.sourceRadius, 0f, 0f, 0f)
         }
     }
 
@@ -115,7 +116,7 @@ class LightBufferObject
         const val SHADOW_FACE_BUFFER_BINDING = 16
 
         private const val BUFFER_SEGMENTS = 3
-        private const val LIGHT_FLOATS = 16
+        private const val LIGHT_FLOATS = 20
         private const val SHADOW_FACE_FLOATS = 20
     }
 }
