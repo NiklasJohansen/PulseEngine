@@ -134,6 +134,7 @@ class PulseEngineImpl(
                 is Texture  -> gfx.deleteTexture(it)
                 is Font     -> gfx.deleteTexture(it.charTexture)
                 is Material -> gfx.deleteMaterial(it)
+                is Shader   -> gfx.deleteShader(it)
                 is Model    -> gfx.deleteModel(it)
                 is Sound    -> audio.deleteSound(it)
                 is Cursor   -> input.deleteCursor(it)

@@ -44,6 +44,7 @@ class NoOpGraphics : GraphicsInternal
     override fun getSurface(name: String) = null
     override fun getSurfaceOrDefault(name: String) = mainSurface
     override fun compileShader(shader: Shader) {}
+    override fun deleteShader(shader: Shader) {}
     override fun init(engine: PulseEngineInternal) {}
     override fun uploadModel(model: Model) {}
     override fun deleteModel(model: Model) {}

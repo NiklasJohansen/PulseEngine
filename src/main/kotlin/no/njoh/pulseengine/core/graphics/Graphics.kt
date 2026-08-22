@@ -102,6 +102,7 @@ interface GraphicsInternal : Graphics
     fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean)
     fun updateCameras()
     fun compileShader(shader: Shader)
+    fun deleteShader(shader: Shader)
     fun initFrame(engine: PulseEngineInternal)
     fun drawFrame(engine: PulseEngineInternal)
     fun setGpuLogLevel(logLevel: LogLevel)

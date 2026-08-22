@@ -359,6 +359,17 @@ open class GraphicsImpl : GraphicsInternal
         else shader.setId(id)
     }
 
+    override fun deleteShader(shader: Shader)
+    {
+        val id = shader.currentId
+        if (id == INVALID_ID || errorShaders[shader.type] === shader)
+            return
+
+        shader.setErrorId(errorShaders[shader.type]?.currentId ?: INVALID_ID)
+        shader.setId(INVALID_ID)
+        glDeleteShader(id)
+    }
+
     private fun validateShaderContract(shader: Shader)
     {
         val contract = GlCapabilities.glContract
