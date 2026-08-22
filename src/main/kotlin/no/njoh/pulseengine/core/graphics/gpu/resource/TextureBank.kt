@@ -83,6 +83,7 @@ class TextureBank
     fun destroy()
     {
         textureArrays.forEachFast { it.destroy() }
+        emptyTextureArray.destroy()
         fallbackTextures.forEachValue { glDeleteTextures(it.handle.glId); true }
         fallbackTextures.clear()
         fallbackDepthTexture?.let { glDeleteTextures(it.handle.glId) }

@@ -17,6 +17,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.MSAA4
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderType.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA16F
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureSampler
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextImpl
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
@@ -395,6 +396,7 @@ open class GraphicsImpl : GraphicsInternal
         materialBank.destroy()
         modelBank.destroy()
         fullscreenPass.destroy()
+        TextureSampler.destroy()
         GpuProfiler.destroy()
         GpuLogger.destroy()
     }

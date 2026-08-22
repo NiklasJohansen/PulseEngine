@@ -2,6 +2,7 @@ package no.njoh.pulseengine.core.graphics.gpu.texture
 
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT
 import org.lwjgl.opengl.GL33.*
 
@@ -74,5 +75,11 @@ data class TextureSampler(
             if (!GlCapabilities.textureFilterAnisotropic) TextureAnisotropy.OFF.value
             else if (anisotropy.value < 0f) GlCapabilities.maxTextureAnisotropy
             else anisotropy.value.coerceIn(1f, GlCapabilities.maxTextureAnisotropy)
+
+        fun destroy()
+        {
+            samplers.forEachFast { glDeleteSamplers(it.id) }
+            samplers.clear()
+        }
     }
 }
