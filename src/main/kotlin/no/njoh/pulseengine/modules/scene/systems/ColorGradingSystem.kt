@@ -13,14 +13,14 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 @Name("Color Grading")
 class ColorGradingSystem : SceneSystem()
 {
-    @Prop(i=0)                 var toneMapper     = ACES
-    @Prop(i=1)                 var lutTexture     = AssetHandle<Texture>()
-    @Prop(i=2, min=0f, max=1f) var lutIntensity   = 1f
-    @Prop(i=3, min=0f)         var exposure       = 1f
-    @Prop(i=4)                 var contrast       = 1f
-    @Prop(i=5, min=0f)         var saturation     = 1f
-    @Prop(i=6, min=0f)         var vignette       = 0f
-    @Prop(i=7)                 var targetSurfaces = "scene3d"
+    @Prop(i=0)                    var toneMapper     = ACES
+    @Prop(i=1, min=-16f, max=16f) var exposureEv     = 0f
+    @Prop(i=2)                    var contrast       = 1f
+    @Prop(i=3, min=0f)            var saturation     = 1f
+    @Prop(i=4, min=0f)            var vignette       = 0f
+    @Prop(i=5, min=0f, max=1f)    var lutIntensity   = 1f
+    @Prop(i=6)                    var lutTexture     = AssetHandle<Texture>()
+    @Prop(i=7)                    var targetSurfaces = "scene3d"
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()
@@ -58,15 +58,15 @@ class ColorGradingSystem : SceneSystem()
             return
         }
 
-        effect.lutTexture   = lutTexture.name
-        effect.lutIntensity = lutIntensity
         effect.toneMapper   = toneMapper
-        effect.exposure     = exposure
+        effect.exposureEv   = exposureEv
         effect.contrast     = contrast
         effect.saturation   = saturation
         effect.vignette     = vignette
+        effect.lutIntensity = lutIntensity
+        effect.lutTexture   = lutTexture.name
     }
-    
+
     companion object
     {
         var EFFECT_NAME  = "color_grading"

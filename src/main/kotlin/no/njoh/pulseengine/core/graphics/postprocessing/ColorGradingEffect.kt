@@ -16,7 +16,7 @@ class ColorGradingEffect(
     var toneMapper: ToneMapper = ACES,
     var lutTexture: String = "",
     var lutIntensity: Float = 1.0f,
-    var exposure: Float = 1.0f,
+    var exposureEv: Float = 0f,
     var contrast: Float = 1f,
     var saturation: Float = 1f,
     var vignette: Float = 0f
@@ -42,7 +42,7 @@ class ColorGradingEffect(
         program.setUniform("lutIntensity", lutIntensity)
         program.setUniform("lutSize", lutTex?.height?.toFloat() ?: 0f)
         program.setUniform("toneMapper", toneMapper.value)
-        program.setUniform("exposure", exposure)
+        program.setUniform("exposureEv", exposureEv)
         program.setUniform("contrast", contrast)
         program.setUniform("saturation", saturation)
         program.setUniform("vignette", vignette)

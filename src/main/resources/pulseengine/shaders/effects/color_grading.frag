@@ -7,13 +7,16 @@ uniform sampler2D baseTex;
 uniform sampler2DArray lutTexArray;
 
 uniform int toneMapper;
-uniform float exposure;
+uniform float exposureEv;
 uniform float contrast;
 uniform float saturation;
 uniform float vignette;
 uniform vec3 lutTexCoord;
 uniform float lutIntensity;
 uniform float lutSize;
+
+const float MAX_HDR_VALUE = 65504.0;
+const float MAX_GRADING_CONTROL = 100.0;
 
 // Narkowicz 2015, "ACES Filmic Tone Mapping Curve"
 vec3 aces(vec3 x)
@@ -118,15 +121,22 @@ void main()
     vec4 color = texture(baseTex, uv);
 
     // Exposure
-    color.rgb *= pow(2.0, exposure) - 1.0;
+    color.rgb *= exp2(clamp(exposureEv, -16.0, 16.0));
 
     // Contrast
-    color.rgb = ((color.rgb - 0.5f) * max(1.0 + 0.05 * (contrast - 1), 0)) + 0.5f;
+    float contrastAmount = clamp(1.0 + 0.05 * (contrast - 1.0), 0.0, MAX_GRADING_CONTROL);
+    color.rgb = ((color.rgb - 0.5) * contrastAmount) + 0.5;
 
     // Saturation
     vec3 weights   = vec3(0.2125, 0.7154, 0.0721);
     vec3 intensity = vec3(dot(color.rgb, weights));
-    color.rgb = mix(intensity, color.rgb, saturation > 1.0 ? (1.0 + 0.1 * saturation) : saturation);
+    color.rgb = mix(intensity, color.rgb, clamp(saturation, 0.0, MAX_GRADING_CONTROL));
+
+    // Fractional powers in some tone mappers require finite, non-negative input.
+    if (any(isnan(color.rgb)) || any(isinf(color.rgb)))
+        color.rgb = vec3(0.0);
+    else
+        color.rgb = clamp(color.rgb, vec3(0.0), vec3(MAX_HDR_VALUE));
 
     // Tone mapping
     switch (toneMapper)
