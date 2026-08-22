@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.asset.types.Material.BlendMode.MASK
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.gpu.buffer.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import java.util.ArrayDeque
 
 class MaterialBank
@@ -79,6 +80,11 @@ class MaterialBank
         dirty = false
     }
 
+    fun markDirty()
+    {
+        dirty = true
+    }
+
     private fun ensureBuffer()
     {
         if (buffer != null) return
@@ -93,11 +99,11 @@ class MaterialBank
     private fun hasDirtyMaterials(): Boolean
     {
         var hasDirtyMaterials = false
-        for (material in materials)
+        materials.forEachFast()
         {
-            if (material?.isDirty == true)
+            if (it?.isDirty == true)
             {
-                material.isDirty = false
+                it.isDirty = false
                 hasDirtyMaterials = true
             }
         }
@@ -130,7 +136,7 @@ class MaterialBank
 
     private fun DoubleBufferedFloatObject.putTexture(texture: Texture?)
     {
-        if (texture != null)
+        if (texture?.handle?.isArrayTexture == true)
             put(texture.handle.textureArraySlot.toFloat(), texture.handle.textureArrayLayer.toFloat(), texture.uMax, texture.vMax)
         else
             put(-1f, 0f, 0f, 0f)
@@ -143,6 +149,5 @@ class MaterialBank
         private val DEFAULT_MATERIAL_COLOR = Color(1f, 0f, 1f, 1f)
 
         private const val MATERIAL_FLOATS = 32
-        private const val MATERIAL_FLAG_FLIP_NORMALS = 1
     }
 }

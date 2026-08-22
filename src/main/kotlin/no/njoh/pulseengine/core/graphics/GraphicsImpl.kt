@@ -315,9 +315,17 @@ open class GraphicsImpl : GraphicsInternal
 
     override fun deleteModel(model: Model) = modelBank.delete(model)
 
-    override fun uploadTexture(texture: Texture) = textureBank.upload(texture)
+    override fun uploadTexture(texture: Texture)
+    {
+        textureBank.upload(texture)
+        materialBank.markDirty()
+    }
 
-    override fun deleteTexture(texture: Texture) = textureBank.delete(texture)
+    override fun deleteTexture(texture: Texture)
+    {
+        textureBank.delete(texture)
+        materialBank.markDirty()
+    }
 
     override fun uploadMaterial(material: Material) = materialBank.upload(material)
 
