@@ -79,8 +79,9 @@ class Frustum(
     }
 
     /**
-     * Builds a single conservative frustum for two horizontally adjacent camera views.
-     * The left and right projections provide the two outer horizontal planes.
+     * Builds one culling frustum that covers two side-by-side stereo views.
+     * The views must point in the same direction and use the same vertical, near and far planes.
+     * This may include a few extra objects, but avoids culling the scene once for each eye.
      */
     fun setForSideBySideViewProjections(leftViewProjection: Matrix4f, rightViewProjection: Matrix4f): Frustum
     {
