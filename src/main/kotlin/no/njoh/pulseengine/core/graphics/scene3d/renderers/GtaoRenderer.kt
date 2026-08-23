@@ -14,12 +14,13 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.gpu.buffer.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
-import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawTriangleVertices
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Logger
 import org.joml.Matrix4f
 import org.lwjgl.opengl.GL11.GL_BLEND
 import org.lwjgl.opengl.GL11.GL_DEPTH_TEST
@@ -62,6 +63,7 @@ class GtaoRenderer(
     private var prevInvProjection = Matrix4f()
     private var prevViewProjection = Matrix4f()
     private var historyValid = false
+    private var missingDepthMapLogged = false
 
     private var aoTextureDescriptors = 
         listOf(TextureDescriptor(format = R16F, filter = NEAREST, multisampling = NONE, scale = 1f / downsampleFactor))
@@ -132,7 +134,9 @@ class GtaoRenderer(
 
     override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
-        increaseBatchSize() // To ensure the batch is rendered
+        val isAvailable = ensureDepthMapAvailable(surface)
+        if (isAvailable)
+            increaseBatchSize()
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -140,7 +144,6 @@ class GtaoRenderer(
         if (startIndex != 0) return
 
         // TODO: The resolved single sampled depth textures has jagged edges. Make custom MSAA resolver that writes coverage to a separate channel
-        // TODO: See latest reply here: https://chatgpt.com/share/697694a7-2ce0-8007-89e9-49ac8be5095d
         val depthTex = surface.renderTarget.getTexture(DEPTH_TEXTURE) ?: return
 
         // Main GTAO render pass
@@ -348,6 +351,30 @@ class GtaoRenderer(
             return // No need to update
         fbo.destroy()
         onNewFbo(FrameBufferObject.create(surface.config.renderWidth, surface.config.renderHeight, texDescriptors))
+    }
+
+    private fun ensureDepthMapAvailable(surface: Surface): Boolean
+    {
+        val depthPrepass = surface.getRenderer<DepthPrepassRenderer>()
+        if (depthPrepass == null || depthPrepass.order > this.order)
+        {
+            if (!missingDepthMapLogged)
+            {
+                Logger.error()
+                {
+                    "GTAO on surface '${surface.config.name}' requires a DepthPrepassRenderer with an order lower than $order. " +
+                    "Depth prepass${depthPrepass?.order?.toString()?.let { " order: $it" } ?: ": missing"}. Skipping GTAO."
+                }
+            }
+
+            outputAoTex = null
+            historyValid = false
+            missingDepthMapLogged = true
+            return false
+        }
+
+        missingDepthMapLogged = false
+        return true
     }
 
     override fun destroy(engine: PulseEngineInternal)
