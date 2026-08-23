@@ -260,10 +260,10 @@ vec3 sampleWorldSpaceNormal(MaterialData material, vec2 texCoordDx, vec2 texCoor
     // Tangent-space normal
     vec3 normalTs = sampleTexOrDefault(material.normalTex, vec3(0.5, 0.5, 1.0), tiling, texCoordDx, texCoordDy).rgb * 2.0 - 1.0;
 
+    normalLenTS = min(length(normalTs), 1.0);
     normalTs.xy *= material.aoMetalRoughNormalFactor.w; // Normal scale
 
     float len = max(length(normalTs), 1e-5);
-    normalLenTS = min(len, 1.0);
 
     // To world space
     vec3 N = normalize(vTBN * (normalTs / len));
