@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.renderers.GridRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ViewMode
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.RenderIdOutlineRenderer
+import no.njoh.pulseengine.core.graphics.scene3d.submission.ModelItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
@@ -32,7 +33,6 @@ import no.njoh.pulseengine.modules.scene.systems.Light3D
 import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderSystem
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.AxisColors
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
 import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -856,6 +856,42 @@ class ViewportInteraction3D(
         setTransformedPoint(boundsCorners[6], bounds.xMin, bounds.yMax, bounds.zMax, item.transform)
         setTransformedPoint(boundsCorners[7], bounds.xMax, bounds.yMax, bounds.zMax, item.transform)
 
+        return projectedTransformedBoundsOverlap(camera, width, height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
+    }
+
+    private fun projectModelSubmissionOverlaps(
+        camera: Camera,
+        submission: ModelItem,
+        width: Int,
+        height: Int,
+        selectionXMin: Float,
+        selectionYMin: Float,
+        selectionXMax: Float,
+        selectionYMax: Float
+    ): Boolean {
+        val bounds = submission.model.localBounds ?: return false
+        setTransformedPoint(boundsCorners[0], bounds.xMin, bounds.yMin, bounds.zMin, submission.transform)
+        setTransformedPoint(boundsCorners[1], bounds.xMax, bounds.yMin, bounds.zMin, submission.transform)
+        setTransformedPoint(boundsCorners[2], bounds.xMin, bounds.yMax, bounds.zMin, submission.transform)
+        setTransformedPoint(boundsCorners[3], bounds.xMax, bounds.yMax, bounds.zMin, submission.transform)
+        setTransformedPoint(boundsCorners[4], bounds.xMin, bounds.yMin, bounds.zMax, submission.transform)
+        setTransformedPoint(boundsCorners[5], bounds.xMax, bounds.yMin, bounds.zMax, submission.transform)
+        setTransformedPoint(boundsCorners[6], bounds.xMin, bounds.yMax, bounds.zMax, submission.transform)
+        setTransformedPoint(boundsCorners[7], bounds.xMax, bounds.yMax, bounds.zMax, submission.transform)
+
+        return projectedTransformedBoundsOverlap(camera, width, height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
+    }
+
+    private fun projectedTransformedBoundsOverlap(
+        camera: Camera,
+        width: Int,
+        height: Int,
+        selectionXMin: Float,
+        selectionYMin: Float,
+        selectionXMax: Float,
+        selectionYMax: Float
+    ): Boolean {
+
         projectedBoundsMin.set(Float.MAX_VALUE, Float.MAX_VALUE)
         projectedBoundsMax.set(-Float.MAX_VALUE, -Float.MAX_VALUE)
         
@@ -1052,6 +1088,15 @@ class ViewportInteraction3D(
         )
     }
 
+    private fun setTransformedPoint(out: Vector3f, x: Float, y: Float, z: Float, transform: Matrix4f)
+    {
+        out.set(
+            transform.m00() * x + transform.m10() * y + transform.m20() * z + transform.m30(),
+            transform.m01() * x + transform.m11() * y + transform.m21() * z + transform.m31(),
+            transform.m02() * x + transform.m12() * y + transform.m22() * z + transform.m32()
+        )
+    }
+
     private fun collectMarqueeMatches(
         engine: PulseEngine,
         camera: Camera,
@@ -1062,48 +1107,56 @@ class ViewportInteraction3D(
     ) {
         boundedMarqueeRenderIds.clear()
         matchedMarqueeRenderIds.clear()
-        val scene = engine.gfx.sceneContext.getSubmittedScene()
-        collectMarqueeMatches(scene.opaqueItems, camera, engine.window.width, engine.window.height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
-        collectMarqueeMatches(scene.maskedItems, camera, engine.window.width, engine.window.height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
-        collectMarqueeMatches(scene.blendedItems, camera, engine.window.width, engine.window.height, selectionXMin, selectionYMin, selectionXMax, selectionYMax)
-    }
+        val snapshot = engine.gfx.sceneContext.getSubmittedSceneSnapshot()
+        val width = engine.window.width
+        val height = engine.window.height
 
-    private fun collectMarqueeMatches(
-        items: DynamicList<RenderItem>,
-        camera: Camera,
-        width: Int,
-        height: Int,
-        selectionXMin: Float,
-        selectionYMin: Float,
-        selectionXMax: Float,
-        selectionYMax: Float
-    ) {
-        items.forEach { item ->
+        for (i in 0 until snapshot.renderItemCount)
+        {
+            val item = snapshot.getRenderItem(i)
             if (item.renderId < 0L)
-                return@forEach
+                continue
 
             boundedMarqueeRenderIds.add(item.renderId)
             if (item.renderId !in matchedMarqueeRenderIds && projectRenderItemOverlaps(camera, item, width, height, selectionXMin, selectionYMin, selectionXMax, selectionYMax))
+                matchedMarqueeRenderIds.add(item.renderId)
+        }
+
+        for (i in 0 until snapshot.modelItemCount)
+        {
+            val item = snapshot.getModelItem(i)
+            if (item.renderId < 0L || item.model.localBounds == null)
+                continue
+
+            boundedMarqueeRenderIds.add(item.renderId)
+            if (item.renderId !in matchedMarqueeRenderIds && projectModelSubmissionOverlaps(camera, item, width, height, selectionXMin, selectionYMin, selectionXMax, selectionYMax))
                 matchedMarqueeRenderIds.add(item.renderId)
         }
     }
 
     private fun getSubmittedRenderIdBounds(engine: PulseEngine, renderId: Long, outBounds: Model.Aabb): Boolean
     {
-        val scene = engine.gfx.sceneContext.getSubmittedScene()
+        val snapshot = engine.gfx.sceneContext.getSubmittedSceneSnapshot()
         var found = false
-        found = includeRenderIdBounds(scene.opaqueItems, renderId, outBounds, found)
-        found = includeRenderIdBounds(scene.maskedItems, renderId, outBounds, found)
-        found = includeRenderIdBounds(scene.blendedItems, renderId, outBounds, found)
-        return found
-    }
 
-    private fun includeRenderIdBounds(items: DynamicList<RenderItem>, renderId: Long, outBounds: Model.Aabb, hasExistingBounds: Boolean): Boolean
-    {
-        var found = hasExistingBounds
-        items.forEach { item ->
-            if (item.renderId != renderId) return@forEach
+        for (i in 0 until snapshot.renderItemCount)
+        {
+            val item = snapshot.getRenderItem(i)
+            if (item.renderId != renderId)
+                continue
+
             includeRenderItemBounds(item, outBounds, found)
+            found = true
+        }
+
+        for (i in 0 until snapshot.modelItemCount)
+        {
+            val item = snapshot.getModelItem(i)
+            val bounds = item.model.localBounds ?: continue
+            if (item.renderId != renderId)
+                continue
+
+            includeModelItemBounds(bounds, item.transform, outBounds, found)
             found = true
         }
         return found
@@ -1127,6 +1180,46 @@ class ViewportInteraction3D(
         val xWorldHalf   = abs(transform.m00) * xHalf + abs(transform.m10) * yHalf + abs(transform.m20) * zHalf
         val yWorldHalf   = abs(transform.m01) * xHalf + abs(transform.m11) * yHalf + abs(transform.m21) * zHalf
         val zWorldHalf   = abs(transform.m02) * xHalf + abs(transform.m12) * yHalf + abs(transform.m22) * zHalf
+
+        val xMin = xWorldCenter - xWorldHalf
+        val yMin = yWorldCenter - yWorldHalf
+        val zMin = zWorldCenter - zWorldHalf
+        val xMax = xWorldCenter + xWorldHalf
+        val yMax = yWorldCenter + yWorldHalf
+        val zMax = zWorldCenter + zWorldHalf
+
+        if (!hasExistingBounds)
+        {
+            outBounds.set(xMin, yMin, zMin, xMax, yMax, zMax)
+        }
+        else
+        {
+            outBounds.set(
+                min(outBounds.xMin, xMin),
+                min(outBounds.yMin, yMin),
+                min(outBounds.zMin, zMin),
+                max(outBounds.xMax, xMax),
+                max(outBounds.yMax, yMax),
+                max(outBounds.zMax, zMax)
+            )
+        }
+    }
+
+    private fun includeModelItemBounds(bounds: Model.Aabb, transform: Matrix4f, outBounds: Model.Aabb, hasExistingBounds: Boolean)
+    {
+        val xCenter = (bounds.xMin + bounds.xMax) * 0.5f
+        val yCenter = (bounds.yMin + bounds.yMax) * 0.5f
+        val zCenter = (bounds.zMin + bounds.zMax) * 0.5f
+        val xHalf   = (bounds.xMax - bounds.xMin) * 0.5f
+        val yHalf   = (bounds.yMax - bounds.yMin) * 0.5f
+        val zHalf   = (bounds.zMax - bounds.zMin) * 0.5f
+
+        val xWorldCenter = transform.m00() * xCenter + transform.m10() * yCenter + transform.m20() * zCenter + transform.m30()
+        val yWorldCenter = transform.m01() * xCenter + transform.m11() * yCenter + transform.m21() * zCenter + transform.m31()
+        val zWorldCenter = transform.m02() * xCenter + transform.m12() * yCenter + transform.m22() * zCenter + transform.m32()
+        val xWorldHalf   = abs(transform.m00()) * xHalf + abs(transform.m10()) * yHalf + abs(transform.m20()) * zHalf
+        val yWorldHalf   = abs(transform.m01()) * xHalf + abs(transform.m11()) * yHalf + abs(transform.m21()) * zHalf
+        val zWorldHalf   = abs(transform.m02()) * xHalf + abs(transform.m12()) * yHalf + abs(transform.m22()) * zHalf
 
         val xMin = xWorldCenter - xWorldHalf
         val yMin = yWorldCenter - yWorldHalf

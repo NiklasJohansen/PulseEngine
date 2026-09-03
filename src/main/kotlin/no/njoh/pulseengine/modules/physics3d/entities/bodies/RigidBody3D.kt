@@ -223,7 +223,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
             }
             CONVEX_HULL ->
             {
-                for (mesh in model?.collisionMeshes ?: emptyList())
+                for (mesh in model?.collisionMeshes ?: emptyArray())
                 {
                     updateShapeDefinition(shapeCount++, { ConvexHullGeometry3D(mesh) })
                     {
@@ -234,7 +234,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
             }
             TRIANGLE_MESH ->
             {
-                for (mesh in model?.collisionMeshes ?: emptyList())
+                for (mesh in model?.collisionMeshes ?: emptyArray())
                 {
                     updateShapeDefinition(shapeCount++, { TriangleMeshGeometry3D(mesh) })
                     {

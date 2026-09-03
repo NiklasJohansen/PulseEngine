@@ -130,14 +130,13 @@ class Frustum(
     /**
      * Tests if a sphere intersects the frustum.
      */
-    fun intersectsSphere(x: Float, y: Float, z: Float, r: Float): Boolean
-    {
-        for (i in 0 until 6)
-        {
-            if (planeSet[i].distanceToPoint(x, y, z) < -r) return false
-        }
-        return true
-    }
+    fun intersectsSphere(x: Float, y: Float, z: Float, r: Float): Boolean =
+        left.distanceToPoint(x, y, z)   >= -r &&
+        right.distanceToPoint(x, y, z)  >= -r &&
+        bottom.distanceToPoint(x, y, z) >= -r &&
+        top.distanceToPoint(x, y, z)    >= -r &&
+        near.distanceToPoint(x, y, z)   >= -r &&
+        far.distanceToPoint(x, y, z)    >= -r
 
     /**
      * Represents a plane in 3D space using the equation: ax + by + cz + d = 0
@@ -252,10 +251,11 @@ class Frustum(
         fun add(a: Float, b: Float, c: Float, d: Float)
         {
             require(size < planes.size) { "Culling plane set capacity exceeded: ${planes.size}" }
-            planes[size].a = a
-            planes[size].b = b
-            planes[size].c = c
-            planes[size].d = d
+            val plane = planes[size]
+            plane.a = a
+            plane.b = b
+            plane.c = c
+            plane.d = d
             size++
         }
 

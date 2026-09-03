@@ -17,6 +17,7 @@ class GlobalShadowRenderView : RenderView(GLOBAL_SHADOW)
         private set
 
     private var cascadeFrustumPlaneSets = arrayOf<FrustumPlaneSet>()
+
     override fun beginFrame()
     {
         drawPayload = EmptyDrawPayload

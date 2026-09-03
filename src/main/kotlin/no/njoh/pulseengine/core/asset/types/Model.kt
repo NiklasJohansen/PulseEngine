@@ -81,17 +81,18 @@ class Model(
     var indices     = IntArray(0);   private set
     var vertexBytes = ByteArray(0);  private set
 
-    var meshes          = emptyList<Mesh>();          private set
-    var meshInstances   = emptyList<MeshInstance>();  private set
-    var collisionMeshes = emptyList<CollisionMesh>(); private set
-    var lodLevels       = emptyList<LodLevel>();      private set
-    var materials       = emptyList<MeshMaterial>();  private set
-    var bones           = emptyList<Bone>();          private set
-    var localBounds     = null as Aabb?;              private set
-    var hasTexCoords    = false;                      private set
-    var hasBones        = false;                      private set
+    var meshes              = emptyArray<Mesh>();                  private set
+    var meshInstances       = emptyArray<MeshInstance>();          private set
+    var collisionMeshes     = emptyArray<CollisionMesh>();         private set
+    var lodLevels           = arrayOf(emptyArray<MeshInstance>()); private set
+    var materials           = emptyArray<MeshMaterial>();          private set
+    var bones               = emptyArray<Bone>();                  private set
+    var localBounds         = null as Aabb?;                       private set
+    var localBoundingSphere = ZERO_BOUNDING_SPHERE;                private set
+    var hasTexCoords        = false;                               private set
+    var hasBones            = false;                               private set
 
-    private var animations                     = ArrayList<Animation>()
+    private var animations                     = emptyArray<Animation>()
     private val embeddedTextures               = TIntObjectHashMap<EmbeddedTexture>()
     private val embeddedTexturesByPath         = THashMap<String, EmbeddedTexture>()
     private val globalNodeTransforms           = THashMap<String, Matrix4f>()
@@ -114,7 +115,7 @@ class Model(
         this.vertices = FloatArray(0)
         this.vertexBytes = ByteArray(0)
         this.indices = IntArray(0)
-        this.collisionMeshes = emptyList()
+        this.collisionMeshes = emptyArray()
     }
 
     fun onUploaded(vao: VertexArrayObject, vbo: StaticBufferObject, ebo: StaticBufferObject)
@@ -189,8 +190,8 @@ class Model(
                     val instances = mutableListOf<MeshInstance>()
                     val collisionMeshes = mutableListOf<CollisionMesh>()
                     buildSubMeshInstances(it, Matrix4f(), instances, collisionMeshes)
-                    this.meshInstances = instances
-                    this.collisionMeshes = collisionMeshes
+                    this.meshInstances = instances.toTypedArray()
+                    this.collisionMeshes = collisionMeshes.toTypedArray()
 
                     buildBoundsAndLodLevels()
                     buildConservativeAnimatedBounds()
@@ -257,6 +258,7 @@ class Model(
             val bitangents   = mesh.mBitangents()
             val texCoords    = mesh.mTextureCoords(0)
             val materialIdx  = mesh.mMaterialIndex()
+            val lodLevel     = mesh.mName().dataString().extractLodLevel()
 
             if (hasBones)
             {
@@ -437,19 +439,19 @@ class Model(
                 vertexCount = numVertices,
                 materialIndex = materialIdx,
                 vertexStride = stride,
-                localBounds = Aabb(xMin, yMin, zMin, xMax, yMax, zMax)
+                localBounds = Aabb(xMin, yMin, zMin, xMax, yMax, zMax),
+                lodLevel = lodLevel
             )
 
             globalVertexOffset += numVertices
         }
 
-        val hasBoneAttributes = bones.isNotEmpty()
         this.vertices     = vertexData
-        this.vertexBytes  = ModelVertexCompressor.compress(vertexData, totalVertices, stride, hasTexCoords, hasBoneAttributes)
+        this.vertexBytes  = ModelVertexCompressor.compress(vertexData, totalVertices, stride, hasTexCoords, bones.isNotEmpty())
         this.indices      = indices
         this.hasTexCoords = hasTexCoords
-        this.hasBones     = hasBoneAttributes
-        this.bones        = bones
+        this.hasBones     = bones.isNotEmpty()
+        this.bones        = bones.toTypedArray()
         this.meshes       = if (this.hasBones)
         {
             meshes.map()
@@ -462,9 +464,9 @@ class Model(
                         hasTexCoords = hasTexCoords
                     )
                 )
-            }
+            }.toTypedArray()
         }
-        else meshes
+        else meshes.toTypedArray()
 
         if (maxTrianglesPerMesh > 0) Logger.debug()
         {
@@ -554,6 +556,7 @@ class Model(
         val numMaterials = scene.mNumMaterials()
         val materialPointers = scene.mMaterials() ?: return
         val materials = mutableListOf<MeshMaterial>()
+
         for (i in 0 until numMaterials)
         {
             val material = AIMaterial.create(materialPointers[i])
@@ -615,7 +618,7 @@ class Model(
             )
         }
 
-        this.materials = materials
+        this.materials = materials.toTypedArray()
     }
 
     private fun readEmbeddedTextures(scene: AIScene)
@@ -677,17 +680,11 @@ class Model(
     {
         val animationCount = scene.mNumAnimations()
         if (animationCount == 0)
-        {
-            animations = ArrayList()
             return
-        }
 
         val animationPointers = scene.mAnimations()
         if (animationPointers == null)
-        {
-            animations = ArrayList()
             return
-        }
 
         val animations = ArrayList<Animation>(animationCount)
 
@@ -726,7 +723,7 @@ class Model(
             )
         }
 
-        this.animations = animations
+        this.animations = animations.toTypedArray()
     }
 
     // Runtime queries //////////////////////////////////////////////////////////////
@@ -883,7 +880,7 @@ class Model(
                         cullingBounds = localBounds,
                         worldBounds = worldBounds,
                         nodeName = nodeName,
-                        lodLevel = lodLevel,
+                        lodLevel = lodLevel ?: mesh.lodLevel,
                         materialHandle = AssetHandle(materials.getOrNull(mesh.materialIndex)?.name ?: "")
                     )
                 }
@@ -924,27 +921,34 @@ class Model(
         for (i in 1 until meshInstances.size)
             localBounds?.include(meshInstances[i].worldBounds)
 
-        val lodInstances = meshInstances.filter { it.lodLevel != null }
-
-        lodLevels = if (lodInstances.isNotEmpty())
+        localBoundingSphere = localBounds?.let()
         {
-            val sharedInstances = meshInstances.filter { it.lodLevel == null }
-            lodInstances
-                .mapNotNull { it.lodLevel }
-                .distinct()
-                .sorted()
-                .map { level ->
-                    val instances = ArrayList<MeshInstance>(sharedInstances.size + lodInstances.size)
-                    instances += sharedInstances
-                    lodInstances.forEachFast { if (it.lodLevel == level) instances += it }
-                    LodLevel(level, instances)
-                }
-        }
-        else emptyList()
-    }
+            val x = (it.xMin + it.xMax) * 0.5f
+            val y = (it.yMin + it.yMax) * 0.5f
+            val z = (it.zMin + it.zMax) * 0.5f
+            val xRadius = it.xMax - x
+            val yRadius = it.yMax - y
+            val zRadius = it.zMax - z
+            BoundingSphere(x, y, z, sqrt(xRadius * xRadius + yRadius * yRadius + zRadius * zRadius))
+        } ?: ZERO_BOUNDING_SPHERE
 
-    fun getMeshInstancesAtLevel(lodLevel: Int): List<MeshInstance> = 
-        lodLevels.firstOrNull { it.level == lodLevel }?.meshInstances ?: meshInstances
+        val lodInstances = meshInstances.filter { it.lodLevel != null }
+        if (lodInstances.isEmpty())
+        {
+            lodLevels = arrayOf(meshInstances)
+            return
+        }
+
+        val sharedInstances = meshInstances.filter { it.lodLevel == null }
+        val importedLevels = lodInstances.mapNotNull { it.lodLevel }.distinct().sorted()
+        lodLevels = Array(importedLevels.size) { levelIndex ->
+            val importedLevel = importedLevels[levelIndex]
+            val instances = ArrayList<MeshInstance>(sharedInstances.size + lodInstances.size)
+            instances += sharedInstances
+            lodInstances.forEachFast { if (it.lodLevel == importedLevel) instances += it }
+            instances.toTypedArray()
+        }
+    }
 
     private fun String.extractLodLevel(): Int?
     {
@@ -1348,6 +1352,7 @@ class Model(
         val materialIndex: Int,
         val vertexStride: Int,
         val localBounds: Aabb,
+        val lodLevel: Int? = null,
         val skinningBounds: SkinningBounds? = null,
         var animatedBounds: Aabb? = null,
         var gpuMetadataIndex: Int = -1,
@@ -1400,9 +1405,11 @@ class Model(
         val transform: Matrix4fc
     )
 
-    data class LodLevel(
-        val level: Int,
-        val meshInstances: List<MeshInstance>
+    data class BoundingSphere(
+        val x: Float,
+        val y: Float,
+        val z: Float,
+        val radius: Float
     )
     
     /** Imported material metadata. RGB color factors are linear until public assets are created. */
@@ -1579,6 +1586,7 @@ class Model(
         internal const val TANGENT_FLOAT_OFFSET = 6
         internal const val BASE_VERTEX_FLOATS = 10
         private val IDENTITY_MATRIX = Matrix4f()
+        private val ZERO_BOUNDING_SPHERE = BoundingSphere(0f, 0f, 0f, 0f)
         private val LOD_NAME_REGEX = Regex("""(?:^|_)LOD(\d+)$""", RegexOption.IGNORE_CASE)
         private const val MIN_SURFACE_VECTOR_LENGTH_SQUARED = 1e-12f
         private const val POSE_CACHE_FRAME_SLOT_COUNT = 2

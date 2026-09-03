@@ -36,15 +36,15 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
     @Prop("Shadows", i=4) var castLocalShadows = true
     @Prop("Shadows", i=5) var castSunShadows   = true
 
-    @Prop("LOD", i=6)                   var lodPixelHeightThresholds = ""
-    @Prop("LOD", i=7, min=0f, max=0.9f) var lodHysteresis = 0.15f
+    @Prop("LOD", i=6)                   var lodDistanceThresholds = ""
+    @Prop("LOD", i=7, min=0f, max=0.9f) var lodHysteresis         = 0.15f
 
-    private val transform = Matrix4f()
-    private var parsedLodPixelHeightThresholds = null as IntArray?
+    private val transform              = Matrix4f()
+    private var lastDistanceThresholds = null as String?
+    private var squaredLodThresholds   = null as FloatArray?
 
     override fun onStart(engine: PulseEngine)
     {
-        parsedLodPixelHeightThresholds = lodPixelHeightThresholds.split(',').mapNotNull { it.trim().toIntOrNull()?.coerceAtLeast(0) }.takeIf { it.isNotEmpty() }?.toIntArray()
         updateTransform()
     }
 
@@ -62,7 +62,7 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
             transform = transform,
             material = material,
             renderPassMask = CAMERA or LOCAL_SHADOW.takeIf(castLocalShadows) or GLOBAL_SHADOW.takeIf(castSunShadows),
-            lodPixelHeightThresholds = parsedLodPixelHeightThresholds,
+            lodThresholds = parseLodThresholds(),
             lodHysteresis = lodHysteresis,
             renderId = id
         )
@@ -74,6 +74,21 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
             .translation(position)
             .rotateXYZ(rotation.x.toRadians(), rotation.y.toRadians(), rotation.z.toRadians())
             .scale(scale)
+    }
+
+    private fun parseLodThresholds(): FloatArray?
+    {
+        if (lodDistanceThresholds == lastDistanceThresholds)
+            return squaredLodThresholds
+
+        lastDistanceThresholds = lodDistanceThresholds
+        squaredLodThresholds = lodDistanceThresholds
+            .split(',')
+            .mapNotNull { it.trim().toFloatOrNull()?.takeIf { d -> d.isFinite() && d >= 0f }?.let { d -> d * d } }
+            .takeIf { it.isNotEmpty() }
+            ?.toFloatArray()
+
+        return squaredLodThresholds
     }
 
     enum class TransformMode { STATIC, DYNAMIC }

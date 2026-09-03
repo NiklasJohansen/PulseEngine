@@ -14,6 +14,7 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.CullingBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.LightBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
+import no.njoh.pulseengine.core.graphics.scene3d.view.ModelLodResolver
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredLightGrid
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
@@ -26,12 +27,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
-import no.njoh.pulseengine.core.graphics.util.LodCameraState
-import no.njoh.pulseengine.core.graphics.util.LodUtils
 import no.njoh.pulseengine.core.shared.primitives.DynamicList
-import no.njoh.pulseengine.core.shared.primitives.Mat4f
-import no.njoh.pulseengine.core.shared.primitives.Mat4fProps
-import no.njoh.pulseengine.core.shared.primitives.Mat4fArena
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachInstance
 import org.joml.Matrix4f
@@ -39,30 +35,26 @@ import org.joml.Vector3f
 
 class SceneRenderContextImpl : SceneRenderContextInternal()
 {
-    private val views                       = LinkedHashMap<RenderViewKey<*>, RenderView>()
-    private val clusteredLightGrids         = THashMap<CameraRenderState, ClusteredLightGrid>()
-    private val clusteredLightGridRequests  = THashSet<CameraRenderState>()
-    
-    private var nextFrameScene = RenderScene()
     private var thisFrameScene = RenderScene()
+    private var nextFrameScene = RenderScene()
 
-    private var nextLodCameraState = LodCameraState()
-    private var thisLodCameraState = LodCameraState()
+    private val views = LinkedHashMap<RenderViewKey<*>, RenderView>()
 
-    private var mat4fArena     = Mat4fArena()
-    private var mat4fArenaNext = Mat4fArena()
-    
-    private val instanceBuffer     = InstanceBufferObject()
-    private val cullingBuffer      = CullingBufferObject()
-    private val boneBuffer         = BoneBufferObject()
-    private val lightBuffer        = LightBufferObject()
-    private val drawCommandBuilder = DrawCommandBuilder(instanceBuffer, cullingBuffer)
-    private val localShadowAtlas   = LocalShadowAtlas()
-    private val renderIdOverrides  = TLongArrayList()
+    private val instanceBuffer = InstanceBufferObject()
+    private val cullingBuffer  = CullingBufferObject()
+    private val boneBuffer     = BoneBufferObject()
+    private val lightBuffer    = LightBufferObject()
+
+    private val drawCommandBuilder         = DrawCommandBuilder(instanceBuffer, cullingBuffer)
+    private val modelLodResolver           = ModelLodResolver()
+    private val localShadowAtlas           = LocalShadowAtlas()
+    private val clusteredLightGrids        = THashMap<CameraRenderState, ClusteredLightGrid>()
+    private val clusteredLightGridRequests = THashSet<CameraRenderState>()
+    private val renderIdOverrides          = TLongArrayList()
 
     private var frameNumber = 0
     private var initialized = false
-    private var lastFrameHadAnyItems = false
+    private var lastFrameHadDrawItems = false
 
     override fun initFrame()
     {
@@ -71,12 +63,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
         nextFrameScene = thisFrameScene.also { thisFrameScene = nextFrameScene }
         nextFrameScene.clear()
-
-        nextLodCameraState = thisLodCameraState.also { thisLodCameraState = nextLodCameraState }
-        LodUtils.pruneStaleLodStates(frameNumber)
-
-        mat4fArena = mat4fArenaNext.also { mat4fArenaNext = mat4fArena }
-        mat4fArena.reset()
+        thisFrameScene.captureSubmittedSnapshot()
 
         clusteredLightGridRequests.clear()
 
@@ -87,13 +74,12 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     {
         views.entries.removeIf { it.value.lastFrameRequested < frameNumber - 10 }
 
-        if (!thisFrameScene.hasAnyItems() && !lastFrameHadAnyItems)
+        if (!thisFrameScene.hasSubmittedGeometry && !lastFrameHadDrawItems)
             return // This and last frame had no items, skip frame. If the last frame had items, do a pass to clear everything.
-
-        GlCapabilities.requireFullGraphics("3D scene rendering")
 
         if (!initialized)
         {
+            GlCapabilities.requireFullGraphics("3D scene rendering")
             instanceBuffer.init()
             cullingBuffer.init()
             boneBuffer.init()
@@ -110,7 +96,14 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             }
         }
 
-        captureLodCameraState()
+        if (thisFrameScene.hasPendingModels)
+        {
+            modelLodResolver.beginFrame(views.values, frameNumber, thisFrameScene.pendingModelCount)
+            thisFrameScene.selectPendingModelLods(engine, modelLodResolver)
+        }
+
+        if (!thisFrameScene.hasDrawItems && !lastFrameHadDrawItems)
+            return
 
         instanceBuffer.clear()
         cullingBuffer.clear()
@@ -118,7 +111,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         lightBuffer.clear()
 
         // Reserve buffers
-        val itemCount = thisFrameScene.getItemCount()
+        val itemCount = thisFrameScene.drawItemCount
         instanceBuffer.reserveItemCapacity(itemCount)
         cullingBuffer.reserveItemCapacity(itemCount)
 
@@ -148,12 +141,12 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         views.forEach { (_, view) -> if (view.wasRequested()) view.prepare(thisFrameScene, drawCommandBuilder) }
         drawCommandBuilder.finishFramePreparation()
 
-        lastFrameHadAnyItems = thisFrameScene.hasAnyItems()
+        lastFrameHadDrawItems = thisFrameScene.hasDrawItems
     }
 
     override fun endFrame()
     {
-        if (initialized && thisFrameScene.hasAnyItems())
+        if (initialized && thisFrameScene.hasDrawItems)
         {
             measure("Fence context buffers")
             {
@@ -205,55 +198,6 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     override fun <T: RenderView> getView(key: RenderViewKey<T>): T? = 
         views[key]?.takeIf { it.wasRequested() && key.type.isAssignableFrom(it.javaClass) } as T?
 
-    override fun submitModel(
-        engine: PulseEngine,
-        model: Model,
-        transform: Matrix4f,
-        material: Material?,
-        animationPose: AnimatedSkeletonPose?,
-        renderPassMask: RenderPassMask,
-        lodPixelHeightThresholds: IntArray?,
-        lodHysteresis: Float,
-        lodKey: Long,
-        renderId: Long
-    ) {
-        val lodLevel = LodUtils.getLodLevel(model, transform, lodPixelHeightThresholds, lodHysteresis, lodKey, thisLodCameraState)
-        val meshInstances = model.getMeshInstancesAtLevel(lodLevel)
-        val transformProperties = Mat4fProps.from(transform)
-        val hasBones = model.hasBones
-
-        meshInstances.forEachFast()
-        {
-            val animatedMeshPose = if (hasBones) animationPose?.getAnimatedMeshPose(it.nodeName) else null
-            val boneMatrices     = if (hasBones) animatedMeshPose?.boneMatrices ?: model.getBindPoseBoneMatrices(it.nodeName) else null
-            val cullingBounds    = if (hasBones && animatedMeshPose != null) it.mesh.animatedBounds ?: it.cullingBounds else it.cullingBounds
-            val material         = material ?: engine.asset.getOrNull(it.materialHandle)
-            val meshTransform    = Mat4f(mat4fArena)
-
-            if (it.transformProperties.isIdentity)
-            {
-                meshTransform.set(transform, transformProperties)
-            }
-            else
-            {
-                val properties = transformProperties.commonWith(it.transformProperties)
-                meshTransform.setMul(transform, it.transform, properties)
-            }
-
-            nextFrameScene.addMesh(it.mesh, material, meshTransform, cullingBounds, boneMatrices, renderPassMask, resolveRenderId(renderId))
-        }
-    }
-
-    override fun submitMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, renderId: Long)
-    {
-        nextFrameScene.addMesh(mesh, material, Mat4f(mat4fArena).set(transform), cullingBounds, boneMatrices, renderPassMask, resolveRenderId(renderId))
-    }
-
-    override fun submitPointLight(position: Vector3f, range: Float, color: Color, sourceRadius: Float, shadowEnabled: Boolean, shadowResolution: Int, shadowNearPlane: Float, shadowBias: Float, shadowImportance: Float, shadowId: Long)
-    {
-        nextFrameScene.addLight(position, null, range, sourceRadius, color, 180f, 180f, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId)
-    }
-
     override fun submitSpotLight(
         position: Vector3f,
         direction: Vector3f,
@@ -272,6 +216,63 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         nextFrameScene.addLight(position, direction, range, sourceRadius, color, innerConeAngle, outerConeAngle, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId)
     }
 
+    override fun submitPointLight(
+        position: Vector3f,
+        range: Float,
+        color: Color,
+        sourceRadius: Float,
+        shadowEnabled: Boolean,
+        shadowResolution: Int,
+        shadowNearPlane: Float,
+        shadowBias: Float,
+        shadowImportance: Float,
+        shadowId: Long
+    ) {
+        nextFrameScene.addLight(position, null, range, sourceRadius, color, 180f, 180f, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId)
+    }
+
+    override fun submitMesh(
+        mesh: Mesh,
+        material: Material?,
+        transform: Matrix4f,
+        cullingBounds: Aabb?,
+        boneMatrices: Array<Matrix4f>?,
+        renderPassMask: RenderPassMask,
+        renderId: Long
+    ) {
+        nextFrameScene.addMesh(mesh, material, transform, cullingBounds, boneMatrices, renderPassMask, resolveRenderId(renderId))
+    }
+
+    override fun submitModel(
+        engine: PulseEngine,
+        model: Model,
+        transform: Matrix4f,
+        material: Material?,
+        animationPose: AnimatedSkeletonPose?,
+        renderPassMask: RenderPassMask,
+        lodThresholds: FloatArray?,
+        lodHysteresis: Float,
+        lodKey: Long,
+        renderId: Long
+    ) {
+        val resolvedRenderId = resolveRenderId(renderId)
+        if (lodThresholds == null || lodThresholds.isEmpty() || model.hasBones || model.lodLevels.size < 2)
+        {
+            nextFrameScene.addModelMeshes(engine, model, transform, material, animationPose, lodLevel = 0, renderPassMask, resolvedRenderId)
+            return
+        }
+
+        val resolvedLodKey = when
+        {
+            lodKey != 0L -> lodKey
+            renderId >= 0L -> renderId
+            resolvedRenderId >= 0L -> resolvedRenderId
+            else -> 0L
+        }
+
+        nextFrameScene.addModel(model, transform, material, renderPassMask, lodThresholds, lodHysteresis, resolvedLodKey, resolvedRenderId)
+    }
+
     override fun pushRenderIdOverride(renderId: Long)
     {
         renderIdOverrides.add(renderId)
@@ -282,8 +283,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         renderIdOverrides.removeAt(renderIdOverrides.size() - 1)
     }
 
-    override fun getSubmittedScene() = thisFrameScene
-    
+    override fun getSubmittedSceneSnapshot() = thisFrameScene.submittedSnapshot
+
     override fun getLocalShadowAtlas() = localShadowAtlas
 
     override fun getLightBuffer() = lightBuffer
@@ -299,7 +300,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     private fun buildRequestedClusteredLightGrids()
     {
-        if (!thisFrameScene.hasAnyItems())
+        if (!thisFrameScene.hasDrawItems)
         {
             clusteredLightGrids.forEach { it.value.destroy() }
             clusteredLightGrids.clear()
@@ -326,17 +327,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             cullingBuffer.addItem(item)
         }
 
-    private fun getCameraPosition(): Vector3f? = 
+    private fun getCameraPosition(): Vector3f? =
         views.firstNotNullOfOrNull { (_, view) -> if (view.wasRequested() && view is CameraRenderStateProvider) view.shadowReferencePosition else null }
-
-    private fun captureLodCameraState()
-    {
-        nextLodCameraState.invalidate()
-        val cameraState = views
-            .firstNotNullOfOrNull { (_, view) -> (view as? CameraRenderStateProvider)?.cameraStates?.firstOrNull()?.takeIf { view.wasRequested() } } 
-            ?: return
-        nextLodCameraState.set(cameraState, frameNumber)
-    }
 
     private fun resolveRenderId(renderId: Long) = if (renderIdOverrides.isEmpty) renderId else renderIdOverrides[renderIdOverrides.size() - 1]
 

@@ -12,17 +12,19 @@ import kotlin.math.abs
 
 class InstanceBufferObject
 {
-    var instanceCount = 0; private set
-    var instanceIndexMode = UNIFORM_OFFSET; private set
+    var instanceCount       = 0;                                 private set
+    var instanceIndexMode   = UNIFORM_OFFSET;                    private set
     var instanceIndexBuffer = null as StreamingIntBufferObject?; private set
 
     private lateinit var instanceBuffer: StreamingFloatBufferObject
+
     private var loggedInvalidRenderId = false
 
     fun init()
     {
         if (this::instanceBuffer.isInitialized)
             return
+
         instanceBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(
             blockBinding = INSTANCE_BUFFER_BINDING,
             initCapacity = INSTANCE_FLOATS * 512

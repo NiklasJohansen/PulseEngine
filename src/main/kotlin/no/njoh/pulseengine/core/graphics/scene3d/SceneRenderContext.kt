@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.LightBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredLightGrid
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
+import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderSceneSnapshot
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderView
@@ -22,11 +23,14 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 import org.joml.Matrix4f
 import org.joml.Vector3f
 
-abstract class SceneRenderContext()
+abstract class SceneRenderContext
 {
     /**
      * Submits a [Model] to be rendered in the next frame.
      * If no material is provided, the model's default material will be used.
+     * Static models with multiple LODs and configured distance thresholds remain one logical
+     * submission until the nearest active camera has selected an LOD.
+     * LOD thresholds are ascending squared world-space distances from the model's bounding-sphere center.
      */
     abstract fun submitModel(
         engine: PulseEngine,
@@ -35,7 +39,7 @@ abstract class SceneRenderContext()
         material: Material? = null,
         animationPose: AnimatedSkeletonPose? = null,
         renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
-        lodPixelHeightThresholds: IntArray? = null,
+        lodThresholds: FloatArray? = null,
         lodHysteresis: Float = 0.15f,
         lodKey: Long = 0L,
         renderId: Long = -1
@@ -90,9 +94,9 @@ abstract class SceneRenderContext()
     )
 
     /**
-     * Returns the latest submitted [RenderScene].
+     * Returns a snapshot of the latest submitted [RenderScene].
      */
-    abstract fun getSubmittedScene(): RenderScene
+    abstract fun getSubmittedSceneSnapshot(): RenderSceneSnapshot
 }
 
 abstract class SceneRenderContextInternal : SceneRenderContext()
