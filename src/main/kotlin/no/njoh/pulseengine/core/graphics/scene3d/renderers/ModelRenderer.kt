@@ -18,6 +18,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_ED
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.SORTED_BLEND
 import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.WEIGHTED_BLENDED_OIT
+import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ViewMode.RENDER_ID
 import no.njoh.pulseengine.core.graphics.surface.Surface
@@ -155,6 +156,7 @@ class ModelRenderer(
 
         configureProgram(activePrograms.staticProgram, engine, surface, cameraState)
         configureProgram(activePrograms.skinnedProgram, engine, surface, cameraState)
+        bindStorageBuffers(activePrograms, engine, cameraState, view.drawPayload)
         
         // Draw
         
@@ -223,6 +225,9 @@ class ModelRenderer(
                 WEIGHTED_BLENDED_OIT ->
                 {
                     weightedBlendedRenderer.alphaCutoff = weightedBlendAlphaCutoff
+                    val accumPrograms = weightedBlendedRenderer.getAccumPrograms(visualizesRenderIds)
+                    configureProgram(accumPrograms.staticProgram, engine, surface, cameraState)
+                    configureProgram(accumPrograms.skinnedProgram, engine, surface, cameraState)
                     weightedBlendedRenderer.render(
                         engine = engine,
                         surface = surface,
@@ -230,7 +235,7 @@ class ModelRenderer(
                         drawPayload = view.drawPayload,
                         writeRenderIds = writesRenderIds,
                         visualizeRenderIds = visualizesRenderIds,
-                        configureAccumProgram = { program -> configureProgram(program, engine, surface, cameraState) }
+                        cameraState = cameraState
                     )
                 }
             }
@@ -294,7 +299,7 @@ class ModelRenderer(
 
         // Local shadow atlas
 
-        val lightBuffer = engine.gfx.sceneContext.getLightBuffer().also { it.bind() }
+        val lightBuffer = engine.gfx.sceneContext.getLightBuffer()
         val localShadowAtlasSurface = engine.gfx.getSurface(localShadowAtlasSurfaceName)
         val localShadowAtlasTex = localShadowAtlasSurface?.getTexture()
         val localShadowAtlas = engine.gfx.sceneContext.getLocalShadowAtlas()
@@ -313,10 +318,7 @@ class ModelRenderer(
         val grid = engine.gfx.sceneContext.getClusteredLightGrid(cameraState)
         val localLightsEnabled = grid?.enabled == true && lightBuffer.lightCount > 0
         if (localLightsEnabled)
-        {
             pbrFeatures = pbrFeatures or PBR_FEATURE_LOCAL_LIGHTS
-            grid.bind()
-        }
 
         if (localLightsEnabled && localShadowAtlasTex != null && lightBuffer.shadowFaceCount > 0)
         {
@@ -368,6 +370,22 @@ class ModelRenderer(
         program.setUniform("uViewProjection", cameraState.viewProjectionMatrix)
         program.setUniform("uView", cameraState.viewMatrix)
         program.setUniform("uCameraPos", cameraState.cameraPosition)
+    }
+
+    private fun bindStorageBuffers(programs: ShaderProgramSet, engine: PulseEngineInternal, cameraState: CameraRenderState, payload: DrawPayload)
+    {
+        val context = engine.gfx.sceneContext
+        val lightBuffer = context.getLightBuffer()
+        val clusteredLightGrid = context.getClusteredLightGrid(cameraState)
+
+        programs.bindStorageBuffer("InstanceBuffer", context.getInstanceBuffer())
+        programs.bindStorageBuffer("VisibleInstanceBuffer", payload.visibleInstanceBuffer)
+        programs.bindStorageBuffer("BoneBuffer", context.getBoneBuffer())
+        programs.bindStorageBuffer("MaterialBuffer", engine.gfx.materialBank)
+        programs.bindStorageBufferIfPresent("LocalLightBuffer", lightBuffer.lightInstanceBuffer)
+        programs.bindStorageBufferIfPresent("LocalShadowFaceBuffer", lightBuffer.shadowFaceBuffer)
+        programs.bindStorageBufferIfPresent("ClusterBuffer", clusteredLightGrid?.clusterBuffer)
+        programs.bindStorageBufferIfPresent("ClusterLightIndexBuffer", clusteredLightGrid?.lightIndexBuffer)
     }
 
     private fun ShaderProgram.setTexture(name: String, tex: Texture?)

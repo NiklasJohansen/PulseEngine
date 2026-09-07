@@ -8,7 +8,7 @@ uniform vec2 uTextureSize;
 uniform int uOutlineWidth;
 uniform int uSelectionWordCount;
 
-layout(std430, binding = 13) readonly buffer SelectionBuffer
+layout(std430, binding = 0) readonly buffer SelectionBuffer
 {
     uint uSelectionWords[];
 };

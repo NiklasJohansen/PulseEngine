@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.AnimatedSkeletonPose
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
+import no.njoh.pulseengine.core.graphics.gpu.buffer.BoneBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.LightBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredLightGrid
@@ -127,7 +128,8 @@ abstract class SceneRenderContextInternal : SceneRenderContext()
      * Ends the most recently pushed render ID override.
      */
     abstract fun popRenderIdOverride()
-    
+
+    abstract fun getBoneBuffer(): BoneBufferObject
     abstract fun getLightBuffer(): LightBufferObject
     abstract fun getInstanceBuffer(): InstanceBufferObject
     abstract fun getLocalShadowAtlas(): LocalShadowAtlas

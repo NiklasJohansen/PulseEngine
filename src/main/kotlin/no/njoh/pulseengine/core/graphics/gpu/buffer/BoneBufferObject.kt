@@ -4,7 +4,7 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.joml.Matrix4f
 
-class BoneBufferObject
+class BoneBufferObject : ShaderStorageBufferObject
 {
     private var boneBuffer         = null as StreamingFloatBufferObject?
     private val bonePalettes       = ArrayList<Array<Matrix4f>>(128)
@@ -15,7 +15,7 @@ class BoneBufferObject
 
     fun init()
     {
-        boneBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(MODEL_BONE_BUFFER_BINDING, initCapacity = 16 * 512)
+        boneBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(initCapacity = 16 * 512)
     }
 
     fun clear()
@@ -73,7 +73,11 @@ class BoneBufferObject
             dataSubmitted = true
             dataDirty = false
         }
-        else boneBuffer.bindSubmittedRange()
+    }
+
+    override fun bindStorageBuffer(binding: Int)
+    {
+        boneBuffer?.bindStorageBuffer(binding)
     }
 
     fun markGpuDataInUse() = measure("Bone buffer")
@@ -94,10 +98,5 @@ class BoneBufferObject
         boneMatrixCount = 0
         dataSubmitted = false
         dataDirty = true
-    }
-
-    companion object
-    {
-        const val MODEL_BONE_BUFFER_BINDING = 3
     }
 }

@@ -40,62 +40,62 @@ struct IndirectCommand
     uint baseInstance;
 };
 
-layout(std430, binding = 1) readonly buffer InstanceBuffer
+layout(std430, binding = 0) readonly buffer InstanceBuffer
 {
     InstanceData uInstances[];
 };
 
-layout(std430, binding = 3) readonly buffer BoneBuffer
+layout(std430, binding = 1) readonly buffer BoneBuffer
 {
     mat4 uBoneMatrices[];
 };
 
-layout(std430, binding = 4) writeonly buffer VisibleInstanceBuffer
+layout(std430, binding = 2) writeonly buffer VisibleInstanceBuffer
 {
     uint uVisibleInstanceIndices[];
 };
 
-layout(std430, binding = 5) readonly buffer CullItemBuffer
+layout(std430, binding = 3) readonly buffer CullItemBuffer
 {
     CullItem uCullItems[];
 };
 
-layout(std430, binding = 6) buffer CommandBuffer
+layout(std430, binding = 4) buffer CommandBuffer
 {
     IndirectCommand uCommands[];
 };
 
-layout(std430, binding = 7) readonly buffer MeshMetaBuffer
+layout(std430, binding = 5) readonly buffer MeshMetaBuffer
 {
     MeshMetadata uMeshMetadata[];
 };
 
-layout(std430, binding = 8) readonly buffer DynamicBoundsBuffer
+layout(std430, binding = 6) readonly buffer DynamicBoundsBuffer
 {
     DynamicBounds uDynamicBounds[];
 };
 
-layout(std430, binding = 9) readonly buffer CullItemIndexBuffer
+layout(std430, binding = 7) readonly buffer CullItemIndexBuffer
 {
     int uCullItemIndices[];
 };
 
-layout(std430, binding = 10) readonly buffer CullItemBatchIndexBuffer
+layout(std430, binding = 8) readonly buffer CullItemBatchIndexBuffer
 {
     int uCullItemBatchIndices[];
 };
 
-layout(std430, binding = 11) readonly buffer FrustumMetadataBuffer
+layout(std430, binding = 9) readonly buffer FrustumMetadataBuffer
 {
     int uFrustumMetadata[];
 };
 
-layout(std430, binding = 12) readonly buffer SkinningBoundsBuffer
+layout(std430, binding = 10) readonly buffer SkinningBoundsBuffer
 {
     uint uSkinningBounds[];
 };
 
-layout(std430, binding = 2) readonly buffer FrustumPlaneBuffer
+layout(std430, binding = 11) readonly buffer FrustumPlaneBuffer
 {
     vec4 uFrustumPlanes[];
 };

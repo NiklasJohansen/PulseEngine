@@ -22,12 +22,12 @@ struct InstanceData
     vec4 params; // x=materialId, y=boneOffset, z=handedness, w=reserved
 };
 
-layout(std430, binding = 1) readonly buffer InstanceBuffer
+layout(std430, binding = 0) readonly buffer InstanceBuffer
 {
     InstanceData uInstances[];
 };
 
-layout(std430, binding = 3) readonly buffer BoneBuffer
+layout(std430, binding = 2) readonly buffer BoneBuffer
 {
     mat4 uBoneMatrices[];
 };

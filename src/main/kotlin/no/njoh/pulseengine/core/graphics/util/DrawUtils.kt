@@ -10,7 +10,6 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload.*
 import no.njoh.pulseengine.core.graphics.scene3d.draw.RenderBucket
-import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawBatch
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.captureIndirectDrawStats
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementDrawStats
@@ -98,7 +97,7 @@ object DrawUtils
         incrementDrawStats(drawCommands = 1L, triangles = instanceCount * 2L, instances = instanceCount.toLong())
     }
 
-    fun drawRenderBucket(bucket: RenderBucket, drawPayload: DrawPayload, programs: ShaderProgramSet, cullViewIndex: Int = 0) 
+    fun drawRenderBucket(bucket: RenderBucket, drawPayload: DrawPayload, programs: ShaderProgramSet, cullViewIndex: Int = 0)
     {
         if (bucket.size == 0 || cullViewIndex >= drawPayload.cullViewCount) return
 
@@ -110,14 +109,11 @@ object DrawUtils
         }
     }
 
-    private fun drawIndirectRenderBucket(bucket: RenderBucket, programs: ShaderProgramSet, payload: IndirectDrawPayload, cullViewIndex: Int) 
+    private fun drawIndirectRenderBucket(bucket: RenderBucket, programs: ShaderProgramSet, payload: IndirectDrawPayload, cullViewIndex: Int)
     {
         DrawBatch.resetBoundProgramAndCullMode()
 
-        val useVisibleInstanceBuffer = payload.useVisibleInstanceBuffer
-        if (useVisibleInstanceBuffer)
-            payload.visibleInstanceBuffer?.bindSubmittedRange()
-
+        val useVisibleInstanceBuffer = payload.visibleInstanceBuffer != null
         val batches = bucket.getBackingList()
         val bucketSize = bucket.size
         var batchIndex = 0
@@ -177,7 +173,7 @@ object DrawUtils
         triangleCount: Long,
         instanceCount: Long
     ) {
-        val useVisibleInstanceBuffer = payload.useVisibleInstanceBuffer
+        val useVisibleInstanceBuffer = payload.visibleInstanceBuffer != null
         firstBatch.bindProgramAndSetCullMode(programs)
         programs[firstBatch.shaderVariant].setUniform("uUseVisibleInstanceBuffer", useVisibleInstanceBuffer)
         vao.bind()
@@ -373,7 +369,7 @@ fun transformModelVertexShader(source: String): String
     }
 
     val visibleInstanceHeader = """
-        layout(std430, binding = ${DrawCommandBuilder.VISIBLE_INSTANCE_BUFFER_BINDING}) readonly buffer VisibleInstanceBuffer
+        layout(std430, binding = 1) readonly buffer VisibleInstanceBuffer
         {
             uint uVisibleInstanceIndices[];
         };

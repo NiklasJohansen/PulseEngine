@@ -32,8 +32,9 @@ import java.util.IdentityHashMap
  */
 class ModelBank
 {
-    private var metadataBuffer: DoubleBufferedIntObject? = null
-    private var skinningBoundsBuffer: DoubleBufferedIntObject? = null
+    var metadataBuffer: DoubleBufferedIntObject?       = null; private set
+    var skinningBoundsBuffer: DoubleBufferedIntObject? = null; private set
+
     private val meshMetadata = ArrayList<MeshMetadata?>(128)
     private val skinningBoundsRecords = ArrayList<SkinningBoundsRecord?>(512)
     private val freeMetadataIndices = ArrayDeque<Int>(128)
@@ -119,7 +120,7 @@ class ModelBank
         pendingDeletions.clear()
     }
 
-    fun submitAndBind()
+    fun submit()
     {
         val buffer = metadataBuffer ?: return
 
@@ -145,13 +146,6 @@ class ModelBank
             }
 
             metadataDirty = false
-        }
-        else
-        {
-            buffer.bind()
-            buffer.release()
-            skinningBoundsBuffer?.bind()
-            skinningBoundsBuffer?.release()
         }
     }
 
@@ -254,10 +248,7 @@ class ModelBank
         if (metadataBuffer != null) return
 
         metadataDirty = true
-        metadataBuffer = DoubleBufferedIntObject.createShaderStorageBuffer(
-            blockBinding = METADATA_BUFFER_BINDING,
-            initCapacity = RECORD_INTS * 128
-        )
+        metadataBuffer = DoubleBufferedIntObject.createShaderStorageBuffer(RECORD_INTS * 128)
     }
 
     private fun ensureSkinningBoundsBuffer()
@@ -265,10 +256,7 @@ class ModelBank
         if (skinningBoundsBuffer != null || skinningBoundsRecords.isEmpty()) return
 
         metadataDirty = true
-        skinningBoundsBuffer = DoubleBufferedIntObject.createShaderStorageBuffer(
-            blockBinding = SKINNING_BOUNDS_BUFFER_BINDING,
-            initCapacity = SKINNING_BOUNDS_RECORD_INTS * 512
-        )
+        skinningBoundsBuffer = DoubleBufferedIntObject.createShaderStorageBuffer(SKINNING_BOUNDS_RECORD_INTS * 512)
     }
 
     private fun allocateMetadataIndex(): Int
@@ -512,8 +500,6 @@ class ModelBank
 
     companion object
     {
-        const val METADATA_BUFFER_BINDING = 7
-        const val SKINNING_BOUNDS_BUFFER_BINDING = 12
         private const val RECORD_INTS = 16
         private const val SKINNING_BOUNDS_RECORD_INTS = 8
         private const val NO_SKINNING_BOUNDS_OFFSET = -1

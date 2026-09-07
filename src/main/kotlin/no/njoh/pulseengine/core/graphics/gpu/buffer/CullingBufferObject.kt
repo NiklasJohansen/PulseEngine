@@ -5,18 +5,17 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 
 class CullingBufferObject
 {
-    private lateinit var cullItemBuffer: StreamingIntBufferObject
-    private lateinit var dynamicBoundsBuffer: StreamingFloatBufferObject
+    lateinit var cullItemBuffer: StreamingIntBufferObject        private set
+    lateinit var dynamicBoundsBuffer: StreamingFloatBufferObject private set
 
-    var size = 0
-        private set
+    var size = 0; private set
 
     private var dynamicBoundsCount = 0
 
     fun init()
     {
-        cullItemBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_BUFFER_BINDING, CULL_ITEM_INTS * 512, BUFFER_SEGMENTS)
-        dynamicBoundsBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(DYNAMIC_BOUNDS_BUFFER_BINDING, DYNAMIC_BOUNDS_FLOATS * 128, BUFFER_SEGMENTS)
+        cullItemBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_INTS * 512, BUFFER_SEGMENTS)
+        dynamicBoundsBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(DYNAMIC_BOUNDS_FLOATS * 128, BUFFER_SEGMENTS)
     }
 
     fun clear()
@@ -65,12 +64,6 @@ class CullingBufferObject
         dynamicBoundsBuffer.submit()
     }
 
-    fun bindSubmittedRanges()
-    {
-        cullItemBuffer.bindSubmittedRange()
-        dynamicBoundsBuffer.bindSubmittedRange()
-    }
-
     fun markSubmittedDataInUse() = measure("Culling buffers")
     {
         cullItemBuffer.markSubmittedDataInUse()
@@ -92,8 +85,6 @@ class CullingBufferObject
     companion object
     {
         private const val BUFFER_SEGMENTS = 6
-        private const val CULL_ITEM_BUFFER_BINDING = 5
-        private const val DYNAMIC_BOUNDS_BUFFER_BINDING = 8
         private const val STATIC_BOUNDS_INDEX = -1
         private const val CULL_ITEM_INTS = 4
         private const val DYNAMIC_BOUNDS_FLOATS = 8

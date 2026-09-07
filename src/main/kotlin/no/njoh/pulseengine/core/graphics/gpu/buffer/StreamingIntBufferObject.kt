@@ -8,11 +8,10 @@ import kotlin.math.max
 
 class StreamingIntBufferObject private constructor(
     private val target: Int,
-    blockBinding: Int?,
     initCapacity: Int,
     segmentCount: Int
-) {
-    private val buffer = PersistentRingBufferObject(target, blockBinding, Int.SIZE_BYTES, segmentCount, initCapacity)
+) : ShaderStorageBufferObject {
+    private val buffer = PersistentRingBufferObject(target, Int.SIZE_BYTES, segmentCount, initCapacity)
 
     val id: Int get() = buffer.id
 
@@ -27,9 +26,7 @@ class StreamingIntBufferObject private constructor(
 
     fun reserve(elementCount: Int) = buffer.reserve(elementCount)
 
-    fun bindSubmittedRange() = buffer.bindSubmittedRange()
-
-    fun bindSubmittedRange(blockBinding: Int) = buffer.bindSubmittedRange(blockBinding)
+    override fun bindStorageBuffer(binding: Int) = buffer.bindSubmittedRange(binding)
 
     fun markSubmittedDataInUse() = buffer.markSubmittedSegmentInUse()
 
@@ -114,15 +111,12 @@ class StreamingIntBufferObject private constructor(
     companion object
     {
         fun createArrayBuffer(initCapacity: Int = 0, segmentCount: Int = 3) =
-            StreamingIntBufferObject(GL_ARRAY_BUFFER, null, initCapacity, segmentCount)
+            StreamingIntBufferObject(GL_ARRAY_BUFFER, initCapacity, segmentCount)
 
-        fun createShaderStorageBuffer(blockBinding: Int, initCapacity: Int = 0, segmentCount: Int = 3) =
-            StreamingIntBufferObject(GL_SHADER_STORAGE_BUFFER, blockBinding, initCapacity, segmentCount)
-
-        fun createUnboundShaderStorageBuffer(initCapacity: Int = 0, segmentCount: Int = 3) =
-            StreamingIntBufferObject(GL_SHADER_STORAGE_BUFFER, null, initCapacity, segmentCount)
+        fun createShaderStorageBuffer(initCapacity: Int = 0, segmentCount: Int = 3) =
+            StreamingIntBufferObject(GL_SHADER_STORAGE_BUFFER, initCapacity, segmentCount)
 
         fun createDrawIndirectBuffer(initCapacity: Int = 0, segmentCount: Int = 3) =
-            StreamingIntBufferObject(GL_DRAW_INDIRECT_BUFFER, null, initCapacity, segmentCount)
+            StreamingIntBufferObject(GL_DRAW_INDIRECT_BUFFER, initCapacity, segmentCount)
     }
 }

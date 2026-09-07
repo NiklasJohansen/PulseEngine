@@ -12,7 +12,7 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 
-class ClusteredLightGrid()
+class ClusteredLightGrid
 {
     var enabled         = false;              private set
     var gridWidth       = 1;                  private set
@@ -25,8 +25,8 @@ class ClusteredLightGrid()
     var depthSliceScale = 1f;                 private set
     var clusterCount    = 1;                  private set
 
-    private lateinit var clusterBuffer: StreamingIntBufferObject
-    private lateinit var indexBuffer: StreamingIntBufferObject
+    lateinit var clusterBuffer: StreamingIntBufferObject    private set
+    lateinit var lightIndexBuffer: StreamingIntBufferObject private set
 
     private var clusterCounts    = IntArray(0)
     private var clusterOffsets   = IntArray(0)
@@ -45,8 +45,8 @@ class ClusteredLightGrid()
     {
         if (initialized) return
 
-        clusterBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CLUSTER_BUFFER_BINDING, CLUSTER_INTS * 1024, BUFFER_SEGMENTS)
-        indexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CLUSTER_INDEX_BUFFER_BINDING, 4096, BUFFER_SEGMENTS)
+        clusterBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CLUSTER_INTS * 1024, BUFFER_SEGMENTS)
+        lightIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(4096, BUFFER_SEGMENTS)
         initialized = true
     }
     
@@ -54,7 +54,7 @@ class ClusteredLightGrid()
     {
         init()
         clusterBuffer.clear()
-        indexBuffer.clear()
+        lightIndexBuffer.clear()
 
         val lights = scene.localLights
         nearPlane = max(0.01f, state.nearPlane)
@@ -112,19 +112,12 @@ class ClusteredLightGrid()
         enabled = totalIndexCount > 0
     }
 
-    fun bind()
-    {
-        if (!initialized) return
-        clusterBuffer.bindSubmittedRange()
-        indexBuffer.bindSubmittedRange()
-    }
-
     fun markSubmittedDataInUse()
     {
         if (!initialized || !submitted) return
 
         clusterBuffer.markSubmittedDataInUse()
-        indexBuffer.markSubmittedDataInUse()
+        lightIndexBuffer.markSubmittedDataInUse()
         submitted = false
     }
 
@@ -133,7 +126,7 @@ class ClusteredLightGrid()
         if (!initialized) return
 
         clusterBuffer.destroy()
-        indexBuffer.destroy()
+        lightIndexBuffer.destroy()
         initialized = false
         submitted = false
     }
@@ -250,7 +243,7 @@ class ClusteredLightGrid()
                 put(clusterOffsets[cluster], clusterCounts[cluster])
         }
 
-        indexBuffer.fill(totalIndexCount)
+        lightIndexBuffer.fill(totalIndexCount)
         {
             for (i in 0 until totalIndexCount) put(lightIndices[i])
         }
@@ -259,15 +252,12 @@ class ClusteredLightGrid()
     fun submit() = measure("Clustered light buffers")
     {
         clusterBuffer.submit()
-        indexBuffer.submit()
+        lightIndexBuffer.submit()
         submitted = true
     }
 
     companion object
     {
-        const val CLUSTER_BUFFER_BINDING = 14
-        const val CLUSTER_INDEX_BUFFER_BINDING = 15
-
         private const val BUFFER_SEGMENTS = 3
         private const val DEFAULT_TILE_SIZE = 64
         private const val DEFAULT_GRID_Z = 24

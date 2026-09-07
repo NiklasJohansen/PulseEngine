@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.graphics.scene3d.draw
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.ComputeShader
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
+import no.njoh.pulseengine.core.graphics.gpu.buffer.BoneBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.CullingBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StreamingFloatBufferObject
@@ -21,7 +22,8 @@ import org.lwjgl.opengl.GL43.*
 
 class DrawCommandBuilder(
     val instanceBuffer: InstanceBufferObject,
-    val cullingBuffer: CullingBufferObject
+    val cullingBuffer: CullingBufferObject,
+    val boneBuffer: BoneBufferObject
 ) {
     var gpuCullingSupported = false; private set
     
@@ -60,12 +62,12 @@ class DrawCommandBuilder(
         if (gpuCullingSupported)
         {
             program = ShaderProgram.create(engine.asset.loadNow(ComputeShader("/pulseengine/shaders/renderers/model_cull.comp")))
-            cullItemIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_INDEX_BUFFER_BINDING, 512, BUFFER_SEGMENTS)
-            cullItemBatchIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(CULL_ITEM_BATCH_INDEX_BUFFER_BINDING, 512, BUFFER_SEGMENTS)
-            frustumMetadataBuffer = StreamingIntBufferObject.createShaderStorageBuffer(FRUSTUM_METADATA_BUFFER_BINDING, FRUSTUM_METADATA_INTS * 32, BUFFER_SEGMENTS)
-            frustumPlaneBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(FRUSTUM_PLANE_BUFFER_BINDING, FRUSTUM_PLANE_FLOATS * 128, BUFFER_SEGMENTS)
-            visibleIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(VISIBLE_INSTANCE_BUFFER_BINDING, 512, BUFFER_SEGMENTS)
-            gpuCommandBuffer = StreamingIntBufferObject.createShaderStorageBuffer(COMMAND_BUFFER_BINDING, INDIRECT_COMMAND_INTS * 128, BUFFER_SEGMENTS)
+            cullItemIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(512, BUFFER_SEGMENTS)
+            cullItemBatchIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(512, BUFFER_SEGMENTS)
+            frustumMetadataBuffer = StreamingIntBufferObject.createShaderStorageBuffer(FRUSTUM_METADATA_INTS * 32, BUFFER_SEGMENTS)
+            frustumPlaneBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(FRUSTUM_PLANE_FLOATS * 128, BUFFER_SEGMENTS)
+            visibleIndexBuffer = StreamingIntBufferObject.createShaderStorageBuffer(512, BUFFER_SEGMENTS)
+            gpuCommandBuffer = StreamingIntBufferObject.createShaderStorageBuffer(INDIRECT_COMMAND_INTS * 128, BUFFER_SEGMENTS)
         }
         else Logger.warn { "GPU item culling not supported on this platform" }
 
@@ -147,7 +149,7 @@ class DrawCommandBuilder(
         return if (gpuCullingSupported) submitGpuCulledDraw(builder, cullViewCount) else submitCpuDraw(builder, cullViewCount)
     }
 
-    fun finishFramePreparation()
+    fun finishFramePreparation(engine: PulseEngineInternal)
     {
         if (this::cpuCommandBuffer.isInitialized && cpuCommandBuffer.size > 0)
         {
@@ -171,7 +173,7 @@ class DrawCommandBuilder(
 
         measure("Frustum culling")
         {
-            pendingGpuCullDispatches.forEach { cull(it) }
+            pendingGpuCullDispatches.forEach { cull(engine, it) }
         }
     }
 
@@ -230,12 +232,11 @@ class DrawCommandBuilder(
         }
 
         return IndirectDrawPayload(
+            visibleInstanceBuffer = null,
             cullViewCount = cullViewCount,
+            cullViewCommandStride = 0,
             commandBuffer = cpuCommandBuffer,
             commandBaseIndex = commandBaseIndex,
-            cullViewCommandStride = 0,
-            useVisibleInstanceBuffer = false,
-            visibleInstanceBuffer = null,
             instanceIndexMode = instanceBuffer.instanceIndexMode,
             instanceIndexBuffer = instanceBuffer.instanceIndexBuffer
         )
@@ -281,33 +282,39 @@ class DrawCommandBuilder(
         pendingGpuCullDispatches += dispatch
 
         return IndirectDrawPayload(
+            visibleInstanceBuffer = visibleIndexBuffer,
+            cullViewCommandStride = commandCount,
             cullViewCount = payloadCullViewCount,
             commandBuffer = gpuCommandBuffer,
             commandBaseIndex = commandBaseIndex,
-            cullViewCommandStride = commandCount,
-            useVisibleInstanceBuffer = true,
-            visibleInstanceBuffer = visibleIndexBuffer,
             instanceIndexMode = instanceBuffer.instanceIndexMode,
             instanceIndexBuffer = instanceBuffer.instanceIndexBuffer
         )
     }
 
-    private fun cull(dispatch: GpuCullDispatch)
+    private fun cull(engine: PulseEngineInternal, dispatch: GpuCullDispatch)
     {
         if (cullingBuffer.size == 0 || dispatch.cullInstanceCount == 0 || dispatch.commandCount == 0)
             return
 
         measure("cull_dispatch", label = { "Cull dispatch (" plus dispatch.cullInstanceCount plus "i, " plus dispatch.frustumCount plus "x" plus dispatch.commandCount plus "c)" })
         {
-            cullingBuffer.bindSubmittedRanges()
-            visibleIndexBuffer.bindSubmittedRange()
-            cullItemIndexBuffer.bindSubmittedRange()
-            cullItemBatchIndexBuffer.bindSubmittedRange()
-            frustumMetadataBuffer.bindSubmittedRange()
-            frustumPlaneBuffer.bindSubmittedRange()
-            gpuCommandBuffer.bindSubmittedRange()
+            val modelBank = engine.gfx.modelBank
 
             program.bind()
+            program.bindStorageBuffer("CullItemBuffer", cullingBuffer.cullItemBuffer)
+            program.bindStorageBuffer("CullItemIndexBuffer", cullItemIndexBuffer)
+            program.bindStorageBuffer("CullItemBatchIndexBuffer", cullItemBatchIndexBuffer)
+            program.bindStorageBuffer("InstanceBuffer", instanceBuffer)
+            program.bindStorageBuffer("VisibleInstanceBuffer", visibleIndexBuffer)
+            program.bindStorageBuffer("BoneBuffer", boneBuffer)
+            program.bindStorageBuffer("MeshMetaBuffer", modelBank.metadataBuffer)
+            program.bindStorageBuffer("SkinningBoundsBuffer", modelBank.skinningBoundsBuffer)
+            program.bindStorageBuffer("DynamicBoundsBuffer", cullingBuffer.dynamicBoundsBuffer)
+            program.bindStorageBuffer("FrustumMetadataBuffer", frustumMetadataBuffer)
+            program.bindStorageBuffer("FrustumPlaneBuffer", frustumPlaneBuffer)
+            program.bindStorageBuffer("CommandBuffer", gpuCommandBuffer)
+
             program.setUniform("uInstanceCount", dispatch.cullInstanceCount)
             program.setUniform("uBatchCount", dispatch.commandCount)
             program.setUniform("uFrustumCount", dispatch.frustumCount)
@@ -374,12 +381,6 @@ class DrawCommandBuilder(
 
     companion object
     {
-        const val VISIBLE_INSTANCE_BUFFER_BINDING = 4
-        private const val CULL_ITEM_INDEX_BUFFER_BINDING = 9
-        private const val CULL_ITEM_BATCH_INDEX_BUFFER_BINDING = 10
-        private const val FRUSTUM_METADATA_BUFFER_BINDING = 11
-        private const val FRUSTUM_PLANE_BUFFER_BINDING = 2
-        private const val COMMAND_BUFFER_BINDING = 6
         private const val BUFFER_SEGMENTS = 6
         private const val INDIRECT_COMMAND_INTS = DrawPayload.INDIRECT_COMMAND_INTS
         private const val FRUSTUM_METADATA_INTS = 2

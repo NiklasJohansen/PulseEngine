@@ -8,8 +8,8 @@ import kotlin.math.cos
 
 class LightBufferObject
 {
-    private lateinit var lightBuffer: StreamingFloatBufferObject
-    private lateinit var shadowFaceBuffer: StreamingFloatBufferObject
+    lateinit var lightInstanceBuffer: StreamingFloatBufferObject private set
+    lateinit var shadowFaceBuffer: StreamingFloatBufferObject    private set
 
     var lightCount = 0;      private set
     var shadowFaceCount = 0; private set
@@ -18,30 +18,22 @@ class LightBufferObject
 
     fun init()
     {
-        if (this::lightBuffer.isInitialized)
+        if (this::lightInstanceBuffer.isInitialized)
             return
 
-        lightBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(
-            blockBinding = LIGHT_BUFFER_BINDING,
+        lightInstanceBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(
             initCapacity = LIGHT_FLOATS * 128,
             segmentCount = BUFFER_SEGMENTS
         )
         shadowFaceBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(
-            blockBinding = SHADOW_FACE_BUFFER_BINDING,
             initCapacity = SHADOW_FACE_FLOATS * 64,
             segmentCount = BUFFER_SEGMENTS
         )
     }
 
-    fun bind()
-    {
-        lightBuffer.bindSubmittedRange()
-        shadowFaceBuffer.bindSubmittedRange()
-    }
-    
     fun clear()
     {
-        lightBuffer.clear()
+        lightInstanceBuffer.clear()
         shadowFaceBuffer.clear()
         lightCount = 0
         shadowFaceCount = 0
@@ -50,7 +42,7 @@ class LightBufferObject
     fun addLight(light: RenderLight)
     {
         lightCount++
-        lightBuffer.fill(LIGHT_FLOATS)
+        lightInstanceBuffer.fill(LIGHT_FLOATS)
         {
             val color = light.color.asLinear()
             val isSpotLight = if (light.isSpotLight) 1f else 0f
@@ -82,7 +74,7 @@ class LightBufferObject
 
         measure("Local light buffers")
         {
-            lightBuffer.submit()
+            lightInstanceBuffer.submit()
             shadowFaceBuffer.submit()
             submitted = true
         }
@@ -94,7 +86,7 @@ class LightBufferObject
 
         measure("Local light buffers")
         {
-            lightBuffer.markSubmittedDataInUse()
+            lightInstanceBuffer.markSubmittedDataInUse()
             shadowFaceBuffer.markSubmittedDataInUse()
             submitted = false
         }
@@ -102,19 +94,16 @@ class LightBufferObject
 
     fun destroy()
     {
-        if (!this::lightBuffer.isInitialized)
+        if (!this::lightInstanceBuffer.isInitialized)
             return
             
-        lightBuffer.destroy()
+        lightInstanceBuffer.destroy()
         shadowFaceBuffer.destroy()
         submitted = false
     }
 
     companion object
     {
-        const val LIGHT_BUFFER_BINDING = 13
-        const val SHADOW_FACE_BUFFER_BINDING = 16
-
         private const val BUFFER_SEGMENTS = 3
         private const val LIGHT_FLOATS = 20
         private const val SHADOW_FACE_FLOATS = 20

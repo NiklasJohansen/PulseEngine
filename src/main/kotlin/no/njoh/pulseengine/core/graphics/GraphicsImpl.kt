@@ -157,9 +157,9 @@ open class GraphicsImpl : GraphicsInternal
 
         measure("Prepare draw")
         {
+            materialBank.submit()
+            modelBank.submit()
             sceneContext.buildFrame(engine)
-            materialBank.submitAndBind()
-            modelBank.submitAndBind()
         }
 
         renderSurfaceContentToOffscreenTarget(engine)

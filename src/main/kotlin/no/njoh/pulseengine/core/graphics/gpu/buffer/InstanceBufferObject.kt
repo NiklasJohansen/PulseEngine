@@ -10,7 +10,7 @@ import no.njoh.pulseengine.core.shared.primitives.Mat4fProps
 import no.njoh.pulseengine.core.shared.utils.Logger
 import kotlin.math.abs
 
-class InstanceBufferObject
+class InstanceBufferObject : ShaderStorageBufferObject
 {
     var instanceCount       = 0;                                 private set
     var instanceIndexMode   = UNIFORM_OFFSET;                    private set
@@ -25,11 +25,7 @@ class InstanceBufferObject
         if (this::instanceBuffer.isInitialized)
             return
 
-        instanceBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(
-            blockBinding = INSTANCE_BUFFER_BINDING,
-            initCapacity = INSTANCE_FLOATS * 512
-        )
-
+        instanceBuffer = StreamingFloatBufferObject.createShaderStorageBuffer(INSTANCE_FLOATS * 512)
         instanceIndexMode = getSupportedModelInstanceIndexMode()
         if (instanceIndexMode == INSTANCE_ATTRIBUTE)
             instanceIndexBuffer = StreamingIntBufferObject.createArrayBuffer(initCapacity = 512)
@@ -84,6 +80,8 @@ class InstanceBufferObject
         instanceBuffer.submit()
         instanceIndexBuffer?.submit()
     }
+
+    override fun bindStorageBuffer(binding: Int) = instanceBuffer.bindStorageBuffer(binding)
 
     fun markSubmittedDataInUse() = measure("Instance buffers")
     {
@@ -208,7 +206,6 @@ class InstanceBufferObject
         const val PARAMS_FLOAT_OFFSET = 28
         const val RENDER_ID_WORD_OFFSET = PARAMS_FLOAT_OFFSET + 3
 
-        const val INSTANCE_BUFFER_BINDING = 1
         const val INVALID_INSTANCE_INDEX = -1
 
         private const val MIN_NORMAL_DETERMINANT = 1e-8f

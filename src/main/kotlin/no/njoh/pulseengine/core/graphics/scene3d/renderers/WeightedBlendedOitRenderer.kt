@@ -18,6 +18,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.gpu.buffer.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.draw.RenderBucket
+import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderBucket
@@ -129,7 +130,7 @@ class WeightedBlendedOitRenderer
         drawPayload: DrawPayload,
         writeRenderIds: Boolean,
         visualizeRenderIds: Boolean,
-        configureAccumProgram: (ShaderProgram) -> Unit
+        cameraState: CameraRenderState
     ) {
         if (bucket.size == 0) return
 
@@ -138,7 +139,7 @@ class WeightedBlendedOitRenderer
 
         val opaqueDepthTex = surface.renderTarget.getTexture(DEPTH_TEXTURE)
 
-        accumulate(engine, surface, bucket, drawPayload, opaqueDepthTex, writeRenderIds, visualizeRenderIds, configureAccumProgram)
+        accumulate(engine, surface, bucket, drawPayload, opaqueDepthTex, writeRenderIds, visualizeRenderIds, cameraState)
         composite(surface, writeRenderIds)
     }
 
@@ -150,14 +151,12 @@ class WeightedBlendedOitRenderer
         opaqueDepthTex: RenderTexture?,
         writeRenderIds: Boolean,
         visualizeRenderIds: Boolean,
-        configureAccumProgram: (ShaderProgram) -> Unit
+        cameraState: CameraRenderState
     ) = measure("wboit_accumulate", label = { "Wboit accumulate (" plus bucket.instanceCount plus "i, " plus bucket.size plus "b)" }) {
 
         val activeAccumPrograms = if (visualizeRenderIds) renderIdViewAccumPrograms else accumPrograms
         val activeRevealagePrograms = if (writeRenderIds) renderIdRevealagePrograms else revealagePrograms
 
-        configureAccumProgram(activeAccumPrograms.staticProgram)
-        configureAccumProgram(activeAccumPrograms.skinnedProgram)
         configureWboitProgram(activeAccumPrograms.staticProgram, opaqueDepthTex, alphaCutoff)
         configureWboitProgram(activeAccumPrograms.skinnedProgram, opaqueDepthTex, alphaCutoff)
         configureRevealageProgram(activeRevealagePrograms.staticProgram, engine, surface, opaqueDepthTex, alphaCutoff)
@@ -177,6 +176,7 @@ class WeightedBlendedOitRenderer
 
         fbo.attachOutputTexture(fbo.getTexture(0))
         glBlendFunc(GL_ONE, GL_ONE)
+        bindPbrStorageBuffers(engine, activeAccumPrograms, cameraState, drawPayload)
         drawRenderBucket(bucket, drawPayload, activeAccumPrograms)
 
         if (writeRenderIds)
@@ -188,9 +188,34 @@ class WeightedBlendedOitRenderer
         else fbo.attachOutputTexture(fbo.getTexture(1))
 
         glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR)
+        bindModelStorageBuffers(engine, activeRevealagePrograms, drawPayload)
         drawRenderBucket(bucket, drawPayload, activeRevealagePrograms)
 
         fbo.release()
+    }
+
+    private fun bindPbrStorageBuffers(engine: PulseEngineInternal, programs: ShaderProgramSet, cameraState: CameraRenderState, payload: DrawPayload)
+    {
+        bindModelStorageBuffers(engine, programs, payload)
+
+        val context = engine.gfx.sceneContext
+        val lightBuffer = context.getLightBuffer()
+        programs.bindStorageBufferIfPresent("LocalLightBuffer", lightBuffer.lightInstanceBuffer)
+        programs.bindStorageBufferIfPresent("LocalShadowFaceBuffer", lightBuffer.shadowFaceBuffer)
+
+        val clusteredLightGrid = context.getClusteredLightGrid(cameraState)
+        programs.bindStorageBufferIfPresent("ClusterBuffer", clusteredLightGrid?.clusterBuffer)
+        programs.bindStorageBufferIfPresent("ClusterLightIndexBuffer", clusteredLightGrid?.lightIndexBuffer)
+    }
+
+    private fun bindModelStorageBuffers(engine: PulseEngineInternal, programs: ShaderProgramSet, payload: DrawPayload)
+    {
+        val context = engine.gfx.sceneContext
+        programs.bindStorageBuffer("InstanceBuffer", context.getInstanceBuffer())
+        programs.bindStorageBuffer("BoneBuffer", context.getBoneBuffer())
+        programs.bindStorageBuffer("MaterialBuffer", engine.gfx.materialBank)
+
+        programs.bindStorageBuffer("VisibleInstanceBuffer", payload.visibleInstanceBuffer)
     }
 
     private fun composite(surface: SurfaceInternal, writeRenderIds: Boolean) = measure("Wboit composite")
@@ -260,6 +285,8 @@ class WeightedBlendedOitRenderer
             fbo = FrameBufferObject.create(surface.config.renderWidth, surface.config.renderHeight, descriptors)
         }
     }
+
+    fun getAccumPrograms(visualizeRenderIds: Boolean) = if (visualizeRenderIds) renderIdViewAccumPrograms else accumPrograms
 
     fun destroy()
     {

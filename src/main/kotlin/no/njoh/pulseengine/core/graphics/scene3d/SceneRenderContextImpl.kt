@@ -45,7 +45,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     private val boneBuffer     = BoneBufferObject()
     private val lightBuffer    = LightBufferObject()
 
-    private val drawCommandBuilder         = DrawCommandBuilder(instanceBuffer, cullingBuffer)
+    private val drawCommandBuilder         = DrawCommandBuilder(instanceBuffer, cullingBuffer, boneBuffer)
     private val modelLodResolver           = ModelLodResolver()
     private val localShadowAtlas           = LocalShadowAtlas()
     private val clusteredLightGrids        = THashMap<CameraRenderState, ClusteredLightGrid>()
@@ -139,7 +139,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         // Prepare views for rendering
         drawCommandBuilder.beginFrame()
         views.forEach { (_, view) -> if (view.wasRequested()) view.prepare(thisFrameScene, drawCommandBuilder) }
-        drawCommandBuilder.finishFramePreparation()
+        drawCommandBuilder.finishFramePreparation(engine)
 
         lastFrameHadDrawItems = thisFrameScene.hasDrawItems
     }
@@ -286,6 +286,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     override fun getSubmittedSceneSnapshot() = thisFrameScene.submittedSnapshot
 
     override fun getLocalShadowAtlas() = localShadowAtlas
+
+    override fun getBoneBuffer() = boneBuffer
 
     override fun getLightBuffer() = lightBuffer
 

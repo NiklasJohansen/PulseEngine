@@ -24,7 +24,6 @@ import kotlin.math.max
 
 class PersistentRingBufferObject(
     private val target: Int,
-    private val blockBinding: Int?,
     private val elementSizeBytes: Int,
     private val segmentCount: Int,
     initCapacity: Int
@@ -92,12 +91,6 @@ class PersistentRingBufferObject(
         submitSegment(elementCount)
     }
 
-    fun bindSubmittedRange()
-    {
-        val binding = blockBinding ?: return
-        bindSubmittedRange(binding)
-    }
-
     fun bindSubmittedRange(binding: Int)
     {
         val rangeSize = max(submittedElementCount * elementSizeBytes, elementSizeBytes).toLong()
@@ -141,9 +134,6 @@ class PersistentRingBufferObject(
         submittedSegmentIndex   = writeSegmentIndex
         submittedElementCount   = elementCount
         submittedDataByteOffset = writeSegmentIndex * segmentStrideBytes.toLong()
-
-        if (blockBinding != null)
-            bindSubmittedRange()
     }
 
     private fun ensureCapacity(requiredCapacity: Int, cpuCapacity: Int)
@@ -199,7 +189,7 @@ class PersistentRingBufferObject(
         val waitTimeMs = (System.nanoTime() - waitStartNs) / 1_000_000L
         val glError = glGetError()
         throw IllegalStateException(
-            "$reason waiting for persistent GPU buffer fence: buffer=$id, target=$target, binding=$blockBinding, " +
+            "$reason waiting for persistent GPU buffer fence: buffer=$id, target=$target, " +
             "segment=$segmentIndex/$segmentCount, fence=$syncObj, wait=${waitTimeMs}ms, result=$result, " +
             "glError=0x${Integer.toHexString(glError)}, contextGeneration=${GlCapabilities.contextGeneration}"
         )

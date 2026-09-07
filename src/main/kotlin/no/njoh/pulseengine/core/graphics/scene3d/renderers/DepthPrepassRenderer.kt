@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
+import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderView
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderViewGroup
@@ -82,7 +83,7 @@ class DepthPrepassRenderer(
         configureOpaqueProgram(opaqueSkinnedProgram, cameraState)
         configureMaskedProgram(maskedStaticProgram, engine, cameraState)
         configureMaskedProgram(maskedSkinnedProgram, engine, cameraState)
-        render(view)
+        render(engine, view)
 
         glColorMask(true, true, true, true)
         glDisable(GL_CULL_FACE)
@@ -105,13 +106,14 @@ class DepthPrepassRenderer(
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
     }
 
-    private fun render(view: CameraRenderView)
+    private fun render(engine: PulseEngineInternal, view: CameraRenderView)
     {
         val opaqueCount = view.opaqueBucket.instanceCount
         if (opaqueCount > 0)
         {
             measure("opaque_depth", label = { "Draw opaque depth (" plus opaqueCount plus "i, " plus view.opaqueBucket.size plus "b)" })
             {
+                bindStorageBuffers(engine, opaquePrograms, view.drawPayload)
                 drawRenderBucket(view.opaqueBucket, view.drawPayload, opaquePrograms)
             }
         }
@@ -124,12 +126,21 @@ class DepthPrepassRenderer(
                 glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
                 glEnable(GL_SAMPLE_ALPHA_TO_ONE)
 
+                bindStorageBuffers(engine, maskedPrograms, view.drawPayload)
                 drawRenderBucket(view.maskedBucket, view.drawPayload, maskedPrograms)
 
                 glDisable(GL_SAMPLE_ALPHA_TO_ONE)
                 glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)
             }
         }
+    }
+
+    private fun bindStorageBuffers(engine: PulseEngineInternal, programs: ShaderProgramSet, payload: DrawPayload)
+    {
+        programs.bindStorageBuffer("InstanceBuffer", engine.gfx.sceneContext.getInstanceBuffer())
+        programs.bindStorageBuffer("VisibleInstanceBuffer", payload.visibleInstanceBuffer)
+        programs.bindStorageBuffer("BoneBuffer", engine.gfx.sceneContext.getBoneBuffer())
+        programs.bindStorageBufferIfPresent("MaterialBuffer", engine.gfx.materialBank)
     }
 
     override fun destroy(engine: PulseEngineInternal)

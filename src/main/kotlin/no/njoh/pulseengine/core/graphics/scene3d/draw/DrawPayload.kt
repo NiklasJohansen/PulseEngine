@@ -6,6 +6,8 @@ import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode
 sealed interface DrawPayload
 {
     val cullViewCount: Int
+    val visibleInstanceBuffer: StreamingIntBufferObject?
+        get() = null
 
     data object EmptyDrawPayload : DrawPayload
     {
@@ -19,12 +21,11 @@ sealed interface DrawPayload
     ) : DrawPayload
 
     data class IndirectDrawPayload(
+        override val visibleInstanceBuffer: StreamingIntBufferObject?,
         override val cullViewCount: Int,
+        val cullViewCommandStride: Int,
         val commandBuffer: StreamingIntBufferObject,
         val commandBaseIndex: Int,
-        val cullViewCommandStride: Int,
-        val useVisibleInstanceBuffer: Boolean,
-        val visibleInstanceBuffer: StreamingIntBufferObject?,
         val instanceIndexMode: ModelInstanceIndexMode,
         val instanceIndexBuffer: StreamingIntBufferObject?
     ) : DrawPayload {

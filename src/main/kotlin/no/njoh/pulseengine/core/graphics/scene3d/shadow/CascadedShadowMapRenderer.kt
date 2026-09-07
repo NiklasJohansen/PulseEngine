@@ -10,6 +10,7 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
+import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.CascadedShadowMapRenderer.Companion.SHADOW_CASCADE_BLEND_RATIO
 import no.njoh.pulseengine.core.graphics.scene3d.view.Frustum
 import no.njoh.pulseengine.core.graphics.scene3d.view.Frustum.FrustumPlaneSet
@@ -125,14 +126,14 @@ class CascadedShadowMapRenderer(
         maskedSkinnedProgram.bind()
         maskedSkinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
 
-        render(view)
+        render(engine, view)
 
         glViewport(0, 0, resolution, resolution)
         glDisable(GL_POLYGON_OFFSET_FILL)
         glColorMask(true, true, true, true)
     }
 
-    private fun render(view: GlobalShadowRenderView)
+    private fun render(engine: PulseEngineInternal, view: GlobalShadowRenderView)
     {
         val halfRes = resolution / 2
 
@@ -162,10 +163,21 @@ class CascadedShadowMapRenderer(
                 maskedSkinnedProgram.bind()
                 maskedSkinnedProgram.setUniform("viewProjection", renderState.viewProjections[cascadeIdx])
 
+                bindStorageBuffers(engine, opaquePrograms, view.drawPayload)
                 drawRenderBucket(view.opaqueBucket, view.drawPayload, opaquePrograms, cascadeIdx)
+
+                bindStorageBuffers(engine, maskedPrograms, view.drawPayload)
                 drawRenderBucket(view.maskedBucket, view.drawPayload, maskedPrograms, cascadeIdx)
             }
         }
+    }
+
+    private fun bindStorageBuffers(engine: PulseEngineInternal, programs: ShaderProgramSet, payload: DrawPayload)
+    {
+        programs.bindStorageBuffer("InstanceBuffer", engine.gfx.sceneContext.getInstanceBuffer())
+        programs.bindStorageBuffer("VisibleInstanceBuffer", payload.visibleInstanceBuffer)
+        programs.bindStorageBuffer("BoneBuffer", engine.gfx.sceneContext.getBoneBuffer())
+        programs.bindStorageBufferIfPresent("MaterialBuffer", engine.gfx.materialBank)
     }
 
     override fun destroy(engine: PulseEngineInternal)

@@ -41,7 +41,7 @@ class RenderIdOutlineRenderer(
             engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/render_id_outline.frag"))
         )
         pass = FullscreenPass(program).apply { init() }
-        selectionBuffer = StreamingIntBufferObject.createUnboundShaderStorageBuffer(INITIAL_SELECTION_WORD_CAPACITY)
+        selectionBuffer = StreamingIntBufferObject.createShaderStorageBuffer(INITIAL_SELECTION_WORD_CAPACITY)
     }
 
     override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
@@ -85,7 +85,7 @@ class RenderIdOutlineRenderer(
         program.setUniform("uTextureSize", renderIdTexture.width.toFloat(), renderIdTexture.height.toFloat())
         program.setUniform("uOutlineWidth", outlineWidthPixels.coerceAtLeast(1))
         program.setUniform("uSelectionWordCount", readSelection.wordCount)
-        selectionBuffer.bindSubmittedRange(SELECTION_BUFFER_BINDING)
+        program.bindStorageBuffer("SelectionBuffer", selectionBuffer)
 
         pass.draw()
         selectionBuffer.markSubmittedDataInUse()
@@ -151,7 +151,6 @@ class RenderIdOutlineRenderer(
 
     companion object
     {
-        private const val SELECTION_BUFFER_BINDING = 13
         private const val INITIAL_SELECTION_WORD_CAPACITY = 4096
     }
 }

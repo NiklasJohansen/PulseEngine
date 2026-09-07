@@ -4,11 +4,12 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.MASK
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.gpu.buffer.DoubleBufferedFloatObject
+import no.njoh.pulseengine.core.graphics.gpu.buffer.ShaderStorageBufferObject
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import java.util.ArrayDeque
 
-class MaterialBank
+class MaterialBank : ShaderStorageBufferObject
 {
     private var buffer: DoubleBufferedFloatObject? = null
     private val materials = ArrayList<Material?>(128).apply { add(null) }
@@ -44,7 +45,7 @@ class MaterialBank
         material.onDeleted()
     }
 
-    fun submitAndBind()
+    fun submit()
     {
         val buffer = buffer ?: return
 
@@ -60,13 +61,11 @@ class MaterialBank
 
             dirty = false
         }
-        else
-        {
-            // Rebind the SSBO binding point even when no upload is needed.
-            // release() only clears the generic buffer target, not glBindBufferBase binding.
-            buffer.bind()
-            buffer.release()
-        }
+    }
+
+    override fun bindStorageBuffer(binding: Int)
+    {
+        buffer?.bindStorageBuffer(binding)
     }
 
     fun destroy()
@@ -90,10 +89,7 @@ class MaterialBank
         if (buffer != null) return
 
         dirty = true
-        buffer = DoubleBufferedFloatObject.createShaderStorageBuffer(
-            blockBinding = BUFFER_BINDING,
-            initCapacity = MATERIAL_FLOATS * 128
-        )
+        buffer = DoubleBufferedFloatObject.createShaderStorageBuffer(MATERIAL_FLOATS * 128)
     }
 
     private fun hasDirtyMaterials(): Boolean
@@ -144,10 +140,7 @@ class MaterialBank
 
     companion object
     {
-        const val BUFFER_BINDING = 2
-
         private val DEFAULT_MATERIAL_COLOR = Color(1f, 0f, 1f, 1f)
-
         private const val MATERIAL_FLOATS = 32
     }
 }

@@ -8,11 +8,10 @@ import kotlin.math.max
 
 class StreamingFloatBufferObject private constructor(
     val target: Int,
-    blockBinding: Int?,
     initCapacity: Int,
     segmentCount: Int
-) {
-    private val buffer = PersistentRingBufferObject(target, blockBinding, Float.SIZE_BYTES, segmentCount, initCapacity)
+) : ShaderStorageBufferObject {
+    private val buffer = PersistentRingBufferObject(target, Float.SIZE_BYTES, segmentCount, initCapacity)
 
     @PublishedApi internal var data = FloatArray(initCapacity)
     @PublishedApi internal var size = 0
@@ -23,7 +22,7 @@ class StreamingFloatBufferObject private constructor(
 
     fun submit() = buffer.submit(data, size)
 
-    fun bindSubmittedRange() = buffer.bindSubmittedRange()
+    override fun bindStorageBuffer(binding: Int) = buffer.bindSubmittedRange(binding)
 
     fun markSubmittedDataInUse() = buffer.markSubmittedSegmentInUse()
 
@@ -95,7 +94,7 @@ class StreamingFloatBufferObject private constructor(
 
     companion object
     {
-        fun createShaderStorageBuffer(blockBinding: Int, initCapacity: Int = 0, segmentCount: Int = 3) =
-            StreamingFloatBufferObject(GL_SHADER_STORAGE_BUFFER, blockBinding, initCapacity, segmentCount)
+        fun createShaderStorageBuffer(initCapacity: Int = 0, segmentCount: Int = 3) =
+            StreamingFloatBufferObject(GL_SHADER_STORAGE_BUFFER, initCapacity, segmentCount)
     }
 }

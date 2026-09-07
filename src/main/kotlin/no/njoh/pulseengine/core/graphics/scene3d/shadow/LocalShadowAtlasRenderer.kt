@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
+import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewGroup
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
 import no.njoh.pulseengine.core.graphics.scene3d.view.LocalShadowRenderView
@@ -103,7 +104,10 @@ class LocalShadowAtlasRenderer(
                 maskedSkinnedProgram.setUniform("viewProjection", shadowFace.viewProjection)
 
                 val cullViewIndex = pass.cullViewIndexOf(shadowFaceIndex)
+                bindStorageBuffers(engine, opaquePrograms, pass.drawPayload)
                 drawRenderBucket(pass.opaqueBucket, pass.drawPayload, opaquePrograms, cullViewIndex)
+
+                bindStorageBuffers(engine, maskedPrograms, pass.drawPayload)
                 drawRenderBucket(pass.maskedBucket, pass.drawPayload, maskedPrograms, cullViewIndex)
             }
         }
@@ -111,6 +115,14 @@ class LocalShadowAtlasRenderer(
         glViewport(0, 0, surface.config.renderWidth, surface.config.renderHeight)
         glDisable(GL_POLYGON_OFFSET_FILL)
         glColorMask(true, true, true, true)
+    }
+
+    private fun bindStorageBuffers(engine: PulseEngineInternal, programs: ShaderProgramSet, payload: DrawPayload)
+    {
+        programs.bindStorageBuffer("InstanceBuffer", engine.gfx.sceneContext.getInstanceBuffer())
+        programs.bindStorageBuffer("VisibleInstanceBuffer", payload.visibleInstanceBuffer)
+        programs.bindStorageBuffer("BoneBuffer", engine.gfx.sceneContext.getBoneBuffer())
+        programs.bindStorageBufferIfPresent("MaterialBuffer", engine.gfx.materialBank)
     }
 
     override fun destroy(engine: PulseEngineInternal)

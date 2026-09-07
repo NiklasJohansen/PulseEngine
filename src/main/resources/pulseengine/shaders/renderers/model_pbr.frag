@@ -191,27 +191,27 @@ struct MaterialData
     vec4 tilingAlphaFlags; // x/y=tiling, z=alphaCutoff, w=flags
 };
 
-layout(std430, binding = 2) readonly buffer MaterialBuffer
+layout(std430, binding = 3) readonly buffer MaterialBuffer
 {
     MaterialData uMaterials[];
 };
 
-layout(std430, binding = 13) readonly buffer LocalLightBuffer
+layout(std430, binding = 4) readonly buffer LocalLightBuffer
 {
     LocalLightData uLocalLights[];
 };
 
-layout(std430, binding = 14) readonly buffer ClusterBuffer
+layout(std430, binding = 5) readonly buffer ClusterBuffer
 {
     uvec2 uClusterRanges[]; // x=offset into uClusterLightIndices, y=count
 };
 
-layout(std430, binding = 15) readonly buffer ClusterLightIndexBuffer
+layout(std430, binding = 6) readonly buffer ClusterLightIndexBuffer
 {
     uint uClusterLightIndices[];
 };
 
-layout(std430, binding = 16) readonly buffer LocalShadowFaceBuffer
+layout(std430, binding = 7) readonly buffer LocalShadowFaceBuffer
 {
     LocalShadowFaceData uLocalShadowFaces[];
 };

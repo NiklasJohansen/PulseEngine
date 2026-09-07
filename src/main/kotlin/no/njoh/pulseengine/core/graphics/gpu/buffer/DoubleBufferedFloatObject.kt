@@ -17,7 +17,7 @@ class DoubleBufferedFloatObject private constructor(
     private val usage: Int,
     private val blockBinding: Int?,
     private var mappedByteBuffer: ByteBuffer
-) {
+) : ShaderStorageBufferObject {
     private var mappedSizeInBytes = mappedByteBuffer.capacity().toLong()
     private var mappedFloatBuffer = mappedByteBuffer.asFloatBuffer()
 
@@ -32,6 +32,8 @@ class DoubleBufferedFloatObject private constructor(
         if (blockBinding != null)
             glBindBufferBase(target, blockBinding, id)
     }
+
+    override fun bindStorageBuffer(binding: Int) = glBindBufferBase(target, binding, id)
 
     fun submit()
     {
@@ -139,10 +141,10 @@ class DoubleBufferedFloatObject private constructor(
         fun createTextureBuffer(initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =
             createBuffer(initCapacity, usage, GL_TEXTURE_BUFFER, null)
 
-        fun createShaderStorageBuffer(blockBinding: Int, initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW): DoubleBufferedFloatObject
+        fun createShaderStorageBuffer(initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW): DoubleBufferedFloatObject
         {
             GlCapabilities.requireFullGraphics("Shader storage buffers")
-            return createBuffer(initCapacity, usage, GL_SHADER_STORAGE_BUFFER, blockBinding)
+            return createBuffer(initCapacity, usage, GL_SHADER_STORAGE_BUFFER, null)
         }
 
         fun createUniformBuffer(blockBinding: Int, initCapacity: Int = 0, usage: Int = GL_DYNAMIC_DRAW) =

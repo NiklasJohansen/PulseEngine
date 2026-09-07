@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.gpu.shader
 
 import no.njoh.pulseengine.core.asset.types.Shader
+import no.njoh.pulseengine.core.graphics.gpu.buffer.ShaderStorageBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAnisotropy.Companion.defaultFor
@@ -27,6 +28,10 @@ import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL30.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.GL32.GL_TEXTURE_2D_MULTISAMPLE
 import org.lwjgl.opengl.GL30.glUniform1ui
+import org.lwjgl.opengl.GL43.GL_BUFFER_BINDING
+import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BLOCK
+import org.lwjgl.opengl.GL43.glGetProgramResourceIndex
+import org.lwjgl.opengl.GL43.glGetProgramResourceiv
 import java.nio.FloatBuffer
 
 class ShaderProgram(
@@ -41,6 +46,12 @@ class ShaderProgram(
 
     /** Cache of attribute locations */
     private var attributeLocations = emptyObjectIntHashMap<String>(16) // Attribute name -> location
+
+    /** Cache of shader storage block bindings declared by the linked shaders */
+    private var shaderStorageBufferBindings = emptyObjectIntHashMap<String>(16) // Block name -> binding
+
+    /** Missing required storage blocks already reported for the current linked shaders */
+    private val reportedMissingShaderStorageBlocks = HashSet<String>(8)
 
     /** Used for setting texture sampler bindings */
     private val textureUnits = emptyObjectIntHashMap<String>(32) // Sampler name -> texture unit
@@ -206,6 +217,33 @@ class ShaderProgram(
         return index
     }
 
+    fun bindStorageBuffer(blockName: String, buffer: ShaderStorageBufferObject?)
+    {
+        if (buffer == null) return
+
+        val binding = shaderStorageBufferBindingOf(blockName)
+        if (binding != MISSING_SHADER_STORAGE_BLOCK)
+        {
+            buffer.bindStorageBuffer(binding)
+        }
+        else if (reportedMissingShaderStorageBlocks.add(blockName))
+        {
+            Logger.error { "Shader storage block '$blockName' not found in shader program #$id (${shaders.joinToString { it.filePath }})" }
+        }
+    }
+
+    internal fun shaderStorageBufferBindingOf(blockName: String): Int =
+        shaderStorageBufferBindings.getOrPut(blockName)
+        {
+            val blockIndex = glGetProgramResourceIndex(id, GL_SHADER_STORAGE_BLOCK, blockName)
+            if (blockIndex != MISSING_SHADER_STORAGE_BLOCK)
+            {
+                glGetProgramResourceiv(id, GL_SHADER_STORAGE_BLOCK, blockIndex, shaderStorageBufferBindingProperty, null, shaderStorageBufferBindingValue)
+                shaderStorageBufferBindingValue[0]
+            }
+            else MISSING_SHADER_STORAGE_BLOCK
+        }
+
     private fun getUniformLocation(name: String): Int =
         glGetUniformLocation(id, name).also()
         {
@@ -236,6 +274,8 @@ class ShaderProgram(
 
         uniformLocations.clear()
         attributeLocations.clear()
+        shaderStorageBufferBindings.clear()
+        reportedMissingShaderStorageBlocks.clear()
         textureUnits.clear()
         shaderCompileHash = hash
     }
@@ -247,6 +287,9 @@ class ShaderProgram(
         private val matrixFloatArray = FloatArray(16)
         private var matrixFloatArrays = Array<FloatArray?>(0) { null }
         private val textureBankNames = Array(64) { "uTextureBanks[$it]" }
+        private val shaderStorageBufferBindingProperty = intArrayOf(GL_BUFFER_BINDING)
+        private val shaderStorageBufferBindingValue = IntArray(1)
+        private const val MISSING_SHADER_STORAGE_BLOCK = -1
 
         fun create(vararg shaders: Shader) = ShaderProgram(glCreateProgram(), shaders.toList())
     }

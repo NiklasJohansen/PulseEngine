@@ -43,7 +43,7 @@ struct MaterialData
     vec4 tilingAlphaFlags; // x/y=tiling, z=alphaCutoff, w=flags
 };
 
-layout(std430, binding = 2) readonly buffer MaterialBuffer
+layout(std430, binding = 3) readonly buffer MaterialBuffer
 {
     MaterialData uMaterials[];
 };
