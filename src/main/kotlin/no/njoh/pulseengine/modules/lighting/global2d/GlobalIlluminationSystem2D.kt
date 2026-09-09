@@ -145,7 +145,7 @@ open class GlobalIlluminationSystem2D : SceneSystem()
             camera = engine.gfx.mainCamera,
             zOrder = engine.gfx.mainSurface.config.zOrder + 5,
             isVisible = false,
-            clearColor = Color(0.5f, 0.5f, 1.0f, 1f),
+            clearColor = Color(0.5f, 0.5f, 1.0f, 1f).asSrgb().copy(),
             output = SurfaceOutputSpec(
                 attachments = listOf(
                     colorAttachment(filter = LINEAR_MIPMAP, mipmapGenerator = CustomMipmapGenerator()),

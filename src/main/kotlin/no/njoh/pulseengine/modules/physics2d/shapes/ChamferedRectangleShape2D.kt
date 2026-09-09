@@ -5,7 +5,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Creates a rectangle shape with champfered edges.
+ * Creates a rectangle shape with chamfered edges.
  * Suited for a platformer character.
  *   _____
  *  /     \
@@ -13,7 +13,7 @@ import kotlin.math.sin
  *  |     |
  *  \_____/
  */
-class ChamberedRectangleShape2D(
+class ChamferedRectangleShape2D(
     private var keepAxisAligned: Boolean = true,
     private val widthFraction: Float = 0.7f,
     private val heightFraction: Float = 0.8f
