@@ -12,6 +12,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
+import no.njoh.pulseengine.core.shared.utils.Extensions.noneMatches
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 
@@ -61,7 +62,11 @@ class RenderIdOutlineRenderer(
     {
         if (startIndex != 0) return
 
-        val renderIdTexture = engine.gfx.getSurface(renderIdSurfaceName)?.getTexture(renderIdAttachmentPoint, final = false) ?: return
+        val surface = engine.gfx.getSurface(renderIdSurfaceName) ?: return
+        if (surface.config.attachments.noneMatches { it.attachmentPoint == renderIdAttachmentPoint })
+            return // No render id texture attached to surface
+
+        val renderIdTexture = surface.getTexture(renderIdAttachmentPoint, final = false)
 
         if (selectionBufferDirty)
         {

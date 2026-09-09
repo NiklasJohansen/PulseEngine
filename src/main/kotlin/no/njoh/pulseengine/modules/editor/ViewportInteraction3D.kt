@@ -122,11 +122,6 @@ class ViewportInteraction3D(
             output = SurfaceOutputSpec(multisampling = Multisampling.MSAA8),
             clearColor = Color(0.5f, 0.5f, 0.5f, 0f),
             zOrder = -50
-        ).addRenderer(
-            RenderIdOutlineRenderer(
-                renderIdSurfaceName = Scene3DRenderSystem.SCENE_3D_SURFACE,
-                renderIdAttachmentPoint = Scene3DRenderSystem.RENDER_ID_ATTACHMENT_POINT
-            )
         )
 
         updateOrbitPivotFromSelection(context)
@@ -216,7 +211,6 @@ class ViewportInteraction3D(
 
     override fun onRender(engine: PulseEngine, context: ViewportContext)
     {
-        val outlineRenderer = getSelectionOutlineRenderer(engine)
         updateGrid(engine, context)
 
         if (engine.scene.state != SceneState.STOPPED)
@@ -231,6 +225,7 @@ class ViewportInteraction3D(
             return
         }
 
+        val outlineRenderer = getOrCreateSelectionOutlineRenderer(engine)
         val selected = getSelectedTransformables(context)
         if (outlineRenderer != null && outlineSelectionDirty)
         {
@@ -584,6 +579,10 @@ class ViewportInteraction3D(
     override fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext)
     {
         updateViewMode(engine, ViewMode.SHADED)
+        val outlineSurface = engine.gfx.getSurface(GIZMO_SURFACE)
+        val outlineRenderer = outlineSurface?.getRenderer<RenderIdOutlineRenderer>()
+        if (outlineRenderer != null)
+            outlineSurface.deleteRenderer(outlineRenderer)
         val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
         val renderer = surface?.getRenderer<GridRenderer>()
         if (renderer != null)
@@ -2071,7 +2070,18 @@ class ViewportInteraction3D(
         .getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
         ?.takeIf { it.config.hasAttachment(Scene3DRenderSystem.RENDER_ID_ATTACHMENT_POINT) }
 
-    private fun getSelectionOutlineRenderer(engine: PulseEngine) = engine.gfx.getSurface(GIZMO_SURFACE)?.getRenderer<RenderIdOutlineRenderer>()
+    private fun getOrCreateSelectionOutlineRenderer(engine: PulseEngine): RenderIdOutlineRenderer?
+    {
+        val surface = engine.gfx.getSurface(GIZMO_SURFACE) ?: return null
+        surface.getRenderer<RenderIdOutlineRenderer>()?.let { return it }
+        return RenderIdOutlineRenderer(
+            renderIdSurfaceName = Scene3DRenderSystem.SCENE_3D_SURFACE,
+            renderIdAttachmentPoint = Scene3DRenderSystem.RENDER_ID_ATTACHMENT_POINT
+        ).also {
+            surface.addRenderer(it)
+            outlineSelectionDirty = true
+        }
+    }
 
     enum class GizmoMode { MOVE, ROTATE, SCALE }
 
@@ -2162,7 +2172,6 @@ class ViewportInteraction3D(
         )
         private val WORLD_X = Vector3f(1f, 0f, 0f)
         private val WORLD_Y = Vector3f(0f, 1f, 0f)
-        private val WORLD_Z = Vector3f(0f, 0f, 1f)
         private val ACTIVE_COLOR = Color(1f, 0.8f, 0.12f, 1f)
         private val CENTER_COLOR = Color(0.85f, 0.85f, 0.85f, 1f)
         private val ACTIVE_PLANE_COLOR = Color(1f, 0.75f, 0.08f, 0.9f)

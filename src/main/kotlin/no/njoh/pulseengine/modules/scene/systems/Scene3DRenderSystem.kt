@@ -23,17 +23,16 @@ import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 
 @Icon("MONITOR")
 @Name("3D Scene Renderer")
 class Scene3DRenderSystem : SceneSystem()
 {
-    @Prop(i=0)                 var useDepthPrepass = true
-    @Prop(i=1)                 var transparencyMode = WEIGHTED_BLENDED_OIT
-    @Prop(i=2, min=0f, max=1f) var wightedBlendAlphaCutoff = 0.04f
-    @Prop(i=3)                 var writeRenderIds = true
-
-    private var hasAppliedWriteRenderIds = false
+    @Prop(i=0)                 var useDepthPrepass          = true
+    @Prop(i=1)                 var transparencyMode         = WEIGHTED_BLENDED_OIT
+    @Prop(i=2, min=0f, max=1f) var weightedBlendAlphaCutoff = 0.04f
+    @Prop(i=3)                 var writeRenderIds           = true
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -59,8 +58,6 @@ class Scene3DRenderSystem : SceneSystem()
                 addRenderer(DepthPrepassRenderer())
             addRenderer(ModelRenderer(writeRenderIds = writeRenderIds))
         }
-
-        hasAppliedWriteRenderIds = writeRenderIds
     }
 
     override fun onUpdate(engine: PulseEngine)
@@ -72,24 +69,20 @@ class Scene3DRenderSystem : SceneSystem()
 
         val depthPrepassRenderer = surface.getRenderer<DepthPrepassRenderer>()
         val modelRenderer = surface.getRenderer<ModelRenderer>()
-        val renderIdsEnabled = writeRenderIds
+        val hasRenderIdAttachment = surface.config.attachments.anyMatches { it.attachmentPoint == RENDER_ID_ATTACHMENT_POINT }
 
-        if (renderIdsEnabled != hasAppliedWriteRenderIds)
+        if (writeRenderIds && !hasRenderIdAttachment)
         {
-            if (!renderIdsEnabled)
-            {
-                surface.removeAttachment(RENDER_ID_ATTACHMENT_POINT)
-            }
-            else
-            {
-                surface.setAttachment(colorAttachment(RENDER_ID_ATTACHMENT_POINT, R32UI, NEAREST))
-            }
-            hasAppliedWriteRenderIds = renderIdsEnabled
+            surface.setAttachment(colorAttachment(RENDER_ID_ATTACHMENT_POINT, R32UI, NEAREST))
         }
-        
-        modelRenderer?.transparencyMode = transparencyMode
-        modelRenderer?.weightedBlendAlphaCutoff = wightedBlendAlphaCutoff
-        modelRenderer?.writeRenderIds = renderIdsEnabled
+        else if (!writeRenderIds && hasRenderIdAttachment)
+        {
+            surface.removeAttachment(RENDER_ID_ATTACHMENT_POINT)
+        }
+
+        modelRenderer?.transparencyMode         = transparencyMode
+        modelRenderer?.weightedBlendAlphaCutoff = weightedBlendAlphaCutoff
+        modelRenderer?.writeRenderIds           = writeRenderIds
 
         if (useDepthPrepass && depthPrepassRenderer == null)
         {
