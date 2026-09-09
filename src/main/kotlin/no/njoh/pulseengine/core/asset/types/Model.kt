@@ -234,14 +234,12 @@ class Model(
             (if (hasTexCoords) 2 else 0) +
             (if (hasBones) MAX_BONE_INFLUENCES + MAX_BONE_INFLUENCES else 0)
 
-        val meshes          = mutableListOf<Mesh>()
-        val bones           = mutableListOf<Bone>()
-        val boneIndexByName = emptyObjectIntHashMap<String>()
-        val vertexData      = FloatArray(totalVertices * stride)
-        val indices         = IntArray(totalIndices)
-
-        // TODO: need to create flat primitive array not array of objects
-        val vertexInfluences = Array(totalVertices) { VertexInfluence() }
+        val meshes           = mutableListOf<Mesh>()
+        val bones            = mutableListOf<Bone>()
+        val boneIndexByName  = emptyObjectIntHashMap<String>()
+        val vertexData       = FloatArray(totalVertices * stride)
+        val indices          = IntArray(totalIndices)
+        val vertexInfluences = if (hasBones) Array(totalVertices) { VertexInfluence() } else emptyArray()
 
         var dst = 0                 // write cursor in vertexData
         var globalVertexOffset = 0  // index offset per mesh
@@ -1621,7 +1619,8 @@ internal class AssimpAssetFileIO(private val modelPath: String) : AutoCloseable
 
     private val filesByAddress = HashMap<Long, OpenFile>()
     private val allocatedFiles = ArrayList<OpenFile>()
-    private var closed = false
+    private val dataByPath     = HashMap<String, ByteBuffer>()
+    private var closed         = false
 
     private val openProc = AIFileOpenProc.create { _, fileNameAddress, _ ->
         callback("open", modelPath, MemoryUtil.NULL)
@@ -1653,28 +1652,36 @@ internal class AssimpAssetFileIO(private val modelPath: String) : AutoCloseable
     {
         val candidatePaths = resolveCandidatePaths(requestedPath)
         var resolvedPath: String? = null
-        var bytes: ByteArray? = null
+        var data: ByteBuffer? = null
 
         for (candidatePath in candidatePaths)
         {
+            val cachedData = dataByPath[candidatePath]
+            if (cachedData != null)
+            {
+                resolvedPath = candidatePath
+                data = cachedData
+                break
+            }
+
             val candidateBytes = candidatePath.loadBytesFromPath()
             if (candidateBytes != null)
             {
                 resolvedPath = candidatePath
-                bytes = candidateBytes
+                data = MemoryUtil.memAlloc(candidateBytes.size)
+                data.put(candidateBytes).flip()
+                dataByPath[candidatePath] = data
                 break
             }
         }
 
-        if (resolvedPath == null || bytes == null)
+        if (resolvedPath == null || data == null)
         {
             lastFailure = "Assimp could not resolve '$requestedPath' while importing '$modelPath'"
             return MemoryUtil.NULL
         }
 
-        val data = BufferUtils.createByteBuffer(bytes.size)
-        data.put(bytes).flip()
-
+        // Assimp reopens files while probing importers. Share the bytes, but keep a separate cursor per open.
         val file = OpenFile(resolvedPath, data)
         filesByAddress[file.nativeFile.address()] = file
         allocatedFiles += file
@@ -1720,6 +1727,8 @@ internal class AssimpAssetFileIO(private val modelPath: String) : AutoCloseable
         filesByAddress.clear()
         allocatedFiles.forEach { it.close() }
         allocatedFiles.clear()
+        dataByPath.values.forEach { MemoryUtil.memFree(it) }
+        dataByPath.clear()
         fileIO.free()
         openProc.close()
         closeProc.close()

@@ -448,7 +448,7 @@ object Extensions
      * Reads this file as bytes from besides the JAR or from inside it.
      * Example: "directory/file.ext".loadBytesFromPath().
      */
-    fun String.loadBytesFromPath() = ResourceResolver.open(this)?.use { it.readBytes() }
+    fun String.loadBytesFromPath() = ResourceResolver.readBytes(this)
 
     /**
      * Reads only a packaged resource, ignoring a matching file outside the JAR.

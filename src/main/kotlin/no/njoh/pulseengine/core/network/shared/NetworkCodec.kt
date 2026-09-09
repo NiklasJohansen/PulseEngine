@@ -63,9 +63,13 @@ class KryoNetworkCodec(
     val typeIdRange: Int = 1_000_000
 ): NetworkCodec {
 
-    private val typeRegistry    = ConcurrentHashMap.newKeySet<KClass<*>>()
-    private val registryVersion = AtomicInteger(0)
     private val localRegVersion = ThreadLocal.withInitial { 0 }
+    private val registryVersion = AtomicInteger(1)
+    private val typeRegistry by lazy()
+    {
+        ConcurrentHashMap.newKeySet<KClass<*>>()
+            .also { registry -> types.forEachFast { type -> type.findSubClasses().forEachFast { registry.add(it) } } }
+    }
 
     private val data   = ThreadLocal.withInitial { NetworkCodec.BinaryData(ByteArray(0), 0) }
     private val input  = ThreadLocal.withInitial { Input(1) }
@@ -81,9 +85,6 @@ class KryoNetworkCodec(
             syncWithTypeRegistry()
         }
     }
-
-    // Initial registration of provided types
-    init { types.forEachFast { addTypeToRegistry(it) } }
 
     /**
      * Registers a type with Kryo. If the type is a sealed class, all its subclasses are registered as well.
@@ -131,7 +132,7 @@ class KryoNetworkCodec(
      * Increments the registry version if new types are added.
      */
     private fun addTypeToRegistry(type: KClass<*>) =
-        findSubClasses(type).forEach { if (typeRegistry.add(it)) registryVersion.incrementAndGet() }
+        type.findSubClasses().forEach { if (typeRegistry.add(it)) registryVersion.incrementAndGet() }
 
     /**
      * Synchronizes the local Kryo instance with the global type registry if there are new types to register.
@@ -163,9 +164,9 @@ class KryoNetworkCodec(
     /**
      * Recursively finds all subclasses of a sealed class, including the class itself.
      */
-    private fun findSubClasses(root: KClass<*>, classes: MutableList<KClass<*>> = mutableListOf()): List<KClass<*>>
+    private fun KClass<*>.findSubClasses(classes: MutableList<KClass<*>> = mutableListOf()): List<KClass<*>>
     {
-        root.sealedSubclasses.let { if (it.isEmpty()) classes += root else it.forEachFast { c -> findSubClasses(c, classes) } }
+        sealedSubclasses.let { if (it.isEmpty()) classes += this else it.forEachFast { c -> c.findSubClasses(classes) } }
         return classes
     }
 }

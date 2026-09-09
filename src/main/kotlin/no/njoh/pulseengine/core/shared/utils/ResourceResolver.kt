@@ -51,6 +51,15 @@ internal object ResourceResolver
         return openClasspath(path)
     }
 
+    /** 
+     * Reads disk files into a sized array, avoiding the growing buffers used by InputStream.readBytes(). 
+     */
+    fun readBytes(path: String): ByteArray?
+    {
+        resolveDiskFile(path)?.let { return Files.readAllBytes(it) }
+        return openClasspath(path)?.use { it.readAllBytes() }
+    }
+
     /**
      * Finds a file on disk, without looking inside the JAR.
      * resolveDiskFile("data/example.ext") may return "C:/Application/data/example.ext". An absolute path is returned 
