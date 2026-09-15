@@ -15,6 +15,7 @@ import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.EntityNameRef
 import no.njoh.pulseengine.core.shared.annotations.SceneRef
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.core.shared.utils.FileChooser
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.ReflectionUtil.findPropertyAnnotation
@@ -465,7 +466,7 @@ open class UiElementFactory(
             scrollbar.sliderColor = style.getColor("SCROLLBAR")
             scrollbar.sliderColorHover = style.getColor("SCROLLBAR_HOVER")
             scrollbar.hidden = !showScrollbar
-            scrollbar.cornerRadius = ScaledValue.of(2f)
+            scrollbar.cornerRadius = CornerRadius(2f)
             configureDropdownSearch(this, searchable)
 
             val submenus = mutableListOf<UiElement>()
@@ -683,7 +684,7 @@ open class UiElementFactory(
             scrollbar.sliderColor = style.getColor("SCROLLBAR")
             scrollbar.sliderColorHover = style.getColor("SCROLLBAR_HOVER")
             scrollbar.hidden = !showScrollbar
-            scrollbar.cornerRadius = ScaledValue.of(2f)
+            scrollbar.cornerRadius = CornerRadius(2f)
             configureDropdownSearch(this, searchable)
             setOnItemToString(onItemToString)
             setOnItemChanged(onItemChanged)
@@ -865,7 +866,7 @@ open class UiElementFactory(
                 {
                     addChildren(propertiesRowPanel, buttonUI)
                 },
-                createScrollbarUI(propertiesRowPanel, VERTICAL)
+                createScrollbarUI(propertiesRowPanel, VERTICAL, CornerRadius(4f))
             )
         }
     }
@@ -958,7 +959,7 @@ open class UiElementFactory(
     /**
      * Creates a UI panel with a horizontally and/or vertically aligned scrollbar.
      */
-    open fun createScrollableSectionUI(scrollablePanel: UiElement): Panel
+    open fun createScrollableSectionUI(scrollablePanel: UiElement, cornerRadius: CornerRadius = CornerRadius(4f)): Panel
     {
         if (scrollablePanel !is Scrollable)
             throw IllegalArgumentException("${scrollablePanel::class.simpleName} is not Scrollable")
@@ -967,12 +968,12 @@ open class UiElementFactory(
         if (scrollablePanel is VerticallyScrollable)
         {
             outerPanel = HorizontalPanel()
-            outerPanel.addChildren(scrollablePanel, createScrollbarUI(scrollablePanel, direction = VERTICAL))
+            outerPanel.addChildren(scrollablePanel, createScrollbarUI(scrollablePanel, direction = VERTICAL, cornerRadius))
         }
 
         if (scrollablePanel is HorizontallyScrollable)
         {
-            val scrollBar = createScrollbarUI(scrollablePanel, direction = HORIZONTAL)
+            val scrollBar = createScrollbarUI(scrollablePanel, direction = HORIZONTAL, cornerRadius)
             val body = outerPanel ?: scrollablePanel
             outerPanel = VerticalPanel()
             outerPanel.addChildren(body, scrollBar)
@@ -984,20 +985,22 @@ open class UiElementFactory(
     /**
      * Creates a default [Scrollbar] UI element.
      */
-    open fun createScrollbarUI(scrollBinding: Scrollable, direction: ScrollDirection): Scrollbar
-    {
+    open fun createScrollbarUI(
+        scrollBinding: Scrollable, 
+        direction: ScrollDirection,
+        cornerRadius: CornerRadius = CornerRadius(4f)
+    ): Scrollbar {
         val width = if (direction == VERTICAL) Size.absolute(10f) else Size.auto()
         val height = if (direction == HORIZONTAL) Size.absolute(10f) else Size.auto()
         return Scrollbar(width, height).apply()
         {
-            bgColor = style.getColor("SCROLLBAR_BG")
-            sliderColor = style.getColor("SCROLLBAR")
-            sliderColorHover = style.getColor("SCROLLBAR_HOVER")
-            cornerRadius = ScaledValue.of(0f)
-            padding.top = ScaledValue.of(0f)
-            sliderPadding = ScaledValue.of(1.5f)
-            cornerRadius = ScaledValue.of(4f)
-            bind(scrollBinding, direction)
+            this.bgColor = style.getColor("SCROLLBAR_BG")
+            this.sliderColor = style.getColor("SCROLLBAR")
+            this.sliderColorHover = style.getColor("SCROLLBAR_HOVER")
+            this.padding.top = ScaledValue.of(0f)
+            this.sliderPadding = ScaledValue.of(1.5f)
+            this.cornerRadius = cornerRadius
+            this.bind(scrollBinding, direction)
         }
     }
 

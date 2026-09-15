@@ -22,6 +22,7 @@ import no.njoh.pulseengine.modules.ui.elements.Label
 import no.njoh.pulseengine.modules.ui.layout.*
 import kotlin.reflect.full.findAnnotation
 import no.njoh.pulseengine.core.shared.annotations.Icon.Companion.getColor
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.modules.ui.UiParams.UI_SCALE
 import no.njoh.pulseengine.modules.ui.ScaledValue
 import no.njoh.pulseengine.modules.ui.ScrollbarVisibility.ALWAYS_VISIBLE
@@ -207,7 +208,11 @@ data class SceneHierarchy(
             return SceneHierarchy(
                 ui = VerticalPanel().apply()
                 {
-                    addChildren(searchPanel, headerPanel, uiElementFactory.createScrollableSectionUI(rowPanel))
+                    addChildren(
+                        searchPanel, 
+                        headerPanel, 
+                        uiElementFactory.createScrollableSectionUI(rowPanel, cornerRadius = CornerRadius(0f, 0f, 4f, 1f))
+                    )
                     setOnKeyPressed { key ->
                         when
                         {

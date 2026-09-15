@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.modules.ui.*
 import no.njoh.pulseengine.modules.ui.UiUtils.firstElementOrNull
 import no.njoh.pulseengine.modules.ui.UiUtils.hasFocus
@@ -49,7 +50,7 @@ class AssetPicker(
 
         scrollbar = Scrollbar(width = Size.absolute(10f), height).apply()
         {
-            cornerRadius = ScaledValue.of(2f)
+            cornerRadius = CornerRadius(2f)
             sliderPadding = ScaledValue.of(1.5f)
             padding.setAll(2f)
             bind(rows, ScrollDirection.VERTICAL)
