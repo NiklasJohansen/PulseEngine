@@ -33,6 +33,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.PROPERTIES_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntityFilter.Entities
 import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
@@ -40,6 +41,7 @@ import no.njoh.pulseengine.modules.physics2d.PhysicsEntity2D
 import no.njoh.pulseengine.modules.physics2d.bodies.PhysicsBody2D
 import no.njoh.pulseengine.core.shared.utils.FileChooser
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.service.Service
@@ -490,6 +492,12 @@ class SceneEditor(
         if (rootUI.width.value.toInt() != engine.window.width || rootUI.height.value.toInt() != engine.window.height)
             rootUI.setLayoutDirty()
 
+        if (entitySelection.anyMatches { it.isSet(PROPERTIES_UPDATED) })
+        {
+            clearEntityInspector()
+            populateEntityInspector(engine, entitySelection)
+        }
+
         rootUI.update(engine)
     }
 
@@ -708,6 +716,8 @@ class SceneEditor(
     private fun populateEntityInspector(engine: PulseEngine, entities: List<SceneEntity>)
     {
         if (entities.isEmpty()) return
+
+        entities.forEachFast { it.setNot(PROPERTIES_UPDATED) }
 
         val selectedProperties = linkedMapOf<CommonPropertyKey, MutableList<EntityPropertyBinding>>()
         entities.forEachFast { entity ->
