@@ -204,16 +204,19 @@ class SceneEditor(
             MODE_3D -> ViewMode.entries
         }
 
-        // Create menu bar content
-        val menuBar = uiFactory.createMenuBarUI(
-            MenuBarButton("File", listOf(
+        // Create the compact header and its menus
+        sceneTabsUI = uiFactory.createSceneTabsUI(engine, createSceneTabModels(engine))
+
+        val header = uiFactory.createSceneHeaderUI(
+            sceneTabs = sceneTabsUI,
+            fileMenu = MenuBarButton("File", listOf(
                 MenuBarItem("New...")     { onNewScene(engine) },
                 MenuBarItem("Open...")    { onLoad(engine) },
                 MenuBarItem("Save")       { saveActiveEditorScene(engine) },
                 MenuBarItem("Save as...") { onSaveAs(engine) },
                 MenuBarItem("Close")      { closeActiveEditorScene(engine) }
             )),
-            MenuBarButton("View", listOf(
+            viewMenu = MenuBarButton("View", listOf(
                 MenuBarItem(
                     labelText = "Mode",
                     items = modes.map { MenuBarItem(it.displayName, isChecked = { viewMode == it }, onClick = { viewMode = it }) }
@@ -223,6 +226,16 @@ class SceneEditor(
                     isChecked = { showGrid },
                     onClick = { showGrid = !showGrid }
                 ),
+                MenuBarItem("Reset Editor")
+                {
+                    createSceneEditorUI(engine)
+                    showGrid = true
+                    viewMode = ViewMode.SHADED
+                    viewportInteraction.resetCamera(engine, viewportContext)
+                    captureActiveEditorCamera(engine)
+                }
+            )),
+            panelsMenu = MenuBarButton("Panels", listOf(
                 MenuBarItem(
                     labelText = "Entity Inspector",
                     isChecked = { isEditorWindowOpen(INSPECTOR_WINDOW_ID) },
@@ -240,24 +253,13 @@ class SceneEditor(
                     }
                 ),
                 MenuBarItem(
-                    labelText = "Scene systems",
+                    labelText = "Scene Systems",
                     isChecked = { isEditorWindowOpen(SCENE_SYSTEMS_WINDOW_ID) },
                     onClick = { toggleEditorWindow(SCENE_SYSTEMS_WINDOW_ID, onCreate = { createSceneSystemsPropertyWindow(engine) }) }
                 ),
-                MenuBarItem("Open Viewport") { createViewportWindow(engine) },
-                MenuBarItem("Reset Editor")
-                {
-                    createSceneEditorUI(engine)
-                    showGrid = true
-                    viewMode = ViewMode.SHADED
-                    viewportInteraction.resetCamera(engine, viewportContext)
-                    captureActiveEditorCamera(engine)
-                }
+                MenuBarItem("Open Viewport ...") { createViewportWindow(engine) }
             )),
-            MenuBarButton("Run", listOf(
-                MenuBarItem("Start") { stopEditorAndStartGame(engine) },
-                MenuBarItem("Stop")  { stopGameAndStartEditor(engine) },
-            ))
+            onRunScene = { stopEditorAndStartGame(engine) }
         )
 
         // Panel for docking of windows
@@ -271,8 +273,7 @@ class SceneEditor(
         // Create root UI and perform initial update
         rootUI = VerticalPanel()
         rootUI.focusable = false
-        sceneTabsUI = uiFactory.createSceneTabsUI(engine, createSceneTabModels(engine))
-        rootUI.addChildren(menuBar, sceneTabsUI, dockingUI, footer)
+        rootUI.addChildren(header, dockingUI, footer)
         rootUI.updateLayout()
         rootUI.setLayoutClean()
         editorWindowsById.clear()
@@ -518,7 +519,8 @@ class SceneEditor(
 
         if (!isTransparent && node is Panel && (!onlyPopups || isNodePopup))
         {
-            FrostedGlassEffect.drawToTargetSurface(engine, surface, node.x.value, node.y.value, node.width.value, node.height.value, node.getCornerRadius())
+            if (node.color.alpha < 1f)
+                FrostedGlassEffect.drawToTargetSurface(engine, surface, node.x.value, node.y.value, node.width.value, node.height.value, node.getCornerRadius())
             onlyPopups = true // Only draw popups after first panel
         }
 

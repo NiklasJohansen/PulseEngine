@@ -38,6 +38,11 @@ class EditorStyle
         colors["SCROLLBAR_HOVER"] = Color(32,  42,  59,  220)
         colors["INPUT_BG"]        = Color(10, 10,   10,  220)
         colors["HEADER_FOOTER"]   = Color(22,  22,  23,  220)
+        colors["EDITOR_HEADER"]   = Color(28,  30,  34,  255)
+        colors["HEADER_DIVIDER"]  = Color(52,  56,  63,  255)
+        colors["TAB_ACTIVE"]      = Color(45,  48,  53,  255)
+        colors["TAB_HOVER"]       = Color(38,  41,  46,  255)
+        colors["HEADER_ACCENT"]   = Color(230, 173,  55,  255)
         colors["WINDOW_HEADER"]   = Color(32,  42,  59,  230)
         colors["ROW"]             = Color(15,  15,  15,  105)
 
@@ -48,6 +53,7 @@ class EditorStyle
         sizes["HEADER_FONT_SIZE"]       = 18f
         sizes["CONTENT_FONT_SIZE"]      = 16f
         sizes["BUTTON_FONT_SIZE"]       = 32f
+        sizes["EDITOR_HEADER_HEIGHT"]   = 40f
 
         // Set default icons
         icons["CUBE"] = "a"
@@ -73,6 +79,7 @@ class EditorStyle
         icons["HIDDEN"] = "v"
         icons["CAMERA"] = "w"
         icons["FOLDER"] = "x"
+        icons["LAYOUT"] = "y"
         icons["ARROW_DOWN"] = "1"
         icons["ARROW_RIGHT"] = "2"
     }

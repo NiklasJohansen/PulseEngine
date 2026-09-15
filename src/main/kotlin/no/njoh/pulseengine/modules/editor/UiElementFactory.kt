@@ -4,6 +4,7 @@ import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.*
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneManager
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.scene.SceneEntity
@@ -227,7 +228,7 @@ open class UiElementFactory(
 
         val borderWidth = ScaledValue.of(1f)
         val cornerRadius = ScaledValue.of(5f)
-        
+
         val headerPanel = HorizontalPanel(height = Size.absolute(30f)).apply()
         {
             color = style.getColor("WINDOW_HEADER")
@@ -251,7 +252,7 @@ open class UiElementFactory(
         windowPanel.id = title.toString()
 
         windowPanel.header.addChildren(headerPanel)
-        
+
         windowPanel.body.padding.top    = ScaledValue.of(0f)
         windowPanel.body.padding.left   = borderWidth
         windowPanel.body.padding.right  = borderWidth
@@ -261,49 +262,44 @@ open class UiElementFactory(
     }
 
     open fun createSceneTabsUI(engine: PulseEngine, tabs: List<EditorSceneTab>) =
-        horizontalPanel(height = Size.absolute(40f)) {
-            color = style.getColor("HEADER_FOOTER")
-            strokeColor = style.getColor("STROKE")
-            strokeWidth = ScaledValue.of(1f)
-            strokeBottom = true
-            strokeLeft = false
-            strokeRight = false
-            strokeTop = false
-            focusable = false
-            populateSceneTabsUI(engine, this, tabs)
-        }
+        horizontalPanel { populateSceneTabsUI(engine, this, tabs) }
 
     open fun populateSceneTabsUI(engine: PulseEngine, sceneTabsUI: HorizontalPanel, tabs: List<EditorSceneTab>)
     {
         sceneTabsUI.clearChildren()
-        for (tabData in tabs)
-        {
+
+        val tabStrip = sceneTabsUI.horizontalPanel { }
+        val tabRow = tabStrip.horizontalPanel { renderOnlyInside = true }
+        var tabStripWidth = 30f
+
+        tabs.forEachFast { tabData ->
+
             var exitButton: Button? = null
-            
+
             val textWidth = style.getFont().getWidth(tabData.label, style.getSize("CONTENT_FONT_SIZE"))
-            
-            sceneTabsUI.button(
-                width = Size.absolute((textWidth + if (tabData.onClosed != null) 65f else 45f).coerceIn(70f, 350f)),
+            val tabWidth = (textWidth + if (tabData.onClosed != null) 64f else 38f).coerceIn(90f, 260f)
+            tabStripWidth += tabWidth
+
+            tabRow.button(
+                width = Size.absolute(tabWidth),
                 height = Size.relative(1f)
             ) {
-                bgColor = if (tabData.selected) style.getColor("BUTTON_HOVER") else Color.BLANK
-                bgHoverColor = style.getColor("BUTTON_HOVER")
-                padding.left = ScaledValue.of(5f)
-                padding.top = ScaledValue.of(5f)
-                padding.bottom = ScaledValue.of(5f)
+                isPressed = tabData.selected
+                bgColor = if (tabData.selected) style.getColor("TAB_ACTIVE") else Color.BLANK
+                bgHoverColor = if (tabData.selected) style.getColor("TAB_ACTIVE") else style.getColor("TAB_HOVER")
+                padding.top = ScaledValue.of(4f)
                 cornerRadiusTopLeft = ScaledValue.of(4f)
                 cornerRadiusTopRight = ScaledValue.of(4f)
-                cornerRadiusBottomLeft = ScaledValue.of(4f)
-                cornerRadiusBottomRight = ScaledValue.of(4f)
+                tabStrip.maxWidth = ScaledValue.of(tabStripWidth)
 
                 horizontalPanel()
                 {
+                    padding.bottom = ScaledValue.of(4f)
                     icon(width = Size.absolute(15f))
                     {
                         iconFontName = style.iconFontName
                         iconCharacter = style.getIcon("TEXT")
                         color = style.getColor("LABEL")
-                        padding.top = ScaledValue.of(1f)
                         padding.left = ScaledValue.of(10f)
                     }
 
@@ -311,9 +307,12 @@ open class UiElementFactory(
                     {
                         text = tabData.label
                         verticalAlignment = 0.5f
+                        font = style.getFont()
                         color = style.getColor("LABEL")
                         fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
-                        padding.left = ScaledValue.of(10f)
+                        padding.left = ScaledValue.of(8f)
+                        padding.right = ScaledValue.of(5f)
+                        wrapNewLines = false
                         focusable = false
                     }
 
@@ -321,26 +320,30 @@ open class UiElementFactory(
                     {
                         exitButton = button(width = Size.absolute(20f), height = Size.absolute(20f))
                         {
-                            padding.top = ScaledValue.of(6f)
+                            y.updateType(Position.PositionType.CENTER)
                             padding.right = ScaledValue.of(5f)
                             setCornerRadius(ScaledValue.of(4f))
                             color = Color.BLANK
                             hoverColor = style.getColor("BUTTON_EXIT")
                             setOnClicked { tabData.onClosed.invoke() }
 
-                            icon(width = Size.absolute(15f))
+                            icon()
                             {
                                 iconFontName = style.iconFontName
                                 iconCharacter = style.getIcon("CROSS")
                                 color = style.getColor("LABEL")
-                                padding.top = ScaledValue.of(2f)
-                                padding.left = ScaledValue.of(3f)
                             }
                         }
                     }
                 }
 
-                setOnClicked() 
+                panel(y = Position.alignBottom(), height = Size.absolute(if (tabData.selected) 2f else 1f))
+                {
+                    focusable = false
+                    color = style.getColor(if (tabData.selected) "HEADER_ACCENT" else "HEADER_DIVIDER")
+                }
+
+                setOnClicked()
                 {
                     val closeButtonClicked = exitButton?.area?.isInside(engine.input.xMouse, engine.input.yMouse) == true
                     if (!closeButtonClicked)
@@ -348,26 +351,162 @@ open class UiElementFactory(
                 }
             }
         }
-        sceneTabsUI.panel {}
+
+        val items = ArrayList<MenuBarItem>(tabs.size)
+        tabs.forEachFast { tab -> items += MenuBarItem(tab.label, isChecked = { tab.selected }, onClick = tab.onSelected) }
+
+        val sceneMenu = createMenuBarButtonUI(MenuBarButton("", items), showScrollbar = tabs.size > 8, searchable = tabs.size > 8).apply()
+        {
+            width.setQuiet(Size.absolute(30f))
+            bgHoverColor = style.getColor("TAB_HOVER")
+            icon()
+            {
+                iconFontName = style.iconFontName
+                iconCharacter = style.getIcon("ARROW_DOWN")
+                iconSize = ScaledValue.of(12f)
+                color = style.getColor("LABEL")
+            }
+        }
+
+        tabStrip.addChildren(sceneMenu)
     }
 
-    /**
-     * Creates a menu bar containing buttons with dropdown menus.
-     */
-    open fun createMenuBarUI(vararg buttons: MenuBarButton): UiElement =
-        HorizontalPanel(height = Size.absolute(25f)).apply()
+    open fun createSceneHeaderUI(
+        sceneTabs: HorizontalPanel,
+        fileMenu: MenuBarButton,
+        viewMenu: MenuBarButton,
+        panelsMenu: MenuBarButton,
+        onRunScene: () -> Unit
+    ): HorizontalPanel = horizontalPanel(height = Size.absolute(style.getSize("EDITOR_HEADER_HEIGHT")))
+    {
+        color = style.getColor("EDITOR_HEADER")
+        strokeColor = style.getColor("HEADER_DIVIDER")
+        strokeTop = false
+        strokeLeft = false
+        strokeRight = false
+        renderOnlyInside = true
+
+        addChildren(createMenuBarButtonUI(fileMenu, showScrollbar = false), createMenuBarButtonUI(viewMenu, showScrollbar = false))
+
+        panel(width = Size.absolute(1f))
         {
-            color        = style.getColor("HEADER_FOOTER")
-            strokeColor  = style.getColor("STROKE")
-            strokeWidth  = ScaledValue.of(1f)
-            strokeBottom = true
-            strokeLeft   = false
-            strokeRight  = false
-            strokeTop    = false
-            addChildren(
-                *buttons.map { createMenuBarButtonUI(it, showScrollbar = false) }.toTypedArray(), Panel()
-            )
+            color = style.getColor("HEADER_DIVIDER")
+            padding.left = ScaledValue.of(5f)
+            padding.right = ScaledValue.of(8f)
+            padding.top = ScaledValue.of(11f)
+            padding.bottom = ScaledValue.of(11f)
+            focusable = false
         }
+
+        addChildren(sceneTabs)
+
+        panel(width = Size.absolute(1f))
+        {
+            color = style.getColor("HEADER_DIVIDER")
+            padding.left = ScaledValue.of(8f)
+            padding.right = ScaledValue.of(5f)
+            padding.top = ScaledValue.of(11f)
+            padding.bottom = ScaledValue.of(11f)
+            focusable = false
+        }
+
+        addChildren(createMenuBarButtonUI(panelsMenu, showScrollbar = false).apply()
+        {
+            width.setQuiet(Size.absolute(92f))
+            bgHoverColor = style.getColor("TAB_HOVER")
+            menuLabel.x.updateType(Position.PositionType.AUTO)
+            menuLabel.horizontalAlignment = 0f
+            menuLabel.padding.left = ScaledValue.of(30f)
+            menuLabel.padding.right = ScaledValue.of(20f)
+
+            icon(width = Size.absolute(15f))
+            {
+                padding.left = ScaledValue.of(6f)
+                iconFontName = style.iconFontName
+                iconCharacter = style.getIcon("LAYOUT")
+                iconSize = ScaledValue.of(20f)
+                color = style.getColor("LABEL")
+            }
+
+            icon(x = Position.alignRight(), width = Size.absolute(18f))
+            {
+                padding.top = ScaledValue.of(5f)
+                iconFontName = style.iconFontName
+                iconCharacter = style.getIcon("ARROW_DOWN")
+                iconSize = ScaledValue.of(15f)
+                color = style.getColor("LABEL")
+            }
+        })
+
+        panel(width = Size.absolute(1f))
+        {
+            color = style.getColor("HEADER_DIVIDER")
+            padding.left = ScaledValue.of(5f)
+            padding.top = ScaledValue.of(11f)
+            padding.bottom = ScaledValue.of(11f)
+            focusable = false
+        }
+
+        addChildren(createRunButtonUI(onRunScene))
+    }
+
+    open fun createRunButtonUI(onRunScene: () -> Unit): Button
+    {
+        val arrowButton = object : Button(width = Size.absolute(140f))
+        {
+            override fun onRender(engine: PulseEngine, surface: Surface)
+            {
+                super.onRender(engine, surface)
+                val left = x.value + 12f * UiParams.UI_SCALE
+                val yCenter = y.value + height.value * 0.5f
+                val halfHeight = 6f * UiParams.UI_SCALE
+                surface.setDrawColor(style.getColor("HEADER_ACCENT"))
+                surface.drawQuadVertex(left, yCenter - halfHeight)
+                surface.drawQuadVertex(left, yCenter + halfHeight)
+                surface.drawQuadVertex(left + 11f * UiParams.UI_SCALE, yCenter)
+                surface.drawQuadVertex(left + 11f * UiParams.UI_SCALE, yCenter)
+            }
+        }
+
+        return arrowButton.apply() 
+        {
+            padding.left = ScaledValue.of(8f)
+            padding.right = ScaledValue.of(10f)
+            padding.top = ScaledValue.of(6f)
+            padding.bottom = ScaledValue.of(6f)
+            bgHoverColor = style.getColor("TAB_HOVER")
+            setCornerRadius(ScaledValue.of(4f))
+            setOnClicked { onRunScene() }
+
+            panel()
+            {
+                focusable = false
+                strokeColor = style.getColor("HEADER_ACCENT")
+                setCornerRadius(ScaledValue.of(4f))
+            }
+
+            horizontalPanel()
+            {
+                padding.left = ScaledValue.of(33f)
+                padding.right = ScaledValue.of(10f)
+                label()
+                {
+                    text = "Run scene"
+                    font = style.getFont()
+                    fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
+                    color = style.getColor("HEADER_ACCENT")
+                }
+                label(width = Size.absolute(16f))
+                {
+                    text = "F2"
+                    font = style.getFont()
+                    fontSize = ScaledValue.of(16f)
+                    color = style.getColor("LABEL_DARK")
+                    horizontalAlignment = 1f
+                }
+            }
+        }
+    }
 
     open fun createFooter(): Pair<HorizontalPanel, (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit>
     {
@@ -402,7 +541,7 @@ open class UiElementFactory(
             strokeLeft = false
             strokeRight = false
             strokeBottom = false
-            
+
             addChildren(
                 HorizontalPanel().apply { addChildren(icon, entityCountLabel) },
                 sceneNameLabel,
@@ -550,9 +689,9 @@ open class UiElementFactory(
 
                 if (hasCheckableItems)
                     addMenuCheckMark(row, item.isChecked)
-                
+
                 row.setOnMouseEnter { siblingSubmenus.forEach(::hideMenuTree) }
-                
+
                 if (item.items.isEmpty())
                 {
                     row.setOnClicked() 
