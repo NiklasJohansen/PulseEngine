@@ -90,6 +90,7 @@ class RenderIdOutlineRenderer(
         program.setUniform("uTextureSize", renderIdTexture.width.toFloat(), renderIdTexture.height.toFloat())
         program.setUniform("uOutlineWidth", outlineWidthPixels.coerceAtLeast(1))
         program.setUniform("uSelectionWordCount", readSelection.wordCount)
+        program.setUniform("uTime", (System.currentTimeMillis() % 10_000L) / 10_000f)
         program.bindStorageBuffer("SelectionBuffer", selectionBuffer)
 
         pass.draw()
