@@ -2,7 +2,7 @@ package no.njoh.pulseengine.core.graphics.util
 
 import gnu.trove.list.array.TIntArrayList
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import org.lwjgl.opengl.GL33.*
 
 /**

@@ -13,8 +13,8 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.EMPTY
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
-import no.njoh.pulseengine.core.shared.primitives.GenerationalIntLookup
+import no.njoh.pulseengine.core.shared.datastructures.DynamicList
+import no.njoh.pulseengine.core.shared.datastructures.GenerationalIntLookup
 
 class DrawPayloadBuilder(
     var frustumPlaneSets: Array<FrustumPlaneSet> = emptyArray(),

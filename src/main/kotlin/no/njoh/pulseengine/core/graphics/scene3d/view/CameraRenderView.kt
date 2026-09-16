@@ -11,7 +11,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import org.joml.Vector3f
 
 class CameraRenderView(

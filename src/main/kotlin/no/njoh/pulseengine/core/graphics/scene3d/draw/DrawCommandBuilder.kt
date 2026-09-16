@@ -16,7 +16,7 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.BASE_INSTANCE
 import no.njoh.pulseengine.core.graphics.util.ModelInstanceIndexMode.UNIFORM_OFFSET
 import no.njoh.pulseengine.core.graphics.util.getSupportedModelInstanceIndexMode
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.opengl.GL43.*
 

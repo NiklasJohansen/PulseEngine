@@ -8,7 +8,7 @@ import no.njoh.pulseengine.core.asset.types.Model.*
 import no.njoh.pulseengine.core.graphics.scene3d.view.ModelLodResolver
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.shared.primitives.Color
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.shared.primitives.Mat4fArena
 import no.njoh.pulseengine.core.shared.primitives.Mat4fProps

@@ -4,8 +4,8 @@ import gnu.trove.list.array.TIntArrayList
 import gnu.trove.map.hash.THashMap
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderLight
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
-import no.njoh.pulseengine.core.shared.primitives.StaticList
+import no.njoh.pulseengine.core.shared.datastructures.DynamicList
+import no.njoh.pulseengine.core.shared.datastructures.StaticList
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Matrix4f
 import org.joml.Vector3f
@@ -15,7 +15,6 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
-import kotlin.text.compareTo
 
 class LocalShadowAtlas
 {

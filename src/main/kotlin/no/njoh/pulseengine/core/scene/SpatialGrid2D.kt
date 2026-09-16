@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.scene
 
 import no.njoh.pulseengine.core.PulseEngine
-import no.njoh.pulseengine.core.shared.primitives.Array2D
+import no.njoh.pulseengine.core.shared.datastructures.Array2D
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DISCOVERABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED

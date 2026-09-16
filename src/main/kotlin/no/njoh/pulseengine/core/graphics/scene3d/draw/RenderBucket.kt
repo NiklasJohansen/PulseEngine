@@ -3,8 +3,8 @@ package no.njoh.pulseengine.core.graphics.scene3d.draw
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet.ShaderVariant
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
-import no.njoh.pulseengine.core.shared.primitives.StaticList
+import no.njoh.pulseengine.core.shared.datastructures.DynamicList
+import no.njoh.pulseengine.core.shared.datastructures.StaticList
 
 class RenderBucket(initialCapacity: Int = 128)
 {

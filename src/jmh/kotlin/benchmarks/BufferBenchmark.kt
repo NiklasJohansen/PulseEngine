@@ -1,6 +1,6 @@
 package benchmarks
 
-import no.njoh.pulseengine.core.shared.primitives.FlatObjectBuffer
+import no.njoh.pulseengine.core.shared.datastructures.FlatObjectBuffer
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.Scope

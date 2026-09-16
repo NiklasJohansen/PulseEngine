@@ -27,7 +27,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachInstance
 import org.joml.Matrix4f
@@ -115,10 +115,10 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         instanceBuffer.reserveItemCapacity(itemCount)
         cullingBuffer.reserveItemCapacity(itemCount)
 
-        // Upload items
-        thisFrameScene.opaqueItems.addToBuffers()
-        thisFrameScene.maskedItems.addToBuffers()
-        thisFrameScene.blendedItems.addToBuffers()
+        // Populate GPU buffers with all draw items
+        populateGpuBuffers(thisFrameScene.opaqueItems)
+        populateGpuBuffers(thisFrameScene.maskedItems)
+        populateGpuBuffers(thisFrameScene.blendedItems)
 
         // Prepare lighting
         localShadowAtlas.update(thisFrameScene, getCameraPosition())
@@ -322,11 +322,12 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         }
     }
 
-    private fun DynamicList<RenderItem>.addToBuffers() =
-        forEach { item ->
-            val boneOffset = boneBuffer.addBoneMatricesAndGetOffset(item.boneMatrices)
-            item.gpuInstanceIndex = instanceBuffer.addItem(item, boneOffset)
-            cullingBuffer.addItem(item)
+    private fun populateGpuBuffers(items: DynamicList<RenderItem>) =
+        items.forEach() 
+        {
+            val boneOffset = boneBuffer.addBoneMatricesAndGetOffset(it.boneMatrices)
+            it.gpuInstanceIndex = instanceBuffer.addItem(it, boneOffset)
+            cullingBuffer.addItem(it)
         }
 
     private fun getCameraPosition(): Vector3f? =

@@ -15,7 +15,7 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawInstancedQuads
-import no.njoh.pulseengine.core.shared.primitives.FlatObjectBuffer
+import no.njoh.pulseengine.core.shared.datastructures.FlatObjectBuffer
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import org.joml.Math.PI
 import org.joml.Math.cos

@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.core.shared.primitives
+package no.njoh.pulseengine.core.shared.datastructures
 
 import no.njoh.pulseengine.core.shared.utils.Logger
 

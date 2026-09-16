@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.graphics.scene3d.view
 
 import no.njoh.pulseengine.core.graphics.camera.Camera
-import no.njoh.pulseengine.core.shared.primitives.StaticList
+import no.njoh.pulseengine.core.shared.datastructures.StaticList
 import org.joml.Matrix4f
 import org.joml.Vector3f
 

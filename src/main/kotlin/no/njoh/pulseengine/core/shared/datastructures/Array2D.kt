@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.core.shared.primitives
+package no.njoh.pulseengine.core.shared.datastructures
 
 class Array2D <T> (
     val width: Int,

@@ -1,4 +1,4 @@
-package no.njoh.pulseengine.core.shared.primitives
+package no.njoh.pulseengine.core.shared.datastructures
 
 import kotlin.math.max
 import kotlin.reflect.KProperty

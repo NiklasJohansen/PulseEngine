@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.util
 
-import no.njoh.pulseengine.core.shared.primitives.DynamicList
+import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL15.GL_STREAM_READ
 import org.lwjgl.opengl.GL15.glBindBuffer
