@@ -205,7 +205,7 @@ class ShaderProgram(
 
     fun assignSamplerUnit(samplerName: String): Int
     {
-        val unit = textureUnits.getOrPut(samplerName) { textureUnits.size() }
+        val unit = textureUnits.getOrPut(samplerName) { textureUnits.size }
         setUniform(samplerName, unit)
         return unit
     }

@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.AxisColors
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.ui.*
 import no.njoh.pulseengine.modules.ui.elements.InputField.ContentType.FLOAT
 import no.njoh.pulseengine.modules.ui.layout.HorizontalPanel
@@ -23,74 +24,74 @@ class Vector3Input(
         set(value)
         {
             field = value
-            inputFields.forEach { it.editable = value }
+            inputFields.forEachFast { it.editable = value }
         }
 
     var numberMinVal = Float.NEGATIVE_INFINITY
         set(value)
         {
             field = value
-            inputFields.forEach { it.numberMinVal = value }
+            inputFields.forEachFast { it.numberMinVal = value }
         }
 
     var numberMaxVal = Float.POSITIVE_INFINITY
         set(value)
         {
             field = value
-            inputFields.forEach { it.numberMaxVal = value }
+            inputFields.forEachFast { it.numberMaxVal = value }
         }
 
     var font = Font.DEFAULT
         set(value)
         {
             field = value
-            inputFields.forEach { it.font = value }
-            axisLabels.forEach { it.font = value }
+            inputFields.forEachFast { it.font = value }
+            axisLabels.forEachFast { it.font = value }
         }
 
     var fontSize = ScaledValue.of(18f)
         set(value)
         {
             field = value
-            inputFields.forEach { it.fontSize = value }
-            axisLabels.forEach { it.fontSize = value }
+            inputFields.forEachFast { it.fontSize = value }
+            axisLabels.forEachFast { it.fontSize = value }
         }
 
     var textColor = Color.WHITE
         set(value)
         {
             field = value
-            inputFields.forEach { it.textColor = value }
-            axisLabels.forEach { it.color = value }
+            inputFields.forEachFast { it.textColor = value }
+            axisLabels.forEachFast { it.color = value }
         }
 
     var inputBgColor = Color(25, 25, 25, 255)
         set(value)
         {
             field = value
-            inputFields.forEach { it.bgColor = value }
+            inputFields.forEachFast { it.bgColor = value }
         }
 
     var inputBgColorHover = Color(45, 45, 45, 255)
         set(value)
         {
             field = value
-            inputFields.forEach { it.bgColorHover = value }
+            inputFields.forEachFast { it.bgColorHover = value }
         }
 
     var inputStrokeColor = Color.BLANK
         set(value)
         {
             field = value
-            inputFields.forEach { it.strokeColor = value }
+            inputFields.forEachFast { it.strokeColor = value }
         }
 
     var inputCornerRadius = ScaledValue.of(4f)
         set(value)
         {
             field = value
-            inputFields.forEach { setInputCornerRadius(it, value) }
-            axisLabelPanels.forEach { setAxisLabelCornerRadius(it, value) }
+            inputFields.forEachFast { setInputCornerRadius(it, value) }
+            axisLabelPanels.forEachFast { setAxisLabelCornerRadius(it, value) }
         }
 
     val xLabel = createAxisLabel("X")

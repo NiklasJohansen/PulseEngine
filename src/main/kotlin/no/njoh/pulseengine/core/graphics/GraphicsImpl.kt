@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.asset.types.Shader.Companion.INVALID_ID
@@ -49,9 +49,9 @@ open class GraphicsImpl : GraphicsInternal
     private  lateinit var glContract: GlContract
 
     private val onInitFrame  = ArrayList<PulseEngineInternal.() -> Unit>()
-    private val surfaceMap   = THashMap<String, SurfaceInternal>()
     private val surfaces     = ArrayList<SurfaceInternal>()
-    private val errorShaders = THashMap<ShaderType, Shader>()
+    private val surfaceMap   = Object2ObjectOpenHashMap<String, SurfaceInternal>()
+    private val errorShaders = Object2ObjectOpenHashMap<ShaderType, Shader>()
     private var lastZOrder   = 0
     private var windowWidth  = 1
     private var windowHeight = 1

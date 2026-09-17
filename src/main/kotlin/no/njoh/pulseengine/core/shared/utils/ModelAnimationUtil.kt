@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.shared.utils
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.asset.types.Animation
 import no.njoh.pulseengine.core.asset.types.Model
 import org.joml.Matrix4f
@@ -19,7 +19,7 @@ internal fun collectAnimatedGlobalTransforms(
     translationScratch: Vector3f,
     rotationScratch: Quaternionf,
     scaleScratch: Vector3f,
-    outTransforms: THashMap<String, Matrix4f>
+    outTransforms: Object2ObjectOpenHashMap<String, Matrix4f>
 ) {
     getAnimatedLocalTransform(
         node = node,
@@ -68,7 +68,7 @@ internal fun collectBlendedAnimatedGlobalTransforms(
     blendTranslationScratch: Vector3f,
     blendRotationScratch: Quaternionf,
     blendScaleScratch: Vector3f,
-    outTransforms: THashMap<String, Matrix4f>
+    outTransforms: Object2ObjectOpenHashMap<String, Matrix4f>
 ) {
     getBlendedAnimatedLocalTransform(
         node = node,

@@ -3,9 +3,9 @@ package no.njoh.pulseengine.core.scene
 import com.fasterxml.jackson.annotation.JsonAutoDetect
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY
 import com.fasterxml.jackson.annotation.JsonIgnore
-import gnu.trove.map.hash.THashMap
-import gnu.trove.map.hash.TLongObjectHashMap
-import gnu.trove.set.hash.TLongHashSet
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.data.FileFormat
 import no.njoh.pulseengine.core.data.FileFormat.*
@@ -78,7 +78,7 @@ open class Scene(
             return buildList { entities.forEachFast { typeList -> typeList.forEachFast { add(it) } } }
         
         val selectedEntities = ArrayList<SceneEntity>()
-        val selectedIds = if (includeChildren) TLongHashSet() else null
+        val selectedIds = if (includeChildren) LongOpenHashSet() else null
         fun collect(entity: SceneEntity)
         {
             if (selectedIds != null && !selectedIds.add(entity.id)) return
@@ -206,12 +206,12 @@ open class Scene(
     }
 
     private fun createEntityTypeMap(entities: MutableList<SceneEntityList<SceneEntity>>) =
-        THashMap<Class<*>, SceneEntityList<SceneEntity>>(entities.size).also { map ->
+        Object2ObjectOpenHashMap<Class<*>, SceneEntityList<SceneEntity>>(entities.size).also { map ->
             entities.forEachFast { list -> list.firstOrNull()?.let { map[it::class.java] = list } }
         }
 
     private fun createEntityIdMap(entities: MutableList<SceneEntityList<SceneEntity>>) =
-        TLongObjectHashMap<SceneEntity>().also { map ->
+        Long2ObjectOpenHashMap<SceneEntity>().also { map ->
             entities.forEachFast { typeList -> typeList.forEachFast { map.put(it.id, it) } }
         }
 

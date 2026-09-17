@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.input
 
-import gnu.trove.map.hash.TIntObjectHashMap
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 
 enum class Key(val code: Int)
@@ -132,7 +132,7 @@ enum class Key(val code: Int)
 
     companion object
     {
-        val codes = TIntObjectHashMap<Key>().also { map -> entries.forEachFast { map.put(it.code, it) } }
+        val codes = Int2ObjectOpenHashMap<Key>().also { map -> entries.forEachFast { map.put(it.code, it) } }
     }
 }
 

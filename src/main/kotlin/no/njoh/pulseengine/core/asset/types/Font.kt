@@ -1,11 +1,12 @@
 package no.njoh.pulseengine.core.asset.types
 
-import gnu.trove.map.hash.TFloatObjectHashMap
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.floats.Float2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.shared.annotations.Icon
+import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.loadBytesFromPath
 import no.njoh.pulseengine.core.shared.utils.Logger
 import org.lwjgl.BufferUtils
@@ -24,13 +25,13 @@ class Font(
     lateinit var info: STBTTFontinfo
     private lateinit var ttfBuffer: ByteBuffer
 
-    private val advanceWidth = IntArray(1)
-    private val leftSideBearing = IntArray(1)
+    private val advanceWidth         = IntArray(1)
+    private val leftSideBearing      = IntArray(1)
     private val leftSideBearingCache = IntArray(MAX_CHAR_COUNT) { -1 }
-    private val textWidthCache = THashMap<CharSequence, TFloatObjectHashMap<FloatArray>>()
-    private val advanceCache = FloatArray(MAX_CHAR_COUNT)
-    private val quadCache = FloatArray(QUAD_STRIDE * MAX_CHAR_COUNT)
-    private val quad = Quad(quadCache)
+    private val textWidthCache       = Object2ObjectOpenHashMap<CharSequence, Float2ObjectOpenHashMap<FloatArray>>()
+    private val advanceCache         = FloatArray(MAX_CHAR_COUNT)
+    private val quadCache            = FloatArray(QUAD_STRIDE * MAX_CHAR_COUNT)
+    private val quad                 = Quad(quadCache)
 
     override fun load()
     {
@@ -64,7 +65,7 @@ class Font(
         }
         finally
         {
-            glyphs.forEach { glyph -> glyph.sdf?.let(::stbtt_FreeSDF) }
+            glyphs.forEachFast { glyph -> glyph.sdf?.let(::stbtt_FreeSDF) }
         }
     }
 
@@ -105,14 +106,14 @@ class Font(
             var rowHeight = 0
             var fits = true
 
-            glyphs.forEach { glyph ->
+            glyphs.forEachFast { glyph ->
                 if (!fits || glyph.sdf == null || glyph.width == 0 || glyph.height == 0)
-                    return@forEach
+                    return@forEachFast
 
                 if (glyph.width + ATLAS_GUTTER * 2 > atlasSize || glyph.height + ATLAS_GUTTER * 2 > atlasSize)
                 {
                     fits = false
-                    return@forEach
+                    return@forEachFast
                 }
 
                 if (x + glyph.width + ATLAS_GUTTER > atlasSize)
@@ -125,7 +126,7 @@ class Font(
                 if (y + glyph.height + ATLAS_GUTTER > atlasSize)
                 {
                     fits = false
-                    return@forEach
+                    return@forEachFast
                 }
 
                 glyph.atlasX = x
@@ -147,8 +148,8 @@ class Font(
         while (atlas.hasRemaining()) atlas.put(0)
         atlas.clear()
 
-        glyphs.forEach { glyph ->
-            val sdf = glyph.sdf ?: return@forEach
+        glyphs.forEachFast { glyph ->
+            val sdf = glyph.sdf ?: return@forEachFast
             for (row in 0 until glyph.height)
             {
                 for (column in 0 until glyph.width)
@@ -183,7 +184,7 @@ class Font(
         val widths = FloatArray(text.length)
         calculateCharacterAdvances(text, fontSize, widths)
 
-        if (useCache) textWidthCache.getOrPut(text) { TFloatObjectHashMap() }.putIfAbsent(fontSize, widths)
+        if (useCache) textWidthCache.getOrPut(text) { Float2ObjectOpenHashMap() }.putIfAbsent(fontSize, widths)
 
         return widths
     }

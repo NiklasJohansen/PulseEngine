@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.editor
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.*
@@ -61,7 +61,7 @@ open class UiElementFactory(
     /**
      * Property UI factory functions for specific class types.
      */
-    val propertyUiFactories = THashMap(mapOf(
+    val propertyUiFactories = Object2ObjectOpenHashMap(mapOf(
         String::class      to ::createStringPropertyUi,
         AssetHandle::class to ::createAssetPickerUI,
         Boolean::class     to ::createBooleanPropertyUi,

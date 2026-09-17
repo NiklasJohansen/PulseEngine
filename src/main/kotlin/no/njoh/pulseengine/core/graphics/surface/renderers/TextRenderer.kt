@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.surface.renderers
 
-import gnu.trove.list.array.TIntArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.asset.types.Font.*
@@ -38,7 +38,7 @@ class TextRenderer(
     private lateinit var instanceLayout: VertexAttributeLayout
     private lateinit var program: ShaderProgram
     private val glyphBuffer = GlyphBuffer()
-    private val newLinePositions = TIntArrayList(100)
+    private val newLinePositions = IntArrayList(100)
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
@@ -159,7 +159,7 @@ class TextRenderer(
         var textMaxWidth = Float.MIN_VALUE
 
         glyphs.forEachIndexed { i, glyph ->
-            if (newLineIndex < newLinePositions.size() && i == newLinePositions[newLineIndex])
+            if (newLineIndex < newLinePositions.size && i == newLinePositions.getInt(newLineIndex))
             {
                 newLineOffset += textHeight * (1f + newLineSpacing)
                 newLineIndex++
@@ -182,7 +182,7 @@ class TextRenderer(
             else -> drawRotatedGlyphs(texHandle, x, y, xOffset, yOffset, angle)
         }
 
-        newLinePositions.resetQuick()
+        newLinePositions.clear()
     }
 
     private fun drawAxisAlignedGlyphs(texHandle: Float, x: Float, y: Float, xOffset: Float, yOffset: Float)

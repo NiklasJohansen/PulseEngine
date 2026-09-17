@@ -72,7 +72,7 @@ class MaterialBank : ShaderStorageBufferObject
     {
         buffer?.destroy()
         buffer = null
-        materials.forEach { it?.onDeleted() }
+        materials.forEachFast { it?.onDeleted() }
         materials.clear()
         materials += null // Default material
         freeIds.clear()

@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.gpu.texture
 
-import gnu.trove.list.array.TIntArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
@@ -50,7 +50,7 @@ class TextureArray(
     val mipLevels = if (textureWidth > 0 && textureHeight > 0) min(maxMipLevels, floor(log2(max(textureWidth, textureHeight).toDouble())).toInt() + 1) else 1
 
     private var slotOwners = emptyArray<Texture?>()
-    private var freeSlots = TIntArrayList()
+    private var freeSlots = IntArrayList()
     private var mipmapsDirty = false
     private val maximumCapacity get() = min(GlCapabilities.limits.maxArrayTextureLayers, MAX_HANDLE_LAYER_COUNT)
 
@@ -114,7 +114,7 @@ class TextureArray(
 
             val layerIndex = when
             {
-                !freeSlots.isEmpty -> freeSlots.removeAt(freeSlots.size() - 1)
+                !freeSlots.isEmpty -> freeSlots.removeInt(freeSlots.size - 1)
                 else ->
                 {
                     ensureCapacity(size + 1)

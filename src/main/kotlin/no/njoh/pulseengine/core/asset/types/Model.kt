@@ -1,8 +1,8 @@
 package no.njoh.pulseengine.core.asset.types
 
-import gnu.trove.map.hash.THashMap
-import gnu.trove.map.hash.TIntObjectHashMap
-import gnu.trove.map.hash.TObjectIntHashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap
 import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Animation.QuaternionKey
 import no.njoh.pulseengine.core.asset.types.Animation.VectorKey
@@ -28,7 +28,6 @@ import no.njoh.pulseengine.core.shared.utils.ModelVertexCompressor
 import no.njoh.pulseengine.core.shared.utils.emptyObjectIntHashMap
 import no.njoh.pulseengine.core.shared.utils.transformAabb
 import no.njoh.pulseengine.core.shared.utils.getOrPut
-import no.njoh.pulseengine.core.shared.utils.set
 import org.joml.Matrix4f
 import org.joml.Matrix4fc
 import org.joml.Quaternionf
@@ -93,12 +92,12 @@ class Model(
     var hasBones            = false;                               private set
 
     private var animations                     = emptyArray<Animation>()
-    private val embeddedTextures               = TIntObjectHashMap<EmbeddedTexture>()
-    private val embeddedTexturesByPath         = THashMap<String, EmbeddedTexture>()
-    private val globalNodeTransforms           = THashMap<String, Matrix4f>()
-    private val nodesByName                    = THashMap<String, ModelNode>()
+    private val embeddedTextures               = Int2ObjectOpenHashMap<EmbeddedTexture>()
+    private val embeddedTexturesByPath         = Object2ObjectOpenHashMap<String, EmbeddedTexture>()
+    private val globalNodeTransforms           = Object2ObjectOpenHashMap<String, Matrix4f>()
+    private val nodesByName                    = Object2ObjectOpenHashMap<String, ModelNode>()
     private var nodeHierarchy                  = null as ModelNode?
-    private val bindPoseBoneMatricesByNodeName = THashMap<String, Array<Matrix4f>>()
+    private val bindPoseBoneMatricesByNodeName = Object2ObjectOpenHashMap<String, Array<Matrix4f>>()
     private val skeletonPoseCaches             = Array(POSE_CACHE_FRAME_SLOT_COUNT) { ArrayList<AnimatedSkeletonPose>(4) }
     private val activeSkeletonPoseCacheCounts  = IntArray(POSE_CACHE_FRAME_SLOT_COUNT)
     private val poseCacheFrameNumbers          = LongArray(POSE_CACHE_FRAME_SLOT_COUNT) { Long.MIN_VALUE }
@@ -479,7 +478,7 @@ class Model(
         globalVertexOffset: Int,
         vertexInfluences: Array<VertexInfluence>,
         bones: MutableList<Bone>,
-        boneIndexByName: TObjectIntHashMap<String>
+        boneIndexByName: Object2IntOpenHashMap<String>
     ) {
         val bonePointers = mesh.mBones() ?: return
 
@@ -666,7 +665,7 @@ class Model(
                 EmbeddedTexture(w, h, rgba, freeWithStbi = false)
             }
 
-            embeddedTextures[i] = embeddedTexture
+            embeddedTextures.put(i, embeddedTexture)
 
             val texturePath = normalizeTextureReference(tex.mFilename().dataString())
             if (texturePath.isNotBlank())
@@ -1082,7 +1081,7 @@ class Model(
         return pose
     }
 
-    private fun collectGlobalNodeTransforms(node: ModelNode, parentTransform: Matrix4f, outGlobalNodeTransforms: THashMap<String, Matrix4f>)
+    private fun collectGlobalNodeTransforms(node: ModelNode, parentTransform: Matrix4f, outGlobalNodeTransforms: Object2ObjectOpenHashMap<String, Matrix4f>)
     {
         val globalTransform = Matrix4f(parentTransform).mul(node.localTransform)
         outGlobalNodeTransforms[node.name] = globalTransform
@@ -1203,7 +1202,7 @@ class Model(
     
     override fun getSubAssets(): List<Asset> 
     {
-        val textureAssets = THashMap<TextureAssetKey, Texture>()
+        val textureAssets = Object2ObjectOpenHashMap<TextureAssetKey, Texture>()
         val materialAssets = mutableListOf<Material>()
 
         for (mat in materials)
@@ -1246,7 +1245,7 @@ class Model(
         return assets  
     }
 
-    private fun createTexture(path: String?, assetName: String, format: TextureFormat, textureAssets: THashMap<TextureAssetKey, Texture>): Texture? 
+    private fun createTexture(path: String?, assetName: String, format: TextureFormat, textureAssets: Object2ObjectOpenHashMap<TextureAssetKey, Texture>): Texture?
     {
         if (path.isNullOrEmpty()) return null
         val normalizedPath = normalizeTextureReference(path)
@@ -1487,7 +1486,7 @@ class Model(
 
     inner class AnimatedSkeletonPose
     {
-        val animatedGlobalTransforms = THashMap<String, Matrix4f>(nodesByName.size)
+        val animatedGlobalTransforms = Object2ObjectOpenHashMap<String, Matrix4f>(nodesByName.size)
         val localTransformScratch = Matrix4f()
         val translationScratch = Vector3f()
         val rotationScratch = Quaternionf()

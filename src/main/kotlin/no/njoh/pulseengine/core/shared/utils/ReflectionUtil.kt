@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.shared.utils
 
-import gnu.trove.map.hash.THashMap
-import gnu.trove.set.hash.THashSet
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import java.io.File
 import java.io.File.pathSeparator
@@ -18,7 +18,7 @@ import kotlin.use
 
 object ReflectionUtil
 {
-    val annotationCache = THashMap<String, THashMap<String, THashSet<*>>>()
+    val annotationCache = Object2ObjectOpenHashMap<String, Object2ObjectOpenHashMap<String, ObjectOpenHashSet<*>>>()
 
     /**
      * Finds all classes in the specified packages and sub-packages down to the specified depth.
@@ -97,10 +97,10 @@ object ReflectionUtil
         val foundAnnotations = functions
             .filter { it.name.startsWith(functionName) && it.name.getOrNull(functionName.length)?.isLetter() != true }
             .flatMap { f -> (f.annotations + f.annotations.flatMap { it.annotationClass.annotations }).filterIsInstance<T>() }
-            .let { THashSet(it) }
+            .let { ObjectOpenHashSet(it) }
 
         // Add annotations to cache and return
-        val annotationTypes = annotationCache.getOrPut(classPropKey) { THashMap() }
+        val annotationTypes = annotationCache.getOrPut(classPropKey) { Object2ObjectOpenHashMap() }
         return annotationTypes.getOrPut(annotationName) { foundAnnotations } as Set<T>
     }
 

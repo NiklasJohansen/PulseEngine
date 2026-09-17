@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.shared.utils
 
-import gnu.trove.map.hash.TObjectLongHashMap
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFiltered
 import java.io.File
@@ -67,7 +67,7 @@ object FileWatcher
                 {
                     forEachFile(it.path, it.fileTypes, it.maxSearchDepth) { file ->
 
-                        if (it.lastModifiedTimes[file.path] != file.lastModified())
+                        if (it.lastModifiedTimes.getLong(file.path) != file.lastModified())
                         {
                             it.lastModifiedTimes.put(file.path, file.lastModified())
                             it.onFileChanged(file.absolutePath.replace("\\", "/"))
@@ -88,7 +88,7 @@ object FileWatcher
         val onFileChanged: (filePath: String) -> Unit,
     ) {
         var lastCheckTimeMillis = 0L
-        val lastModifiedTimes = TObjectLongHashMap<String>()
+        val lastModifiedTimes = Object2LongOpenHashMap<String>()
 
         init { forEachFile(path, fileTypes, maxSearchDepth) { lastModifiedTimes.put(it.path, it.lastModified()) } }
     }

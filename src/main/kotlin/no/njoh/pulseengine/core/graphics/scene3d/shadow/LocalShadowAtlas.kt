@@ -1,9 +1,10 @@
 package no.njoh.pulseengine.core.graphics.scene3d.shadow
 
-import gnu.trove.list.array.TIntArrayList
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.ints.IntArrayList
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderLight
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
+import no.njoh.pulseengine.core.shared.utils.retainEntries
 import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import no.njoh.pulseengine.core.shared.datastructures.StaticList
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
@@ -23,14 +24,14 @@ class LocalShadowAtlas
     var shadowFaceResolution = 512
     var maxShadowUpdatesPerFrame = 3
 
-    private val shadowFaces = DynamicList<ShadowFace>(64)
-    private val activeShadowFaces = DynamicList<ShadowFace>(64)
-    private val blocks = THashMap<Long, ShadowBlock>()
-    private val activeBlocks = DynamicList<ShadowBlock>(64)
-    private val updateCandidates = DynamicList<ShadowBlock>(64)
-    private val activeRequests = DynamicList<ShadowRequest>(64)
-    private val freeRequests = DynamicList<ShadowRequest>(64)
-    private val shadowFaceIndicesToRender = TIntArrayList(64)
+    private val shadowFaces               = DynamicList<ShadowFace>(64)
+    private val activeShadowFaces         = DynamicList<ShadowFace>(64)
+    private val blocks                    = Object2ObjectOpenHashMap<Long, ShadowBlock>()
+    private val activeBlocks              = DynamicList<ShadowBlock>(64)
+    private val updateCandidates          = DynamicList<ShadowBlock>(64)
+    private val activeRequests            = DynamicList<ShadowRequest>(64)
+    private val freeRequests              = DynamicList<ShadowRequest>(64)
+    private val shadowFaceIndicesToRender = IntArrayList(64)
 
     private var usedFaceSlots = BooleanArray(0)
     private var frameIndex = 0
@@ -53,7 +54,7 @@ class LocalShadowAtlas
         activeBlocks.clear()
         updateCandidates.clear()
         activeShadowFaces.clear()
-        shadowFaceIndicesToRender.resetQuick()
+        shadowFaceIndicesToRender.clear()
 
         scene.localLights.forEach()
         {
@@ -446,9 +447,9 @@ class LocalShadowAtlas
 
     fun getActiveShadowFaces(): StaticList<ShadowFace> = activeShadowFaces
 
-    fun getNumberOfShadowFacesToRender() = shadowFaceIndicesToRender.size()
+    fun getNumberOfShadowFacesToRender() = shadowFaceIndicesToRender.size
 
-    fun getShadowFaceIndexToRender(index: Int) = shadowFaceIndicesToRender[index]
+    fun getShadowFaceIndexToRender(index: Int) = shadowFaceIndicesToRender.getInt(index)
 
     class ShadowFace
     {

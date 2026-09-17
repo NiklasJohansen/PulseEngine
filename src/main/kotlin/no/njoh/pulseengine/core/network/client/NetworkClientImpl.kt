@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.network.client
 
-import gnu.trove.map.hash.TLongFloatHashMap
+import it.unimi.dsi.fastutil.longs.Long2FloatOpenHashMap
 import no.njoh.pulseengine.core.network.shared.ClientConnect
 import no.njoh.pulseengine.core.network.shared.ClientDisconnect
 import no.njoh.pulseengine.core.network.shared.NetworkChannel
@@ -38,7 +38,7 @@ class NetworkClientImpl(
 
     private var serverIp: String = ""
     private var serverPort: Int = -1
-    private val pingTimesMs = TLongFloatHashMap(20)
+    private val pingTimesMs = Long2FloatOpenHashMap(20)
     private val ongoingPings = AtomicLong()
     private var onDisconnectedCallback: () -> Unit = { }
     private var tcpOutgoingMessageQueue = ArrayBlockingQueue<Any>(1)

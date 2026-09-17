@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.shared.utils
 
-import gnu.trove.list.array.TIntArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.*
@@ -173,13 +173,13 @@ object Extensions
     }
 
     /**
-     * Fast inline iteration of TIntArrayList without any allocations.
+     * Fast inline iteration of IntArrayList without any allocations.
      */
-    inline fun TIntArrayList.forEachFast(action: (Int) -> Unit)
+    inline fun IntArrayList.forEachFast(action: (Int) -> Unit)
     {
         var i = 0
-        val size = size()
-        while (i < size) action(this[i++])
+        val size = size
+        while (i < size) action(getInt(i++))
     }
 
     /**

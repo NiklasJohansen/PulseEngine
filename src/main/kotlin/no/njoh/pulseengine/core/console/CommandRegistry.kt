@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.console
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.window.ScreenMode.*
 import kotlinx.coroutines.GlobalScope
@@ -14,7 +14,7 @@ import java.io.File
 object CommandRegistry
 {
     private const val SCRIPT_EXTENSION_TYPE = ".pes"
-    private val keyBindingSubscriptions = THashMap<String, Subscription>()
+    private val keyBindingSubscriptions = Object2ObjectOpenHashMap<String, Subscription>()
 
     fun registerEngineCommands(engine: PulseEngineInternal)
     {

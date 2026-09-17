@@ -1,15 +1,15 @@
 package no.njoh.pulseengine.modules.editor
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.asset.types.Font
 import no.njoh.pulseengine.core.shared.primitives.Color
 
 class EditorStyle
 {
-    val colors = THashMap<String, Color>()
-    val fonts = THashMap<String, Font>()
-    val sizes = THashMap<String, Float>()
-    val icons = THashMap<String, String>()
+    val colors = Object2ObjectOpenHashMap<String, Color>()
+    val fonts  = Object2ObjectOpenHashMap<String, Font>()
+    val sizes  = Object2ObjectOpenHashMap<String, Float>()
+    val icons  = Object2ObjectOpenHashMap<String, String>()
     val iconFontName = "icon_font"
 
     fun getColor(name: String) = colors[name] ?: DEFAULT_COLOR

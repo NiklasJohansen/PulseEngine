@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.console
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import no.njoh.pulseengine.core.PulseEngineInternal
@@ -155,7 +155,7 @@ open class ConsoleImpl : ConsoleInternal
 
     private fun parseCommandArguments(commandString: String, command: Command): CommandArguments
     {
-        val argMap = THashMap<String, Any?>()
+        val argMap = Object2ObjectOpenHashMap<String, Any?>()
         val commandWords = commandString.splitIgnoreLiterals("\\s".toRegex())
 
         // Find verbose arguments

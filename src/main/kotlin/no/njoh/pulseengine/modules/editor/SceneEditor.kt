@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.editor
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -88,8 +88,8 @@ class SceneEditor(
     lateinit var viewportContext: ViewportContext
     lateinit var sceneTabsUI: HorizontalPanel
 
-    private var entityPropertyUiRows = THashMap<String, UiElement>()
-    private var entityPropertyUiRowsByEntity = THashMap<EntityPropertyUiKey, UiElement>()
+    private var entityPropertyUiRows = Object2ObjectOpenHashMap<String, UiElement>()
+    private var entityPropertyUiRowsByEntity = Object2ObjectOpenHashMap<EntityPropertyUiKey, UiElement>()
     private var collapsedPropertyHeaders = mutableListOf<String>()
     private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
     private var showGrid = true

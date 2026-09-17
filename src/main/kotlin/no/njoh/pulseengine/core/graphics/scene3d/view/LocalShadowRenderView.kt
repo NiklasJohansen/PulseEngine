@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.scene3d.view
 
-import gnu.trove.list.array.TIntArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import no.njoh.pulseengine.core.graphics.scene3d.view.Frustum.FrustumPlaneSet
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas.Companion.POINT_LIGHT_SHADOW_FACE_COUNT
@@ -95,23 +95,23 @@ class LocalShadowRenderView(private val atlas: LocalShadowAtlas) : RenderView(LO
         val frustumPlaneSets = Array(POINT_LIGHT_SHADOW_FACE_COUNT) { FrustumPlaneSet.ofCapacity(0) }
         var drawPayload: DrawPayload = EmptyDrawPayload
 
-        private val shadowFaceIndices = TIntArrayList(POINT_LIGHT_SHADOW_FACE_COUNT)
+        private val shadowFaceIndices = IntArrayList(POINT_LIGHT_SHADOW_FACE_COUNT)
 
         fun clear()
         {
             opaqueBucket.clear()
             maskedBucket.clear()
             drawPayload = EmptyDrawPayload
-            shadowFaceIndices.resetQuick()
+            shadowFaceIndices.clear()
         }
 
         fun addShadowFaceToRender(shadowFaceIndex: Int, frustumPlaneSet: FrustumPlaneSet)
         {
-            frustumPlaneSets[shadowFaceIndices.size()] = frustumPlaneSet
+            frustumPlaneSets[shadowFaceIndices.size] = frustumPlaneSet
             shadowFaceIndices.add(shadowFaceIndex)
         }
 
-        fun getNumShadowFacesToRender(): Int = shadowFaceIndices.size()
+        fun getNumShadowFacesToRender(): Int = shadowFaceIndices.size
 
         fun containsShadowFace(shadowFaceIndex: Int): Boolean = shadowFaceIndices.contains(shadowFaceIndex)
 

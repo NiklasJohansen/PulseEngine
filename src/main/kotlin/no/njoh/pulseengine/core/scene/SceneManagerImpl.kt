@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.scene
 
-import gnu.trove.set.hash.TLongHashSet
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.PulseEngineGame
 import no.njoh.pulseengine.core.graphics.surface.Surface
@@ -406,7 +406,7 @@ open class SceneManagerImpl : SceneManagerInternal()
         if (sourceEntities.isEmpty())
             return emptyList()
 
-        val selectedIds = TLongHashSet(sourceEntities.size)
+        val selectedIds = LongOpenHashSet(sourceEntities.size)
         sourceEntities.forEachFast()
         {
             if (it.id == INVALID_ID)
@@ -434,7 +434,7 @@ open class SceneManagerImpl : SceneManagerInternal()
             clones.add(clone)
         }
 
-        val rootSourceIds = TLongHashSet()
+        val rootSourceIds = LongOpenHashSet()
         sourceEntities.forEachFast { if (it.parentId !in selectedIds) rootSourceIds.add(it.id) }
 
         try { configure(clones) } catch (e: Exception)

@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.gpu.buffer
 
-import gnu.trove.list.array.TLongArrayList
+import it.unimi.dsi.fastutil.longs.LongArrayList
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.MSAA_MAX
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.*
@@ -31,7 +31,7 @@ import java.util.Arrays
 open class FrameBufferObject(
     val id: Int,
     private val textures: List<RenderTexture>,
-    private val textureSizes: TLongArrayList, // Holds PackedSize elements
+    private val textureSizes: LongArrayList, // Holds PackedSize elements
     private val textureDescriptors: List<TextureDescriptor>,
     private val renderBufferIds: List<Int>
 ) {
@@ -186,7 +186,7 @@ open class FrameBufferObject(
             if (aDesc != bDesc)
                 return false
             val bSize = bDesc.sizeFunc(width, height, bDesc.scale)
-            val aSize = PackedSize(textureSizes[i])
+            val aSize = PackedSize(textureSizes.getLong(i))
             if (aSize != bSize)
                 return false
         }
@@ -222,7 +222,7 @@ open class FrameBufferObject(
         {
             val renderTextures = mutableListOf<RenderTexture>()
             val renderBufferIds = mutableListOf<Int>()
-            val textureSizes = TLongArrayList()
+            val textureSizes = LongArrayList()
             val frameBufferId = glGenFramebuffers()
 
             glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId)
@@ -289,7 +289,7 @@ open class FrameBufferObject(
         fun createEmpty(): FrameBufferObject
         {
             val id = glGenFramebuffers()
-            return FrameBufferObject(id, emptyList(), TLongArrayList(), emptyList(), emptyList())
+            return FrameBufferObject(id, emptyList(), LongArrayList(), emptyList(), emptyList())
         }
 
         fun checkStatus()

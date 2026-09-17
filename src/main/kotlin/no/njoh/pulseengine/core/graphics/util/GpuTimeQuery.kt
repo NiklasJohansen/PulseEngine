@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.util
 
-import gnu.trove.list.array.TIntArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import org.lwjgl.opengl.GL33.*
@@ -83,7 +83,7 @@ class GpuTimeQuery
 
     companion object
     {
-        private val queryIdPool  = TIntArrayList(1000)
+        private val queryIdPool  = IntArrayList(1000)
         private val timerPool    = DynamicList<GpuTimeQuery>()
         private val resultPool   = DynamicList<GpuTimeQueryResult>()
         private val timerStack   = ArrayDeque<GpuTimeQuery>()
@@ -174,7 +174,7 @@ class GpuTimeQuery
             writeResults.clear()
         }
 
-        private fun getQueryId() = if (queryIdPool.isEmpty) glGenQueries() else queryIdPool.removeAt(queryIdPool.size() - 1)
+        private fun getQueryId() = if (queryIdPool.isEmpty) glGenQueries() else queryIdPool.removeInt(queryIdPool.size - 1)
 
         private fun ensureContextGeneration()
         {

@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.modules.physics3d
 
-import gnu.trove.map.hash.TLongObjectHashMap
-import gnu.trove.set.hash.TLongHashSet
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
@@ -39,12 +39,12 @@ class PhysicsSystem3D : SceneSystem()
     var xGravity = 0f; var yGravity = -10f; var zGravity = 0f
 
     private var world: Box3DWorld?      = null
-    private val bindingsByEntityId      = TLongObjectHashMap<BodyBinding>()
+    private val bindingsByEntityId      = Long2ObjectOpenHashMap<BodyBinding>()
     private val activeBindings          = ArrayList<BodyBinding>()
-    private val liveEntityIds           = TLongHashSet()
-    private val jointBindingsByEntityId = TLongObjectHashMap<JointBinding>()
+    private val liveEntityIds           = LongOpenHashSet()
+    private val jointBindingsByEntityId = Long2ObjectOpenHashMap<JointBinding>()
     private val activeJointBindings     = ArrayList<JointBinding>()
-    private val liveJointEntityIds      = TLongHashSet()
+    private val liveJointEntityIds      = LongOpenHashSet()
     private val tmpPosition             = Vector3f()
     private val tmpRotation             = Quaternionf()
     private val tmpRayTranslation       = Vector3f()

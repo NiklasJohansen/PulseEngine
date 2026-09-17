@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.graphics.gpu.resource
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
@@ -38,10 +38,10 @@ import kotlin.math.min
 
 class TextureBank
 {
-    private val textureArrays = mutableListOf<TextureArray>()
-    private val emptyTextureArray = TextureArray(0, 0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
-    private val fallbackTextures = THashMap<Color, RenderTexture>()
-    private var fallbackDepthTexture: RenderTexture? = null
+    private val textureArrays        = mutableListOf<TextureArray>()
+    private val emptyTextureArray    = TextureArray(0, 0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
+    private val fallbackTextures     = Object2ObjectOpenHashMap<Color, RenderTexture>()
+    private var fallbackDepthTexture = null as RenderTexture?
 
     fun upload(texture: Texture)
     {
@@ -84,7 +84,7 @@ class TextureBank
     {
         textureArrays.forEachFast { it.destroy() }
         emptyTextureArray.destroy()
-        fallbackTextures.forEachValue { glDeleteTextures(it.handle.glId); true }
+        fallbackTextures.forEach { (_, texture) -> glDeleteTextures(texture.handle.glId) }
         fallbackTextures.clear()
         fallbackDepthTexture?.let { glDeleteTextures(it.handle.glId) }
         fallbackDepthTexture = null

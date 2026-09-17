@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.shared.annotations
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.shared.primitives.Color
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
@@ -20,6 +20,6 @@ annotation class Icon(
             if (hexColor.isBlank()) null
             else cache.getOrPut(hexColor) { Color().setFromHex(hexColor) }
 
-        private val cache = THashMap<String, Color>()
+        private val cache = Object2ObjectOpenHashMap<String, Color>()
     }
 }

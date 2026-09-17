@@ -5,8 +5,8 @@ import java.lang.foreign.MemorySegment
 import java.lang.foreign.SegmentAllocator
 import java.lang.foreign.ValueLayout
 import java.util.IdentityHashMap
-import gnu.trove.list.array.TLongArrayList
-import gnu.trove.map.hash.TLongObjectHashMap
+import it.unimi.dsi.fastutil.longs.LongArrayList
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap
 import no.njoh.box3d.Box3D
 import no.njoh.box3d.raw.Box3DRaw.b3CreateCapsuleShape
 import no.njoh.box3d.raw.Box3DRaw.b3CreateHullShape
@@ -130,8 +130,8 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
     private val bodies = mutableSetOf<Box3DBody>()
     private val joints = mutableSetOf<Box3DJoint>()
     private val cookedMeshes = IdentityHashMap<Model.CollisionMesh, MemorySegment>()
-    private val shapesByNativeId = TLongObjectHashMap<Box3DShape>()
-    private val destroyedShapeIds = TLongArrayList()
+    private val shapesByNativeId = Long2ObjectOpenHashMap<Box3DShape>()
+    private val destroyedShapeIds = LongArrayList()
 
     private val tmpGravity: MemorySegment
     private val tmpContactEvents: MemorySegment
@@ -312,7 +312,7 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
     {
         requireUsable(body)
         val attachedJoints = joints.filter { it.bodyA === body || it.bodyB === body }
-        attachedJoints.forEach { it.markDestroyed() }
+        attachedJoints.forEachFast { it.markDestroyed() }
         joints.removeAll(attachedJoints.toSet())
         retainDestroyedShapes(body)
         b3DestroyBody(body.nativeBodyId)
@@ -485,7 +485,7 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
             bodies.forEach { it.destroy() }
             bodies.clear()
             shapesByNativeId.clear()
-            destroyedShapeIds.resetQuick()
+            destroyedShapeIds.clear()
             cookedMeshes.forEach { (_, mesh) -> b3DestroyMesh(mesh) }
             cookedMeshes.clear()
         }
@@ -1010,12 +1010,12 @@ class Box3DWorld(gravity: Vector3fc = Vector3f(0f, -10f, 0f)) : AutoCloseable
     private fun unregisterDestroyedShapes()
     {
         var index = 0
-        while (index < destroyedShapeIds.size())
+        while (index < destroyedShapeIds.size)
         {
-            shapesByNativeId.remove(destroyedShapeIds[index])
+            shapesByNativeId.remove(destroyedShapeIds.getLong(index))
             index++
         }
-        destroyedShapeIds.resetQuick()
+        destroyedShapeIds.clear()
     }
 
     private fun findShape(shapeId: MemorySegment) = shapesByNativeId[shapeKey(shapeId)]

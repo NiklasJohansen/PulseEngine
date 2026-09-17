@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.modules.editor
 
-import gnu.trove.set.hash.TLongHashSet
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.graphics.camera.Camera
@@ -112,8 +112,8 @@ class ViewportInteraction3D(
     private val projectedEdgePoints = Array(24) { Vector2f() }
     private val projectedHullPoints = Array(24) { Vector2f() }
     private val submittedBounds = Model.Aabb()
-    private val boundedMarqueeRenderIds = TLongHashSet()
-    private val matchedMarqueeRenderIds = TLongHashSet()
+    private val boundedMarqueeRenderIds = LongOpenHashSet()
+    private val matchedMarqueeRenderIds = LongOpenHashSet()
 
     override fun onCreate(engine: PulseEngine, context: ViewportContext)
     {

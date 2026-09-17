@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.input
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.input.CursorType.*
 import no.njoh.pulseengine.core.asset.types.Cursor
 import no.njoh.pulseengine.core.console.Subscription
@@ -46,13 +46,13 @@ open class InputImpl : InputInternal
     private var previousFocusArea  = null as FocusArea?
     private var hoverFocusArea     = null as FocusArea?
 
-    private var cursors            = THashMap<CursorType, Cursor>()
+    private var cursors            = Object2ObjectOpenHashMap<CursorType, Cursor>()
     private var selectedCursorType = ARROW
     private var activeCursorType   = ARROW
     private var selectedCursorMode = NORMAL
     private var activeCursorMode   = NORMAL
 
-    private var onGetClipboard = mutableListOf<(String) -> Unit>()
+    private var onGetClipboard         = mutableListOf<(String) -> Unit>()
     private var outgoingPlatformEvents = mutableListOf<PlatformEvent>()
 
     override fun init(cursorPosScale: Float)

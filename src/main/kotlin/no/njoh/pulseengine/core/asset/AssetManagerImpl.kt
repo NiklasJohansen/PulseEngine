@@ -1,7 +1,7 @@
 package no.njoh.pulseengine.core.asset
 
-import gnu.trove.map.hash.THashMap
-import gnu.trove.map.hash.TObjectIntHashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -17,15 +17,15 @@ import no.njoh.pulseengine.core.shared.utils.ResourceResolver.matchesPath
 
 open class AssetManagerImpl : AssetManagerInternal()
 {
-    private val assets = THashMap<String, Asset>()
-    private val slotsByName = TObjectIntHashMap<String>(64, 0.5f, INVALID_ASSET_SLOT)
-    private var assetsBySlot = arrayOfNulls<Asset>(64)
-    private var nextAssetSlot = 0
-    private val assetsToLoad = mutableListOf<Asset>(Font.DEFAULT)
-    private val assetsToUnload = mutableListOf<Asset>()
-    private val assetsToReload = mutableListOf<Asset>()
-    private val subAssetsToLoad = mutableListOf<Asset>()
-    private var onAssetLoadedCallbacks = mutableListOf<(Asset) -> Unit>()
+    private val assets                   = Object2ObjectOpenHashMap<String, Asset>()
+    private val slotsByName              = Object2IntOpenHashMap<String>(64).apply { defaultReturnValue(INVALID_ASSET_SLOT) }
+    private var assetsBySlot             = arrayOfNulls<Asset>(64)
+    private var nextAssetSlot            = 0
+    private val assetsToLoad             = mutableListOf<Asset>(Font.DEFAULT)
+    private val assetsToUnload           = mutableListOf<Asset>()
+    private val assetsToReload           = mutableListOf<Asset>()
+    private val subAssetsToLoad          = mutableListOf<Asset>()
+    private var onAssetLoadedCallbacks   = mutableListOf<(Asset) -> Unit>()
     private var onAssetUnloadedCallbacks = mutableListOf<(Asset) -> Unit>()
 
     @Suppress("UNCHECKED_CAST")
@@ -97,7 +97,7 @@ open class AssetManagerImpl : AssetManagerInternal()
     {
         val asset = assets.remove(assetName) ?: return
 
-        val slot = slotsByName[asset.name]
+        val slot = slotsByName.getInt(asset.name)
         if (assetsBySlot.getOrNull(slot) === asset)
             assetsBySlot[slot] = null
 
@@ -265,7 +265,7 @@ open class AssetManagerImpl : AssetManagerInternal()
 
     private fun getOrCreateSlot(assetName: String): Int
     {
-        val existingSlot = slotsByName[assetName]
+        val existingSlot = slotsByName.getInt(assetName)
         if (existingSlot != INVALID_ASSET_SLOT)
             return existingSlot
 

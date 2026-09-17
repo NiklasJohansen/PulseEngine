@@ -1,24 +1,25 @@
 package no.njoh.pulseengine.core.graphics.scene3d.view
 
-import gnu.trove.list.array.TFloatArrayList
-import gnu.trove.map.hash.TLongLongHashMap
+import it.unimi.dsi.fastutil.floats.FloatArrayList
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap
 import no.njoh.pulseengine.core.graphics.scene3d.submission.ModelItem
+import no.njoh.pulseengine.core.shared.utils.retainEntries
 
 /**
  * Selects one LOD per model using the nearest camera requested by any active render view.
  */
 class ModelLodResolver
 {
-    private val cameraPositions       = TFloatArrayList(4 * 3)
-    private var frameNumber           = 0
+    private val cameraPositions       = FloatArrayList(4 * 3)
+    private var lodStates             = null as Long2LongOpenHashMap?
     private var expectedLodStateCount = 0
-    private var lodStates             = null as TLongLongHashMap?
+    private var frameNumber           = 0
 
     fun beginFrame(views: Collection<RenderView>, frameNumber: Int, expectedLodStateCount: Int)
     {
         this.frameNumber = frameNumber
         this.expectedLodStateCount = expectedLodStateCount
-        this.cameraPositions.resetQuick()
+        this.cameraPositions.clear()
 
         views.forEach { view ->
             if (view.lastFrameRequested == frameNumber && view is CameraRenderStateProvider)
@@ -54,7 +55,7 @@ class ModelLodResolver
         if (states == null)
         {
             val initialCapacity = expectedLodStateCount.coerceAtLeast(DEFAULT_LOD_STATE_CAPACITY)
-            states = TLongLongHashMap(initialCapacity)
+            states = Long2LongOpenHashMap(initialCapacity)
             lodStates = states
         }
 
@@ -83,11 +84,11 @@ class ModelLodResolver
 
         var nearestDistSquared = Float.POSITIVE_INFINITY
 
-        for (i in 0 until cameraPositions.size() step 3)
+        for (i in 0 until cameraPositions.size step 3)
         {
-            val xDist = xWorld - cameraPositions[i + 0]
-            val yDist = yWorld - cameraPositions[i + 1]
-            val zDist = zWorld - cameraPositions[i + 2]
+            val xDist = xWorld - cameraPositions.getFloat(i + 0)
+            val yDist = yWorld - cameraPositions.getFloat(i + 1)
+            val zDist = zWorld - cameraPositions.getFloat(i + 2)
             val disSquared = xDist * xDist + yDist * yDist + zDist * zDist
             if (disSquared < nearestDistSquared)
                 nearestDistSquared = disSquared

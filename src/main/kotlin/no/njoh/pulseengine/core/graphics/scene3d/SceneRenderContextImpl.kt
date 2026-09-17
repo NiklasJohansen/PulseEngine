@@ -1,8 +1,8 @@
 package no.njoh.pulseengine.core.graphics.scene3d
 
-import gnu.trove.list.array.TLongArrayList
-import gnu.trove.map.hash.THashMap
-import gnu.trove.set.hash.THashSet
+import it.unimi.dsi.fastutil.longs.LongArrayList
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.asset.types.Material
@@ -30,6 +30,7 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachInstance
+import no.njoh.pulseengine.core.shared.utils.retainEntries
 import org.joml.Matrix4f
 import org.joml.Vector3f
 
@@ -38,7 +39,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     private var thisFrameScene = RenderScene()
     private var nextFrameScene = RenderScene()
 
-    private val views = LinkedHashMap<RenderViewKey<*>, RenderView>()
+    private val views = Object2ObjectOpenHashMap<RenderViewKey<*>, RenderView>()
 
     private val instanceBuffer = InstanceBufferObject()
     private val cullingBuffer  = CullingBufferObject()
@@ -48,9 +49,9 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     private val drawCommandBuilder         = DrawCommandBuilder(instanceBuffer, cullingBuffer, boneBuffer)
     private val modelLodResolver           = ModelLodResolver()
     private val localShadowAtlas           = LocalShadowAtlas()
-    private val clusteredLightGrids        = THashMap<CameraRenderState, ClusteredLightGrid>()
-    private val clusteredLightGridRequests = THashSet<CameraRenderState>()
-    private val renderIdOverrides          = TLongArrayList()
+    private val clusteredLightGrids        = Object2ObjectOpenHashMap<CameraRenderState, ClusteredLightGrid>()
+    private val clusteredLightGridRequests = ObjectOpenHashSet<CameraRenderState>()
+    private val renderIdOverrides          = LongArrayList()
 
     private var frameNumber = 0
     private var initialized = false
@@ -58,7 +59,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     override fun initFrame()
     {
-        renderIdOverrides.resetQuick()
+        renderIdOverrides.clear()
         frameNumber++
 
         nextFrameScene = thisFrameScene.also { thisFrameScene = nextFrameScene }
@@ -133,7 +134,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             cullingBuffer.submit()
             boneBuffer.submit()
             lightBuffer.submit()
-            clusteredLightGrids.forEach { it.value.submit() }
+            clusteredLightGrids.forEach { (_, grid) -> grid.submit() }
         }
 
         // Prepare views for rendering
@@ -155,7 +156,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
                 boneBuffer.markGpuDataInUse()
                 lightBuffer.markSubmittedDataInUse()
                 drawCommandBuilder.markSubmittedDataInUse()
-                clusteredLightGrids.forEach { it.value.markSubmittedDataInUse() }
+                clusteredLightGrids.forEach { (_, grid) -> grid.markSubmittedDataInUse() }
             }
         }
     }
@@ -163,7 +164,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     override fun destroy()
     {
         views.clear()
-        clusteredLightGrids.forEach { it.value.destroy() }
+        clusteredLightGrids.forEach { (_, grid) -> grid.destroy() }
         clusteredLightGrids.clear()
 
         if (!initialized) return
@@ -280,7 +281,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     override fun popRenderIdOverride()
     {
-        renderIdOverrides.removeAt(renderIdOverrides.size() - 1)
+        renderIdOverrides.removeLong(renderIdOverrides.size - 1)
     }
 
     override fun getSubmittedSceneSnapshot() = thisFrameScene.submittedSnapshot
@@ -304,7 +305,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     {
         if (!thisFrameScene.hasDrawItems)
         {
-            clusteredLightGrids.forEach { it.value.destroy() }
+            clusteredLightGrids.forEach { (_, grid) -> grid.destroy() }
             clusteredLightGrids.clear()
             return
         }
@@ -333,7 +334,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     private fun getCameraPosition(): Vector3f? =
         views.firstNotNullOfOrNull { (_, view) -> if (view.wasRequested() && view is CameraRenderStateProvider) view.shadowReferencePosition else null }
 
-    private fun resolveRenderId(renderId: Long) = if (renderIdOverrides.isEmpty) renderId else renderIdOverrides[renderIdOverrides.size() - 1]
+    private fun resolveRenderId(renderId: Long) = if (renderIdOverrides.isEmpty) renderId else renderIdOverrides.getLong(renderIdOverrides.size - 1)
 
     private fun RenderView.wasRequested() = (lastFrameRequested == frameNumber)
 }

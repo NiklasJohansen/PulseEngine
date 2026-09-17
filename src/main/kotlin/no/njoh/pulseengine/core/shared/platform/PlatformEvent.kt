@@ -1,6 +1,6 @@
 package no.njoh.pulseengine.core.shared.platform
 
-import gnu.trove.map.hash.THashMap
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.asset.types.Cursor
 import no.njoh.pulseengine.core.input.CursorMode
 import java.nio.ByteBuffer
@@ -10,12 +10,12 @@ import java.nio.FloatBuffer
  * Base class for all platform events.
  * Platform events are used to communicate between the engine and the platform.
  */
-abstract class PlatformEvent()
+abstract class PlatformEvent
 {
     companion object
     {
         @PublishedApi
-        internal val pool = THashMap<Class<*>, MutableList<PlatformEvent>>()
+        internal val pool = Object2ObjectOpenHashMap<Class<*>, MutableList<PlatformEvent>>()
 
         inline fun <reified T: PlatformEvent> create(new: () -> T, set: (T) -> Unit): T
         {
