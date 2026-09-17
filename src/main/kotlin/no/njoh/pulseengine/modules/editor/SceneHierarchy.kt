@@ -113,7 +113,8 @@ data class SceneHierarchy(
 
             val headerPanel = HorizontalPanel(height = Size.absolute(25f)).apply()
             {
-                color = style.getColor("HEADER")
+                color = style.getColor("ROW_HEADER")
+
                 addChildren(
                     editDisabledButton,
                     Panel(width = Size.absolute(25f)).apply()
@@ -187,17 +188,17 @@ data class SceneHierarchy(
                 padding.top = ScaledValue.of(5f)
                 padding.bottom = ScaledValue.of(5f)
                 padding.right = ScaledValue.of(5f)
-                bgColor = style.getColor("HEADER")
+                bgColor = style.getColor("ROW_HEADER")
                 hoverColor = style.getColor("BUTTON_HOVER")
                 setCornerRadius(ScaledValue.of(4f))
             }
 
             val searchPanel = HorizontalPanel(height = Size.absolute(30f)).apply()
             {
-                color = style.getColor("HEADER")
+                color = style.getColor("ROW_HEADER")
                 strokeColor = style.getColor("STROKE")
                 strokeBottom = true
-                strokeTop = false
+                strokeTop = true
                 strokeLeft = false
                 strokeRight = false
                 addChildren(searchInputField, buttonUI)
@@ -559,7 +560,7 @@ data class SceneHierarchy(
                 toggleButton = true
                 isPressed = entity.isSet(SELECTED)
                 bgHoverColor = style.getColor("BUTTON_HOVER")
-                activeColor = style.getColor("HEADER_HOVER")
+                activeColor = style.getColor("ROW_HEADER_HOVER")
                 padding.bottom = ScaledValue.of(1f)
                 setOnClicked { onSelectedCallback(it) }
                 addChildren(

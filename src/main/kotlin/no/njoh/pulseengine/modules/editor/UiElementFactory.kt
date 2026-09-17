@@ -232,6 +232,12 @@ open class UiElementFactory(
         val headerPanel = HorizontalPanel(height = Size.absolute(30f)).apply()
         {
             color = style.getColor("WINDOW_HEADER")
+            strokeColor = style.getColor("STROKE")
+            strokeBottom = true
+            strokeTop = false
+            strokeLeft = false
+            strokeRight = false
+
             focusable = false
             cornerRadiusTopLeft  = cornerRadius
             cornerRadiusTopRight = cornerRadius
@@ -243,7 +249,6 @@ open class UiElementFactory(
 
         windowPanel.setCornerRadius(cornerRadius)
         windowPanel.color = style.getColor("DARK_BG")
-        windowPanel.strokeColor = style.getColor("STROKE")
         windowPanel.strokeWidth = borderWidth
         windowPanel.movable = true
         windowPanel.resizable = true
@@ -340,7 +345,7 @@ open class UiElementFactory(
                 panel(y = Position.alignBottom(), height = Size.absolute(if (tabData.selected) 2f else 1f))
                 {
                     focusable = false
-                    color = style.getColor(if (tabData.selected) "HEADER_ACCENT" else "HEADER_DIVIDER")
+                    color = style.getColor(if (tabData.selected) "HEADER_ACCENT" else "DIVIDER")
                 }
 
                 setOnClicked()
@@ -377,10 +382,10 @@ open class UiElementFactory(
         viewMenu: MenuBarButton,
         panelsMenu: MenuBarButton,
         onRunScene: () -> Unit
-    ): HorizontalPanel = horizontalPanel(height = Size.absolute(style.getSize("EDITOR_HEADER_HEIGHT")))
-    {
-        color = style.getColor("EDITOR_HEADER")
-        strokeColor = style.getColor("HEADER_DIVIDER")
+    ): HorizontalPanel = horizontalPanel(height = Size.absolute(style.getSize("EDITOR_HEADER_HEIGHT"))) {
+
+        color = style.getColor("HEADER_FOOTER")
+        strokeColor = style.getColor("DIVIDER")
         strokeTop = false
         strokeLeft = false
         strokeRight = false
@@ -390,7 +395,7 @@ open class UiElementFactory(
 
         panel(width = Size.absolute(1f))
         {
-            color = style.getColor("HEADER_DIVIDER")
+            color = style.getColor("DIVIDER")
             padding.left = ScaledValue.of(5f)
             padding.right = ScaledValue.of(8f)
             padding.top = ScaledValue.of(11f)
@@ -402,7 +407,7 @@ open class UiElementFactory(
 
         panel(width = Size.absolute(1f))
         {
-            color = style.getColor("HEADER_DIVIDER")
+            color = style.getColor("DIVIDER")
             padding.left = ScaledValue.of(8f)
             padding.right = ScaledValue.of(5f)
             padding.top = ScaledValue.of(11f)
@@ -440,7 +445,7 @@ open class UiElementFactory(
 
         panel(width = Size.absolute(1f))
         {
-            color = style.getColor("HEADER_DIVIDER")
+            color = style.getColor("DIVIDER")
             padding.left = ScaledValue.of(5f)
             padding.top = ScaledValue.of(11f)
             padding.bottom = ScaledValue.of(11f)
@@ -536,7 +541,7 @@ open class UiElementFactory(
         val footer = HorizontalPanel(height = Size.absolute(25f)).apply()
         {
             color = style.getColor("HEADER_FOOTER")
-            strokeColor = style.getColor("STROKE")
+            strokeColor = style.getColor("DIVIDER")
             strokeTop = true
             strokeLeft = false
             strokeRight = false
@@ -934,7 +939,7 @@ open class UiElementFactory(
             height.updateType(Size.ValueType.ABSOLUTE)
             height.value = 30f
             padding.setAll(0f)
-            bgColor = style.getColor("HEADER")
+            bgColor = style.getColor("ROW_HEADER")
             hoverColor = style.getColor("BUTTON_HOVER")
 
             setOnClicked {
@@ -992,7 +997,7 @@ open class UiElementFactory(
             menuLabel.padding.top = ScaledValue.of(4f)
             menuLabel.padding.right = ScaledValue.of(2f)
             padding.setAll(5f)
-            bgColor = style.getColor("HEADER")
+            bgColor = style.getColor("ROW_HEADER")
             hoverColor = style.getColor("BUTTON_HOVER")
             setCornerRadius(ScaledValue.of(2f))
         }
@@ -1066,10 +1071,10 @@ open class UiElementFactory(
             padding.right = ScaledValue.of(5f)
             padding.top = ScaledValue.of(5f)
             setCornerRadius(ScaledValue.of(4f))
-            color = style.getColor("HEADER")
-            activeColor = style.getColor("HEADER")
-            hoverColor = style.getColor("HEADER_HOVER")
-            activeHoverColor = style.getColor("HEADER_HOVER")
+            color = style.getColor("ROW_HEADER")
+            activeColor = style.getColor("ROW_HEADER")
+            hoverColor = style.getColor("ROW_HEADER_HOVER")
+            activeHoverColor = style.getColor("ROW_HEADER_HOVER")
             addChildren(headerPanel)
         }
 
@@ -1165,7 +1170,7 @@ open class UiElementFactory(
             colorPreviewButton.bgHoverColor = style.getColor("BUTTON_HOVER")
             colorEditor.color = style.getColor("LIGHT_BG")
             colorEditor.strokeColor = style.getColor("STROKE")
-            saturationBrightnessPicker.strokeColor = style.getColor("HEADER")
+            saturationBrightnessPicker.strokeColor = style.getColor("ROW_HEADER")
             huePicker.strokeColor = style.getColor("STROKE")
             hsbSection.color = style.getColor("DARK_BG")
             rgbaSection.color = style.getColor("DARK_BG")
@@ -1233,7 +1238,7 @@ open class UiElementFactory(
             previewButton.iconFontName = style.iconFontName
             previewButton.iconCharacter = previewIconCharacter
             pickerWindow.color = style.getColor("DROPDOWN_BG")
-            pickerWindow.strokeColor = style.getColor("HEADER")
+            pickerWindow.strokeColor = style.getColor("ROW_HEADER")
             pickerWindow.strokeRight = true
             pickerWindow.setCornerRadius(ScaledValue.of(4f))
 
@@ -1456,10 +1461,10 @@ open class UiElementFactory(
             padding.right = ScaledValue.of(5f)
             padding.top = ScaledValue.of(5f)
             setCornerRadius(ScaledValue.of(4f))
-            color = style.getColor("HEADER")
-            activeColor = style.getColor("HEADER")
-            hoverColor = style.getColor("HEADER_HOVER")
-            activeHoverColor = style.getColor("HEADER_HOVER")
+            color = style.getColor("ROW_HEADER")
+            activeColor = style.getColor("ROW_HEADER")
+            hoverColor = style.getColor("ROW_HEADER_HOVER")
+            activeHoverColor = style.getColor("ROW_HEADER_HOVER")
 
             val icon = Icon(width = Size.absolute(25f)).apply()
             {
