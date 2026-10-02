@@ -68,7 +68,7 @@ dependencies {
 
 val lwjglJvmArgs = listOf(
     "--enable-native-access=ALL-UNNAMED",
-    "--sun-misc-unsafe-memory-access=allow" // Temporary until LWJGL 3.3.6
+    "--sun-misc-unsafe-memory-access=allow" // Temporary until LWJGL 3.3.6 is bumped
 )
 
 tasks.withType<JavaExec>().configureEach {
@@ -92,6 +92,12 @@ tasks.named<ShadowJar>("shadowJar") {
     // Exclude testbed in published lib. Comment this line out when running JAR locally.
     exclude("testbed/**")
     mainClass.set(providers.gradleProperty("mainClass"))
+
+    // Add license file to the JAR
+    from(layout.projectDirectory.file("LICENSE.md")) {
+        into("META-INF/LICENSES")
+        rename { "PulseEngine-MIT.txt" }
+    }
 
     manifest {
         attributes["Enable-Native-Access"] = "ALL-UNNAMED"
@@ -118,6 +124,15 @@ publishing {
         create<MavenPublication>("mavenJava") {
             artifact(tasks.named<ShadowJar>("shadowJar"))
             artifact(tasks.named<Jar>("sourcesJar"))
+            pom {
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/license/mit")
+                        distribution.set("repo")
+                    }
+                }
+            }
         }
     }
 

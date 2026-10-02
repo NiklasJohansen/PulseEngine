@@ -1,0 +1,27 @@
+PulseEngine third-party notices
+
+OpenAL Soft 1.24.1
+Copyright (C) 1999-2007 by the OpenAL Soft authors.
+
+PulseEngine distributes unmodified OpenAL Soft shared libraries supplied by LWJGL 3.3.6.
+OpenAL Soft is licensed under the GNU Library General Public License, version 2,
+or (at your option) any later version. The complete license is available at:
+
+    META-INF/LICENSES/OpenAL-Soft-LGPL-2.0.txt
+
+The corresponding source archive is distributed alongside binary releases as:
+
+    openal-soft-1.24.1-lwjgl-3.3.6-source.tar.gz
+
+For Maven distributions it is published separately as:
+
+    no.njoh.thirdparty:openal-soft-source:1.24.1-lwjgl-3.3.6@tar.gz
+    https://repo.repsy.io/mvn/njoh/public/no/njoh/thirdparty/openal-soft-source/1.24.1-lwjgl-3.3.6/openal-soft-source-1.24.1-lwjgl-3.3.6.tar.gz
+
+Exact source revision:
+
+    https://github.com/LWJGL-CI/openal-soft/commit/90191edd20bb877c5cbddfdac7ec0fe49ad93727
+
+LWJGL permits loading a compatible replacement OpenAL library with the JVM option:
+
+    -Dorg.lwjgl.openal.libname=/absolute/path/to/the/replacement/library
