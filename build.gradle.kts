@@ -1,11 +1,11 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins{
+plugins {
     `maven-publish`
-    id("org.jetbrains.kotlin.jvm") version "2.4.10"
-    id("org.jetbrains.kotlin.kapt") version "2.4.10"
+    id("org.jetbrains.kotlin.jvm") version "2.4.20"
+    id("org.jetbrains.kotlin.kapt") version "2.4.20"
     id("me.champeau.jmh") version "0.7.3"
-    id("com.gradleup.shadow") version "9.5.1"
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 val platforms = listOf(
@@ -18,9 +18,7 @@ val platforms = listOf(
 )
 
 repositories {
-    maven {
-        url = uri("https://repo.repsy.io/mvn/njoh/public")
-    }
+    maven { url = uri("https://repo.repsy.io/mvn/njoh/public") }
     mavenCentral()
 }
 
@@ -28,9 +26,10 @@ dependencies {
     // Kotlin
     implementation(kotlin("reflect"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    compileOnly("org.jspecify:jspecify:1.0.0") // For Kotlin to resolve LWJGL's nullability annotations
 
     // LWJGL
-    implementation(platform("org.lwjgl:lwjgl-bom:3.3.6"))
+    implementation(platform("org.lwjgl:lwjgl-bom:3.4.3"))
     listOf(
         "lwjgl",        // Core LWJGL library
         "lwjgl-glfw",   // GLFW for window management
@@ -48,18 +47,16 @@ dependencies {
     implementation("no.njoh:box3d-java:0.2.0")
     platforms.forEach { runtimeOnly("no.njoh:box3d-java-$it:0.2.0") }
 
-    // Data structures
-    implementation("org.joml:joml:1.10.8")
-    implementation("it.unimi.dsi:fastutil:8.5.18")
+    // Math and data structures
+    implementation("org.joml:joml:1.10.9")          // Math library for 2D/3D graphics
+    implementation("it.unimi.dsi:fastutil:8.5.19")  // High-performance collections
 
     // Data serialization / deserialization
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.3")
-    implementation("de.undercouch:bson4jackson:2.15.1")
-    implementation("com.esotericsoftware:kryo:5.6.2")
-    implementation("org.objenesis:objenesis:3.4")
-
-    // Other
-    compileOnly("org.jspecify:jspecify:1.0.0")
+    implementation(platform("com.fasterxml.jackson:jackson-bom:2.22.3")) // JSON serialization/deserialization
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin") // Kotlin support for Jackson
+    implementation("de.undercouch:bson4jackson:2.18.0") // Binary JSON serialization/deserialization
+    implementation("com.esotericsoftware:kryo:5.6.2")   // Serialization/deserialization of network packets
+    implementation("org.objenesis:objenesis:3.6")       // Used by Kryo for object instantiation
 
     // Java Microbenchmark Harness
     jmh("org.openjdk.jmh:jmh-core:1.37")
@@ -67,8 +64,7 @@ dependencies {
 }
 
 val lwjglJvmArgs = listOf(
-    "--enable-native-access=ALL-UNNAMED",
-    "--sun-misc-unsafe-memory-access=allow" // Temporary until LWJGL 3.3.6 is bumped
+    "--enable-native-access=ALL-UNNAMED"
 )
 
 tasks.withType<JavaExec>().configureEach {
@@ -113,7 +109,7 @@ tasks.register<Jar>("sourcesJar") {
 }
 
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(26)
     compilerOptions {
         freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-call-assertions")
     }

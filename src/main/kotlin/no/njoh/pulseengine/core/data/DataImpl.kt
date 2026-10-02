@@ -1,7 +1,9 @@
 package no.njoh.pulseengine.core.data
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo.As
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping.OBJECT_AND_NON_CONCRETE
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import de.undercouch.bson4jackson.BsonFactory
 import kotlinx.coroutines.Dispatchers
@@ -17,19 +19,19 @@ import kotlin.system.measureNanoTime
 
 open class DataImpl : DataInternal()
 {
-    override var currentFps           = 0
-    override var frameNumber          = 0L
-    override var totalFrameTimeMs     = 0f
-    override var engineRenderTimeMs      = 0f
+    override var currentFps            = 0
+    override var frameNumber           = 0L
+    override var totalFrameTimeMs      = 0f
+    override var engineRenderTimeMs    = 0f
     override var gameRenderTimeMs      = 0f
     override var gameUpdateTimeMs      = 0f
     override var gameFixedUpdateTimeMs = 0f
-    override var fixedDeltaTime       = 0.017f
-    override var deltaTime            = 0.017f
-    override var interpolation        = 0f
-    override var usedMemoryKb         = 0L
-    override var totalMemoryKb        = 0L
-    override val metrics              = ArrayList<Metric>()
+    override var fixedDeltaTime        = 0.017f
+    override var deltaTime             = 0.017f
+    override var interpolation         = 0f
+    override var usedMemoryKb          = 0L
+    override var totalMemoryKb         = 0L
+    override val metrics               = ArrayList<Metric>()
 
     private val fpsFilter        = LongArray(20)
     private var fpsTimerNs       = System.nanoTime()
@@ -61,8 +63,10 @@ open class DataImpl : DataInternal()
         getFile(filePath).let { it.exists() || it.isDirectory }
 
     override fun <T> saveObject(data: T, filePath: String, format: FileFormat): Boolean =
-        runCatching {
-            val nanoTime = measureNanoTime {
+        runCatching() 
+        {
+            val nanoTime = measureNanoTime()
+            {
                 val file = getFile(filePath)
                 if (!file.parentFile.exists())
                     file.parentFile.mkdirs()
@@ -75,9 +79,11 @@ open class DataImpl : DataInternal()
         .getOrDefault(false)
 
     override fun <T> loadObject(filePath: String, type: Class<T>): T? =
-        runCatching {
+        runCatching() 
+        {
             var state: T? = null
-            val nanoTime = measureNanoTime {
+            val nanoTime = measureNanoTime() 
+            {
                 val requestedFile = File(filePath)
                 val externalFile = getFile(filePath)
                 val byteArray = when
@@ -171,13 +177,13 @@ open class DataImpl : DataInternal()
     {
         private val bsonMapper = ObjectMapper(BsonFactory())
             .registerModule(KotlinModule.Builder().build())
-            .enableDefaultTyping()
+            .apply { activateDefaultTyping(polymorphicTypeValidator, OBJECT_AND_NON_CONCRETE, As.WRAPPER_ARRAY) }
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)
 
         private val jsonMapper = ObjectMapper()
             .registerModule(KotlinModule.Builder().build())
-            .enableDefaultTyping()
+            .apply { activateDefaultTyping(polymorphicTypeValidator, OBJECT_AND_NON_CONCRETE, As.WRAPPER_ARRAY) }
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)
 

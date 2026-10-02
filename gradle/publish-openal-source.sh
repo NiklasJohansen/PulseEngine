@@ -2,9 +2,10 @@
 
 set -Eeuo pipefail
 
-readonly OPENAL_VERSION="1.24.1"
-readonly LWJGL_VERSION="3.3.6"
-readonly SOURCE_REVISION="90191edd20bb877c5cbddfdac7ec0fe49ad93727"
+readonly OPENAL_VERSION="1.25.2"
+readonly LWJGL_VERSION="3.4.3"
+# Matches the OpenAL native .git metadata for all platforms in this LWJGL release.
+readonly SOURCE_REVISION="7f9c6de1162b1d4604b9a2f8bcd6c53021566221"
 readonly SOURCE_VERSION="${OPENAL_VERSION}-lwjgl-${LWJGL_VERSION}"
 readonly ARTIFACT_NAME="openal-soft-source"
 readonly FILE_NAME="${ARTIFACT_NAME}-${SOURCE_VERSION}.tar.gz"
