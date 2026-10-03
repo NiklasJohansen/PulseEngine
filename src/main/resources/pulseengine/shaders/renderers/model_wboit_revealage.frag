@@ -2,15 +2,16 @@
 
 in vec2 vTexCoord;
 flat in int vMaterialId;
+
 #ifdef WBOIT_OUTPUT_RENDER_ID
-flat in uint vRenderId;
+    flat in uint vRenderId;
 #endif
 
 #ifdef WBOIT_OUTPUT_RENDER_ID
-layout(location = 1) out float outRevealage;
-layout(location = 2) out uint outRenderId;
+    layout(location = 1) out float outRevealage;
+    layout(location = 2) out uint outRenderId;
 #else
-layout(location = 0) out float outRevealage;
+    layout(location = 0) out float outRevealage;
 #endif
 
 uniform sampler2DArray uTextureBanks[16];
@@ -52,10 +53,12 @@ struct MaterialData
     vec4 emissiveFactor;
     vec4 albedoTex;
     vec4 normalTex;
-    vec4 aoMetalRoughTex;
+    vec4 aoRoughMetalTex;
     vec4 emissiveTex;
-    vec4 aoMetalRoughNormalFactor;
-    vec4 tilingAlphaFlags; // x/y=tiling, z=alphaCutoff, w=flags
+    vec4 heightTex;
+    vec4 aoRoughMetalNormalFactor;
+    vec4 tilingAlphaHeight; // xy=tiling, z=alphaCutoff, w=heightScale
+    vec4 normalDirPadding;  // xy=normalDir, zw=padding
 };
 
 layout(std430, binding = 3) readonly buffer MaterialBuffer
@@ -90,8 +93,8 @@ void main()
     vec2 texCoordDx = dFdx(vTexCoord);
     vec2 texCoordDy = dFdy(vTexCoord);
     MaterialData material = uMaterials[vMaterialId];
-    vec2 tiling = material.tilingAlphaFlags.xy;
-    float alphaCutoff = material.tilingAlphaFlags.z;
+    vec2 tiling = material.tilingAlphaHeight.xy;
+    float alphaCutoff = material.tilingAlphaHeight.z;
 
     vec4 baseColor = material.baseColor * sampleTexOrDefault(material.albedoTex, vec3(1.0), tiling, texCoordDx, texCoordDy);
     float alpha = baseColor.a;
@@ -110,6 +113,6 @@ void main()
     outRevealage = alpha;
 
     #ifdef WBOIT_OUTPUT_RENDER_ID
-    outRenderId = vRenderId;
+        outRenderId = vRenderId;
     #endif
 }

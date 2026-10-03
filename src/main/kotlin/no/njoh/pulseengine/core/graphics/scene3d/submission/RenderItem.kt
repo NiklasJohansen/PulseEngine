@@ -2,6 +2,8 @@ package no.njoh.pulseengine.core.graphics.scene3d.submission
 
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.CullMode.BACK
+import no.njoh.pulseengine.core.asset.types.Material.BlendMode.BLEND
+import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet.ShaderVariant.*
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.shared.primitives.Mat4f
@@ -17,12 +19,15 @@ class RenderItem
     var renderPassMask = RenderPassMask.EMPTY;     private set
     var renderId       = -1L;                      private set
     var batchSortKey   = -1;                       private set
+    var shaderVariant  = STATIC;                   private set
 
     internal var gpuInstanceIndex = -1
     internal var gpuCullItemIndex = -1
 
     fun set(mesh: Model.Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, renderId: Long = -1L)
     {
+        val usePom = material?.height != null && material.heightScale > 0f && material.blendMode != BLEND
+
         this.mesh = mesh
         this.material = material
         this.transform = transform
@@ -30,7 +35,12 @@ class RenderItem
         this.boneMatrices = boneMatrices
         this.renderPassMask = renderPassMask
         this.renderId = renderId
-        this.batchSortKey = mesh.getBatchSortKey(material?.cullMode ?: BACK)
+        this.batchSortKey = (mesh.getBatchSortKey(material?.cullMode ?: BACK) shl 1) or (if (usePom) 1 else 0)
+        this.shaderVariant = when 
+        {
+            mesh.skinningBounds != null -> if (usePom) SKINNED_POM else SKINNED
+            else                        -> if (usePom) STATIC_POM else STATIC
+        }
     }
 
     fun isVisible(pass: RenderPassMask) = (renderPassMask.mask and pass.mask) != 0

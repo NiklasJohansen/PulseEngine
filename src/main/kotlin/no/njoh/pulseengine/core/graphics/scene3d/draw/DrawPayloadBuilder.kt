@@ -2,12 +2,8 @@ package no.njoh.pulseengine.core.graphics.scene3d.draw
 
 import no.njoh.pulseengine.core.asset.types.Material.CullMode
 import no.njoh.pulseengine.core.asset.types.Model.Aabb
-import no.njoh.pulseengine.core.asset.types.Model.Mesh
 import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.graphics.scene3d.view.Frustum.FrustumPlaneSet
-import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet.ShaderVariant
-import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet.ShaderVariant.SKINNED
-import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet.ShaderVariant.STATIC
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject.Companion.INVALID_INSTANCE_INDEX
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StreamingIntBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
@@ -105,7 +101,7 @@ class DrawPayloadBuilder(
 
             if (batchIndex == NO_BATCH_INDEX)
             {
-                val shaderVariant = it.mesh.selectShaderVariant()
+                val shaderVariant = it.shaderVariant
                 val cullMode = it.material?.cullMode ?: CullMode.BACK
                 val batch = addBatch(it.mesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
 
@@ -152,7 +148,7 @@ class DrawPayloadBuilder(
             }
             else
             {
-                val shaderVariant = it.mesh.selectShaderVariant()
+                val shaderVariant = it.shaderVariant
                 val cullMode      = it.material?.cullMode ?: CullMode.BACK
                 val batch = addBatch(it.mesh, shaderVariant, cullMode, instanceIndex, instanceCount = 1)
                 lastBatch = batch
@@ -188,11 +184,6 @@ class DrawPayloadBuilder(
             if (frustumPlaneSets[i].intersectsAabb(bounds, transform)) return true
         }
         return false
-    }
-
-    private fun Mesh.selectShaderVariant(): ShaderVariant
-    {
-        return if (skinningBounds != null) SKINNED else STATIC
     }
 
     companion object

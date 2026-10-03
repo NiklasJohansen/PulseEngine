@@ -1,6 +1,5 @@
 package no.njoh.pulseengine.modules.scene.systems
 
-import com.fasterxml.jackson.annotation.JsonAlias
 import com.fasterxml.jackson.annotation.JsonIgnore
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.AssetHandle
@@ -39,15 +38,18 @@ class Scene3DLightingSystem : SceneSystem()
     @Prop(i=6, min=0f, max=1f)   var sunShadowCascadeSplitLambda   = 0.5f
     @Prop(i=7, min=0f)           var sunShadowDistance             = 50f
     @Prop(i=8, min=2f, max=4f)   var sunShadowMaxUpdatesPerFrame   = 2
-    @Prop(i=9, min=0f)           var envIntensity                  = 0.5f
-    @Prop(i=10)                  var envColor                      = Color(1f, 1f, 1f)
-    @Prop(i=11)                  var envDiffuseTexture             = AssetHandle<EnvMap>()
-    @Prop(i=12)                  var envSpecularTexture            = AssetHandle<EnvMap>()
-    @Prop(i=13)                  var targetSurfaces                = "scene3d"
-    @Prop(i=14)                  var localShadowsEnabled           = true
-    @Prop(i=15, min=256f)        var localShadowAtlasResolution    = 4096
-    @Prop(i=16, min=64f)         var localShadowTileResolution     = 512
-    @Prop(i=17, min=0f)          var localShadowMaxUpdatesPerFrame = 3
+    @Prop(i=9, min=0f)           var sunContactShadowLength        = 0.1f
+    @Prop(i=10, min=0f)          var envIntensity                  = 0.5f
+    @Prop(i=11)                  var envColor                      = Color(1f, 1f, 1f)
+    @Prop(i=12)                  var envDiffuseTexture             = AssetHandle<EnvMap>()
+    @Prop(i=13)                  var envSpecularTexture            = AssetHandle<EnvMap>()
+    @Prop(i=14)                  var targetSurfaces                = "scene3d"
+    @Prop(i=15)                  var localShadowsEnabled           = true
+    @Prop(i=16, min=256f)        var localShadowAtlasResolution    = 4096
+    @Prop(i=17, min=64f)         var localShadowTileResolution     = 512
+    @Prop(i=18, min=0f)          var localShadowMaxUpdatesPerFrame = 3
+    @Prop(i=19, min=0f)          var contactShadowThickness        = 0.02f
+    @Prop(i=20, min=0f)          var contactShadowBias             = 0.008f
 
     private var shadowMapSurfaceName        = ""
     private var localShadowAtlasSurfaceName = ""
@@ -73,6 +75,9 @@ class Scene3DLightingSystem : SceneSystem()
             renderer?.sunColor?.setFrom(sunColor)?.multiplyRgb(sunIntensity)
             renderer?.useDefaultLighting          = false
             renderer?.sunRadius                   = sunRadius
+            renderer?.sunContactShadowLength      = sunContactShadowLength
+            renderer?.contactShadowThickness      = contactShadowThickness
+            renderer?.contactShadowBias           = contactShadowBias
             renderer?.sunShadowMapSurfaceName     = shadowMapSurfaceName
             renderer?.localShadowAtlasSurfaceName = localShadowAtlasSurfaceName
             renderer?.iblDiffuseTexture           = envDiffuseTexture.name
@@ -233,8 +238,6 @@ interface Scene3DLightSource
  */
 interface Light3D : Scene3DLightSource, Translatable3D
 {
-    @get:JsonAlias("radius")
-    @set:JsonAlias("radius")
     var range: Float
     var sourceRadius: Float
 }

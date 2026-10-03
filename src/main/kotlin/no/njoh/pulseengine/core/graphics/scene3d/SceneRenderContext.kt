@@ -72,7 +72,8 @@ abstract class SceneRenderContext
         shadowNearPlane: Float = 0.05f,
         shadowBias: Float = 0.005f,
         shadowImportance: Float = 1f,
-        shadowId: Long = 0L
+        shadowId: Long = 0L,
+        contactShadowLength: Float = 0f
     )
 
     /**
@@ -91,7 +92,8 @@ abstract class SceneRenderContext
         shadowNearPlane: Float = 0.05f,
         shadowBias: Float = 0.005f,
         shadowImportance: Float = 1f,
-        shadowId: Long = 0L
+        shadowId: Long = 0L,
+        contactShadowLength: Float = 0f
     )
 
     /**

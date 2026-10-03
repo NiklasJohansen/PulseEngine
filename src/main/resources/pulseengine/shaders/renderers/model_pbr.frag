@@ -5,13 +5,14 @@
 const float PI = 3.14159265359;
 const float TAU = 6.28318530718;
 
-const uint PBR_FEATURE_SUN_LIGHT     = 1u << 0;
-const uint PBR_FEATURE_SUN_SHADOWS   = 1u << 1;
-const uint PBR_FEATURE_LOCAL_LIGHTS  = 1u << 2;
-const uint PBR_FEATURE_LOCAL_SHADOWS = 1u << 3;
-const uint PBR_FEATURE_DIFFUSE_IBL   = 1u << 4;
-const uint PBR_FEATURE_SPECULAR_IBL  = 1u << 5;
-const uint PBR_FEATURE_GTAO          = 1u << 6;
+const uint PBR_FEATURE_SUN_LIGHT       = 1u << 0;
+const uint PBR_FEATURE_SUN_SHADOWS     = 1u << 1;
+const uint PBR_FEATURE_LOCAL_LIGHTS    = 1u << 2;
+const uint PBR_FEATURE_LOCAL_SHADOWS   = 1u << 3;
+const uint PBR_FEATURE_DIFFUSE_IBL     = 1u << 4;
+const uint PBR_FEATURE_SPECULAR_IBL    = 1u << 5;
+const uint PBR_FEATURE_GTAO            = 1u << 6;
+const uint PBR_FEATURE_CONTACT_SHADOWS = 1u << 7;
 
 const int VIEW_MODE_SHADED                  = 0;
 const int VIEW_MODE_PBR_ALBEDO              = 1;
@@ -30,7 +31,7 @@ const int VIEW_MODE_SHADOW_CASCADES         = 13;
 const int VIEW_MODE_LIGHT_CLUSTER_OCCUPANCY = 14;
 const int VIEW_MODE_RENDER_ID               = 15;
 
-const vec2 CASCADE_OFFSETS[CASCADE_COUNT] = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0), vec2(0.0, 0.5), vec2(0.5, 0.5));
+const vec2 CASCADE_OFFSETS[CASCADE_COUNT]     = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0), vec2(0.0, 0.5), vec2(0.5, 0.5));
 const vec3 CASCADE_VIEW_COLORS[CASCADE_COUNT] = vec3[](
     vec3(1.00, 0.15, 0.10),
     vec3(0.15, 1.00, 0.20),
@@ -43,17 +44,23 @@ in vec3 vWorldNormal;
 in mat3 vTBN;
 in vec2 vTexCoord;
 flat in int vMaterialId;
+
+#ifdef PBR_USE_POM
+    layout(depth_greater) out float gl_FragDepth;
+#endif
+
 #ifdef PBR_USE_RENDER_ID
-flat in uint vRenderId;
+    flat in uint vRenderId;
 #endif
 
 #ifdef PBR_OUTPUT_WBOIT_ACCUM
-layout(location = 0) out vec4 outAccum;
+    layout(location = 0) out vec4 outAccum;
 #else
-layout(location = 0) out vec4 fragColor;
-#ifdef PBR_USE_RENDER_ID
-layout(location = 1) out uint outRenderId;
-#endif
+    layout(location = 0) out vec4 fragColor;
+
+    #ifdef PBR_USE_RENDER_ID
+        layout(location = 1) out uint outRenderId;
+    #endif
 #endif
 
 // Textures
@@ -128,6 +135,12 @@ uniform float uAoIntensity;
 uniform vec4  uSunColor;
 uniform vec3  uSunDirection;
 uniform float uSunRadius;
+uniform float uSunContactShadowLength;
+
+uniform sampler2D uContactShadowDepthTex;
+uniform mat4      uContactShadowInvProjection;
+uniform float     uContactShadowThickness;
+uniform float     uContactShadowBias;
 
 uniform ivec3 uClusterGridSize;
 uniform vec2  uClusterTileSize;
@@ -141,6 +154,7 @@ uniform vec3  uCameraPos;
 uniform vec2  uScreenSize;
 uniform vec2  uCameraNearFar;
 uniform mat4  uView;
+uniform mat4  uViewProjection;
 uniform uint  uPbrFeatures;
 uniform bool  uUseDefaultLighting;
 uniform int   uViewMode;
@@ -158,10 +172,10 @@ uniform float           uLocalShadowAtlasTexSize;
 
 // Weighted Blended Order Indepenant Transparency
 #ifdef PBR_OUTPUT_WBOIT_ACCUM
-uniform sampler2D uOpaqueDepthTex;
-uniform bool      uUseOpaqueDepthTex;
-uniform vec2      uOpaqueDepthTexSize;
-uniform float     uWboitAlphaCutoff;
+    uniform sampler2D uOpaqueDepthTex;
+    uniform vec2      uOpaqueDepthTexSize;
+    uniform bool      uUseOpaqueDepthTex;
+    uniform float     uWboitAlphaCutoff;
 #endif
 
 struct LocalLightData
@@ -169,8 +183,8 @@ struct LocalLightData
     vec4 positionRange;
     vec4 colorDirectionX;
     vec4 directionYZOuterInnerCos;
-    vec4 isSpotShadowInfo; // x=isSpotLight, y=ShadowBias, z=firstFace, w=faceCount,
-    vec4 sourceRadiusPadding;
+    vec4 isSpotShadowInfo;    // x=isSpotLight, y=ShadowBias, z=firstFace, w=faceCount
+    vec4 sourceRadiusPadding; // x=sourceRadius, y=contactShadowLength
 };
 
 struct LocalShadowFaceData
@@ -185,10 +199,12 @@ struct MaterialData
     vec4 emissiveFactor;
     vec4 albedoTex;
     vec4 normalTex;
-    vec4 aoMetalRoughTex;
+    vec4 aoRoughMetalTex;
     vec4 emissiveTex;
-    vec4 aoMetalRoughNormalFactor;
-    vec4 tilingAlphaFlags; // x/y=tiling, z=alphaCutoff, w=flags
+    vec4 heightTex;
+    vec4 aoRoughMetalNormalFactor;
+    vec4 tilingAlphaHeight; // xy=tiling, z=alphaCutoff, w=heightScale
+    vec4 normalDirPadding;  // xy=normalDir, zw=padding
 };
 
 layout(std430, binding = 3) readonly buffer MaterialBuffer
@@ -238,7 +254,7 @@ float defaultStudioLighting(vec3 worldNormal, float ao)
 // Texture sampling
 // ------------------------------------------------------------------
 
-vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
+vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 texCoord, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
 {
     int textureArraySlot = int(texDesc.x);
     if (textureArraySlot < 0)
@@ -246,22 +262,101 @@ vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling, vec2 texCo
 
     float layer = texDesc.y;
     vec2 uvMax = texDesc.zw;
-    vec2 uv = fract(vTexCoord * tiling) * uvMax;
+    vec2 uv = fract(texCoord * tiling) * uvMax;
     vec2 uvDx = texCoordDx * tiling * uvMax;
     vec2 uvDy = texCoordDy * tiling * uvMax;
     return sampleTextureBankGrad(textureArraySlot, vec3(uv, layer), uvDx, uvDy);
 }
 
-vec3 sampleWorldSpaceNormal(MaterialData material, vec2 texCoordDx, vec2 texCoordDy, out float normalLenTS)
+// Contact refinement parallax mapping based on: 
+// Andrea Riccardi, "A new approach for Parallax Mapping" (2019).
+// https://andreariccardi.artstation.com/projects/rRB2ym
+// Uses a coarse march, refinement of the last interval, and interpolation.
+#ifdef PBR_USE_POM
+void applyParallax(
+    MaterialData material, 
+    vec2 texCoordDx, 
+    vec2 texCoordDy, 
+    vec3 positionDx, 
+    vec3 positionDy,
+    inout vec2 texCoord, 
+    inout vec3 worldPos
+) {
+    float heightScale = material.tilingAlphaHeight.w;
+    if (material.heightTex.x < 0.0 || heightScale <= 0.0) 
+        return;
+
+    vec3 N = normalize(vWorldNormal);
+    if (!gl_FrontFacing) N = -N;
+    vec3 V = normalize(uCameraPos - worldPos);
+    float NdotV = dot(N, V);
+    if (NdotV <= 0.0)
+        return;
+  
+    float pixelSize = max(length(cross(positionDx, V)), length(cross(positionDy, V)));
+    heightScale *= 1.0 - smoothstep(1.0, 4.0, pixelSize / heightScale);
+    if (heightScale <= 0.0) 
+        return;
+
+    vec3 r1 = cross(positionDy, N);
+    vec3 r2 = cross(N, positionDx);
+    float determinant = dot(positionDx, r1);
+    float uvArea = texCoordDx.x * texCoordDy.y - texCoordDx.y * texCoordDy.x;
+    if (abs(determinant) <= 1e-6 * length(positionDx) * length(positionDy) || abs(uvArea) < 1e-12) 
+        return;
+
+    float viewCos = NdotV + 0.1 * (1.0 - smoothstep(0.0, 0.2, NdotV));
+    float rayLength = heightScale / viewCos;
+    vec2 rayOffset = (texCoordDx * dot(r1, V) + texCoordDy * dot(r2, V)) * (rayLength / determinant);
+    vec2 tiling = material.tilingAlphaHeight.xy;
+    
+    int steps = int(mix(32.0, 8.0, clamp(NdotV, 0.0, 1.0)));
+    float stepDepth = 1.0 / float(steps);
+    float depth = 0.0;
+    float error = 1.0 - sampleTexOrDefault(material.heightTex, vec3(1.0), texCoord, tiling, texCoordDx, texCoordDy).r;
+    float previousError = error;
+
+    for (int i = 0; i < steps && error > 0.0; i++)
+    {
+        previousError = error;
+        depth += stepDepth;
+        float surfaceDepth = 1.0 - sampleTexOrDefault(material.heightTex, vec3(1.0), texCoord - rayOffset * depth, tiling, texCoordDx, texCoordDy).r;
+        error = surfaceDepth - depth;
+    }
+
+    if (depth > 0.0)
+    {
+        const int refinementSteps = 8;
+        depth -= stepDepth;
+        error = previousError;
+        stepDepth /= float(refinementSteps);
+
+        for (int i = 0; i < refinementSteps && error > 0.0; i++)
+        {
+            previousError = error;
+            depth += stepDepth;
+            float surfaceDepth = 1.0 - sampleTexOrDefault(material.heightTex, vec3(1.0), texCoord - rayOffset * depth, tiling, texCoordDx, texCoordDy).r;
+            error = surfaceDepth - depth;
+        }
+
+        depth -= stepDepth * clamp(-error / max(previousError - error, 1e-6), 0.0, 1.0);
+    }
+
+    texCoord -= rayOffset * depth;
+    worldPos -= V * (rayLength * depth);
+}
+#endif
+
+vec3 sampleWorldSpaceNormal(MaterialData material, vec2 texCoord, vec2 texCoordDx, vec2 texCoordDy, out float normalLenTS)
 {
-    vec2 tiling = material.tilingAlphaFlags.xy;
-    int flags = int(material.tilingAlphaFlags.w);
+    vec2 tiling = material.tilingAlphaHeight.xy;
+    vec2 scaledDir = material.normalDirPadding.xy * material.aoRoughMetalNormalFactor.w; // Scaled direction
 
     // Tangent-space normal
-    vec3 normalTs = sampleTexOrDefault(material.normalTex, vec3(0.5, 0.5, 1.0), tiling, texCoordDx, texCoordDy).rgb * 2.0 - 1.0;
+    vec3 normalTs = sampleTexOrDefault(material.normalTex, vec3(0.5, 0.5, 1.0), texCoord, tiling, texCoordDx, texCoordDy).rgb * 2.0 - 1.0;
 
     normalLenTS = min(length(normalTs), 1.0);
-    normalTs.xy *= material.aoMetalRoughNormalFactor.w; // Normal scale
+    normalTs.xy *= scaledDir;
 
     float len = max(length(normalTs), 1e-5);
 
@@ -677,14 +772,67 @@ float localLightShadow(LocalLightData light, vec3 lightPos, vec3 worldPos, vec3 
     return localShadowFace(firstFace, shadowWorldPos);
 }
 
-vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0)
+float contactShadow(vec3 worldPos, vec3 meshNormal, vec3 L, float rayLength)
+{
+    if (!hasPbrFeature(PBR_FEATURE_CONTACT_SHADOWS) || rayLength <= 0.0)
+        return 1.0;
+
+    vec3 origin = worldPos + meshNormal * uContactShadowBias;
+    vec3 viewOrigin = (uView * vec4(origin, 1.0)).xyz;
+    vec3 viewDirection = mat3(uView) * L;
+    vec2 startUv = gl_FragCoord.xy / uScreenSize;
+    const int steps = 16;
+    float visibility = 1.0;
+
+    for (int i = 1; i <= steps; i++)
+    {
+        float t = float(i) / float(steps);
+        float distance = rayLength * t;
+        vec4 clip = uViewProjection * vec4(origin + L * distance, 1.0);
+        if (clip.w <= 0.0 || abs(clip.z) >= clip.w) 
+            break;
+        
+        vec2 uv = clip.xy / clip.w * 0.5 + 0.5;
+        if (any(lessThanEqual(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) 
+            break;
+        
+        if (length((uv - startUv) * uScreenSize) < 1.5) 
+            continue; // Do not treat the receiver's own depth sample as an occluder
+
+        // Filter four comparisons, not the depth: interpolated depth invents blockers at grass edges
+        vec4 sceneDepth = textureGather(uContactShadowDepthTex, uv, 0);
+        vec4 depthNdc = sceneDepth * 2.0 - 1.0;
+        vec4 sceneView = uContactShadowInvProjection * vec4(uv * 2.0 - 1.0, 0.0, 1.0);
+        vec4 sceneZ = (sceneView.z + uContactShadowInvProjection[2][2] * depthNdc) / (sceneView.w + uContactShadowInvProjection[2][3] * depthNdc);
+        vec4 separation = -(viewOrigin.z + viewDirection.z * distance) + sceneZ;
+        vec4 blocked = vec4(greaterThan(separation, vec4(0.0))) *
+                       vec4(lessThan(separation, vec4(uContactShadowThickness))) *
+                       vec4(lessThan(sceneDepth, vec4(1.0)));
+
+        vec2 weight = fract(uv * vec2(textureSize(uContactShadowDepthTex, 0)) - 0.5);
+        float occlusion = mix(mix(blocked.w, blocked.z, weight.x), mix(blocked.x, blocked.y, weight.x), weight.y);
+
+        if (occlusion > 0.0)
+        {
+            float edge = min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y));
+            float confidence = smoothstep(0.0, 0.03, edge) * (1.0 - smoothstep(0.75, 1.0, t));
+            visibility = min(visibility, 1.0 - occlusion * confidence);
+            if (visibility <= 0.0) 
+                return 0.0;
+        }
+    }
+
+    return visibility;
+}
+
+vec3 accumulateLocalLights(vec3 worldPos, vec3 N, vec3 meshNormal, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0)
 {
     vec3 Lo = vec3(0.0);
 
     if (!hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
         return Lo;
 
-    float viewDepth = -(uView * vec4(vWorldPos, 1.0)).z;
+    float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
     int clusterIndex = clusterIndexForFragment(viewDepth);
     if (clusterIndex < 0)
         return Lo;
@@ -707,7 +855,7 @@ vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float me
         float isSpot      = light.isSpotShadowInfo.x;
         float sourceRadius = max(light.sourceRadiusPadding.x, 0.0);
 
-        vec3 toL = lightPos - vWorldPos;
+        vec3 toL = lightPos - worldPos;
         float d2 = dot(toL, toL);
         float d  = sqrt(max(d2, 1e-6));
 
@@ -733,7 +881,9 @@ vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float me
         }
 
         vec3 radiance = lightColor * attenuation;
-        float shadow = localLightShadow(light, lightPos, vWorldPos, N);
+        float shadow = localLightShadow(light, lightPos, vWorldPos, meshNormal);
+        if (shadow > 0.0 && attenuation > 0.0)
+            shadow *= contactShadow(worldPos, meshNormal, L, min(light.sourceRadiusPadding.y, d));
 
         // Cook-Torrance BRDF
         vec3 H  = normalize(V + L);
@@ -758,53 +908,53 @@ vec3 accumulateLocalLights(vec3 N, vec3 V, float NdotV, vec3 baseColor, float me
 // ------------------------------------------------------------------
 
 #ifdef PBR_OUTPUT_WBOIT_ACCUM
-float computeWboitWeight(float alpha)
-{
-    float alphaWeight = pow(min(1.0, alpha * 10.0) + 0.01, 3.0);
-    float depthWeight = pow(1.0 - gl_FragCoord.z * 0.9, 3.0);
-    return clamp(alphaWeight * 100000000.0 * depthWeight, 0.01, 3000.0);
-}
-
-bool isBehindOpaqueDepth()
-{
-    if (!uUseOpaqueDepthTex) return false;
-
-    vec2 uv = gl_FragCoord.xy / uOpaqueDepthTexSize;
-    float opaqueDepth = texture(uOpaqueDepthTex, uv).r;
-    return gl_FragCoord.z > opaqueDepth + 0.000001;
-}
+    float computeWboitWeight(float alpha)
+    {
+        float alphaWeight = pow(min(1.0, alpha * 10.0) + 0.01, 3.0);
+        float depthWeight = pow(1.0 - gl_FragCoord.z * 0.9, 3.0);
+        return clamp(alphaWeight * 100000000.0 * depthWeight, 0.01, 3000.0);
+    }
+    
+    bool isBehindOpaqueDepth()
+    {
+        if (!uUseOpaqueDepthTex) return false;
+    
+        vec2 uv = gl_FragCoord.xy / uOpaqueDepthTexSize;
+        float opaqueDepth = texture(uOpaqueDepthTex, uv).r;
+        return gl_FragCoord.z > opaqueDepth + 0.000001;
+    }
 #endif
 
 void writeFragment(vec3 color, float alpha)
 {
     #ifdef PBR_OUTPUT_WBOIT_ACCUM
-    float weight = computeWboitWeight(alpha);
-    outAccum = vec4(color * alpha * weight, alpha * weight);
+        float weight = computeWboitWeight(alpha);
+        outAccum = vec4(color * alpha * weight, alpha * weight);
     #else
-    fragColor = vec4(color, alpha);
+        fragColor = vec4(color, alpha);
     #endif
 }
 
 #ifdef PBR_USE_RENDER_ID
-uint hashRenderId(uint value)
-{
-    value ^= value >> 16;
-    value *= 0x7feb352du;
-    value ^= value >> 15;
-    value *= 0x846ca68bu;
-    value ^= value >> 16;
-    return value;
-}
-
-vec3 renderIdColor(uint renderId)
-{
-    uint hash = hashRenderId(renderId);
-    float hue = float(hash & 0xffffu) / 65536.0;
-    float saturation = mix(0.65, 0.95, float((hash >> 16) & 0xffu) / 255.0);
-    float value = mix(0.75, 1.0, float((hash >> 24) & 0xffu) / 255.0);
-    vec3 hueRamp = abs(fract(hue + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
-    return value * mix(vec3(1.0), clamp(hueRamp - 1.0, 0.0, 1.0), saturation);
-}
+    uint hashRenderId(uint value)
+    {
+        value ^= value >> 16;
+        value *= 0x7feb352du;
+        value ^= value >> 15;
+        value *= 0x846ca68bu;
+        value ^= value >> 16;
+        return value;
+    }
+    
+    vec3 renderIdColor(uint renderId)
+    {
+        uint hash = hashRenderId(renderId);
+        float hue = float(hash & 0xffffu) / 65536.0;
+        float saturation = mix(0.65, 0.95, float((hash >> 16) & 0xffu) / 255.0);
+        float value = mix(0.75, 1.0, float((hash >> 24) & 0xffu) / 255.0);
+        vec3 hueRamp = abs(fract(hue + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+        return value * mix(vec3(1.0), clamp(hueRamp - 1.0, 0.0, 1.0), saturation);
+    }
 #endif
 
 // ------------------------------------------------------------------
@@ -815,16 +965,39 @@ void main()
 {
     vec2 texCoordDx = dFdx(vTexCoord);
     vec2 texCoordDy = dFdy(vTexCoord);
+    vec2 texCoord = vTexCoord;
+    vec3 worldPos = vWorldPos;
 
     #if defined(PBR_USE_RENDER_ID) && !defined(PBR_OUTPUT_WBOIT_ACCUM)
-    outRenderId = vRenderId;
+        outRenderId = vRenderId;
     #endif
 
     MaterialData material = uMaterials[vMaterialId];
-    vec2 tiling = material.tilingAlphaFlags.xy;
-    float alphaCutoff = material.tilingAlphaFlags.z;
+    vec2 tiling = material.tilingAlphaHeight.xy;
+    float alphaCutoff = material.tilingAlphaHeight.z;
 
-    vec4 baseColor = material.baseColor * sampleTexOrDefault(material.albedoTex, vec3(1.0), tiling, texCoordDx, texCoordDy);
+    #ifdef PBR_USE_POM
+        vec3 positionDx = dFdx(vWorldPos);
+        vec3 positionDy = dFdy(vWorldPos);
+        applyParallax(material, texCoordDx, texCoordDy, positionDx, positionDy, texCoord, worldPos);
+        
+        gl_FragDepth = gl_FragCoord.z;
+        if (material.heightTex.x >= 0.0 && material.tilingAlphaHeight.w > 0.0)
+        {
+            vec4 clipPos = uViewProjection * vec4(worldPos, 1.0);
+            gl_FragDepth = max(gl_FragCoord.z, (clipPos.z / clipPos.w) * 0.5 + 0.5);
+        }
+    #endif
+
+    #ifdef PBR_DEPTH_PASS
+        if (alphaCutoff <= 0.0)
+        {
+            fragColor = vec4(1.0);
+            return;
+        }
+    #endif
+
+    vec4 baseColor = material.baseColor * sampleTexOrDefault(material.albedoTex, vec3(1.0), texCoord, tiling, texCoordDx, texCoordDy);
     float alpha = baseColor.a;
 
     if (alphaCutoff > 0.0)
@@ -836,23 +1009,30 @@ void main()
         alpha = coverage;
     }
 
+    #ifdef PBR_DEPTH_PASS
+        fragColor = vec4(1.0, 1.0, 1.0, alpha);
+        return;
+    #endif
+
     // Check wighted blend alpha cutoff and opaque depth before doing expensive PBR calculations
     #ifdef PBR_OUTPUT_WBOIT_ACCUM
-    if (alpha <= uWboitAlphaCutoff || isBehindOpaqueDepth()) discard;
+        if (alpha <= uWboitAlphaCutoff || isBehindOpaqueDepth()) discard;
     #endif
 
     #ifdef PBR_USE_RENDER_ID
-    if (uViewMode == VIEW_MODE_RENDER_ID)
-    {
-        writeFragment(renderIdColor(vRenderId), alpha);
-        return;
-    }
+        if (uViewMode == VIEW_MODE_RENDER_ID)
+        {
+            writeFragment(renderIdColor(vRenderId), alpha);
+            return;
+        }
     #endif
 
     // PBR material properties
-    vec3 emissive = sampleTexOrDefault(material.emissiveTex, vec3(1.0), tiling, texCoordDx, texCoordDy).rgb * material.emissiveFactor.rgb;
+    vec3 emissive = sampleTexOrDefault(material.emissiveTex, vec3(1.0), texCoord, tiling, texCoordDx, texCoordDy).rgb * material.emissiveFactor.rgb;
     float normalLength;
-    vec3 N = sampleWorldSpaceNormal(material, texCoordDx, texCoordDy, normalLength);
+    vec3 N = sampleWorldSpaceNormal(material, texCoord, texCoordDx, texCoordDy, normalLength);
+    vec3 meshNormal = normalize(vWorldNormal);
+    if (!gl_FrontFacing) meshNormal = -meshNormal;
 
     // Ambient occlusion
     float gtao = 1.0;
@@ -896,25 +1076,27 @@ void main()
         }
         case VIEW_MODE_LINEAR_DEPTH:
         {
-            float viewDepth = -(uView * vec4(vWorldPos, 1.0)).z;
+            float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
             float depth = clamp((viewDepth - uCameraNearFar.x) / max(uCameraNearFar.y - uCameraNearFar.x, 1e-5), 0.0, 1.0);
             writeFragment(vec3(depth), alpha);
             return;
         }
         case VIEW_MODE_SUN_SHADOW:
         {
-            float sunShadow = hasPbrFeature(PBR_FEATURE_SUN_SHADOWS) ? cascadedShadow(vWorldPos, N, uSunRadius) : 1.0;
+            float sunShadow = hasPbrFeature(PBR_FEATURE_SUN_SHADOWS) ? cascadedShadow(vWorldPos, meshNormal, uSunRadius) : 1.0;
+            if (hasPbrFeature(PBR_FEATURE_SUN_LIGHT) && sunShadow > 0.0)
+                sunShadow *= contactShadow(worldPos, meshNormal, normalize(-uSunDirection), uSunContactShadowLength);
             writeFragment(vec3(sunShadow), alpha);
             return;
         }
         case VIEW_MODE_SHADOW_CASCADES:
         {
-            writeFragment(shadowCascadeViewColor(vWorldPos), alpha);
+            writeFragment(shadowCascadeViewColor(worldPos), alpha);
             return;
         }
         case VIEW_MODE_LIGHT_CLUSTER_OCCUPANCY:
         {
-            writeFragment(lightClusterOccupancyColor(vWorldPos), alpha);
+            writeFragment(lightClusterOccupancyColor(worldPos), alpha);
             return;
         }
         case VIEW_MODE_PBR_AO:
@@ -922,15 +1104,15 @@ void main()
         case VIEW_MODE_PBR_ROUGHNESS:
         case VIEW_MODE_PBR_METALLIC:
         {
-            vec3 viewAomr = sampleTexOrDefault(material.aoMetalRoughTex, vec3(1.0, 1.0, 0.0), tiling, texCoordDx, texCoordDy).rgb;
-            float materialAo = clamp(mix(1.0, viewAomr.r, material.aoMetalRoughNormalFactor.x), 0.0, 1.0);
+            vec3 viewOrm = sampleTexOrDefault(material.aoRoughMetalTex, vec3(1.0, 1.0, 0.0), texCoord, tiling, texCoordDx, texCoordDy).rgb;
+            float materialAo = clamp(mix(1.0, viewOrm.r, material.aoRoughMetalNormalFactor.x), 0.0, 1.0);
             float viewValue = materialAo;
             if (uViewMode == VIEW_MODE_COMBINED_AO)
                 viewValue = materialAo * gtao;
             else if (uViewMode == VIEW_MODE_PBR_ROUGHNESS)
-                viewValue = clamp(viewAomr.g * material.aoMetalRoughNormalFactor.y, 0.04, 1.0);
+                viewValue = clamp(viewOrm.g * material.aoRoughMetalNormalFactor.y, 0.04, 1.0);
             else if (uViewMode == VIEW_MODE_PBR_METALLIC)
-                viewValue = clamp(viewAomr.b * material.aoMetalRoughNormalFactor.z, 0.0, 1.0);
+                viewValue = clamp(viewOrm.b * material.aoRoughMetalNormalFactor.z, 0.0, 1.0);
 
             writeFragment(vec3(viewValue), alpha);
             return;
@@ -947,13 +1129,13 @@ void main()
         return;
     }
 
-    vec3 aomr       = sampleTexOrDefault(material.aoMetalRoughTex, vec3(1.0, 1.0, 0.0), tiling, texCoordDx, texCoordDy).rgb; // Default AO=1, rough=1, metal=0
-    float ao        = clamp(mix(1.0, aomr.r, material.aoMetalRoughNormalFactor.x), 0.0,  1.0);
-    float roughness = clamp(aomr.g * material.aoMetalRoughNormalFactor.y, 0.04, 1.0);
-    float metallic  = clamp(aomr.b * material.aoMetalRoughNormalFactor.z, 0.0,  1.0);
+    vec3 orm        = sampleTexOrDefault(material.aoRoughMetalTex, vec3(1.0, 1.0, 0.0), texCoord, tiling, texCoordDx, texCoordDy).rgb; // Default AO=1, rough=1, metal=0
+    float ao        = clamp(mix(1.0, orm.r, material.aoRoughMetalNormalFactor.x), 0.0,  1.0);
+    float roughness = clamp(orm.g * material.aoRoughMetalNormalFactor.y, 0.04, 1.0);
+    float metallic  = clamp(orm.b * material.aoRoughMetalNormalFactor.z, 0.0,  1.0);
 
     // Normal + View
-    vec3 V = normalize(uCameraPos - vWorldPos);
+    vec3 V = normalize(uCameraPos - worldPos);
 
     // Roughness adjustment (Toksvig + screen-space normal variation) 
     float len = clamp(normalLength, 1e-5, 1.0);
@@ -994,14 +1176,16 @@ void main()
             vec3 specular = (NDF * G * F_dir) / denom;
             float shadow = 1.0;
             if (hasPbrFeature(PBR_FEATURE_SUN_SHADOWS))
-                shadow = cascadedShadow(vWorldPos, N, uSunRadius);
+                shadow = cascadedShadow(vWorldPos, meshNormal, uSunRadius); // Shadow maps contain the undisplaced mesh.
+            if (shadow > 0.0)
+                shadow *= contactShadow(worldPos, meshNormal, L, uSunContactShadowLength);
             LoSun = (diffuse + specular) * uSunColor.rgb * NdotL * shadow;
         }
     }
 
     vec3 LoLocalLights = vec3(0.0);
     if (hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
-        LoLocalLights = accumulateLocalLights(N, V, NdotV, pbrColor, metallic, roughness, F0);
+        LoLocalLights = accumulateLocalLights(worldPos, N, meshNormal, V, NdotV, pbrColor, metallic, roughness, F0);
 
     vec3 Lo = LoSun + LoLocalLights;
 

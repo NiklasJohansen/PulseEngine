@@ -7,7 +7,7 @@ class Material(
     var baseColor: Color,
     var albedo: Texture?,
     var normal: Texture?,
-    var aoMetalRough: Texture?,
+    var aoRoughMetal: Texture?,
     var emissive: Texture?,
     var height: Texture?,
     var cullMode: CullMode,
@@ -17,7 +17,9 @@ class Material(
     var roughnessFactor: Float,
     var emissiveFactor: Color,
     var occlusionStrength: Float,
+    var heightScale: Float,
     var normalScale: Float,
+    var normalOrientation: NormalOrientation,
     var xTiling: Float = 1f,
     var yTiling: Float = 1f
 ): Asset(name, name) {
@@ -54,8 +56,11 @@ class Material(
 
     enum class CullMode { NONE, BACK }
 
+    enum class NormalOrientation { NORMAL, INVERT_U, INVERT_V, INVERT_UV }
+
     companion object
     {
         const val DEFAULT_ID = 0
+        const val DEFAULT_HEIGHT_SCALE = 0.1f
     }
 }

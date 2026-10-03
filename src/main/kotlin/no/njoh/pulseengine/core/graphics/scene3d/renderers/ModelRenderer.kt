@@ -7,11 +7,15 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderView
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.defineShaderVariant
+import no.njoh.pulseengine.core.graphics.gpu.buffer.FrameBufferObject
+import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.DEPTH_TEXTURE
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_1
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureCompare
 import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.NONE
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_BORDER
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
@@ -34,6 +38,7 @@ import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.primitives.Color.Companion.WHITE
 import org.joml.Vector3f
+import org.joml.Matrix4f
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE
 import org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_ONE
@@ -60,6 +65,9 @@ class ModelRenderer(
     var sunColor                    = Color(1f, 1f, 1f)
     var sunRadius                   = 1f
     var sunShadowMapSurfaceName     = ""
+    var sunContactShadowLength      = 0.1f
+    var contactShadowThickness      = 0.02f
+    var contactShadowBias           = 0.001f
     var localShadowAtlasSurfaceName = ""
 
     var viewMode                 = ViewMode.SHADED
@@ -73,8 +81,13 @@ class ModelRenderer(
     private lateinit var renderIdSkinnedProgram: ShaderProgram
     private lateinit var renderIdPrograms: ShaderProgramSet
 
-    private val weightedBlendedRenderer = WeightedBlendedOitRenderer()
     private lateinit var viewKey: RenderViewKey<CameraRenderView>
+
+    private val weightedBlendedRenderer = WeightedBlendedOitRenderer()
+    private var contactDepthFbo: FrameBufferObject? = null
+    private var contactShadowsAvailable = false
+    private val contactShadowsInvProjection = Matrix4f()
+    private val contactShadowsDepthTexDescriptors = listOf(TextureDescriptor(attachmentPoint = DEPTH_TEXTURE, filter = NEAREST))
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
@@ -90,13 +103,34 @@ class ModelRenderer(
                 filePath = "/pulseengine/shaders/renderers/model_pbr.frag",
                 transform = defineShaderVariant("PBR_USE_RENDER_ID")
             ))
+            val pomFragment = engine.asset.loadNow(FragmentShader(
+                name = "/pulseengine/shaders/renderers/model_pbr.frag#pom",
+                filePath = "/pulseengine/shaders/renderers/model_pbr.frag",
+                transform = defineShaderVariant("PBR_USE_POM")
+            ))
+            val pomRenderIdFragment = engine.asset.loadNow(FragmentShader(
+                name = "/pulseengine/shaders/renderers/model_pbr.frag#pom_render_id",
+                filePath = "/pulseengine/shaders/renderers/model_pbr.frag",
+                transform = defineShaderVariant("PBR_USE_POM", "PBR_USE_RENDER_ID")
+            ))
 
             staticProgram = ShaderProgram.create(staticVertex, pbrFragment)
             skinnedProgram = ShaderProgram.create(skinnedVertex, pbrFragment)
-            programs = ShaderProgramSet(staticProgram, skinnedProgram)
+            programs = ShaderProgramSet(
+                staticProgram = staticProgram,
+                skinnedProgram = skinnedProgram,
+                pomStaticProgram = ShaderProgram.create(staticVertex, pomFragment),
+                pomSkinnedProgram = ShaderProgram.create(skinnedVertex, pomFragment)
+            )
+
             renderIdStaticProgram = ShaderProgram.create(staticVertex, renderIdFragment)
             renderIdSkinnedProgram = ShaderProgram.create(skinnedVertex, renderIdFragment)
-            renderIdPrograms = ShaderProgramSet(renderIdStaticProgram, renderIdSkinnedProgram)
+            renderIdPrograms = ShaderProgramSet(
+                staticProgram = renderIdStaticProgram,
+                skinnedProgram = renderIdSkinnedProgram,
+                pomStaticProgram = ShaderProgram.create(staticVertex, pomRenderIdFragment),
+                pomSkinnedProgram = ShaderProgram.create(skinnedVertex, pomRenderIdFragment)
+            )
         }
 
         weightedBlendedRenderer.init(engine, surface)
@@ -137,6 +171,8 @@ class ModelRenderer(
         val view = engine.gfx.sceneContext.getView(viewKey) ?: return
         val cameraState = view.getCameraState(surface.camera) ?: return
 
+        prepareContactShadowDepthMap(engine, surface, cameraState)
+
         glEnable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
 
@@ -154,12 +190,11 @@ class ModelRenderer(
         }
         else surface.renderTarget.setDrawBuffer(COLOR_TEXTURE_0)
 
-        configureProgram(activePrograms.staticProgram, engine, surface, cameraState)
-        configureProgram(activePrograms.skinnedProgram, engine, surface, cameraState)
+        activePrograms.forEachProgram { configureProgram(it, engine, surface, cameraState) }
         bindStorageBuffers(activePrograms, engine, cameraState, view.drawPayload)
-        
+
         // Draw
-        
+
         render(engine, surface, view, cameraState, activePrograms, writesRenderIds, visualizesRenderIds)
 
         // Restore
@@ -242,6 +277,37 @@ class ModelRenderer(
         }
     }
 
+    private fun prepareContactShadowDepthMap(engine: PulseEngineInternal, surface: SurfaceInternal, cameraState: CameraRenderState)
+    {
+        val sunEnabled = sunContactShadowLength > 0f && (sunColor.red > 0f || sunColor.green > 0f || sunColor.blue > 0f)
+        
+        contactShadowsAvailable = 
+            !useDefaultLighting && 
+            surface.config.hasDepthPrepass && contactShadowThickness > 0f &&
+            (sunEnabled || engine.gfx.sceneContext.getLightBuffer().hasContactShadows) &&
+            surface.renderTarget.getTexture(DEPTH_TEXTURE) != null
+        
+        if (!contactShadowsAvailable) return
+
+        val width = surface.config.renderWidth
+        val height = surface.config.renderHeight
+        if (contactDepthFbo?.matches(width, height, contactShadowsDepthTexDescriptors) != true)
+        {
+            contactDepthFbo?.destroy()
+            contactDepthFbo = FrameBufferObject.create(width, height, contactShadowsDepthTexDescriptors)
+        }
+
+        // The contact shadows need to sample the depth map, but sampling an attached depth texture during the 
+        // color pass creates a feedback loop. So we resolve the current depth texture to a separate texture. 
+        measure("contact_shadow_depth_copy", { "Create contact shadow depth map" }) 
+        { 
+            surface.renderTarget.getFbo().resolveDepthToFBO(contactDepthFbo!!) 
+        }
+        
+        surface.renderTarget.begin()
+        contactShadowsInvProjection.set(cameraState.projectionMatrix).invert()
+    }
+
     private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface, cameraState: CameraRenderState)
     {
         var pbrFeatures = 0u
@@ -252,6 +318,7 @@ class ModelRenderer(
         program.bind()
         program.setUniformSamplerArrays(texBank.getAllTextureArrays())
         program.assignSamplerUnit("uGtaoTex")
+        program.assignSamplerUnit("uContactShadowDepthTex")
 
         // Ambient occlusion
 
@@ -264,6 +331,19 @@ class ModelRenderer(
             program.setUniform("uAoIntensity", aoRenderer.intensity)
         }
 
+        // Contact shadows
+
+        if (contactShadowsAvailable)
+        {
+            pbrFeatures = pbrFeatures or PBR_FEATURE_CONTACT_SHADOWS
+            program.setUniformSampler("uContactShadowDepthTex", contactDepthFbo!!.getTexture(), filter = NEAREST)
+        }
+
+        program.setUniform("uContactShadowInvProjection", contactShadowsInvProjection)
+        program.setUniform("uContactShadowThickness", contactShadowThickness.coerceAtLeast(0f))
+        program.setUniform("uContactShadowBias", contactShadowBias.coerceAtLeast(0f))
+        program.setUniform("uSunContactShadowLength", sunContactShadowLength.coerceAtLeast(0f))
+
         // Cascaded shadow mapping
 
         val shadowMapSurface = engine.gfx.getSurface(sunShadowMapSurfaceName)
@@ -274,6 +354,7 @@ class ModelRenderer(
 
         val sunEnabled = sunColor.red > 0f || sunColor.green > 0f || sunColor.blue > 0f
         if (sunEnabled) pbrFeatures = pbrFeatures or PBR_FEATURE_SUN_LIGHT
+
         program.setUniform("uSunColor", sunColor)
         program.setUniform("uSunDirection", shadowMapRenderer?.getDirection() ?: fallbackSunDirection)
         program.setUniform("uSunRadius", sunRadius)
@@ -398,22 +479,24 @@ class ModelRenderer(
 
     override fun destroy(engine: PulseEngineInternal)
     {
-        staticProgram.destroy()
-        skinnedProgram.destroy()
-        renderIdStaticProgram.destroy()
-        renderIdSkinnedProgram.destroy()
+        programs.forEachProgram { it.destroy() }
+        renderIdPrograms.forEachProgram { it.destroy() }
         weightedBlendedRenderer.destroy()
+        contactDepthFbo?.destroy()
+        contactDepthFbo = null
+        contactShadowsAvailable = false
     }
 
     companion object
     {
-        private val PBR_FEATURE_SUN_LIGHT      = 1u shl 0
-        private val PBR_FEATURE_SUN_SHADOWS    = 1u shl 1
-        private val PBR_FEATURE_LOCAL_LIGHTS   = 1u shl 2
-        private val PBR_FEATURE_LOCAL_SHADOWS  = 1u shl 3
-        private val PBR_FEATURE_DIFFUSE_IBL    = 1u shl 4
-        private val PBR_FEATURE_SPECULAR_IBL   = 1u shl 5
-        private val PBR_FEATURE_GTAO           = 1u shl 6
+        private val PBR_FEATURE_SUN_LIGHT       = 1u shl 0
+        private val PBR_FEATURE_SUN_SHADOWS     = 1u shl 1
+        private val PBR_FEATURE_LOCAL_LIGHTS    = 1u shl 2
+        private val PBR_FEATURE_LOCAL_SHADOWS   = 1u shl 3
+        private val PBR_FEATURE_DIFFUSE_IBL     = 1u shl 4
+        private val PBR_FEATURE_SPECULAR_IBL    = 1u shl 5
+        private val PBR_FEATURE_GTAO            = 1u shl 6
+        private val PBR_FEATURE_CONTACT_SHADOWS = 1u shl 7
 
         private val fallbackSunDirection = Vector3f(0f, 1f, 0f)
         private val BACKGROUND_RENDER_ID = intArrayOf(-1, 0, 0, 0)
@@ -425,7 +508,7 @@ class ModelRenderer(
  */
 enum class ViewMode(val shaderValue: Int, val displayName: String)
 {
-    SHADED(0, "Default Shading"),
+    SHADED(0, "Shaded"),
     PBR_ALBEDO(1, "PBR Albedo"),
     PBR_NORMAL(2, "PBR Normals"),
     PBR_ROUGHNESS(3, "PBR Roughness"),

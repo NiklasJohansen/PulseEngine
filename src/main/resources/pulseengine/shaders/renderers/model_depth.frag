@@ -39,10 +39,12 @@ struct MaterialData
     vec4 emissiveFactor;
     vec4 albedoTex;
     vec4 normalTex;
-    vec4 aoMetalRoughTex;
+    vec4 aoRoughMetalTex;
     vec4 emissiveTex;
-    vec4 aoMetalRoughNormalFactor;
-    vec4 tilingAlphaFlags; // x/y=tiling, z=alphaCutoff, w=flags
+    vec4 heightTex;
+    vec4 aoRoughMetalNormalFactor;
+    vec4 tilingAlphaHeight; // x/y=tiling, z=alphaCutoff, w=heightScale
+    vec4 normalDirPadding;  //xy=normalDir, zw=padding
 };
 
 layout(std430, binding = 3) readonly buffer MaterialBuffer
@@ -68,8 +70,8 @@ void main()
     vec2 texCoordDx = dFdx(vTexCoord);
     vec2 texCoordDy = dFdy(vTexCoord);
     MaterialData material = uMaterials[vMaterialId];
-    vec2 tiling = material.tilingAlphaFlags.xy;
-    float alphaCutoff = material.tilingAlphaFlags.z;
+    vec2 tiling = material.tilingAlphaHeight.xy;
+    float alphaCutoff = material.tilingAlphaHeight.z;
     float alpha = material.baseColor.a * sampleTexOrDefault(material.albedoTex, tiling, texCoordDx, texCoordDy).a;
 
     if (alphaCutoff > 0.0)

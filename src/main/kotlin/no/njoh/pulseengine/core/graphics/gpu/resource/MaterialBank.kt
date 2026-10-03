@@ -2,6 +2,8 @@ package no.njoh.pulseengine.core.graphics.gpu.resource
 
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.MASK
+import no.njoh.pulseengine.core.asset.types.Material.BlendMode.BLEND
+import no.njoh.pulseengine.core.asset.types.Material.NormalOrientation.*
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.gpu.buffer.DoubleBufferedFloatObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.ShaderStorageBufferObject
@@ -111,6 +113,9 @@ class MaterialBank : ShaderStorageBufferObject
         val baseColor = material?.baseColor ?: DEFAULT_MATERIAL_COLOR
         val emissiveFactor = material?.emissiveFactor ?: Color.WHITE
         val alphaCutoff = if (material?.blendMode == MASK) material.alphaCutoff else 0f
+        val heightScale = if (material != null && material.blendMode != BLEND) material.heightScale.coerceAtLeast(0f) else 0f
+        val uNormalDir = if (material?.normalOrientation == INVERT_U || material?.normalOrientation == INVERT_UV) -1f else 1f
+        val vNormalDir = if (material?.normalOrientation == INVERT_V || material?.normalOrientation == INVERT_UV) -1f else 1f
 
         fill(MATERIAL_FLOATS)
         {
@@ -118,15 +123,17 @@ class MaterialBank : ShaderStorageBufferObject
             emissiveFactor.asLinear().let { put(it.red, it.green, it.blue, emissiveFactor.alpha) }
             putTexture(material?.albedo)
             putTexture(material?.normal)
-            putTexture(material?.aoMetalRough)
+            putTexture(material?.aoRoughMetal)
             putTexture(material?.emissive)
+            putTexture(material?.height)
             put(
                 material?.occlusionStrength ?: 1f,
                 material?.roughnessFactor ?: 1f,
                 material?.metallicFactor ?: 1f,
                 material?.normalScale ?: 1f
             )
-            put(material?.xTiling ?: 1f, material?.yTiling ?: 1f, alphaCutoff, 0f)
+            put(material?.xTiling ?: 1f, material?.yTiling ?: 1f, alphaCutoff, heightScale)
+            put(uNormalDir, vNormalDir, 0f, 0f)
         }
     }
 
@@ -141,6 +148,6 @@ class MaterialBank : ShaderStorageBufferObject
     companion object
     {
         private val DEFAULT_MATERIAL_COLOR = Color(1f, 0f, 1f, 1f)
-        private const val MATERIAL_FLOATS = 32
+        private const val MATERIAL_FLOATS = 40
     }
 }

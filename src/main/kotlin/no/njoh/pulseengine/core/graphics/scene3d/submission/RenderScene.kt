@@ -121,7 +121,8 @@ class RenderScene
         shadowNearPlane: Float,
         shadowBias: Float,
         shadowImportance: Float,
-        shadowId: Long
+        shadowId: Long,
+        contactShadowLength: Float
     ) {
         val light = lightPool.removeLastOrNull() ?: RenderLight()
 
@@ -146,6 +147,7 @@ class RenderScene
         light.shadowId = shadowId
         light.shadowFaceOffset = -1
         light.shadowFaceCount = 0
+        light.contactShadowLength = contactShadowLength.sanitizeNonNegative().coerceAtMost(light.range)
 
         localLights += light
     }

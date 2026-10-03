@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet
+import no.njoh.pulseengine.core.graphics.gpu.shader.defineShaderVariant
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
@@ -32,6 +33,8 @@ class DepthPrepassRenderer(
     private lateinit var opaqueSkinnedProgram: ShaderProgram
     private lateinit var maskedStaticProgram: ShaderProgram
     private lateinit var maskedSkinnedProgram: ShaderProgram
+    private lateinit var pomStaticProgram: ShaderProgram
+    private lateinit var pomSkinnedProgram: ShaderProgram
     private lateinit var opaquePrograms: ShaderProgramSet
     private lateinit var maskedPrograms: ShaderProgramSet
 
@@ -48,13 +51,24 @@ class DepthPrepassRenderer(
             val opaqueFragment = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_depth_opaque.frag"))
             val maskedFragment = engine.asset.loadNow(FragmentShader("/pulseengine/shaders/renderers/model_depth.frag"))
 
-            opaqueStaticProgram = ShaderProgram.create(staticVertex, opaqueFragment)
+            opaqueStaticProgram  = ShaderProgram.create(staticVertex, opaqueFragment)
             opaqueSkinnedProgram = ShaderProgram.create(skinnedVertex, opaqueFragment)
-            maskedStaticProgram = ShaderProgram.create(staticVertex, maskedFragment)
+            maskedStaticProgram  = ShaderProgram.create(staticVertex, maskedFragment)
             maskedSkinnedProgram = ShaderProgram.create(skinnedVertex, maskedFragment)
 
-            opaquePrograms = ShaderProgramSet(opaqueStaticProgram, opaqueSkinnedProgram)
-            maskedPrograms = ShaderProgramSet(maskedStaticProgram, maskedSkinnedProgram)
+            val pomStaticVertex  = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr.vert", ::transformModelVertexShader))
+            val pomSkinnedVertex = engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/model_pbr_skinned.vert", ::transformModelVertexShader))
+            val pomFragment = engine.asset.loadNow(FragmentShader(
+                name = "/pulseengine/shaders/renderers/model_pbr.frag#pom_depth",
+                filePath = "/pulseengine/shaders/renderers/model_pbr.frag",
+                transform = defineShaderVariant("PBR_USE_POM", "PBR_DEPTH_PASS")
+            ))
+
+            pomStaticProgram = ShaderProgram.create(pomStaticVertex, pomFragment)
+            pomSkinnedProgram = ShaderProgram.create(pomSkinnedVertex, pomFragment)
+
+            opaquePrograms = ShaderProgramSet(opaqueStaticProgram, opaqueSkinnedProgram, pomStaticProgram, pomSkinnedProgram)
+            maskedPrograms = ShaderProgramSet(maskedStaticProgram, maskedSkinnedProgram, pomStaticProgram, pomSkinnedProgram)
         }
     }
 
@@ -83,6 +97,9 @@ class DepthPrepassRenderer(
         configureOpaqueProgram(opaqueSkinnedProgram, cameraState)
         configureMaskedProgram(maskedStaticProgram, engine, cameraState)
         configureMaskedProgram(maskedSkinnedProgram, engine, cameraState)
+        configurePomProgram(pomStaticProgram, engine, cameraState)
+        configurePomProgram(pomSkinnedProgram, engine, cameraState)
+
         render(engine, view)
 
         glColorMask(true, true, true, true)
@@ -103,6 +120,14 @@ class DepthPrepassRenderer(
     {
         program.bind()
         program.setUniform("viewProjection", cameraState.viewProjectionMatrix)
+        program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
+    }
+
+    private fun configurePomProgram(program: ShaderProgram, engine: PulseEngineInternal, cameraState: CameraRenderState)
+    {
+        program.bind()
+        program.setUniform("uViewProjection", cameraState.viewProjectionMatrix)
+        program.setUniform("uCameraPos", cameraState.cameraPosition)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
     }
 
@@ -149,5 +174,7 @@ class DepthPrepassRenderer(
         opaqueSkinnedProgram.destroy()
         maskedStaticProgram.destroy()
         maskedSkinnedProgram.destroy()
+        pomStaticProgram.destroy()
+        pomSkinnedProgram.destroy()
     }
 }

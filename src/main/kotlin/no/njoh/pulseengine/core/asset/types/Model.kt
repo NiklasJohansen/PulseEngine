@@ -244,9 +244,9 @@ class Model(
         var globalVertexOffset = 0  // index offset per mesh
         var indexOffset = 0         // write cursor in indices[]
 
-        for (m in 0 until meshCount)
+        for (meshIndex in 0 until meshCount)
         {
-            val mesh         = AIMesh.create(meshPointers[m])
+            val mesh         = AIMesh.create(meshPointers[meshIndex])
             val numVertices  = mesh.mNumVertices()
             val numFaces     = mesh.mNumFaces()
             val vertices     = mesh.mVertices()
@@ -567,13 +567,15 @@ class Model(
                 ?: material.getTexturePath(aiTextureType_BASE_COLOR)
 
             val normalPath = material.getTexturePath(aiTextureType_NORMALS)
+
+            val heightPath = material.getTexturePath(aiTextureType_DISPLACEMENT)
                 ?: material.getTexturePath(aiTextureType_HEIGHT)
 
             val aoPath = material.getTexturePath(aiTextureType_AMBIENT)
                 ?: material.getTexturePath(aiTextureType_AMBIENT_OCCLUSION)
                 ?: material.getTexturePath(aiTextureType_LIGHTMAP)
 
-            val metalRoughPath = material.getTexturePath(aiTextureType_METALNESS)
+            val roughMetalPath = material.getTexturePath(aiTextureType_METALNESS)
                 ?: material.getTexturePath(aiTextureType_DIFFUSE_ROUGHNESS)
                 ?: material.getTexturePath(aiTextureType_UNKNOWN)
 
@@ -598,20 +600,24 @@ class Model(
 
             val emissiveStrength = material.getMaterialFloatProp(AI_MATKEY_EMISSIVE_INTENSITY) ?: 1f
 
+            val heightScale = material.getMaterialFloatProp(AI_MATKEY_BUMPSCALING)?.takeIf { it.isFinite() } ?: 1f
+
             materials += MeshMaterial(
                 name = this.name + "_" + materialName,
                 baseColor = baseColor,
                 albedoPath = albedoPath,
                 normalPath = normalPath,
-                aoMetalRoughPath = metalRoughPath,
+                aoRoughMetalPath = roughMetalPath,
                 emissivePath = emissivePath,
+                heightPath = heightPath,
                 cullMode = cullMode,
                 blendMode = blendMode,
                 alphaCutoff = alphaCutoff,
                 metallicFactor = metallicFactor,
                 roughnessFactor = roughnessFactor,
                 emissiveFactor = emissiveFactor.multiplyRgb(emissiveStrength),
-                occlusionStrength = if (aoPath != null && aoPath == metalRoughPath) 1f else 0f
+                occlusionStrength = if (aoPath != null && aoPath == roughMetalPath) 1f else 0f,
+                heightScale = Material.DEFAULT_HEIGHT_SCALE * heightScale.coerceAtLeast(0f)
             )
         }
 
@@ -1209,8 +1215,9 @@ class Model(
         {
             val albedo   = createTexture(mat.albedoPath,       mat.name + "_albedo",       SRGBA8, textureAssets)
             val normal   = createTexture(mat.normalPath,       mat.name + "_normal",       RGBA8,  textureAssets)
-            val aomr     = createTexture(mat.aoMetalRoughPath, mat.name + "_aoMetalRough", RGBA8,  textureAssets)
+            val orm      = createTexture(mat.aoRoughMetalPath, mat.name + "_aoRoughMetal", RGBA8,  textureAssets)
             val emissive = createTexture(mat.emissivePath,     mat.name + "_emissive",     SRGBA8, textureAssets)
+            val height   = createTexture(mat.heightPath,       mat.name + "_height",       RGBA8,  textureAssets)
 
             val cullMode = when (mat.cullMode.uppercase())
             {
@@ -1223,9 +1230,9 @@ class Model(
                 baseColor = Color(mat.baseColor.asSrgb()),
                 albedo = albedo,
                 normal = normal,
-                aoMetalRough = aomr,
+                aoRoughMetal = orm,
                 emissive = emissive,
-                height = null,
+                height = height,
                 cullMode = cullMode,
                 blendMode = mat.blendMode,
                 alphaCutoff = mat.alphaCutoff,
@@ -1233,7 +1240,9 @@ class Model(
                 roughnessFactor = mat.roughnessFactor,
                 emissiveFactor = Color(mat.emissiveFactor.asSrgb()),
                 occlusionStrength = mat.occlusionStrength,
-                normalScale = 1f
+                heightScale = mat.heightScale,
+                normalScale = 1f,
+                normalOrientation = NormalOrientation.NORMAL
             )
         }
 
@@ -1415,15 +1424,17 @@ class Model(
         val baseColor: Color,
         val albedoPath: String?,
         val normalPath: String?,
-        val aoMetalRoughPath: String?,
+        val aoRoughMetalPath: String?,
         val emissivePath: String?,
+        val heightPath: String?,
         val cullMode: String,
         val blendMode: BlendMode,
         val alphaCutoff: Float,
         val metallicFactor: Float,
         val roughnessFactor: Float,
         val emissiveFactor: Color,
-        val occlusionStrength: Float
+        val occlusionStrength: Float,
+        val heightScale: Float
     )
 
     class Aabb(

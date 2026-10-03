@@ -6,7 +6,9 @@ import no.njoh.pulseengine.core.shared.utils.Logger
 
 class ShaderProgramSet(
     val staticProgram: ShaderProgram,
-    val skinnedProgram: ShaderProgram
+    val skinnedProgram: ShaderProgram,
+    val pomStaticProgram: ShaderProgram = staticProgram,
+    val pomSkinnedProgram: ShaderProgram = skinnedProgram
 ) {
     private val reportedMissingShaderStorageBlocks = HashSet<String>(8)
 
@@ -14,6 +16,16 @@ class ShaderProgramSet(
     {
         STATIC -> staticProgram
         SKINNED -> skinnedProgram
+        STATIC_POM -> pomStaticProgram
+        SKINNED_POM -> pomSkinnedProgram
+    }
+
+    inline fun forEachProgram(action: (ShaderProgram) -> Unit)
+    {
+        action(staticProgram)
+        action(skinnedProgram)
+        if (pomStaticProgram !== staticProgram) action(pomStaticProgram)
+        if (pomSkinnedProgram !== skinnedProgram) action(pomSkinnedProgram)
     }
 
     fun bindStorageBuffer(blockName: String, buffer: ShaderStorageBufferObject?): Boolean =
@@ -26,26 +38,31 @@ class ShaderProgramSet(
     {
         if (buffer == null) return false
 
-        val staticBinding = staticProgram.shaderStorageBufferBindingOf(blockName)
-        val skinnedBinding = skinnedProgram.shaderStorageBufferBindingOf(blockName)
+        var lastBinding = -1
+        forEachProgram()
+        {
+            val binding = it.shaderStorageBufferBindingOf(blockName)
+            if (binding >= 0 && binding != lastBinding)
+            {
+                buffer.bindStorageBuffer(binding)
+                lastBinding = binding
+            }
+        }
 
-        if (staticBinding < 0 && skinnedBinding < 0)
+        if (lastBinding < 0)
         {
             if (logMissingBlock && reportedMissingShaderStorageBlocks.add(blockName))
                 Logger.error { "Shader storage block '$blockName' not found in shader program set (#${staticProgram.id}, #${skinnedProgram.id})" }
+
             return false
         }
         else if (reportedMissingShaderStorageBlocks.isNotEmpty())
+        {
             reportedMissingShaderStorageBlocks.remove(blockName)
-
-        if (staticBinding >= 0)
-            buffer.bindStorageBuffer(staticBinding)
-
-        if (skinnedBinding >= 0 && skinnedBinding != staticBinding)
-            buffer.bindStorageBuffer(skinnedBinding)
+        }
 
         return true
     }
 
-    enum class ShaderVariant { STATIC, SKINNED }
+    enum class ShaderVariant { STATIC, SKINNED, STATIC_POM, SKINNED_POM }
 }

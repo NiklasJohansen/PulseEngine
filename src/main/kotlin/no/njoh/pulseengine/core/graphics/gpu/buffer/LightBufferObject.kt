@@ -11,8 +11,9 @@ class LightBufferObject
     lateinit var lightInstanceBuffer: StreamingFloatBufferObject private set
     lateinit var shadowFaceBuffer: StreamingFloatBufferObject    private set
 
-    var lightCount = 0;      private set
-    var shadowFaceCount = 0; private set
+    var lightCount = 0;            private set
+    var shadowFaceCount = 0;       private set
+    var hasContactShadows = false; private set
 
     private var submitted = false
 
@@ -37,6 +38,7 @@ class LightBufferObject
         shadowFaceBuffer.clear()
         lightCount = 0
         shadowFaceCount = 0
+        hasContactShadows = false
     }
 
     fun addLight(light: RenderLight)
@@ -53,8 +55,10 @@ class LightBufferObject
             put(color.red, color.green, color.blue, light.direction.x)
             put(light.direction.y, light.direction.z, cos(light.outerConeAngle.toRadians()), cos(light.innerConeAngle.toRadians()))
             put(isSpotLight, shadowBias, light.shadowFaceOffset.toFloat(), light.shadowFaceCount.toFloat())
-            put(light.sourceRadius, 0f, 0f, 0f)
+            put(light.sourceRadius, light.contactShadowLength, 0f, 0f)
         }
+
+        if (light.contactShadowLength > 0f) hasContactShadows = true
     }
 
     fun addShadowFace(shadowFace: ShadowFace)
