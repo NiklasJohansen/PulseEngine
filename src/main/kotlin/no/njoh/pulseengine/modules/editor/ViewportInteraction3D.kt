@@ -75,6 +75,7 @@ class ViewportInteraction3D(
 
     private var hoveredHandle = Handle.NONE
     private var transformDrag: TransformDrag? = null
+    private var isControlPressed = false
     private val pickResult = PixelReadResult()
     private var pickPending = false
     private var pendingPickMode = PickMode.REPLACE
@@ -129,7 +130,8 @@ class ViewportInteraction3D(
 
     override fun onUpdate(engine: PulseEngine, context: ViewportContext)
     {
-        updateViewMode(engine, context.viewMode)
+        isControlPressed = engine.input.isPressed(Key.LEFT_CONTROL) || engine.input.isPressed(Key.RIGHT_CONTROL)
+        updateViewMode(engine, context.viewMode, context.isWireframeVisible)
 
         engine.input.setCursorType(CursorType.ARROW)
         consumePickResult(engine, context)
@@ -152,7 +154,7 @@ class ViewportInteraction3D(
         if (engine.input.wasClicked(Key.E) && (selected == null || supportsMode(selected, GizmoMode.ROTATE))) gizmoMode = GizmoMode.ROTATE
         if (engine.input.wasClicked(Key.R) && (selected == null || supportsMode(selected, GizmoMode.SCALE))) gizmoMode = GizmoMode.SCALE
 
-        hoveredHandle = if (hover && selected != null) hitTestGizmo(engine, context, selected.pivot) else Handle.NONE
+        hoveredHandle = if (hover && selected != null && isGizmoVisible()) hitTestGizmo(engine, context, selected.pivot) else Handle.NONE
 
         val drag = transformDrag
         if (drag != null)
@@ -239,11 +241,13 @@ class ViewportInteraction3D(
         renderCameraMarkers(engine, context)
         selectedLights.forEachFast { renderLightInfluence(engine, context, it) }
 
-        if (selected != null)
+        if (selected != null && isGizmoVisible())
             renderGizmo(engine, context, selected.pivot)
 
         renderSelectionRectangle(engine)
     }
+
+    private fun isGizmoVisible() = transformDrag != null || !isControlPressed
 
     override fun reset(engine: PulseEngine, context: ViewportContext)
     {
@@ -308,10 +312,13 @@ class ViewportInteraction3D(
         }
     }
 
-    private fun updateViewMode(engine: PulseEngine, viewMode: ViewMode)
+    private fun updateViewMode(engine: PulseEngine, viewMode: ViewMode, showWireframe: Boolean = false)
     {
         val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE) ?: return
-        surface.getRenderer<ModelRenderer>()?.viewMode = viewMode
+        surface.getRenderer<ModelRenderer>()?.let {
+            it.viewMode = viewMode
+            it.drawWireframeOverlay = showWireframe
+        }
         surface.config.drawPostEffects = viewMode == ViewMode.SHADED
     }
 
@@ -571,7 +578,7 @@ class ViewportInteraction3D(
 
     override fun onEditorActivated(engine: PulseEngine, context: ViewportContext)
     {
-        updateViewMode(engine, context.viewMode)
+        updateViewMode(engine, context.viewMode, context.isWireframeVisible)
         reset(engine, context)
         updateOrbitPivotFromSelection(context)
     }

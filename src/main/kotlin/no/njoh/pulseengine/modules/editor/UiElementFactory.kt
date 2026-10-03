@@ -368,7 +368,8 @@ open class UiElementFactory(
             {
                 iconFontName = style.iconFontName
                 iconCharacter = style.getIcon("ARROW_DOWN")
-                iconSize = ScaledValue.of(12f)
+                iconSize = ScaledValue.of(16f)
+                padding.top = ScaledValue.of(8f)
                 color = style.getColor("LABEL")
             }
         }
@@ -702,8 +703,11 @@ open class UiElementFactory(
                     row.setOnClicked() 
                     {
                         item.onClick()
-                        rootMenu.dropdown.hidden = true
-                        hideMenuTree(this)
+                        if (item.closeOnClick)
+                        {
+                            rootMenu.dropdown.hidden = true
+                            hideMenuTree(this)
+                        }
                     }
                 }
                 else

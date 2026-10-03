@@ -6,5 +6,6 @@ data class MenuBarItem(
     val labelText: String,
     val items: List<MenuBarItem> = emptyList(),
     val isChecked: (() -> Boolean)? = null,
+    val closeOnClick: Boolean = true,
     val onClick: () -> Unit = {}
 )

@@ -2,7 +2,6 @@ package no.njoh.pulseengine.modules.editor
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.camera.Camera
-import no.njoh.pulseengine.core.graphics.scene3d.renderers.ViewMode
 import no.njoh.pulseengine.core.input.FocusArea
 import no.njoh.pulseengine.core.scene.SceneEntity
 
@@ -11,10 +10,11 @@ class ViewportContext(
     val camera: Camera,
     val focusArea: FocusArea
 ) {
-    val selection     get() = editor.selectedEntities()
-    val isGridVisible get() = editor.isGridVisible()
-    val viewMode      get() = editor.viewMode()
-    val iconFontName  get() = editor.uiFactory.style.iconFontName
+    val selection          get() = editor.selectedEntities()
+    val isGridVisible      get() = editor.isGridVisible()
+    val isWireframeVisible get() = editor.isWireframeVisible()
+    val viewMode           get() = editor.viewMode()
+    val iconFontName       get() = editor.uiFactory.style.iconFontName
 
     fun selectEntities(engine: PulseEngine, entities: List<SceneEntity>) = editor.selectEntities(engine, entities)
 

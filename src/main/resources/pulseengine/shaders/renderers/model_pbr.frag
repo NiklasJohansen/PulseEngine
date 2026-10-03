@@ -158,6 +158,7 @@ uniform mat4  uViewProjection;
 uniform uint  uPbrFeatures;
 uniform bool  uUseDefaultLighting;
 uniform int   uViewMode;
+uniform bool  uWireframeOverlay;
 
 // Cascaded shadow mapping
 uniform sampler2DShadow uShadowMapTex;
@@ -1013,6 +1014,12 @@ void main()
         fragColor = vec4(1.0, 1.0, 1.0, alpha);
         return;
     #endif
+
+    if (uWireframeOverlay)
+    {
+        writeFragment(vec3(.3, .3, .3), alpha * 0.2);
+        return;
+    }
 
     // Check wighted blend alpha cutoff and opaque depth before doing expensive PBR calculations
     #ifdef PBR_OUTPUT_WBOIT_ACCUM

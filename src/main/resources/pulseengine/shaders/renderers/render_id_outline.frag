@@ -48,8 +48,8 @@ void main()
     }
 
     float diagonal = uv.x * (uTextureSize.x / uTextureSize.y) - uv.y;
-    float alpha = 0.1 + 0.9 * sin(80 * 6.28318 * (diagonal - mod(uTime * 0.05, 1.0)));
+    float alpha = 0.01 + 0.6 * sin(80 * 6.28318 * (diagonal - mod(uTime * 0.05, 1.0)));
     vec3 color = vec3(0.8, 0.55, 0.08);
 
-    fragColor = edge ? vec4(color, alpha) : (centerSelected ? vec4(color, 0.025 * (0.5 + 0.5 * alpha)) : vec4(0.0));
+    fragColor = edge ? vec4(color, alpha) : (centerSelected ? vec4(color, 0.002 * (0.5 + 0.5 * alpha)) : vec4(0.0));
 }

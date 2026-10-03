@@ -73,6 +73,7 @@ class ModelRenderer(
     var viewMode                 = ViewMode.SHADED
     var transparencyMode         = WEIGHTED_BLENDED_OIT
     var weightedBlendAlphaCutoff = 0.04f
+    var drawWireframeOverlay     = false
 
     private lateinit var staticProgram: ShaderProgram
     private lateinit var skinnedProgram: ShaderProgram
@@ -197,6 +198,9 @@ class ModelRenderer(
 
         render(engine, surface, view, cameraState, activePrograms, writesRenderIds, visualizesRenderIds)
 
+        if (drawWireframeOverlay)
+            renderWireframeOverlay(engine, surface, view, cameraState, activePrograms)
+
         // Restore
 
         glEnable(GL_CULL_FACE)
@@ -275,6 +279,41 @@ class ModelRenderer(
                 }
             }
         }
+    }
+
+    private fun renderWireframeOverlay(
+        engine: PulseEngineInternal, 
+        surface: SurfaceInternal, 
+        view: CameraRenderView, 
+        cameraState: CameraRenderState, 
+        activePrograms: ShaderProgramSet
+    ) = measure("wireframe_overlay", label = { "Draw wireframe overlay" }) {
+
+        surface.renderTarget.setDrawBuffer(COLOR_TEXTURE_0)
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LEQUAL)
+        glDepthMask(false)
+        glEnable(GL_BLEND)
+        glBlendEquation(GL_FUNC_ADD)
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        glEnable(GL_POLYGON_OFFSET_LINE)
+        glPolygonOffset(-1f, -1f)
+
+        activePrograms.forEachProgram() 
+        {
+            configureProgram(it, engine, surface, cameraState)
+            it.setUniform("uWireframeOverlay", true)
+        }
+
+        bindStorageBuffers(activePrograms, engine, cameraState, view.drawPayload)
+        drawRenderBucket(view.opaqueBucket, view.drawPayload, activePrograms)
+        drawRenderBucket(view.maskedBucket, view.drawPayload, activePrograms)
+        drawRenderBucket(view.blendedBucket, view.drawPayload, activePrograms)
+
+        glDisable(GL_POLYGON_OFFSET_LINE)
+        glPolygonOffset(0f, 0f)
+        glPolygonMode(GL_FRONT_AND_BACK, if (surface.config.drawWireframe) GL_LINE else GL_FILL)
     }
 
     private fun prepareContactShadowDepthMap(engine: PulseEngineInternal, surface: SurfaceInternal, cameraState: CameraRenderState)
@@ -443,6 +482,7 @@ class ModelRenderer(
         program.setUniform("uPbrFeatures", pbrFeatures)
         program.setUniform("uUseDefaultLighting", useDefaultLighting)
         program.setUniform("uViewMode", viewMode.shaderValue)
+        program.setUniform("uWireframeOverlay", false)
 
         // Camera
 

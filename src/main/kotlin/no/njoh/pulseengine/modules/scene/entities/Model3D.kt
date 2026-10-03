@@ -36,8 +36,8 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
     @Prop("Shadows", i=4) var castLocalShadows = true
     @Prop("Shadows", i=5) var castSunShadows   = true
 
-    @Prop("LOD", i=6)                   var lodDistanceThresholds = ""
-    @Prop("LOD", i=7, min=0f, max=0.9f) var lodHysteresis         = 0.15f
+    @Prop("Level of Detail", i=6)                   var lodDistanceThresholds = ""
+    @Prop("Level of Detail", i=7, min=0f, max=0.9f) var lodHysteresis         = 0.15f
 
     private val transform              = Matrix4f()
     private var lastDistanceThresholds = null as String?

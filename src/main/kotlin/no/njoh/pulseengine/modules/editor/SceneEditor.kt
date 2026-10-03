@@ -40,6 +40,7 @@ import no.njoh.pulseengine.core.scene.interfaces.Spatial2D
 import no.njoh.pulseengine.modules.physics2d.PhysicsEntity2D
 import no.njoh.pulseengine.modules.physics2d.bodies.PhysicsBody2D
 import no.njoh.pulseengine.core.shared.utils.FileChooser
+import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
@@ -93,6 +94,7 @@ class SceneEditor(
     private var collapsedPropertyHeaders = mutableListOf<String>()
     private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
     private var showGrid = true
+    private var showWireframe = false
     private var viewMode = ViewMode.SHADED
     private var sceneHierarchy: SceneHierarchy? = null
     private val editorWindowsById = mutableMapOf<String, WindowPanel>()
@@ -155,6 +157,12 @@ class SceneEditor(
         // Editor keyboard shortcuts
         engine.input.setOnKeyPressed()
         {
+            if (isRunning && it == ESCAPE)
+            {
+                viewportInteraction.reset(engine, viewportContext)
+                clearViewportSelection()
+            }
+
             if (isRunning && it == DELETE && engine.input.hasFocus(viewportArea))
                 deleteSelectedEntities(engine)
             
@@ -221,7 +229,13 @@ class SceneEditor(
             viewMenu = MenuBarButton("View", listOf(
                 MenuBarItem(
                     labelText = "Mode",
-                    items = modes.map { MenuBarItem(it.displayName, isChecked = { viewMode == it }, onClick = { viewMode = it }) }
+                    items = buildList {
+                        modes.forEachFast { mode ->
+                            add(MenuBarItem(mode.displayName, isChecked = { viewMode == mode }, closeOnClick = false, onClick = { viewMode = mode }))
+                        }
+                        if (viewportInteraction.mode == MODE_3D)
+                            add(MenuBarItem("Wireframe", isChecked = { showWireframe }, closeOnClick = false, onClick = { showWireframe = !showWireframe }))
+                    }
                 ),
                 MenuBarItem(
                     labelText = "Grid",
@@ -232,6 +246,7 @@ class SceneEditor(
                 {
                     createSceneEditorUI(engine)
                     showGrid = true
+                    showWireframe = false
                     viewMode = ViewMode.SHADED
                     viewportInteraction.resetCamera(engine, viewportContext)
                     captureActiveEditorCamera(engine)
@@ -739,7 +754,12 @@ class SceneEditor(
 
         val representativeEntity = entities.first()
         val isMultiSelection = entities.size > 1
-        val defaultGroup = if (isMultiSelection) "Entity Group (${entities.size})" else representativeEntity::class.getName()
+        val defaultGroup = if (isMultiSelection) "Entity Group (${entities.size})" else
+            representativeEntity::class.findAnnotation<Name>()?.name
+                ?: representativeEntity::class.getName()
+                    .split("(?=[A-Z])".toRegex())
+                    .joinToString(" ")
+                    .trim()
         val propertyGroups = properties
             .groupBy { property -> property.representative.entity.getPropGroup(property.representative.property)?.takeIf { it.isNotEmpty() } ?: defaultGroup }
             .toList()
@@ -812,7 +832,11 @@ class SceneEditor(
                     inputElement is InputField
                 ) {
                     inputElement.contentType = InputField.ContentType.TEXT
-                    inputElement.setTextQuiet(entities.joinToString(", ") { it.id.toString() })
+                    val ids = if (entities.size > 3)
+                        "${entities[0].id}, ${entities[1].id} (+${entities.size - 2})"
+                    else
+                        entities.joinToString(", ") { it.id.toString() }
+                    inputElement.setTextQuiet(ids)
                 }
             }
         }
@@ -997,6 +1021,8 @@ class SceneEditor(
     internal fun selectedEntities() = entitySelection
 
     internal fun isGridVisible() = showGrid
+
+    internal fun isWireframeVisible() = showWireframe
 
     internal fun viewMode() = viewMode
 
