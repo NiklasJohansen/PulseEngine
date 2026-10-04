@@ -153,7 +153,12 @@ object GlCapabilities
         check(fullGraphicsEnabled) { "$feature requires RuntimeProfile.FULL_GRAPHICS, but this game configured RuntimeProfile.BASE_GRAPHICS" }
     }
 
-    private fun findMissingRequirements(
+    fun requireSamplerUnit(unit: Int, samplerName: String, maxUnits: Int = limits.maxCombinedTextureImageUnits)
+    {
+        check(unit in 0..<maxUnits) { "Sampler '$samplerName' requires texture unit $unit, but GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS is $maxUnits" }
+    }
+
+    fun findMissingRequirements(
         supportsOpenGl41: Boolean,
         supportsOpenGl44: Boolean,
         supportsPersistentMappedBuffers: Boolean,
@@ -178,8 +183,8 @@ object GlCapabilities
             if (!supportsComputeShaders)          add("Compute shaders are required")
             if (!supportsShaderStorageBuffers)    add("Shader storage buffer objects are required")
 
-            requireLimit("GL_MAX_TEXTURE_IMAGE_UNITS",            limits.maxTextureImageUnits,           required = 20)
-            requireLimit("GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS",   limits.maxCombinedTextureImageUnits,   required = 20)
+            requireLimit("GL_MAX_TEXTURE_IMAGE_UNITS",            limits.maxTextureImageUnits,           required = 21)
+            requireLimit("GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS",   limits.maxCombinedTextureImageUnits,   required = 21)
             requireLimit("GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS", limits.maxShaderStorageBufferBindings, required = 12)
             requireLimit("GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS",   limits.maxVertexShaderStorageBlocks,   required =  3)
             requireLimit("GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS", limits.maxFragmentShaderStorageBlocks, required =  5)

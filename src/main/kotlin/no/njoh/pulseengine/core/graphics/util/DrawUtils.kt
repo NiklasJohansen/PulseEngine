@@ -351,11 +351,11 @@ fun transformModelVertexShader(source: String): String
             else
                 "uint(gl_BaseInstanceARB) + uint(gl_InstanceID)"
 
-            val extension = if (GlCapabilities.shaderDrawParametersCore) 
-                "" 
-            else 
+            val extension = if (GlCapabilities.shaderDrawParametersCore)
+                ""
+            else
                 "#extension GL_ARB_shader_draw_parameters : require\n"
-            
+
             "$extension#define MODEL_INSTANCE_DRAW_INDEX ($instanceIndex)\n"
         }
 
@@ -376,16 +376,21 @@ fun transformModelVertexShader(source: String): String
 
         uniform bool uUseVisibleInstanceBuffer;
 
+        uint resolveModelInstanceIndex();
+
+        #define MODEL_INSTANCE_INDEX resolveModelInstanceIndex()
+    """.trimIndent()
+
+    // Define the resolver after the source globals, including the fallback attribute/uniform.
+    val instanceResolver = """
         uint resolveModelInstanceIndex()
         {
             uint drawIndex = MODEL_INSTANCE_DRAW_INDEX;
             return uUseVisibleInstanceBuffer ? uVisibleInstanceIndices[int(drawIndex)] : drawIndex;
         }
-
-        #define MODEL_INSTANCE_INDEX resolveModelInstanceIndex()
     """.trimIndent()
 
     val transformedSource = source.substring(newLineIndex + 1)
 
-    return versionLine + "\n" + drawIndexHeader + visibleInstanceHeader + transformedSource
+    return versionLine + "\n" + drawIndexHeader + visibleInstanceHeader + "\n" + transformedSource + "\n" + instanceResolver
 }

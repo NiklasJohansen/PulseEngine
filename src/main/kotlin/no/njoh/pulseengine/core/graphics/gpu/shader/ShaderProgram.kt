@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.core.graphics.gpu.shader
 
 import no.njoh.pulseengine.core.asset.types.Shader
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.buffer.ShaderStorageBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
@@ -205,7 +206,12 @@ class ShaderProgram(
 
     fun assignSamplerUnit(samplerName: String): Int
     {
-        val unit = textureUnits.getOrPut(samplerName) { textureUnits.size }
+        val unit = textureUnits.getOrPut(samplerName)
+        {
+            val nextUnit = textureUnits.size
+            GlCapabilities.requireSamplerUnit(nextUnit, samplerName)
+            nextUnit
+        }
         setUniform(samplerName, unit)
         return unit
     }
