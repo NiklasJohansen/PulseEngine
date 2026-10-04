@@ -58,6 +58,7 @@ import org.lwjgl.assimp.AIVectorKey
 import org.lwjgl.assimp.Assimp.*
 import org.lwjgl.stb.STBImage.STBI_rgb_alpha
 import org.lwjgl.stb.STBImage.stbi_failure_reason
+import org.lwjgl.stb.STBImage.stbi_image_free
 import org.lwjgl.stb.STBImage.stbi_load_from_memory
 import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
@@ -92,6 +93,7 @@ class Model(
     var hasBones            = false;                               private set
 
     private var animations                     = emptyArray<Animation>()
+    private var subAssetsAvailable             = false
     private val embeddedTextures               = Int2ObjectOpenHashMap<EmbeddedTexture>()
     private val embeddedTexturesByPath         = Object2ObjectOpenHashMap<String, EmbeddedTexture>()
     private val globalNodeTransforms           = Object2ObjectOpenHashMap<String, Matrix4f>()
@@ -104,8 +106,21 @@ class Model(
 
     override fun load()
     {
-        try { AssimpAssetFileIO(filePath).use { loadWithAssimp(it) } }
-        catch (e: Exception) { Logger.error { "Failed to load Mesh $filePath: ${e.message}" } }
+        subAssetsAvailable = false
+        embeddedTextures.clear()
+        embeddedTexturesByPath.clear()
+
+        try
+        {
+            AssimpAssetFileIO(filePath).use { loadWithAssimp(it) }
+            subAssetsAvailable = true
+        }
+        catch (e: Exception)
+        {
+            embeddedTextures.clear()
+            embeddedTexturesByPath.clear()
+            Logger.error { "Failed to load Mesh $filePath: ${e.message}" }
+        }
     }
     
     override fun unload()
@@ -115,6 +130,9 @@ class Model(
         this.vertexBytes = ByteArray(0)
         this.indices = IntArray(0)
         this.collisionMeshes = emptyArray()
+        this.subAssetsAvailable = false
+        this.embeddedTextures.clear()
+        this.embeddedTexturesByPath.clear()
     }
 
     fun onUploaded(vao: VertexArrayObject, vbo: StaticBufferObject, ebo: StaticBufferObject)
@@ -651,7 +669,14 @@ class Model(
                 val pixels = stbi_load_from_memory(encoded, w, h, comp, STBI_rgb_alpha)
                     ?: throw RuntimeException("stbi_load_from_memory failed for embedded *$i: ${stbi_failure_reason()}")
 
-                EmbeddedTexture(w[0], h[0], pixels, freeWithStbi = true)
+                try
+                {
+                    // Share JVM-owned storage between texture variants, never the STB allocation.
+                    val rgba = BufferUtils.createByteBuffer(pixels.remaining())
+                    rgba.put(pixels.duplicate()).flip()
+                    EmbeddedTexture(i, w[0], h[0], rgba)
+                }
+                finally { stbi_image_free(pixels) }
             }
             else
             {
@@ -668,7 +693,7 @@ class Model(
                 }
                 rgba.flip()
 
-                EmbeddedTexture(w, h, rgba, freeWithStbi = false)
+                EmbeddedTexture(i, w, h, rgba)
             }
 
             embeddedTextures.put(i, embeddedTexture)
@@ -1208,6 +1233,8 @@ class Model(
     
     override fun getSubAssets(): List<Asset> 
     {
+        if (!subAssetsAvailable) return emptyList()
+
         val textureAssets = Object2ObjectOpenHashMap<TextureAssetKey, Texture>()
         val materialAssets = mutableListOf<Material>()
 
@@ -1258,21 +1285,19 @@ class Model(
     {
         if (path.isNullOrEmpty()) return null
         val normalizedPath = normalizeTextureReference(path)
-        val key = TextureAssetKey(normalizedPath, format)
+        val embeddedTexture = if (normalizedPath.startsWith("*"))
+        {
+            val idx = normalizedPath.substring(1).toIntOrNull() ?: return null
+            embeddedTextures[idx] ?: return null
+        }
+        else embeddedTexturesByPath[embeddedTexturePathKey(normalizedPath)]
+
+        val canonicalPath = embeddedTexture?.let { "*${it.index}" } ?: normalizedPath
+        val key = TextureAssetKey(canonicalPath, format)
         return textureAssets.getOrPut(key)
         {
-            val texture = Texture(normalizedPath, assetName, format = format)
-            val embeddedTexture = if (normalizedPath.startsWith("*"))
-            {
-                val idx = normalizedPath.substring(1).toIntOrNull() ?: return null
-                embeddedTextures[idx]
-            }
-            else embeddedTexturesByPath[embeddedTexturePathKey(normalizedPath)]
-
-            if (normalizedPath.startsWith("*") && embeddedTexture == null)
-                return null
-
-            embeddedTexture?.let { texture.loadFrom(it.rgbaPixels.duplicate(), it.width, it.height, freeWithStbi = it.freeWithStbi) }
+            val texture = Texture(canonicalPath, assetName, format = format)
+            embeddedTexture?.let { texture.loadFrom(it.rgbaPixels.duplicate(), it.width, it.height, freeWithStbi = false) }
             texture
         }
     }
@@ -1282,10 +1307,10 @@ class Model(
     private data class TextureAssetKey(val path: String, val format: TextureFormat)
 
     private data class EmbeddedTexture(
+        val index: Int,
         val width: Int, 
         val height: Int, 
-        val rgbaPixels: ByteBuffer, 
-        val freeWithStbi: Boolean
+        val rgbaPixels: ByteBuffer
     )
 
     private class VertexInfluence

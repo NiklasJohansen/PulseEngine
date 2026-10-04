@@ -42,34 +42,11 @@ class TextureBank
     private val emptyTextureArray    = TextureArray(0, 0, 0, RGBA8, LINEAR, OFF, CLAMP_TO_EDGE, 1)
     private val fallbackTextures     = Object2ObjectOpenHashMap<Color, RenderTexture>()
     private var fallbackDepthTexture = null as RenderTexture?
-
+    
     fun upload(texture: Texture)
     {
-        if (texture.loadFailed)
-        {
-            texture.onUploaded(handle = TextureHandle.NONE)
-            return
-        }
-
-        val array = getOrCreateTextureArrayFor(texture)
-        if (array != null)
-        {
-            try
-            {
-                array.upload(texture)
-                return
-            }
-            catch (e: TextureArrayAllocationException)
-            {
-                if (array.id == -1 && array.size == 0)
-                    textureArrays.remove(array)
-
-                Logger.error(e) { "Failed to upload texture: ${texture.filePath}" }
-            }
-        }
-
-        // Fall back to no texture if the upload failed
-        texture.onUploaded(handle = TextureHandle.NONE)
+        try { uploadPixels(texture) }
+        finally { texture.unload() }
     }
 
     fun delete(texture: Texture)
@@ -78,16 +55,6 @@ class TextureBank
         if (handle.isArrayTexture)
             textureArrays.firstOrNullFast { it.textureArraySlot == handle.textureArraySlot }?.delete(texture)
         texture.onDeleted()
-    }
-
-    fun destroy()
-    {
-        textureArrays.forEachFast { it.destroy() }
-        emptyTextureArray.destroy()
-        fallbackTextures.forEach { (_, texture) -> glDeleteTextures(texture.handle.glId) }
-        fallbackTextures.clear()
-        fallbackDepthTexture?.let { glDeleteTextures(it.handle.glId) }
-        fallbackDepthTexture = null
     }
 
     fun generatePendingMipmaps()
@@ -114,6 +81,44 @@ class TextureBank
     fun getOrCreateFallbackDepthTexture(): RenderTexture =
         fallbackDepthTexture ?: createFallbackDepthTexture().also { fallbackDepthTexture = it }
 
+    fun destroy()
+    {
+        textureArrays.forEachFast { it.destroy() }
+        emptyTextureArray.destroy()
+        fallbackTextures.forEach { (_, texture) -> glDeleteTextures(texture.handle.glId) }
+        fallbackTextures.clear()
+        fallbackDepthTexture?.let { glDeleteTextures(it.handle.glId) }
+        fallbackDepthTexture = null
+    }
+    
+    private fun uploadPixels(texture: Texture)
+    {
+        if (texture.loadFailed)
+        {
+            texture.onUploaded(handle = TextureHandle.NONE)
+            return
+        }
+
+        val array = getOrCreateTextureArrayFor(texture)
+        if (array != null)
+        {
+            try
+            {
+                array.upload(texture)
+                return
+            }
+            catch (e: TextureArrayAllocationException)
+            {
+                if (array.id == -1 && array.size == 0)
+                    textureArrays.remove(array)
+                Logger.error(e) { "Failed to upload texture: ${texture.filePath}" }
+            }
+        }
+
+        // Fall back to no texture if the upload failed
+        texture.onUploaded(handle = TextureHandle.NONE)
+    }
+ 
     private fun createFallbackTexture(color: Color): RenderTexture
     {
         val pixels = BufferUtils.createByteBuffer(4)

@@ -219,6 +219,9 @@ open class AssetManagerImpl : AssetManagerInternal()
         assetsToLoad.clear()
         assetsToLoad += subAssetsToLoad
         subAssetsToLoad.clear()
+
+        // Recursively load sub-assets
+        handleAssetLoading(engine)
     }
 
     private fun loadAsset(asset: Asset)

@@ -49,13 +49,15 @@ open class Texture(
 
     var loadFailed = false; private set
 
-    private var afterUpload: (Texture) -> Unit = { }
+    private var freePixelsWithStbi = false
 
     override fun load()
     {
         if (filePath.isBlank() || pixelsLDR != null || pixelsHDR != null) return
 
         loadFailed = false
+        freePixelsWithStbi = true
+
         try {
             val bytes = filePath.loadBytesFromPath() ?: throw FileNotFoundException("File not found: $filePath")
             val encodedPixels = memAlloc(bytes.size)
@@ -87,10 +89,6 @@ open class Texture(
                 }
                 this.width = width[0]
                 this.height = height[0]
-                this.afterUpload = { tex ->
-                    tex.pixelsLDR?.let { stbi_image_free(it) }
-                    tex.pixelsHDR?.let { stbi_image_free(it) }
-                }
             }
             finally
             {
@@ -99,6 +97,7 @@ open class Texture(
         }
         catch (e: Exception)
         {
+            unload()
             loadFailed = true
             Logger.error { "Failed to load image $filePath: ${e.message}" }
         }
@@ -106,11 +105,15 @@ open class Texture(
 
     fun loadFrom(pixels: ByteBuffer?, width: Int, height: Int, freeWithStbi: Boolean)
     {
+        if (pixels !== pixelsLDR || pixelsHDR != null) 
+            unload()
+
         this.loadFailed = (pixels == null)
         this.pixelsLDR = pixels
         this.width = width
         this.height = height
-        this.afterUpload = { tex -> if (freeWithStbi) tex.pixelsLDR?.let { stbi_image_free(it) } }
+        this.freePixelsWithStbi = freeWithStbi
+
         if (pixels == null)
             Logger.error { "Failed to load image data for texture '$name': pixel buffer is null" }
     }
@@ -123,17 +126,30 @@ open class Texture(
         this.vMin = vMin
         this.uMax = uMax
         this.vMax = vMax
-        this.afterUpload(this)
-        this.pixelsLDR = null
-        this.pixelsHDR = null
+        unload()
     }
 
     open fun onDeleted()
     {
+        unload()
         this.handle = INVALID
     }
 
-    override fun unload() { }
+    override fun unload()
+    {
+        val pixelsLDR = this.pixelsLDR
+        val pixelsHDR = this.pixelsHDR
+        val freeWithStbi = freePixelsWithStbi
+        this.pixelsLDR = null
+        this.pixelsHDR = null
+        this.freePixelsWithStbi = false
+
+        if (freeWithStbi)
+        {
+            pixelsLDR?.let { stbi_image_free(it) }
+            pixelsHDR?.let { stbi_image_free(it) }
+        }
+    }
 
     companion object
     {
