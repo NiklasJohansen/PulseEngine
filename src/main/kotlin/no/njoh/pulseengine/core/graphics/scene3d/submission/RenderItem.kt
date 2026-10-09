@@ -4,6 +4,7 @@ import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.CullMode.BACK
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.BLEND
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgramSet.ShaderVariant.*
+import no.njoh.pulseengine.core.shared.primitives.Mobility
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.shared.primitives.Mat4f
@@ -20,23 +21,25 @@ class RenderItem
     var renderId       = -1L;                      private set
     var batchSortKey   = -1;                       private set
     var shaderVariant  = STATIC;                   private set
+    var mobility       = Mobility.DYNAMIC;         private set
 
     internal var gpuInstanceIndex = -1
     internal var gpuCullItemIndex = -1
 
-    fun set(mesh: Model.Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, renderId: Long = -1L)
+    fun set(mesh: Model.Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, mobility: Mobility = Mobility.DYNAMIC, renderId: Long = -1L)
     {
         val usePom = material?.height != null && material.heightScale > 0f && material.blendMode != BLEND
 
-        this.mesh = mesh
-        this.material = material
-        this.transform = transform
-        this.cullingBounds = cullingBounds
-        this.boneMatrices = boneMatrices
+        this.mesh           = mesh
+        this.material       = material
+        this.transform      = transform
+        this.cullingBounds  = cullingBounds
+        this.boneMatrices   = boneMatrices
         this.renderPassMask = renderPassMask
-        this.renderId = renderId
-        this.batchSortKey = (mesh.getBatchSortKey(material?.cullMode ?: BACK) shl 1) or (if (usePom) 1 else 0)
-        this.shaderVariant = when 
+        this.renderId       = renderId
+        this.mobility       = mobility
+        this.batchSortKey   = (mesh.getBatchSortKey(material?.cullMode ?: BACK) shl 1) or (if (usePom) 1 else 0)
+        this.shaderVariant  = when 
         {
             mesh.skinningBounds != null -> if (usePom) SKINNED_POM else SKINNED
             else                        -> if (usePom) STATIC_POM else STATIC

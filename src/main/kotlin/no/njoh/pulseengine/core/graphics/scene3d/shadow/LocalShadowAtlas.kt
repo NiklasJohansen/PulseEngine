@@ -3,7 +3,9 @@ package no.njoh.pulseengine.core.graphics.scene3d.shadow
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderLight
+import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
+import no.njoh.pulseengine.core.graphics.scene3d.view.Frustum
 import no.njoh.pulseengine.core.shared.utils.retainEntries
 import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import no.njoh.pulseengine.core.shared.datastructures.StaticList
@@ -24,23 +26,25 @@ class LocalShadowAtlas
     var shadowFaceResolution = 512
     var maxShadowUpdatesPerFrame = 3
 
-    private val shadowFaces               = DynamicList<ShadowFace>(64)
-    private val activeShadowFaces         = DynamicList<ShadowFace>(64)
     private val blocks                    = Object2ObjectOpenHashMap<Long, ShadowBlock>()
     private val activeBlocks              = DynamicList<ShadowBlock>(64)
     private val updateCandidates          = DynamicList<ShadowBlock>(64)
+    private val shadowFaces               = DynamicList<ShadowFace>(64)
+    private val activeShadowFaces         = DynamicList<ShadowFace>(64)
     private val activeRequests            = DynamicList<ShadowRequest>(64)
     private val freeRequests              = DynamicList<ShadowRequest>(64)
     private val shadowFaceIndicesToRender = IntArrayList(64)
 
-    private var usedFaceSlots = BooleanArray(0)
-    private var frameIndex = 0
-    private var lastResolution = 0
-    private var lastCellSize = 0
+    private var frameIndex          = 0
+    private var lastCellSize        = 0
+    private var lastResolution      = 0
+    private var usedFaceSlots       = BooleanArray(0)
+    private var dynamicCasterBounds = FloatArray(128 * 6)
 
-    private val tmpView = Matrix4f()
-    private val tmpProjection = Matrix4f()
-    private val tmpCenter = Vector3f()
+    private val tmpView          = Matrix4f()
+    private val tmpProjection    = Matrix4f()
+    private val tmpCenter        = Vector3f()
+    private val tmpCasterFrustum = Frustum()
 
     private val blockUpdateComparator = Comparator<ShadowBlock> { a, b ->
         val score = b.updateScore().compareTo(a.updateScore())
@@ -75,6 +79,7 @@ class LocalShadowAtlas
 
         collectRequests(scene.localLights, cameraPosition, cellSize)
         allocateRequestedBlocks(maxFaceCount, cellSize, cellsPerSide)
+        prioritizeDynamicShadowUpdates(scene.dynamicShadowCasters)
         scheduleBlockUpdates()
         publishValidBlocks()
         pruneStaleBlocks()
@@ -239,6 +244,92 @@ class LocalShadowAtlas
         )
     }
 
+    private fun prioritizeDynamicShadowUpdates(casters: DynamicList<RenderItem>)
+    {
+        if (activeBlocks.isEmpty()) return
+
+        val requiredSize = casters.size * 6
+        if (dynamicCasterBounds.size < requiredSize)
+            dynamicCasterBounds = FloatArray(max(requiredSize, dynamicCasterBounds.size * 2))
+
+        // Cache world-space centers and half-extents once, shared by every light.
+        val worldBounds = dynamicCasterBounds
+        var hasUnboundedCaster = false
+        for (i in 0 until casters.size)
+        {
+            val caster = casters[i]
+            val bounds = caster.cullingBounds
+            if (bounds == null)
+            {
+                hasUnboundedCaster = true
+                break // An unbounded caster conservatively affects every light.
+            }
+
+            val transform = caster.transform
+            val cx = (bounds.xMin + bounds.xMax) * 0.5f
+            val cy = (bounds.yMin + bounds.yMax) * 0.5f
+            val cz = (bounds.zMin + bounds.zMax) * 0.5f
+            val hx = (bounds.xMax - bounds.xMin) * 0.5f
+            val hy = (bounds.yMax - bounds.yMin) * 0.5f
+            val hz = (bounds.zMax - bounds.zMin) * 0.5f
+            val offset = i * 6
+            worldBounds[offset    ] = transform.m00 * cx + transform.m10 * cy + transform.m20 * cz + transform.m30
+            worldBounds[offset + 1] = transform.m01 * cx + transform.m11 * cy + transform.m21 * cz + transform.m31
+            worldBounds[offset + 2] = transform.m02 * cx + transform.m12 * cy + transform.m22 * cz + transform.m32
+            worldBounds[offset + 3] = abs(transform.m00) * hx + abs(transform.m10) * hy + abs(transform.m20) * hz
+            worldBounds[offset + 4] = abs(transform.m01) * hx + abs(transform.m11) * hy + abs(transform.m21) * hz
+            worldBounds[offset + 5] = abs(transform.m02) * hx + abs(transform.m12) * hy + abs(transform.m22) * hz
+        }
+
+        activeBlocks.forEach { block ->
+            val light = block.light ?: return@forEach
+            var hasDynamicCasters = hasUnboundedCaster
+            if (!hasDynamicCasters && casters.isNotEmpty())
+            {
+                val isSpotLight = light.isSpotLight
+                val planes = tmpCasterFrustum.planeSet
+                if (isSpotLight)
+                    tmpCasterFrustum.setForViewProjection(shadowFaces[block.faceOffset].pendingViewProjection)
+
+                val xLight = light.position.x
+                val yLight = light.position.y
+                val zLight = light.position.z
+                val rangeSquared = light.range * light.range
+                for (i in 0 until casters.size)
+                {
+                    val offset = i * 6
+                    val cx = worldBounds[offset    ]
+                    val cy = worldBounds[offset + 1]
+                    val cz = worldBounds[offset + 2]
+                    val hx = worldBounds[offset + 3]
+                    val hy = worldBounds[offset + 4]
+                    val hz = worldBounds[offset + 5]
+                    val overlaps = if (isSpotLight)
+                    {
+                        planes.intersectsAabb(cx, cy, cz, hx, hy, hz)
+                    }
+                    else
+                    {
+                        val dx = max(abs(cx - xLight) - hx, 0f)
+                        val dy = max(abs(cy - yLight) - hy, 0f)
+                        val dz = max(abs(cz - zLight) - hz, 0f)
+                        dx * dx + dy * dy + dz * dz <= rangeSquared
+                    }
+                    if (overlaps)
+                    {
+                        hasDynamicCasters = true
+                        break
+                    }
+                }
+            }
+
+            // Keep the final cleanup update pending even after the caster leaves or disappears.
+            block.urgentUpdate = block.urgentUpdate || hasDynamicCasters || block.hadDynamicCasters
+            block.hadDynamicCasters = hasDynamicCasters
+            block.dirty = block.dirty || block.urgentUpdate
+        }
+    }
+
     private fun scheduleBlockUpdates()
     {
         val budget = max(0, maxShadowUpdatesPerFrame)
@@ -271,6 +362,7 @@ class LocalShadowAtlas
             shadowFaceIndicesToRender.add(face.index)
         }
         block.contentValid = true
+        block.urgentUpdate = false
         block.dirty = false
         block.lastRenderedFrame = frameIndex
     }
@@ -373,13 +465,12 @@ class LocalShadowAtlas
     {
         val framesSinceRender = max(0, frameIndex - lastRenderedFrame)
         val age = min(framesSinceRender, MAX_SCORE_AGE).toFloat()
-        if (!contentValid)
-            return INVALID_BLOCK_UPDATE_SCORE + age + importance
+        if (!contentValid) return INVALID_BLOCK_UPDATE_SCORE + age + importance
 
-        val overdue = framesSinceRender.toFloat() / desiredUpdateInterval.toFloat()
+        val overdue = age / desiredUpdateInterval.toFloat()
         return when
         {
-            framesSinceRender >= MAX_SHADOW_UPDATE_INTERVAL -> STARVED_BLOCK_UPDATE_SCORE + importance + overdue
+            urgentUpdate -> URGENT_BLOCK_UPDATE_SCORE + age + importance
             overdue >= 1f -> OVERDUE_BLOCK_UPDATE_SCORE + importance + overdue
             else -> BACKGROUND_BLOCK_UPDATE_SCORE + importance * BACKGROUND_IMPORTANCE_WEIGHT + overdue
         }
@@ -491,15 +582,17 @@ class LocalShadowAtlas
 
     private inner class ShadowBlock(val key: Long)
     {
-        var faceOffset = -1
-        var faceCount = 0
-        var importance = 0f
+        var faceOffset            = -1
+        var faceCount             = 0
+        var importance            = 0f
         var desiredUpdateInterval = 120
-        var lastRenderedFrame = INITIAL_LAST_RENDERED_FRAME
-        var lastRequestedFrame = frameIndex
-        var contentValid = false
-        var dirty = true
-        var light: RenderLight? = null
+        var lastRenderedFrame     = INITIAL_LAST_RENDERED_FRAME
+        var lastRequestedFrame    = frameIndex
+        var contentValid          = false
+        var urgentUpdate          = false
+        var dirty                 = true
+        var hadDynamicCasters     = false
+        var light: RenderLight?   = null
 
         fun overlaps(offset: Int, count: Int) = faceOffset < offset + count && offset < faceOffset + faceCount
     }
@@ -513,10 +606,9 @@ class LocalShadowAtlas
         private const val USEFUL_SHADOW_IMPORTANCE = 0.1f
         private const val MIN_SHADOW_UPDATE_IMPORTANCE = 0.01f
         private const val BACKGROUND_IMPORTANCE_WEIGHT = 0.1f
-        private const val MAX_SHADOW_UPDATE_INTERVAL = 240
         private const val MAX_SCORE_AGE = 1000
         private const val INVALID_BLOCK_UPDATE_SCORE = 30_000f
-        private const val STARVED_BLOCK_UPDATE_SCORE = 20_000f
+        private const val URGENT_BLOCK_UPDATE_SCORE = 25_000f
         private const val OVERDUE_BLOCK_UPDATE_SCORE = 10_000f
         private const val BACKGROUND_BLOCK_UPDATE_SCORE = 0f
         private const val INITIAL_LAST_RENDERED_FRAME = -1_000_000

@@ -13,6 +13,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredLightGrid
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderSceneSnapshot
+import no.njoh.pulseengine.core.shared.primitives.Mobility
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderView
@@ -32,6 +33,7 @@ abstract class SceneRenderContext
      * Static models with multiple LODs and configured distance thresholds remain one logical
      * submission until the nearest active camera has selected an LOD.
      * LOD thresholds are ascending squared world-space distances from the model's bounding-sphere center.
+     * Use STATIC mobility for unchanged world-space geometry. Moving or deforming geometry should use DYNAMIC.
      */
     abstract fun submitModel(
         engine: PulseEngine,
@@ -40,6 +42,7 @@ abstract class SceneRenderContext
         material: Material? = null,
         animationPose: AnimatedSkeletonPose? = null,
         renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
+        mobility: Mobility = Mobility.DYNAMIC,
         lodThresholds: FloatArray? = null,
         lodHysteresis: Float = 0.15f,
         lodKey: Long = 0L,
@@ -56,6 +59,7 @@ abstract class SceneRenderContext
         cullingBounds: Model.Aabb? = mesh.localBounds,
         boneMatrices: Array<Matrix4f>? = null,
         renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
+        mobility: Mobility = Mobility.DYNAMIC,
         renderId: Long = -1
     )
 
