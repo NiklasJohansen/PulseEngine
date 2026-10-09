@@ -228,7 +228,9 @@ class PhysicsCharacter3D : SceneEntity(), Initiable, Updatable, PhysicsBodyEntit
         it.linearDamping      = linearDamping
         it.angularDamping     = angularDamping
         it.gravityScale       = gravityScale
-        it.lockYRotation      = true
+        it.lockYRotation      = false
+        it.lockZRotation      = true
+        it.lockXRotation      = true
     }
 
     override fun getPhysicsShapeDefinitions(engine: PulseEngine): List<Box3DShapeDefinition>
