@@ -7,7 +7,7 @@ import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 
 /**
  * Base class for all renderers.
- * A renderer is responsible for drawing to the render target of a [no.njoh.pulseengine.core.graphics.surface.Surface].
+ * A renderer is responsible for drawing to the render target of a [Surface].
  * Batches are used to group draw calls together when the global state changes,
  * e.g., stencil masks or changes to blending modes.
  */
@@ -99,9 +99,15 @@ abstract class Renderer
     fun hasContentToRender() = hadContent
 
     /**
-     * Called once when the renderer is added to the [no.njoh.pulseengine.core.graphics.surface.Surface]
+     * Called once when the renderer is added to the [Surface]
      */
     abstract fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
+
+    /**
+     * Called from the graphics thread after the render target is created or recreated, before frame preparation.
+     * Also called when this renderer is attached to an existing target.
+     */
+    open fun onRenderTargetRecreated(engine: PulseEngineInternal) { }
 
     /**
      * Called once at the start of every frame.

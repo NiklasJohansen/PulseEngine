@@ -50,7 +50,7 @@ class SurfaceImpl(
 
     private var initialized           = false
     private var shouldRerender        = false
-    private var pendingTargetRebuild  = false
+    private var shouldRebuildTarget   = false
     private val onInitFrame           = ArrayList<(PulseEngineInternal) -> Unit>()
     private var readRenderStates      = ArrayList<RenderState>(MAX_BATCH_COUNT)
     private var writeRenderStates     = ArrayList<RenderState>(MAX_BATCH_COUNT)
@@ -72,17 +72,24 @@ class SurfaceImpl(
 
     override fun init(engine: PulseEngineInternal, width: Int, height: Int, glContextRecreated: Boolean)
     {
-        config.updateSize(width, height)
+        val sizeChanged = config.updateSize(width, height)
+        val renderSizeChanged = config.updateRenderSize()
+
+        if (initialized && !shouldRebuildTarget && !glContextRecreated && !renderSizeChanged)
+        {
+            if (sizeChanged) shouldRerender = true
+            return
+        }
 
         if (initialized)
             resetPixelReaders()
 
-        if (pendingTargetRebuild)
+        if (shouldRebuildTarget)
         {
             if (initialized) 
                 renderTarget.destroy()
             renderTarget = createRenderTarget()
-            pendingTargetRebuild = false
+            shouldRebuildTarget = false
         }
 
         if (!initialized)
@@ -107,6 +114,7 @@ class SurfaceImpl(
 
         renderers.sortBy { it.order }
         renderTarget.init(config.renderWidth, config.renderHeight)
+        renderers.forEachFast { it.onRenderTargetRecreated(engine) }
         shouldRerender = true
         initialized = true
     }
@@ -507,6 +515,7 @@ class SurfaceImpl(
             rendererMap[renderer.javaClass] = renderer
             renderers.add(renderer)
             renderers.sortBy { it.order }
+            renderer.onRenderTargetRecreated(it)
         }
     }
 
@@ -537,23 +546,24 @@ class SurfaceImpl(
     private fun requestRenderTargetRebuild()
     {
         shouldRerender = true
-        if (pendingTargetRebuild) 
+        if (shouldRebuildTarget)
             return
 
-        pendingTargetRebuild = true
+        shouldRebuildTarget = true
         if (!initialized)
             return
 
         runOnInitFrame() 
         {
-            if (pendingTargetRebuild)
+            if (shouldRebuildTarget)
             {
                 config.updateRenderSize()
                 resetPixelReaders()
                 renderTarget.destroy()
                 renderTarget = createRenderTarget()
                 renderTarget.init(config.renderWidth, config.renderHeight)
-                pendingTargetRebuild = false
+                shouldRebuildTarget = false
+                renderers.forEachFast { renderer -> renderer.onRenderTargetRecreated(it) }
             }
         }
     }

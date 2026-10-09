@@ -81,6 +81,12 @@ class LocalShadowAtlas
         frameIndex++
     }
 
+    fun invalidate()
+    {
+        blocks.forEach { it.value.invalidateOwnedFaces() }
+        activeShadowFaces.clear()
+    }
+
     private fun updateLayout(cellSize: Int, maxFaceCount: Int)
     {
         if (lastResolution != resolution || lastCellSize != cellSize)

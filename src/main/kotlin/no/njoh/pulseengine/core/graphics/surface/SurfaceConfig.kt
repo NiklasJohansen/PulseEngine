@@ -65,21 +65,24 @@ class SurfaceConfigInternal(
 
     init { setDrawColor(1f, 1f, 1f, 1f) }
 
-    fun updateSize(windowWidth: Int, windowHeight: Int)
+    fun updateSize(windowWidth: Int, windowHeight: Int): Boolean
     {
-        val size = sizeFunction(windowWidth, windowHeight)
-        require(size.width > 0 && size.height > 0) { "Surface size must be positive" }
-        width = size.width
-        height = size.height
-        updateRenderSize()
+        val oldSize = PackedSize(width, height)
+        val newSize = sizeFunction(windowWidth, windowHeight)
+        require(newSize.width > 0 && newSize.height > 0) { "Surface size must be positive" }
+        width = newSize.width
+        height = newSize.height
+        return newSize != oldSize
     }
 
-    fun updateRenderSize()
+    fun updateRenderSize(): Boolean
     {
-        val size = renderSizeFunction(width, height, renderScale)
-        require(size.width > 0 && size.height > 0) { "Surface render size must be positive" }
-        renderWidth = size.width
-        renderHeight = size.height
+        val oldRenderSize = PackedSize(renderWidth, renderHeight)
+        val newRenderSize = renderSizeFunction(width, height, renderScale)
+        require(newRenderSize.width > 0 && newRenderSize.height > 0) { "Surface render size must be positive" }
+        renderWidth = newRenderSize.width
+        renderHeight = newRenderSize.height
+        return newRenderSize != oldRenderSize
     }
 
     fun increaseDepth()

@@ -112,9 +112,9 @@ class LocalShadowRenderView(private val atlas: LocalShadowAtlas) : RenderView(LO
         }
 
         fun getNumShadowFacesToRender(): Int = shadowFaceIndices.size
+        
+        fun getCullViewIndexOf(shadowFaceIndex: Int): Int = shadowFaceIndices.indexOf(shadowFaceIndex)
 
         fun containsShadowFace(shadowFaceIndex: Int): Boolean = shadowFaceIndices.contains(shadowFaceIndex)
-
-        fun cullViewIndexOf(shadowFaceIndex: Int): Int = shadowFaceIndices.indexOf(shadowFaceIndex)
     }
 }

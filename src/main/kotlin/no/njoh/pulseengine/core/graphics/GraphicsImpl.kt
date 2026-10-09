@@ -272,6 +272,7 @@ open class GraphicsImpl : GraphicsInternal
             outputSpec = output
         )
         config.updateSize(windowWidth, windowHeight)
+        config.updateRenderSize()
 
         val newCamera = (camera ?: DefaultCamera.createOrthographic(config.width, config.height)) as CameraInternal
         val newSurface = SurfaceImpl(newCamera, config)

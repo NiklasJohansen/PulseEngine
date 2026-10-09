@@ -52,10 +52,15 @@ class LocalShadowAtlasRenderer(
         viewKey = RenderViewKey(renderViewGroup ?: surface.viewGroup) { LocalShadowRenderView(atlas) }
     }
 
+    override fun onRenderTargetRecreated(engine: PulseEngineInternal)
+    {
+        engine.gfx.sceneContext.getLocalShadowAtlas().invalidate()
+    }
+
     override fun declareRenderViews(engine: PulseEngineInternal, surface: SurfaceInternal, context: SceneRenderContextInternal)
     {
         increaseBatchSize() // Make sure that the batch size is at least 1
-        context.requestView(viewKey) // Declares that the view is needed for this frame
+        context.requestView(viewKey) // Requests that a LocalShadowRenderView is needed for this frame
     }
 
     override fun onRenderBatch(engine: PulseEngineInternal, surface: SurfaceInternal, startIndex: Int, drawCount: Int)
@@ -103,7 +108,7 @@ class LocalShadowAtlasRenderer(
                 maskedSkinnedProgram.bind()
                 maskedSkinnedProgram.setUniform("viewProjection", shadowFace.viewProjection)
 
-                val cullViewIndex = pass.cullViewIndexOf(shadowFaceIndex)
+                val cullViewIndex = pass.getCullViewIndexOf(shadowFaceIndex)
                 bindStorageBuffers(engine, opaquePrograms, pass.drawPayload)
                 drawRenderBucket(pass.opaqueBucket, pass.drawPayload, opaquePrograms, cullViewIndex)
 
