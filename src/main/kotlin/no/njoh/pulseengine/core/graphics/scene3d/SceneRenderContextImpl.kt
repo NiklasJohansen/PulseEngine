@@ -20,6 +20,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
+import no.njoh.pulseengine.core.shared.primitives.Mobility
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderStateProvider
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderView
@@ -241,9 +242,10 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         cullingBounds: Aabb?,
         boneMatrices: Array<Matrix4f>?,
         renderPassMask: RenderPassMask,
+        mobility: Mobility,
         renderId: Long
     ) {
-        nextFrameScene.addMesh(mesh, material, transform, cullingBounds, boneMatrices, renderPassMask, resolveRenderId(renderId))
+        nextFrameScene.addMesh(mesh, material, transform, cullingBounds, boneMatrices, renderPassMask, mobility, resolveRenderId(renderId))
     }
 
     override fun submitModel(
@@ -253,6 +255,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         material: Material?,
         animationPose: AnimatedSkeletonPose?,
         renderPassMask: RenderPassMask,
+        mobility: Mobility,
         lodThresholds: FloatArray?,
         lodHysteresis: Float,
         lodKey: Long,
@@ -261,7 +264,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         val resolvedRenderId = resolveRenderId(renderId)
         if (lodThresholds == null || lodThresholds.isEmpty() || model.hasBones || model.lodLevels.size < 2)
         {
-            nextFrameScene.addModelMeshes(engine, model, transform, material, animationPose, lodLevel = 0, renderPassMask, resolvedRenderId)
+            nextFrameScene.addModelMeshes(engine, model, transform, material, animationPose, lodLevel = 0, renderPassMask, mobility, resolvedRenderId)
             return
         }
 
@@ -273,7 +276,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             else -> 0L
         }
 
-        nextFrameScene.addModel(model, transform, material, renderPassMask, lodThresholds, lodHysteresis, resolvedLodKey, resolvedRenderId)
+        nextFrameScene.addModel(model, transform, material, renderPassMask, mobility, lodThresholds, lodHysteresis, resolvedLodKey, resolvedRenderId)
     }
 
     override fun pushRenderIdOverride(renderId: Long)

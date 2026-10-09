@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
+import no.njoh.pulseengine.core.shared.primitives.Mobility
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
@@ -28,7 +29,7 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
     var model    = AssetHandle<Model>("cube")
     var material = AssetHandle<Material>()
 
-    @Prop("Transform", i=0)          var mode     = TransformMode.STATIC
+    @Prop("Transform", i=0)          var mode     = Mobility.STATIC
     @Prop("Transform", i=1) override var position = Vector3f(0f)
     @Prop("Transform", i=2) override var rotation = Vector3f(0f)
     @Prop("Transform", i=3) override var scale    = Vector3f(1f)
@@ -53,7 +54,8 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
         val model = engine.asset.getOrNull(model) ?: return
         val material = engine.asset.getOrNull(material)
 
-        if (mode == TransformMode.DYNAMIC || engine.scene.state == SceneState.STOPPED) 
+        val dynamic = mode == Mobility.DYNAMIC || engine.scene.state == SceneState.STOPPED
+        if (dynamic)
             updateTransform() // Only recalculate if the model is dynamic or the scene is stopped (editor mode)
 
         context.submitModel(
@@ -62,6 +64,7 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
             transform = transform,
             material = material,
             renderPassMask = CAMERA or LOCAL_SHADOW.takeIf(castLocalShadows) or GLOBAL_SHADOW.takeIf(castSunShadows),
+            mobility = if (dynamic) Mobility.DYNAMIC else Mobility.STATIC,
             lodThresholds = parseLodThresholds(),
             lodHysteresis = lodHysteresis,
             renderId = id
@@ -90,6 +93,4 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
 
         return squaredLodThresholds
     }
-
-    enum class TransformMode { STATIC, DYNAMIC }
 }

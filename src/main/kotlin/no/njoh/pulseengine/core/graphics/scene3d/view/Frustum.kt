@@ -298,16 +298,24 @@ class Frustum(
             val why = abs(m01) * hx + abs(m11) * hy + abs(m21) * hz
             val whz = abs(m02) * hx + abs(m12) * hy + abs(m22) * hz
 
+            return intersectsAabb(wcx, wcy, wcz, whx, why, whz)
+        }
+
+        /** 
+         * Tests world-space AABB center and half-extents. 
+         */
+        fun intersectsAabb(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float): Boolean
+        {
             // Test against each frustum plane
             for (i in 0 until size)
             {
                 val plane = planes[i]
                 
                 // Compute the "radius" of the AABB projected onto the plane normal
-                val r = whx * abs(plane.a) + why * abs(plane.b) + whz * abs(plane.c)
+                val r = hx * abs(plane.a) + hy * abs(plane.b) + hz * abs(plane.c)
 
                 // Distance from center to plane
-                val dist = plane.distanceToPoint(wcx, wcy, wcz)
+                val dist = plane.distanceToPoint(cx, cy, cz)
 
                 // If the AABB is completely behind this plane, it's outside the frustum
                 if (dist < -r) return false

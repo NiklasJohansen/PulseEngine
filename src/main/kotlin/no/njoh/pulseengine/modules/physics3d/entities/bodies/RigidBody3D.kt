@@ -7,11 +7,12 @@ import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
+import no.njoh.pulseengine.core.shared.primitives.Mobility
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
 import no.njoh.pulseengine.core.scene.SceneEntity
-import no.njoh.pulseengine.core.scene.SceneState
+import no.njoh.pulseengine.core.scene.SceneState.RUNNING
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.shared.annotations.Icon
@@ -19,13 +20,13 @@ import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
-import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D
 import no.njoh.pulseengine.modules.physics3d.BoxGeometry3D
 import no.njoh.pulseengine.modules.physics3d.CapsuleGeometry3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsColliderType3D.*
 import no.njoh.pulseengine.modules.physics3d.ConvexHullGeometry3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsBody3D
 import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D.DYNAMIC
+import no.njoh.pulseengine.modules.physics3d.PhysicsBodyType3D.STATIC
 import no.njoh.pulseengine.modules.physics3d.ShapeGeometry3D
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DShapeDefinition
 import no.njoh.pulseengine.modules.physics3d.box3d.Box3DBodyDefinition
@@ -45,7 +46,7 @@ import org.joml.Vector3fc
 @Icon("SHAPES")
 open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DRenderable, Named
 {
-    override var name = "Physics body "
+    override var name = "RigidBody3D"
 
     @Prop("Transform", i=1)             override var position = Vector3f(0f)
     @Prop("Transform", i=2)             override var rotation = Vector3f(0f)
@@ -93,7 +94,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
 
         tmpTransform.identity()
 
-        if (engine.scene.state == SceneState.RUNNING)
+        if (engine.scene.state == RUNNING)
         {
             val i = engine.data.interpolation
             previousPosition.lerp(currentPosition, i, tmpRenderPosition)
@@ -113,6 +114,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
             transform = tmpTransform,
             material = material,
             renderPassMask = CAMERA or LOCAL_SHADOW.takeIf(castLocalShadows) or GLOBAL_SHADOW.takeIf(castSunShadows),
+            mobility = if (bodyType == STATIC && engine.scene.state == RUNNING) Mobility.STATIC else Mobility.DYNAMIC,
             renderId = id
         )
     }
@@ -261,7 +263,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
 
         updateGeometry(geometry)
         definition.geometry = geometry
-        definition.density = if (bodyType == PhysicsBodyType3D.STATIC) 0f else density
+        definition.density = if (bodyType == STATIC) 0f else density
         definition.friction = friction
         definition.restitution = restitution
         definition.categoryBits = layerMask.toLong() and 0xffffffffL

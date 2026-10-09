@@ -3,10 +3,12 @@ package no.njoh.pulseengine.core.graphics.scene3d.submission
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Material
 import no.njoh.pulseengine.core.asset.types.Material.BlendMode.*
+import no.njoh.pulseengine.core.shared.primitives.Mobility
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.*
 import no.njoh.pulseengine.core.graphics.scene3d.view.ModelLodResolver
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import no.njoh.pulseengine.core.shared.primitives.Mat4f
@@ -19,10 +21,12 @@ import kotlin.math.min
 
 class RenderScene
 {
-    val opaqueItems  = DynamicList<RenderItem>(1024)
-    val maskedItems  = DynamicList<RenderItem>(512)
-    val blendedItems = DynamicList<RenderItem>(256)
-    val localLights  = DynamicList<RenderLight>(64)
+    val opaqueItems          = DynamicList<RenderItem>(1024)
+    val maskedItems          = DynamicList<RenderItem>(512)
+    val blendedItems         = DynamicList<RenderItem>(256)
+
+    val dynamicShadowCasters = DynamicList<RenderItem>(128)
+    val localLights          = DynamicList<RenderLight>(64)
 
     val submittedSnapshot = RenderSceneSnapshot()
 
@@ -43,20 +47,21 @@ class RenderScene
         transform: Matrix4f,
         material: Material?,
         renderPassMask: RenderPassMask,
+        mobility: Mobility,
         lodThresholds: FloatArray?,
         lodHysteresis: Float,
         lodKey: Long,
         renderId: Long
     ) {
         val item = modelPool.removeLastOrNull() ?: ModelItem()
-        item.set(model, transform, material, renderPassMask, lodThresholds, lodHysteresis, lodKey, renderId)
+        item.set(model, transform, material, renderPassMask, mobility, lodThresholds, lodHysteresis, lodKey, renderId)
         pendingModels += item
     }
 
-    fun addMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, renderId: Long)
+    fun addMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, mobility: Mobility = Mobility.DYNAMIC, renderId: Long)
     {
         val item = itemPool.removeLastOrNull() ?: RenderItem()
-        item.set(mesh, material, Mat4f(matrixArena).set(transform), cullingBounds, boneMatrices, renderPassMask, renderId)
+        item.set(mesh, material, Mat4f(matrixArena).set(transform), cullingBounds, boneMatrices, renderPassMask, mobility, renderId)
         addRenderItem(item)
     }
 
@@ -68,6 +73,7 @@ class RenderScene
         animationPose: AnimatedSkeletonPose?,
         lodLevel: Int,
         renderPassMask: RenderPassMask,
+        mobility: Mobility,
         renderId: Long
     ) {
         val meshInstances = model.lodLevels[lodLevel]
@@ -93,19 +99,23 @@ class RenderScene
             }
 
             val item = itemPool.removeLastOrNull() ?: RenderItem()
-            item.set(it.mesh, resolvedMaterial, meshTransform, cullingBounds, boneMatrices, renderPassMask, renderId)
+            item.set(it.mesh, resolvedMaterial, meshTransform, cullingBounds, boneMatrices, renderPassMask, mobility, renderId)
             addRenderItem(item)
         }
     }
 
     fun addRenderItem(item: RenderItem)
     {
-        when (item.material?.blendMode ?: OPAQUE)
+        val blendMode = item.material?.blendMode ?: OPAQUE
+        when (blendMode)
         {
             OPAQUE -> opaqueItems  += item
             MASK   -> maskedItems  += item
             BLEND  -> blendedItems += item
         }
+
+        if (item.mobility == Mobility.DYNAMIC && item.isVisible(LOCAL_SHADOW) && blendMode != BLEND)
+            dynamicShadowCasters += item
     }
 
     fun addLight(
@@ -157,7 +167,7 @@ class RenderScene
         pendingModels.forEach()
         {
             val lodLevel = lodResolver.resolve(it)
-            addModelMeshes(engine, it.model, it.transform, it.material, animationPose = null, lodLevel, it.renderPassMask, it.renderId)
+            addModelMeshes(engine, it.model, it.transform, it.material, animationPose = null, lodLevel, it.renderPassMask, it.mobility, it.renderId)
         }
     }
 
@@ -174,6 +184,7 @@ class RenderScene
         opaqueItems.clear()
         maskedItems.clear()
         blendedItems.clear()
+        dynamicShadowCasters.clear()
         localLights.clear()
         pendingModels.clear()
         matrixArena.reset()
