@@ -46,6 +46,7 @@ import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
 import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.service.Service
+import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.modules.editor.EditorMode.*
 import no.njoh.pulseengine.modules.editor.EditorUtil.createDeepCopy
 import no.njoh.pulseengine.modules.ui.UiParams.UI_SCALE
@@ -383,7 +384,7 @@ class SceneEditor(
         )
         inspectorWindow.id = INSPECTOR_WINDOW_ID // Keep the stable ID used by saved editor layouts
         editorWindowsById[INSPECTOR_WINDOW_ID] = inspectorWindow
-        val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI)
+        val propertyPanel = uiFactory.createScrollableSectionUI(inspectorUI, CornerRadius(0f, 0f, 4f, 0f))
         inspectorWindow.body.addChildren(propertyPanel)
 
         val hierarchyWindow = editorWindowsById[SCENE_HIERARCHY_WINDOW_ID]

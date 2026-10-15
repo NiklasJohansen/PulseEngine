@@ -1014,7 +1014,7 @@ open class UiElementFactory(
                 {
                     addChildren(propertiesRowPanel, buttonUI)
                 },
-                createScrollbarUI(propertiesRowPanel, VERTICAL, CornerRadius(4f))
+                createScrollbarUI(propertiesRowPanel, VERTICAL, CornerRadius(0f, 0f, 4f, 0f))
             )
         }
     }
