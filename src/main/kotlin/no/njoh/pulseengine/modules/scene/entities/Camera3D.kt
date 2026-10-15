@@ -3,6 +3,7 @@ package no.njoh.pulseengine.modules.scene.entities
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.camera.CameraProjectionType.PERSPECTIVE_3D
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.scene.interfaces.Named
@@ -15,13 +16,15 @@ import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.toDegrees
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
+import no.njoh.pulseengine.modules.editor.GizmoRenderable
+import no.njoh.pulseengine.modules.editor.GizmoRenderContext
 import no.njoh.pulseengine.modules.scene.entities.Camera3D.RotationMode.*
 import org.joml.Quaternionf
 import org.joml.Vector3f
 
 @Name("3D Camera")
 @Icon("CAMERA", size = 24f, showInViewport = true)
-open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rotatable3D
+open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D, Rotatable3D, GizmoRenderable
 {
     @Prop(i=0) override var name = "Camera"
     @Prop(i=1)          var active = true
@@ -72,6 +75,21 @@ open class Camera3D : SceneEntity(), Initiable, Updatable, Named, Translatable3D
 
     override fun onUpdate(engine: PulseEngine) { }
 
+    override fun renderGizmo(surface: Surface, context: GizmoRenderContext)
+    {
+        val near = nearPlane.coerceAtLeast(0.001f)
+        val far  = farPlane.coerceAtLeast(near + 0.001f)
+        val previewDistance = if (isSet(SELECTED)) far else (context.getWorldSize(position, 55f) / 3f).coerceIn(near + 0.001f, far)
+        val rotation = cameraRotationTo(tmpQuaternionRot)
+
+        surface.setDrawColor(GizmoRenderContext.ACTIVE_COLOR)
+        context.drawFrustum(surface, position, rotation, fov.coerceIn(1f, 179f), near, previewDistance)
+        context.drawMarker(surface, position, gizmoMarkerRadius)
+
+        rotatedDeltaPos.set(0f, 0f, -context.getWorldSize(position) * 0.6f).rotate(rotation).add(position)
+        context.drawLine(surface, position, rotatedDeltaPos)
+    }
+    
     private fun updateCamera(engine: PulseEngine)
     {
         if (!active || isSet(HIDDEN)) return

@@ -14,21 +14,21 @@ import no.njoh.pulseengine.core.graphics.scene3d.submission.ModelItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
+import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.input.CursorType
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneState
+import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.POSITION_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.ROTATION_UPDATED
-import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SIZE_UPDATED
 import no.njoh.pulseengine.core.scene.interfaces.Rotatable3D
 import no.njoh.pulseengine.core.scene.interfaces.Spatial3D
 import no.njoh.pulseengine.core.scene.interfaces.Translatable3D
-import no.njoh.pulseengine.modules.scene.systems.ConicalLight3D
 import no.njoh.pulseengine.modules.scene.systems.Light3D
 import no.njoh.pulseengine.modules.scene.systems.Scene3DRenderSystem
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -37,7 +37,6 @@ import no.njoh.pulseengine.core.shared.primitives.Mat4f
 import no.njoh.pulseengine.core.shared.utils.Extensions.toRadians
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.modules.editor.EditorMode.*
-import no.njoh.pulseengine.modules.scene.entities.Camera3D
 import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.cameraFacingAxisSigns
 import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.closestAxisParameter
 import no.njoh.pulseengine.modules.editor.SceneEditor3DMath.gizmoWorldSize
@@ -82,7 +81,7 @@ class ViewportInteraction3D(
     private var cameraDragging = false
     private var selectionDrag: SelectionDrag? = null
     private val selectedTransformables = ArrayList<SceneEntity>()
-    private val selectedLights = ArrayList<Light3D>()
+    private val gizmoContext = GizmoRenderContext()
     private val selectedPivot = Vector3f()
     private val cachedTransformSelection = TransformSelection(selectedTransformables, selectedPivot)
     private var transformSelectionChanged = true
@@ -99,14 +98,7 @@ class ViewportInteraction3D(
     private val tmpP2 = Vector2f()
     private val tmpP3 = Vector2f()
     private val tmpMouse = Vector2f()
-    private val lightBaseCenter = Vector3f()
-    private val lightEndpoint = Vector3f()
     private val cameraRotation = Matrix4f()
-    private val projectedCircleWorld = Vector3f()
-    private val projectedCircleOffsetA = Vector3f()
-    private val projectedCircleOffsetB = Vector3f()
-    private val projectedCirclePrevious = Vector2f()
-    private val projectedCircleCurrent = Vector2f()
     private val projectedBoundsMin = Vector2f()
     private val projectedBoundsMax = Vector2f()
     private val boundsCorners = Array(8) { Vector3f() }
@@ -123,7 +115,10 @@ class ViewportInteraction3D(
             output = SurfaceOutputSpec(multisampling = Multisampling.MSAA8),
             clearColor = Color(0.5f, 0.5f, 0.5f, 0f),
             zOrder = -50
-        )
+        ).apply {
+            val surfaceConfig = (this as SurfaceInternal).config
+            addRenderer(GizmoRenderer(Scene3DRenderSystem.SCENE_3D_SURFACE, context.camera, surfaceConfig))
+        }
 
         updateOrbitPivotFromSelection(context)
     }
@@ -191,15 +186,9 @@ class ViewportInteraction3D(
             return
 
         val pickMode = currentPickMode(engine)
-        findLightMarkerAtMouse(engine, context)?.let { light ->
+        findGizmoMarkerAtMouse(engine, context)?.let { entity ->
             pickPending = false
-            applyPickedEntity(engine, context, light, pickMode)
-            return
-        }
-
-        findCameraMarkerAtMouse(engine, context)?.let { camera ->
-            pickPending = false
-            applyPickedEntity(engine, context, camera, pickMode)
+            applyPickedEntity(engine, context, entity, pickMode)
             return
         }
 
@@ -237,9 +226,7 @@ class ViewportInteraction3D(
             outlineSelectionDirty = false
         }
 
-        renderLightMarkers(engine, context)
-        renderCameraMarkers(engine, context)
-        selectedLights.forEachFast { renderLightInfluence(engine, context, it) }
+        renderEntityGizmos(engine, context)
 
         if (selected != null && isGizmoVisible())
             renderGizmo(engine, context, selected.pivot)
@@ -343,7 +330,6 @@ class ViewportInteraction3D(
     private fun getSelectedTransformables(context: ViewportContext): TransformSelection?
     {
         var targetCount = 0
-        var lightCount = 0
         var selectionChanged = false
         var allScalable = true
         selectedPivot.zero()
@@ -366,18 +352,6 @@ class ViewportInteraction3D(
             }
             
             targetCount++
-            if (entity is Light3D)
-            {
-                if (lightCount == selectedLights.size)
-                {
-                    selectedLights.add(entity)
-                }
-                else
-                {
-                    selectedLights[lightCount] = entity
-                }
-                lightCount++
-            }
             allScalable = allScalable && spatial is Spatial3D
             selectedPivot.add(spatial.position)
         }
@@ -387,9 +361,6 @@ class ViewportInteraction3D(
             selectedTransformables.subList(targetCount, selectedTransformables.size).clear()
             selectionChanged = true
         }
-
-        if (selectedLights.size > lightCount)
-            selectedLights.subList(lightCount, selectedLights.size).clear()
 
         if (selectionChanged)
         {
@@ -549,24 +520,26 @@ class ViewportInteraction3D(
             orbitPivotValid = false
     }
 
-    private fun findLightMarkerAtMouse(engine: PulseEngine, context: ViewportContext): SceneEntity?
+    private fun findGizmoMarkerAtMouse(engine: PulseEngine, context: ViewportContext): SceneEntity?
     {
+        val surface = engine.gfx.getSurface(GIZMO_SURFACE) ?: return null
+        
+        gizmoContext.setFor(context.camera, surface.config.width, surface.config.height)
         tmpMouse.set(engine.input.xMouse, engine.input.yMouse)
         var closest: SceneEntity? = null
-        var closestDistance = LIGHT_MARKER_HIT_RADIUS
-        
-        engine.scene.forEachEntityOfType<Light3D>
+        var closestDistance = Float.MAX_VALUE
+
+        engine.scene.forEachEntityOfType<GizmoRenderable>
         {
             val entity = it as SceneEntity
-            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
+            if (entity.isNot(EDITABLE) || entity.isAnySet(HIDDEN or DEAD))
                 return@forEachEntityOfType
-
-            tmpV0.set(it.position)
-            if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, tmpP0))
+            
+            if (!gizmoContext.project(it.position, tmpP0))
                 return@forEachEntityOfType
 
             val distance = tmpMouse.distance(tmpP0)
-            if (distance < closestDistance)
+            if (distance < it.gizmoMarkerRadius + GizmoRenderContext.MARKER_PICK_PADDING && distance < closestDistance)
             {
                 closestDistance = distance
                 closest = entity
@@ -613,33 +586,6 @@ class ViewportInteraction3D(
     override fun resetCamera(engine: PulseEngine, context: ViewportContext)
     {
         restoreCameraState(engine, context, defaultCameraState)
-    }
-
-    private fun findCameraMarkerAtMouse(engine: PulseEngine, context: ViewportContext): Camera3D?
-    {
-        tmpMouse.set(engine.input.xMouse, engine.input.yMouse)
-        var closest: Camera3D? = null
-        var closestDistance = CAMERA_MARKER_HIT_RADIUS
-
-        engine.scene.forEachEntityOfType<Camera3D>
-        {
-            val entity = it as SceneEntity
-            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
-                return@forEachEntityOfType
-
-            tmpV0.set(it.position)
-            if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, tmpP0))
-                return@forEachEntityOfType
-
-            val distance = tmpMouse.distance(tmpP0)
-            if (distance < closestDistance)
-            {
-                closestDistance = distance
-                closest = it
-            }
-        }
-
-        return closest
     }
 
     private fun observeSelection(selected: TransformSelection?)
@@ -828,12 +774,10 @@ class ViewportInteraction3D(
         if (!project(context.camera, tmpV0, engine.window.width, engine.window.height, projectedBoundsMin))
             return false
 
-        val radius = when (entity)
-        {
-            is Light3D -> LIGHT_MARKER_HIT_RADIUS
-            is Camera3D -> CAMERA_MARKER_HIT_RADIUS
-            else -> POINT_SELECTION_RADIUS
-        }
+        val radius = if (entity is GizmoRenderable)
+            entity.gizmoMarkerRadius + GizmoRenderContext.MARKER_PICK_PADDING
+        else 
+            POINT_SELECTION_RADIUS
 
         projectedBoundsMax.set(projectedBoundsMin).add(radius, radius)
         projectedBoundsMin.sub(radius, radius)
@@ -1540,250 +1484,18 @@ class ViewportInteraction3D(
         surface.drawLine(xMax, yMin, xMax, yMax)
     }
 
-    private fun renderLightMarkers(engine: PulseEngine, context: ViewportContext)
+    private fun renderEntityGizmos(engine: PulseEngine, context: ViewportContext)
     {
         val surface = engine.gfx.getSurface(GIZMO_SURFACE) ?: return
-        val width = surface.config.width
-        val height = surface.config.height
-
-        engine.scene.forEachEntityOfType<Light3D> { light ->
-            val entity = light as SceneEntity
-            if (entity.isNot(EDITABLE) || entity.isSet(HIDDEN))
+        gizmoContext.setFor(context.camera, surface.config.width, surface.config.height)
+        engine.scene.forEachEntityOfType<GizmoRenderable>
+        {
+            val entity = it as SceneEntity
+            if (entity.isNot(EDITABLE) || entity.isAnySet(HIDDEN or DEAD))
                 return@forEachEntityOfType
 
-            tmpV0.set(light.position)
-            if (!project(context.camera, tmpV0, width, height, tmpP0))
-                return@forEachEntityOfType
-
-            surface.setDrawColor(if (entity.isSet(SELECTED)) ACTIVE_COLOR else LIGHT_MARKER_COLOR)
-            drawScreenCircle(surface, tmpP0.x, tmpP0.y, LIGHT_MARKER_RADIUS)
-            surface.drawLine(tmpP0.x - LIGHT_MARKER_CROSS_SIZE, tmpP0.y, tmpP0.x + LIGHT_MARKER_CROSS_SIZE, tmpP0.y)
-            surface.drawLine(tmpP0.x, tmpP0.y - LIGHT_MARKER_CROSS_SIZE, tmpP0.x, tmpP0.y + LIGHT_MARKER_CROSS_SIZE)
-
-            if (light is ConicalLight3D)
-            {
-                val markerLength = gizmoWorldSize(context.camera, tmpV0, height) * 0.45f
-                light.getDirection(tmpV1).mul(markerLength).add(tmpV0)
-                if (project(context.camera, tmpV1, width, height, tmpP1))
-                    surface.drawLine(tmpP0.x, tmpP0.y, tmpP1.x, tmpP1.y)
-            }
+            it.renderGizmo(surface, gizmoContext)
         }
-    }
-
-    private fun renderCameraMarkers(engine: PulseEngine, context: ViewportContext)
-    {
-        val surface = engine.gfx.getSurface(GIZMO_SURFACE) ?: return
-        val width = surface.config.width
-        val height = surface.config.height
-        
-        engine.scene.forEachEntityOfType<Camera3D> { camera ->
-            if (camera.isNot(EDITABLE) || camera.isSet(HIDDEN))
-                return@forEachEntityOfType
-
-            tmpV0.set(camera.position)
-            val isSelected = camera.isSet(SELECTED)
-            surface.setDrawColor(ACTIVE_COLOR)
-            cameraDirections(camera, tmpV1, tmpV2, tmpV3)
-            renderCameraFrustum(surface, context.camera, camera, tmpV0, tmpV1, tmpV2, tmpV3, width, height, isSelected)
-
-            if (project(context.camera, tmpV0, width, height, tmpP0))
-            {
-                drawScreenCircle(surface, tmpP0.x, tmpP0.y, CAMERA_MARKER_RADIUS)
-                tmpV3.mul(gizmoWorldSize(context.camera, tmpV0, height) * 0.6f).add(tmpV0)
-                if (projectLine(context.camera, tmpV0, tmpV3, width, height, tmpP0, tmpP1, clipDepth = true))
-                    surface.drawLine(tmpP0.x, tmpP0.y, tmpP1.x, tmpP1.y)
-            }
-        }
-    }
-
-    private fun renderCameraFrustum(
-        surface: no.njoh.pulseengine.core.graphics.surface.Surface,
-        editorCamera: Camera,
-        camera: Camera3D,
-        position: Vector3f,
-        right: Vector3f,
-        up: Vector3f,
-        forward: Vector3f,
-        width: Int,
-        height: Int,
-        isSelected: Boolean
-    ) {
-        if (width <= 0 || height <= 0) return
-
-        val nearDistance = camera.nearPlane.coerceAtLeast(0.001f)
-        val configuredFarDistance = camera.farPlane.coerceAtLeast(nearDistance + 0.001f)
-        val previewDistance = gizmoWorldSize(editorCamera, position, height, CAMERA_PREVIEW_PIXEL_LENGTH)
-            .coerceIn(nearDistance + 0.001f, configuredFarDistance)
-        val farDistance = if (isSelected) configuredFarDistance else previewDistance
-        val halfFov = camera.fov.coerceIn(1f, 179f).toRadians() * 0.5f
-        val aspectRatio = width.toFloat() / height.toFloat()
-        val nearCorners = Array(4) { Vector3f() }
-        val farCorners = Array(4) { Vector3f() }
-
-        setFrustumCorners(position, right, up, forward, nearDistance, halfFov, aspectRatio, nearCorners)
-        setFrustumCorners(position, right, up, forward, farDistance, halfFov, aspectRatio, farCorners)
-
-        for (i in 0..3)
-        {
-            val next = (i + 1) % 4
-            drawProjectedLine(surface, editorCamera, nearCorners[i], nearCorners[next], width, height, clipDepth = false)
-            drawProjectedLine(surface, editorCamera, position, farCorners[i], width, height, clipDepth = false)
-        }
-
-        for (i in 0..3)
-            drawProjectedLine(surface, editorCamera, farCorners[i], farCorners[(i + 1) % 4], width, height, clipDepth = false)
-    }
-
-    private fun setFrustumCorners(
-        position: Vector3f,
-        right: Vector3f,
-        up: Vector3f,
-        forward: Vector3f,
-        distance: Float,
-        halfFov: Float,
-        aspectRatio: Float,
-        corners: Array<Vector3f>
-    ) {
-        val halfHeight = tan(halfFov) * distance
-        val halfWidth = halfHeight * aspectRatio
-        setFrustumCorner(corners[0], position, right, up, forward, distance, -halfWidth, halfHeight)
-        setFrustumCorner(corners[1], position, right, up, forward, distance, halfWidth, halfHeight)
-        setFrustumCorner(corners[2], position, right, up, forward, distance, halfWidth, -halfHeight)
-        setFrustumCorner(corners[3], position, right, up, forward, distance, -halfWidth, -halfHeight)
-    }
-
-    private fun setFrustumCorner(
-        out: Vector3f,
-        position: Vector3f,
-        right: Vector3f,
-        up: Vector3f,
-        forward: Vector3f,
-        distance: Float,
-        horizontalOffset: Float,
-        verticalOffset: Float
-    ) {
-        out.set(
-            position.x + forward.x * distance + right.x * horizontalOffset + up.x * verticalOffset,
-            position.y + forward.y * distance + right.y * horizontalOffset + up.y * verticalOffset,
-            position.z + forward.z * distance + right.z * horizontalOffset + up.z * verticalOffset
-        )
-    }
-
-    private fun renderLightInfluence(engine: PulseEngine, context: ViewportContext, light: Light3D)
-    {
-        val range = if (light.range.isFinite()) light.range.coerceAtLeast(0f) else 0f
-        if (range <= 0f) return
-        val sourceRadius = if (light.sourceRadius.isFinite()) light.sourceRadius.coerceIn(0f, range) else 0f
-
-        val surface = engine.gfx.getSurface(GIZMO_SURFACE) ?: return
-        val camera = context.camera
-        val width = surface.config.width
-        val height = surface.config.height
-        val origin = tmpV0.set(light.position)
-        if (light !is ConicalLight3D)
-        {
-            cameraDirections(camera, tmpV1, tmpV2, tmpV3)
-            surface.setDrawColor(LIGHT_VOLUME_COLOR)
-            drawProjectedCircle(surface, camera, origin, tmpV1, tmpV2, range, width, height)
-            if (sourceRadius > 0f)
-            {
-                surface.setDrawColor(LIGHT_SOURCE_RADIUS_COLOR)
-                drawProjectedCircle(surface, camera, origin, tmpV1, tmpV2, sourceRadius, width, height)
-            }
-            return
-        }
-
-        val forward = light.getDirection(tmpV1)
-        val right = if (abs(forward.y) < 0.99f) forward.cross(WORLD_Y, tmpV2) else forward.cross(WORLD_X, tmpV2)
-        right.normalize()
-        val up = right.cross(forward, tmpV3).normalize()
-        val outerConeAngle = if (light.outerConeAngle.isFinite()) light.outerConeAngle.coerceIn(0f, MAX_CONE_ANGLE) else 0f
-        val coneSlope = tan(outerConeAngle.toRadians())
-        val baseCenter = lightBaseCenter.set(forward).mul(range).add(origin)
-        val baseRadius = coneSlope * range
-
-        surface.setDrawColor(LIGHT_VOLUME_COLOR)
-        drawProjectedCircle(surface, camera, baseCenter, right, up, baseRadius, width, height)
-        drawProjectedLine(surface, camera, origin, baseCenter, width, height, clipDepth = true)
-        for (i in 0 until LIGHT_CONE_SIDE_COUNT)
-        {
-            val angle = i.toFloat() / LIGHT_CONE_SIDE_COUNT * Math.PI.toFloat() * 2f
-            val rightScale = cos(angle) * baseRadius
-            val upScale = sin(angle) * baseRadius
-            lightEndpoint.set(baseCenter).add(
-                right.x * rightScale + up.x * upScale,
-                right.y * rightScale + up.y * upScale,
-                right.z * rightScale + up.z * upScale
-            )
-            drawProjectedLine(surface, camera, origin, lightEndpoint, width, height, clipDepth = true)
-        }
-
-        if (sourceRadius > 0f && coneSlope > 0f)
-        {
-            val sourceDistance = (sourceRadius / coneSlope).coerceAtMost(range)
-            val visibleSourceRadius = coneSlope * sourceDistance
-            val sourceCenter = lightEndpoint.set(forward).mul(sourceDistance).add(origin)
-            surface.setDrawColor(LIGHT_SOURCE_RADIUS_COLOR)
-            drawProjectedCircle(surface, camera, sourceCenter, right, up, visibleSourceRadius, width, height)
-        }
-    }
-
-    private fun drawScreenCircle(surface: no.njoh.pulseengine.core.graphics.surface.Surface, x: Float, y: Float, radius: Float)
-    {
-        var xPrevious = x + radius
-        var yPrevious = y
-        for (i in 1..LIGHT_MARKER_SEGMENTS)
-        {
-            val angle = i.toFloat() / LIGHT_MARKER_SEGMENTS * Math.PI.toFloat() * 2f
-            val xCurrent = x + cos(angle) * radius
-            val yCurrent = y + sin(angle) * radius
-            surface.drawLine(xPrevious, yPrevious, xCurrent, yCurrent)
-            xPrevious = xCurrent
-            yPrevious = yCurrent
-        }
-    }
-
-    private fun drawProjectedCircle(
-        surface: no.njoh.pulseengine.core.graphics.surface.Surface,
-        camera: Camera,
-        center: Vector3f,
-        axisA: Vector3f,
-        axisB: Vector3f,
-        radius: Float,
-        width: Int,
-        height: Int
-    ) {
-        val world = projectedCircleWorld
-        val offsetA = projectedCircleOffsetA
-        val offsetB = projectedCircleOffsetB
-        val previous = projectedCirclePrevious
-        val current = projectedCircleCurrent
-        var previousValid = false
-        for (i in 0..LIGHT_VOLUME_SEGMENTS)
-        {
-            val angle = i.toFloat() / LIGHT_VOLUME_SEGMENTS * Math.PI.toFloat() * 2f
-            world.set(center)
-                .add(offsetA.set(axisA).mul(cos(angle) * radius))
-                .add(offsetB.set(axisB).mul(sin(angle) * radius))
-            val valid = project(camera, world, width, height, current)
-            if (valid && previousValid)
-                surface.drawLine(previous.x, previous.y, current.x, current.y)
-            previous.set(current)
-            previousValid = valid
-        }
-    }
-
-    private fun drawProjectedLine(
-        surface: no.njoh.pulseengine.core.graphics.surface.Surface,
-        camera: Camera,
-        start: Vector3f,
-        end: Vector3f,
-        width: Int,
-        height: Int,
-        clipDepth: Boolean
-    ) {
-        if (projectLine(camera, start, end, width, height, tmpP0, tmpP1, clipDepth))
-            surface.drawLine(tmpP0.x, tmpP0.y, tmpP1.x, tmpP1.y)
     }
 
     private fun renderGizmo(engine: PulseEngine, context: ViewportContext, pivot: Vector3f)
@@ -2061,18 +1773,6 @@ class ViewportInteraction3D(
         rotation.transformDirection(forward.set(0f, 0f, -1f)).normalize()
     }
 
-    private fun cameraDirections(camera: Camera3D, right: Vector3f, up: Vector3f, forward: Vector3f)
-    {
-        val rotation = cameraRotation.identity().rotateXYZ(
-            camera.rotation.x.toRadians(),
-            camera.rotation.y.toRadians(),
-            camera.rotation.z.toRadians()
-        )
-        rotation.transformDirection(right.set(1f, 0f, 0f)).normalize()
-        rotation.transformDirection(up.set(0f, 1f, 0f)).normalize()
-        rotation.transformDirection(forward.set(0f, 0f, -1f)).normalize()
-    }
-
     private fun getRenderIdSurface(engine: PulseEngine) = engine.gfx
         .getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
         ?.takeIf { it.config.hasAttachment(Scene3DRenderSystem.RENDER_ID_ATTACHMENT_POINT) }
@@ -2159,16 +1859,6 @@ class ViewportInteraction3D(
         private const val PLANE_TRIANGLE_SIZE = 0.48f
         private const val PLANE_HIT_PADDING = 10f
         private const val MIN_PLANE_HIT_SCORE = 0.001f
-        private const val LIGHT_MARKER_RADIUS = 7f
-        private const val LIGHT_MARKER_CROSS_SIZE = 4f
-        private const val LIGHT_MARKER_HIT_RADIUS = 13f
-        private const val LIGHT_MARKER_SEGMENTS = 16
-        private const val CAMERA_MARKER_RADIUS = 8f
-        private const val CAMERA_MARKER_HIT_RADIUS = 14f
-        private const val CAMERA_PREVIEW_PIXEL_LENGTH = 55f
-        private const val LIGHT_VOLUME_SEGMENTS = 48
-        private const val LIGHT_CONE_SIDE_COUNT = 8
-        private const val MAX_CONE_ANGLE = 89f
 
         private val AXIS_HANDLES = arrayOf(Handle.X, Handle.Y, Handle.Z)
         private val PLANE_HANDLES = arrayOf(Handle.XY, Handle.XZ, Handle.YZ)
@@ -2177,14 +1867,9 @@ class ViewportInteraction3D(
             4, 5, 4, 6, 5, 7, 6, 7,
             0, 4, 1, 5, 2, 6, 3, 7
         )
-        private val WORLD_X = Vector3f(1f, 0f, 0f)
-        private val WORLD_Y = Vector3f(0f, 1f, 0f)
         private val ACTIVE_COLOR = Color(1f, 0.8f, 0.12f, 1f)
         private val CENTER_COLOR = Color(0.85f, 0.85f, 0.85f, 1f)
         private val ACTIVE_PLANE_COLOR = Color(1f, 0.75f, 0.08f, 0.9f)
-        private val LIGHT_MARKER_COLOR = Color(1f, 0.72f, 0.16f, 1f)
-        private val LIGHT_VOLUME_COLOR = Color(1f, 0.72f, 0.16f, 0.8f)
-        private val LIGHT_SOURCE_RADIUS_COLOR = Color(0.3f, 0.85f, 1f, 0.9f)
         private val SELECTION_RECT_BORDER_COLOR = Color(1f, 1f, 1f, 1f)
     }
 }

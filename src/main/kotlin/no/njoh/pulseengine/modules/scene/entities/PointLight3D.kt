@@ -2,16 +2,19 @@ package no.njoh.pulseengine.modules.scene.entities
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
+import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.Light3D
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.modules.editor.GizmoRenderable
+import no.njoh.pulseengine.modules.editor.GizmoRenderContext
 import org.joml.Vector3f
 
 @Name("3D Point Light")
-class PointLight3D : SceneEntity(), Light3D, Named
+class PointLight3D : SceneEntity(), Light3D, Named, GizmoRenderable
 {
     @Prop override var name = "Point Light"
 
@@ -35,5 +38,23 @@ class PointLight3D : SceneEntity(), Light3D, Named
     {
         intensityColor.setFrom(color).multiplyRgb(intensity)
         context.submitPointLight(position, range, intensityColor, sourceRadius, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, id, contactShadowLength)
+    }
+
+    override fun renderGizmo(surface: Surface, context: GizmoRenderContext)
+    {
+        if (isSet(SELECTED)) 
+            surface.setDrawColor(GizmoRenderContext.ACTIVE_COLOR)
+        else
+            surface.setDrawColor(1f, 0.72f, 0.16f)
+        
+        context.drawMarker(surface, position, gizmoMarkerRadius, cross = true)
+
+        if (isNot(SELECTED) || !range.isFinite() || range <= 0f) 
+            return
+ 
+        surface.setDrawColor(1f, 0.72f, 0.16f, 0.8f)
+        context.drawCircle(surface, position, context.cameraRight, context.cameraUp, range)
+        surface.setDrawColor(0.3f, 0.85f, 1f, 0.9f)
+        context.drawCircle(surface, position, context.cameraRight, context.cameraUp, sourceRadius.coerceIn(0f, range))
     }
 }
