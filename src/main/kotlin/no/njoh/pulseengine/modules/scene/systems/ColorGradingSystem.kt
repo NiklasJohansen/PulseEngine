@@ -21,6 +21,7 @@ class ColorGradingSystem : SceneSystem()
     @Prop(i=5, min=0f, max=1f)    var lutIntensity   = 1f
     @Prop(i=6)                    var lutTexture     = AssetHandle<Texture>()
     @Prop(i=7)                    var targetSurfaces = "scene3d"
+    @Prop(i=8, min=0f, max=2f)    var dithering      = 1f
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()
@@ -63,6 +64,7 @@ class ColorGradingSystem : SceneSystem()
         effect.contrast     = contrast
         effect.saturation   = saturation
         effect.vignette     = vignette
+        effect.dithering    = dithering
         effect.lutIntensity = lutIntensity
         effect.lutTexture   = lutTexture.name
     }

@@ -19,7 +19,8 @@ class ColorGradingEffect(
     var exposureEv: Float = 0f,
     var contrast: Float = 1f,
     var saturation: Float = 1f,
-    var vignette: Float = 0f
+    var vignette: Float = 0f,
+    var dithering: Float = 1f
 ) : BaseEffect() {
 
     override fun loadShaderProgram(engine: PulseEngineInternal) = ShaderProgram.create(
@@ -46,6 +47,7 @@ class ColorGradingEffect(
         program.setUniform("contrast", contrast)
         program.setUniform("saturation", saturation)
         program.setUniform("vignette", vignette)
+        program.setUniform("dithering", dithering)
         fullscreenPass.draw()
         fbo.release()
         return fbo.getTextures()

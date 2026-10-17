@@ -11,6 +11,7 @@ uniform float exposureEv;
 uniform float contrast;
 uniform float saturation;
 uniform float vignette;
+uniform float dithering;
 uniform vec3 lutTexCoord;
 uniform float lutIntensity;
 uniform float lutSize;
@@ -169,6 +170,22 @@ void main()
     // Vignette
     vec2 v = uv * (1.0 - uv.yx);
     color.rgb *= pow(v.x * v.y * 15.0, vignette);
+
+    // Ditering
+    if (dithering > 0.0)
+    {
+        // Static interleaved gradient noise (Jorge Jimenez)
+        float noise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5;
+
+        // Linear color to sRGB. Dither in sRGB space to avoid banding, then convert back to linear for the backbuffer's sRGB conversion.
+        vec3 srgb = mix(1.055 * pow(color.rgb, vec3(1.0 / 2.4)) - 0.055, color.rgb * 12.92, lessThanEqual(color.rgb, vec3(0.0031308)));
+
+        // Add noise to the sRGB color, clamped to [0, 1] range
+        srgb = max(srgb + noise * clamp(dithering, 0.0, 2.0) / 255.0, vec3(0.0));
+
+        // SRGB back to linear 
+        color.rgb = mix(pow((srgb + 0.055) / 1.055, vec3(2.4)), srgb / 12.92, lessThanEqual(srgb, vec3(0.04045)));
+    }
 
     fragColor = color;
 }
