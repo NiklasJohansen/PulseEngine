@@ -409,12 +409,42 @@ vec2 sampleBrdfLut(float NdotV, float roughness)
 float distributionGGX(vec3 N, vec3 H, float roughness)
 {
     float a  = roughness * roughness;
-    float a2 = a * a;
-    float NdotH = max(dot(N, H), 0.0);
-    float NdotH2 = NdotH * NdotH;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
-    return a2 / max(denom, 0.000001);
+    float NdotH = clamp(dot(N, H), 0.0, 1.0);
+    // Stable GGX evaluation using |N x H|^2 = 1 - (N.H)^2 for unit vectors.
+    // Requires normalized N/H and positive perceptual roughness (bounded by the material path).
+    vec3 NxH = cross(N, H);
+    float aNdotH = a * NdotH;
+    float k = a / (dot(NxH, NxH) + aNdotH * aNdotH);
+    return k * k / PI;
+}
+
+// Isotropic specular antialiasing for variation in view and light directions across a pixel.
+// Approximates the projected half-vector footprint with a scalar GGX roughness adjustment;
+// normal-map and surface-normal variation are filtered separately in the material path.
+// Related method: Tokuyoshi and Kaplanyan, "Stable Geometric Specular Antialiasing" (2021).
+// https://www.jcgt.org/published/0010/02/02/paper.pdf
+float directLightRoughness(float roughness, vec3 N, vec3 V, vec3 L, vec3 positionDx, vec3 positionDy, float invViewDistance, float invLightDistance)
+{
+    // Analytic direction derivatives support per-light evaluation in divergent control flow.
+    vec3 sum = V + L;
+    float invHalfLength = inversesqrt(max(dot(sum, sum), 1e-8));
+    vec3 H = sum * invHalfLength;
+    vec3 sumDx = (V * dot(V, positionDx) - positionDx) * invViewDistance
+               + (L * dot(L, positionDx) - positionDx) * invLightDistance;
+    vec3 sumDy = (V * dot(V, positionDy) - positionDy) * invViewDistance
+               + (L * dot(L, positionDy) - positionDy) * invLightDistance;
+    vec3 halfDx = (sumDx - H * dot(H, sumDx)) * invHalfLength;
+    vec3 halfDy = (sumDy - H * dot(H, sumDy)) * invHalfLength;
+
+    // Project the half-vector derivatives onto the surface tangent plane.
+    halfDx -= N * dot(N, halfDx);
+    halfDy -= N * dot(N, halfDy);
+
+    // Filter tuning: sigma ~= 0.7 pixels; cap the added alpha^2 at 0.18 to limit broadening.
+    // GGX alpha = perceptual roughness^2, so filtering operates in perceptual roughness^4.
+    float kernel = min(dot(halfDx, halfDx) + dot(halfDy, halfDy), 0.18);
+    float alpha = roughness * roughness;
+    return sqrt(sqrt(min(alpha * alpha + kernel, 1.0)));
 }
 
 float geometrySchlickGGX(float NdotV, float roughness)
@@ -436,12 +466,13 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+    // Normalized dot products can round above one, pow is undefined for a negative base.
+    return F0 + (1.0 - F0) * pow(1.0 - clamp(cosTheta, 0.0, 1.0), 5.0);
 }
 
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 {
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - clamp(cosTheta, 0.0, 1.0), 5.0);
 }
 
 float specularOcclusion(float NdotV, float ao, float roughness)
@@ -826,7 +857,7 @@ float contactShadow(vec3 worldPos, vec3 meshNormal, vec3 L, float rayLength)
     return visibility;
 }
 
-vec3 accumulateLocalLights(vec3 worldPos, vec3 N, vec3 meshNormal, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0)
+vec3 accumulateLocalLights(vec3 worldPos, vec3 N, vec3 meshNormal, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0, vec3 positionDx, vec3 positionDy, float invViewDistance)
 {
     vec3 Lo = vec3(0.0);
 
@@ -847,14 +878,14 @@ vec3 accumulateLocalLights(vec3 worldPos, vec3 N, vec3 meshNormal, vec3 V, float
             continue;
 
         LocalLightData light = uLocalLights[int(lightIndex)];
-        vec3  lightPos    = light.positionRange.xyz;
-        float lightRange  = light.positionRange.w;
-        vec3  lightColor  = light.colorDirectionX.rgb;
-        vec3  lightDir    = vec3(light.colorDirectionX.w, light.directionYZOuterInnerCos.xy);
-        float outerCos    = light.directionYZOuterInnerCos.z;
-        float innerCos    = light.directionYZOuterInnerCos.w;
-        float isSpot      = light.isSpotShadowInfo.x;
-        float sourceRadius = max(light.sourceRadiusPadding.x, 0.0);
+        vec3  lightPos       = light.positionRange.xyz;
+        float lightRange     = light.positionRange.w;
+        vec3  lightColor     = light.colorDirectionX.rgb;
+        vec3  lightDir       = vec3(light.colorDirectionX.w, light.directionYZOuterInnerCos.xy);
+        float outerCos       = light.directionYZOuterInnerCos.z;
+        float innerCos       = light.directionYZOuterInnerCos.w;
+        float isSpot         = light.isSpotShadowInfo.x;
+        float sourceRadius   = max(light.sourceRadiusPadding.x, 0.0);
 
         vec3 toL = lightPos - worldPos;
         float d2 = dot(toL, toL);
@@ -891,8 +922,10 @@ vec3 accumulateLocalLights(vec3 worldPos, vec3 N, vec3 meshNormal, vec3 V, float
         vec3 F  = fresnelSchlick(max(dot(H, V), 0.0), F0);
         vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
 
-        float G     = geometrySmith(N, V, L, roughness);
-        float NDF   = distributionGGX(N, H, roughness);
+        float specularRoughness = directLightRoughness(roughness, N, V, L, positionDx, positionDy, invViewDistance, 1.0 / d);
+
+        float G     = geometrySmith(N, V, L, specularRoughness);
+        float NDF   = distributionGGX(N, H, specularRoughness);
         float denom = 4.0 * NdotV * NdotL + 0.000001;
 
         vec3 diffuse  = kD * baseColor / PI;
@@ -989,6 +1022,10 @@ void main()
             gl_FragDepth = max(gl_FragCoord.z, (clipPos.z / clipPos.w) * 0.5 + 0.5);
         }
     #endif
+
+    // Capture world position derivatives after parallax and before alpha-test discards and conditional returns
+    vec3 worldPosDx = dFdx(worldPos);
+    vec3 worldPosDy = dFdy(worldPos);
 
     #ifdef PBR_DEPTH_PASS
         if (alphaCutoff <= 0.0)
@@ -1142,7 +1179,9 @@ void main()
     float metallic  = clamp(orm.b * material.aoRoughMetalNormalFactor.z, 0.0,  1.0);
 
     // Normal + View
-    vec3 V = normalize(uCameraPos - worldPos);
+    vec3 toView = uCameraPos - worldPos;
+    float invViewDistance = inversesqrt(max(dot(toView, toView), 1e-8));
+    vec3 V = toView * invViewDistance;
 
     // Roughness adjustment (Toksvig + screen-space normal variation) 
     float len = clamp(normalLength, 1e-5, 1.0);
@@ -1176,8 +1215,9 @@ void main()
             vec3 H = normalize(V + L);
             vec3 F_dir = fresnelSchlick(max(dot(H, V), 0.0), F0);
             vec3 kD_dir = (vec3(1.0) - F_dir) * (1.0 - metallic);
-            float G = geometrySmith(N, V, L, roughness);
-            float NDF = distributionGGX(N, H, roughness);
+            float specularRoughness = directLightRoughness(roughness, N, V, L, worldPosDx, worldPosDy, invViewDistance, 0.0);
+            float G = geometrySmith(N, V, L, specularRoughness);
+            float NDF = distributionGGX(N, H, specularRoughness);
             float denom = 4.0 * NdotV * NdotL + 0.000001;
             vec3 diffuse = kD_dir * pbrColor / PI;
             vec3 specular = (NDF * G * F_dir) / denom;
@@ -1192,7 +1232,7 @@ void main()
 
     vec3 LoLocalLights = vec3(0.0);
     if (hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
-        LoLocalLights = accumulateLocalLights(worldPos, N, meshNormal, V, NdotV, pbrColor, metallic, roughness, F0);
+        LoLocalLights = accumulateLocalLights(worldPos, N, meshNormal, V, NdotV, pbrColor, metallic, roughness, F0, worldPosDx, worldPosDy, invViewDistance);
 
     vec3 Lo = LoSun + LoLocalLights;
 

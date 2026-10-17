@@ -10,11 +10,19 @@ uniform sampler2DArray lensDirtTexArray;
 
 uniform vec3  lensDirtTexCoord;
 uniform float lensDirtIntensity;
+uniform float intensity;
 
 void main()
 {
     vec4 srcColor = texture(srcTex, uv);
-    vec3 bloomColor = texture(bloomTex, uv).rgb;
+
+    if (intensity <= 0.0)
+    {
+        fragColor = srcColor;
+        return;
+    }
+
+    vec3 bloomColor = texture(bloomTex, uv).rgb * intensity;
 
     if (lensDirtTexCoord.z >= 0.0)
     {

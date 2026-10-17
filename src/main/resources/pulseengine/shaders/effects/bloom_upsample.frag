@@ -7,7 +7,6 @@ out vec3 fragColor;
 uniform sampler2D srcTex;
 
 uniform float filterRadius;
-uniform float intensity;
 
 // https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
 // https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare/
@@ -27,5 +26,5 @@ void main()
     vec3 h = texture(srcTex, vec2(uv.x,     uv.y - y)).rgb;
     vec3 i = texture(srcTex, vec2(uv.x + x, uv.y - y)).rgb;
 
-    fragColor = ((e * 4.0) + (b + d + f + h) * 2.0 + (a + c + g + i)) / 16.0 * intensity;
+    fragColor = ((e * 4.0) + (b + d + f + h) * 2.0 + (a + c + g + i)) / 16.0;
 }

@@ -8,6 +8,7 @@ uniform sampler2D srcTex;
 
 uniform vec4 prefilterParams;
 uniform bool prefilterEnabled;
+uniform float levelWeight;
 
 // https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
 vec3 prefilter(vec3 c)
@@ -27,6 +28,19 @@ void main()
     float x = texelSize.x;
     float y = texelSize.y;
 
+    if (prefilterEnabled)
+    {
+        // First level: apply the soft threshold per sample, then average the 2x2 footprint.
+        // levelWeight normalizes each level's contribution to the additive bloom pyramid.
+        vec2 offset = texelSize * 0.5;
+        vec3 a = prefilter(texture(srcTex, uv + vec2(-offset.x, -offset.y)).rgb);
+        vec3 b = prefilter(texture(srcTex, uv + vec2( offset.x, -offset.y)).rgb);
+        vec3 c = prefilter(texture(srcTex, uv + vec2(-offset.x,  offset.y)).rgb);
+        vec3 d = prefilter(texture(srcTex, uv + vec2( offset.x,  offset.y)).rgb);
+        fragColor = (a + b + c + d) * (0.25 * levelWeight);
+        return;
+    }
+
     vec3 a = texture(srcTex, vec2(uv.x - 2 * x, uv.y + 2 * y)).rgb;
     vec3 b = texture(srcTex, vec2(uv.x,         uv.y + 2 * y)).rgb;
     vec3 c = texture(srcTex, vec2(uv.x + 2 * x, uv.y + 2 * y)).rgb;
@@ -42,9 +56,6 @@ void main()
     vec3 m = texture(srcTex, vec2(uv.x + x,     uv.y - y)).rgb;
 
     vec3 result = (e * 0.125) + (a + c + g + i) * 0.03125 + (b + d + f + h) * 0.0625 + (j + k + l + m) * 0.125;
-
-    if (prefilterEnabled)
-        result = prefilter(result);
 
     fragColor = max(result, 0.0000001f);
 }
