@@ -482,7 +482,7 @@ class LocalShadowAtlas
     private fun lightShadowUpdateImportance(light: RenderLight, cameraPosition: Vector3fc?): Float
     {
         val manualImportance = max(0f, light.shadowImportance)
-        val brightness = max(light.color.red, max(light.color.green, light.color.blue))
+        val brightness = max(light.linearColor.red, max(light.linearColor.green, light.linearColor.blue))
         val brightnessFactor = min(max(0.1f, brightness), 8f)
         val range = max(1f, light.range)
         val rangeFactor = min(max(0.5f, sqrt(range) * 0.25f), 4f)

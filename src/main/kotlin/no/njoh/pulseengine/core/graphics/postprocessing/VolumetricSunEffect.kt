@@ -38,7 +38,8 @@ class VolumetricSunEffect(
     TextureDescriptor(RGB16F, LINEAR, CLAMP_TO_EDGE, scale = 1f)                               // 3: Upsample (full resolution)
 ) {
     var shadowMapSurfaceName  = ""
-    var sunColor              = Color(1f, 1f, 1f)
+    var sunColor              = Color(1f, 1f, 1f) // sRGB
+    var sunIntensity          = 1f // Linear multiplier; sunColor remains sRGB.
     var sunRadius             = 1f
     var intensity             = 1f
     var density               = 0.05f
@@ -119,6 +120,7 @@ class VolumetricSunEffect(
         val splitDist = shadowMapRenderer.getCascadeSplitDistances()
         val program = programs[0]
         val volumeTex = fbo.getTexture(1)
+        val linearSunColor = sunColor.asLinear().multiplyRgb(sunIntensity)
 
         camera.invViewMatrix.getTranslation(cameraPos)
 
@@ -129,7 +131,7 @@ class VolumetricSunEffect(
         program.setUniform("uView", camera.viewMatrix)
         program.setUniform("uCameraPos", cameraPos)
         program.setUniform("uSunDirection", shadowMapRenderer.getDirection())
-        program.setUniform("uSunColor", sunColor)
+        program.setUniform("uSunColor", linearSunColor, convertFromSRgbToLinear = false)
         program.setUniform("uSunRadius", sunRadius)
         program.setUniform("uIntensity", intensity)
         program.setUniform("uDensity", density)

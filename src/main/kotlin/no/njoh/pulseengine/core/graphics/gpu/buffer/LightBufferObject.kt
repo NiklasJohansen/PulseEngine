@@ -46,13 +46,12 @@ class LightBufferObject
         lightCount++
         lightInstanceBuffer.fill(LIGHT_FLOATS)
         {
-            val color = light.color.asLinear()
             val isSpotLight = if (light.isSpotLight) 1f else 0f
             val castsShadow = if (light.shadowEnabled && light.shadowFaceOffset >= 0 && light.shadowFaceCount > 0) 1f else 0f
             val shadowBias = if (castsShadow > 0f) light.shadowBias else -1f
 
             put(light.position.x, light.position.y, light.position.z, light.range)
-            put(color.red, color.green, color.blue, light.direction.x)
+            put(light.linearColor.red, light.linearColor.green, light.linearColor.blue, light.direction.x)
             put(light.direction.y, light.direction.z, cos(light.outerConeAngle.toRadians()), cos(light.innerConeAngle.toRadians()))
             put(isSpotLight, shadowBias, light.shadowFaceOffset.toFloat(), light.shadowFaceCount.toFloat())
             put(light.sourceRadius, light.contactShadowLength, 0f, 0f)

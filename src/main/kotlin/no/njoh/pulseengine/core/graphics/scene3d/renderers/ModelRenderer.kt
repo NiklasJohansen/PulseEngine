@@ -57,12 +57,14 @@ class ModelRenderer(
 
     var iblDiffuseTexture  = ""
     var iblSpecularTexture = ""
-    var iblIntensity       = 1f
     var iblBrdfTexture     = "ibl_brdf_lut"
-    var envColor           = Color(0f, 0f, 0f)
+    var iblIntensity       = 1f
+    var envSRgbColor       = Color(0f, 0f, 0f)
 
     var useDefaultLighting          = true
     var sunColor                    = Color(1f, 1f, 1f)
+    var sunSRgbColor                = Color(1f, 1f, 1f)
+    var sunIntensity                = 1f
     var sunRadius                   = 1f
     var sunShadowMapSurfaceName     = ""
     var sunContactShadowLength      = 0.1f
@@ -318,7 +320,7 @@ class ModelRenderer(
 
     private fun prepareContactShadowDepthMap(engine: PulseEngineInternal, surface: SurfaceInternal, cameraState: CameraRenderState)
     {
-        val sunEnabled = sunContactShadowLength > 0f && (sunColor.red > 0f || sunColor.green > 0f || sunColor.blue > 0f)
+        val sunEnabled = sunIntensity > 0f && sunContactShadowLength > 0f && (sunSRgbColor.red > 0f || sunSRgbColor.green > 0f || sunSRgbColor.blue > 0f)
         
         contactShadowsAvailable = 
             !useDefaultLighting && 
@@ -392,9 +394,11 @@ class ModelRenderer(
         // Sunlight
 
         val sunEnabled = sunColor.red > 0f || sunColor.green > 0f || sunColor.blue > 0f
+        val sunEnabled = sunIntensity > 0f && (sunSRgbColor.red > 0f || sunSRgbColor.green > 0f || sunSRgbColor.blue > 0f)
+        val sunLinearColor = sunSRgbColor.asLinear().multiplyRgb(sunIntensity)
         if (sunEnabled) pbrFeatures = pbrFeatures or PBR_FEATURE_SUN_LIGHT
 
-        program.setUniform("uSunColor", sunColor)
+        program.setUniform("uSunColor", sunLinearColor, convertFromSRgbToLinear = false)
         program.setUniform("uSunDirection", shadowMapRenderer?.getDirection() ?: fallbackSunDirection)
         program.setUniform("uSunRadius", sunRadius)
         program.setUniformSampler(
@@ -483,6 +487,7 @@ class ModelRenderer(
         program.setUniform("uUseDefaultLighting", useDefaultLighting)
         program.setUniform("uViewMode", viewMode.shaderValue)
         program.setUniform("uWireframeOverlay", false)
+        program.setUniform("uEnvColor", envSRgbColor)
 
         // Camera
 

@@ -102,7 +102,8 @@ class SunVolumetricsSystem : SceneSystem()
         }
 
         effect?.shadowMapSurfaceName = worldLighting.getShadowMapSurfaceName()
-        effect?.sunColor?.setFrom(worldLighting.sunColor)?.multiplyRgb(worldLighting.sunIntensity)
+        effect?.sunColor?.setFrom(worldLighting.sunColor)
+        effect?.sunIntensity = worldLighting.sunIntensity
         effect?.sunRadius = worldLighting.sunRadius
         effect?.intensity = intensity
         effect?.density = density

@@ -7,6 +7,7 @@ import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.ConicalLight3D
 import no.njoh.pulseengine.core.scene.interfaces.Named
 import no.njoh.pulseengine.core.scene.interfaces.Rotatable3D
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -21,6 +22,7 @@ import kotlin.math.sin
 import kotlin.math.tan
 
 @Name("3D Spot Light")
+@Icon("LIGHT_BULB")
 class SpotLight3D : SceneEntity(), Named, ConicalLight3D, Rotatable3D, GizmoRenderable
 {
     @Prop(i=0) override var name = "Spot Light"
@@ -44,7 +46,6 @@ class SpotLight3D : SceneEntity(), Named, ConicalLight3D, Rotatable3D, GizmoRend
 
     private val direction      = Vector3f()
     private val rotationMatrix = Matrix4f()
-    private val intensityColor = Color()
     private val gizmoRight     = Vector3f()
     private val gizmoUp        = Vector3f()
     private val gizmoCenter    = Vector3f()
@@ -53,10 +54,9 @@ class SpotLight3D : SceneEntity(), Named, ConicalLight3D, Rotatable3D, GizmoRend
     override fun onRenderLight(engine: PulseEngine, context: SceneRenderContext)
     {
         getDirection(direction)
-        intensityColor.setFrom(color).multiplyRgb(intensity)
         val outerAngle = outerConeAngle.coerceIn(0f, 89f)
         val innerAngle = innerConeAngle.coerceIn(0f, outerAngle)
-        context.submitSpotLight(position, direction, range, intensityColor, innerAngle, outerAngle, sourceRadius, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, id, contactShadowLength)
+        context.submitSpotLight(position, direction, range, color, intensity, innerAngle, outerAngle, sourceRadius, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, id, contactShadowLength)
     }
 
     override fun getDirection(out: Vector3f): Vector3f

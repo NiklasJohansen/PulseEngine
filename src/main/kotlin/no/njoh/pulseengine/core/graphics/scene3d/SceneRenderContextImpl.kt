@@ -204,7 +204,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         position: Vector3f,
         direction: Vector3f,
         range: Float,
-        color: Color,
+        sRgbColor: Color,
+        intensity: Float,
         innerConeAngle: Float,
         outerConeAngle: Float,
         sourceRadius: Float,
@@ -216,13 +217,14 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         shadowId: Long,
         contactShadowLength: Float
     ) {
-        nextFrameScene.addLight(position, direction, range, sourceRadius, color, innerConeAngle, outerConeAngle, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId, contactShadowLength)
+        nextFrameScene.addLight(position, direction, range, sourceRadius, sRgbColor, intensity, innerConeAngle, outerConeAngle, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId, contactShadowLength)
     }
 
     override fun submitPointLight(
         position: Vector3f,
         range: Float,
-        color: Color,
+        sRgbColor: Color,
+        intensity: Float,
         sourceRadius: Float,
         shadowEnabled: Boolean,
         shadowResolution: Int,
@@ -232,7 +234,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         shadowId: Long,
         contactShadowLength: Float
     ) {
-        nextFrameScene.addLight(position, null, range, sourceRadius, color, 180f, 180f, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId, contactShadowLength)
+        nextFrameScene.addLight(position, null, range, sourceRadius, sRgbColor, intensity, 180f, 180f, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId, contactShadowLength)
     }
 
     override fun submitMesh(

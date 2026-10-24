@@ -71,9 +71,9 @@ class Scene3DLightingSystem : SceneSystem()
         targetSurfaceNames.forEachFast()
         {
             val renderer = engine.gfx.getSurface(it)?.getRenderer<ModelRenderer>()
-            renderer?.envColor?.setFrom(envColor)
-            renderer?.sunColor?.setFrom(sunColor)?.multiplyRgb(sunIntensity)
-            renderer?.useDefaultLighting          = false
+            renderer?.envSRgbColor?.setFrom(envColor)
+            renderer?.sunSRgbColor?.setFrom(sunColor)
+            renderer?.sunIntensity                = sunIntensity
             renderer?.sunRadius                   = sunRadius
             renderer?.sunContactShadowLength      = sunContactShadowLength
             renderer?.contactShadowThickness      = contactShadowThickness
@@ -83,6 +83,7 @@ class Scene3DLightingSystem : SceneSystem()
             renderer?.iblDiffuseTexture           = envDiffuseTexture.name
             renderer?.iblSpecularTexture          = envSpecularTexture.name
             renderer?.iblIntensity                = envIntensity
+            renderer?.useDefaultLighting          = false
         }
 
         (engine.gfx.sceneContext as SceneRenderContextInternal).getLocalShadowAtlas().apply() 
@@ -203,7 +204,7 @@ class Scene3DLightingSystem : SceneSystem()
             renderer?.iblDiffuseTexture           = ""
             renderer?.iblSpecularTexture          = ""
             renderer?.iblIntensity                = 0f
-            renderer?.envColor?.setFrom(Color.BLACK)
+            renderer?.envSRgbColor?.setFrom(Color.BLACK)
         }
         lastTargetSurfaces = ""
         targetSurfaceNames = emptyList()

@@ -123,7 +123,8 @@ class RenderScene
         direction: Vector3f?,
         range: Float,
         sourceRadius: Float,
-        color: Color,
+        sRgbColor: Color,
+        intensity: Float,
         innerConeAngle: Float,
         outerConeAngle: Float,
         shadowEnabled: Boolean,
@@ -146,7 +147,7 @@ class RenderScene
         light.position.set(position)
         light.range = range.sanitizeNonNegative()
         light.sourceRadius = sourceRadius.sanitizeNonNegative().coerceAtMost(light.range)
-        light.color.setFrom(color)
+        light.linearColor.setFrom(sRgbColor.asLinear()).multiplyRgb(intensity.sanitizeNonNegative())
         light.outerConeAngle = outerConeAngle.sanitizeAngle()
         light.innerConeAngle = min(innerConeAngle.sanitizeAngle(), light.outerConeAngle)
         light.shadowEnabled = shadowEnabled

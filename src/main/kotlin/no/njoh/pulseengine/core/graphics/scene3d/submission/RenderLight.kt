@@ -7,7 +7,7 @@ class RenderLight
 {
     val position            = Vector3f()
     val direction           = Vector3f()
-    val color               = Color()
+    val linearColor         = Color()
     var range               = 0f
     var sourceRadius        = 0f
     var outerConeAngle      = 180f

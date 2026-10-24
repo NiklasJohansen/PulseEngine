@@ -6,6 +6,7 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.modules.scene.systems.Light3D
 import no.njoh.pulseengine.core.scene.interfaces.Named
+import no.njoh.pulseengine.core.shared.annotations.Icon
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.primitives.Color
@@ -14,6 +15,7 @@ import no.njoh.pulseengine.modules.editor.GizmoRenderContext
 import org.joml.Vector3f
 
 @Name("3D Point Light")
+@Icon("LIGHT_BULB")
 class PointLight3D : SceneEntity(), Light3D, Named, GizmoRenderable
 {
     @Prop override var name = "Point Light"
@@ -32,12 +34,9 @@ class PointLight3D : SceneEntity(), Light3D, Named, GizmoRenderable
     @Prop("Shadow", i=5, min=0f)  var shadowImportance    = 1f
     @Prop("Shadow", i=6, min=0f)  var contactShadowLength = 0.1f
 
-    private val intensityColor = Color()
-
     override fun onRenderLight(engine: PulseEngine, context: SceneRenderContext)
     {
-        intensityColor.setFrom(color).multiplyRgb(intensity)
-        context.submitPointLight(position, range, intensityColor, sourceRadius, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, id, contactShadowLength)
+        context.submitPointLight(position, range, color, intensity, sourceRadius, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, id, contactShadowLength)
     }
 
     override fun renderGizmo(surface: Surface, context: GizmoRenderContext)
