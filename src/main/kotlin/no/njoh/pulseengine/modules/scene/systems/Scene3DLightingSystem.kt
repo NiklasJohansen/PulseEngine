@@ -35,21 +35,22 @@ class Scene3DLightingSystem : SceneSystem()
     @Prop(i=3, min=0f, max=90f)  var sunHeight                     = 60f
     @Prop(i=4, min=0f)           var sunRadius                     = 1.5f
     @Prop(i=5, min=1f)           var sunShadowMapResolution        = 4096
-    @Prop(i=6, min=0f, max=1f)   var sunShadowCascadeSplitLambda   = 0.5f
-    @Prop(i=7, min=0f)           var sunShadowDistance             = 50f
-    @Prop(i=8, min=2f, max=4f)   var sunShadowMaxUpdatesPerFrame   = 2
-    @Prop(i=9, min=0f)           var sunContactShadowLength        = 0.1f
-    @Prop(i=10, min=0f)          var envIntensity                  = 0.5f
-    @Prop(i=11)                  var envColor                      = Color(1f, 1f, 1f)
-    @Prop(i=12)                  var envDiffuseTexture             = AssetHandle<EnvMap>()
-    @Prop(i=13)                  var envSpecularTexture            = AssetHandle<EnvMap>()
-    @Prop(i=14)                  var targetSurfaces                = "scene3d"
+    @Prop(i=6)                   var sunShadowReceiverCulling      = true
+    @Prop(i=7, min=0f, max=1f)   var sunShadowCascadeSplitLambda   = 0.5f
+    @Prop(i=8, min=0f)           var sunShadowDistance             = 50f
+    @Prop(i=9, min=2f, max=4f)   var sunShadowMaxUpdatesPerFrame   = 2
+    @Prop(i=10, min=0f)          var sunContactShadowLength        = 0.1f
+    @Prop(i=11, min=0f)          var envIntensity                  = 0.5f
+    @Prop(i=12)                  var envColor                      = Color(1f, 1f, 1f)
+    @Prop(i=13)                  var envDiffuseTexture             = AssetHandle<EnvMap>()
+    @Prop(i=14)                  var envSpecularTexture            = AssetHandle<EnvMap>()
     @Prop(i=15)                  var localShadowsEnabled           = true
     @Prop(i=16, min=256f)        var localShadowAtlasResolution    = 4096
     @Prop(i=17, min=64f)         var localShadowTileResolution     = 512
     @Prop(i=18, min=0f)          var localShadowMaxUpdatesPerFrame = 3
     @Prop(i=19, min=0f)          var contactShadowThickness        = 0.02f
     @Prop(i=20, min=0f)          var contactShadowBias             = 0.008f
+    @Prop(i=21)                  var targetSurfaces                = "scene3d"
 
     private var shadowMapSurfaceName        = ""
     private var localShadowAtlasSurfaceName = ""
@@ -145,6 +146,7 @@ class Scene3DLightingSystem : SceneSystem()
         shadowMapRenderer.splitLambda               = sunShadowCascadeSplitLambda
         shadowMapRenderer.shadowDistance            = sunShadowDistance
         shadowMapRenderer.maxCascadeUpdatesPerFrame = sunShadowMaxUpdatesPerFrame
+        shadowMapRenderer.receiverCulling           = sunShadowReceiverCulling
         shadowMapRenderer.setFor(cameras, sunDirection, sunHeight)
     }
 

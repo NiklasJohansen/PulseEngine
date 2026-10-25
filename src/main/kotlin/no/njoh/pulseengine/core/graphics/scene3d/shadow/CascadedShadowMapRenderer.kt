@@ -48,6 +48,13 @@ class CascadedShadowMapRenderer(
             field = value
         }
 
+    var receiverCulling = true
+        set(value)
+        {
+            if (value != field) cascadeStateInitialized = false
+            field = value
+        }
+
     private lateinit var opaqueStaticProgram: ShaderProgram
     private lateinit var opaqueSkinnedProgram: ShaderProgram
     private lateinit var maskedStaticProgram: ShaderProgram
@@ -268,14 +275,20 @@ class CascadedShadowMapRenderer(
 
             // Build the cascade and receiver frustum for this cascade slice
             cascadeFrustums[cascadeIdx].setForViewProjection(buildState.viewProjections[cascadeIdx])
-            receiverFrustum.setForViewProjection(frustumSliceViewProjection)
-
-            // Build receiver-based caster culling planes for this cascade slice
-            buildState.cullingPlanes[cascadeIdx].buildCascadeCasterCullPlanes(
-                shadowFrustum = cascadeFrustums[cascadeIdx],
-                receiverFrustum = receiverFrustum,
-                receiverCenter = frustumSliceCenter
-            )
+            if (receiverCulling)
+            {
+                receiverFrustum.setForViewProjection(frustumSliceViewProjection)
+                buildState.cullingPlanes[cascadeIdx].buildCascadeCasterCullPlanes(
+                    shadowFrustum = cascadeFrustums[cascadeIdx],
+                    receiverFrustum = receiverFrustum,
+                    receiverCenter = frustumSliceCenter
+                )
+            }
+            else
+            {
+                buildState.cullingPlanes[cascadeIdx].clear()
+                cascadeFrustums[cascadeIdx].planeSet.forEach { buildState.cullingPlanes[cascadeIdx].add(it) }
+            }
         }
     }
 

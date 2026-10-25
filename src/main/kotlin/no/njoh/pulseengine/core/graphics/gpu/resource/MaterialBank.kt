@@ -129,7 +129,7 @@ class MaterialBank : ShaderStorageBufferObject
             put(
                 material?.occlusionStrength ?: 1f,
                 material?.roughnessFactor ?: 1f,
-                material?.metallicFactor ?: 1f,
+                material?.metallicFactor ?: 0f,
                 material?.normalScale ?: 1f
             )
             put(material?.xTiling ?: 1f, material?.yTiling ?: 1f, alphaCutoff, heightScale)

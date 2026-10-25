@@ -21,6 +21,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewKey
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.REFLECTION
 import no.njoh.pulseengine.core.shared.primitives.Color
 import org.joml.Matrix4f
 import org.joml.Vector3f
@@ -41,7 +42,7 @@ abstract class SceneRenderContext
         transform: Matrix4f,
         material: Material? = null,
         animationPose: AnimatedSkeletonPose? = null,
-        renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
+        renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW or REFLECTION,
         mobility: Mobility = Mobility.DYNAMIC,
         lodThresholds: FloatArray? = null,
         lodHysteresis: Float = 0.15f,
@@ -58,7 +59,7 @@ abstract class SceneRenderContext
         transform: Matrix4f,
         cullingBounds: Model.Aabb? = mesh.localBounds,
         boneMatrices: Array<Matrix4f>? = null,
-        renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW,
+        renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW or REFLECTION,
         mobility: Mobility = Mobility.DYNAMIC,
         renderId: Long = -1
     )

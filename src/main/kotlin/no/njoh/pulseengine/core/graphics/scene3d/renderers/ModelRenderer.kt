@@ -17,6 +17,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.NONE
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_BORDER
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
@@ -28,6 +29,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.renderers.ViewMode.RENDER_ID
 import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.BrdfLutBuilder
+import no.njoh.pulseengine.core.graphics.scene3d.probe.LightProbeData
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.CascadedShadowMapRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderViewGroup
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderBucket
@@ -48,6 +50,7 @@ import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import org.lwjgl.opengl.GL30.GL_COLOR
 import org.lwjgl.opengl.GL30.glClearBufferuiv
 import org.lwjgl.opengl.GL30.glDisablei
+import org.lwjgl.opengl.GL32.GL_TEXTURE_CUBE_MAP_SEAMLESS
 
 class ModelRenderer(
     override val order: Int = 40,
@@ -62,7 +65,6 @@ class ModelRenderer(
     var envSRgbColor       = Color(0f, 0f, 0f)
 
     var useDefaultLighting          = true
-    var sunColor                    = Color(1f, 1f, 1f)
     var sunSRgbColor                = Color(1f, 1f, 1f)
     var sunIntensity                = 1f
     var sunRadius                   = 1f
@@ -71,6 +73,7 @@ class ModelRenderer(
     var contactShadowThickness      = 0.02f
     var contactShadowBias           = 0.001f
     var localShadowAtlasSurfaceName = ""
+    var lightProbeData              = null as LightProbeData?
 
     var viewMode                 = ViewMode.SHADED
     var transparencyMode         = WEIGHTED_BLENDED_OIT
@@ -86,11 +89,11 @@ class ModelRenderer(
 
     private lateinit var viewKey: RenderViewKey<CameraRenderView>
 
-    private val weightedBlendedRenderer = WeightedBlendedOitRenderer()
-    private var contactDepthFbo: FrameBufferObject? = null
-    private var contactShadowsAvailable = false
-    private val contactShadowsInvProjection = Matrix4f()
+    private var contactDepthFbo                   = null as FrameBufferObject?
+    private var contactShadowsAvailable           = false
+    private val contactShadowsInvProjection       = Matrix4f()
     private val contactShadowsDepthTexDescriptors = listOf(TextureDescriptor(attachmentPoint = DEPTH_TEXTURE, filter = NEAREST))
+    private val weightedBlendedRenderer           = WeightedBlendedOitRenderer()
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
@@ -223,8 +226,15 @@ class ModelRenderer(
         else glDisable(GL_BLEND)
     }
 
-    private fun render(engine: PulseEngineInternal, surface: SurfaceInternal, view: CameraRenderView, cameraState: CameraRenderState, activePrograms: ShaderProgramSet, writesRenderIds: Boolean, visualizesRenderIds: Boolean)
-    {
+    private fun render(
+        engine: PulseEngineInternal, 
+        surface: SurfaceInternal, 
+        view: CameraRenderView, 
+        cameraState: CameraRenderState, 
+        activePrograms: ShaderProgramSet, 
+        writesRenderIds: Boolean, 
+        visualizesRenderIds: Boolean
+    ) {
         measure("opaque", label = { "Draw opaque (" plus view.opaqueBucket.instanceCount plus "i, " plus view.opaqueBucket.size plus "b)" })
         {
             drawRenderBucket(view.opaqueBucket, view.drawPayload, activePrograms)
@@ -349,28 +359,50 @@ class ModelRenderer(
         contactShadowsInvProjection.set(cameraState.projectionMatrix).invert()
     }
 
-    private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface, cameraState: CameraRenderState)
+    fun renderLightProbeFace(engine: PulseEngineInternal, surface: SurfaceInternal, view: CameraRenderView, cameraState: CameraRenderState)
+    {
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_CULL_FACE)
+        glDisable(GL_BLEND)
+        glDepthFunc(GL_LESS)
+        glDepthMask(true)
+
+        programs.forEachProgram { configureProgram(it, engine, surface, cameraState, lightProbeCapture = true) }
+        bindStorageBuffers(programs, engine, cameraState, view.drawPayload)
+
+        measure("opaque_face", label = { "Draw opaque" }) 
+        { 
+            drawRenderBucket(view.opaqueBucket, view.drawPayload, programs) 
+        }
+
+        measure("masked_face", label = { "Draw masked" }) 
+        {
+            drawRenderBucket(view.maskedBucket, view.drawPayload, programs) 
+        }
+    }
+
+    private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface, cameraState: CameraRenderState, lightProbeCapture: Boolean = false)
     {
         var pbrFeatures = 0u
 
         // Textures
 
-        val texBank = engine.gfx.textureBank
+        val textureBank = engine.gfx.textureBank
         program.bind()
-        program.setUniformSamplerArrays(texBank.getAllTextureArrays())
-        program.assignSamplerUnit("uGtaoTex")
-        program.assignSamplerUnit("uContactShadowDepthTex")
+        program.setUniformSamplerArrays(textureBank.getAllTextureArrays())
 
         // Ambient occlusion
 
         val aoRenderer = surface.getRenderer<GtaoRenderer>()
         val aoTex = aoRenderer?.getAoRenderTexture()
+
         if (aoTex != null && aoRenderer.intensity > 0f)
         {
             pbrFeatures = pbrFeatures or PBR_FEATURE_GTAO
             program.setUniformSampler("uGtaoTex", aoTex)
             program.setUniform("uAoIntensity", aoRenderer.intensity)
         }
+        else program.assignSamplerUnit("uGtaoTex")
 
         // Contact shadows
 
@@ -379,6 +411,7 @@ class ModelRenderer(
             pbrFeatures = pbrFeatures or PBR_FEATURE_CONTACT_SHADOWS
             program.setUniformSampler("uContactShadowDepthTex", contactDepthFbo!!.getTexture(), filter = NEAREST)
         }
+        else program.assignSamplerUnit("uContactShadowDepthTex")
 
         program.setUniform("uContactShadowInvProjection", contactShadowsInvProjection)
         program.setUniform("uContactShadowThickness", contactShadowThickness.coerceAtLeast(0f))
@@ -393,7 +426,6 @@ class ModelRenderer(
 
         // Sunlight
 
-        val sunEnabled = sunColor.red > 0f || sunColor.green > 0f || sunColor.blue > 0f
         val sunEnabled = sunIntensity > 0f && (sunSRgbColor.red > 0f || sunSRgbColor.green > 0f || sunSRgbColor.blue > 0f)
         val sunLinearColor = sunSRgbColor.asLinear().multiplyRgb(sunIntensity)
         if (sunEnabled) pbrFeatures = pbrFeatures or PBR_FEATURE_SUN_LIGHT
@@ -403,7 +435,7 @@ class ModelRenderer(
         program.setUniform("uSunRadius", sunRadius)
         program.setUniformSampler(
             samplerName = "uShadowMapTex",
-            texture = shadowMapTex ?: texBank.getOrCreateFallbackDepthTexture(),
+            texture = shadowMapTex ?: textureBank.getOrCreateFallbackDepthTexture(),
             filter = LINEAR,
             wrapping = CLAMP_TO_BORDER,
             compare = TextureCompare.LEQUAL,
@@ -430,7 +462,7 @@ class ModelRenderer(
         program.setUniform("uLocalShadowFaceCount", lightBuffer.shadowFaceCount)
         program.setUniformSampler(
             samplerName = "uLocalShadowAtlasTex",
-            texture = localShadowAtlasTex ?: texBank.getOrCreateFallbackDepthTexture(),
+            texture = localShadowAtlasTex ?: textureBank.getOrCreateFallbackDepthTexture(),
             filter = LINEAR,
             wrapping = CLAMP_TO_BORDER,
             compare = TextureCompare.LEQUAL,
@@ -473,21 +505,34 @@ class ModelRenderer(
         if (iblEnabled && envSpecular != null && brdfLut != null)
         {
             pbrFeatures = pbrFeatures or PBR_FEATURE_SPECULAR_IBL
-            program.setUniform("uEnvSpecularMipCount", texBank.getTextureArray(envSpecular)?.mipLevels?.toFloat() ?: 1f)
+            program.setUniform("uEnvSpecularMipCount", textureBank.getTextureArray(envSpecular)?.mipLevels?.toFloat() ?: 1f)
             program.setTexture("uEnvSpecularTex", envSpecular)
             program.setTexture("uEnvBrdfLutTex", brdfLut)
         }
 
-        if (pbrFeatures and PBR_FEATURE_SUN_LIGHT == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_SUN_SHADOWS.inv()
-        if (pbrFeatures and PBR_FEATURE_LOCAL_LIGHTS == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_LOCAL_SHADOWS.inv()
-
         program.setUniform("uEnvIntensity", iblIntensity)
-        program.setUniform("uEnvColor", envColor)
-        program.setUniform("uPbrFeatures", pbrFeatures)
-        program.setUniform("uUseDefaultLighting", useDefaultLighting)
-        program.setUniform("uViewMode", viewMode.shaderValue)
-        program.setUniform("uWireframeOverlay", false)
         program.setUniform("uEnvColor", envSRgbColor)
+        
+        // Indirect probe lighting
+
+        val probeData             = lightProbeData.takeIf { !lightProbeCapture }
+        val probeCount            = probeData?.probeCount ?: 0
+        val specularProbeMipCount = probeData?.specularCubeMapMipCount ?: 1
+        val specularProbeCubeMaps = probeData?.specularCubeMapTextureArrayHandle ?: TextureHandle.NONE
+        val diffuseProbeCubeMaps  = probeData?.diffuseCubeMapTextureArrayHandle ?: TextureHandle.NONE
+
+        program.setUniform("uSpecularProbeCount", if (brdfLut != null) probeCount else 0)
+        program.setUniform("uDiffuseProbeCount", if (!diffuseProbeCubeMaps.isNone) probeCount else 0)
+        program.setUniform("uSpecularProbeMipCount", specularProbeMipCount.toFloat())
+        program.setUniformSamplerCubeMapArray("uSpecularProbes", specularProbeCubeMaps)
+        program.setUniformSamplerCubeMapArray("uDiffuseProbes", diffuseProbeCubeMaps, filter = LINEAR)
+
+        if (probeData != null && probeCount > 0)
+        {
+            glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS)
+            program.bindStorageBuffer("LightProbeBuffer", probeData.probeGpuBuffer)
+            program.setTexture("uEnvBrdfLutTex", brdfLut)
+        }
 
         // Camera
 
@@ -496,6 +541,16 @@ class ModelRenderer(
         program.setUniform("uViewProjection", cameraState.viewProjectionMatrix)
         program.setUniform("uView", cameraState.viewMatrix)
         program.setUniform("uCameraPos", cameraState.cameraPosition)
+
+        // Features and modes
+
+        if (pbrFeatures and PBR_FEATURE_SUN_LIGHT    == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_SUN_SHADOWS.inv()
+        if (pbrFeatures and PBR_FEATURE_LOCAL_LIGHTS == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_LOCAL_SHADOWS.inv()
+
+        program.setUniform("uPbrFeatures", pbrFeatures)
+        program.setUniform("uUseDefaultLighting", useDefaultLighting)
+        program.setUniform("uViewMode", viewMode.shaderValue)
+        program.setUniform("uWireframeOverlay", false)
     }
 
     private fun bindStorageBuffers(programs: ShaderProgramSet, engine: PulseEngineInternal, cameraState: CameraRenderState, payload: DrawPayload)
@@ -564,7 +619,11 @@ enum class ViewMode(val shaderValue: Int, val displayName: String)
     COMBINED_AO(8, "Combined AO"),
     GEOMETRY_NORMAL(9, "Geometry Normals"),
     LINEAR_DEPTH(10, "Linear Depth"),
-    LIGHTING(11, "Lighting"),
+    INDIRECT_SPECULAR(16, "Indirect Specular"),
+    INDIRECT_DIFFUSE(17, "Indirect Diffuse"),
+    DIRECT_LIGHTING(18, "Direct Lighting"),
+    COMBINED_LIGHTING(19, "Combined Lighting"),
+    LIGHTING(11, "Lighting Only"),
     SUN_SHADOW(12, "Sun Shadow"),
     SHADOW_CASCADES(13, "Shadow Cascades"),
     LIGHT_CLUSTER_OCCUPANCY(14, "Light Cluster Occupancy"),

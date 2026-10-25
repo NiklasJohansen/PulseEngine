@@ -4,24 +4,24 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 
 class Material(
     name: String,
-    var baseColor: Color,
-    var albedo: Texture?,
-    var normal: Texture?,
-    var aoRoughMetal: Texture?,
-    var emissive: Texture?,
-    var height: Texture?,
-    var cullMode: CullMode,
-    var blendMode: BlendMode,
-    var alphaCutoff: Float,
-    var metallicFactor: Float,
-    var roughnessFactor: Float,
-    var emissiveFactor: Color,
-    var occlusionStrength: Float,
-    var heightScale: Float,
-    var normalScale: Float,
-    var normalOrientation: NormalOrientation,
-    var xTiling: Float = 1f,
-    var yTiling: Float = 1f
+    var baseColor: Color                     = Color(1f, 1f, 1f),
+    var albedo: Texture?                     = null,
+    var normal: Texture?                     = null,
+    var aoRoughMetal: Texture?               = null,
+    var emissive: Texture?                   = null,
+    var height: Texture?                     = null,
+    var cullMode: CullMode                   = CullMode.BACK,
+    var blendMode: BlendMode                 = BlendMode.OPAQUE,
+    var alphaCutoff: Float                   = 0.5f,
+    var metallicFactor: Float                = 0f,
+    var roughnessFactor: Float               = 1f,
+    var emissiveFactor: Color                = Color(0f, 0f, 0f),
+    var occlusionStrength: Float             = 1f,
+    var heightScale: Float                   = DEFAULT_HEIGHT_SCALE,
+    var normalScale: Float                   = 1f,
+    var normalOrientation: NormalOrientation = NormalOrientation.NORMAL,
+    var xTiling: Float                       = 1f,
+    var yTiling: Float                       = 1f
 ): Asset(name, name) {
 
     var id = DEFAULT_ID; private set

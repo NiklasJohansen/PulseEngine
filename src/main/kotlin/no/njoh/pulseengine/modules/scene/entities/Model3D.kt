@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.shared.primitives.Mobility
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.REFLECTION
 import no.njoh.pulseengine.core.scene.SceneState
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
 import no.njoh.pulseengine.core.scene.interfaces.Named
@@ -29,16 +30,15 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
     var model    = AssetHandle<Model>("cube")
     var material = AssetHandle<Material>()
 
-    @Prop("Transform", i=0)          var mode     = Mobility.STATIC
-    @Prop("Transform", i=1) override var position = Vector3f(0f)
-    @Prop("Transform", i=2) override var rotation = Vector3f(0f)
-    @Prop("Transform", i=3) override var scale    = Vector3f(1f)
-
-    @Prop("Shadows", i=4) var castLocalShadows = true
-    @Prop("Shadows", i=5) var castSunShadows   = true
-
+    @Prop("Transform",       i=0)                   var mode                  = Mobility.STATIC
+    @Prop("Transform",       i=1)          override var position              = Vector3f(0f)
+    @Prop("Transform",       i=2)          override var rotation              = Vector3f(0f)
+    @Prop("Transform",       i=3)          override var scale                 = Vector3f(1f)
+    @Prop("Shadows",         i=4)                   var castLocalShadows      = true
+    @Prop("Shadows",         i=5)                   var castSunShadows        = true
     @Prop("Level of Detail", i=6)                   var lodDistanceThresholds = ""
     @Prop("Level of Detail", i=7, min=0f, max=0.9f) var lodHysteresis         = 0.15f
+    @Prop("Reflections",     i=8)                   var visibleInReflections  = true
 
     private val transform              = Matrix4f()
     private var lastDistanceThresholds = null as String?
@@ -63,7 +63,7 @@ class Model3D : SceneEntity(), Initiable, Scene3DRenderable, Named, Spatial3D
             model = model,
             transform = transform,
             material = material,
-            renderPassMask = CAMERA or LOCAL_SHADOW.takeIf(castLocalShadows) or GLOBAL_SHADOW.takeIf(castSunShadows),
+            renderPassMask = CAMERA or REFLECTION.takeIf(visibleInReflections) or LOCAL_SHADOW.takeIf(castLocalShadows) or GLOBAL_SHADOW.takeIf(castSunShadows),
             mobility = if (dynamic) Mobility.DYNAMIC else Mobility.STATIC,
             lodThresholds = parseLodThresholds(),
             lodHysteresis = lodHysteresis,

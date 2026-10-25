@@ -2,7 +2,7 @@
 
 #define CASCADE_COUNT 4
 
-const float PI = 3.14159265359;
+const float PI  = 3.14159265359;
 const float TAU = 6.28318530718;
 
 const uint PBR_FEATURE_SUN_LIGHT       = 1u << 0;
@@ -30,6 +30,10 @@ const int VIEW_MODE_SUN_SHADOW              = 12;
 const int VIEW_MODE_SHADOW_CASCADES         = 13;
 const int VIEW_MODE_LIGHT_CLUSTER_OCCUPANCY = 14;
 const int VIEW_MODE_RENDER_ID               = 15;
+const int VIEW_MODE_INDIRECT_SPECULAR       = 16;
+const int VIEW_MODE_INDIRECT_DIFFUSE        = 17;
+const int VIEW_MODE_DIRECT_LIGHTING         = 18;
+const int VIEW_MODE_COMBINED_LIGHTING       = 19;
 
 const vec2 CASCADE_OFFSETS[CASCADE_COUNT]     = vec2[](vec2(0.0, 0.0), vec2(0.5, 0.0), vec2(0.0, 0.5), vec2(0.5, 0.5));
 const vec3 CASCADE_VIEW_COLORS[CASCADE_COUNT] = vec3[](
@@ -39,11 +43,15 @@ const vec3 CASCADE_VIEW_COLORS[CASCADE_COUNT] = vec3[](
     vec3(1.00, 0.80, 0.10)
 );
 
+// In
+
 in vec3 vWorldPos;
 in vec3 vWorldNormal;
 in mat3 vTBN;
 in vec2 vTexCoord;
 flat in int vMaterialId;
+
+// Out
 
 #ifdef PBR_USE_POM
     layout(depth_greater) out float gl_FragDepth;
@@ -67,6 +75,174 @@ flat in int vMaterialId;
 
 uniform sampler2DArray uTextureBanks[16];
 uniform sampler2D uGtaoTex;
+
+// Environment
+
+uniform vec4  uEnvDiffuseTex;
+uniform vec4  uEnvSpecularTex;
+uniform vec4  uEnvBrdfLutTex;
+uniform vec4  uEnvColor;
+uniform float uEnvIntensity;
+uniform float uEnvSpecularMipCount;
+uniform float uAoIntensity;
+
+// Local probe lighting
+
+uniform samplerCubeArray uSpecularProbes;
+uniform samplerCubeArray uDiffuseProbes;
+uniform int              uDiffuseProbeCount;
+uniform int              uSpecularProbeCount;
+uniform float            uSpecularProbeMipCount;
+
+// Lighting
+
+uniform vec4  uSunColor;
+uniform vec3  uSunDirection;
+uniform float uSunRadius;
+uniform float uSunContactShadowLength;
+
+uniform ivec3 uClusterGridSize;
+uniform vec2  uClusterTileSize;
+uniform float uClusterNearPlane;
+uniform float uClusterDepthSliceScale;
+uniform int   uClusterCount;
+uniform int   uClusterLightCount;
+
+// Contact shadows
+
+uniform sampler2D uContactShadowDepthTex;
+uniform mat4      uContactShadowInvProjection;
+uniform float     uContactShadowThickness;
+uniform float     uContactShadowBias;
+
+// Cascaded shadow mapping
+
+uniform sampler2DShadow uShadowMapTex;
+uniform float           uShadowMapTexSize;
+uniform mat4            uShadowViewProjections[CASCADE_COUNT];
+uniform vec4            uShadowCascadeSplitDistances; // Far split distance for each cascade (view-space depth)
+uniform vec4            uShadowCascadeSizeMeters;     // World-space size of each cascade in meters
+
+// Local shadow atlas
+
+uniform sampler2DShadow uLocalShadowAtlasTex;
+uniform float           uLocalShadowAtlasTexSize;
+uniform int             uLocalShadowFaceCount;
+
+// Misc
+
+uniform vec3  uCameraPos;
+uniform vec2  uScreenSize;
+uniform vec2  uCameraNearFar;
+uniform mat4  uView;
+uniform mat4  uViewProjection;
+uniform uint  uPbrFeatures;
+uniform bool  uUseDefaultLighting;
+uniform int   uViewMode;
+uniform bool  uWireframeOverlay;
+
+// Weighted Blended Order Indepenant Transparency
+
+#ifdef PBR_OUTPUT_WBOIT_ACCUM
+    uniform sampler2D uOpaqueDepthTex;
+    uniform vec2      uOpaqueDepthTexSize;
+    uniform bool      uUseOpaqueDepthTex;
+    uniform float     uWboitAlphaCutoff;
+#endif
+
+struct LocalLightData
+{
+    vec4 positionRange;
+    vec4 colorDirectionX;
+    vec4 directionYZOuterInnerCos;
+    vec4 isSpotShadowInfo;    // x=isSpotLight, y=ShadowBias, z=firstFace, w=faceCount
+    vec4 sourceRadiusPadding; // x=sourceRadius, y=contactShadowLength
+};
+
+struct LocalShadowFaceData
+{
+    vec4 atlasScaleBias; // xy=scale, zw=bias
+    mat4 shadowViewProjection;
+};
+
+struct LightProbeData
+{
+    vec3  capturePosition;
+    float cubeIndex;
+    vec3  center;
+    float blendDistance;
+    vec3  influenceHalfSize;
+    float specularIntensity;
+    vec3  projectionHalfSize;
+    float diffuseIntensity;
+    vec4  worldToLocalRotation;
+};
+
+struct MaterialData
+{
+    vec4 baseColor;
+    vec4 emissiveFactor;
+    vec4 albedoTex;
+    vec4 normalTex;
+    vec4 aoRoughMetalTex;
+    vec4 emissiveTex;
+    vec4 heightTex;
+    vec4 aoRoughMetalNormalFactor;
+    vec4 tilingAlphaHeight; // xy=tiling, z=alphaCutoff, w=heightScale
+    vec4 normalDirPadding;  // xy=normalDir, zw=padding
+};
+
+layout(std430, binding = 3) readonly buffer MaterialBuffer
+{
+    MaterialData uMaterials[];
+};
+
+layout(std430, binding = 4) readonly buffer LocalLightBuffer
+{
+    LocalLightData uLocalLights[];
+};
+
+layout(std430, binding = 5) readonly buffer ClusterBuffer
+{
+    uvec2 uClusterRanges[]; // x=offset into uClusterLightIndices, y=count
+};
+
+layout(std430, binding = 6) readonly buffer ClusterLightIndexBuffer
+{
+    uint uClusterLightIndices[];
+};
+
+layout(std430, binding = 7) readonly buffer LocalShadowFaceBuffer
+{
+    LocalShadowFaceData uLocalShadowFaces[];
+};
+
+layout(std430, binding = 8) readonly buffer LightProbeBuffer
+{
+    LightProbeData uProbes[];
+};
+
+bool hasPbrFeature(uint feature)
+{
+    return (uPbrFeatures & feature) != 0;
+}
+
+float defaultStudioLighting(vec3 worldNormal, float ao)
+{
+    // Camera-relative studio lights keep geometry readable without requiring scene lights.
+    vec3 viewNormal = normalize(mat3(uView) * worldNormal);
+    vec3 keyDirection = normalize(vec3(-0.45, 0.65, 0.75));
+    vec3 fillDirection = normalize(vec3(0.60, 0.10, 0.80));
+
+    float hemisphere = worldNormal.y * 0.5 + 0.5;
+    float key = max(dot(viewNormal, keyDirection), 0.0);
+    float fill = max(dot(viewNormal, fillDirection), 0.0) * ao;
+    return clamp(0.30 + hemisphere * 0.10 + key * 0.50 + fill * 0.18, 0.0, 1.0);
+}
+
+// ------------------------------------------------------------------
+// Texture sampling
+// ------------------------------------------------------------------
 
 // Use fixed texture-array slots as some OpenGL drivers reject dynamic indexing of sampler arrays.
 vec4 sampleTextureBankGrad(int textureArraySlot, vec3 texCoords, vec2 ddx, vec2 ddy)
@@ -119,141 +295,6 @@ vec4 sampleTextureBankLod(int textureArraySlot, vec3 texCoords, float lod)
     }
     return vec4(0.0);
 }
-
-// Environment
-
-uniform vec4  uEnvDiffuseTex;
-uniform vec4  uEnvSpecularTex;
-uniform vec4  uEnvBrdfLutTex;
-uniform vec4  uEnvColor;
-uniform float uEnvIntensity;
-uniform float uEnvSpecularMipCount;
-uniform float uAoIntensity;
-
-// Lighting
-
-uniform vec4  uSunColor;
-uniform vec3  uSunDirection;
-uniform float uSunRadius;
-uniform float uSunContactShadowLength;
-
-uniform sampler2D uContactShadowDepthTex;
-uniform mat4      uContactShadowInvProjection;
-uniform float     uContactShadowThickness;
-uniform float     uContactShadowBias;
-
-uniform ivec3 uClusterGridSize;
-uniform vec2  uClusterTileSize;
-uniform float uClusterNearPlane;
-uniform float uClusterDepthSliceScale;
-uniform int   uClusterCount;
-uniform int   uClusterLightCount;
-uniform int   uLocalShadowFaceCount;
-
-uniform vec3  uCameraPos;
-uniform vec2  uScreenSize;
-uniform vec2  uCameraNearFar;
-uniform mat4  uView;
-uniform mat4  uViewProjection;
-uniform uint  uPbrFeatures;
-uniform bool  uUseDefaultLighting;
-uniform int   uViewMode;
-uniform bool  uWireframeOverlay;
-
-// Cascaded shadow mapping
-uniform sampler2DShadow uShadowMapTex;
-uniform float           uShadowMapTexSize;
-uniform mat4            uShadowViewProjections[CASCADE_COUNT];
-uniform vec4            uShadowCascadeSplitDistances; // Far split distance for each cascade (view-space depth)
-uniform vec4            uShadowCascadeSizeMeters;     // World-space size of each cascade in meters
-
-// Local shadow atlas
-uniform sampler2DShadow uLocalShadowAtlasTex;
-uniform float           uLocalShadowAtlasTexSize;
-
-// Weighted Blended Order Indepenant Transparency
-#ifdef PBR_OUTPUT_WBOIT_ACCUM
-    uniform sampler2D uOpaqueDepthTex;
-    uniform vec2      uOpaqueDepthTexSize;
-    uniform bool      uUseOpaqueDepthTex;
-    uniform float     uWboitAlphaCutoff;
-#endif
-
-struct LocalLightData
-{
-    vec4 positionRange;
-    vec4 colorDirectionX;
-    vec4 directionYZOuterInnerCos;
-    vec4 isSpotShadowInfo;    // x=isSpotLight, y=ShadowBias, z=firstFace, w=faceCount
-    vec4 sourceRadiusPadding; // x=sourceRadius, y=contactShadowLength
-};
-
-struct LocalShadowFaceData
-{
-    vec4 atlasScaleBias; // xy=scale, zw=bias
-    mat4 shadowViewProjection;
-};
-
-struct MaterialData
-{
-    vec4 baseColor;
-    vec4 emissiveFactor;
-    vec4 albedoTex;
-    vec4 normalTex;
-    vec4 aoRoughMetalTex;
-    vec4 emissiveTex;
-    vec4 heightTex;
-    vec4 aoRoughMetalNormalFactor;
-    vec4 tilingAlphaHeight; // xy=tiling, z=alphaCutoff, w=heightScale
-    vec4 normalDirPadding;  // xy=normalDir, zw=padding
-};
-
-layout(std430, binding = 3) readonly buffer MaterialBuffer
-{
-    MaterialData uMaterials[];
-};
-
-layout(std430, binding = 4) readonly buffer LocalLightBuffer
-{
-    LocalLightData uLocalLights[];
-};
-
-layout(std430, binding = 5) readonly buffer ClusterBuffer
-{
-    uvec2 uClusterRanges[]; // x=offset into uClusterLightIndices, y=count
-};
-
-layout(std430, binding = 6) readonly buffer ClusterLightIndexBuffer
-{
-    uint uClusterLightIndices[];
-};
-
-layout(std430, binding = 7) readonly buffer LocalShadowFaceBuffer
-{
-    LocalShadowFaceData uLocalShadowFaces[];
-};
-
-bool hasPbrFeature(uint feature)
-{
-    return (uPbrFeatures & feature) != 0;
-}
-
-float defaultStudioLighting(vec3 worldNormal, float ao)
-{
-    // Camera-relative studio lights keep geometry readable without requiring scene lights.
-    vec3 viewNormal = normalize(mat3(uView) * worldNormal);
-    vec3 keyDirection = normalize(vec3(-0.45, 0.65, 0.75));
-    vec3 fillDirection = normalize(vec3(0.60, 0.10, 0.80));
-
-    float hemisphere = worldNormal.y * 0.5 + 0.5;
-    float key = max(dot(viewNormal, keyDirection), 0.0);
-    float fill = max(dot(viewNormal, fillDirection), 0.0) * ao;
-    return clamp(0.30 + hemisphere * 0.10 + key * 0.50 + fill * 0.18, 0.0, 1.0);
-}
-
-// ------------------------------------------------------------------
-// Texture sampling
-// ------------------------------------------------------------------
 
 vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 texCoord, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
 {
@@ -386,6 +427,86 @@ vec3 sampleEnvMap(vec4 texDesc, vec3 dir, float lod)
     vec2 uvMax = texDesc.zw;
     vec2 uv = vec2(u, v) * uvMax;
     return sampleTextureBankLod(textureArraySlot, vec3(uv, layer), lod).rgb;
+}
+
+vec3 rotateProbeVector(vec4 rotation, vec3 v)
+{
+    return v + 2.0 * cross(rotation.xyz, cross(rotation.xyz, v) + rotation.w * v);
+}
+
+vec3 sampleSpecularProbes(vec3 worldPos, vec3 R, float roughness, vec3 fallback)
+{
+    vec3 radiance = vec3(0.0);
+    float totalWeight = 0.0;
+    float coverage = 0.0;
+    
+    for (int i = 0; i < uSpecularProbeCount; i++)
+    {
+        LightProbeData probe = uProbes[i];
+        if (probe.specularIntensity <= 0.0)
+            continue;
+
+        vec3 localPos = rotateProbeVector(probe.worldToLocalRotation, worldPos - probe.center);
+        vec3 edgeDistance = probe.influenceHalfSize - abs(localPos);
+        float edge = min(edgeDistance.x, min(edgeDistance.y, edgeDistance.z));
+        if (edge <= 0.0)
+            continue;
+        
+        float weight = smoothstep(0.0, max(probe.blendDistance, 0.0001), edge);
+
+        // Slab intersection handles parallel rays and influence boxes extending beyond the projection box.
+        vec3 localR = rotateProbeVector(probe.worldToLocalRotation, R);
+        vec3 safeR = mix(vec3(-1.0), vec3(1.0), greaterThanEqual(localR, vec3(0.0))) * max(abs(localR), vec3(1e-6));
+        vec3 t0 = (-probe.projectionHalfSize - localPos) / safeR;
+        vec3 t1 = ( probe.projectionHalfSize - localPos) / safeR;
+        vec3 nearT = min(t0, t1);
+        vec3 farT = max(t0, t1);
+        float entry = max(nearT.x, max(nearT.y, nearT.z));
+        float exit = min(farT.x, min(farT.y, farT.z));
+        vec3 direction = R;
+ 
+        // Rotation preserves ray distance, so the hit and cubemap lookup stay in world space.
+        if (exit >= max(entry, 0.0))
+            direction = worldPos + R * exit - probe.capturePosition;
+        
+        if (dot(direction, direction) < 1e-10) 
+            direction = R;
+        
+        vec3 color = textureLod(uSpecularProbes, vec4(direction, probe.cubeIndex), roughness * (uSpecularProbeMipCount - 1.0)).rgb;
+        radiance += color * probe.specularIntensity * weight;
+        totalWeight += weight;
+        coverage = max(coverage, weight);
+    }
+
+    return totalWeight > 0.0 ? mix(fallback, radiance / totalWeight, coverage) : fallback;
+}
+
+vec3 sampleDiffuseProbes(vec3 worldPos, vec3 N, vec3 fallback)
+{
+    vec3 irradiance = vec3(0.0);
+    float totalWeight = 0.0;
+    float coverage = 0.0;
+
+    for (int i = 0; i < uDiffuseProbeCount; i++)
+    {
+        LightProbeData probe = uProbes[i];
+        if (probe.diffuseIntensity <= 0.0)
+            continue;
+
+        vec3 localPos = rotateProbeVector(probe.worldToLocalRotation, worldPos - probe.center);
+        vec3 edgeDistance = probe.influenceHalfSize - abs(localPos);
+        float edge = min(edgeDistance.x, min(edgeDistance.y, edgeDistance.z));
+        if (edge <= 0.0)
+            continue;
+
+        float weight = smoothstep(0.0, max(probe.blendDistance, 0.0001), edge);
+        // Captures are world-aligned. Diffuse lighting uses the normal without box projection.
+        irradiance += textureLod(uDiffuseProbes, vec4(N, probe.cubeIndex), 0.0).rgb * probe.diffuseIntensity * weight;
+        totalWeight += weight;
+        coverage = max(coverage, weight);
+    }
+
+    return totalWeight > 0.0 ? mix(fallback, irradiance / totalWeight, coverage) : fallback;
 }
 
 vec2 sampleBrdfLut(float NdotV, float roughness)
@@ -1148,7 +1269,7 @@ void main()
         case VIEW_MODE_PBR_ROUGHNESS:
         case VIEW_MODE_PBR_METALLIC:
         {
-            vec3 viewOrm = sampleTexOrDefault(material.aoRoughMetalTex, vec3(1.0, 1.0, 0.0), texCoord, tiling, texCoordDx, texCoordDy).rgb;
+            vec3 viewOrm = sampleTexOrDefault(material.aoRoughMetalTex, vec3(1.0), texCoord, tiling, texCoordDx, texCoordDy).rgb;
             float materialAo = clamp(mix(1.0, viewOrm.r, material.aoRoughMetalNormalFactor.x), 0.0, 1.0);
             float viewValue = materialAo;
             if (uViewMode == VIEW_MODE_COMBINED_AO)
@@ -1162,10 +1283,12 @@ void main()
             return;
         }
         default:
-            break; // Shaded and lighting-only views continue through the normal PBR path.
+            break; // Shaded, lighting and indirect views continue through the PBR path.
     }
 
-    if (uUseDefaultLighting)
+    bool indirectView = uViewMode == VIEW_MODE_INDIRECT_SPECULAR || uViewMode == VIEW_MODE_INDIRECT_DIFFUSE;
+    bool contributionView = indirectView || uViewMode == VIEW_MODE_DIRECT_LIGHTING || uViewMode == VIEW_MODE_COMBINED_LIGHTING;
+    if (uUseDefaultLighting && !contributionView)
     {
         float lighting = defaultStudioLighting(N, gtao);
         vec3 color = uViewMode == VIEW_MODE_LIGHTING ? vec3(lighting) : baseColor.rgb * lighting + emissive;
@@ -1173,7 +1296,7 @@ void main()
         return;
     }
 
-    vec3 orm        = sampleTexOrDefault(material.aoRoughMetalTex, vec3(1.0, 1.0, 0.0), texCoord, tiling, texCoordDx, texCoordDy).rgb; // Default AO=1, rough=1, metal=0
+    vec3 orm        = sampleTexOrDefault(material.aoRoughMetalTex, vec3(1.0), texCoord, tiling, texCoordDx, texCoordDy).rgb; // Without a texture, material factors define AO, roughness and metallic.
     float ao        = clamp(mix(1.0, orm.r, material.aoRoughMetalNormalFactor.x), 0.0,  1.0);
     float roughness = clamp(orm.g * material.aoRoughMetalNormalFactor.y, 0.04, 1.0);
     float metallic  = clamp(orm.b * material.aoRoughMetalNormalFactor.z, 0.0,  1.0);
@@ -1206,7 +1329,7 @@ void main()
     //--------------------------------------------------
 
     vec3 LoSun = vec3(0.0);
-    if (hasPbrFeature(PBR_FEATURE_SUN_LIGHT))
+    if (!indirectView && hasPbrFeature(PBR_FEATURE_SUN_LIGHT))
     {
         vec3 L = normalize(-uSunDirection);
         float NdotL = max(dot(N, L), 0.0);
@@ -1231,39 +1354,57 @@ void main()
     }
 
     vec3 LoLocalLights = vec3(0.0);
-    if (hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
+    if (!indirectView && hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
         LoLocalLights = accumulateLocalLights(worldPos, N, meshNormal, V, NdotV, pbrColor, metallic, roughness, F0, worldPosDx, worldPosDy, invViewDistance);
 
     vec3 Lo = LoSun + LoLocalLights;
+    if (uViewMode == VIEW_MODE_DIRECT_LIGHTING)
+    {
+        writeFragment(Lo, alpha);
+        return;
+    }
 
     //--------------------------------------------------
     // Image-based lighting (IBL)
     //--------------------------------------------------
 
-    vec3 ambient = vec3(0.0);
     bool diffuseIblEnabled = hasPbrFeature(PBR_FEATURE_DIFFUSE_IBL);
     bool specularIblEnabled = hasPbrFeature(PBR_FEATURE_SPECULAR_IBL);
     vec3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
 
-    if (specularIblEnabled)
+    vec3 specularAmbient = vec3(0.0);
+    if (uViewMode != VIEW_MODE_INDIRECT_DIFFUSE && (specularIblEnabled || uSpecularProbeCount > 0))
     {
         vec3 R = reflect(-V, N);
         float lod = roughness * (uEnvSpecularMipCount - 1.0);
-        vec3 prefilteredColor = sampleEnvMap(uEnvSpecularTex, R, lod);
+        vec3 prefilteredColor = specularIblEnabled ? sampleEnvMap(uEnvSpecularTex, R, lod) * uEnvIntensity : vec3(0.0);
+        prefilteredColor = sampleSpecularProbes(worldPos, R, roughness, prefilteredColor);
         float specOcc = specularOcclusion(NdotV, aoCombined, roughness);
         vec2 brdf = sampleBrdfLut(NdotV, roughness);
-        ambient += prefilteredColor * (F * brdf.x + brdf.y) * specOcc;
+        specularAmbient = prefilteredColor * (F * brdf.x + brdf.y) * specOcc;
+    }
+
+    if (uViewMode == VIEW_MODE_INDIRECT_SPECULAR)
+    {
+        writeFragment(specularAmbient, alpha);
+        return;
     }
 
     vec3 kD_ibl = (vec3(1.0) - F) * (1.0 - metallic);
-    vec3 irradiance = diffuseIblEnabled ? sampleEnvMap(uEnvDiffuseTex, N, 0.0) : uEnvColor.rgb;
-    ambient += irradiance * pbrColor * kD_ibl * aoCombined;
+    vec3 irradiance = (diffuseIblEnabled ? sampleEnvMap(uEnvDiffuseTex, N, 0.0) : uEnvColor.rgb) * uEnvIntensity;
+    irradiance = sampleDiffuseProbes(worldPos, N, irradiance);
+    vec3 diffuseAmbient = irradiance * pbrColor * kD_ibl * aoCombined;
+    if (uViewMode == VIEW_MODE_INDIRECT_DIFFUSE)
+    {
+        writeFragment(diffuseAmbient, alpha);
+        return;
+    }
 
     //--------------------------------------------------
     // Final color composition
     //--------------------------------------------------
 
-    vec3 lighting = ambient * uEnvIntensity + Lo;
-    vec3 color = uViewMode == VIEW_MODE_LIGHTING ? lighting : lighting + emissive;
+    vec3 lighting = diffuseAmbient + specularAmbient + Lo;
+    vec3 color = (uViewMode == VIEW_MODE_LIGHTING || uViewMode == VIEW_MODE_COMBINED_LIGHTING) ? lighting : lighting + emissive;
     writeFragment(color, alpha);
 }

@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.shared.primitives.Mobility
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.GLOBAL_SHADOW
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.LOCAL_SHADOW
+import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.REFLECTION
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneState.RUNNING
 import no.njoh.pulseengine.core.scene.interfaces.Initiable
@@ -52,25 +53,27 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
     @Prop("Transform", i=2)             override var rotation = Vector3f(0f)
     @Prop("Transform", i=3, min=0.001f) override var scale    = Vector3f(1f)
 
-    @Prop("Physics",   i=0)                 var bodyType       = DYNAMIC
-    @Prop("Physics",   i=1, min=0f)         var density        = 1f
-    @Prop("Physics",   i=2, min=0f)         var friction       = 0.6f
-    @Prop("Physics",   i=3, min=0f, max=1f) var restitution    = 0f
-    @Prop("Physics",   i=4, min=0f)         var linearDamping  = 0f
-    @Prop("Physics",   i=5, min=0f)         var angularDamping = 0f
-    @Prop("Physics",   i=6)                 var gravityScale   = 1f
+    @Prop("Physics",   i=4)                 var bodyType       = DYNAMIC
+    @Prop("Physics",   i=5, min=0f)         var density        = 1f
+    @Prop("Physics",   i=6, min=0f)         var friction       = 0.6f
+    @Prop("Physics",   i=7, min=0f, max=1f) var restitution    = 0f
+    @Prop("Physics",   i=8, min=0f)         var linearDamping  = 0f
+    @Prop("Physics",   i=9, min=0f)         var angularDamping = 0f
+    @Prop("Physics",   i=10)                var gravityScale   = 1f
 
-    @Prop("Collision", i=1) var colliderType  = BOX
-    @Prop("Collision", i=2) var layerMask      = 1
-    @Prop("Collision", i=3) var collisionMask  = -1
-    @Prop("Collision", i=4) var continues      = false
-    @Prop("Collision", i=5) var sensor         = false
+    @Prop("Collision", i=11) var colliderType  = BOX
+    @Prop("Collision", i=12) var layerMask     = 1
+    @Prop("Collision", i=13) var collisionMask = -1
+    @Prop("Collision", i=14) var continues     = false
+    @Prop("Collision", i=15) var sensor        = false
 
-    @Prop("Rendering", i=1) var model    = AssetHandle<Model>("cube")
-    @Prop("Rendering", i=2) var material = AssetHandle<Material>()
+    @Prop("Rendering", i=16) var model    = AssetHandle<Model>("cube")
+    @Prop("Rendering", i=17) var material = AssetHandle<Material>()
 
-    @Prop("Shadows", i=1) var castLocalShadows = true
-    @Prop("Shadows", i=2) var castSunShadows   = true
+    @Prop("Shadows", i=18) var castLocalShadows = true
+    @Prop("Shadows", i=19) var castSunShadows   = true
+
+    @Prop("Reflections", i=20) var visibleInReflections = true
 
     private val tmpTransform      = Matrix4f()
     private val tmpEulerRotation  = Vector3f()
@@ -113,7 +116,7 @@ open class RigidBody3D : SceneEntity(), Initiable, PhysicsBodyEntity3D, Scene3DR
             model = model,
             transform = tmpTransform,
             material = material,
-            renderPassMask = CAMERA or LOCAL_SHADOW.takeIf(castLocalShadows) or GLOBAL_SHADOW.takeIf(castSunShadows),
+            renderPassMask = CAMERA or REFLECTION.takeIf(visibleInReflections) or LOCAL_SHADOW.takeIf(castLocalShadows) or GLOBAL_SHADOW.takeIf(castSunShadows),
             mobility = if (bodyType == STATIC && engine.scene.state == RUNNING) Mobility.STATIC else Mobility.DYNAMIC,
             renderId = id
         )

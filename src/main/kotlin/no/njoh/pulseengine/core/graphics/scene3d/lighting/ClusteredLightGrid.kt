@@ -25,6 +25,8 @@ class ClusteredLightGrid
     var depthSliceScale = 1f;                 private set
     var clusterCount    = 1;                  private set
 
+    var lastFrameRequested = -1
+
     lateinit var clusterBuffer: StreamingIntBufferObject    private set
     lateinit var lightIndexBuffer: StreamingIntBufferObject private set
 

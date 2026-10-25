@@ -9,6 +9,7 @@ value class RenderPassMask(val mask: Int)
         val CAMERA        = RenderPassMask(1 shl 0)
         val GLOBAL_SHADOW = RenderPassMask(1 shl 1)
         val LOCAL_SHADOW  = RenderPassMask(1 shl 2)
+        val REFLECTION    = RenderPassMask(1 shl 3)
     }
 
     infix fun or(other: RenderPassMask) = RenderPassMask(mask or other.mask)

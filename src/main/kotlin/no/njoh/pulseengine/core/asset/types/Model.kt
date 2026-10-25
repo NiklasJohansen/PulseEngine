@@ -568,6 +568,7 @@ class Model(
     
     private fun readMaterials(scene: AIScene)
     {
+        val isGltf = filePath.endsWith(".gltf", ignoreCase = true) || filePath.endsWith(".glb", ignoreCase = true)
         val numMaterials = scene.mNumMaterials()
         val materialPointers = scene.mMaterials() ?: return
         val materials = mutableListOf<MeshMaterial>()
@@ -610,7 +611,8 @@ class Model(
 
             val alphaCutoff = material.getMaterialFloatProp(AI_MATKEY_GLTF_ALPHACUTOFF) ?: 0.5f
 
-            val metallicFactor = material.getMaterialFloatProp(AI_MATKEY_METALLIC_FACTOR)?.coerceIn(0f, 1f) ?: 1f
+            val metallicFactor = material.getMaterialFloatProp(AI_MATKEY_METALLIC_FACTOR)?.coerceIn(0f, 1f)
+                ?: if (isGltf || roughMetalPath != null) 1f else 0f
 
             val roughnessFactor = material.getMaterialFloatProp(AI_MATKEY_ROUGHNESS_FACTOR)?.coerceIn(0f, 1f) ?: 1f
 

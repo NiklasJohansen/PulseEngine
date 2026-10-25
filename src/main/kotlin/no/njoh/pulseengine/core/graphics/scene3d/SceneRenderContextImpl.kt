@@ -74,7 +74,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     override fun buildFrame(engine: PulseEngineInternal)
     {
-        views.entries.removeIf { it.value.lastFrameRequested < frameNumber - 10 }
+        // Cache unrequested views for 30 frames to avoid reallocating them between uses
+        views.entries.removeIf { it.value.lastFrameRequested < frameNumber - VIEW_CACHE_FRAMES }
 
         if (!thisFrameScene.hasSubmittedGeometry && !lastFrameHadDrawItems)
             return // This and last frame had no items, skip frame. If the last frame had items, do a pass to clear everything.
@@ -135,7 +136,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             cullingBuffer.submit()
             boneBuffer.submit()
             lightBuffer.submit()
-            clusteredLightGrids.forEach { (_, grid) -> grid.submit() }
+            clusteredLightGrids.forEach { (_, grid) -> if (grid.wasRequested()) grid.submit() }
         }
 
         // Prepare views for rendering
@@ -157,7 +158,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
                 boneBuffer.markGpuDataInUse()
                 lightBuffer.markSubmittedDataInUse()
                 drawCommandBuilder.markSubmittedDataInUse()
-                clusteredLightGrids.forEach { (_, grid) -> grid.markSubmittedDataInUse() }
+                clusteredLightGrids.forEach { (_, grid) -> if (grid.wasRequested()) grid.markSubmittedDataInUse() }
             }
         }
     }
@@ -301,7 +302,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     override fun getInstanceBuffer() = instanceBuffer
 
-    override fun getClusteredLightGrid(state: CameraRenderState) = clusteredLightGrids[state]
+    override fun getClusteredLightGrid(state: CameraRenderState) = clusteredLightGrids[state]?.takeIf { it.wasRequested() }
     
     override fun requestClusteredLightGrid(state: CameraRenderState)
     {
@@ -321,10 +322,11 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         {
             val grid = clusteredLightGrids.getOrPut(state) { ClusteredLightGrid() }
             grid.build(state, thisFrameScene)
+            grid.lastFrameRequested = frameNumber
         }
 
-        clusteredLightGrids.retainEntries { state, grid -> 
-            val retain = state in clusteredLightGridRequests
+        clusteredLightGrids.retainEntries { _, grid ->
+            val retain = grid.lastFrameRequested >= frameNumber - VIEW_CACHE_FRAMES
             if (!retain) grid.destroy()
             retain
         }
@@ -343,5 +345,12 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     private fun resolveRenderId(renderId: Long) = if (renderIdOverrides.isEmpty) renderId else renderIdOverrides.getLong(renderIdOverrides.size - 1)
 
-    private fun RenderView.wasRequested() = (lastFrameRequested == frameNumber)
+    private fun RenderView.wasRequested() = (this.lastFrameRequested == frameNumber)
+
+    private fun ClusteredLightGrid.wasRequested() = (this.lastFrameRequested == frameNumber)
+
+    companion object
+    {
+        private const val VIEW_CACHE_FRAMES = 30
+    }
 }
