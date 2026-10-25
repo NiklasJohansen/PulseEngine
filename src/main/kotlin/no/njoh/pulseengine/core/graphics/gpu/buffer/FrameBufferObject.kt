@@ -9,6 +9,8 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
+import no.njoh.pulseengine.core.graphics.gpu.texture.CubeMap
+import no.njoh.pulseengine.core.graphics.gpu.texture.CubeMapArray
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureArray
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat
@@ -110,6 +112,38 @@ open class FrameBufferObject(
         glFramebufferTextureLayer(GL_FRAMEBUFFER, attachmentPoint.glValue, textureArray.id, mipLevel, layerIndex)
         glDrawBuffer(buf)
         glReadBuffer(buf)
+    }
+
+    fun attachCubeFace(cubeMap: CubeMap, face: Int, mipLevel: Int = 0, attachmentPoint: AttachmentPoint = COLOR_TEXTURE_0)
+    {
+        require(face in 0..5 && mipLevel in 0 until cubeMap.mipLevels) { "Invalid cubemap face or mip level" }
+        val buf = if (attachmentPoint.isColor) attachmentPoint.glValue else GL_NONE
+        glFramebufferTexture2D(GL_FRAMEBUFFER, attachmentPoint.glValue, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, cubeMap.handle.glId, mipLevel)
+        glDrawBuffer(buf)
+        glReadBuffer(buf)
+    }
+
+    fun attachCubeFace(cubeMapArray: CubeMapArray, cubeIndex: Int, face: Int, mipLevel: Int = 0, attachmentPoint: AttachmentPoint = COLOR_TEXTURE_0)
+    {
+        require(mipLevel in 0 until cubeMapArray.mipLevels) { "Invalid cubemap mip level" }
+        val layer = cubeMapArray.getLayerIndex(cubeIndex, face)
+        val buf = if (attachmentPoint.isColor) attachmentPoint.glValue else GL_NONE
+        glFramebufferTextureLayer(GL_FRAMEBUFFER, attachmentPoint.glValue, cubeMapArray.handle.glId, mipLevel, layer)
+        glDrawBuffer(buf)
+        glReadBuffer(buf)
+    }
+
+    /** 
+     * Copies a face-sized region from this framebuffer's lower-left corner to the specified cubemap face.
+     */
+    fun copyToCubeFace(cubeMap: CubeMap, face: Int, mipLevel: Int = 0, attachmentPoint: AttachmentPoint = COLOR_TEXTURE_0)
+    {
+        val size = maxOf(cubeMap.resolution shr mipLevel, 1)
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, id)
+        glReadBuffer(attachmentPoint.glValue)
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap.handle.glId)
+        glCopyTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, mipLevel, 0, 0, 0, 0, size, size)
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0)
     }
 
     fun resolveToFBO(destinationFbo: FrameBufferObject) 

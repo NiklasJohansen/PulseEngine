@@ -5,6 +5,8 @@ import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.buffer.ShaderStorageBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
+import no.njoh.pulseengine.core.graphics.gpu.texture.CubeMap
+import no.njoh.pulseengine.core.graphics.gpu.texture.CubeMapArray
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAnisotropy.Companion.defaultFor
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.*
@@ -28,6 +30,7 @@ import org.lwjgl.opengl.ARBUniformBufferObject.*
 import org.lwjgl.opengl.GL20.*
 import org.lwjgl.opengl.GL30.GL_TEXTURE_2D_ARRAY
 import org.lwjgl.opengl.GL32.GL_TEXTURE_2D_MULTISAMPLE
+import org.lwjgl.opengl.GL40.GL_TEXTURE_CUBE_MAP_ARRAY
 import org.lwjgl.opengl.GL30.glUniform1ui
 import org.lwjgl.opengl.GL43.GL_BUFFER_BINDING
 import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BLOCK
@@ -169,6 +172,39 @@ class ShaderProgram(
         glActiveTexture(GL_TEXTURE0 + unit)
         glBindTexture(target, textureHandle.glId)
         TextureSampler.getFor(filter, anisotropy, wrapping, compare, borderColor).bind(unit)
+    }
+
+    fun setUniformSampler(
+        samplerName: String,
+        cubeMap: CubeMap,
+        filter: TextureFilter = cubeMap.filter,
+        anisotropy: TextureAnisotropy = TextureAnisotropy.OFF
+    ) {
+        val unit = assignSamplerUnit(samplerName)
+        glActiveTexture(GL_TEXTURE0 + unit)
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap.handle.glId)
+        TextureSampler.getFor(filter, anisotropy, CLAMP_TO_EDGE, TextureCompare.NONE, null).bind(unit)
+    }
+
+    fun setUniformSampler(
+        samplerName: String,
+        cubeMapArray: CubeMapArray,
+        filter: TextureFilter = cubeMapArray.filter,
+        anisotropy: TextureAnisotropy = TextureAnisotropy.OFF
+    ) {
+        setUniformSamplerCubeMapArray(samplerName, cubeMapArray.handle, filter, anisotropy)
+    }
+
+    fun setUniformSamplerCubeMapArray(
+        samplerName: String,
+        textureHandle: TextureHandle,
+        filter: TextureFilter = LINEAR_MIPMAP,
+        anisotropy: TextureAnisotropy = TextureAnisotropy.OFF
+    ) {
+        val unit = assignSamplerUnit(samplerName)
+        glActiveTexture(GL_TEXTURE0 + unit)
+        glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, if (textureHandle.isNone) 0 else textureHandle.glId)
+        TextureSampler.getFor(filter, anisotropy, CLAMP_TO_EDGE, TextureCompare.NONE, null).bind(unit)
     }
 
     fun setUniformSamplerArrays(textureArrays: List<TextureArray>, filter: TextureFilter? = null, anisotropy: TextureAnisotropy? = null, wrapping: TextureWrapping? = null) =

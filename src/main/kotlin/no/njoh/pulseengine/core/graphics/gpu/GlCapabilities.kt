@@ -111,6 +111,7 @@ object GlCapabilities
 
         limits = GlCapabilityLimits(
             maxTextureSize = glGetInteger(GL_MAX_TEXTURE_SIZE),
+            maxCubeMapTextureSize = glGetInteger(GL_MAX_CUBE_MAP_TEXTURE_SIZE),
             maxArrayTextureLayers = glGetInteger(GL_MAX_ARRAY_TEXTURE_LAYERS),
             maxTextureImageUnits = glGetInteger(GL_MAX_TEXTURE_IMAGE_UNITS),
             maxCombinedTextureImageUnits = glGetInteger(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS),
@@ -204,6 +205,7 @@ object GlCapabilities
 
 data class GlCapabilityLimits(
     val maxTextureSize: Int,
+    val maxCubeMapTextureSize: Int,
     val maxArrayTextureLayers: Int,
     val maxTextureImageUnits: Int,
     val maxCombinedTextureImageUnits: Int,

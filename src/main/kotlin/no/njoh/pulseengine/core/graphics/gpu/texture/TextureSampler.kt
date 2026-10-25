@@ -57,6 +57,7 @@ data class TextureSampler(
 
             glSamplerParameteri(id, GL_TEXTURE_WRAP_S, wrapping.horizontalValue)
             glSamplerParameteri(id, GL_TEXTURE_WRAP_T, wrapping.verticalValue)
+            glSamplerParameteri(id, GL_TEXTURE_WRAP_R, wrapping.verticalValue)
 
             glSamplerParameteri(id, GL_TEXTURE_COMPARE_MODE, compare.mode)
             if (compare.mode != GL_NONE)
