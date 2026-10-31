@@ -255,12 +255,14 @@ class SurfaceImpl(
     // Exposed getters
     //------------------------------------------------------------------------------------------------
 
+    override fun getTextures(): List<RenderTexture>
+    {
+        return renderTarget.getTextures()
+    }
+
     override fun getTexture(index: Int, final: Boolean): RenderTexture
     {
-        if (final && config.drawPostEffects)
-            postEffects.forEachReversed { effect -> effect.getTexture(index)?.let { return it } }
-
-        return renderTarget.getTexture(index) ?: throw RuntimeException(
+        return getTextureOrNull(index, final) ?: throw RuntimeException(
             "Failed to get texture with index: $index from surface with name: ${config.name}. " +
             "Surface has the following output specification: ${config.attachments})"
         )
@@ -268,18 +270,26 @@ class SurfaceImpl(
 
     override fun getTexture(attachmentPoint: AttachmentPoint, final: Boolean): RenderTexture
     {
-        if (final && attachmentPoint == COLOR_TEXTURE_0)
-            return getTexture(0, final = true)
-
-        return renderTarget.getTexture(attachmentPoint) ?: throw RuntimeException(
+        return getTextureOrNull(attachmentPoint, final) ?: throw RuntimeException(
             "Failed to get texture for attachment point: $attachmentPoint from surface with name: ${config.name}. " +
             "Surface has the following output specification: ${config.attachments}"
         )
     }
 
-    override fun getTextures(): List<RenderTexture>
+    override fun getTextureOrNull(index: Int, final: Boolean): RenderTexture?
     {
-        return renderTarget.getTextures()
+        if (final && config.drawPostEffects)
+            postEffects.forEachReversed { effect -> effect.getTexture(index)?.let { return it } }
+
+        return renderTarget.getTextureOrNull(index)
+    }
+
+    override fun getTextureOrNull(attachmentPoint: AttachmentPoint, final: Boolean): RenderTexture?
+    {
+        if (final && attachmentPoint == COLOR_TEXTURE_0)
+            return getTextureOrNull(0, final = true)
+
+        return renderTarget.getTextureOrNull(attachmentPoint)
     }
 
     override fun readPixel(x: Int, y: Int, textureIndex: Int, final: Boolean, dstResult: PixelReadResult): PixelReadResult

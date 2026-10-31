@@ -3,9 +3,9 @@ package no.njoh.pulseengine.core.graphics.surface
 import no.njoh.pulseengine.core.PulseEngineInternal
 import no.njoh.pulseengine.core.graphics.gpu.buffer.FrameBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureAlphaMode
-import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureDescriptor
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -13,10 +13,11 @@ import kotlin.collections.plusAssign
 
 class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 {
-    private val hasMultisampling = textureDescriptors.anyMatches { it.multisampling != Multisampling.NONE }
     private val frameBuffers     = mutableListOf<FrameBufferObject>()
     private val writeFbo get()   = frameBuffers.first() // MSAA or single sampled
     private val readFbo  get()   = frameBuffers.last()  // Single sampled 
+
+    private val hasMultisampling = textureDescriptors.anyMatches { it.multisampling != NONE }
 
     fun init(width: Int, height: Int)
     {
@@ -28,14 +29,10 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 
         // But make sure the last frame buffer is the one without multisampling
         if (hasMultisampling)
-            frameBuffers += FrameBufferObject.create(width, height, textureDescriptors.map { it.copy(multisampling = Multisampling.NONE, msaaResolver = null) })
+            frameBuffers += FrameBufferObject.create(width, height, textureDescriptors.map { it.copy(multisampling = NONE, msaaResolver = null) })
     }
 
     fun begin() = writeFbo.bind()
-
-    fun setDrawBuffer(attachmentPoint: AttachmentPoint) = writeFbo.setDrawBuffer(attachmentPoint)
-
-    fun setDrawBuffers(first: AttachmentPoint, second: AttachmentPoint) = writeFbo.setDrawBuffers(first, second)
 
     fun end(engine: PulseEngineInternal)
     {
@@ -77,23 +74,27 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 
     fun generateMips(engine: PulseEngineInternal) = getTextures().forEachFast { it.generateMips(engine) }
 
-    fun getTexture(index: Int) = readFbo.getTextureOrNull(index)
+    fun setDrawBuffer(attachmentPoint: AttachmentPoint) = writeFbo.setDrawBuffer(attachmentPoint)
 
-    fun getTexture(attachmentPoint: AttachmentPoint) = readFbo.getTextureOrNull(attachmentPoint)
+    fun setDrawBuffers(first: AttachmentPoint, second: AttachmentPoint) = writeFbo.setDrawBuffers(first, second)
+
+    fun setColorAlphaMode(alphaMode: TextureAlphaMode)
+    {
+        readFbo.getTextures().forEachFast()
+        {
+            if (it.attachmentPoint.isColor) it.alphaMode = alphaMode
+        }
+    }
+    
+    fun getTextureOrNull(index: Int) = readFbo.getTextureOrNull(index)
+
+    fun getTextureOrNull(attachmentPoint: AttachmentPoint) = readFbo.getTextureOrNull(attachmentPoint)
     
     fun getMultisampledTexture(attachmentPoint: AttachmentPoint) = if (hasMultisampling) writeFbo.getTextureOrNull(attachmentPoint) else null
 
     fun getTextures() = readFbo.getTextures()
 
     fun getFbo() = readFbo
-
-    fun setColorAlphaMode(alphaMode: TextureAlphaMode)
-    {
-        readFbo.getTextures().forEachFast() 
-        {
-            if (it.attachmentPoint.isColor) it.alphaMode = alphaMode
-        }
-    }
 
     fun destroy()
     {

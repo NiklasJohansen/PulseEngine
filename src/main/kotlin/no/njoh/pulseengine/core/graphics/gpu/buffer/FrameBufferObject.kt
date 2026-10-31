@@ -71,7 +71,7 @@ open class FrameBufferObject(
         if (destroyed) return
 
         destroyed = true
-        textures.forEachFast { glDeleteTextures(it.handle.glId) }
+        textures.forEachFast { it.destroy() }
         renderBufferIds.forEachFast { glDeleteRenderbuffers(it) }
 
         // GLFW shares texture and renderbuffer objects with the replacement context, so these are
@@ -291,8 +291,8 @@ open class FrameBufferObject(
                 if (textureId != null)
                 {
                     renderTextures += RenderTexture(
-                        name = "fbo_${texDesc.attachmentPoint.name.lowercase()}",
                         handle = TextureHandle.createGlHandle(textureId),
+                        name = "fbo_${texDesc.attachmentPoint.name.lowercase()}",
                         width = texWidth,
                         height = texHeight,
                         filter = texDesc.filter,

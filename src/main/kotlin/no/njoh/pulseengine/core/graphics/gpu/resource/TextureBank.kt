@@ -24,7 +24,6 @@ import org.lwjgl.opengl.GL11.GL_TEXTURE_2D
 import org.lwjgl.opengl.GL11.GL_UNPACK_ALIGNMENT
 import org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE
 import org.lwjgl.opengl.GL11.glBindTexture
-import org.lwjgl.opengl.GL11.glDeleteTextures
 import org.lwjgl.opengl.GL11.glGenTextures
 import org.lwjgl.opengl.GL11.glGetInteger
 import org.lwjgl.opengl.GL11.glPixelStorei
@@ -85,9 +84,9 @@ class TextureBank
     {
         textureArrays.forEachFast { it.destroy() }
         emptyTextureArray.destroy()
-        fallbackTextures.forEach { (_, texture) -> glDeleteTextures(texture.handle.glId) }
+        fallbackTextures.forEach { (_, texture) -> texture.destroy() }
         fallbackTextures.clear()
-        fallbackDepthTexture?.let { glDeleteTextures(it.handle.glId) }
+        fallbackDepthTexture?.destroy()
         fallbackDepthTexture = null
     }
     
@@ -144,7 +143,7 @@ class TextureBank
             glBindTexture(GL_TEXTURE_2D, 0)
         }
 
-        return RenderTexture(name = "fallback", handle = TextureHandle.createGlHandle(id), width = 1, height = 1)
+        return RenderTexture(handle = TextureHandle.createGlHandle(id), name = "fallback", width = 1, height = 1)
     }
 
     private fun createFallbackDepthTexture(): RenderTexture
@@ -160,7 +159,7 @@ class TextureBank
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
         glBindTexture(GL_TEXTURE_2D, 0)
 
-        return RenderTexture(name = "fallback_depth", handle = TextureHandle.createGlHandle(id), width = 1, height = 1)
+        return RenderTexture(handle = TextureHandle.createGlHandle(id), name = "fallback_depth", width = 1, height = 1)
     }
 
     private fun getOrCreateTextureArrayFor(texture: Texture): TextureArray?

@@ -5,7 +5,6 @@ import no.njoh.pulseengine.core.asset.types.FragmentShader
 import no.njoh.pulseengine.core.asset.types.VertexShader
 import no.njoh.pulseengine.core.graphics.gpu.texture.RenderTexture
 import no.njoh.pulseengine.core.graphics.gpu.shader.ShaderProgram
-import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
 import no.njoh.pulseengine.core.graphics.gpu.shader.VertexAttributeLayout
 import no.njoh.pulseengine.core.graphics.gpu.buffer.StaticBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.VertexArrayObject
@@ -29,7 +28,7 @@ class RenderTextureRenderer(
     private lateinit var vbo: StaticBufferObject
     private lateinit var program: ShaderProgram
     private lateinit var data: FloatArray
-    private lateinit var textureHandles: LongArray
+    private lateinit var textures: Array<RenderTexture?>
 
     private var readCount         = 0
     private var writeCount        = 0
@@ -49,7 +48,7 @@ class RenderTextureRenderer(
             readHandleOffset = 0
             writeHandleOffset = capacity
             data = FloatArray(capacity * stride * 2)
-            textureHandles = LongArray(capacity * 2)
+            textures = arrayOfNulls(capacity * 2)
             vbo = StaticBufferObject.createQuadVertexArrayBuffer()
             program = ShaderProgram.create(
                 engine.asset.loadNow(VertexShader("/pulseengine/shaders/renderers/render_texture.vert")),
@@ -66,6 +65,7 @@ class RenderTextureRenderer(
 
     override fun onInitFrame(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
+        textures.fill(null, readHandleOffset, readHandleOffset + capacity)
         readCount = writeCount.also { writeCount = 0 }
         readDataOffset = writeDataOffset.also { writeDataOffset = readDataOffset }
         readHandleOffset = writeHandleOffset.also { writeHandleOffset = readHandleOffset }
@@ -83,6 +83,10 @@ class RenderTextureRenderer(
         // Draw each texture with separate draw call
         for (i in startIndex until startIndex + drawCount)
         {
+            val texture = textures[readHandleOffset + i] ?: continue
+            if (texture.handle.isInvalid) 
+                continue // A queued draw may outlive its framebuffer during scene reload or resize
+
             val base          = readDataOffset + i * stride
             val x             = data[base + 0]
             val y             = data[base + 1]
@@ -104,7 +108,7 @@ class RenderTextureRenderer(
             val isDepth       = data[base + 17]
             val alphaMode     = data[base + 18]
 
-            val textureHandle = TextureHandle.createFromLong(textureHandles[readHandleOffset + i])
+            val textureHandle = texture.handle
             val sampleTexture = textureHandle.isGlTexture
 
             // Bind texture
@@ -134,6 +138,7 @@ class RenderTextureRenderer(
 
     override fun destroy(engine: PulseEngineInternal)
     {
+        textures.fill(null)
         vbo.destroy()
         program.destroy()
         vao.destroy()
@@ -168,7 +173,7 @@ class RenderTextureRenderer(
         data[base + 17] = if (texture.attachmentPoint == DEPTH_TEXTURE) 1f else 0f
         data[base + 18] = if (texture.alphaMode == PREMULTIPLIED) 1f else 0f
 
-        textureHandles[writeHandleOffset + writeCount] = texture.handle.toLong()
+        textures[writeHandleOffset + writeCount] = texture
         writeCount++
         config.increaseDepth()
         increaseBatchSize()

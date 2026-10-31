@@ -144,7 +144,7 @@ class GtaoRenderer(
         if (startIndex != 0) return
 
         // TODO: The resolved single sampled depth textures has jagged edges. Make custom MSAA resolver that writes coverage to a separate channel
-        val depthTex = surface.renderTarget.getTexture(DEPTH_TEXTURE) ?: return
+        val depthTex = surface.getTextureOrNull(DEPTH_TEXTURE) ?: return
 
         // Main GTAO render pass
         var aoTex = renderGtao(surface, depthTex)

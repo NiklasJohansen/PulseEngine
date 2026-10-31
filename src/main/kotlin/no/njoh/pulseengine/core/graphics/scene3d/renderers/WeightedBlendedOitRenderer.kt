@@ -137,7 +137,7 @@ class WeightedBlendedOitRenderer
         updateFbo(surface, writeRenderIds)
         surface.renderTarget.resolveDepth()
 
-        val opaqueDepthTex = surface.renderTarget.getTexture(DEPTH_TEXTURE)
+        val opaqueDepthTex = surface.renderTarget.getTextureOrNull(DEPTH_TEXTURE)
 
         accumulate(engine, surface, bucket, drawPayload, opaqueDepthTex, writeRenderIds, visualizeRenderIds, cameraState)
         composite(surface, writeRenderIds)

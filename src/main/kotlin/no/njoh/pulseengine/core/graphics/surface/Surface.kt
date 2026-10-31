@@ -156,6 +156,11 @@ abstract class Surface
     ///////////////////////////////////////// Surface Textures /////////////////////////////////////////
 
     /**
+     * Gets all textures from the off-screen render target.
+     */
+    abstract fun getTextures(): List<RenderTexture>
+
+    /**
      * Gets the render texture of the off-screen render target. The render target can have multiple texture
      * attachments, and the [index] can be used to get a specific one.
      * @param final If true, the final post-processed texture is returned.
@@ -170,9 +175,17 @@ abstract class Surface
     abstract fun getTexture(attachmentPoint: AttachmentPoint, final: Boolean = false): RenderTexture
 
     /**
-     * Gets all textures from the off-screen render target.
+     * Gets a currently available texture, or null if the index is absent from the active render target
+     * and requested post-processing output.
+     * @param final If true, the final post-processed texture is returned when available.
      */
-    abstract fun getTextures(): List<RenderTexture>
+    abstract fun getTextureOrNull(index: Int = 0, final: Boolean = true): RenderTexture?
+
+    /**
+     * Gets a currently available texture, or null if the attachment is absent from the active render target.
+     * @param final If true, COLOR_TEXTURE_0 uses the final post-processed texture when available.
+     */
+    abstract fun getTextureOrNull(attachmentPoint: AttachmentPoint, final: Boolean = false): RenderTexture?
 
     /**
      * Starts an asynchronous read into [dstResult] and returns it. If [dstResult] already has a

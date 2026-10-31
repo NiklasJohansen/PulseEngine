@@ -18,34 +18,36 @@ open class Image(
 
     init { focusable = false }
 
-    var bgColor = Color.BLANK
-    var tint = Color.WHITE
-    var textureAssetName: String? = null
-    var texture: Texture? = null
-    var renderTexture: RenderTexture? = null
-    var textureScale = 1f
+    var bgColor             = Color.BLANK
+    var tint                = Color.WHITE
+    var textureName         = null as String?
+    var surfaceName         = null as String?
+    var surfaceTextureIndex = 0
+    var textureScale        = 1f
 
     override fun onUpdate(engine: PulseEngine) { }
 
     override fun onRender(engine: PulseEngine, surface: Surface)
     {
-        var texWidth = 0
-        var texHeight = 0
-        var finalWidth = width.value
+        var texWidth    = 0
+        var texHeight   = 0
+        var finalWidth  = width.value
         var finalHeight = height.value
-        val xCenter = x.value + width.value / 2f
-        val yCenter = y.value + height.value / 2f
+        val xCenter     = x.value + width.value / 2f
+        val yCenter     = y.value + height.value / 2f
+
+        val renderTexture = surfaceName?.let { engine.gfx.getSurface(it)?.getTextureOrNull(surfaceTextureIndex) }
+        val textureAsset  = textureName?.let { engine.asset.getOrNull<Texture>(it) }
 
         if (renderTexture != null) 
         {
-            texWidth = renderTexture!!.width
-            texHeight = renderTexture!!.height
+            texWidth  = renderTexture.width
+            texHeight = renderTexture.height
         } 
-        else if (texture != null || textureAssetName != null) 
+        else if (textureAsset != null) 
         {
-            texture = texture ?: textureAssetName?.let { engine.asset.getOrNull<Texture>(it) } ?: return
-            texWidth = texture!!.width
-            texHeight = texture!!.height
+            texWidth  = textureAsset.width
+            texHeight = textureAsset.height
         }
 
         // Calculate texture dimensions to fit inside image size
@@ -55,7 +57,7 @@ open class Image(
             if (finalHeight > height.value)
             {
                 finalHeight = height.value
-                finalWidth = (height.value / texHeight) * texWidth
+                finalWidth  = (height.value / texHeight) * texWidth
             }
         }
         else
@@ -63,13 +65,13 @@ open class Image(
             finalWidth = (height.value / texHeight) * texWidth
             if (finalWidth > width.value)
             {
-                finalWidth = width.value
+                finalWidth  = width.value
                 finalHeight = (width.value / texWidth) * texHeight
             }
         }
 
         // Scale texture size
-        finalWidth *= textureScale
+        finalWidth  *= textureScale
         finalHeight *= textureScale
 
         // Draw background and image texture
@@ -78,14 +80,14 @@ open class Image(
             surface.setDrawColor(bgColor)
             surface.drawTexture(Texture.BLANK, x.value, y.value, width.value, height.value)
             surface.setDrawColor(tint)
-            surface.drawTexture(renderTexture!!, xCenter, yCenter, finalWidth, finalHeight, xOrigin = 0.5f, yOrigin = 0.5f)
+            surface.drawTexture(renderTexture, xCenter, yCenter, finalWidth, finalHeight, xOrigin = 0.5f, yOrigin = 0.5f)
         }
-        else if (texture != null)
+        else if (textureAsset != null)
         {
             surface.setDrawColor(bgColor)
             surface.drawTexture(RenderTexture.BLANK, x.value, y.value, width.value, height.value)
             surface.setDrawColor(tint)
-            surface.drawTexture(texture!!, xCenter, yCenter, finalWidth, finalHeight, xOrigin = 0.5f, yOrigin = 0.5f)
+            surface.drawTexture(textureAsset, xCenter, yCenter, finalWidth, finalHeight, xOrigin = 0.5f, yOrigin = 0.5f)
         }
     }
 }

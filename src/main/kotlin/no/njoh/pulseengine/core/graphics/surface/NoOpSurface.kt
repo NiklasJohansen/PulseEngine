@@ -61,6 +61,8 @@ class NoOpSurface: SurfaceInternal()
     override fun getTexture(index: Int, final: Boolean) = RenderTexture.BLANK
     override fun getTexture(attachmentPoint: AttachmentPoint, final: Boolean) = RenderTexture.BLANK
     override fun getTextures() = emptyList<RenderTexture>()
+    override fun getTextureOrNull(index: Int, final: Boolean): RenderTexture? = null
+    override fun getTextureOrNull(attachmentPoint: AttachmentPoint, final: Boolean): RenderTexture? = null
     override fun readPixel(x: Int, y: Int, textureIndex: Int, final: Boolean, dstResult: PixelReadResult) = dstResult
     override fun readPixel(x: Int, y: Int, attachmentPoint: AttachmentPoint, final: Boolean, dstResult: PixelReadResult) = dstResult
     override fun hasContent() = false

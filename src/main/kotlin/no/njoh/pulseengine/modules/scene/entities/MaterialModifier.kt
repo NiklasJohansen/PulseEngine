@@ -111,7 +111,7 @@ class MaterialModifier : SceneEntity(), Named, Initiable, Scene3DRenderable
             material.alphaCutoff = alphaCutoff
             material.metallicFactor = metallicFactor
             material.roughnessFactor = roughnessFactor
-            material.emissiveFactor.setFrom(emissiveFactor).multiplyRgb(emissiveIntensity)
+            material.emissiveFactor.setFrom(emissiveFactor.asLinear().multiplyRgb(emissiveIntensity).asSrgb())
             material.occlusionStrength = occlusionStrength
             material.heightScale = heightScale
             material.normalScale = normalScale

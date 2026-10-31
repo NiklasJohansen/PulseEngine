@@ -190,7 +190,7 @@ class ModelRenderer(
         glDepthFunc(if (hasDepthPrepass) GL_LEQUAL else GL_LESS)
         glDepthMask(!hasDepthPrepass)
 
-        val writesRenderIds = writeRenderIds && surface.renderTarget.getTexture(COLOR_TEXTURE_1) != null
+        val writesRenderIds = writeRenderIds && surface.getTextureOrNull(COLOR_TEXTURE_1) != null
         val visualizesRenderIds = viewMode == RENDER_ID
         val activePrograms = if (writesRenderIds || visualizesRenderIds) renderIdPrograms else programs
         if (writesRenderIds)
@@ -353,7 +353,7 @@ class ModelRenderer(
             !useDefaultLighting && 
             surface.config.hasDepthPrepass && contactShadowThickness > 0f &&
             (sunEnabled || engine.gfx.sceneContext.getLightBuffer().hasContactShadows) &&
-            surface.renderTarget.getTexture(DEPTH_TEXTURE) != null
+            surface.getTextureOrNull(DEPTH_TEXTURE) != null
         
         if (!contactShadowsAvailable) return
 

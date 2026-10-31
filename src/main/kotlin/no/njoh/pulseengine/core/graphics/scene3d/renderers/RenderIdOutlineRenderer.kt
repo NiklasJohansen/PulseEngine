@@ -63,10 +63,7 @@ class RenderIdOutlineRenderer(
         if (startIndex != 0) return
 
         val surface = engine.gfx.getSurface(renderIdSurfaceName) ?: return
-        if (surface.config.attachments.noneMatches { it.attachmentPoint == renderIdAttachmentPoint })
-            return // No render id texture attached to surface
-
-        val renderIdTexture = surface.getTexture(renderIdAttachmentPoint, final = false)
+        val renderIdTexture = surface.getTextureOrNull(renderIdAttachmentPoint) ?: return // No render id texture attached to surface
 
         if (selectionBufferDirty)
         {

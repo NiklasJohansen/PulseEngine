@@ -212,7 +212,7 @@ class AssetPicker(
             }
             Image(width = Size.absolute(80f)).apply()
             {
-                textureAssetName = asset.name
+                textureName = asset.name
                 padding.setAll(5f)
             }
         }
@@ -266,7 +266,7 @@ class AssetPicker(
         if (previewElement is Image)
         {
             previewButton.iconCharacter = null
-            previewButton.textureAssetName = previewElement.textureAssetName
+            previewButton.textureAssetName = previewElement.textureName
         }
         else previewButton.iconCharacter = previewIconCharacter
     }

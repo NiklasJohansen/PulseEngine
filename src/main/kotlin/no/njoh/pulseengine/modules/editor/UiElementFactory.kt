@@ -939,22 +939,21 @@ open class UiElementFactory(
     private fun getEntityTypeName(entity: SceneEntity) = entityTypeNameCache.getOrPut(entity::class) { entity::class.getName() }
 
     /**
-     * Creates a [Surface2D] viewport.
+     * Creates a [Surface] viewport.
      */
     open fun createViewportUI(engine: PulseEngine): VerticalPanel
     {
         val image = Image()
         image.bgColor = Color.BLACK
-        image.renderTexture = engine.gfx.mainSurface.getTexture()
+        image.surfaceName = engine.gfx.mainSurface.config.name
 
         val surfaceSelector = createItemSelectionDropdownUI(
             selectedItem = engine.gfx.mainSurface.config.name,
             items = engine.gfx.getAllSurfaces().flatMap { it.getTextures().mapIndexed { i, tex -> "${it.config.name}  (${tex.name})  #$i" } },
             onItemToString = { it },
             onItemChanged = { _, surfaceName ->
-                val surface = surfaceName.substringBefore("  (")
-                val index = surfaceName.substringAfterLast("#").toIntOrNull() ?: 0
-                image.renderTexture = engine.gfx.getSurface(surface)?.getTexture(index)
+                image.surfaceName = surfaceName.substringBefore("  (")
+                image.surfaceTextureIndex = surfaceName.substringAfterLast("#").toIntOrNull() ?: 0
             }
         ).apply {
             width.updateType(Size.ValueType.AUTO)
