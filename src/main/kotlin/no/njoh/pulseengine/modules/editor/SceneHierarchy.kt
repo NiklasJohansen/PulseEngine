@@ -56,6 +56,7 @@ data class SceneHierarchy(
             engine: PulseEngine,
             uiElementFactory: UiElementFactory,
             onEntitiesSelected: () -> Unit,
+            onFlagsChanged: () -> Unit,
             onEntityCreated: (KClass<out SceneEntity>) -> Unit,
             onEntityDeleted: () -> Unit
         ): SceneHierarchy {
@@ -88,6 +89,7 @@ data class SceneHierarchy(
                             engine.withEntity(it.id) { e -> if (allVisible) e.set(HIDDEN) else e.setNot(HIDDEN) }
                         }
                     }
+                    onFlagsChanged()
                 }
             }
 
@@ -108,6 +110,7 @@ data class SceneHierarchy(
                             engine.withEntity(it.id) { e -> if (allEditable) e.setNot(EDITABLE) else e.set(EDITABLE) }
                         }
                     }
+                    onFlagsChanged()
                 }
             }
 
@@ -273,10 +276,10 @@ data class SceneHierarchy(
                                 val parentRow = rowPanel.children[parentIndex]
                                 rowPanel.removeChildren(rowPanel.getChildrenOf(parentRow))
                                 rowPanel.removeChildren(parentRow)
-                                rowPanel.addRowsForEntity(parentEntity, engine, style, parentRow.getRowIndentation(), ids, searchText, onEntitiesSelected, parentIndex)
+                                rowPanel.addRowsForEntity(parentEntity, engine, style, parentRow.getRowIndentation(), ids, searchText, onEntitiesSelected, onFlagsChanged, parentIndex)
                             }
                         }
-                        else rowPanel.addRowsForEntity(entity, engine, style, indent = 0f, ids, searchText, onEntitiesSelected, index = rowPanel.children.size)
+                        else rowPanel.addRowsForEntity(entity, engine, style, indent = 0f, ids, searchText, onEntitiesSelected, onFlagsChanged, index = rowPanel.children.size)
                     }
                     rowPanel.children.setAlternatingColors(style)
                 },
@@ -287,7 +290,7 @@ data class SceneHierarchy(
                 },
                 onReload = {
                     rowPanel.clearChildren()
-                    rowPanel.addRowsFromActiveScene(engine, style, searchInputField, onEntitiesSelected)
+                    rowPanel.addRowsFromActiveScene(engine, style, searchInputField, onEntitiesSelected, onFlagsChanged)
 
                     if (lastLoadedSceneFileName != engine.scene.activeScene.fileName)
                     {
@@ -331,7 +334,8 @@ data class SceneHierarchy(
             engine: PulseEngine,
             style: EditorStyle,
             searchInputField: InputField,
-            onEntitiesSelected: () -> Unit
+            onEntitiesSelected: () -> Unit,
+            onFlagsChanged: () -> Unit
         ) {
             val searchText = searchInputField.text.trim()
             val ids = mutableSetOf<Long>()
@@ -340,7 +344,7 @@ data class SceneHierarchy(
             {
                 if (it.parentId == INVALID_ID) // Top level entity
                 {
-                    index += this.addRowsForEntity(it, engine, style, 0f, ids, searchText, onEntitiesSelected, index)
+                    index += this.addRowsForEntity(it, engine, style, 0f, ids, searchText, onEntitiesSelected, onFlagsChanged, index)
                 }
             }
         }
@@ -352,14 +356,15 @@ data class SceneHierarchy(
             indent: Float,
             addedIds: MutableSet<Long>,
             searchText: String,
-            onEntitiesSelected: () -> Unit, // Called when entities are selected in the scene hierarchy
+            onEntitiesSelected: () -> Unit,
+            onFlagsChanged: () -> Unit,
             index: Int
         ): Int {
             if (entity.isSet(DEAD) || addedIds.contains(entity.id))
                 return 0
 
             var rowsAdded = 1
-            val row = createRowUi(entity, engine, style, indent, this.children, onEntitiesSelected)
+            val row = createRowUi(entity, engine, style, indent, this.children, onEntitiesSelected, onFlagsChanged)
             row.hidden = (searchText.isNotBlank() && !entity.matches(engine, searchText)) || entity.parentId in collapsedRows
             this.insertChild(row, index)
             addedIds.add(entity.id)
@@ -367,7 +372,7 @@ data class SceneHierarchy(
             entity.childIds?.forEachFast()
             {
                 engine.scene.getEntity(it)?.let { entity ->
-                    rowsAdded += this.addRowsForEntity(entity, engine, style, CHILD_INDENTATION + indent, addedIds, searchText, onEntitiesSelected, index + rowsAdded)
+                    rowsAdded += this.addRowsForEntity(entity, engine, style, CHILD_INDENTATION + indent, addedIds, searchText, onEntitiesSelected, onFlagsChanged, index + rowsAdded)
                 }
             }
 
@@ -380,7 +385,8 @@ data class SceneHierarchy(
             style: EditorStyle,
             indent: Float,
             rows: List<UiElement>,
-            onEntitiesSelected: () -> Unit // Called when entities are selected in the scene hierarchy
+            onEntitiesSelected: () -> Unit,
+            onFlagsChanged: () -> Unit
         ): UiElement {
             val entityId = entity.id
             val editDisabledButton = Button(width = Size.absolute(25f)).apply()
@@ -397,6 +403,7 @@ data class SceneHierarchy(
                         engine.withEntity(row.id) { if (btn.isPressed) it.setNot(EDITABLE) else it.set(EDITABLE) }
                         row.getEditDisabledButton().isPressed = btn.isPressed
                     }
+                    onFlagsChanged()
                 }
             }
 
@@ -414,6 +421,7 @@ data class SceneHierarchy(
                         engine.withEntity(row.id) { if (btn.isPressed) it.set(HIDDEN) else it.setNot(HIDDEN) }
                         row.getVisibilityButton().isPressed = btn.isPressed
                     }
+                    onFlagsChanged()
                 }
             }
 

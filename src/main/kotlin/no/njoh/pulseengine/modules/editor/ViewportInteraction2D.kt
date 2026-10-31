@@ -314,7 +314,7 @@ class ViewportInteraction2D(
         if (xMove != 0f || yMove != 0f)
         {
             context.selection.forEachFast { entity ->
-                if (entity is Spatial2D)
+                if (entity is Spatial2D && entity.isSet(EDITABLE) && entity.isNot(HIDDEN))
                 {
                     entity.x += xMove
                     entity.y += yMove
@@ -338,7 +338,7 @@ class ViewportInteraction2D(
         if (xDelta == 0f && yDelta == 0f) return
 
         context.selection.forEachFast { entity ->
-            if (entity is Spatial2D)
+            if (entity is Spatial2D && entity.isSet(EDITABLE) && entity.isNot(HIDDEN))
             {
                 entity.x += xDelta
                 entity.y += yDelta
@@ -350,7 +350,7 @@ class ViewportInteraction2D(
 
     private fun updateEntityTransformation(engine: PulseEngine, context: ViewportContext, entity: SceneEntity)
     {
-        if (entity !is Spatial2D) return
+        if (entity !is Spatial2D || entity.isNot(EDITABLE) || entity.isSet(HIDDEN)) return
 
         val border = min(abs(entity.width), abs(entity.height)) * 0.1f
         val rotateArea = min(abs(entity.width), abs(entity.height)) * 0.2f

@@ -31,7 +31,6 @@ import no.njoh.pulseengine.core.scene.Scene
 import no.njoh.pulseengine.core.scene.SceneEntity
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.DEAD
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.EDITABLE
-import no.njoh.pulseengine.core.scene.SceneEntity.Companion.HIDDEN
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.INVALID_ID
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.PROPERTIES_UPDATED
 import no.njoh.pulseengine.core.scene.SceneEntity.Companion.SELECTED
@@ -44,7 +43,6 @@ import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.shared.utils.Extensions.isNotIn
-import no.njoh.pulseengine.core.shared.utils.Logger
 import no.njoh.pulseengine.core.service.Service
 import no.njoh.pulseengine.core.shared.primitives.CornerRadius
 import no.njoh.pulseengine.modules.editor.EditorMode.*
@@ -162,6 +160,7 @@ class SceneEditor(
             {
                 viewportInteraction.reset(engine, viewportContext)
                 clearViewportSelection()
+                engine.scene.forEachEntity { e -> e.setNot(SELECTED) }
             }
 
             if (isRunning && it == DELETE && engine.input.hasFocus(viewportArea))
@@ -348,11 +347,11 @@ class SceneEditor(
                 entityPropertyUiRowsByEntity.clear()
                 engine.scene.forEachEntity()
                 {
-                    if (it.isSet(SELECTED or EDITABLE) && it.isNot(HIDDEN))
-                        addEntityToSelection(it)
+                    if (it.isSet(SELECTED)) addEntityToSelection(it)
                 }
                 populateEntityInspector(engine, entitySelection)
             },
+            onFlagsChanged  = { onEntityFlagsChanged(engine) },
             onEntityCreated = { type -> createNewEntity(engine, type) },
             onEntityDeleted = { deleteSelectedEntities(engine) }
         )
@@ -729,12 +728,18 @@ class SceneEditor(
         refreshEntitySelectionUi(engine)
     }
 
+    private fun onEntityFlagsChanged(engine: PulseEngine)
+    {
+        viewportInteraction.reset(engine, viewportContext)
+        refreshEntitySelectionUi(engine)
+        markActiveEditorSceneDirty(engine)
+    }
+
     private fun populateEntityInspector(engine: PulseEngine, entities: List<SceneEntity>)
     {
         if (entities.isEmpty()) return
 
         entities.forEachFast { it.setNot(PROPERTIES_UPDATED) }
-
         val selectedProperties = linkedMapOf<CommonPropertyKey, MutableList<EntityPropertyBinding>>()
         entities.forEachFast { entity ->
             entity::class.memberProperties
@@ -794,7 +799,9 @@ class SceneEditor(
                     (propertyUi.first.children.firstOrNull() as? Label)?.let { label ->
                         if (property.key.name in propertyNamesWithMultipleTypes)
                             label.text = "${label.text} (${property.key.type.toInspectorName()})"
-                        if (property.isShared)
+                        if (property.bindings.any { it.entity.isNot(EDITABLE) })
+                            label.color = uiFactory.style.getColor("LABEL_DARK")
+                        else if (property.isShared)
                             label.color = uiFactory.style.getColor("LABEL_GROUP")
                     }
 
@@ -856,17 +863,17 @@ class SceneEditor(
         val representative = selectedProperty.representative
         val value = representative.property.getter.call(representative.entity)
 
-        selectedProperty.bindings.forEachIndexed { index, binding ->
-            val (entity, property) = binding
+        val input = entityPropertyUiRowsByEntity[EntityPropertyUiKey(representative.entity.id, propName)]
+        for (index in selectedProperty.bindings.indices)
+        {
+            val (entity, property) = selectedProperty.bindings[index]
             val lastValue = if (index == 0) representativeLastValue else property.getter.call(entity)
             if (index != 0)
             {
-                try { property.setter.call(entity, value.createDeepCopy()) }
-                catch (e: Exception)
-                {
-                    Logger.error(e) { "Failed to set common property ${entity::class.simpleName}.$propName" }
-                    return@forEachIndexed
-                }
+                if (value is Vector3f && input is Vector3Input && input.changedComponentIndex >= 0)
+                    (property.getter.call(entity) as Vector3f).setComponent(input.changedComponentIndex, value[input.changedComponentIndex])
+                else
+                    property.setter.call(entity, value.createDeepCopy())
             }
             onEntityPropertyChanged(engine, entity, propName, lastValue)
         }

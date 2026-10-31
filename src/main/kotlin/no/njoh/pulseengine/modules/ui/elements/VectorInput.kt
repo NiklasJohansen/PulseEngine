@@ -108,6 +108,9 @@ class Vector3Input(
 
     val body = HorizontalPanel()
 
+    var changedComponentIndex = -1
+        private set
+
     private var xLast = vector.x
     private var yLast = vector.y
     private var zLast = vector.z
@@ -157,7 +160,9 @@ class Vector3Input(
 
     private fun setComponent(componentIndex: Int, value: Float)
     {
-        val lastValue = Vector3f(xLast, yLast, zLast)
+        if (!editable) return
+        changedComponentIndex = componentIndex
+        val lastValue = Vector3f(vector)
 
         when (componentIndex)
         {
@@ -165,9 +170,6 @@ class Vector3Input(
             1 -> vector.y = value
             2 -> vector.z = value
         }
-
-        if (vector.x == xLast && vector.y == yLast && vector.z == zLast)
-            return
 
         updateLastVector()
         onValueChanged(lastValue, Vector3f(vector))

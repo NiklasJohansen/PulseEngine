@@ -1,6 +1,7 @@
 package no.njoh.pulseengine.modules.editor
 
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet
+import no.njoh.pulseengine.core.shared.utils.Extensions.anyMatches
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.graphics.camera.Camera
@@ -154,6 +155,11 @@ class ViewportInteraction3D(
         val drag = transformDrag
         if (drag != null)
         {
+            if (drag.targets.anyMatches { it.entity.isNot(EDITABLE) || it.entity.isSet(HIDDEN) })
+            {
+                transformDrag = null
+                return
+            }
             if (engine.input.wasClicked(Key.ESCAPE))
             {
                 restoreTransform(drag)
