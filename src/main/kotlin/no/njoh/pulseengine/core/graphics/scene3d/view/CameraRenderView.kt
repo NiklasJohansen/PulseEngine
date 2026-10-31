@@ -2,8 +2,8 @@ package no.njoh.pulseengine.core.graphics.scene3d.view
 
 import no.njoh.pulseengine.core.graphics.camera.Camera
 import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode
-import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.SORTED_BLEND
-import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.WEIGHTED_BLENDED_OIT
+import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.SORTED
+import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.ORDER_INDEPENDENT
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload.EmptyDrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.draw.RenderBucket
@@ -16,7 +16,7 @@ import org.joml.Vector3f
 
 class CameraRenderView(
     renderPassMask: RenderPassMask = CAMERA,
-    var transparencyMode: TransparencyMode = SORTED_BLEND
+    var transparencyMode: TransparencyMode = SORTED
 ) : RenderView(renderPassMask), CameraRenderStateProvider {
 
     val opaqueBucket  = RenderBucket()
@@ -59,13 +59,13 @@ class CameraRenderView(
 
             when (transparencyMode)
             {
-                SORTED_BLEND -> blendedBucket.fill(
+                SORTED -> blendedBucket.fill(
                     from = scene.blendedItems,
                     renderPassMask = renderPassMask,
                     sortFunc = sortedBlendSort,
                     preserveDrawOrder = true
                 )
-                WEIGHTED_BLENDED_OIT -> blendedBucket.fill(
+                ORDER_INDEPENDENT -> blendedBucket.fill(
                     from = scene.blendedItems,
                     renderPassMask = renderPassMask
                 )

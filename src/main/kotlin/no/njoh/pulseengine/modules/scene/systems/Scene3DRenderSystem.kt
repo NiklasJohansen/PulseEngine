@@ -12,7 +12,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.R32UI
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA16F
 import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.DepthPyramidGenerator
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
-import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.WEIGHTED_BLENDED_OIT
+import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.ORDER_INDEPENDENT
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.DepthPrepassRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.SampleShadingMode
@@ -35,7 +35,7 @@ class Scene3DRenderSystem : SceneSystem()
 {
     @Prop(i=0)                 var writeRenderIds           = true
     @Prop(i=1)                 var useDepthPrepass          = true
-    @Prop(i=2)                 var transparencyMode         = WEIGHTED_BLENDED_OIT
+    @Prop(i=2)                 var transparencyMode         = ORDER_INDEPENDENT
     @Prop(i=3, min=0f, max=1f) var weightedBlendAlphaCutoff = 0.04f
     @Prop(i=4)                 var multisampling            = Multisampling.MSAA4
     @Prop(i=5)                 var perSampleShading         = SampleShadingMode.DISABLED

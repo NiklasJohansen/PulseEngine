@@ -21,8 +21,8 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_BORDER
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
 import no.njoh.pulseengine.core.graphics.surface.renderers.Renderer
-import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.SORTED_BLEND
-import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.WEIGHTED_BLENDED_OIT
+import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.SORTED
+import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.ORDER_INDEPENDENT
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ViewMode.RENDER_ID
@@ -79,7 +79,7 @@ class ModelRenderer(
     var lightProbeData              = null as LightProbeData?
 
     var viewMode                 = ViewMode.SHADED
-    var transparencyMode         = WEIGHTED_BLENDED_OIT
+    var transparencyMode         = ORDER_INDEPENDENT
     var weightedBlendAlphaCutoff = 0.04f
     var drawWireframeOverlay     = false
     var sampleShadingMode        = DISABLED
@@ -279,7 +279,7 @@ class ModelRenderer(
         {
             when (transparencyMode)
             {
-                SORTED_BLEND -> measure("blended", label = { "Draw blended (" plus blendedCount plus "i, " plus view.blendedBucket.size plus "b)" })
+                SORTED -> measure("blended", label = { "Draw blended (" plus blendedCount plus "i, " plus view.blendedBucket.size plus "b)" })
                 {
                     glEnable(GL_BLEND)
                     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
@@ -290,7 +290,7 @@ class ModelRenderer(
 
                     drawRenderBucket(view.blendedBucket, view.drawPayload, activePrograms)
                 }
-                WEIGHTED_BLENDED_OIT ->
+                ORDER_INDEPENDENT ->
                 {
                     weightedBlendedRenderer.alphaCutoff = weightedBlendAlphaCutoff
                     val accumPrograms = weightedBlendedRenderer.getAccumPrograms(visualizesRenderIds)
