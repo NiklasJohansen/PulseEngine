@@ -115,21 +115,39 @@ open class UiElementFactory(
     )
 
     /**
-     * Creates a [DropdownMenu] containing TRUE and FALSE.
+     * Creates a [Button] that toggles between True and False.
      */
     open fun createBooleanPropertyUi(
         obj: Any,
         prop: KMutableProperty<*>,
         onChanged: (propName: String, lastValue: Any?, newValue: Any?) -> Unit
-    ) = createItemSelectionDropdownUI(
-        selectedItem = prop.getter.call(obj),
-        items = listOf(true, false),
-        onItemToString = { it.toString().capitalize() },
-        onItemChanged = { lastValue, newValue ->
-            obj.setPrimitiveProperty(prop.name, newValue)
+    ) = Button().apply {
+        toggleButton = true
+        isPressed = prop.getter.call(obj) as Boolean
+        bgColor = style.getColor("INPUT_BG")
+        bgHoverColor = style.getColor("BUTTON_HOVER")
+        setCornerRadius(ScaledValue.of(4f))
+
+        val label = Label(if (isPressed) "True" else "False").apply() 
+        {
+            font = style.getFont()
+            fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
+            color = style.getColor("LABEL")
+            horizontalAlignment = 0f
+            padding.left = ScaledValue.of(10f)
+        }
+        addChildren(label)
+
+        setOnClicked()
+        {
+            val lastValue = prop.getter.call(obj) as Boolean
+            val newValue = !lastValue
+            prop.setter.call(obj, newValue)
+            isPressed = newValue
+            label.text = if (newValue) "True" else "False"
             onChanged(prop.name, lastValue, newValue)
         }
-    )
+    }
 
     /** 
      * Creates a typed entity dropdown for a [Long] property annotated with [EntityRef]. 

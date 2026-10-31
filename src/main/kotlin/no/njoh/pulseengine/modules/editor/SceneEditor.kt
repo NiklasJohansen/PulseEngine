@@ -765,7 +765,9 @@ class SceneEditor(
             .groupBy { property -> property.representative.entity.getPropGroup(property.representative.property)?.takeIf { it.isNotEmpty() } ?: defaultGroup }
             .toList()
             .sortedWith(
-                compareBy<Pair<String, List<SelectedEntityProperty>>> {
+                compareBy<Pair<String, List<SelectedEntityProperty>>> { (_, properties) ->
+                    properties.minOf { it.representative.entity.getPropInfo(it.representative.property)?.i ?: 0 }
+                }.thenBy {
                     when (it.first)
                     {
                         defaultGroup -> 0
