@@ -8,6 +8,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.RGBA8
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.mipmap.MipmapGenerator
+import no.njoh.pulseengine.core.graphics.gpu.texture.multisampling.MsaaResolver
 
 class RenderTexture(
     val name: String,
@@ -19,6 +20,8 @@ class RenderTexture(
     val format: TextureFormat = RGBA8,
     val attachmentPoint: AttachmentPoint = COLOR_TEXTURE_0,
     val multisampling: Multisampling = NONE,
+    val sampleCount: Int = 1,
+    val msaaResolver: MsaaResolver? = null,
     val mipmapGenerator: MipmapGenerator? = null,
     var alphaMode: TextureAlphaMode = STRAIGHT
 ) {

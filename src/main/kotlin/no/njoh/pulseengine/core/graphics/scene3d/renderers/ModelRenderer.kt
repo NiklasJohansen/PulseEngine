@@ -30,6 +30,7 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.BrdfLutBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.probe.LightProbeData
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.SampleShadingMode.DISABLED
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.CascadedShadowMapRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderViewGroup
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderBucket
@@ -51,6 +52,8 @@ import org.lwjgl.opengl.GL30.GL_COLOR
 import org.lwjgl.opengl.GL30.glClearBufferuiv
 import org.lwjgl.opengl.GL30.glDisablei
 import org.lwjgl.opengl.GL32.GL_TEXTURE_CUBE_MAP_SEAMLESS
+import org.lwjgl.opengl.GL40.GL_SAMPLE_SHADING
+import org.lwjgl.opengl.GL40.glMinSampleShading
 
 class ModelRenderer(
     override val order: Int = 40,
@@ -79,6 +82,7 @@ class ModelRenderer(
     var transparencyMode         = WEIGHTED_BLENDED_OIT
     var weightedBlendAlphaCutoff = 0.04f
     var drawWireframeOverlay     = false
+    var sampleShadingMode        = DISABLED
 
     private lateinit var staticProgram: ShaderProgram
     private lateinit var skinnedProgram: ShaderProgram
@@ -196,6 +200,13 @@ class ModelRenderer(
         }
         else surface.renderTarget.setDrawBuffer(COLOR_TEXTURE_0)
 
+        val useSampleShading = sampleShadingMode != DISABLED && (surface.renderTarget.getMultisampledTexture(COLOR_TEXTURE_0)?.sampleCount ?: 1) > 1
+        if (useSampleShading)
+        {
+            glEnable(GL_SAMPLE_SHADING)
+            glMinSampleShading(sampleShadingMode.value)
+        }
+        
         activePrograms.forEachProgram { configureProgram(it, engine, surface, cameraState) }
         bindStorageBuffers(activePrograms, engine, cameraState, view.drawPayload)
 
@@ -207,6 +218,12 @@ class ModelRenderer(
             renderWireframeOverlay(engine, surface, view, cameraState, activePrograms)
 
         // Restore
+
+        if (useSampleShading)
+        {
+            glMinSampleShading(0f)
+            glDisable(GL_SAMPLE_SHADING)
+        }
 
         glEnable(GL_CULL_FACE)
         glCullFace(GL_BACK)
@@ -628,4 +645,15 @@ enum class ViewMode(val shaderValue: Int, val displayName: String)
     SHADOW_CASCADES(13, "Shadow Cascades"),
     LIGHT_CLUSTER_OCCUPANCY(14, "Light Cluster Occupancy"),
     RENDER_ID(15, "Render ID")
+}
+
+/**
+ * Determines the minimum fraction of samples that are shaded per pixel.
+ */
+enum class SampleShadingMode(var value: Float)
+{
+    DISABLED(0f),
+    QUARTER(0.25f),
+    HALF(0.5f),
+    FULL(1f)
 }

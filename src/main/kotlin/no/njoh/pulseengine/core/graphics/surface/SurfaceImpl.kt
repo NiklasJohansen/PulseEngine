@@ -109,7 +109,11 @@ class SurfaceImpl(
         {
             renderers.forEachFast { it.init(engine, this) }
             postEffects.forEachFast { it.init(engine) }
-            config.attachments.forEachFast { it.mipmapGenerator?.init(engine) }
+            config.attachments.forEachFast() 
+            {
+                it.mipmapGenerator?.init(engine)
+                it.msaaResolver?.init(engine)
+            }
         }
 
         renderers.sortBy { it.order }
@@ -148,7 +152,7 @@ class SurfaceImpl(
             batchNum++
         }
 
-        renderTarget.end()
+        renderTarget.end(engine)
         renderTarget.setColorAlphaMode(config.blendFunction.outputAlphaMode)
         renderTarget.generateMips(engine)
 
@@ -192,7 +196,11 @@ class SurfaceImpl(
         renderers.forEachFast { it.destroy(engine) }
         postEffects.forEachFast { it.destroy() }
         renderTarget.destroy()
-        config.attachments.forEachFast { it.mipmapGenerator?.destroy() }
+        config.attachments.forEachFast()
+        {
+            it.mipmapGenerator?.destroy()
+            it.msaaResolver?.destroy()
+        }
     }
 
     override fun hasContent() = shouldRerender || renderers.anyMatches { it.hasContentToRender() }
@@ -387,11 +395,9 @@ class SurfaceImpl(
 
         if (initialized)
         {
-            val currentGenerator = if (index >= 0) config.attachments[index].mipmapGenerator else null
-            require(currentGenerator === attachment.mipmapGenerator) 
-            {
-                "Mipmap generators are creation-time surface resources and cannot be changed after initialization"
-            }
+            val current = config.attachments.getOrNull(index)
+            require(current?.mipmapGenerator === attachment.mipmapGenerator) { "Mipmap generators are creation-time surface resources and cannot be changed after initialization" }
+            require(current?.msaaResolver === attachment.msaaResolver) { "MSAA resolvers are creation-time surface resources and cannot be changed after initialization" }
         }
 
         val attachments = config.attachments.toMutableList()
@@ -419,9 +425,10 @@ class SurfaceImpl(
         val index = attachmentIndexOf(attachmentPoint)
         if (index < 0) return this
 
-        require(!initialized || config.attachments[index].mipmapGenerator == null) 
+        val attachment = config.attachments[index]
+        require(!initialized || (attachment.mipmapGenerator == null && attachment.msaaResolver == null))
         {
-            "Attachments with mipmap generators cannot be removed after surface initialization"
+            "Attachments with mipmap generators or MSAA resolvers cannot be removed after surface initialization"
         }
 
         config.attachments = config.attachments.toMutableList().also { it.removeAt(index) }
@@ -537,6 +544,7 @@ class SurfaceImpl(
                 filter = it.filter,
                 wrapping = CLAMP_TO_EDGE,
                 multisampling = config.multisampling,
+                msaaResolver = it.msaaResolver,
                 mipmapGenerator = it.mipmapGenerator,
                 attachmentPoint = it.attachmentPoint
             )

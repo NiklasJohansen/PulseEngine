@@ -146,7 +146,7 @@ open class FrameBufferObject(
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0)
     }
 
-    fun resolveToFBO(destinationFbo: FrameBufferObject) 
+    fun resolveToFBO(destinationFbo: FrameBufferObject)
     {
         resolveColorToFBO(destinationFbo)
         resolveDepthToFBO(destinationFbo)
@@ -155,28 +155,32 @@ open class FrameBufferObject(
 
     fun resolveColorToFBO(destinationFbo: FrameBufferObject)
     {
+        textures.forEachFast() 
+        {
+            val attachment = it.attachmentPoint
+            if (attachment.isColor && destinationFbo.getTextureOrNull(attachment) != null)
+                resolveColorAttachmentToFBO(destinationFbo, attachment)
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, this.id)
+    }
+    
+    fun resolveColorAttachmentToFBO(destinationFbo: FrameBufferObject, attachment: AttachmentPoint)
+    {
+        require(attachment.isColor) { "Color resolve requires a color attachment: $attachment" }
+  
+        val src = requireNotNull(getTextureOrNull(attachment)) { "Source framebuffer has no $attachment" }
+        val dst = requireNotNull(destinationFbo.getTextureOrNull(attachment)) { "Destination framebuffer has no $attachment" }
+
         glBindFramebuffer(GL_READ_FRAMEBUFFER, this.id)
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destinationFbo.id)
-
-        textures.forEachIndexedFast { i, src ->
-            if (i >= destinationFbo.textures.size)
-                return@forEachIndexedFast
-
-            val dst = destinationFbo.textures[i]
-            if (!src.attachmentPoint.isColor || !dst.attachmentPoint.isColor || src.attachmentPoint != dst.attachmentPoint)
-                return@forEachIndexedFast // Skip non-color attachments
-
-            glReadBuffer(src.attachmentPoint.glValue)
-            glDrawBuffer(dst.attachmentPoint.glValue)
-
-            glBlitFramebuffer(
-                0, 0, src.width, src.height,
-                0, 0, dst.width, dst.height,
-                GL_COLOR_BUFFER_BIT,
-                GL_NEAREST
-            )
-        }
-
+        glReadBuffer(attachment.glValue)
+        glDrawBuffer(attachment.glValue)
+        glBlitFramebuffer(
+            0, 0, src.width, src.height,
+            0, 0, dst.width, dst.height,
+            GL_COLOR_BUFFER_BIT,
+            GL_NEAREST
+        )
         glBindFramebuffer(GL_FRAMEBUFFER, this.id)
     }
 
@@ -296,6 +300,8 @@ open class FrameBufferObject(
                         format = texDesc.format,
                         attachmentPoint = texDesc.attachmentPoint,
                         multisampling = texDesc.multisampling,
+                        sampleCount = samples,
+                        msaaResolver = if (samples > 1) texDesc.msaaResolver else null,
                         mipmapGenerator = texDesc.mipmapGenerator
                     )
                 }

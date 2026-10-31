@@ -3,6 +3,7 @@ package no.njoh.pulseengine.core.graphics.gpu.texture
 enum class Multisampling(val samples: Int)
 {
     NONE(0),
+    MSAA2(2),
     MSAA4(4),
     MSAA8(8),
     MSAA16(16),

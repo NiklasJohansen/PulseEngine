@@ -5,6 +5,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTU
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.DEPTH_STENCIL_BUFFER
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
+import no.njoh.pulseengine.core.graphics.gpu.texture.multisampling.MsaaResolver
 import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.NONE
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
@@ -53,19 +54,29 @@ data class SurfaceAttachment(
     val attachmentPoint: AttachmentPoint,
     val format: TextureFormat,
     val filter: TextureFilter,
-    val mipmapGenerator: MipmapGenerator?
-)
+    val mipmapGenerator: MipmapGenerator?,
+    val msaaResolver: MsaaResolver?
+) {
+    init
+    {
+        require(msaaResolver == null || (attachmentPoint.isColor && msaaResolver.supportsFormat(format))) 
+        {
+            "MSAA resolver does not support $attachmentPoint with format $format"
+        }
+    }
+}
 
 fun colorAttachment(
     attachmentPoint: AttachmentPoint = COLOR_TEXTURE_0,
     format: TextureFormat = RGBA16F,
     filter: TextureFilter = LINEAR,
-    mipmapGenerator: MipmapGenerator? = null
+    mipmapGenerator: MipmapGenerator? = null,
+    msaaResolver: MsaaResolver? = null
 ): SurfaceAttachment {
     require(attachmentPoint.isColor) { "$attachmentPoint is not a color attachment" }
-    return SurfaceAttachment(attachmentPoint, format, filter, mipmapGenerator)
+    return SurfaceAttachment(attachmentPoint, format, filter, mipmapGenerator, msaaResolver)
 }
 
-fun depthTexture(mipmapGenerator: MipmapGenerator? = null) = SurfaceAttachment(DEPTH_TEXTURE, RGBA16F, NEAREST, mipmapGenerator)
+fun depthTexture(mipmapGenerator: MipmapGenerator? = null) = SurfaceAttachment(DEPTH_TEXTURE, RGBA16F, NEAREST, mipmapGenerator, null)
 
-fun depthStencilBuffer() = SurfaceAttachment(DEPTH_STENCIL_BUFFER, RGBA16F, NEAREST, null)
+fun depthStencilBuffer() = SurfaceAttachment(DEPTH_STENCIL_BUFFER, RGBA16F, NEAREST, null, null)

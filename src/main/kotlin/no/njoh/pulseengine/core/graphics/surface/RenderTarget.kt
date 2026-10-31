@@ -14,9 +14,9 @@ import kotlin.collections.plusAssign
 class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 {
     private val hasMultisampling = textureDescriptors.anyMatches { it.multisampling != Multisampling.NONE }
-    private val frameBuffers = mutableListOf<FrameBufferObject>()
-    private val writeFbo get() = frameBuffers.first() // MSAA or single sampled
-    private val readFbo  get() = frameBuffers.last()  // Single sampled 
+    private val frameBuffers     = mutableListOf<FrameBufferObject>()
+    private val writeFbo get()   = frameBuffers.first() // MSAA or single sampled
+    private val readFbo  get()   = frameBuffers.last()  // Single sampled 
 
     fun init(width: Int, height: Int)
     {
@@ -28,7 +28,7 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 
         // But make sure the last frame buffer is the one without multisampling
         if (hasMultisampling)
-            frameBuffers += FrameBufferObject.create(width, height, textureDescriptors.map { it.copy(multisampling = Multisampling.NONE) })
+            frameBuffers += FrameBufferObject.create(width, height, textureDescriptors.map { it.copy(multisampling = Multisampling.NONE, msaaResolver = null) })
     }
 
     fun begin() = writeFbo.bind()
@@ -37,29 +37,41 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
 
     fun setDrawBuffers(first: AttachmentPoint, second: AttachmentPoint) = writeFbo.setDrawBuffers(first, second)
 
-    fun end()
+    fun end(engine: PulseEngineInternal)
     {
         writeFbo.release()
 
-        if (hasMultisampling)
+        if (!hasMultisampling) 
+            return
+
+        val writeTex = writeFbo.getTexture(0)
+        measure("resolve_fbo", label = { "Resolve: " plus writeTex.name plus " (" plus writeTex.multisampling plus ")" })
         {
-            val writeTex = writeFbo.getTexture(0)
-            measure("resolve_fbo", label = { "Resolve: " plus writeTex.name plus " (" plus writeTex.multisampling plus ")" })
+            writeFbo.getTextures().forEachFast() 
             {
-                writeFbo.resolveToFBO(readFbo)
+                if (it.attachmentPoint.isColor)
+                {
+                    val resolver = it.msaaResolver
+                    if (resolver != null && resolver.enabled)
+                        resolver.resolve(engine, sourceTex = it, readFbo)
+                    else
+                        writeFbo.resolveColorAttachmentToFBO(readFbo, it.attachmentPoint)
+                }
             }
+  
+            writeFbo.resolveDepthToFBO(readFbo)
+            writeFbo.release()
         }
     }
 
     fun resolveDepth()
     {
-        if (hasMultisampling)
+        if (!hasMultisampling) return
+
+        val writeTex = writeFbo.getTexture(0)
+        measure("resolve_depth_fbo", label = { "Resolve depth: " plus writeTex.name plus " (" plus writeTex.multisampling plus ")"  })
         {
-            val writeTex = writeFbo.getTexture(0)
-            measure("resolve_depth_fbo", label = { "Resolve depth: " plus writeTex.name plus " (" plus writeTex.multisampling plus ")"  })
-            {
-                writeFbo.resolveDepthToFBO(readFbo)
-            }
+            writeFbo.resolveDepthToFBO(readFbo)
         }
     }
 
@@ -68,8 +80,12 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
     fun getTexture(index: Int) = readFbo.getTextureOrNull(index)
 
     fun getTexture(attachmentPoint: AttachmentPoint) = readFbo.getTextureOrNull(attachmentPoint)
+    
+    fun getMultisampledTexture(attachmentPoint: AttachmentPoint) = if (hasMultisampling) writeFbo.getTextureOrNull(attachmentPoint) else null
 
     fun getTextures() = readFbo.getTextures()
+
+    fun getFbo() = readFbo
 
     fun setColorAlphaMode(alphaMode: TextureAlphaMode)
     {
@@ -79,7 +95,8 @@ class RenderTarget(val textureDescriptors: List<TextureDescriptor>)
         }
     }
 
-    fun getFbo() = readFbo
-
-    fun destroy() = frameBuffers.forEachFast { it.destroy() }
+    fun destroy()
+    {
+        frameBuffers.forEachFast { it.destroy() }
+    }
 }

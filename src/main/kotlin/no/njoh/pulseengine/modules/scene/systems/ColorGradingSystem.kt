@@ -5,10 +5,13 @@ import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.graphics.postprocessing.ColorGradingEffect
 import no.njoh.pulseengine.core.graphics.postprocessing.ColorGradingEffect.ToneMapper.ACES
+import no.njoh.pulseengine.core.graphics.surface.Surface
+import no.njoh.pulseengine.core.graphics.gpu.texture.multisampling.HdrMsaaResolver
 import no.njoh.pulseengine.core.scene.SceneSystem
 import no.njoh.pulseengine.core.shared.annotations.Name
 import no.njoh.pulseengine.core.shared.annotations.Prop
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import kotlin.math.pow
 
 @Name("Color Grading")
 class ColorGradingSystem : SceneSystem()
@@ -18,10 +21,10 @@ class ColorGradingSystem : SceneSystem()
     @Prop(i=2)                    var contrast       = 1f
     @Prop(i=3, min=0f)            var saturation     = 1f
     @Prop(i=4, min=0f)            var vignette       = 0f
-    @Prop(i=5, min=0f, max=1f)    var lutIntensity   = 1f
-    @Prop(i=6)                    var lutTexture     = AssetHandle<Texture>()
-    @Prop(i=7)                    var targetSurfaces = "scene3d"
-    @Prop(i=8, min=0f, max=2f)    var dithering      = 1f
+    @Prop(i=5, min=0f, max=2f)    var dithering      = 1f
+    @Prop(i=6, min=0f, max=1f)    var lutIntensity   = 1f
+    @Prop(i=7)                    var lutTexture     = AssetHandle<Texture>()
+    @Prop(i=8)                    var targetSurfaces = "scene3d"
 
     private var lastTargetSurfaces = ""
     private var targetSurfaceNames = emptyList<String>()
@@ -45,9 +48,14 @@ class ColorGradingSystem : SceneSystem()
 
     override fun onDestroy(engine: PulseEngine)
     {
-        targetSurfaceNames.forEachFast { engine.gfx.getSurface(it)?.deletePostProcessingEffect(EFFECT_NAME) }
+        for (name in targetSurfaceNames)
+        {
+            val surface = engine.gfx.getSurface(name) ?: continue
+            surface.deletePostProcessingEffect(EFFECT_NAME)
+            surface.setMsaaResolveExposure(0f)
+        }
     }
-    
+
     private fun updateEffect(engine: PulseEngine, surfaceName: String)
     {
         val surface = engine.gfx.getSurface(surfaceName) ?: return
@@ -67,6 +75,13 @@ class ColorGradingSystem : SceneSystem()
         effect.dithering    = dithering
         effect.lutIntensity = lutIntensity
         effect.lutTexture   = lutTexture.name
+
+        surface.setMsaaResolveExposure(scale = 2f.pow(exposureEv.coerceIn(-16f, 16f)))
+    }
+
+    private fun Surface.setMsaaResolveExposure(scale: Float)
+    {
+        this.config.attachments.forEachFast { (it.msaaResolver as? HdrMsaaResolver)?.exposureScale = scale }
     }
 
     companion object
