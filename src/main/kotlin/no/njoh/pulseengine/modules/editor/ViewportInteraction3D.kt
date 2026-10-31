@@ -17,6 +17,7 @@ import no.njoh.pulseengine.core.graphics.util.PixelReadResult
 import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.input.CursorType
+import no.njoh.pulseengine.core.input.CursorMode
 import no.njoh.pulseengine.core.input.Key
 import no.njoh.pulseengine.core.input.MouseButton
 import no.njoh.pulseengine.core.scene.SceneEntity
@@ -80,6 +81,9 @@ class ViewportInteraction3D(
     private var pickPending = false
     private var pendingPickMode = PickMode.REPLACE
     private var cameraDragging = false
+    private var flyCursorGrabbed = false
+    private val flyVelocity = Vector3f()
+    private var pendingScrollDistance = 0f
     private var selectionDrag: SelectionDrag? = null
     private val selectedTransformables = ArrayList<SceneEntity>()
     private val gizmoContext = GizmoRenderContext()
@@ -89,6 +93,7 @@ class ViewportInteraction3D(
     private var outlineSelectionDirty = true
     private val orbitPivot = Vector3f()
     private var orbitPivotValid = false
+    private var orbitPivotFollowsCamera = true
     private val ray = SceneEditor3DMath.Ray()
     private val tmpV0 = Vector3f()
     private val tmpV1 = Vector3f()
@@ -212,6 +217,9 @@ class ViewportInteraction3D(
 
         if (engine.scene.state != SceneState.STOPPED)
         {
+            setFlyCursorGrabbed(engine, false)
+            flyVelocity.zero()
+            pendingScrollDistance = 0f
             transformDrag = null
             selectionDrag = null
             if (cameraDragging)
@@ -244,6 +252,8 @@ class ViewportInteraction3D(
 
     override fun reset(engine: PulseEngine, context: ViewportContext)
     {
+        setFlyCursorGrabbed(engine, false)
+        flyVelocity.zero()
         transformDrag = null
         selectionDrag = null
         hoveredHandle = Handle.NONE
@@ -252,7 +262,9 @@ class ViewportInteraction3D(
         transformSelectionChanged = true
         outlineSelectionDirty = true
         cameraDragging = false
+        pendingScrollDistance = 0f
         orbitPivotValid = false
+        orbitPivotFollowsCamera = true
         engine.input.setCursorType(CursorType.ARROW)
     }
 
@@ -280,6 +292,8 @@ class ViewportInteraction3D(
 
     override fun onDestroy(engine: PulseEngine, context: ViewportContext)
     {
+        flyVelocity.zero()
+        setFlyCursorGrabbed(engine, false)
         updateViewMode(engine, ViewMode.SHADED)
         engine.input.setCursorType(CursorType.ARROW)
         val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
@@ -402,6 +416,7 @@ class ViewportInteraction3D(
         getSelectedTransformables(context)?.let()
         {
             orbitPivot.set(it.pivot)
+            orbitPivotFollowsCamera = false
             orbitPivotValid = true
             if (!supportsMode(it, gizmoMode))
                 gizmoMode = GizmoMode.MOVE
@@ -517,6 +532,7 @@ class ViewportInteraction3D(
         getSelectedTransformables(context)?.let()
         {
             orbitPivot.set(it.pivot)
+            orbitPivotFollowsCamera = false
             orbitPivotValid = true
             if (!supportsMode(it, gizmoMode))
                 gizmoMode = GizmoMode.MOVE
@@ -604,6 +620,7 @@ class ViewportInteraction3D(
         if (selected != null)
         {
             orbitPivot.set(selected.pivot)
+            orbitPivotFollowsCamera = false
             orbitPivotValid = true
         }
         else orbitPivotValid = false
@@ -614,14 +631,22 @@ class ViewportInteraction3D(
         val input = engine.input
         val camera = context.camera
         val spacePressed = input.isPressed(Key.SPACE)
+        val altPressed = input.isPressed(Key.LEFT_ALT)
+        val shiftPressed = input.isPressed(Key.LEFT_SHIFT)
+
         val spacePan = spacePressed && input.isPressed(MouseButton.LEFT) && (hover || cameraDragging)
         val fly = input.isPressed(MouseButton.RIGHT) && (hover || cameraDragging)
-        val orbit = input.isPressed(Key.LEFT_ALT) && input.isPressed(MouseButton.MIDDLE) && (hover || cameraDragging)
+        val orbit = altPressed && input.isPressed(MouseButton.MIDDLE) && (hover || cameraDragging)
         val pan = (input.isPressed(MouseButton.MIDDLE) || spacePan) && (hover || cameraDragging) && !orbit
         val dragging = fly || orbit || pan
+        if (!fly && dragging) flyVelocity.zero()
+
+        val flyMovement = input.isPressed(Key.W) || input.isPressed(Key.A) || input.isPressed(Key.S) || input.isPressed(Key.D)
+        setFlyCursorGrabbed(engine, fly && (flyCursorGrabbed || flyMovement))
 
         if (dragging)
         {
+            pendingScrollDistance = 0f
             if (!cameraDragging)
             {
                 ensureOrbitPivot(camera, selected)
@@ -629,6 +654,8 @@ class ViewportInteraction3D(
             }
             input.setCursorType(CursorType.HAND_GRAB)
 
+            val previousYaw = camera.rotation.y
+            val previousPitch = camera.rotation.x
             if (fly || orbit)
             {
                 camera.rotation.y -= input.xdMouse * LOOK_SENSITIVITY
@@ -639,6 +666,7 @@ class ViewportInteraction3D(
 
             if (fly)
             {
+                val orbitDistance = max(camera.position.distance(orbitPivot), MIN_ORBIT_DISTANCE)
                 tmpV3.zero()
                 if (input.isPressed(Key.W)) tmpV3.add(tmpV2)
                 if (input.isPressed(Key.S)) tmpV3.sub(tmpV2)
@@ -648,16 +676,32 @@ class ViewportInteraction3D(
                 if (input.isPressed(Key.Q)) tmpV3.sub(0f, 1f, 0f)
                 if (tmpV3.lengthSquared() > 0f)
                 {
-                    val multiplier = if (input.isPressed(Key.LEFT_SHIFT)) FLY_FAST_MULTIPLIER else 1f
-                    tmpV3.normalize(FLY_SPEED * multiplier * engine.data.deltaTime)
-                    camera.position.add(tmpV3)
-                    if (orbitPivotValid) orbitPivot.add(tmpV3)
+                    val multiplier = if (shiftPressed) 4f else if (altPressed) 0.2f else 1f
+                    tmpV3.normalize(FLY_SPEED * multiplier)
                 }
+
+                // Ease toward the requested velocity and integrate the exponential over this frame.
+                val deltaTime = engine.data.deltaTime
+                val fraction = 1f - exp(-FLY_SMOOTHING * deltaTime)
+                tmpV1.set(flyVelocity).sub(tmpV3)
+                tmpV0.set(tmpV3).mul(deltaTime).fma(fraction / FLY_SMOOTHING, tmpV1)
+                flyVelocity.lerp(tmpV3, fraction)
+                if (tmpV3.lengthSquared() == 0f && flyVelocity.lengthSquared() < 0.000001f)
+                    flyVelocity.zero()
+                camera.position.add(tmpV0)
+                // Free flight establishes a new view-centered pivot, including when looking around.
+                orbitPivot.set(tmpV2).mul(orbitDistance).add(camera.position)
+                orbitPivotFollowsCamera = true
             }
             else if (orbit)
             {
-                val distance = max(camera.position.distance(orbitPivot), MIN_ORBIT_DISTANCE)
-                camera.position.set(tmpV2).mul(-distance).add(orbitPivot)
+                // Rotate the actual offset, including when scrolling has moved past the pivot.
+                // Rebuilding it from forward * distance would snap back to the opposite side.
+                tmpV3.set(camera.position).sub(orbitPivot)
+                    .rotateY(-previousYaw)
+                    .rotateX(camera.rotation.x - previousPitch)
+                    .rotateY(camera.rotation.y)
+                camera.position.set(tmpV3).add(orbitPivot)
             }
             else // Pan
             {
@@ -677,31 +721,78 @@ class ViewportInteraction3D(
             input.setCursorType(CursorType.ARROW)
         }
 
-        if (!hover) return false
+        if (flyVelocity.lengthSquared() > 0f)
+        {
+            // Keep the same deceleration after releasing right mouse, independently of cursor capture.
+            val fraction = 1f - exp(-FLY_SMOOTHING * engine.data.deltaTime)
+            tmpV0.set(flyVelocity).mul(fraction / FLY_SMOOTHING)
+            camera.position.add(tmpV0)
+            if (orbitPivotValid) orbitPivot.add(tmpV0)
+            flyVelocity.mul(1f - fraction)
+            if (flyVelocity.lengthSquared() < 0.000001f) flyVelocity.zero()
+        }
+
+        if (!hover)
+        {
+            pendingScrollDistance = 0f
+            return false
+        }
 
         if (spacePressed)
         {
+            pendingScrollDistance = 0f
             input.setCursorType(CursorType.HAND_OPEN)
             return true
         }
 
         if (input.wasClicked(Key.F) && selected != null)
-            frameSelection(engine, context, selected)
-
-        if (input.yScroll != 0f)
         {
+            flyVelocity.zero()
+            pendingScrollDistance = 0f
+            frameSelection(engine, context, selected)
+        }
+
+        // InputImpl redirects the vertical wheel to xScroll while left Shift is held.
+        val scroll = if (shiftPressed) input.xScroll else input.yScroll
+        pendingScrollDistance += scroll * SCROLL_MOVE_PER_NOTCH * (if (shiftPressed) 2f else if (altPressed) 0.2f else 1f)
+
+        if (pendingScrollDistance != 0f)
+        {
+            ensureOrbitPivot(camera, selected)
+            val orbitDistance = max(camera.position.distance(orbitPivot), MIN_ORBIT_DISTANCE)
+            // Exponential easing preserves the distance per notch across frame rates.
+            val fraction = 1f - exp(-SCROLL_SMOOTHING * engine.data.deltaTime)
+            val distance = if (abs(pendingScrollDistance) < 0.0001f) pendingScrollDistance else pendingScrollDistance * fraction
+            pendingScrollDistance -= distance
             cameraDirections(camera, tmpV0, tmpV1, tmpV2)
-            SceneEditor3DMath.scrollTranslation(tmpV2, input.yScroll, SCROLL_MOVE_PER_NOTCH, tmpV3)
+            SceneEditor3DMath.scrollTranslation(tmpV2, distance, 1f, tmpV3)
             camera.position.add(tmpV3)
+            if (orbitPivotFollowsCamera)
+                orbitPivot.set(tmpV2).mul(orbitDistance).add(camera.position)
+            else if (tmpV0.set(orbitPivot).sub(camera.position).dot(tmpV2) <= MIN_ORBIT_DISTANCE)
+            {
+                // Keep zoom anchored until we reach/pass the pivot, then continue as free flight.
+                orbitPivotFollowsCamera = true
+                orbitPivot.set(tmpV2).mul(DEFAULT_ORBIT_DISTANCE).add(camera.position)
+            }
             return true
         }
 
         return false
     }
 
+    private fun setFlyCursorGrabbed(engine: PulseEngine, grabbed: Boolean)
+    {
+        if (flyCursorGrabbed == grabbed) 
+            return
+        flyCursorGrabbed = grabbed
+        engine.input.setCursorMode(if (grabbed) CursorMode.GRABBED else CursorMode.NORMAL)
+    }
+
     private fun ensureOrbitPivot(camera: Camera, selected: TransformSelection?)
     {
         if (orbitPivotValid) return
+        orbitPivotFollowsCamera = selected == null
         if (selected != null)
         {
             orbitPivot.set(selected.pivot)
@@ -718,6 +809,7 @@ class ViewportInteraction3D(
     {
         val selected = getSelectedTransformables(context) ?: return
         orbitPivot.set(selected.pivot)
+        orbitPivotFollowsCamera = false
         orbitPivotValid = true
     }
 
@@ -733,6 +825,7 @@ class ViewportInteraction3D(
         }
 
         orbitPivot.set(center)
+        orbitPivotFollowsCamera = false
         orbitPivotValid = true
 
         cameraDirections(context.camera, tmpV0, tmpV1, tmpV2)
@@ -1847,8 +1940,9 @@ class ViewportInteraction3D(
         private const val GIZMO_SURFACE = "scene_editor_3d_gizmo"
         private const val LOOK_SENSITIVITY = 0.003f
         private const val FLY_SPEED = 5f
-        private const val FLY_FAST_MULTIPLIER = 4f
-        private const val SCROLL_MOVE_PER_NOTCH = 0.75f
+        private const val FLY_SMOOTHING = 20f
+        private const val SCROLL_MOVE_PER_NOTCH = 0.5f
+        private const val SCROLL_SMOOTHING = 18f
         private const val DEFAULT_ORBIT_DISTANCE = 5f
         private const val MIN_ORBIT_DISTANCE = 0.1f
         private const val MAX_PITCH = 1.55334f
