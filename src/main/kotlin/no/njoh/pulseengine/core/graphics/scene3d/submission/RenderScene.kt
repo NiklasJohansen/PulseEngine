@@ -17,6 +17,7 @@ import no.njoh.pulseengine.core.shared.primitives.Mat4fProps
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
 import org.joml.Matrix4f
 import org.joml.Vector3f
+import kotlin.math.cos
 import kotlin.math.min
 
 class RenderScene
@@ -24,9 +25,9 @@ class RenderScene
     val opaqueItems          = DynamicList<RenderItem>(1024)
     val maskedItems          = DynamicList<RenderItem>(512)
     val blendedItems         = DynamicList<RenderItem>(256)
-
     val dynamicShadowCasters = DynamicList<RenderItem>(128)
     val localLights          = DynamicList<RenderLight>(64)
+    val decals               = DynamicList<RenderDecal>(64)
 
     val submittedSnapshot = RenderSceneSnapshot()
 
@@ -41,6 +42,7 @@ class RenderScene
     private val modelPool     = DynamicList<ModelItem>()
     private val itemPool      = DynamicList<RenderItem>()
     private val lightPool     = DynamicList<RenderLight>()
+    private val decalPool     = DynamicList<RenderDecal>()
 
     fun addModel(
         model: Model,
@@ -163,6 +165,50 @@ class RenderScene
         localLights += light
     }
 
+    fun addDecal(
+        material: Material,
+        transform: Matrix4f,
+        opacity: Float,
+        colorBlend: Float,
+        colorBlendMode: DecalColorBlendMode,
+        normalBlend: Float,
+        normalBlendMode: DecalNormalBlendMode,
+        roughnessBlend: Float,
+        metallicBlend: Float,
+        edgeFade: Float,
+        fadeStartAngleDegrees: Float,
+        fadeStartDistance: Float,
+        fadeEndDistance: Float,
+        targetLayerMask: Int,
+        sortOrder: Int
+    ) {
+        val decal = decalPool.removeLastOrNull() ?: RenderDecal()
+
+        decal.sequence          = decals.size
+        decal.materialId        = material.id
+        decal.opacity           = opacity.coerceIn(0f, 1f)
+        decal.colorBlend        = colorBlend.coerceIn(0f, 1f)
+        decal.colorBlendMode    = colorBlendMode
+        decal.normalBlend       = normalBlend.coerceIn(0f, 1f)
+        decal.normalBlendMode   = normalBlendMode
+        decal.roughnessBlend    = roughnessBlend.coerceIn(0f, 1f)
+        decal.metallicBlend     = metallicBlend.coerceIn(0f, 1f)
+        decal.edgeFade          = edgeFade.coerceIn(0f, 0.5f)
+        decal.fadeStartAngleCos = if (fadeStartAngleDegrees >= 90f) 0f else cos(Math.toRadians(fadeStartAngleDegrees.coerceAtLeast(0f).toDouble())).toFloat()
+        decal.fadeEndDistance   = fadeEndDistance.coerceAtLeast(0f)
+        decal.fadeStartDistance = fadeStartDistance.coerceIn(0f, decal.fadeEndDistance)
+        decal.targetLayerMask   = targetLayerMask
+        decal.sortOrder         = sortOrder
+        decal.setTransform(transform)
+
+        decals += decal
+    }
+
+    fun sortDecals()
+    {
+        decals.sortWith(DECAL_ORDER)
+    }
+
     fun selectPendingModelLods(engine: PulseEngine, lodResolver: ModelLodResolver)
     {
         pendingModels.forEach()
@@ -181,18 +227,28 @@ class RenderScene
         itemPool  += blendedItems
         lightPool += localLights
         modelPool += pendingModels
+        decalPool += decals
 
         opaqueItems.clear()
         maskedItems.clear()
         blendedItems.clear()
         dynamicShadowCasters.clear()
         localLights.clear()
+        decals.clear()
         pendingModels.clear()
         matrixArena.reset()
     }
 
     private fun Float.sanitizeAngle() = if (isFinite()) coerceIn(0f, 180f) else 0f
     private fun Float.sanitizeNonNegative() = if (isFinite()) coerceAtLeast(0f) else 0f
+
+    companion object
+    {
+        private val DECAL_ORDER = Comparator<RenderDecal> { a, b ->
+            val order = a.sortOrder.compareTo(b.sortOrder)
+            if (order != 0) order else a.sequence.compareTo(b.sequence)
+        }
+    }
 }
 
 /**

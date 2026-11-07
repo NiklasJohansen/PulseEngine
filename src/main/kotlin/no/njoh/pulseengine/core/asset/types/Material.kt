@@ -21,7 +21,8 @@ class Material(
     var normalScale: Float                   = 1f,
     var normalOrientation: NormalOrientation = NormalOrientation.NORMAL,
     var xTiling: Float                       = 1f,
-    var yTiling: Float                       = 1f
+    var yTiling: Float                       = 1f,
+    var layerMask: Int                       = 1
 ): Asset(name, name) {
 
     var id = DEFAULT_ID; private set

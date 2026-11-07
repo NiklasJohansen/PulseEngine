@@ -203,9 +203,8 @@ class WeightedBlendedOitRenderer
         programs.bindStorageBufferIfPresent("LocalLightBuffer", lightBuffer.lightInstanceBuffer)
         programs.bindStorageBufferIfPresent("LocalShadowFaceBuffer", lightBuffer.shadowFaceBuffer)
 
-        val clusteredLightGrid = context.getClusteredLightGrid(cameraState)
+        val clusteredLightGrid = context.getClusteredLightGrid(cameraState)?.takeIf { it.enabled }
         programs.bindStorageBufferIfPresent("ClusterBuffer", clusteredLightGrid?.clusterBuffer)
-        programs.bindStorageBufferIfPresent("ClusterLightIndexBuffer", clusteredLightGrid?.lightIndexBuffer)
     }
 
     private fun bindModelStorageBuffers(engine: PulseEngineInternal, programs: ShaderProgramSet, payload: DrawPayload)

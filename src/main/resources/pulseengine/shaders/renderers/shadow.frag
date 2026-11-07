@@ -31,18 +31,33 @@ vec4 sampleTextureBankGrad(int textureArraySlot, vec3 texCoords, vec2 ddx, vec2 
     return vec4(0.0);
 }
 
+struct TextureRef
+{
+    float arraySlot;
+    float layer;
+    vec2 uvMax;
+};
+
 struct MaterialData
 {
-    vec4 baseColor;
-    vec4 emissiveFactor;
-    vec4 albedoTex;
-    vec4 normalTex;
-    vec4 aoRoughMetalTex;
-    vec4 emissiveTex;
-    vec4 heightTex;
-    vec4 aoRoughMetalNormalFactor;
-    vec4 tilingAlphaHeight; // x/y=tiling, z=alphaCutoff, w=heightScale
-    vec4 normalDirPadding;  // xy=normalDir, zw=padding
+    TextureRef albedoTex;
+    TextureRef normalTex;
+    TextureRef aoRoughMetalTex;
+    TextureRef emissiveTex;
+    TextureRef heightTex;
+
+    vec4  baseColor;
+    vec4  emissiveFactor;
+    float aoStrength;
+    float roughnessFactor;
+    float metallicFactor;
+    float heightScale;
+    vec2  normalDir;
+    float normalScale;
+    float alphaCutoff;
+    vec2  tiling;
+    uint  layerMask;
+    float isAlphaBlended;
 };
 
 layout(std430, binding = 3) readonly buffer MaterialBuffer
@@ -50,17 +65,16 @@ layout(std430, binding = 3) readonly buffer MaterialBuffer
     MaterialData uMaterials[];
 };
 
-vec4 sampleTexOrDefault(vec4 texDesc, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
+vec4 sampleTexOrDefault(TextureRef tex, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
 {
-    int textureArraySlot = int(texDesc.x);
+    int textureArraySlot = int(tex.arraySlot);
     if (textureArraySlot < 0)
         return vec4(1.0);
 
-    vec2 uvMax = texDesc.zw;
-    vec2 uv = fract(vTexCoord * tiling) * uvMax;
-    vec2 uvDx = texCoordDx * tiling * uvMax;
-    vec2 uvDy = texCoordDy * tiling * uvMax;
-    return sampleTextureBankGrad(textureArraySlot, vec3(uv, texDesc.y), uvDx, uvDy);
+    vec2 uv = fract(vTexCoord * tiling) * tex.uvMax;
+    vec2 uvDx = texCoordDx * tiling * tex.uvMax;
+    vec2 uvDy = texCoordDy * tiling * tex.uvMax;
+    return sampleTextureBankGrad(textureArraySlot, vec3(uv, tex.layer), uvDx, uvDy);
 }
 
 void main()
@@ -68,8 +82,8 @@ void main()
     vec2 texCoordDx = dFdx(vTexCoord);
     vec2 texCoordDy = dFdy(vTexCoord);
     MaterialData material = uMaterials[vMaterialId];
-    float alphaCutoff = material.tilingAlphaHeight.z;
-    float alpha = material.baseColor.a * sampleTexOrDefault(material.albedoTex, material.tilingAlphaHeight.xy, texCoordDx, texCoordDy).a;
+    float alphaCutoff = material.alphaCutoff;
+    float alpha = material.baseColor.a * sampleTexOrDefault(material.albedoTex, material.tiling, texCoordDx, texCoordDy).a;
 
     if (alphaCutoff > 0.0 && alpha < alphaCutoff)
         discard;

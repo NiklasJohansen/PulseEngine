@@ -47,18 +47,33 @@ uniform bool      uUseOpaqueDepthTex;
 uniform vec2      uOpaqueDepthTexSize;
 uniform float     uWboitAlphaCutoff;
 
+struct TextureRef
+{
+    float arraySlot;
+    float layer;
+    vec2  uvMax;
+};
+
 struct MaterialData
 {
-    vec4 baseColor;
-    vec4 emissiveFactor;
-    vec4 albedoTex;
-    vec4 normalTex;
-    vec4 aoRoughMetalTex;
-    vec4 emissiveTex;
-    vec4 heightTex;
-    vec4 aoRoughMetalNormalFactor;
-    vec4 tilingAlphaHeight; // xy=tiling, z=alphaCutoff, w=heightScale
-    vec4 normalDirPadding;  // xy=normalDir, zw=padding
+    TextureRef albedoTex;
+    TextureRef normalTex;
+    TextureRef aoRoughMetalTex;
+    TextureRef emissiveTex;
+    TextureRef heightTex;
+
+    vec4  baseColor;
+    vec4  emissiveFactor;
+    float aoStrength;
+    float roughnessFactor;
+    float metallicFactor;
+    float heightScale;
+    vec2  normalDir;
+    float normalScale;
+    float alphaCutoff;
+    vec2  tiling;
+    uint  layerMask;
+    float isAlphaBlended;
 };
 
 layout(std430, binding = 3) readonly buffer MaterialBuffer
@@ -66,17 +81,15 @@ layout(std430, binding = 3) readonly buffer MaterialBuffer
     MaterialData uMaterials[];
 };
 
-vec4 sampleTexOrDefault(vec4 texDesc, vec3 defaultColor, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
+vec4 sampleTexOrDefault(TextureRef tex, vec3 defaultColor, vec2 tiling, vec2 texCoordDx, vec2 texCoordDy)
 {
-    int textureArraySlot = int(texDesc.x);
+    int textureArraySlot = int(tex.arraySlot);
     if (textureArraySlot < 0) return vec4(defaultColor, 1.0);
 
-    float layer = texDesc.y;
-    vec2 uvMax = texDesc.zw;
-    vec2 uv = fract(vTexCoord * tiling) * uvMax;
-    vec2 uvDx = texCoordDx * tiling * uvMax;
-    vec2 uvDy = texCoordDy * tiling * uvMax;
-    return sampleTextureBankGrad(textureArraySlot, vec3(uv, layer), uvDx, uvDy);
+    vec2 uv = fract(vTexCoord * tiling) * tex.uvMax;
+    vec2 uvDx = texCoordDx * tiling * tex.uvMax;
+    vec2 uvDy = texCoordDy * tiling * tex.uvMax;
+    return sampleTextureBankGrad(textureArraySlot, vec3(uv, tex.layer), uvDx, uvDy);
 }
 
 bool isBehindOpaqueDepth()
@@ -93,10 +106,9 @@ void main()
     vec2 texCoordDx = dFdx(vTexCoord);
     vec2 texCoordDy = dFdy(vTexCoord);
     MaterialData material = uMaterials[vMaterialId];
-    vec2 tiling = material.tilingAlphaHeight.xy;
-    float alphaCutoff = material.tilingAlphaHeight.z;
+    float alphaCutoff = material.alphaCutoff;
 
-    vec4 baseColor = material.baseColor * sampleTexOrDefault(material.albedoTex, vec3(1.0), tiling, texCoordDx, texCoordDy);
+    vec4 baseColor = material.baseColor * sampleTexOrDefault(material.albedoTex, vec3(1.0), material.tiling, texCoordDx, texCoordDy);
     float alpha = baseColor.a;
 
     if (alphaCutoff > 0.0)

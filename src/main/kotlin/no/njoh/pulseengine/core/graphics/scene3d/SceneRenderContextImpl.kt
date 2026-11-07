@@ -16,8 +16,13 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.LightBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.scene3d.view.ModelLodResolver
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredLightGrid
+import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredDecalGrid
+import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredGrid
+import no.njoh.pulseengine.core.graphics.gpu.buffer.DecalBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawCommandBuilder
+import no.njoh.pulseengine.core.graphics.scene3d.submission.DecalColorBlendMode
+import no.njoh.pulseengine.core.graphics.scene3d.submission.DecalNormalBlendMode
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderItem
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
 import no.njoh.pulseengine.core.shared.primitives.Mobility
@@ -46,16 +51,18 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     private val cullingBuffer  = CullingBufferObject()
     private val boneBuffer     = BoneBufferObject()
     private val lightBuffer    = LightBufferObject()
+    private val decalBuffer    = DecalBufferObject()
 
-    private val drawCommandBuilder         = DrawCommandBuilder(instanceBuffer, cullingBuffer, boneBuffer)
-    private val modelLodResolver           = ModelLodResolver()
-    private val localShadowAtlas           = LocalShadowAtlas()
-    private val clusteredLightGrids        = Object2ObjectOpenHashMap<CameraRenderState, ClusteredLightGrid>()
-    private val clusteredLightGridRequests = ObjectOpenHashSet<CameraRenderState>()
-    private val renderIdOverrides          = LongArrayList()
+    private val drawCommandBuilder    = DrawCommandBuilder(instanceBuffer, cullingBuffer, boneBuffer)
+    private val modelLodResolver      = ModelLodResolver()
+    private val localShadowAtlas      = LocalShadowAtlas()
+    private val clusteredLightGrids   = Object2ObjectOpenHashMap<CameraRenderState, ClusteredLightGrid>()
+    private val clusteredDecalGrids   = Object2ObjectOpenHashMap<CameraRenderState, ClusteredDecalGrid>()
+    private val clusteredGridRequests = ObjectOpenHashSet<CameraRenderState>()
+    private val renderIdOverrides     = LongArrayList()
 
-    private var frameNumber = 0
-    private var initialized = false
+    private var frameNumber           = 0
+    private var initialized           = false
     private var lastFrameHadDrawItems = false
 
     override fun initFrame()
@@ -67,7 +74,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         nextFrameScene.clear()
         thisFrameScene.captureSubmittedSnapshot()
 
-        clusteredLightGridRequests.clear()
+        clusteredGridRequests.clear()
 
         views.forEach { it.value.beginFrame() }
     }
@@ -87,6 +94,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             cullingBuffer.init()
             boneBuffer.init()
             lightBuffer.init()
+            decalBuffer.init()
             drawCommandBuilder.init(engine)
             initialized = true
         }
@@ -108,17 +116,19 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         if (!thisFrameScene.hasDrawItems && !lastFrameHadDrawItems)
             return
 
+        // Clear buffers for new frame
         instanceBuffer.clear()
         cullingBuffer.clear()
         boneBuffer.clear()
         lightBuffer.clear()
+        decalBuffer.clear()
 
-        // Reserve buffers
+        // Reserve buffer capacity
         val itemCount = thisFrameScene.drawItemCount
         instanceBuffer.reserveItemCapacity(itemCount)
         cullingBuffer.reserveItemCapacity(itemCount)
 
-        // Populate GPU buffers with all draw items
+        // Populate GPU buffers with draw items
         populateGpuBuffers(thisFrameScene.opaqueItems)
         populateGpuBuffers(thisFrameScene.maskedItems)
         populateGpuBuffers(thisFrameScene.blendedItems)
@@ -129,6 +139,11 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         thisFrameScene.localLights.forEach { lightBuffer.addLight(it) }
         buildRequestedClusteredLightGrids()
 
+        // Prepare decals
+        thisFrameScene.sortDecals()
+        thisFrameScene.decals.forEach { decalBuffer.addDecal(it) }
+        buildRequestedClusteredDecalGrids()
+
         // Submit buffers to GPU
         measure("Submit context buffers")
         {
@@ -136,6 +151,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             cullingBuffer.submit()
             boneBuffer.submit()
             lightBuffer.submit()
+            decalBuffer.submit()
+            clusteredDecalGrids.forEach { (_, grid) -> if (grid.wasRequested()) grid.submit() }
             clusteredLightGrids.forEach { (_, grid) -> if (grid.wasRequested()) grid.submit() }
         }
 
@@ -157,8 +174,10 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
                 cullingBuffer.markSubmittedDataInUse()
                 boneBuffer.markGpuDataInUse()
                 lightBuffer.markSubmittedDataInUse()
+                decalBuffer.markSubmittedDataInUse()
                 drawCommandBuilder.markSubmittedDataInUse()
                 clusteredLightGrids.forEach { (_, grid) -> if (grid.wasRequested()) grid.markSubmittedDataInUse() }
+                clusteredDecalGrids.forEach { (_, grid) -> if (grid.wasRequested()) grid.markSubmittedDataInUse() }
             }
         }
     }
@@ -168,6 +187,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         views.clear()
         clusteredLightGrids.forEach { (_, grid) -> grid.destroy() }
         clusteredLightGrids.clear()
+        clusteredDecalGrids.forEach { (_, grid) -> grid.destroy() }
+        clusteredDecalGrids.clear()
 
         if (!initialized) return
 
@@ -175,6 +196,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         cullingBuffer.destroy()
         boneBuffer.destroy()
         lightBuffer.destroy()
+        decalBuffer.destroy()
         drawCommandBuilder.destroy()
         initialized = false
     }
@@ -218,7 +240,10 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         shadowId: Long,
         contactShadowLength: Float
     ) {
-        nextFrameScene.addLight(position, direction, range, sourceRadius, sRgbColor, intensity, innerConeAngle, outerConeAngle, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId, contactShadowLength)
+        nextFrameScene.addLight(
+            position, direction, range, sourceRadius, sRgbColor, intensity, innerConeAngle, outerConeAngle, 
+            shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId, contactShadowLength
+        )
     }
 
     override fun submitPointLight(
@@ -235,7 +260,10 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         shadowId: Long,
         contactShadowLength: Float
     ) {
-        nextFrameScene.addLight(position, null, range, sourceRadius, sRgbColor, intensity, 180f, 180f, shadowEnabled, shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId, contactShadowLength)
+        nextFrameScene.addLight(
+            position, null, range, sourceRadius, sRgbColor, intensity, 180f, 180f, shadowEnabled, 
+            shadowResolution, shadowNearPlane, shadowBias, shadowImportance, shadowId, contactShadowLength
+        )
     }
 
     override fun submitMesh(
@@ -282,6 +310,31 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         nextFrameScene.addModel(model, transform, material, renderPassMask, mobility, lodThresholds, lodHysteresis, resolvedLodKey, resolvedRenderId)
     }
 
+    override fun submitDecal(
+        material: Material,
+        transform: Matrix4f,
+        opacity: Float,
+        colorBlend: Float,
+        colorBlendMode: DecalColorBlendMode,
+        normalBlend: Float,
+        normalBlendMode: DecalNormalBlendMode,
+        roughnessBlend: Float,
+        metallicBlend: Float,
+        edgeFade: Float,
+        fadeStartAngleDegrees: Float,
+        fadeStartDistance: Float,
+        fadeEndDistance: Float,
+        targetLayerMask: Int,
+        sortOrder: Int
+    ) {
+        if (opacity <= 0f || targetLayerMask == 0) return
+
+        nextFrameScene.addDecal(
+            material, transform, opacity, colorBlend, colorBlendMode, normalBlend, normalBlendMode, roughnessBlend, 
+            metallicBlend, edgeFade, fadeStartAngleDegrees, fadeStartDistance, fadeEndDistance, targetLayerMask, sortOrder
+        )
+    }
+
     override fun pushRenderIdOverride(renderId: Long)
     {
         renderIdOverrides.add(renderId)
@@ -294,6 +347,10 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     override fun getSubmittedSceneSnapshot() = thisFrameScene.submittedSnapshot
 
+    override fun getDecalBuffer() = decalBuffer
+
+    override fun getClusteredDecalGrid(state: CameraRenderState) = clusteredDecalGrids[state]?.takeIf { it.wasRequested() && it.enabled }
+
     override fun getLocalShadowAtlas() = localShadowAtlas
 
     override fun getBoneBuffer() = boneBuffer
@@ -304,9 +361,9 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     override fun getClusteredLightGrid(state: CameraRenderState) = clusteredLightGrids[state]?.takeIf { it.wasRequested() }
     
-    override fun requestClusteredLightGrid(state: CameraRenderState)
+    override fun requestClusteredGrids(state: CameraRenderState)
     {
-        clusteredLightGridRequests += state
+        clusteredGridRequests += state
     }
 
     private fun buildRequestedClusteredLightGrids()
@@ -318,15 +375,34 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             return
         }
 
-        for (state in clusteredLightGridRequests)
+        for (state in clusteredGridRequests)
         {
             val grid = clusteredLightGrids.getOrPut(state) { ClusteredLightGrid() }
-            grid.build(state, thisFrameScene)
+            grid.build(state, thisFrameScene.localLights)
             grid.lastFrameRequested = frameNumber
         }
 
         clusteredLightGrids.retainEntries { _, grid ->
             val retain = grid.lastFrameRequested >= frameNumber - VIEW_CACHE_FRAMES
+            if (!retain) grid.destroy()
+            retain
+        }
+    }
+
+    private fun buildRequestedClusteredDecalGrids()
+    {
+        if (thisFrameScene.hasDrawItems && thisFrameScene.decals.isNotEmpty())
+        {
+            for (state in clusteredGridRequests)
+            {
+                val grid = clusteredDecalGrids.getOrPut(state) { ClusteredDecalGrid() }
+                grid.build(state, thisFrameScene.decals)
+                grid.lastFrameRequested = frameNumber
+            }
+        }
+
+        clusteredDecalGrids.retainEntries { _, grid ->
+            val retain = thisFrameScene.hasDrawItems && grid.lastFrameRequested >= frameNumber - VIEW_CACHE_FRAMES
             if (!retain) grid.destroy()
             retain
         }
@@ -347,7 +423,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
 
     private fun RenderView.wasRequested() = (this.lastFrameRequested == frameNumber)
 
-    private fun ClusteredLightGrid.wasRequested() = (this.lastFrameRequested == frameNumber)
+    private fun ClusteredGrid.wasRequested() = (this.lastFrameRequested == frameNumber)
 
     companion object
     {

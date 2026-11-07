@@ -485,9 +485,12 @@ object Extensions
             path.endsWith(".jpeg") ||
             path.endsWith(".png")  ->
             {
-                val isLut = "_lut" in name
-                val isPBR = "_normal" in name || "_ao" in name || "_metallic" in name || "_roughness" in name
-                val format = if (isLut || isPBR || "_linear" in name) RGBA8 else SRGBA8
+                val textureName = name.lowercase()
+                val isLut = "_lut" in textureName
+                val isPBR = "_normal" in textureName || "_ao" in textureName ||
+                    "_metallic" in textureName || "_roughness" in textureName || "_orm" in textureName ||
+                    "_height" in textureName || "_occlusion" in textureName || "_opacity" in textureName
+                val format = if (isLut || isPBR || "_linear" in textureName) RGBA8 else SRGBA8
 
                 spriteSheetRegex.find(path)?.let { SpriteSheet(
                     filePath = path,

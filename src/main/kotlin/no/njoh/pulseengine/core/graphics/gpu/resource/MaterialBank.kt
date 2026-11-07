@@ -119,21 +119,21 @@ class MaterialBank : ShaderStorageBufferObject
 
         fill(MATERIAL_FLOATS)
         {
-            baseColor.asLinear().let { put(it.red, it.green, it.blue, baseColor.alpha) }
-            emissiveFactor.asLinear().let { put(it.red, it.green, it.blue, emissiveFactor.alpha) }
             putTexture(material?.albedo)
             putTexture(material?.normal)
             putTexture(material?.aoRoughMetal)
             putTexture(material?.emissive)
             putTexture(material?.height)
+            baseColor.asLinear().let { put(it.red, it.green, it.blue, baseColor.alpha) }
+            emissiveFactor.asLinear().let { put(it.red, it.green, it.blue, emissiveFactor.alpha) }
             put(
                 material?.occlusionStrength ?: 1f,
                 material?.roughnessFactor ?: 1f,
                 material?.metallicFactor ?: 0f,
-                material?.normalScale ?: 1f
+                heightScale
             )
-            put(material?.xTiling ?: 1f, material?.yTiling ?: 1f, alphaCutoff, heightScale)
-            put(uNormalDir, vNormalDir, 0f, 0f)
+            put(uNormalDir, vNormalDir, material?.normalScale ?: 1f, alphaCutoff)
+            put(material?.xTiling ?: 1f, material?.yTiling ?: 1f, Float.fromBits(material?.layerMask ?: 1), if (material?.blendMode == BLEND) 1f else 0f)
         }
     }
 

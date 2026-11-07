@@ -46,6 +46,7 @@ class MaterialModifier : SceneEntity(), Named, Initiable, Scene3DRenderable
     @Prop("Rendering", i=1)                 var cullMode          = CullMode.BACK
     @Prop("Rendering", i=2)                 var blendMode         = BlendMode.OPAQUE
     @Prop("Rendering", i=3, min=0f, max=1f) var alphaCutoff       = 0.5f
+    @Prop("Rendering", i=4)                 var layerMask         = 1
 
     @Prop(hidden = true)
     var setFromMaterial = true
@@ -84,6 +85,7 @@ class MaterialModifier : SceneEntity(), Named, Initiable, Scene3DRenderable
             cullMode = material.cullMode
             blendMode = material.blendMode
             alphaCutoff = material.alphaCutoff
+            layerMask = material.layerMask
             metallicFactor = material.metallicFactor
             roughnessFactor = material.roughnessFactor
             emissiveIntensity = 1f
@@ -109,6 +111,7 @@ class MaterialModifier : SceneEntity(), Named, Initiable, Scene3DRenderable
             material.cullMode = cullMode
             material.blendMode = blendMode
             material.alphaCutoff = alphaCutoff
+            material.layerMask = layerMask
             material.metallicFactor = metallicFactor
             material.roughnessFactor = roughnessFactor
             material.emissiveFactor.setFrom(emissiveFactor.asLinear().multiplyRgb(emissiveIntensity).asSrgb())

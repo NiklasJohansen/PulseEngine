@@ -246,7 +246,7 @@ class LightProbeRenderer(
                 firstFace = nextFaceIndexToCapture,
                 faceCount = minOf(maxOf(stepsPerFrame, 1), 6 - nextFaceIndexToCapture)
             )
-            view.cameraStates.forEach { context.requestClusteredLightGrid(it) }
+            view.cameraStates.forEach { context.requestClusteredGrids(it) }
         }
 
         increaseBatchSize()

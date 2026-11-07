@@ -10,7 +10,11 @@ import no.njoh.pulseengine.core.graphics.gpu.buffer.BoneBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.InstanceBufferObject
 import no.njoh.pulseengine.core.graphics.gpu.buffer.LightBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredLightGrid
+import no.njoh.pulseengine.core.graphics.scene3d.lighting.ClusteredDecalGrid
+import no.njoh.pulseengine.core.graphics.gpu.buffer.DecalBufferObject
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.LocalShadowAtlas
+import no.njoh.pulseengine.core.graphics.scene3d.submission.DecalColorBlendMode
+import no.njoh.pulseengine.core.graphics.scene3d.submission.DecalNormalBlendMode
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderScene
 import no.njoh.pulseengine.core.graphics.scene3d.submission.RenderSceneSnapshot
 import no.njoh.pulseengine.core.shared.primitives.Mobility
@@ -62,6 +66,30 @@ abstract class SceneRenderContext
         renderPassMask: RenderPassMask = CAMERA or GLOBAL_SHADOW or LOCAL_SHADOW or REFLECTION,
         mobility: Mobility = Mobility.DYNAMIC,
         renderId: Long = -1
+    )
+
+    /**
+     * Submits a decal to be rendered in the next frame.
+     * Angle fading starts at [fadeStartAngleDegrees] from face-on and reaches zero at grazing incidence.
+     * Use 90 degrees to disable angle fading. Distances are in world units from the camera to the decal center.
+     * A zero [fadeEndDistance] disables distance fading.
+     */
+    abstract fun submitDecal(
+        material: Material,
+        transform: Matrix4f,
+        opacity: Float = 1f,
+        colorBlend: Float = 1f,
+        colorBlendMode: DecalColorBlendMode = DecalColorBlendMode.MIX,
+        normalBlend: Float = 1f,
+        normalBlendMode: DecalNormalBlendMode = DecalNormalBlendMode.COMBINE,
+        roughnessBlend: Float = 1f,
+        metallicBlend: Float = 0f,
+        edgeFade: Float = 0.05f,
+        fadeStartAngleDegrees: Float = 60f,
+        fadeStartDistance: Float = 80f,
+        fadeEndDistance: Float = 100f,
+        targetLayerMask: Int = 1,
+        sortOrder: Int = 0
     )
 
     /**
@@ -142,6 +170,8 @@ abstract class SceneRenderContextInternal : SceneRenderContext()
     abstract fun getLightBuffer(): LightBufferObject
     abstract fun getInstanceBuffer(): InstanceBufferObject
     abstract fun getLocalShadowAtlas(): LocalShadowAtlas
-    abstract fun requestClusteredLightGrid(state: CameraRenderState)
+    abstract fun requestClusteredGrids(state: CameraRenderState)
     abstract fun getClusteredLightGrid(state: CameraRenderState): ClusteredLightGrid?
+    abstract fun getClusteredDecalGrid(state: CameraRenderState): ClusteredDecalGrid?
+    abstract fun getDecalBuffer(): DecalBufferObject
 }

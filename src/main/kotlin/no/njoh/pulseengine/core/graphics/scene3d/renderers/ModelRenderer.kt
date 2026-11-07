@@ -168,7 +168,7 @@ class ModelRenderer(
 
         val view = context.requestView(viewKey)
         val cameraState = view.addCameraStateFor(surface.camera, surface.config.renderWidth, surface.config.renderHeight)
-        context.requestClusteredLightGrid(cameraState)
+        context.requestClusteredGrids(cameraState)
         view.transparencyMode = transparencyMode
     }
 
@@ -506,6 +506,18 @@ class ModelRenderer(
         program.setUniform("uClusterCount", grid?.clusterCount ?: 1)
         program.setUniform("uClusterLightCount", lightBuffer.lightCount)
 
+        // Decals
+
+        val decalGrid = engine.gfx.sceneContext.getClusteredDecalGrid(cameraState)
+        program.setUniform("uDecalsEnabled", decalGrid != null)
+        if (decalGrid != null)
+        {
+            program.setUniform("uDecalGridSize", decalGrid.gridWidth, decalGrid.gridHeight, decalGrid.gridDepth)
+            program.setUniform("uDecalTileSize", decalGrid.xTileSize.toFloat(), decalGrid.yTileSize.toFloat())
+            program.setUniform("uDecalNearPlane", decalGrid.nearPlane)
+            program.setUniform("uDecalDepthSliceScale", decalGrid.depthSliceScale)
+        }
+
         // Ambient lighting
 
         val envDiffuse = engine.asset.getOrNull<Texture>(iblDiffuseTexture)
@@ -574,7 +586,9 @@ class ModelRenderer(
     {
         val context = engine.gfx.sceneContext
         val lightBuffer = context.getLightBuffer()
-        val clusteredLightGrid = context.getClusteredLightGrid(cameraState)
+        val decalBuffer = context.getDecalBuffer()
+        val clusteredLightGrid = context.getClusteredLightGrid(cameraState)?.takeIf { it.enabled }
+        val clusteredDecalGrid = context.getClusteredDecalGrid(cameraState)?.takeIf { it.enabled }
 
         programs.bindStorageBuffer("InstanceBuffer", context.getInstanceBuffer())
         programs.bindStorageBuffer("VisibleInstanceBuffer", payload.visibleInstanceBuffer)
@@ -582,8 +596,9 @@ class ModelRenderer(
         programs.bindStorageBuffer("MaterialBuffer", engine.gfx.materialBank)
         programs.bindStorageBufferIfPresent("LocalLightBuffer", lightBuffer.lightInstanceBuffer)
         programs.bindStorageBufferIfPresent("LocalShadowFaceBuffer", lightBuffer.shadowFaceBuffer)
-        programs.bindStorageBufferIfPresent("ClusterBuffer", clusteredLightGrid?.clusterBuffer)
-        programs.bindStorageBufferIfPresent("ClusterLightIndexBuffer", clusteredLightGrid?.lightIndexBuffer)
+        programs.bindStorageBufferIfPresent("LocalLightClusterBuffer", clusteredLightGrid?.clusterBuffer)
+        programs.bindStorageBufferIfPresent("DecalBuffer", decalBuffer.buffer)
+        programs.bindStorageBufferIfPresent("DecalClusterBuffer", clusteredDecalGrid?.clusterBuffer)
     }
 
     private fun ShaderProgram.setTexture(name: String, tex: Texture?)
@@ -644,6 +659,7 @@ enum class ViewMode(val shaderValue: Int, val displayName: String)
     SUN_SHADOW(12, "Sun Shadow"),
     SHADOW_CASCADES(13, "Shadow Cascades"),
     LIGHT_CLUSTER_OCCUPANCY(14, "Light Cluster Occupancy"),
+    DECAL_CLUSTER_OCCUPANCY(20, "Decal Cluster Occupancy"),
     RENDER_ID(15, "Render ID")
 }
 

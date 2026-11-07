@@ -188,7 +188,7 @@ object GlCapabilities
             requireLimit("GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS",   limits.maxCombinedTextureImageUnits,   required = 23)
             requireLimit("GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS", limits.maxShaderStorageBufferBindings, required = 12)
             requireLimit("GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS",   limits.maxVertexShaderStorageBlocks,   required =  3)
-            requireLimit("GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS", limits.maxFragmentShaderStorageBlocks, required =  6)
+            requireLimit("GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS", limits.maxFragmentShaderStorageBlocks, required =  8)
             requireLimit("GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS",  limits.maxComputeShaderStorageBlocks,  required = 12)
             requireLimit("GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS", limits.maxCombinedShaderStorageBlocks, required = 12)
             requireLimit("GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS", limits.maxComputeWorkGroupInvocations, required = 64)
