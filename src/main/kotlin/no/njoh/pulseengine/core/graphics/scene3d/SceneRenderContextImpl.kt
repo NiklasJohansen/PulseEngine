@@ -320,6 +320,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         normalBlendMode: DecalNormalBlendMode,
         roughnessBlend: Float,
         metallicBlend: Float,
+        heightBlend: Float,
         edgeFade: Float,
         fadeStartAngleDegrees: Float,
         fadeStartDistance: Float,
@@ -330,8 +331,8 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         if (opacity <= 0f || targetLayerMask == 0) return
 
         nextFrameScene.addDecal(
-            material, transform, opacity, colorBlend, colorBlendMode, normalBlend, normalBlendMode, roughnessBlend, 
-            metallicBlend, edgeFade, fadeStartAngleDegrees, fadeStartDistance, fadeEndDistance, targetLayerMask, sortOrder
+            material, transform, opacity, colorBlend, colorBlendMode, normalBlend, normalBlendMode, roughnessBlend, metallicBlend, 
+            heightBlend, edgeFade, fadeStartAngleDegrees, fadeStartDistance, fadeEndDistance, targetLayerMask, sortOrder
         )
     }
 

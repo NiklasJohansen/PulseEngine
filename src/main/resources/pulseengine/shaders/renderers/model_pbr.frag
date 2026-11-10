@@ -14,7 +14,7 @@ const uint PBR_FEATURE_SPECULAR_IBL    = 1u << 5;
 const uint PBR_FEATURE_GTAO            = 1u << 6;
 const uint PBR_FEATURE_CONTACT_SHADOWS = 1u << 7;
 
-const int VIEW_MODE_SHADED                  = 0;
+const int VIEW_MODE_FINAL                   = 0;
 const int VIEW_MODE_PBR_ALBEDO              = 1;
 const int VIEW_MODE_PBR_NORMAL              = 2;
 const int VIEW_MODE_PBR_ROUGHNESS           = 3;
@@ -75,17 +75,18 @@ flat in int vMaterialId;
 // Textures
 
 uniform sampler2DArray uTextureBanks[16];
-uniform sampler2D      uGtaoTex;
+
 
 // Environment
 
-uniform vec4  uEnvDiffuseTex;
-uniform vec4  uEnvSpecularTex;
-uniform vec4  uEnvBrdfLutTex;
-uniform vec4  uEnvColor;
-uniform float uEnvIntensity;
-uniform float uEnvSpecularMipCount;
-uniform float uAoIntensity;
+uniform sampler2D uGtaoTex;
+uniform float     uAoIntensity;
+uniform vec4      uEnvDiffuseTex;
+uniform vec4      uEnvSpecularTex;
+uniform vec4      uEnvBrdfLutTex;
+uniform vec4      uEnvColor;
+uniform float     uEnvIntensity;
+uniform float     uEnvSpecularMipCount;
 
 // Local probe lighting
 
@@ -141,6 +142,7 @@ uniform uint  uPbrFeatures;
 uniform bool  uUseDefaultLighting;
 uniform int   uViewMode;
 uniform bool  uWireframeOverlay;
+uniform ivec3 uPomSteps = ivec3(8, 32, 8); // Face-on, grazing, refinement
 
 // Weighted Blended Order Indepenant Transparency
 
@@ -152,6 +154,8 @@ uniform bool  uWireframeOverlay;
     uniform float     uWboitAlphaCutoff;
 
 #endif
+
+// Structs
 
 struct LocalLightData
 {
@@ -210,6 +214,8 @@ struct MaterialData
     float isAlphaBlended;
 };
 
+// Buffers
+
 layout(std430, binding = 3) readonly buffer MaterialBuffer
 {
     MaterialData uMaterials[];
@@ -250,6 +256,7 @@ layout(std430, binding = 8) readonly buffer LightProbeBuffer
         float normalBlend;
         float roughnessBlend;
         float metallicBlend;
+        float heightBlend;
         float opacity;
         float edgeFade;
         float fadeStartAngleCos;
@@ -280,19 +287,6 @@ layout(std430, binding = 8) readonly buffer LightProbeBuffer
 bool hasPbrFeature(uint feature)
 {
     return (uPbrFeatures & feature) != 0;
-}
-
-float defaultStudioLighting(vec3 worldNormal, float ao)
-{
-    // Camera-relative studio lights keep geometry readable without requiring scene lights.
-    vec3 viewNormal = normalize(mat3(uView) * worldNormal);
-    vec3 keyDirection = normalize(vec3(-0.45, 0.65, 0.75));
-    vec3 fillDirection = normalize(vec3(0.60, 0.10, 0.80));
-
-    float hemisphere = worldNormal.y * 0.5 + 0.5;
-    float key = max(dot(viewNormal, keyDirection), 0.0);
-    float fill = max(dot(viewNormal, fillDirection), 0.0) * ao;
-    return clamp(0.30 + hemisphere * 0.10 + key * 0.50 + fill * 0.18, 0.0, 1.0);
 }
 
 // ------------------------------------------------------------------
@@ -363,87 +357,6 @@ vec4 sampleTexOrDefault(TextureRef tex, vec3 defaultColor, vec2 texCoord, vec2 t
     return sampleTextureBankGrad(textureArraySlot, vec3(uv, tex.layer), uvDx, uvDy);
 }
 
-#ifdef PBR_USE_POM
-
-    // Contact refinement parallax mapping based on: 
-    // Andrea Riccardi, "A new approach for Parallax Mapping" (2019).
-    // https://andreariccardi.artstation.com/projects/rRB2ym
-    // Uses a coarse march, refinement of the last interval, and interpolation.
-    void applyParallax(
-        MaterialData material, 
-        vec2 texCoordDx, 
-        vec2 texCoordDy, 
-        vec3 positionDx, 
-        vec3 positionDy,
-        inout vec2 texCoord, 
-        inout vec3 worldPos
-    ) {
-        float heightScale = material.heightScale;
-        if (material.heightTex.arraySlot < 0.0 || heightScale <= 0.0) 
-            return;
-    
-        vec3 N = normalize(vWorldNormal);
-        if (!gl_FrontFacing) N = -N;
-        vec3 V = normalize(uCameraPos - worldPos);
-        float NdotV = dot(N, V);
-        if (NdotV <= 0.0)
-            return;
-      
-        float pixelSize = max(length(cross(positionDx, V)), length(cross(positionDy, V)));
-        heightScale *= 1.0 - smoothstep(1.0, 4.0, pixelSize / heightScale);
-        if (heightScale <= 0.0) 
-            return;
-    
-        vec3 r1 = cross(positionDy, N);
-        vec3 r2 = cross(N, positionDx);
-        float determinant = dot(positionDx, r1);
-        float uvArea = texCoordDx.x * texCoordDy.y - texCoordDx.y * texCoordDy.x;
-        if (abs(determinant) <= 1e-6 * length(positionDx) * length(positionDy) || abs(uvArea) < 1e-12) 
-            return;
-    
-        float viewCos = NdotV + 0.1 * (1.0 - smoothstep(0.0, 0.2, NdotV));
-        float rayLength = heightScale / viewCos;
-        vec2 rayOffset = (texCoordDx * dot(r1, V) + texCoordDy * dot(r2, V)) * (rayLength / determinant);
-        vec2 tiling = material.tiling;
-        
-        int steps = int(mix(32.0, 8.0, clamp(NdotV, 0.0, 1.0)));
-        float stepDepth = 1.0 / float(steps);
-        float depth = 0.0;
-        float error = 1.0 - sampleTexOrDefault(material.heightTex, vec3(1.0), texCoord, tiling, texCoordDx, texCoordDy).r;
-        float previousError = error;
-    
-        for (int i = 0; i < steps && error > 0.0; i++)
-        {
-            previousError = error;
-            depth += stepDepth;
-            float surfaceDepth = 1.0 - sampleTexOrDefault(material.heightTex, vec3(1.0), texCoord - rayOffset * depth, tiling, texCoordDx, texCoordDy).r;
-            error = surfaceDepth - depth;
-        }
-    
-        if (depth > 0.0)
-        {
-            const int refinementSteps = 8;
-            depth -= stepDepth;
-            error = previousError;
-            stepDepth /= float(refinementSteps);
-    
-            for (int i = 0; i < refinementSteps && error > 0.0; i++)
-            {
-                previousError = error;
-                depth += stepDepth;
-                float surfaceDepth = 1.0 - sampleTexOrDefault(material.heightTex, vec3(1.0), texCoord - rayOffset * depth, tiling, texCoordDx, texCoordDy).r;
-                error = surfaceDepth - depth;
-            }
-    
-            depth -= stepDepth * clamp(-error / max(previousError - error, 1e-6), 0.0, 1.0);
-        }
-    
-        texCoord -= rayOffset * depth;
-        worldPos -= V * (rayLength * depth);
-    }
-
-#endif
-
 vec3 sampleWorldSpaceNormal(MaterialData material, vec2 texCoord, vec2 texCoordDx, vec2 texCoordDy, out float normalLenTS)
 {
     vec2 scaledDir = material.normalDir * material.normalScale; // Scaled direction
@@ -464,132 +377,6 @@ vec3 sampleWorldSpaceNormal(MaterialData material, vec2 texCoord, vec2 texCoordD
 
     return N;
 }
-
-#if !defined(PBR_DEPTH_PASS) && !defined(PBR_OUTPUT_WBOIT_ACCUM)
-
-    uvec2 decalClusterRange(vec3 worldPos)
-    {
-        if (!uDecalsEnabled) 
-            return uvec2(0u);
-    
-        // Use the displaced position for both projection and clustering on POM receivers.
-        float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
-        int slice = int(floor(log(max(viewDepth, uDecalNearPlane) / uDecalNearPlane) * uDecalDepthSliceScale));
-        ivec3 cell = clamp(ivec3(ivec2(gl_FragCoord.xy / uDecalTileSize), slice), ivec3(0), uDecalGridSize - 1);
-        int cluster = (cell.z * uDecalGridSize.y + cell.y) * uDecalGridSize.x + cell.x;
-
-        // x=offset, y=count
-        return uvec2(uDecalClusters[cluster * 2], uDecalClusters[cluster * 2 + 1]); 
-    }
-
-    void applyDecals(
-        MaterialData receiver, 
-        vec3 worldPos, 
-        vec3 positionDx, 
-        vec3 positionDy, 
-        vec3 meshNormal,
-        inout vec3 color, 
-        inout vec3 emissive,
-        inout vec3 N, 
-        inout float normalLength, 
-        inout float roughness, 
-        inout float metallic
-    ) {
-        uint layerMask = receiver.layerMask;
-        if (!uDecalsEnabled || layerMask == 0u || receiver.isAlphaBlended > 0.5) 
-            return;
-
-        uvec2 range = decalClusterRange(worldPos);
-        for (uint i = 0u; i < range.y; i++)
-        {
-            DecalData decal = uDecals[uDecalClusters[range.x + i]];
-            if ((layerMask & decal.targetLayerMask) == 0u) 
-                continue;
-    
-            vec3 local = (decal.worldToLocal * vec4(worldPos, 1.0)).xyz;
-            if (any(greaterThanEqual(abs(local), vec3(0.5)))) 
-                continue;
-    
-            mat3 worldToLocal = mat3(decal.worldToLocal);
-            vec3 axisU = vec3(worldToLocal[0].x, worldToLocal[1].x, worldToLocal[2].x);
-            vec3 axisV = vec3(worldToLocal[0].y, worldToLocal[1].y, worldToLocal[2].y);
-            vec3 axisN = normalize(vec3(worldToLocal[0].z, worldToLocal[1].z, worldToLocal[2].z));
-            float facing = dot(meshNormal, axisN);
-    
-            if (facing <= 0.0) continue;
-            
-            float weight = decal.opacity;
-            if (decal.fadeStartAngleCos > 0.0) 
-                weight *= smoothstep(0.0, decal.fadeStartAngleCos, facing);
- 
-            if (decal.edgeFade > 0.0)
-            {
-                vec3 edge = vec3(0.5) - abs(local);
-                weight *= smoothstep(0.0, decal.edgeFade, min(edge.x, min(edge.y, edge.z)));
-            }
-            
-            if (decal.fadeEndDistance > 0.0)
-            {
-                float distance = length(uCameraPos - decal.position);
-                weight *= 1.0 - clamp((distance - decal.fadeStartDistance) / max(decal.fadeEndDistance - decal.fadeStartDistance, 1e-5), 0.0, 1.0);
-            }
-       
-            if (weight <= 0.0) continue;
-    
-            MaterialData material = uMaterials[int(decal.materialId)];
-            vec2 uv = local.xy + 0.5;
-            vec2 tiling = material.tiling;
-            vec2 dx = (worldToLocal * positionDx).xy;
-            vec2 dy = (worldToLocal * positionDy).xy;
-            vec4 albedo = sampleTexOrDefault(material.albedoTex, vec3(1.0), uv, tiling, dx, dy) * material.baseColor;
-            weight *= clamp(albedo.a, 0.0, 1.0);
-            
-            if (weight <= 0.0) continue;
-            
-            vec3 decalColor = decal.colorBlendMode == DECAL_COLOR_MULTIPLY ? color * albedo.rgb : albedo.rgb;
-            color = mix(color, decalColor, weight * decal.colorBlend);
-    
-            // Add masked emission independently of the color channel; ordinary decals leave it unchanged.
-            if (any(greaterThan(material.emissiveFactor.rgb, vec3(0.0))))
-                emissive += weight * material.emissiveFactor.rgb * sampleTexOrDefault(material.emissiveTex, vec3(1.0), uv, tiling, dx, dy).rgb;
-    
-            if (decal.normalBlend > 0.0 && material.normalTex.arraySlot >= 0.0)
-            {
-                vec3 normalTs = sampleTexOrDefault(material.normalTex, vec3(0.5, 0.5, 1.0), uv, tiling, dx, dy).xyz * 2.0 - 1.0;
-                float detailLength = min(length(normalTs), 1.0);
-                normalTs.xy *= material.normalDir * material.normalScale * sign(tiling);
-                
-                // Project the decal slope onto the receiver tangent plane.
-                vec3 U = normalize(axisU);
-                vec3 V = normalize(axisV);
-                vec3 gradient = -(U * normalTs.x + V * normalTs.y) / max(normalTs.z, 1e-4);
-                gradient -= meshNormal * dot(gradient, meshNormal);
-                
-                float blend = weight * decal.normalBlend;
-                float normalZ = max(dot(N, meshNormal), 1e-4);
-                if (decal.normalBlendMode == DECAL_NORMAL_REPLACE)
-                {
-                    // Interpolate slopes relative to the mesh normal before normalizing.
-                    N = normalize(mix(N / normalZ, meshNormal - gradient, blend));
-                    normalLength = mix(normalLength, detailLength, blend);
-                }
-                else
-                {
-                    N = normalize(N - normalZ * blend * gradient);
-                    normalLength = mix(normalLength, min(normalLength, detailLength), blend);
-                }
-            }
-            
-            if (decal.roughnessBlend > 0.0 || decal.metallicBlend > 0.0)
-            {
-                vec3 orm = sampleTexOrDefault(material.aoRoughMetalTex, vec3(1.0), uv, tiling, dx, dy).rgb;
-                roughness = mix(roughness, clamp(orm.g * material.roughnessFactor, 0.04, 1.0), weight * decal.roughnessBlend);
-                metallic = mix(metallic, clamp(orm.b * material.metallicFactor, 0.0, 1.0), weight * decal.metallicBlend);
-            }
-        }
-    }
-
-#endif
 
 vec3 sampleEnvMap(vec4 texDesc, vec3 dir, float lod)
 {
@@ -704,6 +491,255 @@ vec2 sampleBrdfLut(float NdotV, float roughness)
 }
 
 // ------------------------------------------------------------------
+// Parallax Occlusion Mapping
+// ------------------------------------------------------------------
+
+#if defined(PBR_USE_POM) || (!defined(PBR_DEPTH_PASS) && !defined(PBR_OUTPUT_WBOIT_ACCUM))
+    
+    // Contact refinement parallax mapping based on: 
+    // Andrea Riccardi, "A new approach for Parallax Mapping" (2019).
+    // https://andreariccardi.artstation.com/projects/rRB2ym
+    // Uses a coarse march, refinement of the last interval, and interpolation.
+    // Returns world-space travel along the view ray, or -1 if it leaves the decal footprint.
+    float traceParallax(
+        MaterialData material,
+        float heightScale,
+        vec3 N,
+        vec3 V,
+        vec3 positionDx, vec3 positionDy,
+        vec2 texCoordDx, vec2 texCoordDy,
+        bool clipToDecal,
+        inout vec2 texCoord
+    ) {
+        float NdotV = dot(N, V);
+        if (NdotV <= 0.0)
+            return 0.0;
+    
+        float pixelSize = max(length(cross(positionDx, V)), length(cross(positionDy, V)));
+        heightScale *= 1.0 - smoothstep(1.0, 4.0, pixelSize / heightScale);
+        if (heightScale <= 0.0)
+            return 0.0;
+    
+        vec3 r1 = cross(positionDy, N);
+        vec3 r2 = cross(N, positionDx);
+        float determinant = dot(positionDx, r1);
+        float uvArea = texCoordDx.x * texCoordDy.y - texCoordDx.y * texCoordDy.x;
+        if (abs(determinant) <= 1e-6 * length(positionDx) * length(positionDy) || abs(uvArea) < 1e-12)
+            return 0.0;
+    
+        float viewCos = NdotV + 0.1 * (1.0 - smoothstep(0.0, 0.2, NdotV));
+        float rayLength = heightScale / viewCos;
+        vec2 rayOffset = (texCoordDx * dot(r1, V) + texCoordDy * dot(r2, V)) * (rayLength / determinant);
+        vec2 tiling = material.tiling;
+    
+        int steps = int(mix(float(uPomSteps.y), float(uPomSteps.x), clamp(NdotV, 0.0, 1.0)));
+        float maxDepth = 1.0;
+        if (clipToDecal)
+        {
+            // Clip in projector UVs before tiling, so a ray cannot hit a wrapped copy outside the box
+            vec2 endUV = texCoord - rayOffset;
+            if (endUV.x < 0.0 || endUV.x >= 1.0)
+                maxDepth = (texCoord.x - (rayOffset.x > 0.0 ? 0.0 : 1.0)) / rayOffset.x;
+    
+            if (endUV.y < 0.0 || endUV.y >= 1.0)
+                maxDepth = min(maxDepth, (texCoord.y - (rayOffset.y > 0.0 ? 0.0 : 1.0)) / rayOffset.y);
+    
+            if (any(lessThan(endUV, vec2(0.0))) || any(greaterThanEqual(endUV, vec2(1.0))))
+                maxDepth *= 0.999999; // Sample the last height just inside the edge
+        }
+    
+        float stepDepth = maxDepth / float(steps);
+        float depth = 0.0;
+        float error = 1.0 - sampleTexOrDefault(material.heightTex, vec3(1.0), texCoord, tiling, texCoordDx, texCoordDy).r;
+        float previousError = error;
+    
+        for (int i = 0; i < steps && error > 0.0; i++)
+        {
+            previousError = error;
+            depth = (i == steps - 1) ? maxDepth : depth + stepDepth;
+            float surfaceDepth = 1.0 - sampleTexOrDefault(material.heightTex, vec3(1.0), texCoord - rayOffset * depth, tiling, texCoordDx, texCoordDy).r;
+            error = surfaceDepth - depth;
+        }
+    
+        if (clipToDecal && maxDepth < 1.0 && error > 0.0)
+            return -1.0;
+    
+        if (depth > 0.0)
+        {
+            int refinementSteps = uPomSteps.z;
+            depth -= stepDepth;
+            error = previousError;
+            stepDepth /= float(refinementSteps);
+    
+            for (int i = 0; i < refinementSteps && error > 0.0; i++)
+            {
+                previousError = error;
+                depth += stepDepth;
+                float surfaceDepth = 1.0 - sampleTexOrDefault(material.heightTex, vec3(1.0), texCoord - rayOffset * depth, tiling, texCoordDx, texCoordDy).r;
+                error = surfaceDepth - depth;
+            }
+    
+            depth -= stepDepth * clamp(-error / max(previousError - error, 1e-6), 0.0, 1.0);
+        }
+    
+        texCoord -= rayOffset * depth;
+        return rayLength * depth;
+    }
+
+#endif
+
+// ------------------------------------------------------------------
+// Decals
+// ------------------------------------------------------------------
+
+#if !defined(PBR_DEPTH_PASS) && !defined(PBR_OUTPUT_WBOIT_ACCUM)
+
+    uvec2 decalClusterRange(vec3 worldPos)
+    {
+        if (!uDecalsEnabled)
+            return uvec2(0u);
+    
+        // Use the displaced position for both projection and clustering on POM receivers.
+        float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
+        int slice = int(floor(log(max(viewDepth, uDecalNearPlane) / uDecalNearPlane) * uDecalDepthSliceScale));
+        ivec3 cell = clamp(ivec3(ivec2(gl_FragCoord.xy / uDecalTileSize), slice), ivec3(0), uDecalGridSize - 1);
+        int cluster = (cell.z * uDecalGridSize.y + cell.y) * uDecalGridSize.x + cell.x;
+
+        // x=offset, y=count
+        return uvec2(uDecalClusters[cluster * 2], uDecalClusters[cluster * 2 + 1]);
+    }
+
+    void applyDecals(
+        MaterialData receiver,
+        vec3 worldPos,
+        vec3 positionDx,
+        vec3 positionDy,
+        vec3 meshNormal,
+        inout vec3 color,
+        inout vec3 emissive,
+        inout vec3 N,
+        inout float normalLength,
+        inout float roughness,
+        inout float metallic,
+        inout vec3 decalHitOffset
+    ) {
+        uint layerMask = receiver.layerMask;
+        if (!uDecalsEnabled || layerMask == 0u || receiver.isAlphaBlended > 0.5)
+            return;
+
+        uvec2 range = decalClusterRange(worldPos);
+        for (uint i = 0u; i < range.y; i++)
+        {
+            DecalData decal = uDecals[uDecalClusters[range.x + i]];
+            if ((layerMask & decal.targetLayerMask) == 0u)
+                continue;
+    
+            vec3 local = (decal.worldToLocal * vec4(worldPos, 1.0)).xyz;
+            if (any(greaterThanEqual(abs(local), vec3(0.5))))
+                continue;
+    
+            mat3 worldToLocal = mat3(decal.worldToLocal);
+            vec3 axisU = vec3(worldToLocal[0].x, worldToLocal[1].x, worldToLocal[2].x);
+            vec3 axisV = vec3(worldToLocal[0].y, worldToLocal[1].y, worldToLocal[2].y);
+            vec3 axisN = normalize(vec3(worldToLocal[0].z, worldToLocal[1].z, worldToLocal[2].z));
+            float facing = dot(meshNormal, axisN);
+    
+            if (facing <= 0.0) continue;
+    
+            float weight = decal.opacity;
+            if (decal.fadeStartAngleCos > 0.0)
+                weight *= smoothstep(0.0, decal.fadeStartAngleCos, facing);
+
+            if (decal.fadeEndDistance > 0.0)
+            {
+                float distance = length(uCameraPos - decal.position);
+                weight *= 1.0 - clamp((distance - decal.fadeStartDistance) / max(decal.fadeEndDistance - decal.fadeStartDistance, 1e-5), 0.0, 1.0);
+            }
+    
+            if (weight <= 0.0) continue;
+    
+            vec2 uv = local.xy + 0.5;
+            vec2 edgePosition = abs(local.xy);
+            vec2 dx = (worldToLocal * positionDx).xy;
+            vec2 dy = (worldToLocal * positionDy).xy;
+
+            MaterialData material = uMaterials[int(decal.materialId)];
+            float heightScale = material.heightScale * decal.heightBlend;
+            bool hasParallax  = uPomSteps.x > 0 && material.heightTex.arraySlot >= 0.0 && heightScale > 0.0;
+
+            vec3 hitOffset = vec3(0.0);
+            
+            if (hasParallax)
+            {
+                vec3 V = normalize(uCameraPos - worldPos);
+                float travel = traceParallax(material, heightScale, meshNormal, V, positionDx, positionDy, dx, dy, true, uv);
+                if (travel < 0.0)
+                    continue;
+                hitOffset = -V * travel;
+                edgePosition = max(edgePosition, abs(uv - 0.5));
+            }
+    
+            if (decal.edgeFade > 0.0)
+            {
+                float edgeDistance = 0.5 - max(max(edgePosition.x, edgePosition.y), abs(local.z));
+                weight *= smoothstep(0.0, decal.edgeFade, edgeDistance);
+            }
+    
+            vec2 tiling = material.tiling;
+            vec4 albedo = sampleTexOrDefault(material.albedoTex, vec3(1.0), uv, tiling, dx, dy) * material.baseColor;
+            weight *= clamp(albedo.a, 0.0, 1.0);
+    
+            if (weight <= 0.0) continue;
+    
+            if (hasParallax)
+                decalHitOffset = mix(decalHitOffset, hitOffset, weight);
+    
+            vec3 decalColor = decal.colorBlendMode == DECAL_COLOR_MULTIPLY ? color * albedo.rgb : albedo.rgb;
+            color = mix(color, decalColor, weight * decal.colorBlend);
+    
+            // Add masked emission independently of the color channel; ordinary decals leave it unchanged.
+            if (any(greaterThan(material.emissiveFactor.rgb, vec3(0.0))))
+                emissive += weight * material.emissiveFactor.rgb * sampleTexOrDefault(material.emissiveTex, vec3(1.0), uv, tiling, dx, dy).rgb;
+    
+            if (decal.normalBlend > 0.0 && material.normalTex.arraySlot >= 0.0)
+            {
+                vec3 normalTs = sampleTexOrDefault(material.normalTex, vec3(0.5, 0.5, 1.0), uv, tiling, dx, dy).xyz * 2.0 - 1.0;
+                float detailLength = min(length(normalTs), 1.0);
+                normalTs.xy *= material.normalDir * material.normalScale * sign(tiling);
+
+                // Project the decal slope onto the receiver tangent plane.
+                vec3 U = normalize(axisU);
+                vec3 V = normalize(axisV);
+                vec3 gradient = -(U * normalTs.x + V * normalTs.y) / max(normalTs.z, 1e-4);
+                gradient -= meshNormal * dot(gradient, meshNormal);
+
+                float blend = weight * decal.normalBlend;
+                float normalZ = max(dot(N, meshNormal), 1e-4);
+                if (decal.normalBlendMode == DECAL_NORMAL_REPLACE)
+                {
+                    // Interpolate slopes relative to the mesh normal before normalizing.
+                    N = normalize(mix(N / normalZ, meshNormal - gradient, blend));
+                    normalLength = mix(normalLength, detailLength, blend);
+                }
+                else
+                {
+                    N = normalize(N - normalZ * blend * gradient);
+                    normalLength = mix(normalLength, min(normalLength, detailLength), blend);
+                }
+            }
+
+            if (decal.roughnessBlend > 0.0 || decal.metallicBlend > 0.0)
+            {
+                vec3 orm = sampleTexOrDefault(material.aoRoughMetalTex, vec3(1.0), uv, tiling, dx, dy).rgb;
+                roughness = mix(roughness, clamp(orm.g * material.roughnessFactor, 0.04, 1.0), weight * decal.roughnessBlend);
+                metallic = mix(metallic, clamp(orm.b * material.metallicFactor, 0.0, 1.0), weight * decal.metallicBlend);
+            }
+        }
+    }
+
+#endif
+
+// ------------------------------------------------------------------
 // PBR functions
 // ------------------------------------------------------------------
 
@@ -783,7 +819,7 @@ float specularOcclusion(float NdotV, float ao, float roughness)
 }
 
 // ------------------------------------------------------------------
-// Shadow mapping
+// Sun shadow mapping
 // ------------------------------------------------------------------
 
 const vec2 POISSON_DISK_16[16] = vec2[]
@@ -864,7 +900,17 @@ int shadowCascadeIndex(float viewDepth)
     return CASCADE_COUNT - 1;
 }
 
-float cascadedShadow(vec3 worldPos, vec3 N, float filterRadiusTexels)
+vec3 shadowPlaneOffset(vec3 hitOffset, vec3 N, vec3 L)
+{
+    // Look from the recessed hit toward the light and sample where that ray crosses the mesh
+    // Fade the shift near grazing angles to keep the lookup close to the receiver
+    float NdotL = dot(N, L);
+    if (NdotL <= 0.05) 
+        return vec3(0.0);
+    return (hitOffset - L * (dot(hitOffset, N) / NdotL)) * smoothstep(0.05, 0.2, NdotL);
+}
+
+float cascadedShadow(vec3 worldPos, vec3 N, float filterRadiusTexels, vec3 hitOffset)
 {
     // Compute view-space depth for cascade selection
     float viewDepth = -(uView * vec4(worldPos, 1.0)).z;
@@ -873,6 +919,9 @@ float cascadedShadow(vec3 worldPos, vec3 N, float filterRadiusTexels)
 
     // Find the first cascade that contains this fragment
     int cascade = shadowCascadeIndex(viewDepth);
+
+    if (any(notEqual(hitOffset, vec3(0.0))))
+        worldPos += shadowPlaneOffset(hitOffset, N, -uSunDirection);
 
     vec3 swp = shadowWorldPos(worldPos, N, cascade);
     float shadow = pcfShadowCascade(swp, filterRadiusTexels, cascade);
@@ -1083,44 +1132,88 @@ float pointLightShadow(int firstFace, vec3 lightPos, vec3 shadowWorldPos)
     return sum / 9.0;
 }
 
-float localLightShadow(LocalLightData light, vec3 lightPos, vec3 worldPos, vec3 N)
+float localLightShadow(LocalLightData light, vec3 lightPos, vec3 worldPos, vec3 N, vec3 hitOffset)
 {
     if (!hasPbrFeature(PBR_FEATURE_LOCAL_SHADOWS))
         return 1.0;
 
     float shadowBias = light.isSpotShadowInfo.y;
     if (shadowBias < 0.0)
-        return 1.0; //  Not casting shadows
+        return 1.0; // Not casting shadows
 
-    vec3 shadowWorldPos = worldPos + N * shadowBias;
     int firstFace = int(light.isSpotShadowInfo.z + 0.5);
     int faceCount = int(light.isSpotShadowInfo.w + 0.5);
 
     if (firstFace < 0 || faceCount <= 0)
         return 1.0;
 
+    if (any(notEqual(hitOffset, vec3(0.0))))
+    {
+        vec3 toLight = (lightPos - worldPos) - hitOffset;
+        if (dot(lightPos - worldPos, N) > 0.0)
+            worldPos += shadowPlaneOffset(hitOffset, N, normalize(toLight));
+    }
+
+    vec3 shadowWorldPos = worldPos + N * shadowBias;
     if (light.isSpotShadowInfo.x < 0.5 && faceCount >= 6)
         return pointLightShadow(firstFace, lightPos, shadowWorldPos);
 
     return localShadowFace(firstFace, shadowWorldPos);
 }
 
-float contactShadow(vec3 worldPos, vec3 meshNormal, vec3 L, float rayLength)
+float contactShadow(vec3 worldPos, vec3 meshNormal, vec3 decalHitOffset, vec3 L, float rayLength, float lightDistance)
 {
     if (!hasPbrFeature(PBR_FEATURE_CONTACT_SHADOWS) || rayLength <= 0.0)
+        return 1.0;
+
+    vec2 startUv = gl_FragCoord.xy / uScreenSize;
+    float insideDistance = 0.0;
+
+    if (any(notEqual(decalHitOffset, vec3(0.0))))
+    {
+        if (lightDistance > 0.0)
+        {
+            vec3 hitToLight = L * lightDistance - decalHitOffset;
+            lightDistance = length(hitToLight);
+            if (lightDistance <= 0.0) 
+                return 1.0;
+            L = hitToLight / lightDistance;
+        }
+
+        // Depth contains the receiver, including its material POM. Start screen-space
+        // tests where the ray from the decal hit emerges through that receiver plane.
+        float depth = -dot(decalHitOffset, meshNormal);
+        float NdotL = dot(meshNormal, L);
+
+        if (NdotL <= 0.0 || depth >= NdotL * rayLength) 
+            return 1.0;
+
+        insideDistance = max(depth, 0.0) / NdotL;
+        worldPos += decalHitOffset + L * insideDistance;
+
+        vec4 crossing = uViewProjection * vec4(worldPos, 1.0);
+        if (crossing.w <= 0.0 || any(greaterThanEqual(abs(crossing.xyz), vec3(crossing.w)))) 
+            return 1.0;
+
+        startUv = crossing.xy / crossing.w * 0.5 + 0.5;
+    }
+
+    if (lightDistance > 0.0) 
+        rayLength = min(rayLength, lightDistance);
+
+    if (insideDistance >= rayLength) 
         return 1.0;
 
     vec3 origin = worldPos + meshNormal * uContactShadowBias;
     vec3 viewOrigin = (uView * vec4(origin, 1.0)).xyz;
     vec3 viewDirection = mat3(uView) * L;
-    vec2 startUv = gl_FragCoord.xy / uScreenSize;
-    const int steps = 16;
     float visibility = 1.0;
+    const int steps = 16;
 
     for (int i = 1; i <= steps; i++)
     {
         float t = float(i) / float(steps);
-        float distance = rayLength * t;
+        float distance = (rayLength - insideDistance) * t;
         vec4 clip = uViewProjection * vec4(origin + L * distance, 1.0);
         if (clip.w <= 0.0 || abs(clip.z) >= clip.w) 
             break;
@@ -1148,7 +1241,7 @@ float contactShadow(vec3 worldPos, vec3 meshNormal, vec3 L, float rayLength)
         if (occlusion > 0.0)
         {
             float edge = min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y));
-            float confidence = smoothstep(0.0, 0.03, edge) * (1.0 - smoothstep(0.75, 1.0, t));
+            float confidence = smoothstep(0.0, 0.03, edge) * (1.0 - smoothstep(0.75, 1.0, (insideDistance + distance) / rayLength));
             visibility = min(visibility, 1.0 - occlusion * confidence);
             if (visibility <= 0.0) 
                 return 0.0;
@@ -1158,8 +1251,21 @@ float contactShadow(vec3 worldPos, vec3 meshNormal, vec3 L, float rayLength)
     return visibility;
 }
 
-vec3 accumulateLocalLights(vec3 worldPos, vec3 N, vec3 meshNormal, vec3 V, float NdotV, vec3 baseColor, float metallic, float roughness, vec3 F0, vec3 positionDx, vec3 positionDy, float invViewDistance)
-{
+vec3 accumulateLocalLights(
+    vec3 worldPos, 
+    vec3 decalHitOffset, 
+    vec3 N, 
+    vec3 meshNormal, 
+    vec3 V, 
+    float NdotV, 
+    vec3 baseColor, 
+    float metallic, 
+    float roughness, 
+    vec3 F0, 
+    vec3 positionDx, 
+    vec3 positionDy, 
+    float invViewDistance
+) {
     vec3 Lo = vec3(0.0);
 
     if (!hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
@@ -1214,9 +1320,10 @@ vec3 accumulateLocalLights(vec3 worldPos, vec3 N, vec3 meshNormal, vec3 V, float
         }
 
         vec3 radiance = lightColor * attenuation;
-        float shadow = localLightShadow(light, lightPos, vWorldPos, meshNormal);
+        vec3 hitOffset = (worldPos - vWorldPos) + decalHitOffset;
+        float shadow = localLightShadow(light, lightPos, vWorldPos, meshNormal, hitOffset);
         if (shadow > 0.0 && attenuation > 0.0)
-            shadow *= contactShadow(worldPos, meshNormal, L, min(light.sourceRadiusPadding.y, d));
+            shadow *= contactShadow(worldPos, meshNormal, decalHitOffset, L, light.sourceRadiusPadding.y, d);
 
         // Cook-Torrance BRDF
         vec3 H  = normalize(V + L);
@@ -1236,6 +1343,19 @@ vec3 accumulateLocalLights(vec3 worldPos, vec3 N, vec3 meshNormal, vec3 V, float
     }
 
     return Lo;
+}
+
+float defaultStudioLighting(vec3 worldNormal, float ao)
+{
+    // Camera-relative studio lights keep geometry readable without requiring scene lights
+    vec3 viewNormal = normalize(mat3(uView) * worldNormal);
+    vec3 keyDirection = normalize(vec3(-0.45, 0.65, 0.75));
+    vec3 fillDirection = normalize(vec3(0.60, 0.10, 0.80));
+
+    float hemisphere = worldNormal.y * 0.5 + 0.5;
+    float key = max(dot(viewNormal, keyDirection), 0.0);
+    float fill = max(dot(viewNormal, fillDirection), 0.0) * ao;
+    return clamp(0.30 + hemisphere * 0.10 + key * 0.50 + fill * 0.18, 0.0, 1.0);
 }
 
 // ------------------------------------------------------------------
@@ -1318,11 +1438,15 @@ void main()
     #ifdef PBR_USE_POM
         vec3 positionDx = dFdx(vWorldPos);
         vec3 positionDy = dFdy(vWorldPos);
-        applyParallax(material, texCoordDx, texCoordDy, positionDx, positionDy, texCoord, worldPos);
-        
+
         gl_FragDepth = gl_FragCoord.z;
         if (material.heightTex.arraySlot >= 0.0 && material.heightScale > 0.0)
         {
+            vec3 N = normalize(vWorldNormal);
+            if (!gl_FrontFacing) N = -N;
+            vec3 V = normalize(uCameraPos - worldPos);
+            float travel = traceParallax(material, material.heightScale, N, V, positionDx, positionDy, texCoordDx, texCoordDy, false, texCoord);
+            worldPos -= V * travel;
             vec4 clipPos = uViewProjection * vec4(worldPos, 1.0);
             gl_FragDepth = max(gl_FragCoord.z, (clipPos.z / clipPos.w) * 0.5 + 0.5);
         }
@@ -1388,8 +1512,10 @@ void main()
     float roughness = clamp(orm.g * material.roughnessFactor, 0.04, 1.0);
     float metallic  = clamp(orm.b * material.metallicFactor, 0.0,  1.0);
 
+    vec3 decalHitOffset = vec3(0.0);
+
     #if !defined(PBR_DEPTH_PASS) && !defined(PBR_OUTPUT_WBOIT_ACCUM)
-        applyDecals(material, worldPos, worldPosDx, worldPosDy, meshNormal, baseColor.rgb, emissive, N, normalLength, roughness, metallic);
+        applyDecals(material, worldPos, worldPosDx, worldPosDy, meshNormal, baseColor.rgb, emissive, N, normalLength, roughness, metallic, decalHitOffset);
     #endif
 
     // Ambient occlusion
@@ -1441,9 +1567,9 @@ void main()
         }
         case VIEW_MODE_SUN_SHADOW:
         {
-            float sunShadow = hasPbrFeature(PBR_FEATURE_SUN_SHADOWS) ? cascadedShadow(vWorldPos, meshNormal, uSunRadius) : 1.0;
+            float sunShadow = hasPbrFeature(PBR_FEATURE_SUN_SHADOWS) ? cascadedShadow(vWorldPos, meshNormal, uSunRadius, (worldPos - vWorldPos) + decalHitOffset) : 1.0;
             if (hasPbrFeature(PBR_FEATURE_SUN_LIGHT) && sunShadow > 0.0)
-                sunShadow *= contactShadow(worldPos, meshNormal, normalize(-uSunDirection), uSunContactShadowLength);
+                sunShadow *= contactShadow(worldPos, meshNormal, decalHitOffset, normalize(-uSunDirection), uSunContactShadowLength, 0.0);
             writeFragment(vec3(sunShadow), alpha);
             return;
         }
@@ -1486,7 +1612,7 @@ void main()
             return;
         }
         default:
-            break; // Shaded, lighting and indirect views continue through the PBR path.
+            break; // Final, lighting and indirect views continue through the PBR path.
     }
 
     bool indirectView = uViewMode == VIEW_MODE_INDIRECT_SPECULAR || uViewMode == VIEW_MODE_INDIRECT_DIFFUSE;
@@ -1518,13 +1644,13 @@ void main()
     // Combined ambient occlusion
     float aoCombined = gtao * ao;
 
-    float NdotV = max(dot(N, V), 0.0001);
-    vec3 pbrColor = uViewMode == VIEW_MODE_LIGHTING ? vec3(1.0) : baseColor.rgb;
-    vec3 F0 = mix(vec3(0.04), pbrColor, metallic);
-
     //--------------------------------------------------
     // Direct lighting with Cook-Torrance BRDF
     //--------------------------------------------------
+
+    float NdotV = max(dot(N, V), 0.0001);
+    vec3 pbrColor = uViewMode == VIEW_MODE_LIGHTING ? vec3(1.0) : baseColor.rgb;
+    vec3 F0 = mix(vec3(0.04), pbrColor, metallic);
 
     vec3 LoSun = vec3(0.0);
     if (!indirectView && hasPbrFeature(PBR_FEATURE_SUN_LIGHT))
@@ -1544,16 +1670,16 @@ void main()
             vec3 specular = (NDF * G * F_dir) / denom;
             float shadow = 1.0;
             if (hasPbrFeature(PBR_FEATURE_SUN_SHADOWS))
-                shadow = cascadedShadow(vWorldPos, meshNormal, uSunRadius); // Shadow maps contain the undisplaced mesh.
+                shadow = cascadedShadow(vWorldPos, meshNormal, uSunRadius, (worldPos - vWorldPos) + decalHitOffset);
             if (shadow > 0.0)
-                shadow *= contactShadow(worldPos, meshNormal, L, uSunContactShadowLength);
+                shadow *= contactShadow(worldPos, meshNormal, decalHitOffset, L, uSunContactShadowLength, 0.0);
             LoSun = (diffuse + specular) * uSunColor.rgb * NdotL * shadow;
         }
     }
 
     vec3 LoLocalLights = vec3(0.0);
     if (!indirectView && hasPbrFeature(PBR_FEATURE_LOCAL_LIGHTS))
-        LoLocalLights = accumulateLocalLights(worldPos, N, meshNormal, V, NdotV, pbrColor, metallic, roughness, F0, worldPosDx, worldPosDy, invViewDistance);
+        LoLocalLights = accumulateLocalLights(worldPos, decalHitOffset, N, meshNormal, V, NdotV, pbrColor, metallic, roughness, F0, worldPosDx, worldPosDy, invViewDistance);
 
     vec3 Lo = LoSun + LoLocalLights;
     if (uViewMode == VIEW_MODE_DIRECT_LIGHTING)
@@ -1563,7 +1689,7 @@ void main()
     }
 
     //--------------------------------------------------
-    // Image-based lighting (IBL)
+    // Image-based environment lighting (IBL)
     //--------------------------------------------------
 
     bool diffuseIblEnabled = hasPbrFeature(PBR_FEATURE_DIFFUSE_IBL);

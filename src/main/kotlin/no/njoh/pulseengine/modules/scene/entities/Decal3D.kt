@@ -36,7 +36,8 @@ class Decal3D : SceneEntity(), Named, Spatial3D, Scene3DRenderable, GizmoRendera
     @Prop("Channels",  i=6)                    var normalBlendMode       = DecalNormalBlendMode.COMBINE
     @Prop("Channels",  i=7,  min=0f, max=1f)   var normalBlend           = 1f
     @Prop("Channels",  i=8,  min=0f, max=1f)   var roughnessBlend        = 1f
-    @Prop("Channels",  i=10, min=0f, max=1f)   var metallicBlend         = 0f
+    @Prop("Channels",  i=9,  min=0f, max=1f)   var metallicBlend         = 0f
+    @Prop("Channels",  i=10, min=0f, max=1f)   var heightBlend           = 1f
     @Prop("Fade",      i=11, min=0f, max=0.5f) var edgeFade              = 0.05f
     @Prop("Fade",      i=12, min=0f, max=90f)  var fadeStartAngleDegrees = 60f
     @Prop("Fade",      i=13, min=0f)           var fadeStartDistance     = 80f
@@ -62,7 +63,8 @@ class Decal3D : SceneEntity(), Named, Spatial3D, Scene3DRenderable, GizmoRendera
 
         context.submitDecal(
             material, transform, opacity, colorBlend, colorBlendMode, normalBlend, normalBlendMode, roughnessBlend, 
-            metallicBlend, edgeFade, fadeStartAngleDegrees, fadeStartDistance, fadeEndDistance, targetLayerMask, sortOrder
+            metallicBlend, heightBlend, edgeFade, fadeStartAngleDegrees, fadeStartDistance, fadeEndDistance, 
+            targetLayerMask, sortOrder
         )
     }
 

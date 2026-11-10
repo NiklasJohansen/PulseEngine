@@ -28,10 +28,13 @@ class DecalBufferObject
         buffer.fill(DECAL_FLOATS)
         {
             put(decal.worldToLocal)
-            put(decal.position.x, decal.position.y, decal.position.z, decal.colorBlendMode.gpuValue)
-            put(decal.colorBlend, decal.normalBlendMode.gpuValue, decal.normalBlend, decal.roughnessBlend)
-            put(decal.metallicBlend, decal.opacity, decal.edgeFade, decal.fadeStartAngleCos)
-            put(decal.fadeStartDistance, decal.fadeEndDistance, decal.materialId.toFloat(), Float.fromBits(decal.targetLayerMask))
+            put(decal.position.x, decal.position.y, decal.position.z)
+            put(decal.colorBlendMode.gpuValue, decal.colorBlend)
+            put(decal.normalBlendMode.gpuValue, decal.normalBlend)
+            put(decal.roughnessBlend, decal.metallicBlend, decal.heightBlend, decal.opacity)
+            put(decal.edgeFade, decal.fadeStartAngleCos, decal.fadeStartDistance, decal.fadeEndDistance)
+            put(decal.materialId.toFloat(), Float.fromBits(decal.targetLayerMask))
+            put(0f, 0f, 0f) // Padding
         }
         size++
     }
@@ -68,6 +71,6 @@ class DecalBufferObject
 
     companion object
     {
-        const val DECAL_FLOATS = 32
+        const val DECAL_FLOATS = 36
     }
 }

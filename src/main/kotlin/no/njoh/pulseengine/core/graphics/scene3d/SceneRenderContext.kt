@@ -84,6 +84,7 @@ abstract class SceneRenderContext
         normalBlendMode: DecalNormalBlendMode = DecalNormalBlendMode.COMBINE,
         roughnessBlend: Float = 1f,
         metallicBlend: Float = 0f,
+        heightBlend: Float = 1f,
         edgeFade: Float = 0.05f,
         fadeStartAngleDegrees: Float = 60f,
         fadeStartDistance: Float = 80f,

@@ -18,6 +18,8 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.scene3d.probe.LightProbeRenderer.Phase.*
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.PomQuality
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.PomQuality.LOW
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.SkyboxRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.view.LightProbeRenderView
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
@@ -60,6 +62,7 @@ class LightProbeRenderer(
     private var nextFaceIndexToCapture     = 0
     private var nextMipIndexToFilter       = 0
     private var stepsPerFrame              = 1
+    private var submittedPomQuality        = LOW
     private var submittedStepsPerFrame     = 1
 
     private val updatePosition   = Vector3f()
@@ -177,6 +180,14 @@ class LightProbeRenderer(
 
         specularProbeCubeMaps.ensureCapacity(probeStorage.size)
         diffuseProbeCubeMaps.ensureCapacity(probeStorage.size)
+
+        if (modelRenderer.pomQuality != submittedPomQuality)
+        {
+            cancelCapture()
+            modelRenderer.pomQuality = submittedPomQuality
+            probeStorage.forEach { it.needsUpdate = true }
+        }
+
         stepsPerFrame = submittedStepsPerFrame
         selectLiveProbes()
 
@@ -196,12 +207,17 @@ class LightProbeRenderer(
         publishProbeData(engine)
     }
     
-    fun beginSubmission(stepsPerFrame: Int = 1, updatePosition: Vector3f? = null, maxLiveProbes: Int = 4)
-    {
+    fun beginSubmission(
+        stepsPerFrame: Int = 1,
+        updatePosition: Vector3f? = null,
+        maxLiveProbes: Int = 4,
+        pomQuality: PomQuality = LOW
+    ) {
         this.submittedCount         = 0
         this.submittedStepsPerFrame = stepsPerFrame.coerceAtLeast(0)
         this.maxLiveProbes          = maxLiveProbes.coerceAtLeast(0)
         this.limitLiveProbes        = updatePosition != null && updatePosition.isFinite
+        this.submittedPomQuality    = pomQuality
 
         if (updatePosition != null) 
             this.updatePosition.set(updatePosition)
@@ -446,7 +462,7 @@ class LightProbeRenderer(
             if (!probe.active || !probe.ready || (probe.specularIntensity <= 0f && probe.diffuseIntensity <= 0f))
                 continue
 
-            probeGpuBuffer.addProbe(probe, index)
+            probeGpuBuffer.addProbe(probe, index, probe.capturedPosition)
         }
 
         probeGpuBuffer.submit()

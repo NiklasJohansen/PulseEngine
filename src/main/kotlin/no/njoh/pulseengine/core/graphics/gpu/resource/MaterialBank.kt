@@ -112,10 +112,10 @@ class MaterialBank : ShaderStorageBufferObject
     {
         val baseColor = material?.baseColor ?: DEFAULT_MATERIAL_COLOR
         val emissiveFactor = material?.emissiveFactor ?: Color.WHITE
+        val heightScale = material?.heightScale?.coerceAtLeast(0f) ?: 0f
         val alphaCutoff = if (material?.blendMode == MASK) material.alphaCutoff else 0f
-        val heightScale = if (material != null && material.blendMode != BLEND) material.heightScale.coerceAtLeast(0f) else 0f
-        val uNormalDir = if (material?.normalOrientation == INVERT_U || material?.normalOrientation == INVERT_UV) -1f else 1f
-        val vNormalDir = if (material?.normalOrientation == INVERT_V || material?.normalOrientation == INVERT_UV) -1f else 1f
+        val uNormalDir  = if (material?.normalOrientation == INVERT_U || material?.normalOrientation == INVERT_UV) -1f else 1f
+        val vNormalDir  = if (material?.normalOrientation == INVERT_V || material?.normalOrientation == INVERT_UV) -1f else 1f
 
         fill(MATERIAL_FLOATS)
         {

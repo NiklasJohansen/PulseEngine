@@ -23,11 +23,10 @@ class LightProbeBufferObject : ShaderStorageBufferObject
         probeCount = 0
     }
 
-    fun addProbe(probe: LightProbe, cubeIndex: Int)
+    fun addProbe(probe: LightProbe, cubeIndex: Int, capturePos: Vector3f)
     {
         probeBuffer.fill(PROBE_FLOATS)
         {
-            val capturePos = probe.getCapturePosition(capturePosition)
             val centerPos  = probe.position
             val rotation   = probe.rotation
 

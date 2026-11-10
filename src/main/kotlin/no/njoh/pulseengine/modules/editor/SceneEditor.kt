@@ -94,7 +94,7 @@ class SceneEditor(
     private var updateFooterCallback: (totalEntities: Int, selectedEntities: Int, sceneName: String) -> Unit = { _,_,_ -> }
     private var showGrid = true
     private var showWireframe = false
-    private var viewMode = ViewMode.SHADED
+    private var viewMode = ViewMode.FINAL
     private var sceneHierarchy: SceneHierarchy? = null
     private val editorWindowsById = mutableMapOf<String, WindowPanel>()
 
@@ -210,7 +210,7 @@ class SceneEditor(
         // View mode menu
         val modes = when (viewportInteraction.mode)
         {
-            MODE_2D -> listOf(ViewMode.SHADED)
+            MODE_2D -> listOf(ViewMode.FINAL)
             MODE_3D -> ViewMode.entries
         }
 
@@ -247,7 +247,7 @@ class SceneEditor(
                     createSceneEditorUI(engine)
                     showGrid = true
                     showWireframe = false
-                    viewMode = ViewMode.SHADED
+                    viewMode = ViewMode.FINAL
                     viewportInteraction.resetCamera(engine, viewportContext)
                     captureActiveEditorCamera(engine)
                 }

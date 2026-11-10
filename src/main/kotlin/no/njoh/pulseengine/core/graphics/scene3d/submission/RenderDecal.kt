@@ -17,6 +17,7 @@ class RenderDecal
     var normalBlendMode   = DecalNormalBlendMode.COMBINE
     var roughnessBlend    = 1f
     var metallicBlend     = 0f
+    var heightBlend       = 1f
     var edgeFade          = 0.05f
     var fadeStartAngleCos = 0.5f
     var fadeStartDistance = 80f

@@ -43,6 +43,23 @@ class StreamingFloatBufferObject private constructor(
         data[size++] = v
     }
 
+    fun put(v0: Float, v1: Float)
+    {
+        val i = size
+        size += 2
+        data[i    ] = v0
+        data[i + 1] = v1
+    }
+    
+    fun put(v0: Float, v1: Float, v2: Float)
+    {
+        val i = size
+        size += 3
+        data[i    ] = v0
+        data[i + 1] = v1
+        data[i + 2] = v2
+    }
+
     fun put(v0: Float, v1: Float, v2: Float, v3: Float)
     {
         val i = size

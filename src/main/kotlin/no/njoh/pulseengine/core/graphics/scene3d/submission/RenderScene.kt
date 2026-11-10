@@ -175,6 +175,7 @@ class RenderScene
         normalBlendMode: DecalNormalBlendMode,
         roughnessBlend: Float,
         metallicBlend: Float,
+        heightBlend: Float,
         edgeFade: Float,
         fadeStartAngleDegrees: Float,
         fadeStartDistance: Float,
@@ -193,6 +194,7 @@ class RenderScene
         decal.normalBlendMode   = normalBlendMode
         decal.roughnessBlend    = roughnessBlend.coerceIn(0f, 1f)
         decal.metallicBlend     = metallicBlend.coerceIn(0f, 1f)
+        decal.heightBlend       = heightBlend.coerceIn(0f, 1f)
         decal.edgeFade          = edgeFade.coerceIn(0f, 0.5f)
         decal.fadeStartAngleCos = if (fadeStartAngleDegrees >= 90f) 0f else cos(Math.toRadians(fadeStartAngleDegrees.coerceAtLeast(0f).toDouble())).toFloat()
         decal.fadeEndDistance   = fadeEndDistance.coerceAtLeast(0f)

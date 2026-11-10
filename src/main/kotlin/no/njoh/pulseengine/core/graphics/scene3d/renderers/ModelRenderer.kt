@@ -30,6 +30,7 @@ import no.njoh.pulseengine.core.graphics.surface.Surface
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.scene3d.lighting.BrdfLutBuilder
 import no.njoh.pulseengine.core.graphics.scene3d.probe.LightProbeData
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.PomQuality.MEDIUM
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.SampleShadingMode.DISABLED
 import no.njoh.pulseengine.core.graphics.scene3d.shadow.CascadedShadowMapRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderViewGroup
@@ -57,16 +58,17 @@ import org.lwjgl.opengl.GL40.glMinSampleShading
 
 class ModelRenderer(
     override val order: Int = 40,
-    val viewGroup: CameraRenderViewGroup? = null,
-    var writeRenderIds: Boolean = false
+    val viewGroup: CameraRenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
 
+    // Environment
     var iblDiffuseTexture  = ""
     var iblSpecularTexture = ""
     var iblBrdfTexture     = "ibl_brdf_lut"
     var iblIntensity       = 1f
     var envSRgbColor       = Color(0f, 0f, 0f)
 
+    // Lighting
     var useDefaultLighting          = true
     var sunSRgbColor                = Color(1f, 1f, 1f)
     var sunIntensity                = 1f
@@ -78,12 +80,16 @@ class ModelRenderer(
     var localShadowAtlasSurfaceName = ""
     var lightProbeData              = null as LightProbeData?
 
-    var viewMode                 = ViewMode.SHADED
+    // Rendering
+    var viewMode                 = ViewMode.FINAL
+    var sampleShadingMode        = DISABLED
+    var pomQuality               = MEDIUM
     var transparencyMode         = ORDER_INDEPENDENT
     var weightedBlendAlphaCutoff = 0.04f
+    var writeRenderIds           = false
     var drawWireframeOverlay     = false
-    var sampleShadingMode        = DISABLED
 
+    // Shader programs
     private lateinit var staticProgram: ShaderProgram
     private lateinit var skinnedProgram: ShaderProgram
     private lateinit var programs: ShaderProgramSet
@@ -91,13 +97,17 @@ class ModelRenderer(
     private lateinit var renderIdSkinnedProgram: ShaderProgram
     private lateinit var renderIdPrograms: ShaderProgramSet
 
-    private lateinit var viewKey: RenderViewKey<CameraRenderView>
-
+    // Contact shadows
     private var contactDepthFbo                   = null as FrameBufferObject?
     private var contactShadowsAvailable           = false
     private val contactShadowsInvProjection       = Matrix4f()
     private val contactShadowsDepthTexDescriptors = listOf(TextureDescriptor(attachmentPoint = DEPTH_TEXTURE, filter = NEAREST))
-    private val weightedBlendedRenderer           = WeightedBlendedOitRenderer()
+    
+    // Blend renderer
+    private val weightedBlendedRenderer = WeightedBlendedOitRenderer()
+
+    // Render view
+    private lateinit var viewKey: RenderViewKey<CameraRenderView>
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
@@ -124,21 +134,21 @@ class ModelRenderer(
                 transform = defineShaderVariant("PBR_USE_POM", "PBR_USE_RENDER_ID")
             ))
 
-            staticProgram = ShaderProgram.create(staticVertex, pbrFragment)
+            staticProgram  = ShaderProgram.create(staticVertex, pbrFragment)
             skinnedProgram = ShaderProgram.create(skinnedVertex, pbrFragment)
             programs = ShaderProgramSet(
-                staticProgram = staticProgram,
-                skinnedProgram = skinnedProgram,
-                pomStaticProgram = ShaderProgram.create(staticVertex, pomFragment),
+                staticProgram     = staticProgram,
+                skinnedProgram    = skinnedProgram,
+                pomStaticProgram  = ShaderProgram.create(staticVertex, pomFragment),
                 pomSkinnedProgram = ShaderProgram.create(skinnedVertex, pomFragment)
             )
 
-            renderIdStaticProgram = ShaderProgram.create(staticVertex, renderIdFragment)
+            renderIdStaticProgram  = ShaderProgram.create(staticVertex, renderIdFragment)
             renderIdSkinnedProgram = ShaderProgram.create(skinnedVertex, renderIdFragment)
             renderIdPrograms = ShaderProgramSet(
-                staticProgram = renderIdStaticProgram,
-                skinnedProgram = renderIdSkinnedProgram,
-                pomStaticProgram = ShaderProgram.create(staticVertex, pomRenderIdFragment),
+                staticProgram     = renderIdStaticProgram,
+                skinnedProgram    = renderIdSkinnedProgram,
+                pomStaticProgram  = ShaderProgram.create(staticVertex, pomRenderIdFragment),
                 pomSkinnedProgram = ShaderProgram.create(skinnedVertex, pomRenderIdFragment)
             )
         }
@@ -148,13 +158,13 @@ class ModelRenderer(
         if (engine.asset.getOrNull<Texture>(iblBrdfTexture) == null)
         {
             val brdfLutTex = Texture(
-                name = iblBrdfTexture,
-                filePath = "",
-                initWidth = 512,
-                initHeight = 512,
-                format = TextureFormat.RGBA16F,
-                wrapping = CLAMP_TO_EDGE,
-                filter = LINEAR,
+                name         = iblBrdfTexture,
+                filePath     = "",
+                initWidth    = 512,
+                initHeight   = 512,
+                format       = TextureFormat.RGBA16F,
+                wrapping     = CLAMP_TO_EDGE,
+                filter       = LINEAR,
                 maxMipLevels = 1
             )
             engine.asset.loadNow(brdfLutTex)
@@ -191,8 +201,6 @@ class ModelRenderer(
         glDepthMask(!hasDepthPrepass)
 
         val writesRenderIds = writeRenderIds && surface.getTextureOrNull(COLOR_TEXTURE_1) != null
-        val visualizesRenderIds = viewMode == RENDER_ID
-        val activePrograms = if (writesRenderIds || visualizesRenderIds) renderIdPrograms else programs
         if (writesRenderIds)
         {
             surface.renderTarget.setDrawBuffers(COLOR_TEXTURE_0, COLOR_TEXTURE_1)
@@ -206,7 +214,11 @@ class ModelRenderer(
             glEnable(GL_SAMPLE_SHADING)
             glMinSampleShading(sampleShadingMode.value)
         }
-        
+
+        val visualizesRenderIds = viewMode == RENDER_ID
+        val colorPrograms  = if (writesRenderIds || visualizesRenderIds) renderIdPrograms else programs
+        val activePrograms = colorPrograms.withPomQuality(pomQuality)
+
         activePrograms.forEachProgram { configureProgram(it, engine, surface, cameraState) }
         bindStorageBuffers(activePrograms, engine, cameraState, view.drawPayload)
 
@@ -294,8 +306,8 @@ class ModelRenderer(
                 {
                     weightedBlendedRenderer.alphaCutoff = weightedBlendAlphaCutoff
                     val accumPrograms = weightedBlendedRenderer.getAccumPrograms(visualizesRenderIds)
-                    configureProgram(accumPrograms.staticProgram, engine, surface, cameraState)
-                    configureProgram(accumPrograms.skinnedProgram, engine, surface, cameraState)
+                    configureProgram(accumPrograms.staticProgram,  engine, surface, cameraState, supportsPom = false)
+                    configureProgram(accumPrograms.skinnedProgram, engine, surface, cameraState, supportsPom = false)
                     weightedBlendedRenderer.render(
                         engine = engine,
                         surface = surface,
@@ -384,21 +396,22 @@ class ModelRenderer(
         glDepthFunc(GL_LESS)
         glDepthMask(true)
 
-        programs.forEachProgram { configureProgram(it, engine, surface, cameraState, lightProbeCapture = true) }
-        bindStorageBuffers(programs, engine, cameraState, view.drawPayload)
+        val facePrograms = programs.withPomQuality(pomQuality)
+        facePrograms.forEachProgram { configureProgram(it, engine, surface, cameraState, lightProbeCapture = true) }
+        bindStorageBuffers(facePrograms, engine, cameraState, view.drawPayload)
 
         measure("opaque_face", label = { "Draw opaque" }) 
         { 
-            drawRenderBucket(view.opaqueBucket, view.drawPayload, programs) 
+            drawRenderBucket(view.opaqueBucket, view.drawPayload, facePrograms) 
         }
 
         measure("masked_face", label = { "Draw masked" }) 
         {
-            drawRenderBucket(view.maskedBucket, view.drawPayload, programs) 
+            drawRenderBucket(view.maskedBucket, view.drawPayload, facePrograms) 
         }
     }
 
-    private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface, cameraState: CameraRenderState, lightProbeCapture: Boolean = false)
+    private fun configureProgram(program: ShaderProgram, engine: PulseEngineInternal, surface: Surface, cameraState: CameraRenderState, lightProbeCapture: Boolean = false, supportsPom: Boolean = true)
     {
         var pbrFeatures = 0u
 
@@ -576,6 +589,9 @@ class ModelRenderer(
         if (pbrFeatures and PBR_FEATURE_SUN_LIGHT    == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_SUN_SHADOWS.inv()
         if (pbrFeatures and PBR_FEATURE_LOCAL_LIGHTS == 0u) pbrFeatures = pbrFeatures and PBR_FEATURE_LOCAL_SHADOWS.inv()
 
+        if (supportsPom)
+            program.setUniform("uPomSteps", pomQuality.faceOnSteps, pomQuality.grazingSteps, pomQuality.refinementSteps)
+
         program.setUniform("uPbrFeatures", pbrFeatures)
         program.setUniform("uUseDefaultLighting", useDefaultLighting)
         program.setUniform("uViewMode", viewMode.shaderValue)
@@ -640,7 +656,7 @@ class ModelRenderer(
  */
 enum class ViewMode(val shaderValue: Int, val displayName: String)
 {
-    SHADED(0, "Shaded"),
+    FINAL(0, "Final"),
     PBR_ALBEDO(1, "PBR Albedo"),
     PBR_NORMAL(2, "PBR Normals"),
     PBR_ROUGHNESS(3, "PBR Roughness"),
@@ -672,4 +688,18 @@ enum class SampleShadingMode(var value: Float)
     QUARTER(0.25f),
     HALF(0.5f),
     FULL(1f)
+}
+
+/**
+ * Determines the quality of parallax occlusion mapping (POM) used in the PBR shader.
+ */
+enum class PomQuality(
+    var faceOnSteps: Int, 
+    var grazingSteps: Int, 
+    var refinementSteps: Int
+) {
+    OFF(   faceOnSteps = 0, grazingSteps =  0, refinementSteps = 0),
+    LOW(   faceOnSteps = 4, grazingSteps = 12, refinementSteps = 3),
+    MEDIUM(faceOnSteps = 5, grazingSteps = 16, refinementSteps = 4),
+    HIGH(  faceOnSteps = 8, grazingSteps = 32, refinementSteps = 8)
 }

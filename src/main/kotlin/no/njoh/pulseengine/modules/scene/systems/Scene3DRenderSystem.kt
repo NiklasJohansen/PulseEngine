@@ -5,7 +5,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTU
 import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.COLOR_TEXTURE_0
 import no.njoh.pulseengine.core.graphics.gpu.texture.multisampling.HdrMsaaResolver
-import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling
+import no.njoh.pulseengine.core.graphics.gpu.texture.Multisampling.MSAA4
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.LINEAR
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.NEAREST
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.R32UI
@@ -15,7 +15,8 @@ import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContext
 import no.njoh.pulseengine.core.graphics.scene3d.draw.TransparencyMode.ORDER_INDEPENDENT
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.DepthPrepassRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
-import no.njoh.pulseengine.core.graphics.scene3d.renderers.SampleShadingMode
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.PomQuality.MEDIUM
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.SampleShadingMode.DISABLED
 import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
 import no.njoh.pulseengine.core.graphics.surface.colorAttachment
 import no.njoh.pulseengine.core.graphics.surface.depthTexture
@@ -37,8 +38,9 @@ class Scene3DRenderSystem : SceneSystem()
     @Prop(i=1)                 var useDepthPrepass          = true
     @Prop(i=2)                 var transparencyMode         = ORDER_INDEPENDENT
     @Prop(i=3, min=0f, max=1f) var weightedBlendAlphaCutoff = 0.04f
-    @Prop(i=4)                 var multisampling            = Multisampling.MSAA4
-    @Prop(i=5)                 var perSampleShading         = SampleShadingMode.DISABLED
+    @Prop(i=4)                 var multisampling            = MSAA4
+    @Prop(i=5)                 var perSampleShading         = DISABLED
+    @Prop(i=6)                 var pomQuality               = MEDIUM
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -65,18 +67,16 @@ class Scene3DRenderSystem : SceneSystem()
         ).apply {
             if (useDepthPrepass)
                 addRenderer(DepthPrepassRenderer())
-            addRenderer(ModelRenderer(writeRenderIds = writeRenderIds))
+            addRenderer(ModelRenderer())
         }
     }
 
     override fun onUpdate(engine: PulseEngine)
     {
         val surface = engine.gfx.getSurface(SCENE_3D_SURFACE) ?: return
+        surface.setMultisampling(multisampling)
 
-        val depthPrepassRenderer = surface.getRenderer<DepthPrepassRenderer>()
-        val modelRenderer = surface.getRenderer<ModelRenderer>()
         val hasRenderIdAttachment = surface.config.attachments.anyMatches { it.attachmentPoint == RENDER_ID_ATTACHMENT_POINT }
-
         if (writeRenderIds && !hasRenderIdAttachment)
         {
             surface.setAttachment(colorAttachment(RENDER_ID_ATTACHMENT_POINT, R32UI, NEAREST))
@@ -86,12 +86,17 @@ class Scene3DRenderSystem : SceneSystem()
             surface.removeAttachment(RENDER_ID_ATTACHMENT_POINT)
         }
 
-        surface.setMultisampling(multisampling)
+        surface.getRenderer<ModelRenderer>()?.let() 
+        {
+            it.sampleShadingMode        = perSampleShading
+            it.pomQuality               = pomQuality
+            it.transparencyMode         = transparencyMode
+            it.weightedBlendAlphaCutoff = weightedBlendAlphaCutoff
+            it.writeRenderIds           = writeRenderIds
+        }
 
-        modelRenderer?.transparencyMode         = transparencyMode
-        modelRenderer?.weightedBlendAlphaCutoff = weightedBlendAlphaCutoff
-        modelRenderer?.writeRenderIds           = writeRenderIds
-        modelRenderer?.sampleShadingMode        = perSampleShading
+        val depthPrepassRenderer = surface.getRenderer<DepthPrepassRenderer>()
+        depthPrepassRenderer?.pomQuality = pomQuality
 
         if (useDepthPrepass && depthPrepassRenderer == null)
         {

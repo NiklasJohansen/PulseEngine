@@ -9,6 +9,8 @@ import no.njoh.pulseengine.core.graphics.gpu.shader.defineShaderVariant
 import no.njoh.pulseengine.core.graphics.gpu.texture.AttachmentPoint.DEPTH_TEXTURE
 import no.njoh.pulseengine.core.graphics.scene3d.SceneRenderContextInternal
 import no.njoh.pulseengine.core.graphics.scene3d.draw.DrawPayload
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.PomQuality.MEDIUM
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.PomQuality.OFF
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderView
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderViewGroup
@@ -28,6 +30,8 @@ class DepthPrepassRenderer(
     override val order: Int = 20,
     val viewGroup: CameraRenderViewGroup? = null
 ) : Renderer(), RenderViewDeclarer {
+
+    var pomQuality = MEDIUM
 
     private lateinit var opaqueStaticProgram: ShaderProgram
     private lateinit var opaqueSkinnedProgram: ShaderProgram
@@ -97,8 +101,12 @@ class DepthPrepassRenderer(
         configureOpaqueProgram(opaqueSkinnedProgram, cameraState)
         configureMaskedProgram(maskedStaticProgram, engine, cameraState)
         configureMaskedProgram(maskedSkinnedProgram, engine, cameraState)
-        configurePomProgram(pomStaticProgram, engine, cameraState)
-        configurePomProgram(pomSkinnedProgram, engine, cameraState)
+
+        if (pomQuality != OFF)
+        {
+            configurePomProgram(pomStaticProgram, engine, cameraState)
+            configurePomProgram(pomSkinnedProgram, engine, cameraState)
+        }
 
         render(engine, view)
 
@@ -127,6 +135,7 @@ class DepthPrepassRenderer(
     {
         program.bind()
         program.setUniform("uViewProjection", cameraState.viewProjectionMatrix)
+        program.setUniform("uPomSteps", pomQuality.faceOnSteps, pomQuality.grazingSteps, pomQuality.refinementSteps)
         program.setUniform("uCameraPos", cameraState.cameraPosition)
         program.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
     }
@@ -138,8 +147,9 @@ class DepthPrepassRenderer(
         {
             measure("opaque_depth", label = { "Draw opaque depth (" plus opaqueCount plus "i, " plus view.opaqueBucket.size plus "b)" })
             {
-                bindStorageBuffers(engine, opaquePrograms, view.drawPayload)
-                drawRenderBucket(view.opaqueBucket, view.drawPayload, opaquePrograms)
+                val programs = opaquePrograms.withPomQuality(pomQuality)
+                bindStorageBuffers(engine, programs, view.drawPayload)
+                drawRenderBucket(view.opaqueBucket, view.drawPayload, programs)
             }
         }
 
@@ -151,8 +161,9 @@ class DepthPrepassRenderer(
                 glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE)
                 glEnable(GL_SAMPLE_ALPHA_TO_ONE)
 
-                bindStorageBuffers(engine, maskedPrograms, view.drawPayload)
-                drawRenderBucket(view.maskedBucket, view.drawPayload, maskedPrograms)
+                val programs = maskedPrograms.withPomQuality(pomQuality)
+                bindStorageBuffers(engine, programs, view.drawPayload)
+                drawRenderBucket(view.maskedBucket, view.drawPayload, programs)
 
                 glDisable(GL_SAMPLE_ALPHA_TO_ONE)
                 glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE)

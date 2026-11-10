@@ -294,7 +294,7 @@ class ViewportInteraction3D(
     {
         flyVelocity.zero()
         setFlyCursorGrabbed(engine, false)
-        updateViewMode(engine, ViewMode.SHADED)
+        updateViewMode(engine, ViewMode.FINAL)
         engine.input.setCursorType(CursorType.ARROW)
         val surface = engine.gfx.getSurface(Scene3DRenderSystem.SCENE_3D_SURFACE)
         val renderer = surface?.getRenderer<GridRenderer>()
@@ -326,7 +326,7 @@ class ViewportInteraction3D(
             it.viewMode = viewMode
             it.drawWireframeOverlay = showWireframe
         }
-        surface.config.drawPostEffects = viewMode == ViewMode.SHADED
+        surface.config.drawPostEffects = viewMode == ViewMode.FINAL
     }
 
     private fun consumePickResult(engine: PulseEngine, context: ViewportContext)
@@ -580,7 +580,7 @@ class ViewportInteraction3D(
 
     override fun onEditorDeactivated(engine: PulseEngine, context: ViewportContext)
     {
-        updateViewMode(engine, ViewMode.SHADED)
+        updateViewMode(engine, ViewMode.FINAL)
         val outlineSurface = engine.gfx.getSurface(GIZMO_SURFACE)
         val outlineRenderer = outlineSurface?.getRenderer<RenderIdOutlineRenderer>()
         if (outlineRenderer != null)

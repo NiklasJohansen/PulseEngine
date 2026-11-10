@@ -8,6 +8,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.BlendFunction.NONE
 import no.njoh.pulseengine.core.graphics.scene3d.probe.LightProbe
 import no.njoh.pulseengine.core.graphics.scene3d.probe.LightProbeRenderer
 import no.njoh.pulseengine.core.graphics.scene3d.renderers.ModelRenderer
+import no.njoh.pulseengine.core.graphics.scene3d.renderers.PomQuality.LOW
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderPassMask.Companion.CAMERA
 import no.njoh.pulseengine.core.graphics.surface.SurfaceOutputSpec
 import no.njoh.pulseengine.core.graphics.surface.colorAttachment
@@ -30,13 +31,14 @@ import org.joml.Vector3f
 @Name("3D Light Probes")
 class Scene3DLightProbeSystem : SceneSystem()
 {
-    @Prop(i=1, min=32f, max=1024f) var resolution               = 128
+    @Prop(i=1, min=32f, max=1024f) var resolution               = 256
+    @Prop(i=7)                     var pomQuality               = LOW
     @Prop(i=2, min=0f)             var maxUpdateStepsPerFrame   = 1
     @Prop(i=3, min=0f)             var maxUpdatedProbes         = 3
     @Prop(i=4) @EntityRef          var updateProbesAroundEntity = INVALID_ID
     @Prop(i=5)                     var showProbes               = false
     @Prop(i=6)                     var targetSurfaces           = "scene3d"
-    
+
     private val submittedProbe       = LightProbe()
     private var targetSurfaceNames   = emptyList<String>()
     private var lastTargetSurfaces   = ""
@@ -90,28 +92,29 @@ class Scene3DLightProbeSystem : SceneSystem()
             return // Surface initialization happens at the next frame boundary
         }
 
-        val renderer       = engine.gfx.getSurface(LIGHT_PROBE_SURFACE)?.getRenderer<LightProbeRenderer>() ?: return
-        val updatePosition = engine.scene.getEntityOfType<Translatable3D>(updateProbesAroundEntity)?.position
-        val material       = if (showProbes) engine.asset.getOrNull(debugMaterial) else null
-        val sphere         = if (showProbes) engine.asset.getOrNull(debugSphere) else null
-  
-        renderer.beginSubmission(maxUpdateStepsPerFrame, updatePosition, maxUpdatedProbes)
-        
+        val renderer  = engine.gfx.getSurface(LIGHT_PROBE_SURFACE)?.getRenderer<LightProbeRenderer>() ?: return
+        val updatePos = engine.scene.getEntityOfType<Translatable3D>(updateProbesAroundEntity)?.position
+        val material  = if (showProbes) engine.asset.getOrNull(debugMaterial) else null
+        val sphere    = if (showProbes) engine.asset.getOrNull(debugSphere) else null
+
+        renderer.beginSubmission(maxUpdateStepsPerFrame, updatePos, maxUpdatedProbes, pomQuality)
+
         engine.scene.forEachEntityOfType<LightProbe3D>()
         {
             if (it.isNot(HIDDEN or DEAD))
             {
-                submittedProbe.id = it.id
-                submittedProbe.position.set(it.position)
-                submittedProbe.rotation.rotationXYZ(it.rotation.x.toRadians(), it.rotation.y.toRadians(), it.rotation.z.toRadians())
-                submittedProbe.captureOffset.set(it.captureOffset)
-                submittedProbe.influenceSize.set(it.influenceSize)
-                submittedProbe.projectionSize.set(it.projectionSize)
+                submittedProbe.id                = it.id
                 submittedProbe.blendDistance     = it.blendDistance
                 submittedProbe.specularIntensity = it.specularIntensity
                 submittedProbe.diffuseIntensity  = it.diffuseIntensity
                 submittedProbe.nearPlane         = it.nearPlane
                 submittedProbe.farPlane          = it.farPlane
+
+                submittedProbe.position.set(it.position)
+                submittedProbe.rotation.rotationXYZ(it.rotation.x.toRadians(), it.rotation.y.toRadians(), it.rotation.z.toRadians())
+                submittedProbe.captureOffset.set(it.captureOffset)
+                submittedProbe.influenceSize.set(it.influenceSize)
+                submittedProbe.projectionSize.set(it.projectionSize)
 
                 if (submittedProbe.isValid())
                 {
