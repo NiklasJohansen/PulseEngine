@@ -10,18 +10,21 @@ import org.lwjgl.opengl.GL33.*
  */
 class GpuTimeQuery
 {
-    private var timerId = 0L
+    private var timerId      = 0L
     private var startQueryId = -1
-    private var endQueryId = -1
-    private var depth = 0
-    private var label = StringBuilder(100)
-    private var framesWithoutResult = 0
+    private var endQueryId   = -1
+    private var depth        = 0
+    private var label        = StringBuilder(100)
+    private var frameNumber  = 0L
 
     private fun start(timerId: Long, label: CharSequence, depth: Int)
     {
+        if (depth == 0) currentFrameNumber++
+
         this.timerId = timerId
         this.startQueryId = getQueryId()
         this.depth = depth
+        this.frameNumber = currentFrameNumber
         this.label.clear().append(label)
         glQueryCounter(startQueryId, GL_TIMESTAMP)
     }
@@ -35,22 +38,21 @@ class GpuTimeQuery
     private fun isResultReady(): Boolean
     {
         val hasResult = glGetQueryObjectui(endQueryId, GL_QUERY_RESULT_AVAILABLE) == GL_TRUE
-        if (!hasResult)
-           framesWithoutResult++
         return hasResult
     }
-
-    private fun isStale() = (framesWithoutResult > 3)
 
     private fun getResult(): GpuTimeQueryResult
     {
         val startTime = glGetQueryObjectui64(startQueryId, GL_QUERY_RESULT)
-        val endTime = glGetQueryObjectui64(endQueryId, GL_QUERY_RESULT)
-        val result = resultPool.removeLastOrNull() ?: GpuTimeQueryResult()
+        val endTime   = glGetQueryObjectui64(endQueryId,   GL_QUERY_RESULT)
+        val result    = resultPool.removeLastOrNull() ?: GpuTimeQueryResult()
+        
         result.label.clear().append(label)
-        result.depth = depth
+        result.timerId     = timerId
+        result.depth       = depth
         result.timeNanoSec = endTime - startTime
-        result.timerId = timerId
+        result.frameNumber = frameNumber
+
         return result
     }
 
@@ -60,15 +62,7 @@ class GpuTimeQuery
         queryIdPool.add(endQueryId)
         startQueryId = -1
         endQueryId = -1
-        framesWithoutResult = 0
         timerPool += this
-    }
-
-    private fun destroy()
-    {
-        if (startQueryId >= 0) glDeleteQueries(startQueryId)
-        if (endQueryId >= 0) glDeleteQueries(endQueryId)
-        reset()
     }
 
     private fun reset()
@@ -78,7 +72,6 @@ class GpuTimeQuery
         endQueryId = -1
         depth = 0
         label.clear()
-        framesWithoutResult = 0
     }
 
     companion object
@@ -88,12 +81,14 @@ class GpuTimeQuery
         private val resultPool   = DynamicList<GpuTimeQueryResult>()
         private val timerStack   = ArrayDeque<GpuTimeQuery>()
         private val activeTimers = ArrayDeque<GpuTimeQuery>()
-        private val writeResults = DynamicList<GpuTimeQueryResult>()
         private val readyResults = DynamicList<GpuTimeQueryResult>()
         private var contextGeneration = -1L
 
+        private var currentFrameNumber = 0L
+
         /**
-         * Returns all ready results. Safe to call from game thread.
+         * Returns the most recently completed frame. Results are pooled and reused by the next poll.
+         * Safe to read from the game thread between the engine's frame barriers.
          */
         fun getAllResults(): DynamicList<GpuTimeQueryResult> = readyResults
 
@@ -107,27 +102,20 @@ class GpuTimeQuery
 
             while (activeTimers.isNotEmpty())
             {
-                val timer = activeTimers.first()
-                if (timer.isResultReady())
+                val root = activeTimers.first()
+                if (root.endQueryId < 0 || !root.isResultReady()) 
+                    return
+
+                resultPool += readyResults
+                readyResults.clear()
+
+                do
                 {
-                    if (timer.depth == 0) // This is the 'Frame' timer, flush results
-                    {
-                        resultPool += readyResults
-                        readyResults.clear()
-                        readyResults += writeResults
-                        writeResults.clear()
-                    }
-                    activeTimers.removeFirst()
-                    writeResults += timer.getResult()
+                    val timer = activeTimers.removeFirst()
+                    readyResults += timer.getResult()
                     timer.recycle()
                 }
-                else if (timer.isStale())
-                {
-                    timer.destroy()
-                    activeTimers.removeFirst()
-                    continue // to next active timer
-                }
-                else return // Stop polling, check timer again next frame
+                while (activeTimers.isNotEmpty() && activeTimers.first().depth != 0)
             }
         }
 
@@ -170,8 +158,6 @@ class GpuTimeQuery
 
             resultPool += readyResults
             readyResults.clear()
-            resultPool += writeResults
-            writeResults.clear()
         }
 
         private fun getQueryId() = if (queryIdPool.isEmpty) glGenQueries() else queryIdPool.removeInt(queryIdPool.size - 1)
@@ -188,5 +174,6 @@ data class GpuTimeQueryResult(
     var label: StringBuilder = StringBuilder(50),
     var depth: Int = -1,
     var timeNanoSec: Long = -1L,
-    var timerId: Long = 0L
+    var timerId: Long = 0L,
+    var frameNumber: Long = 0L
 )

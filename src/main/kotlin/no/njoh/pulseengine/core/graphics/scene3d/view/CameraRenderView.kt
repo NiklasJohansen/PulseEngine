@@ -15,8 +15,9 @@ import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import org.joml.Vector3f
 
 class CameraRenderView(
-    renderPassMask: RenderPassMask = CAMERA,
-    var transparencyMode: TransparencyMode = SORTED
+    val name: String,
+    var transparencyMode: TransparencyMode = SORTED,
+    renderPassMask: RenderPassMask = CAMERA
 ) : RenderView(renderPassMask), CameraRenderStateProvider {
 
     val opaqueBucket  = RenderBucket()
@@ -51,21 +52,22 @@ class CameraRenderView(
     {
         if (cameraStates.isEmpty()) return
 
-        drawPayload = builder.prepareDrawPayload(cullingFrustumPlaneSets)
+        drawPayload = builder.prepareDrawPayload(name, cullingFrustumPlaneSets)
         {
-            opaqueBucket.fill(scene.opaqueItems, renderPassMask)
-
-            maskedBucket.fill(scene.maskedItems, renderPassMask)
+            fill(opaqueBucket, from = scene.opaqueItems, renderPassMask)
+            fill(maskedBucket, from = scene.maskedItems, renderPassMask)
 
             when (transparencyMode)
             {
-                SORTED -> blendedBucket.fill(
+                SORTED -> fill(
+                    bucket = blendedBucket,
                     from = scene.blendedItems,
                     renderPassMask = renderPassMask,
                     sortFunc = sortedBlendSort,
                     preserveDrawOrder = true
                 )
-                ORDER_INDEPENDENT -> blendedBucket.fill(
+                ORDER_INDEPENDENT -> fill(
+                    bucket = blendedBucket,
                     from = scene.blendedItems,
                     renderPassMask = renderPassMask
                 )
@@ -81,7 +83,7 @@ class CameraRenderView(
         require(existingState != null || cameraStates.size < MAX_CAMERA_STATES) { "Camera render view supports at most $MAX_CAMERA_STATES cameras (mono or stereo)" }
 
         val state = existingState ?: (freeStates.removeLastOrNull() ?: CameraRenderState(camera)).also { cameraStates += it }
-        state.setForCamera(camera, screenWidth, screenHeight)
+        state.setForCamera(name, camera, screenWidth, screenHeight)
         updateFamilyFrustumAndPosition()
         return state
     }

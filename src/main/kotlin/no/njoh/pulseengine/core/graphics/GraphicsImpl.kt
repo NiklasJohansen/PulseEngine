@@ -138,17 +138,19 @@ open class GraphicsImpl : GraphicsInternal
     {
         GpuProfiler.initFrame()
 
-        onInitFrame.forEachFast { it.invoke(engine) }
-        onInitFrame.clear()
+        measure("Frame init")
+        {
+            onInitFrame.forEachFast { it.invoke(engine) }
+            onInitFrame.clear()
 
-        textureBank.generatePendingMipmaps()
-        modelBank.initFrame()
+            textureBank.generatePendingMipmaps()
+            modelBank.initFrame()
 
-        sceneContext.initFrame()
+            sceneContext.initFrame()
 
-        surfaces.forEachFast { it.initFrame(engine) }
-        
-        surfaces.forEachCameraSurface { it.camera.onFrameStart(engine) }
+            surfaces.forEachFast { it.initFrame(engine) }
+            surfaces.forEachCameraSurface { it.camera.onFrameStart(engine) }
+        }
     }
 
     override fun drawFrame(engine: PulseEngineInternal)

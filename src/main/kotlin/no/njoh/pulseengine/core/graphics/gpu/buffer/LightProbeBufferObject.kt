@@ -41,7 +41,7 @@ class LightProbeBufferObject : ShaderStorageBufferObject
 
     fun submit()
     {
-        measure("Light probe buffer")
+        measure("Submit light probe buffer")
         {
             probeBuffer.markSubmittedDataInUse()
             probeBuffer.submit()

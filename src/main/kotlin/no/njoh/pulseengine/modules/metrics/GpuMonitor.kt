@@ -44,12 +44,12 @@ import kotlin.math.pow
  */
 class GpuMonitor : Service()
 {
-    private var window: WindowPanel? = null
-    private var timeRows = RowPanel()
-    private var data = GpuMonitorData()
-    private var displayMeasurements = mutableListOf<Measurement>()
-    private var uiFactory = UiElementFactory()
-    private var windowTitle = TextBuilderContext()
+    private var window       = null as WindowPanel?
+    private var windowTitle  = TextBuilderContext()
+    private var timeRows     = RowPanel()
+    private var uiFactory    = UiElementFactory()
+    private var data         = GpuMonitorData()
+    private var measurements = mutableListOf<Measurement>()
 
     override fun onCreate(engine: PulseEngine)
     {
@@ -74,12 +74,13 @@ class GpuMonitor : Service()
 
         // Frosted glass background
         FrostedGlassEffect.drawToTargetSurface(
-            engine = engine,
-            target = bgSurface,
-            x = window.x.value,
-            y = window.y.value,
-            width = window.width.value,
-            height = window.height.value
+            engine       = engine,
+            target       = bgSurface,
+            x            = window.x.value,
+            y            = window.y.value,
+            width        = window.width.value,
+            height       = window.height.value,
+            cornerRadius = CornerRadius(8f)
         )
 
         // Update title with current FPS
@@ -99,7 +100,7 @@ class GpuMonitor : Service()
         if (!isRunning)
         {
             data.clear()
-            displayMeasurements.clear()
+            measurements.clear()
             timeRows.clearChildren()
             return
         }
@@ -120,24 +121,25 @@ class GpuMonitor : Service()
     }
 
     private fun createWindow(engine: PulseEngine) = uiFactory.createWindowUI(
-        title = windowTitle.content,
+        title    = windowTitle.content,
         iconName = "MONITOR",
-        x = max(20f, engine.window.width * 0.5f - 500f),
-        y = max(20f, engine.window.height * 0.4f - 400f),
-        width = 1000f,
-        height = 800f,
+        x        = max(20f, engine.window.width * 0.5f - 500f),
+        y        = max(20f, engine.window.height * 0.4f - 400f),
+        width    = 1000f,
+        height   = 800f,
         onClosed = { init(engine) }
     ).apply {
+        timeRows.padding.right = ScaledValue.of(5f)
+        val scrollableTimeRows = uiFactory.createScrollableSectionUI(timeRows, cornerRadius = CornerRadius(2f) ).apply { padding.setAll(5f) }
         val fractionBar = createFractionBar()
-        val scrollableTimeRows = uiFactory.createScrollableSectionUI(timeRows).apply { padding.setAll(5f) }
         val vPanel = VerticalPanel().apply { addChildren(fractionBar, scrollableTimeRows) }
         body.addChildren(vPanel)
     }
 
     private fun createFractionBar() = object : UiElement(
-        x = Position.auto(),
-        y = Position.auto(),
-        width = Size.auto(),
+        x      = Position.auto(),
+        y      = Position.auto(),
+        width  = Size.auto(),
         height = Size.absolute(50f)
     ) {
         private var hoveredMeasurement: Measurement? = null
@@ -169,9 +171,9 @@ class GpuMonitor : Service()
             val rowHeight = (height.value - FRACTION_BAR_ROW_GAP * (FRACTION_BAR_LEVELS - 1)) / FRACTION_BAR_LEVELS
             val rowStride = rowHeight + FRACTION_BAR_ROW_GAP
             var i = 0
-            while (i < displayMeasurements.size)
+            while (i < measurements.size)
             {
-                val measurement = displayMeasurements[i++]
+                val measurement = measurements[i++]
                 if (!measurement.fractionBarVisible)
                     continue
                 val segmentY = y.value + (measurement.depth - 1) * rowStride
@@ -184,44 +186,45 @@ class GpuMonitor : Service()
 
         override fun onRender(engine: PulseEngine, surface: Surface)
         {
-            val xStart = x.value
-            val xEnd = xStart + width.value
-            val rowHeight = (height.value - FRACTION_BAR_ROW_GAP * (FRACTION_BAR_LEVELS - 1)) / FRACTION_BAR_LEVELS
-            val rowStride = rowHeight + FRACTION_BAR_ROW_GAP
-            val xm = engine.input.xMouse
-            val ym = engine.input.yMouse
-            val mouseOver = (xm > xStart && xm < xEnd && ym > y.value && ym < y.value + height.value)
+            val xStart     = x.value
+            val xEnd       = xStart + width.value
+            val rowHeight  = (height.value - FRACTION_BAR_ROW_GAP * (FRACTION_BAR_LEVELS - 1)) / FRACTION_BAR_LEVELS
+            val rowStride  = rowHeight + FRACTION_BAR_ROW_GAP
+            val xm         = engine.input.xMouse
+            val ym         = engine.input.yMouse
+            val mouseOver  = (xm > xStart && xm < xEnd && ym > y.value && ym < y.value + height.value)
+            var xRootChild = xStart
             hoveredMeasurement = null
-            var rootChildX = xStart
 
             var i = 0
-            while (i < displayMeasurements.size)
+            while (i < measurements.size)
             {
-                val measurement = displayMeasurements[i++]
+                val measurement = measurements[i++]
                 measurement.fractionBarVisible = false
                 measurement.fractionBarChildX = 0f
             }
 
             i = 0
-            while (i < displayMeasurements.size)
+            while (i < measurements.size)
             {
-                val measurement = displayMeasurements[i++]
+                val measurement = measurements[i++]
                 val depth = measurement.depth
-                if (!measurement.measuredThisFrame || depth !in 1..FRACTION_BAR_LEVELS)
+                if (measurement.frac <= 0f || depth !in 1..FRACTION_BAR_LEVELS)
                     continue
 
-                val parent = measurement.parent
-                val segmentX: Float
-                val segmentEnd: Float
+                val parent     = measurement.parent
+                var segmentX   = 0f
+                var segmentEnd = 0f
                 if (depth == 1)
                 {
-                    segmentX = rootChildX
+                    segmentX   = xRootChild
                     segmentEnd = xEnd
                 }
                 else
                 {
                     if (parent?.fractionBarVisible != true)
                         continue
+
                     segmentX = parent.fractionBarChildX
                     segmentEnd = min(xEnd, parent.fractionBarX + parent.fractionBarWidth)
                 }
@@ -231,11 +234,12 @@ class GpuMonitor : Service()
                     continue
 
                 measurement.fractionBarVisible = true
-                measurement.fractionBarX = segmentX
-                measurement.fractionBarWidth = segmentWidth
-                measurement.fractionBarChildX = segmentX
+                measurement.fractionBarX       = segmentX
+                measurement.fractionBarWidth   = segmentWidth
+                measurement.fractionBarChildX  = segmentX
+
                 if (depth == 1)
-                    rootChildX += segmentWidth
+                    xRootChild += segmentWidth
                 else
                     parent!!.fractionBarChildX += segmentWidth
 
@@ -243,29 +247,30 @@ class GpuMonitor : Service()
 
             hoveredMeasurement = if (mouseOver) findHoveredMeasurement(xm, ym) else null
             val hovered = hoveredMeasurement
+            
             i = 0
-            while (i < displayMeasurements.size)
+            while (i < measurements.size)
             {
-                val measurement = displayMeasurements[i++]
+                val measurement = measurements[i++]
                 val highlighted = !mouseOver || measurement === hovered
                 measurement.setHighlighted(highlighted)
             }
 
             i = 0
-            while (i < displayMeasurements.size)
+            while (i < measurements.size)
             {
-                val measurement = displayMeasurements[i++]
+                val measurement = measurements[i++]
                 if (!measurement.fractionBarVisible)
                     continue
 
                 surface.setDrawColor(measurement.highlightColor)
                 surface.drawTexture(
-                    texture = Texture.BLANK,
-                    x = measurement.fractionBarX,
-                    y = y.value + (measurement.depth - 1) * rowStride,
-                    width = max(1f, measurement.fractionBarWidth - FRACTION_BAR_SEGMENT_GAP),
-                    height = rowHeight,
-                    cornerRadius = CornerRadius(1f)
+                    texture      = Texture.BLANK,
+                    x            = measurement.fractionBarX,
+                    y            = y.value + (measurement.depth - 1) * rowStride,
+                    width        = max(1f, measurement.fractionBarWidth - FRACTION_BAR_SEGMENT_GAP),
+                    height       = rowHeight,
+                    cornerRadius = CornerRadius(2f)
                 )
             }
         }
@@ -276,13 +281,13 @@ class GpuMonitor : Service()
         val rows = mutableListOf<UiElement>()
 
         fun createLabel(text: CharSequence, color: Color, width: Float? = null, cropText: Boolean = false) = Label(
-            text = text,
+            text  = text,
             width = width?.let { Size.relative(it) } ?: Size.auto()
         ).apply {
             this.textResizeStrategy = if (cropText) CROP_TEXT else NONE
-            this.fontSize = ScaledValue.of(17f)
-            this.padding.left = ScaledValue.of(5f)
-            this.color = color
+            this.fontSize           = ScaledValue.of(17f)
+            this.padding.left       = ScaledValue.of(5f)
+            this.color              = color
         }
 
         fun createCollapseControl(measurement: Measurement): UiElement
@@ -291,20 +296,21 @@ class GpuMonitor : Service()
             {
                 Button(width = Size.absolute(COLLAPSE_BUTTON_WIDTH)).apply()
                 {
-                    isPressed = measurement.collapsed
-                    toggleButton = true
-                    iconFontName = uiFactory.style.iconFontName
-                    iconSize = ScaledValue.of(15f)
-                    iconCharacter = uiFactory.style.getIcon("ARROW_DOWN")
+                    isPressed            = measurement.collapsed
+                    toggleButton         = true
+                    iconFontName         = uiFactory.style.iconFontName
+                    iconSize             = ScaledValue.of(15f)
+                    iconCharacter        = uiFactory.style.getIcon("ARROW_DOWN")
                     pressedIconCharacter = uiFactory.style.getIcon("ARROW_RIGHT")
-                    xOrigin = 0.75f
-                    yOrigin = 0.55f
-                    color = uiFactory.style.getColor("LABEL")
-                    activeColor = uiFactory.style.getColor("LABEL")
-                    hoverColor = uiFactory.style.getColor("LABEL_DARK")
-                    activeHoverColor = uiFactory.style.getColor("LABEL_DARK")
+                    xOrigin              = 0.70f
+                    yOrigin              = 0.62f
+                    color                = uiFactory.style.getColor("LABEL")
+                    activeColor          = uiFactory.style.getColor("LABEL")
+                    hoverColor           = uiFactory.style.getColor("LABEL_DARK")
+                    activeHoverColor     = uiFactory.style.getColor("LABEL_DARK")
                     setOnClicked()
                     {
+                        yOrigin = if (it.isPressed) 0.55f else 0.62f
                         measurement.collapsed = it.isPressed
                         if (it.isPressed)
                             data.collapseDescendants(measurement)
@@ -316,29 +322,32 @@ class GpuMonitor : Service()
             {
                 Panel(width = Size.absolute(COLLAPSE_BUTTON_WIDTH)).apply { focusable = false }
             }
-            control.padding.left = ScaledValue.of(measurement.depth * ROW_INDENT)
+
+            control.padding.left = ScaledValue.of(2f + measurement.depth * ROW_INDENT)
             return control
         }
 
         rows += HorizontalPanel(height = Size.absolute(23f)).apply()
         {
             addChildren(
-                createLabel("Measurement", color = WHITE, cropText = true),
-                createLabel("Avg",         color = WHITE, width = 0.15f),
-                createLabel("Min",         color = WHITE, width = 0.15f),
-                createLabel("Max",         color = WHITE, width = 0.15f),
-                createLabel("%",           color = WHITE, width = 0.10f),
+                createLabel("Measurement",     color = WHITE, cropText = true),
+                createLabel("Last 2s (peaks)", color = WHITE, width = 0.23f),
+                createLabel("Value",           color = WHITE, width = 0.08f),
+                createLabel("Avg",             color = WHITE, width = 0.08f),
+                createLabel("Min",             color = WHITE, width = 0.08f),
+                createLabel("Max",             color = WHITE, width = 0.08f),
+                createLabel("Total %",         color = WHITE, width = 0.08f),
             )
         }
 
-        displayMeasurements.clear()
+        measurements.clear()
         fun addMeasurementRows(parent: Measurement?)
         {
             data.measurements.forEach()
             {
                 if (it.parent !== parent) return@forEach
 
-                displayMeasurements += it
+                measurements += it
                 rows += HorizontalPanel(height = Size.absolute(23f)).apply()
                 {
                     addChildren(
@@ -349,12 +358,15 @@ class GpuMonitor : Service()
                                 createLabel(it.labelText, color = it.highlightColor, cropText = true)
                             )
                         },
-                        createLabel(it.avgText,   color = it.highlightColor, width = 0.15f),
-                        createLabel(it.minText,   color = it.highlightColor, width = 0.15f),
-                        createLabel(it.maxText,   color = it.highlightColor, width = 0.15f),
-                        createLabel(it.fracText,  color = it.fracColor,      width = 0.10f),
+                        MeasurementGraph(it,                                  width = 0.23f),
+                        createLabel(it.latestText, color = it.latestColor,    width = 0.08f),
+                        createLabel(it.avgText,    color = it.highlightColor, width = 0.08f),
+                        createLabel(it.minText,    color = it.highlightColor, width = 0.08f),
+                        createLabel(it.maxText,    color = it.highlightColor, width = 0.08f),
+                        createLabel(it.fracText,   color = it.fracColor,      width = 0.08f),
                     )
 
+                    setCornerRadius(ScaledValue.of(1f))
                     color = if (rows.size % 2 == 0) uiFactory.style.getColor("ROW") else Color.BLANK
                 }
                 addMeasurementRows(it)
@@ -371,18 +383,21 @@ class GpuMonitor : Service()
     {
         var visibleIndex = 0
         var i = 0
-        while (i < displayMeasurements.size && i + 1 < timeRows.children.size)
+        while (i < measurements.size && i + 1 < timeRows.children.size)
         {
-            val measurement = displayMeasurements[i]
-            val row = timeRows.children[i + 1] as HorizontalPanel
+            val measurement     = measurements[i]
+            val row             = timeRows.children[i + 1] as HorizontalPanel
             val measurementCell = row.children[0] as HorizontalPanel
+ 
             (measurementCell.children[0] as? Button)?.isPressed = measurement.collapsed
             row.hidden = measurement.hasCollapsedAncestor()
+
             if (!row.hidden)
             {
                 row.color = if (visibleIndex % 2 == 0) uiFactory.style.getColor("ROW") else Color.BLANK
                 visibleIndex++
             }
+
             i++
         }
     }
@@ -405,15 +420,16 @@ class GpuMonitor : Service()
 
     companion object
     {
-        private const val BACKGROUND_SURFACE = "gpu_monitor_bg"
-        private const val FOREGROUND_SURFACE = "gpu_monitor_fg"
-        private const val COLLAPSE_BUTTON_WIDTH = 10f
-        private const val ROW_INDENT = 12f
-        private const val FRACTION_BAR_LEVELS = 5
-        private const val FRACTION_BAR_ROW_GAP = 1f
+        private const val BACKGROUND_SURFACE       = "gpu_monitor_bg"
+        private const val FOREGROUND_SURFACE       = "gpu_monitor_fg"
+        private const val COLLAPSE_BUTTON_WIDTH    = 10f
+        private const val ROW_INDENT               = 12f
+        private const val FRACTION_BAR_LEVELS      = 5
+        private const val FRACTION_BAR_ROW_GAP     = 1f
         private const val FRACTION_BAR_SEGMENT_GAP = 1f
+
         private val random = Random()
-        private val color = Color(1f, 1f, 1f)
+        private val color  = Color(1f, 1f, 1f)
  
         private fun nextColor(measurement: Measurement): Color
         {
@@ -433,14 +449,16 @@ class GpuMonitor : Service()
                 return ensureReadable(color)
             }
 
-            val parentId = measurement.parent?.timerId ?: 0L
+            val parentId    = measurement.parent?.timerId ?: 0L
             val variantSeed = measurement.timerId xor parentId.rotateLeft(17) xor measurement.depth.toLong()
+            
             random.setSeed(variantSeed)
             color.setFromHsb(
-                hue = familyHue + (random.nextFloat() - 0.5f) * COLOR_FAMILY_HUE_SPREAD,
+                hue        = familyHue + (random.nextFloat() - 0.5f) * COLOR_FAMILY_HUE_SPREAD,
                 saturation = 0.65f + 0.35f * random.nextFloat(),
                 brightness = 0.88f + 0.12f * random.nextFloat(),
             )
+  
             return ensureReadable(color)
         }
 
@@ -457,26 +475,89 @@ class GpuMonitor : Service()
             return color
         }
 
-        private const val COLOR_FAMILY_DEPTH = 2
+        private const val COLOR_FAMILY_DEPTH      = 2
         private const val COLOR_FAMILY_HUE_SPREAD = 0.55f
-        private const val MIN_COLOR_LUMINANCE = 0.32f
+        private const val MIN_COLOR_LUMINANCE     = 0.32f
     }
 
 }
 
-internal class GpuMonitorData(
-    private val historyLength: Int = 200,
+private class MeasurementGraph(private val measurement: Measurement, width: Float) : Panel(width = Size.relative(width))
+{
+    init { focusable = false; padding.setAll(4f) }
+
+    override fun onRender(engine: PulseEngine, surface: Surface)
+    {
+        val count = measurement.graphSampleCount
+        if (count < 2 || width.value <= 0f || height.value <= 0f) 
+            return
+
+        var low = Float.MAX_VALUE
+        var high = 0f
+        for (i in 0 until count)
+        {
+            val value = measurement.graphValue(i)
+            low = min(low, value)
+            high = max(high, value)
+        }
+
+        val range = high - low
+        val step = width.value / (measurement.graphCapacity - 1).coerceAtLeast(1)
+        var xPrevious = 0f
+        var yPrevious = 0f
+        
+        surface.setDrawColor(measurement.highlightColor)
+        
+        for (i in 0 until count)
+        {
+            val fraction = if (range > 0f) (measurement.graphValue(i) - low) / range else 0.5f
+            val xPlot    = x.value + width.value - (count - 1 - i) * step
+            val yPlot    = y.value + height.value * (1f - fraction)
+            
+            if (i > 0) surface.drawLine(xPrevious, yPrevious, xPlot, yPlot)
+
+            xPrevious = xPlot
+            yPrevious = yPlot
+        }
+    }
+}
+
+private class GpuMonitorData(
+    private val historyLength: Int       = 400,
     private val inactiveGraceFrames: Int = 10,
     initialDepthCapacity: Int = 16
 ) {
     val measurements = DynamicList<Measurement>()
 
-    private var depthStack = arrayOfNulls<Measurement>(initialDepthCapacity)
-    private var maxDepthUsed = -1
-    private var frameId = 0L
+    private var depthStack          = arrayOfNulls<Measurement>(initialDepthCapacity)
+    private var maxDepthUsed        = -1
+    private var frameId             = 0L
+    private var lastGpuFrameNumber  = Long.MIN_VALUE
+    private var lastGraphSampleTime = 0L
 
     fun update(results: StaticList<GpuTimeQueryResult>): Boolean
     {
+        val now = System.nanoTime()
+        if (lastGraphSampleTime == 0L) 
+            lastGraphSampleTime = now
+        
+        val graphInterval  = 2_000_000_000L / historyLength // 2 seconds divided by history length
+        val elapsedBuckets = (now - lastGraphSampleTime) / graphInterval
+        if (elapsedBuckets > 0L)
+        {
+            val bucketsToRecord = min(elapsedBuckets, historyLength.toLong() + 1).toInt()
+            repeat(bucketsToRecord) { measurements.forEach { it.recordGraphSample() } }
+            lastGraphSampleTime += elapsedBuckets * graphInterval
+        }
+
+        if (results.size == 0 || results[0].frameNumber == lastGpuFrameNumber) 
+        {
+            val totalFrameTime = measurements.firstOrNull { it.depth == 0 }?.frameTimeTotal ?: 0f
+            measurements.forEach { it.calculateFraction(totalFrameTime) }
+            return false
+        }
+        
+        lastGpuFrameNumber = results[0].frameNumber
         frameId++
 
         measurements.forEach { it.markNotMeasured(inactiveGraceFrames) }
@@ -523,18 +604,16 @@ internal class GpuMonitorData(
             measurement.markMeasured()
             measurement.setLabel(it.label)
             measurement.setTime(it.timeNanoSec / 1_000f)
+
             depthStack[depth] = measurement
-            maxDepthUsed = max(maxDepthUsed, depth)
+            maxDepthUsed      = max(maxDepthUsed, depth)
 
             if (depth == 0 && frameMeasurement == null)
                 frameMeasurement = measurement
         }
 
-        val totalAvg = frameMeasurement?.avg ?: 0f
-        measurements.forEach()
-        {
-            if (it.measuredThisFrame) it.calculateFraction(totalAvg)
-        }
+        val totalFrameTime = frameMeasurement?.frameTimeTotal ?: 0f
+        measurements.forEach { it.calculateFraction(totalFrameTime) }
 
         return layoutChanged
     }
@@ -544,8 +623,11 @@ internal class GpuMonitorData(
         measurements.clear()
         for (i in depthStack.indices)
             depthStack[i] = null
-        maxDepthUsed = -1
-        frameId = 0L
+
+        maxDepthUsed        = -1
+        frameId             = 0L
+        lastGpuFrameNumber  = Long.MIN_VALUE
+        lastGraphSampleTime = 0L
     }
 
     fun hasChildren(parent: Measurement): Boolean
@@ -599,41 +681,54 @@ internal class GpuMonitorData(
     }
 }
 
-internal class Measurement(
+private class Measurement(
     val timerId: Long,
     val depth: Int,
     val parent: Measurement?,
     historyLength: Int
 ) {
-    val color = Color()
-    var active = false
-    var measuredThisFrame = false
-    var inactiveFrames = 0
-    var collapsed = false
-    var avg   = 0f
-    var frac  = 0f
-    var min   = Float.MAX_VALUE
-    var max   = Float.MIN_VALUE
-    var lastSeenFrame = Long.MIN_VALUE
-    var colorInitialized = false
+    val color              =  Color()
+    var active             = false
+    var measuredThisFrame  = false
+    var inactiveFrames     = 0
+    var collapsed          = false
+    var avg                = 0f
+    var frac               = 0f
+    var min                = Float.MAX_VALUE
+    var max                = Float.MIN_VALUE
+    var lastSeenFrame      = Long.MIN_VALUE
+    var colorInitialized   = false
     var fractionBarVisible = false
-    var fractionBarX = 0f
-    var fractionBarWidth = 0f
-    var fractionBarChildX = 0f
+    var fractionBarX       = 0f
+    var fractionBarWidth   = 0f
+    var fractionBarChildX  = 0f
 
-    val labelText = StringBuilder(MAX_LABEL_LENGTH)
-    val avgText   = StringBuilder(VALUE_TEXT_CAPACITY)
-    val fracText  = StringBuilder(VALUE_TEXT_CAPACITY)
-    val minText   = StringBuilder(VALUE_TEXT_CAPACITY)
-    val maxText   = StringBuilder(VALUE_TEXT_CAPACITY)
-    val fracColor = Color(1f, 1f, 1f)
+    val labelText      = StringBuilder(MAX_LABEL_LENGTH)
+    val avgText        = StringBuilder(VALUE_TEXT_CAPACITY)
+    val latestText     = StringBuilder(VALUE_TEXT_CAPACITY)
+    val latestColor    = Color(1f, 1f, 1f, 0f)
+    val fracText       = StringBuilder(VALUE_TEXT_CAPACITY)
+    val minText        = StringBuilder(VALUE_TEXT_CAPACITY)
+    val maxText        = StringBuilder(VALUE_TEXT_CAPACITY)
+    val fracColor      = Color(1f, 1f, 1f)
     val highlightColor = Color(1f, 1f, 1f)
 
-    private val history = FloatArray(historyLength)
-    private var head = 0
-    private var total = 0f
-    internal var sampleCount = 0
-        private set
+    private val intervalTotals = FloatArray(historyLength)
+    private val intervalCounts = IntArray(historyLength)
+    private val graphHistory   = FloatArray(historyLength)
+    private val graphMeasured  = BooleanArray(historyLength)
+    private var graphHead      = 0
+
+    var frameTimeTotal   = 0f; private set
+    var sampleCount      = 0;  private set
+    var graphSampleCount = 0;  private set
+    val graphCapacity get() = graphHistory.size
+
+    private var latestValueTime = 0L
+    private var graphIntervalPeak = 0f
+    private var graphIntervalMeasured = false
+    private var graphIntervalTotal = 0f
+    private var graphIntervalCount = 0
 
     fun markNotMeasured(graceFrames: Int)
     {
@@ -651,29 +746,74 @@ internal class Measurement(
     fun markMeasured()
     {
         measuredThisFrame = true
-        active = true
-        inactiveFrames = 0
+        active            = true
+        inactiveFrames    = 0
     }
 
     fun setTime(newValue: Float)
     {
-        val lastValue = history[head]
-        history[head] = newValue
-        head = (head + 1) % history.size
-        total = total - lastValue + newValue
-        sampleCount = min(sampleCount + 1, history.size)
-        avg = total / sampleCount
-        min = min(min, newValue)
-        max = max(max, newValue)
-
-        avgText.clear().append(avg, decimals = 1).append(" \u00B5s")
-        minText.clear().append(min, decimals = 1).append(" \u00B5s")
-        maxText.clear().append(max, decimals = 1).append(" \u00B5s")
+        latestText.clear().append(newValue, decimals = 1).append(" \u00B5s")
+        latestValueTime       = System.nanoTime()
+        graphIntervalPeak     = max(graphIntervalPeak, newValue)
+        graphIntervalMeasured = true
+        graphIntervalTotal   += newValue
+        graphIntervalCount++
     }
 
-    fun calculateFraction(totalAvg: Float)
+    fun recordGraphSample()
     {
-        frac = if (totalAvg > 0f) avg / totalAvg else 0f
+        frameTimeTotal            = (frameTimeTotal - intervalTotals[graphHead] + graphIntervalTotal).coerceAtLeast(0f)
+        sampleCount              += graphIntervalCount - intervalCounts[graphHead]
+        intervalTotals[graphHead] = graphIntervalTotal
+        intervalCounts[graphHead] = graphIntervalCount
+        graphIntervalTotal        = 0f
+        graphIntervalCount        = 0
+
+        avg = if (sampleCount > 0) frameTimeTotal / sampleCount else 0f
+        avgText.clear()
+        if (sampleCount > 0) avgText.append(avg, decimals = 1).append(" \u00B5s") else avgText.append("—")
+
+        graphHistory[graphHead]  = graphIntervalPeak
+        graphMeasured[graphHead] = graphIntervalMeasured
+        graphIntervalPeak        = 0f
+        graphIntervalMeasured    = false
+        graphHead                = (graphHead + 1) % graphHistory.size
+        graphSampleCount         = min(graphSampleCount + 1, graphHistory.size)
+
+        var windowMin = Float.MAX_VALUE
+        var windowMax = 0f
+        var hasMeasurement = false
+        for (i in graphHistory.indices)
+        {
+            if (!graphMeasured[i]) continue
+            hasMeasurement = true
+            windowMin = min(windowMin, graphHistory[i])
+            windowMax = max(windowMax, graphHistory[i])
+        }
+
+        min = if (hasMeasurement) windowMin else 0f
+        max = windowMax
+        minText.clear()
+        maxText.clear()
+
+        if (hasMeasurement)
+        {
+            minText.append(min, decimals = 1).append(" \u00B5s")
+            maxText.append(max, decimals = 1).append(" \u00B5s")
+        }
+        else
+        {
+            minText.append("—")
+            maxText.append("—")
+        }
+    }
+
+    fun graphValue(index: Int): Float =
+        graphHistory[(graphHead - graphSampleCount + index + graphHistory.size) % graphHistory.size]
+
+    fun calculateFraction(totalFrameTime: Float)
+    {
+        frac = if (totalFrameTime > 0f) frameTimeTotal / totalFrameTime else 0f
         fracText.clear().append(frac * 100, decimals = 1).append(" %")
 
         val f = if (frac == 1f) 1f else (1f - frac).pow(2f)
@@ -715,6 +855,15 @@ internal class Measurement(
 
     fun setHighlighted(isHighlighted: Boolean)
     {
+        if (isHighlighted)
+            latestColor.setFrom(color)
+        else
+            latestColor.setFromRgba(INACTIVE_COLOR, INACTIVE_COLOR, INACTIVE_COLOR, 1f)
+        
+        latestColor.alpha = 
+            if (latestValueTime == 0L) 0f 
+            else (1f - (System.nanoTime() - latestValueTime) / 750_000_000f).coerceIn(0f, 1f)
+
         if (active && isHighlighted)
             highlightColor.setFrom(color)
         else
@@ -723,9 +872,9 @@ internal class Measurement(
 
     companion object
     {
-        private const val MAX_LABEL_LENGTH = 128
+        private const val MAX_LABEL_LENGTH    = 128
         private const val VALUE_TEXT_CAPACITY = 24
-        private const val ELLIPSIS = '\u2026'
-        private const val INACTIVE_COLOR = 0.3f
+        private const val ELLIPSIS            = '\u2026'
+        private const val INACTIVE_COLOR      = 0.3f
     }
 }

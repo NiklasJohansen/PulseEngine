@@ -12,6 +12,7 @@ import kotlin.math.min
 
 open class ClusteredGrid
 {
+    var viewName        = "";                 private set
     var enabled         = false;              private set
     var gridWidth       = 1;                  private set
     var gridHeight      = 1;                  private set
@@ -42,6 +43,7 @@ open class ClusteredGrid
     private var yNdcProjectedMax = 0f
     private var initialized      = false
     private var submitted        = false
+    private val measurementId    = System.identityHashCode(this).toLong()
 
     private fun init()
     {
@@ -58,6 +60,7 @@ open class ClusteredGrid
         totalIndexCount = 0
         require(itemCount >= 0 && itemCount <= bounds.size / 4)
 
+        viewName        = state.viewName
         nearPlane       = max(0.01f, state.nearPlane)
         farPlane        = max(nearPlane + 0.01f, state.farPlane)
         depthSliceScale = gridDepth.toFloat() / ln(farPlane / nearPlane)
@@ -115,7 +118,7 @@ open class ClusteredGrid
         buildTimeNs = System.nanoTime() - startTime
     }
 
-    fun submit() = measure("Cluster buffers")
+    fun submit() = measure(measurementId, { (this@ClusteredGrid::class.simpleName ?: "") plus " buffer (" plus viewName plus ")" })
     {
         if (!enabled) return@measure
 

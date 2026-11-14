@@ -46,7 +46,8 @@ class DepthPrepassRenderer(
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
-        viewKey = viewGroup?.createViewKey() ?: RenderViewKey(surface.viewGroup) { CameraRenderView() }
+        viewKey = viewGroup?.createViewKey("depth_prepass") 
+            ?: RenderViewKey(surface.viewGroup) { CameraRenderView("depth_prepass") }
 
         if (!this::opaqueStaticProgram.isInitialized)
         {

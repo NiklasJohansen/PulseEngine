@@ -25,5 +25,5 @@ class CameraRenderViewGroup(
 ) {
     private val group = RenderViewGroup.create()
 
-    fun createViewKey() = RenderViewKey(group) { CameraRenderView(renderPassMask = renderPassMask) }
+    fun createViewKey(name: String) = RenderViewKey(group) { CameraRenderView(name, renderPassMask = renderPassMask) }
 }

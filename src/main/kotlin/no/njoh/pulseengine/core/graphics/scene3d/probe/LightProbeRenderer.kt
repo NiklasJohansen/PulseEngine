@@ -272,7 +272,7 @@ class LightProbeRenderer(
     {
         if (startIndex != 0 || currentProbeIndexToCapture < 0) return
 
-        measure("probe_render", label = { "Update probe: #" plus currentCaptureProbe.id })
+        measure(currentCaptureProbe.id, label = { "Update probe: #" plus currentCaptureProbe.id })
         {
             val seamless = glIsEnabled(GL_TEXTURE_CUBE_MAP_SEAMLESS)
             glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS)
@@ -374,10 +374,8 @@ class LightProbeRenderer(
         return view.faceCount
     }
 
-    private fun generateCubeMapMips() = measure(
-        id = "probe_generate_mips", 
-        label = { "Generate cubemap mips (mip: " plus currentCaptureProbe.id plus ")" }
-    ) {
+    private fun generateCubeMapMips() = measure("probe_generate_mips", label = { "Generate cubemap mips" }) 
+    {
         captureCubeMap.generateMips()
         currentPhase = FILTER_SPECULAR
     }

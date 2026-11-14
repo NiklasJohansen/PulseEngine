@@ -14,7 +14,7 @@ import no.njoh.pulseengine.core.graphics.scene3d.view.LocalShadowRenderView
 import no.njoh.pulseengine.core.graphics.scene3d.view.RenderViewDeclarer
 import no.njoh.pulseengine.core.graphics.surface.SurfaceInternal
 import no.njoh.pulseengine.core.graphics.util.DrawUtils.drawRenderBucket
-import no.njoh.pulseengine.core.graphics.util.GpuProfiler.measure
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler
 import no.njoh.pulseengine.core.graphics.util.transformModelVertexShader
 import org.lwjgl.opengl.GL11.*
 
@@ -84,38 +84,46 @@ class LocalShadowAtlasRenderer(
         maskedStaticProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
         maskedSkinnedProgram.bind()
         maskedSkinnedProgram.setUniformSamplerArrays(engine.gfx.textureBank.getAllTextureArrays())
-        
+ 
+        var lastBlockKey = -1L
         for (i in 0 until numFacesToRender)
         {
             val shadowFaceIndex = atlas.getShadowFaceIndexToRender(i)
             val shadowFace = atlas.getShadowFace(shadowFaceIndex)
             val pass = view.getShadowFaceRenderPass(shadowFaceIndex) ?: continue
 
-            measure("local_shadow", label = { "Local shadow #" plus shadowFaceIndex plus " (" plus shadowFace.blockKey plus ")" })
+            if (shadowFace.blockKey != lastBlockKey)
             {
-                glEnable(GL_SCISSOR_TEST)
-                glScissor(shadowFace.x, shadowFace.y, shadowFace.size, shadowFace.size)
-                glClear(GL_DEPTH_BUFFER_BIT)
-                glDisable(GL_SCISSOR_TEST)
-                glViewport(shadowFace.x, shadowFace.y, shadowFace.size, shadowFace.size)
-
-                opaqueStaticProgram.bind()
-                opaqueStaticProgram.setUniform("viewProjection", shadowFace.viewProjection)
-                opaqueSkinnedProgram.bind()
-                opaqueSkinnedProgram.setUniform("viewProjection", shadowFace.viewProjection)
-                maskedStaticProgram.bind()
-                maskedStaticProgram.setUniform("viewProjection", shadowFace.viewProjection)
-                maskedSkinnedProgram.bind()
-                maskedSkinnedProgram.setUniform("viewProjection", shadowFace.viewProjection)
-
-                val cullViewIndex = pass.getCullViewIndexOf(shadowFaceIndex)
-                bindStorageBuffers(engine, opaquePrograms, pass.drawPayload)
-                drawRenderBucket(pass.opaqueBucket, pass.drawPayload, opaquePrograms, cullViewIndex)
-
-                bindStorageBuffers(engine, maskedPrograms, pass.drawPayload)
-                drawRenderBucket(pass.maskedBucket, pass.drawPayload, maskedPrograms, cullViewIndex)
+                if (lastBlockKey != -1L) 
+                    GpuProfiler.endMeasure()
+                lastBlockKey = shadowFace.blockKey
+                GpuProfiler.beginMeasure(id = shadowFace.blockKey, label = { "Local shadow (light " plus shadowFace.blockKey plus ")" })
             }
+
+            glEnable(GL_SCISSOR_TEST)
+            glScissor(shadowFace.x, shadowFace.y, shadowFace.size, shadowFace.size)
+            glClear(GL_DEPTH_BUFFER_BIT)
+            glDisable(GL_SCISSOR_TEST)
+            glViewport(shadowFace.x, shadowFace.y, shadowFace.size, shadowFace.size)
+
+            opaqueStaticProgram.bind()
+            opaqueStaticProgram.setUniform("viewProjection", shadowFace.viewProjection)
+            opaqueSkinnedProgram.bind()
+            opaqueSkinnedProgram.setUniform("viewProjection", shadowFace.viewProjection)
+            maskedStaticProgram.bind()
+            maskedStaticProgram.setUniform("viewProjection", shadowFace.viewProjection)
+            maskedSkinnedProgram.bind()
+            maskedSkinnedProgram.setUniform("viewProjection", shadowFace.viewProjection)
+
+            val cullViewIndex = pass.getCullViewIndexOf(shadowFaceIndex)
+            bindStorageBuffers(engine, opaquePrograms, pass.drawPayload)
+            drawRenderBucket(pass.opaqueBucket, pass.drawPayload, opaquePrograms, cullViewIndex)
+
+            bindStorageBuffers(engine, maskedPrograms, pass.drawPayload)
+            drawRenderBucket(pass.maskedBucket, pass.drawPayload, maskedPrograms, cullViewIndex)
         }
+
+        if (lastBlockKey != -1L) GpuProfiler.endMeasure()
 
         glViewport(0, 0, surface.config.renderWidth, surface.config.renderHeight)
         glDisable(GL_POLYGON_OFFSET_FILL)

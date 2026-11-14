@@ -111,7 +111,8 @@ class ModelRenderer(
 
     override fun init(engine: PulseEngineInternal, surface: SurfaceInternal)
     {
-        viewKey = viewGroup?.createViewKey() ?: RenderViewKey(surface.viewGroup) { CameraRenderView() }
+        viewKey = viewGroup?.createViewKey("model_renderer") 
+            ?: RenderViewKey(surface.viewGroup) { CameraRenderView("model_renderer") }
 
         if (!this::staticProgram.isInitialized)
         {

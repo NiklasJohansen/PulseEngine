@@ -13,6 +13,7 @@ import no.njoh.pulseengine.core.shared.datastructures.DynamicList
 import no.njoh.pulseengine.core.shared.datastructures.GenerationalIntLookup
 
 class DrawPayloadBuilder(
+    var viewName: String = "",
     var frustumPlaneSets: Array<FrustumPlaneSet> = emptyArray(),
     var frustumPlaneSetCount: Int = frustumPlaneSets.size,
     var gpuCullItemIndices: StreamingIntBufferObject? = null,
@@ -38,13 +39,13 @@ class DrawPayloadBuilder(
         commandIndex = 0
     }
 
-    fun RenderBucket.fill(
+    fun fill(
+        bucket: RenderBucket,
         from: DynamicList<RenderItem>,
         renderPassMask: RenderPassMask = EMPTY,
         sortFunc: ((a: RenderItem, b: RenderItem) -> Int)? = batchingSortFunc,
         preserveDrawOrder: Boolean = false,
     ) {
-        val bucket = this
         val useGpuCulling = (gpuCullItemIndices != null && gpuCullItemBatchIndices != null)
 
         bucket.clear(commandIndex)

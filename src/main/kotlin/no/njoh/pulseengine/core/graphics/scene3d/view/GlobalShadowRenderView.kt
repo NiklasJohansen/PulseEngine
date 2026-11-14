@@ -27,10 +27,10 @@ class GlobalShadowRenderView : RenderView(GLOBAL_SHADOW)
 
     override fun prepare(scene: RenderScene, builder: DrawCommandBuilder)
     {
-        drawPayload = builder.prepareDrawPayload(cascadeFrustumPlaneSets)
+        drawPayload = builder.prepareDrawPayload("sun_shadow_map", cascadeFrustumPlaneSets)
         {
-            opaqueBucket.fill(scene.opaqueItems, renderPassMask)
-            maskedBucket.fill(scene.maskedItems, renderPassMask)
+           fill(opaqueBucket, scene.opaqueItems, renderPassMask)
+           fill(maskedBucket, scene.maskedItems, renderPassMask)
         }
     }
 

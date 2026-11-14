@@ -15,7 +15,7 @@ import org.joml.Vector3f
 class LightProbeRenderView : RenderView(REFLECTION), CameraRenderStateProvider
 {
     val cameras     = Array(6) { DefaultCamera(PERSPECTIVE_3D) }
-    val cameraViews = Array(6) { CameraRenderView(renderPassMask = REFLECTION) }
+    val cameraViews = Array(6) { CameraRenderView("light_probe", renderPassMask = REFLECTION) }
 
     var firstFace = 0; private set
     var faceCount = 0; private set

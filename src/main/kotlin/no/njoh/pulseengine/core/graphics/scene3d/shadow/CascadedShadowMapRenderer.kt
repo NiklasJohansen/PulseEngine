@@ -149,7 +149,7 @@ class CascadedShadowMapRenderer(
             if (!renderState.shouldUpdate[cascadeIdx])
                 continue
 
-            measure(id = "cascade", label = { "Cascade #" plus cascadeIdx })
+            measure(id = cascadeIdx.toLong(), label = { "Cascade #" plus cascadeIdx })
             {
                 val x = (cascadeIdx % 2) * halfRes
                 val y = (cascadeIdx / 2) * halfRes

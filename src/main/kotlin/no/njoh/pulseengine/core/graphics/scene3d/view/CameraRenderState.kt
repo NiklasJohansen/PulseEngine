@@ -7,6 +7,7 @@ import org.joml.Vector3f
 
 class CameraRenderState(var camera: Camera) 
 {
+    var viewName             = ""
     val frustum              = Frustum()
     val viewMatrix           = Matrix4f()
     val projectionMatrix     = Matrix4f()
@@ -19,20 +20,22 @@ class CameraRenderState(var camera: Camera)
     var nearPlane    = 0.05f; private set
     var farPlane     = 1f;    private set
 
-    fun setForCamera(camera: Camera, screenWidth: Int, screenHeight: Int)
+    fun setForCamera(viewName: String, camera: Camera, screenWidth: Int, screenHeight: Int)
     {
         camera.invViewMatrix.getTranslation(cameraPosition)
 
-        this.camera = camera
         this.cameraRight.set(camera.invViewMatrix.m00(), camera.invViewMatrix.m01(), camera.invViewMatrix.m02()).normalize()
         this.frustum.setForCamera(camera)
         this.viewMatrix.set(camera.viewMatrix)
         this.projectionMatrix.set(camera.projectionMatrix)
         this.viewProjectionMatrix.set(camera.viewProjectionMatrix)
-        this.screenWidth = screenWidth.coerceAtLeast(1)
+
+        this.viewName     = viewName
+        this.camera       = camera
+        this.screenWidth  = screenWidth.coerceAtLeast(1)
         this.screenHeight = screenHeight.coerceAtLeast(1)
-        this.nearPlane = camera.nearPlane
-        this.farPlane = camera.farPlane
+        this.nearPlane    = camera.nearPlane
+        this.farPlane     = camera.farPlane
     }
 }
 

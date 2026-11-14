@@ -11,25 +11,33 @@ object GpuProfiler
     @PublishedApi internal var enabled = false; private set
     @PublishedApi internal val context = TextBuilderContext()
 
-    private var shouldBeEnabled = false
-    private var drawCallCounter = 0L
-    private var triangleCounter = 0L
-    private var instanceCounter = 0L
+    private var shouldBeEnabled        = false
+    private var drawCallCounter        = 0L
+    private var triangleCounter        = 0L
+    private var instanceCounter        = 0L
     private var scene3DInstanceCounter = 0L
-    private var uploadedBytesCounter = 0L
-    private var statsReader = null as GpuStatsReader?
+    private var uploadedBytesCounter   = 0L
+    private var statsReader            = null as GpuStatsReader?
 
-    var gpuTimeNs = 0L;        private set
-    var drawCalls = 0L;        private set
-    var triangles = 0L;        private set
-    var instances = 0L;        private set
+    var gpuTimeNs        = 0L; private set
+    var drawCalls        = 0L; private set
+    var triangles        = 0L; private set
+    var instances        = 0L; private set
     var scene3DInstances = 0L; private set
-    var uploadedBytes  = 0L;   private set
+    var uploadedBytes    = 0L; private set
 
     /**
      * Measures an operation whose display [label] may change while [id] remains stable.
      */
     inline fun <T> measure(id: CharSequence, label: TextBuilder, action: () -> T): T
+    {
+        return measure(hashTimerId(id), label, action)
+    }
+
+    /**
+     * Measures an operation whose display [label] may change while [id] remains stable.
+     */
+    inline fun <T> measure(id: Long, label: TextBuilder, action: () -> T): T
     {
         beginMeasure(id, label)
         return try { action() } finally { endMeasure() }
@@ -62,10 +70,19 @@ object GpuProfiler
      */
     inline fun beginMeasure(id: CharSequence, label: TextBuilder)
     {
+        beginMeasure(hashTimerId(id), label = label)
+    }
+    
+    /**
+     * Begins a GPU time measure whose display [label] may change while [id] remains stable.
+     * Only call this on the graphics thread.
+     */
+    inline fun beginMeasure(id: Long, label: TextBuilder)
+    {
         if (!enabled) return
 
         val labelText = context.build(label)
-        GpuTimeQuery.start(hashTimerId(id), labelText)
+        GpuTimeQuery.start(id, labelText)
         GpuLogger.beginGroup(labelText)
     }
 
@@ -82,7 +99,7 @@ object GpuProfiler
     }
 
     /**
-     * Returns all time measurements that have been collected from the previous frame.
+     * Returns all time measurements from the most recently completed GPU frame (possibly several frames old).
      * Safe to call from the game thread.
      */
     fun getMeasurements() = GpuTimeQuery.getAllResults()

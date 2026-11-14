@@ -47,21 +47,21 @@ class LocalShadowRenderView(private val atlas: LocalShadowAtlas) : RenderView(LO
             {
                 val faceIndex = atlas.getShadowFaceIndexToRender(i++)
                 val viewProjection = atlas.getShadowFace(faceIndex).viewProjection
-                val planeSet = shadowFaceFrustums.getOrAdd(faceIndex) { Frustum() }.setForViewProjection(viewProjection).planeSet
-                pass.addShadowFaceToRender(faceIndex, planeSet)
+                val frustumPlaneSet = shadowFaceFrustums.getOrAdd(faceIndex) { Frustum() }.setForViewProjection(viewProjection).planeSet
+                pass.addShadowFaceToRender(faceIndex, frustumPlaneSet)
             }
 
             if (pass.getNumShadowFacesToRender() == 0) continue
 
-            pass.drawPayload = builder.prepareDrawPayload(pass.frustumPlaneSets, pass.getNumShadowFacesToRender())
+            pass.drawPayload = builder.prepareDrawPayload("local_shadow_map", pass.frustumPlaneSets, pass.getNumShadowFacesToRender())
             {
                 shadowFaceOpaqueItems.clear()
                 scene.opaqueItems.forEach { if (it.intersectsAnyFace(pass)) shadowFaceOpaqueItems += it }
-                pass.opaqueBucket.fill(shadowFaceOpaqueItems, renderPassMask)
+                fill(pass.opaqueBucket, shadowFaceOpaqueItems, renderPassMask)
 
                 shadowFaceMaskedItems.clear()
                 scene.maskedItems.forEach { if (it.intersectsAnyFace(pass)) shadowFaceMaskedItems += it }
-                pass.maskedBucket.fill(shadowFaceMaskedItems, renderPassMask)
+                fill(pass.maskedBucket, shadowFaceMaskedItems, renderPassMask)
             }
 
             shadowFacePassCount++
