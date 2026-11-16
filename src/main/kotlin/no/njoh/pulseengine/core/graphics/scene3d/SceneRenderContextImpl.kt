@@ -5,7 +5,12 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Material
+import no.njoh.pulseengine.core.asset.types.Material.BlendMode
+import no.njoh.pulseengine.core.asset.types.Material.CullMode
+import no.njoh.pulseengine.core.asset.types.Material.NormalOrientation
+import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.*
 import no.njoh.pulseengine.core.graphics.scene3d.view.CameraRenderState
@@ -60,18 +65,22 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
     private val clusteredDecalGrids   = Object2ObjectOpenHashMap<CameraRenderState, ClusteredDecalGrid>()
     private val clusteredGridRequests = ObjectOpenHashSet<CameraRenderState>()
     private val renderIdOverrides     = LongArrayList()
+    private val sceneMaterials        = SceneMaterials()
 
     private var frameNumber           = 0
     private var initialized           = false
     private var lastFrameHadDrawItems = false
 
-    override fun initFrame()
+    override fun initFrame(engine: PulseEngineInternal)
     {
         renderIdOverrides.clear()
         frameNumber++
 
         nextFrameScene = thisFrameScene.also { thisFrameScene = nextFrameScene }
         nextFrameScene.clear()
+
+        sceneMaterials.initFrame(engine, nextFrameScene)
+
         thisFrameScene.captureSubmittedSnapshot()
 
         clusteredGridRequests.clear()
@@ -99,7 +108,7 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             initialized = true
         }
 
-        // Declare world views
+        // Declare scene views
         engine.gfx.getAllSurfaces().forEachFast { surface ->
             surface.getAllRenderers().forEachInstance<RenderViewDeclarer>()
             {
@@ -182,8 +191,11 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
         }
     }
 
-    override fun destroy()
+    override fun destroy(engine: PulseEngineInternal)
     {
+        sceneMaterials.destroy(engine)
+        thisFrameScene.clear()
+        nextFrameScene.clear()
         views.clear()
         clusteredLightGrids.forEach { (_, grid) -> grid.destroy() }
         clusteredLightGrids.clear()
@@ -334,6 +346,65 @@ class SceneRenderContextImpl : SceneRenderContextInternal()
             material, transform, opacity, colorBlend, colorBlendMode, normalBlend, normalBlendMode, roughnessBlend, metallicBlend, 
             heightBlend, edgeFade, fadeStartAngleDegrees, fadeStartDistance, fadeEndDistance, targetLayerMask, sortOrder
         )
+    }
+
+    override fun submitMaterial(
+        engine: PulseEngine,
+        sourceId: Long,
+        name: String,
+        materialToOverride: AssetHandle<Material>?,
+        baseColor: Color,
+        albedoMap: Texture?,
+        normalMap: Texture?,
+        aoRoughMetalMap: Texture?,
+        emissiveMap: Texture?,
+        heightMap: Texture?,
+        cullMode: CullMode,
+        blendMode: BlendMode,
+        alphaCutoff: Float,
+        metallicFactor: Float,
+        roughnessFactor: Float,
+        emissiveFactor: Color,
+        occlusionStrength: Float,
+        heightScale: Float,
+        normalScale: Float,
+        normalOrientation: NormalOrientation,
+        xTiling: Float,
+        yTiling: Float,
+        layerMask: Int
+    ): AssetHandle<Material> {
+
+        val submission = sceneMaterials.createMaterialSubmission(
+            sourceId           = sourceId,
+            sceneFileName      = engine.scene.activeScene.fileName,
+            materialName       = name,
+            materialToOverride = materialToOverride
+        )
+
+        val material = submission.materialToSubmit
+
+        material.baseColor.setFrom(baseColor)
+        material.emissiveFactor.setFrom(emissiveFactor)
+
+        material.albedoMap         = albedoMap
+        material.normalMap         = normalMap
+        material.aoRoughMetalMap   = aoRoughMetalMap
+        material.emissiveMap       = emissiveMap
+        material.heightMap         = heightMap
+        material.cullMode          = cullMode
+        material.blendMode         = blendMode
+        material.alphaCutoff       = alphaCutoff
+        material.metallicFactor    = metallicFactor
+        material.roughnessFactor   = roughnessFactor
+        material.occlusionStrength = occlusionStrength
+        material.heightScale       = heightScale
+        material.normalScale       = normalScale
+        material.normalOrientation = normalOrientation
+        material.xTiling           = xTiling
+        material.yTiling           = yTiling
+        material.layerMask         = layerMask
+
+        return submission.materialHandle
     }
 
     override fun pushRenderIdOverride(renderId: Long)

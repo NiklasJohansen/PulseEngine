@@ -2,7 +2,9 @@ package no.njoh.pulseengine.core.graphics.scene3d
 
 import no.njoh.pulseengine.core.PulseEngine
 import no.njoh.pulseengine.core.PulseEngineInternal
+import no.njoh.pulseengine.core.asset.AssetHandle
 import no.njoh.pulseengine.core.asset.types.Material
+import no.njoh.pulseengine.core.asset.types.Texture
 import no.njoh.pulseengine.core.asset.types.Model
 import no.njoh.pulseengine.core.asset.types.Model.AnimatedSkeletonPose
 import no.njoh.pulseengine.core.asset.types.Model.Mesh
@@ -133,6 +135,38 @@ abstract class SceneRenderContext
     )
 
     /**
+     * Submits a complete material definition. A set [materialToOverride] makes this submission override 
+     * the referenced [Material] asset. Null creates and registers a new [Material] with the given [name] in 
+     * the asset module. The [sourceId] must be unique per submission. Submissions become active at the next 
+     * frame boundary and expire when not renewed.
+     */
+    abstract fun submitMaterial(
+        engine: PulseEngine,
+        sourceId: Long,
+        name: String,
+        materialToOverride: AssetHandle<Material>? = null,
+        baseColor: Color = Color.WHITE,
+        albedoMap: Texture? = null,
+        normalMap: Texture? = null,
+        aoRoughMetalMap: Texture? = null,
+        emissiveMap: Texture? = null,
+        heightMap: Texture? = null,
+        cullMode: Material.CullMode = Material.CullMode.BACK,
+        blendMode: Material.BlendMode = Material.BlendMode.OPAQUE,
+        alphaCutoff: Float = 0.5f,
+        metallicFactor: Float = 0f,
+        roughnessFactor: Float = 1f,
+        emissiveFactor: Color = Color.BLACK,
+        occlusionStrength: Float = 1f,
+        heightScale: Float = Material.DEFAULT_HEIGHT_SCALE,
+        normalScale: Float = 1f,
+        normalOrientation: Material.NormalOrientation = Material.NormalOrientation.NORMAL,
+        xTiling: Float = 1f,
+        yTiling: Float = 1f,
+        layerMask: Int = 1
+    ): AssetHandle<Material>
+
+    /**
      * Returns a snapshot of the latest submitted [RenderScene].
      */
     abstract fun getSubmittedSceneSnapshot(): RenderSceneSnapshot
@@ -140,10 +174,10 @@ abstract class SceneRenderContext
 
 abstract class SceneRenderContextInternal : SceneRenderContext()
 {
-    abstract fun initFrame()
+    abstract fun initFrame(engine: PulseEngineInternal)
     abstract fun buildFrame(engine: PulseEngineInternal)
     abstract fun endFrame()
-    abstract fun destroy()
+    abstract fun destroy(engine: PulseEngineInternal)
 
     /**
      * Declares that a view is needed for the current frame, creating it if necessary.

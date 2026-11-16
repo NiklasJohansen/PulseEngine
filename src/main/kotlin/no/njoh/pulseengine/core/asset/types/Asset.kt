@@ -8,6 +8,8 @@ abstract class Asset(
     open var filePath: String,
     open val name: String
 ) {
+    open val displayName: String get() = name
+
     /**
      * Loads the asset from disk.
      */

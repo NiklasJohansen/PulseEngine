@@ -146,7 +146,7 @@ open class GraphicsImpl : GraphicsInternal
             textureBank.generatePendingMipmaps()
             modelBank.initFrame()
 
-            sceneContext.initFrame()
+            sceneContext.initFrame(engine)
 
             surfaces.forEachFast { it.initFrame(engine) }
             surfaces.forEachCameraSurface { it.camera.onFrameStart(engine) }
@@ -394,7 +394,7 @@ open class GraphicsImpl : GraphicsInternal
     {
         Logger.info { "Destroying graphics (${this::class.simpleName})" }
         surfaces.forEachFast { it.destroy(engine) }
-        sceneContext.destroy()
+        sceneContext.destroy(engine)
         textureBank.destroy()
         materialBank.destroy()
         modelBank.destroy()

@@ -44,6 +44,9 @@ class RenderScene
     private val lightPool     = DynamicList<RenderLight>()
     private val decalPool     = DynamicList<RenderDecal>()
 
+    private var materialOverrides   = arrayOfNulls<Material>(128)
+    private var materialsToOverride = arrayOfNulls<Material>(128)
+
     fun addModel(
         model: Model,
         transform: Matrix4f,
@@ -63,7 +66,7 @@ class RenderScene
     fun addMesh(mesh: Mesh, material: Material?, transform: Matrix4f, cullingBounds: Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, mobility: Mobility = Mobility.DYNAMIC, renderId: Long)
     {
         val item = itemPool.removeLastOrNull() ?: RenderItem()
-        item.set(mesh, material, Mat4f(matrixArena).set(transform), cullingBounds, boneMatrices, renderPassMask, mobility, renderId)
+        item.set(mesh, resolveMaterial(material), Mat4f(matrixArena).set(transform), cullingBounds, boneMatrices, renderPassMask, mobility, renderId)
         addRenderItem(item)
     }
 
@@ -87,7 +90,7 @@ class RenderScene
             val animatedMeshPose = if (hasBones) animationPose?.getAnimatedMeshPose(it.nodeName) else null
             val boneMatrices     = if (hasBones) animatedMeshPose?.boneMatrices ?: model.getBindPoseBoneMatrices(it.nodeName) else null
             val cullingBounds    = if (hasBones && animatedMeshPose != null) it.mesh.animatedBounds ?: it.cullingBounds else it.cullingBounds
-            val resolvedMaterial = material ?: engine.asset.getOrNull(it.materialHandle)
+            val resolvedMaterial = resolveMaterial(material ?: engine.asset.getOrNull(it.materialHandle))
             val meshTransform    = Mat4f(matrixArena)
 
             if (it.transformProperties.isIdentity)
@@ -185,8 +188,10 @@ class RenderScene
     ) {
         val decal = decalPool.removeLastOrNull() ?: RenderDecal()
 
+        decal.setTransform(transform)
+
         decal.sequence          = decals.size
-        decal.materialId        = material.id
+        decal.materialId        = resolveMaterial(material)!!.id
         decal.opacity           = opacity.coerceIn(0f, 1f)
         decal.colorBlend        = colorBlend.coerceIn(0f, 1f)
         decal.colorBlendMode    = colorBlendMode
@@ -201,7 +206,6 @@ class RenderScene
         decal.fadeStartDistance = fadeStartDistance.coerceIn(0f, decal.fadeEndDistance)
         decal.targetLayerMask   = targetLayerMask
         decal.sortOrder         = sortOrder
-        decal.setTransform(transform)
 
         decals += decal
     }
@@ -222,6 +226,29 @@ class RenderScene
 
     fun captureSubmittedSnapshot() = submittedSnapshot.capture(opaqueItems, maskedItems, blendedItems, pendingModels)
 
+    fun setMaterialOverride(targetMaterial: Material, replacementMaterial: Material)
+    {
+        val materialId = targetMaterial.id
+        if (materialId == Material.DEFAULT_ID) 
+            return // Unuploaded materials share the default ID, skip it
+
+        if (materialId >= materialOverrides.size)
+        {
+            val capacity = maxOf(materialId + 1, materialOverrides.size * 2)
+            materialsToOverride = materialsToOverride.copyOf(capacity)
+            materialOverrides   = materialOverrides.copyOf(capacity)
+        }
+
+        materialOverrides[materialId]   = replacementMaterial
+        materialsToOverride[materialId] = targetMaterial
+    }
+
+    fun clearMaterialOverrides()
+    {
+        materialsToOverride.fill(null)
+        materialOverrides.fill(null)
+    }
+
     fun clear()
     {
         itemPool  += opaqueItems
@@ -239,9 +266,24 @@ class RenderScene
         decals.clear()
         pendingModels.clear()
         matrixArena.reset()
+        clearMaterialOverrides()
+    }
+
+    private fun resolveMaterial(material: Material?): Material?
+    {
+        if (material == null) return null
+
+        // Check that the submitted material is still the same overridden material as previously submitted
+        // and that it has not been deleted and replaced with a new material with the same ID.
+        val materialId = material.id
+        if (materialId == Material.DEFAULT_ID || materialsToOverride.getOrNull(materialId) !== material)
+            return material
+
+        return materialOverrides[materialId] ?: material
     }
 
     private fun Float.sanitizeAngle() = if (isFinite()) coerceIn(0f, 180f) else 0f
+
     private fun Float.sanitizeNonNegative() = if (isFinite()) coerceAtLeast(0f) else 0f
 
     companion object

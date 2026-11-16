@@ -28,7 +28,7 @@ class RenderItem
 
     fun set(mesh: Model.Mesh, material: Material?, transform: Mat4f, cullingBounds: Model.Aabb?, boneMatrices: Array<Matrix4f>?, renderPassMask: RenderPassMask, mobility: Mobility = Mobility.DYNAMIC, renderId: Long = -1L)
     {
-        val usePom = material?.height != null && material.heightScale > 0f && material.blendMode != BLEND
+        val usePom = material?.heightMap != null && material.heightScale > 0f && material.blendMode != BLEND
 
         this.mesh           = mesh
         this.material       = material

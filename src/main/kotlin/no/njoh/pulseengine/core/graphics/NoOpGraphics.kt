@@ -48,7 +48,7 @@ class NoOpGraphics : GraphicsInternal
     override fun init(engine: PulseEngineInternal) {}
     override fun uploadModel(model: Model) {}
     override fun deleteModel(model: Model) {}
-    override fun initFrame(engine: PulseEngineInternal) {}
+    override fun initFrame(engine: PulseEngineInternal) = sceneContext.initFrame(engine)
     override fun onWindowChanged(engine: PulseEngineInternal, width: Int, height: Int, windowRecreated: Boolean) {}
     override fun drawFrame(engine: PulseEngineInternal) {}
     override fun deleteSurface(name: String) {}
@@ -58,5 +58,5 @@ class NoOpGraphics : GraphicsInternal
     override fun deleteMaterial(material: Material) {}
     override fun updateCameras() {}
     override fun setGpuLogLevel(logLevel: LogLevel) {}
-    override fun destroy(engine: PulseEngineInternal) {}
+    override fun destroy(engine: PulseEngineInternal) = sceneContext.destroy(engine)
 }

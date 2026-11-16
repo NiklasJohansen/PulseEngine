@@ -5,11 +5,11 @@ import no.njoh.pulseengine.core.shared.primitives.Color
 class Material(
     name: String,
     var baseColor: Color                     = Color(1f, 1f, 1f),
-    var albedo: Texture?                     = null,
-    var normal: Texture?                     = null,
-    var aoRoughMetal: Texture?               = null,
-    var emissive: Texture?                   = null,
-    var height: Texture?                     = null,
+    var albedoMap: Texture?                  = null,
+    var normalMap: Texture?                  = null,
+    var aoRoughMetalMap: Texture?            = null,
+    var emissiveMap: Texture?                = null,
+    var heightMap: Texture?                  = null,
     var cullMode: CullMode                   = CullMode.BACK,
     var blendMode: BlendMode                 = BlendMode.OPAQUE,
     var alphaCutoff: Float                   = 0.5f,
@@ -25,7 +25,9 @@ class Material(
     var layerMask: Int                       = 1
 ): Asset(name, name) {
 
-    var id = DEFAULT_ID; private set
+    override var displayName = name
+
+    var id      = DEFAULT_ID; private set
     var isDirty = true
 
     fun markDirty()
@@ -47,6 +49,56 @@ class Material(
 
     override fun load() {}
     override fun unload() {}
+
+    fun setFrom(source: Material): Material
+    {
+        if (isEqual(source)) return this
+
+        baseColor.setFrom(source.baseColor)
+        emissiveFactor.setFrom(source.emissiveFactor)
+
+        albedoMap          = source.albedoMap
+        normalMap          = source.normalMap
+        aoRoughMetalMap    = source.aoRoughMetalMap
+        emissiveMap        = source.emissiveMap
+        heightMap          = source.heightMap
+        cullMode           = source.cullMode
+        blendMode          = source.blendMode
+        alphaCutoff        = source.alphaCutoff
+        metallicFactor     = source.metallicFactor
+        roughnessFactor    = source.roughnessFactor
+        occlusionStrength  = source.occlusionStrength
+        heightScale        = source.heightScale
+        normalScale        = source.normalScale
+        normalOrientation  = source.normalOrientation
+        xTiling            = source.xTiling
+        yTiling            = source.yTiling
+        layerMask          = source.layerMask
+
+        markDirty()
+        return this
+    }
+
+    fun isEqual(source: Material): Boolean =
+        baseColor         == source.baseColor &&
+        albedoMap         == source.albedoMap && 
+        normalMap         == source.normalMap && 
+        aoRoughMetalMap   == source.aoRoughMetalMap && 
+        emissiveMap       == source.emissiveMap && 
+        heightMap         == source.heightMap && 
+        cullMode          == source.cullMode && 
+        blendMode         == source.blendMode && 
+        alphaCutoff       == source.alphaCutoff && 
+        metallicFactor    == source.metallicFactor && 
+        roughnessFactor   == source.roughnessFactor && 
+        emissiveFactor    == source.emissiveFactor && 
+        occlusionStrength == source.occlusionStrength && 
+        heightScale       == source.heightScale && 
+        normalScale       == source.normalScale && 
+        normalOrientation == source.normalOrientation && 
+        xTiling           == source.xTiling && 
+        yTiling           == source.yTiling && 
+        layerMask         == source.layerMask
 
     enum class BlendMode 
     {

@@ -1278,10 +1278,14 @@ open class UiElementFactory(
             searchInput.bgColorHover = style.getColor("BUTTON_HOVER")
             searchInput.strokeColor = Color.BLANK
 
-            PulseEngine.INSTANCE.asset
-                .getAllOfType(assetType.java)
-                .sortedBy { it.name }
-                .forEachFast { addAssetRow(it, style) }
+            onOpening = {
+                clearRows()
+                PulseEngine.INSTANCE.asset
+                    .getAllOfType(assetType.java)
+                    .sortedBy { it.displayName }
+                    .forEachFast { addAssetRow(it, style) }
+            }
+            onOpening()
 
             var currentName = handle.name
             setOnValueChanged { newName ->

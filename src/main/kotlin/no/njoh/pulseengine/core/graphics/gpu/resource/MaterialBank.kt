@@ -53,8 +53,7 @@ class MaterialBank : ShaderStorageBufferObject
 
         if (dirty || hasDirtyMaterials())
         {
-            for (material in materials)
-                buffer.writeMaterial(material)
+            materials.forEachFast { buffer.writeMaterial(it) }
 
             buffer.swapBuffers()
             buffer.bind()
@@ -119,11 +118,11 @@ class MaterialBank : ShaderStorageBufferObject
 
         fill(MATERIAL_FLOATS)
         {
-            putTexture(material?.albedo)
-            putTexture(material?.normal)
-            putTexture(material?.aoRoughMetal)
-            putTexture(material?.emissive)
-            putTexture(material?.height)
+            putTexture(material?.albedoMap)
+            putTexture(material?.normalMap)
+            putTexture(material?.aoRoughMetalMap)
+            putTexture(material?.emissiveMap)
+            putTexture(material?.heightMap)
             baseColor.asLinear().let { put(it.red, it.green, it.blue, baseColor.alpha) }
             emissiveFactor.asLinear().let { put(it.red, it.green, it.blue, emissiveFactor.alpha) }
             put(

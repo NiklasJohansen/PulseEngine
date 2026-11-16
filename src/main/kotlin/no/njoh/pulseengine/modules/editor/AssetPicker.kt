@@ -39,8 +39,11 @@ class AssetPicker(
     val scrollbar: Scrollbar
     var rowHeight = 30f
 
+    var onOpening: () -> Unit = {}
+
     private var onChanged: (String) -> Unit = { }
     private val rowValues = Object2ObjectOpenHashMap<String, UiElement>()
+    private val rowLabels = Object2ObjectOpenHashMap<String, String>()
 
     init
     {
@@ -130,8 +133,7 @@ class AssetPicker(
     {
         searchInput.setOnTextChanged()
         {
-            for ((value, row) in rowValues)
-                row.hidden = it.text.isNotBlank() && !value.contains(it.text, ignoreCase = true)
+            rowValues.forEach { (value, row) -> row.hidden = !value.matchesSearch(searchInput.text) }
         }
 
         nameInput.setOnTextChanged()
@@ -146,7 +148,10 @@ class AssetPicker(
             val isOpening = pickerWindow.hidden
             pickerWindow.hidden = !pickerWindow.hidden
             if (isOpening)
+            {
+                onOpening()
                 PulseEngine.INSTANCE.input.acquireFocus(searchInput.area)
+            }
         }
     }
 
@@ -166,21 +171,24 @@ class AssetPicker(
 
     override fun updatePopupLayout()
     {
-        updatePickerAlignment()
-        super.updatePopupLayout()
-    }
-
-    private fun updatePickerAlignment()
-    {
         var root: UiElement = this
         while (root.parent != null)
             root = root.parent!!
 
-        val isOnRightSide = x.value > root.x.value + root.width.value * 0.5f
+        val isOnRightSide  = x.value > root.x.value + root.width.value * 0.5f
         val isOnBottomSide = y.value > root.y.value + root.height.value * 0.5f
 
-        pickerWindow.padding.left = ScaledValue.unscaled(if (isOnRightSide) -pickerWindow.width.value + width.value else 0f)
-        pickerWindow.padding.top = ScaledValue.unscaled(if (isOnBottomSide) -pickerWindow.height.value else height.value)
+        pickerWindow.padding.left = ScaledValue.unscaled(if (isOnRightSide)  -pickerWindow.width.value + width.value else 0f)
+        pickerWindow.padding.top  = ScaledValue.unscaled(if (isOnBottomSide) -pickerWindow.height.value else height.value)
+
+        super.updatePopupLayout()
+    }
+
+    fun clearRows()
+    {
+        rows.clearChildren()
+        rowValues.clear()
+        rowLabels.clear()
     }
 
     fun addAssetRow(asset: Asset, style: EditorStyle)
@@ -196,7 +204,7 @@ class AssetPicker(
             padding.setAll(5f)
         }
 
-        val label = Label(asset.name).apply()
+        val label = Label(asset.displayName).apply()
         {
             color = style.getColor("LABEL")
             fontSize = ScaledValue.of(style.getSize("CONTENT_FONT_SIZE"))
@@ -235,6 +243,7 @@ class AssetPicker(
             addChildren(HorizontalPanel().apply { addChildren(icon, label, image) })
         }
 
+        rowLabels[asset.name] = asset.displayName
         addRow(row, asset.name)
     }
 
@@ -246,6 +255,7 @@ class AssetPicker(
             clearSearch()
             onChanged(value)
         }
+        row.hidden = !value.matchesSearch(searchInput.text)
         rows.addChildren(row)
         rowValues[value] = row
     }
@@ -254,6 +264,11 @@ class AssetPicker(
     {
         this.onChanged = onChanged
     }
+
+    private fun String.matchesSearch(searchText: String): Boolean =
+        searchText.isBlank() ||
+        this.contains(searchText, ignoreCase = true) ||
+        rowLabels[this]?.contains(searchText, ignoreCase = true) == true
 
     private fun clearSearch()
     {
