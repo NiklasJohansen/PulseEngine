@@ -1,22 +1,26 @@
 package no.njoh.pulseengine.core.graphics.gpu.resource
 
 import no.njoh.pulseengine.core.asset.types.Material
-import no.njoh.pulseengine.core.asset.types.Material.BlendMode.MASK
-import no.njoh.pulseengine.core.asset.types.Material.BlendMode.BLEND
-import no.njoh.pulseengine.core.asset.types.Material.NormalOrientation.*
-import no.njoh.pulseengine.core.asset.types.Texture
-import no.njoh.pulseengine.core.graphics.gpu.buffer.DoubleBufferedFloatObject
+import no.njoh.pulseengine.core.graphics.gpu.GlCapabilities
 import no.njoh.pulseengine.core.graphics.gpu.buffer.ShaderStorageBufferObject
-import no.njoh.pulseengine.core.shared.primitives.Color
+import no.njoh.pulseengine.core.graphics.gpu.resource.MaterialBufferData.Companion.MATERIAL_FLOATS
+import no.njoh.pulseengine.core.graphics.util.GpuProfiler.incrementUploadedBytes
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
+import org.lwjgl.opengl.GL15.*
+import org.lwjgl.opengl.GL30.glBindBufferBase
+import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BUFFER
 import java.util.ArrayDeque
+import java.util.BitSet
 
 class MaterialBank : ShaderStorageBufferObject
 {
-    private var buffer: DoubleBufferedFloatObject? = null
-    private val materials = ArrayList<Material?>(128).apply { add(null) }
-    private val freeIds = ArrayDeque<Int>(128)
-    private var dirty = false
+    private var bufferId       = 0
+    private var bufferCapacity = 0
+    private var buffer         = null as MaterialBufferData?
+    private val materials      = ArrayList<Material?>(128).apply { add(null) }
+    private val freeIds        = ArrayDeque<Int>(128)
+    private val dirtySlots     = BitSet()
+    private var dirty          = false
 
     fun upload(material: Material)
     {
@@ -24,15 +28,14 @@ class MaterialBank : ShaderStorageBufferObject
 
         if (materials.getOrNull(material.id) === material)
         {
+            dirtySlots.set(material.id)
             material.onUploaded(material.id)
-            dirty = true
             return
         }
-
+ 
         val newId = if (freeIds.isNotEmpty()) freeIds.removeFirst() else materials.size.also { materials += null }
-
-        dirty = true
         materials[newId] = material
+        dirtySlots.set(newId)
         material.onUploaded(newId)
     }
 
@@ -40,7 +43,7 @@ class MaterialBank : ShaderStorageBufferObject
     {
         if (materials.getOrNull(material.id) === material)
         {
-            dirty = true
+            dirtySlots.set(material.id)
             materials[material.id] = null
             freeIds.add(material.id)
         }
@@ -51,32 +54,70 @@ class MaterialBank : ShaderStorageBufferObject
     {
         val buffer = buffer ?: return
 
-        if (dirty || hasDirtyMaterials())
+        for (id in 0 until materials.size)
         {
-            materials.forEachFast { buffer.writeMaterial(it) }
-
-            buffer.swapBuffers()
-            buffer.bind()
-            buffer.submit()
-            buffer.release()
-
-            dirty = false
+            val material = materials[id]
+            if (dirty || dirtySlots[id] || material?.isDirty == true)
+            {
+                buffer.writeMaterial(id, material)
+                material?.isDirty = false
+            }
         }
+        
+        if (buffer.dirtySlots.isEmpty) 
+            return
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, bufferId)
+        
+        val wasResized = bufferCapacity != buffer.data.capacity()
+        if (wasResized)
+        {
+            bufferCapacity = buffer.data.capacity()
+            glBufferData(GL_SHADER_STORAGE_BUFFER, bufferCapacity.toLong() * Float.SIZE_BYTES, GL_DYNAMIC_DRAW)
+        }
+
+        if (wasResized || buffer.shouldUseBulkUpload(materials.size))
+        {
+            uploadRange(buffer, 0, materials.size)
+        }
+        else
+        {
+            var start = buffer.dirtySlots.nextSetBit(0)
+            while (start >= 0)
+            {
+                val end = buffer.nextUploadRangeEnd(start)
+                uploadRange(buffer, start, end)
+                start = buffer.dirtySlots.nextSetBit(end)
+            }
+        }
+
+        buffer.data.clear()
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
+
+        buffer.dirtySlots.clear()
+        dirtySlots.clear()
+        dirty = false
     }
 
     override fun bindStorageBuffer(binding: Int)
     {
-        buffer?.bindStorageBuffer(binding)
+        if (bufferId != 0) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, bufferId)
     }
 
     fun destroy()
     {
+        if (bufferId != 0) 
+            glDeleteBuffers(bufferId)
+
+        bufferId = 0
+        bufferCapacity = 0
         buffer?.destroy()
         buffer = null
         materials.forEachFast { it?.onDeleted() }
         materials.clear()
         materials += null // Default material
         freeIds.clear()
+        dirtySlots.clear()
         dirty = false
     }
 
@@ -85,68 +126,23 @@ class MaterialBank : ShaderStorageBufferObject
         dirty = true
     }
 
+    private fun uploadRange(buffer: MaterialBufferData, start: Int, end: Int)
+    {
+        val firstFloat = start * MATERIAL_FLOATS
+        val endFloat   = end * MATERIAL_FLOATS
+
+        buffer.data.limit(endFloat).position(firstFloat)
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, firstFloat.toLong() * Float.SIZE_BYTES, buffer.data)
+
+        incrementUploadedBytes((endFloat - firstFloat).toLong() * Float.SIZE_BYTES)
+    }
+    
     private fun ensureBuffer()
     {
-        if (buffer != null) return
-
+        if (bufferId != 0) return
+        GlCapabilities.requireFullGraphics("Shader storage buffers")
+        buffer = MaterialBufferData()
+        bufferId = glGenBuffers()
         dirty = true
-        buffer = DoubleBufferedFloatObject.createShaderStorageBuffer(MATERIAL_FLOATS * 128)
-    }
-
-    private fun hasDirtyMaterials(): Boolean
-    {
-        var hasDirtyMaterials = false
-        materials.forEachFast()
-        {
-            if (it?.isDirty == true)
-            {
-                it.isDirty = false
-                hasDirtyMaterials = true
-            }
-        }
-        return hasDirtyMaterials
-    }
-
-    private fun DoubleBufferedFloatObject.writeMaterial(material: Material?)
-    {
-        val baseColor = material?.baseColor ?: DEFAULT_MATERIAL_COLOR
-        val emissiveFactor = material?.emissiveFactor ?: Color.WHITE
-        val heightScale = material?.heightScale?.coerceAtLeast(0f) ?: 0f
-        val alphaCutoff = if (material?.blendMode == MASK) material.alphaCutoff else 0f
-        val uNormalDir  = if (material?.normalOrientation == INVERT_U || material?.normalOrientation == INVERT_UV) -1f else 1f
-        val vNormalDir  = if (material?.normalOrientation == INVERT_V || material?.normalOrientation == INVERT_UV) -1f else 1f
-
-        fill(MATERIAL_FLOATS)
-        {
-            putTexture(material?.albedoMap)
-            putTexture(material?.normalMap)
-            putTexture(material?.aoRoughMetalMap)
-            putTexture(material?.emissiveMap)
-            putTexture(material?.heightMap)
-            baseColor.asLinear().let { put(it.red, it.green, it.blue, baseColor.alpha) }
-            emissiveFactor.asLinear().let { put(it.red, it.green, it.blue, emissiveFactor.alpha) }
-            put(
-                material?.occlusionStrength ?: 1f,
-                material?.roughnessFactor ?: 1f,
-                material?.metallicFactor ?: 0f,
-                heightScale
-            )
-            put(uNormalDir, vNormalDir, material?.normalScale ?: 1f, alphaCutoff)
-            put(material?.xTiling ?: 1f, material?.yTiling ?: 1f, Float.fromBits(material?.layerMask ?: 1), if (material?.blendMode == BLEND) 1f else 0f)
-        }
-    }
-
-    private fun DoubleBufferedFloatObject.putTexture(texture: Texture?)
-    {
-        if (texture?.handle?.isArrayTexture == true)
-            put(texture.handle.textureArraySlot.toFloat(), texture.handle.textureArrayLayer.toFloat(), texture.uMax, texture.vMax)
-        else
-            put(-1f, 0f, 0f, 0f)
-    }
-
-    companion object
-    {
-        private val DEFAULT_MATERIAL_COLOR = Color(1f, 0f, 1f, 1f)
-        private const val MATERIAL_FLOATS = 40
     }
 }

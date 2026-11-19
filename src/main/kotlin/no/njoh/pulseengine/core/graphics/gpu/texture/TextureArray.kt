@@ -167,6 +167,8 @@ class TextureArray(
 
     fun isFull() = size >= maximumCapacity && freeSlots.isEmpty
 
+    fun hasSpareLayer() = size < allocatedCapacity || !freeSlots.isEmpty
+
     fun delete(texture: Texture)
     {
         val handle = texture.handle

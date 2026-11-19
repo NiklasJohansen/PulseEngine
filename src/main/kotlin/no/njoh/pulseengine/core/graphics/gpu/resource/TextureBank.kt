@@ -11,6 +11,7 @@ import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFilter.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureFormat.*
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureHandle
 import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.CLAMP_TO_EDGE
+import no.njoh.pulseengine.core.graphics.gpu.texture.TextureWrapping.REPEAT_HORIZONTAL_CLAMP_VERTICAL
 import no.njoh.pulseengine.core.shared.primitives.Color
 import no.njoh.pulseengine.core.shared.utils.Extensions.firstOrNullFast
 import no.njoh.pulseengine.core.shared.utils.Extensions.forEachFast
@@ -167,10 +168,15 @@ class TextureBank
         val imageSize = max(texture.width, texture.height)
         val textureWidth: Int
         val textureHeight: Int
+        val requiresExactDimensions = 
+            texture.uploadExactTextureDimensions ||
+            texture.wrapping == REPEAT_HORIZONTAL_CLAMP_VERTICAL ||
+            (texture.pixelsLDR == null && texture.pixelsHDR == null)
+
         try
         {
             validateTextureDimensions(texture.width, texture.height, GlCapabilities.limits.maxTextureSize)
-            if (texture.uploadExactTextureDimensions)
+            if (requiresExactDimensions)
             {
                 textureWidth = texture.width
                 textureHeight = texture.height
@@ -188,20 +194,44 @@ class TextureBank
             return null
         }
 
-        val textureArray = textureArrays.firstOrNullFast()
-        {
-            it.textureWidth == textureWidth &&
-            it.textureHeight == textureHeight &&
-            it.format == texture.format &&
-            it.filter == texture.filter &&
-            it.anisotropy == texture.anisotropy &&
-            it.wrapping == texture.wrapping &&
-            it.maxMipLevels == texture.maxMipLevels &&
-            !it.isFull()
+        var largerArray: TextureArray? = null
+        var smallestArea = Long.MAX_VALUE
+
+        textureArrays.forEachFast { array ->
+           
+            if (array.format       != texture.format || 
+                array.filter       != texture.filter ||
+                array.anisotropy   != texture.anisotropy || 
+                array.wrapping     != texture.wrapping ||
+                array.maxMipLevels != texture.maxMipLevels || 
+                array.isFull()
+            ) {
+                return@forEachFast
+            }
+
+            if (array.textureWidth == textureWidth && array.textureHeight == textureHeight)
+                return array
+
+            if (requiresExactDimensions || 
+                !array.hasSpareLayer() ||
+                array.textureWidth  < textureWidth || 
+                array.textureHeight < textureHeight ||
+                array.textureWidth  > texture.width * 2L || 
+                array.textureHeight > texture.height * 2L
+            ) {
+                return@forEachFast
+            }
+
+            val area = array.textureWidth.toLong() * array.textureHeight
+            if (area < smallestArea)
+            {
+                smallestArea = area
+                largerArray = array
+            }
         }
 
-        if (textureArray != null)
-            return textureArray
+        if (largerArray != null)
+            return largerArray
 
         if (textureArrays.size >= MAX_TEXTURE_SLOTS)
         {

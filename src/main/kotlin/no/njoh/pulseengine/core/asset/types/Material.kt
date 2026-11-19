@@ -38,7 +38,7 @@ class Material(
     fun onUploaded(id: Int)
     {
         this.id = id
-        isDirty = false
+        this.isDirty = false
     }
 
     fun onDeleted()
